@@ -1,0 +1,93 @@
+swagger: "2.0"
+info:
+  description: "Specification for Conceil - a RESTful API for Tezos."
+  version: "0.0.1"
+  title: "Conceil"
+  termsOfService: "https://cryptonomic.tech/conceil/terms.html"
+  contact:
+    email: "api@cryptonomic.tech"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+host: "conceil.cryptonomic.tech"
+basePath: "/v1"
+tags:
+- name: "blocks"
+  description: "Information about blocks."
+- name: "accounts"
+  description: "Information about accounts."
+- name: "operations"
+  description: "Information about operations."
+schemes:
+- "http"
+paths:
+  /blocks:
+    get:
+      tags:
+      - "blocks"
+      summary: "All available blocks."
+      produces:
+      - "application/json"
+  /blocks/head:
+    get:
+      tags:
+      - "blocks"
+      summary: "Information about the block head."
+      produces:
+      - "application/json"
+  /blocks/{blockid}:
+    get:
+      tags:
+      - "blocks"
+      summary: "Information about a given block."
+      produces:
+      - "application/json"
+      parameters:
+        - name: "blockid"
+          in: "path"
+          description: "ID of block to return"
+          required: true
+          type: "string"
+          format: "string"
+  /accounts:
+      get:
+        tags:
+        - "accounts"
+        summary: "All available accounts."
+        produces:
+        - "application/json"
+  /accounts/{accountid}:
+      get:
+        tags:
+        - "accounts"
+        summary: "Information about a given account."
+        produces:
+        - "application/json"
+        parameters:
+          - name: "accountid"
+            in: "path"
+            description: "ID of account to return"
+            required: true
+            type: "string"
+            format: "string"
+  /operations:
+        get:
+          tags:
+          - "operations"
+          summary: "All available operations."
+          produces:
+          - "application/json"
+  /operations/{operationid}:
+        get:
+          tags:
+          - "operations"
+          summary: "Information about a given operation."
+          produces:
+          - "application/json"
+          parameters:
+            - name: "operationid"
+              in: "path"
+              description: "ID of operation to return"
+              required: true
+              type: "string"
+              format: "string"
