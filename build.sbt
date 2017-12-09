@@ -11,3 +11,5 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
   "org.scalaj" % "scalaj-http_2.12" % "2.3.0"
 )
+
+assemblyOutputPath in assembly := file("/tmp/conseil.jar")
