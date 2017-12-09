@@ -65,7 +65,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
 
   val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 1337)
   println(s"Bonjour..")
-  StdIn.readLine()
+  while(true){}
   bindingFuture
     .flatMap(_.unbind())
     .onComplete(_ => system.terminate())
