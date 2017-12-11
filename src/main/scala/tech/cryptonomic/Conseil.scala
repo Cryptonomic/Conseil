@@ -15,16 +15,18 @@ import scalaj.http._
 object Conseil extends App with LazyLogging with EnableCORSDirectives {
 
   val conf = ConfigFactory.load
-  val hostname = conf.getString("tezos.node.hostname")
-  val port = conf.getInt("tezos.node.port")
+  val conseil_hostname = conf.getString("conseil.hostname")
+  val conseil_port = conf.getInt("conseil.port")
+  val tezos_hostname = conf.getString("tezos.node.hostname")
+  val tezos_port = conf.getInt("tezos.node.port")
 
   implicit val system: ActorSystem = ActorSystem("conseil-system")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  def runQuery(path: String): Try[String] = {
+  def runTezosQuery(path: String): Try[String] = {
     Try{
-      val url = s"http://${hostname}:${port}/${path}"
+      val url = s"http://${tezos_hostname}:${tezos_port}/${path}"
       logger.info(s"Querying URL: ${url}")
       val response: HttpResponse[String] = scalaj.http.Http(url).postData("""{}""")
         .header("Content-Type", "application/json")
@@ -39,31 +41,31 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
       pathPrefix("blocks") {
         get {
           pathEnd {
-            complete(runQuery("blocks"))
+            complete(runTezosQuery("blocks"))
           } ~ path("head") {
-            complete(runQuery("blocks/head"))
+            complete(runTezosQuery("blocks/head"))
           } ~ path(Segment) { blockId =>
-            complete(runQuery(s"blocks/${blockId}"))
+            complete(runTezosQuery(s"blocks/${blockId}"))
           }
         }
       } ~ pathPrefix("accounts") {
         get {
           pathEnd {
-            complete(runQuery("blocks/head/proto/context/contracts"))
+            complete(runTezosQuery("blocks/head/proto/context/contracts"))
           } ~ path(Segment) { accountId =>
-            complete(runQuery(s"blocks/head/proto/context/contracts/${accountId}"))
+            complete(runTezosQuery(s"blocks/head/proto/context/contracts/${accountId}"))
           }
         } ~ pathPrefix("operations") {
           get {
             pathEnd {
-              complete(runQuery("blocks/head/proto/operations"))
+              complete(runTezosQuery("blocks/head/proto/operations"))
             }
           }
         }
       }
   }
 
-  val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 1337)
+  val bindingFuture = Http().bindAndHandle(route, conseil_hostname, conseil_port)
   println(s"Bonjour..")
   while(true){}
   bindingFuture
