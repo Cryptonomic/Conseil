@@ -1,4 +1,4 @@
-package tech.cryptonomic
+package tech.cryptonomic.conseil.directives
 
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Origin`}
