@@ -81,8 +81,7 @@ paths:
     post:
       tags:
         - operations
-      summary: ''
-      description: ''
+      summary: transaction
       parameters:
         - name: amount
           in: query
@@ -106,13 +105,11 @@ paths:
       responses:
         default:
           description: Default response
-  '/tezos/{networkid}/accounts/{accountid}': {}
   '/tezos/{networkid}/accounts':
     get:
       tags:
         - accounts
-      summary: ''
-      description: ''
+      summary: returns list of accounts
       parameters: []
       operationId: ''
       responses:
@@ -121,8 +118,7 @@ paths:
     post:
       tags:
         - accounts
-      summary: ''
-      description: ''
+      summary: creates a new account
       parameters:
         - name: managerPubkey
           in: query
@@ -160,6 +156,41 @@ paths:
           schema:
             type: string
           description: code and storage
+      operationId: ''
+      responses:
+        default:
+          description: Default response
+  '/tezos/{networkid}/accounts/{accountid}':
+    get:
+      tags:
+        - accounts
+      summary: returns account information
+      parameters: []
+      operationId: ''
+      responses:
+        default:
+          description: Default response
+  '/tezos/{networkid}/accounts/{accountid}/delegate':
+    get:
+      tags:
+        - accounts
+      summary: returns delegate for the account
+      parameters: []
+      operationId: ''
+      responses:
+        default:
+          description: Default response
+    put:
+      tags:
+        - accounts
+      summary: sets delegate for account
+      parameters:
+        - name: delegate
+          in: query
+          required: true
+          schema:
+            type: string
+          description: the delegate for account
       operationId: ''
       responses:
         default:
