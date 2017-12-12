@@ -1,4 +1,4 @@
-package tech.cryptonomic
+package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.config.ConfigFactory
@@ -7,10 +7,19 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.util.Try
 import scalaj.http.{HttpOptions, HttpResponse}
 
-object TezosRoutes extends LazyLogging {
+/**
+  * Tezos-specific functionality.
+  */
+object Tezos extends LazyLogging {
 
   val conf = ConfigFactory.load
 
+  /**
+    * Runs an RPC call against the configured Tezos node.
+    * @param network  Which Tezos network to go against
+    * @param path     RPC path to invoke
+    * @return
+    */
   def runTezosQuery(network: String, path: String): Try[String] = {
     Try{
       val tezos_hostname = conf.getString(s"platforms.tezos.${network}.node.hostname")
