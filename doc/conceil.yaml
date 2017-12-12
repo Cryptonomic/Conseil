@@ -78,9 +78,39 @@ paths:
         default:
           description: Default response
       parameters: []
+    post:
+      tags:
+        - operations
+      summary: ''
+      description: ''
+      parameters:
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: amount to send, in tez
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+          description: to which contract ID
+        - name: parameter
+          in: query
+          required: false
+          schema:
+            type: object
+          description: Michelson program parameters
+      operationId: ''
+      responses:
+        default:
+          description: Default response
   '/tezos/{networkid}/accounts/{accountid}': {}
   '/tezos/{networkid}/accounts':
     get:
+      tags:
+        - accounts
       summary: ''
       description: ''
       parameters: []
@@ -89,6 +119,8 @@ paths:
         default:
           description: Default response
     post:
+      tags:
+        - accounts
       summary: ''
       description: ''
       parameters:
