@@ -1,39 +1,57 @@
 openapi: 3.0.0
 servers:
-  - url: 'http://conceil.cryptonomic.tech/v1'
+  - url: 'https://cryptonomic.tech/conseil'
+    description: Pre-alpha deployment
 info:
   description: Specification for Conceil - a RESTful API for Tezos.
   version: 0.0.1
   title: Conceil
-  termsOfService: 'https://cryptonomic.tech/conceil/terms.html'
+  termsOfService: ''
   contact:
     email: api@cryptonomic.tech
+    name: Vishakh
+    url: 'https://cryptonomic.tech'
   license:
-    name: Apache 2.0
-    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+    name: Apache-2.0
+    url: 'https://opensource.org/licenses/Apache-2.0'
 tags:
   - name: blocks
     description: Information about blocks.
   - name: accounts
-    description: Information about accounts.
+    description: 'Information, creation and modifications of accounts.'
   - name: operations
-    description: Information about operations.
+    description: Information and creation of operations.
 paths:
   '/tezos/{networkid}/blocks':
     get:
       tags:
         - blocks
-      summary: All available blocks.
+      summary: All available blocks on the given network.
       responses:
         default:
           description: Default response
-      parameters: []
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+      operationId: getAllBlocks
   '/tezos/{networkid}/blocks/{blockid}':
     get:
       tags:
         - blocks
       summary: Information about a given block.
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: blockid
           in: path
           description: ID of block to return
@@ -44,6 +62,7 @@ paths:
       responses:
         default:
           description: Default response
+      operationId: getBlockByID
   '/tezos/{networkid}/blocks/head':
     get:
       tags:
@@ -52,13 +71,79 @@ paths:
       responses:
         default:
           description: Default response
-      parameters: []
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+      operationId: getBlockHead
+  '/tezos/{networkid}/operations':
+    get:
+      tags:
+        - operations
+      summary: All available operations.
+      responses:
+        default:
+          description: Default response
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+      operationId: getAllOperations
+    post:
+      tags:
+        - operations
+      summary: Posts a transaction to the blockchain.
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Amount to send in Tez
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Account ID to send the transaction
+        - name: parameter
+          in: query
+          required: false
+          schema:
+            type: object
+          description: Michelson program parameters
+      operationId: createTransaction
+      responses:
+        default:
+          description: Default response
   '/tezos/{networkid}/operations/{operationid}':
     get:
       tags:
         - operations
-      summary: Information about a given operation.
+      summary: Information about a given operation
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: operationid
           in: path
           description: ID of operation to return
@@ -69,94 +154,73 @@ paths:
       responses:
         default:
           description: Default response
-  '/tezos/{networkid}/operations':
-    get:
-      tags:
-        - operations
-      summary: All available operations.
-      responses:
-        default:
-          description: Default response
-      parameters: []
-    post:
-      tags:
-        - operations
-      summary: transaction
-      parameters:
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: integer
-          description: amount to send, in tez
-        - name: destination
-          in: query
-          required: true
-          schema:
-            type: string
-          description: to which contract ID
-        - name: parameter
-          in: query
-          required: false
-          schema:
-            type: object
-          description: Michelson program parameters
-      operationId: ''
-      responses:
-        default:
-          description: Default response
+      operationId: getOperationByID
   '/tezos/{networkid}/accounts':
     get:
       tags:
         - accounts
-      summary: returns list of accounts
-      parameters: []
-      operationId: ''
+      summary: All available accounts
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+      operationId: getAllAccounts
       responses:
         default:
           description: Default response
     post:
       tags:
         - accounts
-      summary: creates a new account
+      summary: Creates a new account
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: managerPubkey
           in: query
           required: true
           schema:
             type: string
-          description: manager's account ID
+          description: Manager's account ID
         - name: balance
           in: query
           required: true
           schema:
             type: string
-          description: funding amount
+          description: Funding amount
         - name: spendable
           in: query
           required: false
           schema:
             type: string
-          description: is it spendable?
+          description: Is it spendable?
         - name: delegatable
           in: query
           required: false
           schema:
             type: string
-          description: 'is it delegatable? '
+          description: 'Is it delegatable? '
         - name: delegate
           in: query
           required: false
           schema:
             type: string
-          description: the delegate's account ID
+          description: The delegate's account ID
         - name: script
           in: query
           required: false
           schema:
             type: string
-          description: code and storage
-      operationId: ''
+          description: Code and storage for a contract account
+      operationId: createAccount
       responses:
         default:
           description: Default response
@@ -164,9 +228,22 @@ paths:
     get:
       tags:
         - accounts
-      summary: returns account information
-      parameters: []
-      operationId: ''
+      summary: Get information about a given account
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+        - name: accountID
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ID of the account to get information for
+      operationId: getAccountByID
       responses:
         default:
           description: Default response
@@ -174,29 +251,55 @@ paths:
     get:
       tags:
         - accounts
-      summary: returns delegate for the account
-      parameters: []
-      operationId: ''
+      summary: Returns delegate for the given account
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
+        - name: accountid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Account ID for which the delegate is needed
+      operationId: getDelegateForAccountID
       responses:
         default:
           description: Default response
     put:
       tags:
         - accounts
-      summary: sets delegate for account
+      summary: Sets delegate for account
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: delegate
           in: query
           required: true
           schema:
             type: string
-          description: the delegate for account
-      operationId: ''
+          description: The updated delegate for account
+      operationId: assignDelegateForAccountID
       responses:
         default:
           description: Default response
-security: []
+security:
+  - conseilApiKey: []
 components:
   links: {}
   callbacks: {}
   schemas: {}
+  securitySchemes:
+    conseilApiKey:
+      type: apiKey
+      name: apiKey
+      in: query
