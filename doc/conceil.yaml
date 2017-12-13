@@ -48,6 +48,7 @@ paths:
       responses:
         default:
           description: Default response
+      operationId: getBlockByID
   '/tezos/{networkid}/blocks/head':
     get:
       tags:
@@ -57,11 +58,49 @@ paths:
         default:
           description: Default response
       parameters: []
+      operationId: getBlockHead
+  '/tezos/{networkid}/operations':
+    get:
+      tags:
+        - operations
+      summary: All available operations.
+      responses:
+        default:
+          description: Default response
+      parameters: []
+      operationId: getAllOperations
+    post:
+      tags:
+        - operations
+      summary: Posts a transaction to the blockchain.
+      parameters:
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Amount to send in Tez
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Account ID to send the transaction
+        - name: parameter
+          in: query
+          required: false
+          schema:
+            type: object
+          description: Michelson program parameters
+      operationId: createTransaction
+      responses:
+        default:
+          description: Default response
   '/tezos/{networkid}/operations/{operationid}':
     get:
       tags:
         - operations
-      summary: Information about a given operation.
+      summary: Information about a given operation
       parameters:
         - name: operationid
           in: path
@@ -73,94 +112,59 @@ paths:
       responses:
         default:
           description: Default response
-  '/tezos/{networkid}/operations':
-    get:
-      tags:
-        - operations
-      summary: All available operations.
-      responses:
-        default:
-          description: Default response
-      parameters: []
-    post:
-      tags:
-        - operations
-      summary: transaction
-      parameters:
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: integer
-          description: 'amount to send, in tez'
-        - name: destination
-          in: query
-          required: true
-          schema:
-            type: string
-          description: to which contract ID
-        - name: parameter
-          in: query
-          required: false
-          schema:
-            type: object
-          description: Michelson program parameters
-      operationId: ''
-      responses:
-        default:
-          description: Default response
+      operationId: getOperationByID
   '/tezos/{networkid}/accounts':
     get:
       tags:
         - accounts
-      summary: returns list of accounts
+      summary: All available accounts
       parameters: []
-      operationId: ''
+      operationId: getAllAccounts
       responses:
         default:
           description: Default response
     post:
       tags:
         - accounts
-      summary: creates a new account
+      summary: Creates a new account
       parameters:
         - name: managerPubkey
           in: query
           required: true
           schema:
             type: string
-          description: manager's account ID
+          description: Manager's account ID
         - name: balance
           in: query
           required: true
           schema:
             type: string
-          description: funding amount
+          description: Funding amount
         - name: spendable
           in: query
           required: false
           schema:
             type: string
-          description: is it spendable?
+          description: Is it spendable?
         - name: delegatable
           in: query
           required: false
           schema:
             type: string
-          description: 'is it delegatable? '
+          description: 'Is it delegatable? '
         - name: delegate
           in: query
           required: false
           schema:
             type: string
-          description: the delegate's account ID
+          description: The delegate's account ID
         - name: script
           in: query
           required: false
           schema:
             type: string
-          description: code and storage
-      operationId: ''
+          description: Code and storage for a contract account
+      operationId: createAccount
       responses:
         default:
           description: Default response
@@ -168,9 +172,15 @@ paths:
     get:
       tags:
         - accounts
-      summary: returns account information
-      parameters: []
-      operationId: ''
+      summary: Get information about a given account
+      parameters:
+        - name: accountID
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ID of the account to get information for
+      operationId: getAccountByID
       responses:
         default:
           description: Default response
@@ -178,35 +188,41 @@ paths:
     get:
       tags:
         - accounts
-      summary: returns delegate for the account
-      parameters: []
-      operationId: ''
+      summary: Returns delegate for the given account
+      parameters:
+        - name: accountid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Account ID for which the delegate is needed
+      operationId: getDelegateForAccountID
       responses:
         default:
           description: Default response
     put:
       tags:
         - accounts
-      summary: sets delegate for account
+      summary: Sets delegate for account
       parameters:
         - name: delegate
           in: query
           required: true
           schema:
             type: string
-          description: the delegate for account
-      operationId: ''
+          description: The updated delegate for account
+      operationId: assignDelegateForAccountID
       responses:
         default:
           description: Default response
 security:
-  - newSecurityScheme: []
+  - conseilApiKey: []
 components:
   links: {}
   callbacks: {}
   schemas: {}
   securitySchemes:
-    newSecurityScheme:
+    conseilApiKey:
       type: apiKey
       name: apiKey
       in: query
