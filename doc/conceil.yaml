@@ -30,7 +30,14 @@ paths:
       responses:
         default:
           description: Default response
-      parameters: []
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
       operationId: getAllBlocks
   '/tezos/{networkid}/blocks/{blockid}':
     get:
@@ -38,6 +45,13 @@ paths:
         - blocks
       summary: Information about a given block.
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: blockid
           in: path
           description: ID of block to return
@@ -57,7 +71,14 @@ paths:
       responses:
         default:
           description: Default response
-      parameters: []
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
       operationId: getBlockHead
   '/tezos/{networkid}/operations':
     get:
@@ -67,13 +88,27 @@ paths:
       responses:
         default:
           description: Default response
-      parameters: []
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
       operationId: getAllOperations
     post:
       tags:
         - operations
       summary: Posts a transaction to the blockchain.
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: amount
           in: query
           required: true
@@ -102,6 +137,13 @@ paths:
         - operations
       summary: Information about a given operation
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: operationid
           in: path
           description: ID of operation to return
@@ -118,7 +160,14 @@ paths:
       tags:
         - accounts
       summary: All available accounts
-      parameters: []
+      parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
       operationId: getAllAccounts
       responses:
         default:
@@ -128,6 +177,13 @@ paths:
         - accounts
       summary: Creates a new account
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: managerPubkey
           in: query
           required: true
@@ -174,6 +230,13 @@ paths:
         - accounts
       summary: Get information about a given account
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: accountID
           in: query
           required: true
@@ -190,6 +253,13 @@ paths:
         - accounts
       summary: Returns delegate for the given account
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: accountid
           in: query
           required: true
@@ -205,6 +275,13 @@ paths:
         - accounts
       summary: Sets delegate for account
       parameters:
+        - name: networkid
+          in: path
+          description: Network to use, e.g. 'alphanet' or 'livenet'
+          required: true
+          schema:
+            type: string
+            format: string
         - name: delegate
           in: query
           required: true
