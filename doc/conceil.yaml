@@ -1,33 +1,37 @@
 openapi: 3.0.0
 servers:
-  - url: 'http://conceil.cryptonomic.tech/v1'
+  - url: 'https://cryptonomic.tech/conseil'
+    description: Pre-alpha deployment
 info:
   description: Specification for Conceil - a RESTful API for Tezos.
   version: 0.0.1
   title: Conceil
-  termsOfService: 'https://cryptonomic.tech/conceil/terms.html'
+  termsOfService: ''
   contact:
     email: api@cryptonomic.tech
+    name: Vishakh
+    url: 'https://cryptonomic.tech'
   license:
-    name: Apache 2.0
-    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+    name: Apache-2.0
+    url: 'https://opensource.org/licenses/Apache-2.0'
 tags:
   - name: blocks
     description: Information about blocks.
   - name: accounts
-    description: Information about accounts.
+    description: 'Information, creation and modifications of accounts.'
   - name: operations
-    description: Information about operations.
+    description: Information and creation of operations.
 paths:
   '/tezos/{networkid}/blocks':
     get:
       tags:
         - blocks
-      summary: All available blocks.
+      summary: All available blocks on the given network.
       responses:
         default:
           description: Default response
       parameters: []
+      operationId: getAllBlocks
   '/tezos/{networkid}/blocks/{blockid}':
     get:
       tags:
@@ -88,7 +92,7 @@ paths:
           required: true
           schema:
             type: integer
-          description: amount to send, in tez
+          description: 'amount to send, in tez'
         - name: destination
           in: query
           required: true
@@ -195,8 +199,14 @@ paths:
       responses:
         default:
           description: Default response
-security: []
+security:
+  - newSecurityScheme: []
 components:
   links: {}
   callbacks: {}
   schemas: {}
+  securitySchemes:
+    newSecurityScheme:
+      type: apiKey
+      name: apiKey
+      in: query
