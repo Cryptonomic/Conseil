@@ -24,7 +24,7 @@ object Tezos extends LazyLogging {
     Try{
       val tezos_hostname = conf.getString(s"platforms.tezos.${network}.node.hostname")
       val tezos_port = conf.getInt(s"platforms.tezos.${network}.node.port")
-      val url = s"http://${tezos_hostname}:${tezos_port}/${path}"
+      val url = s"http://${tezos_hostname}:${tezos_port}/tezos/${network}/${path}"
       logger.info(s"Querying URL ${url} for platform Tezos and network ${network}")
       val response: HttpResponse[String] = scalaj.http.Http(url).postData("""{}""")
         .header("Content-Type", "application/json")
