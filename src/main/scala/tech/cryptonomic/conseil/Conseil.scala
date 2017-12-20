@@ -69,8 +69,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
 
   Http().setDefaultServerHttpContext(https)
   val bindingFuture = Http().bindAndHandle(route, conseil_hostname, conseil_port)
-  println(System.getProperty("user.dir"))
-  println(s"Bonjour..")
+  logger.info(s"Bonjour..")
   while(true){}
   bindingFuture
     .flatMap(_.unbind())
