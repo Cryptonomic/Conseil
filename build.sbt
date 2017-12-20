@@ -12,7 +12,10 @@ libraryDependencies  ++=  Seq(
   "org.scalaj" % "scalaj-http_2.12" % "2.3.0",
   "org.scalatest" %% "scalatest" % "3.0.4" % "test",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.0",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.0"
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.0",
+  "com.typesafe.slick" %% "slick" % "3.2.1",
+  "org.slf4j" % "slf4j-nop" % "1.6.4",
+  "com.typesafe.slick" %% "slick-hikaricp" % "3.2.1"
 )
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
