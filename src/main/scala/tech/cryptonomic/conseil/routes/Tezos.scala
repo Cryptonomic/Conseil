@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.util.TezosUtil
+import tech.cryptonomic.conseil.tezos.TezosUtil
 
 /**
   * Tezos-specific functionality.

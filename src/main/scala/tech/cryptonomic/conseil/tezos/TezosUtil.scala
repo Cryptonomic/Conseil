@@ -1,12 +1,10 @@
-package tech.cryptonomic.conseil.util
+package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.TezosTypes
-import tech.cryptonomic.conseil.TezosTypes.{Block, BlockOperation}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import scalaj.http.{HttpOptions, HttpResponse}
 
 object TezosUtil extends LazyLogging{
@@ -37,7 +35,7 @@ object TezosUtil extends LazyLogging{
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] = {
     val result = runQuery(network, s"blocks/${hash}")
     result.flatMap(jsonEncodedBlock =>
-      Try(fromJson[Block](jsonEncodedBlock))
+      Try(fromJson[TezosTypes.Block](jsonEncodedBlock))
     )
   }
 

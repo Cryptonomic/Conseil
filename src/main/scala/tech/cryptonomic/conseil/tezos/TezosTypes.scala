@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil
+package tech.cryptonomic.conseil.tezos
 
 object TezosTypes {
 
