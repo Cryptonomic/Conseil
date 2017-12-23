@@ -6,7 +6,13 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Block
 import scala.util.{Failure, Success, Try}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.TezosUtil.getBlockHead
-import tech.cryptonomic.conseil.tezos.{TezosTypes, TezosUtil}
+import tech.cryptonomic.conseil.tezos.{TezosTables, TezosTypes, TezosUtil}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import java.sql.Timestamp
+
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
 
 object Lorre extends App with LazyLogging {
 
@@ -50,5 +56,15 @@ object Lorre extends App with LazyLogging {
     } finally db.close()
   }
 
-  takeAnotherDump("alphanet", 5).map(_.foreach(println))
+  //takeAnotherDump("alphanet", 5).map(_.foreach(println))
+  val db = Database.forConfig("conseildb")
+  try{
+    val setup = DBIO.seq(
+      TezosTables.Blocks += TezosTables.BlocksRow(1,"net","protocol", 1, 1, None, new java.sql.Timestamp(System.currentTimeMillis()), 1, "op#", 0, 0, "data", "hash")
+    )
+    val fut1 = db.run(setup)
+    val fut2 = db.run(TezosTables.Blocks.result).map(_.foreach(println))
+    val f: Future[Future[Unit]] = fut1.map(x => fut2)
+    Await.result(f, Duration.Inf)
+  } finally db.close()
 }

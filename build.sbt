@@ -14,7 +14,7 @@ libraryDependencies  ++=  Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.0",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.0",
   "com.typesafe.slick" %% "slick" % "3.2.1",
-  "org.slf4j" % "slf4j-nop" % "1.6.4",
+  //"org.slf4j" % "slf4j-nop" % "1.6.4",
   "com.typesafe.slick" %% "slick-hikaricp" % "3.2.1",
   "org.postgresql" % "postgresql" % "42.1.4",
   "com.typesafe.slick" %% "slick-codegen" % "3.2.1"
