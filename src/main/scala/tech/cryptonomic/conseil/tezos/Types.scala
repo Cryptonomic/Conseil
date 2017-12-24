@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-object TezosTypes {
+object Types {
 
   case class Block(
                     hash: String,
@@ -10,7 +10,7 @@ object TezosTypes {
                     level: Int,
                     proto: Int,
                     predecessor: String,
-                    timestamp: String,
+                    timestamp: java.sql.Timestamp,
                     validation_pass: Int,
                     operations_hash: String,
                     fitness: Seq[String],

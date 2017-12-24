@@ -1,70 +1,69 @@
 package tech.cryptonomic.conseil
 
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.Block
-
-import scala.util.{Failure, Success, Try}
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos.Types.Block
 import tech.cryptonomic.conseil.tezos.TezosUtil.getBlockHead
-import tech.cryptonomic.conseil.tezos.{TezosTables, TezosTypes, TezosUtil}
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import java.sql.Timestamp
+import tech.cryptonomic.conseil.tezos.{Tables, TezosUtil, Types}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object Lorre extends App with LazyLogging {
 
-  def takeAnotherDump(network: String, startBlock: Int, endBlock: Int): List[Try[Block]] = {
-    val head: Try[TezosTypes.Block] = TezosUtil.getBlockHead(network)
-    head match {
-      case Success(block) =>
-        process(network, block.hash, startBlock, endBlock)
-      case Failure(e) =>
-        logger.warn(e.getMessage)
-        List[Try[Block]]()
+  def getBlocksFromClient(network: String, offset: Int): Try[List[Block]] =
+    getBlockHead(network).flatMap(head => getBlocksFromClient(network, head.level - offset, head.level))
+
+  def getBlocksFromClient(network: String, startBlock: Int, endBlock: Int): Try[List[Block]] =
+    getBlockHead(network).flatMap(head => processBlocks(network, head.hash, startBlock, endBlock))
+
+  def processBlocks(network: String, hash: String, startBlock: Int, endBlock: Int): Try[List[Block]] =
+    TezosUtil.getBlock(network, hash).flatMap{block =>
+      logger.info(block.level.toString)
+      if(block.level > endBlock)
+        processBlocks(network, block.predecessor, startBlock, endBlock)
+      else if(block.level >= startBlock)
+        processBlocks(network, block.predecessor, startBlock, endBlock).flatMap(blocks => Try(block :: blocks))
+      else
+        Try(List[Block]())
     }
-  }
 
-  def takeAnotherDump(network: String, offset: Int): List[Try[Block]] = {
-    getBlockHead(network) match {
-      case Success(s) => takeAnotherDump(network, s.level - offset, s.level)
-      case Failure(e) => List[Try[Block]]()
-    }
-
-  }
-
-  def process(network: String, hash: String, startBlock: Int, endBlock: Int): List[Try[Block]] = {
-    val result: Try[Block] = TezosUtil.getBlock(network, hash)
-    result match {
-      case Success(block) =>
-        logger.info(block.level.toString)
-        if(block.level<startBlock) List[Try[Block]]()
-        else if(block.level > endBlock) process(network, block.predecessor, startBlock, endBlock)
-        else result :: process(network, block.predecessor, startBlock, endBlock)
-      case Failure(e) =>
-        logger.warn(e.getMessage)
-        List[Try[Block]]()
-    }
-  }
-
-  def writeToDatabase(blocks: List[Try[Block]]) = {
+  def writeToDatabase(block: Block): Try[Unit] = Try {
     val db = Database.forConfig("conseildb")
-    try{
-      println(sql"select * from users".toString)
+    try {
+      val blocks = TableQuery[Tables.Blocks]
+      val dbOp = DBIO.seq(
+        blocks += Tables.BlocksRow(
+          blockId = 2,
+          netId = block.net_id,
+          protocol = block.protocol,
+          level = block.level,
+          proto = block.proto,
+          predecessor = Some(block.predecessor),
+          timestamp = Some(block.timestamp),
+          validationPass = block.validation_pass,
+          operationsHash = block.operations_hash,
+          fitness1 = block.fitness.head,
+          fitness2 = block.fitness.tail.head,
+          data = block.data,
+          hash = block.hash
+        )
+      )
+      val dbFut = db.run(dbOp)
+      dbFut onComplete {_ match
+        {
+        case Success(_) => println("*****Success")
+        case Failure(e) => println(s"*****Failure: ${e.getMessage}")
+      }
+      }
+      Await.result(dbFut, Duration.Inf)
     } finally db.close()
   }
 
-  //takeAnotherDump("alphanet", 5).map(_.foreach(println))
-  val db = Database.forConfig("conseildb")
-  try{
-    val setup = DBIO.seq(
-      TezosTables.Blocks += TezosTables.BlocksRow(1,"net","protocol", 1, 1, None, new java.sql.Timestamp(System.currentTimeMillis()), 1, "op#", 0, 0, "data", "hash")
-    )
-    val fut1 = db.run(setup)
-    val fut2 = db.run(TezosTables.Blocks.result).map(_.foreach(println))
-    val f: Future[Future[Unit]] = fut1.map(x => fut2)
-    Await.result(f, Duration.Inf)
-  } finally db.close()
+  getBlocksFromClient("alphanet", 5) match {
+    case Success(blocks) => blocks.foreach(println)
+    case Failure(e) => println(e)
+  }
 }

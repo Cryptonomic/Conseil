@@ -32,14 +32,14 @@ object TezosUtil extends LazyLogging{
     }
   }
 
-  def getBlock(network: String, hash: String): Try[TezosTypes.Block] = {
+  def getBlock(network: String, hash: String): Try[Types.Block] = {
     val result = runQuery(network, s"blocks/${hash}")
     result.flatMap(jsonEncodedBlock =>
-      Try(fromJson[TezosTypes.Block](jsonEncodedBlock))
+      Try(fromJson[Types.Block](jsonEncodedBlock))
     )
   }
 
-  def getBlockHead(network: String): Try[TezosTypes.Block]= {
+  def getBlockHead(network: String): Try[Types.Block]= {
     getBlock(network, "head")
   }
 
