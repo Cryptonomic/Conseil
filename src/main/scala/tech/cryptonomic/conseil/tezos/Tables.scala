@@ -14,7 +14,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Blocks.schema
+  lazy val schema: profile.SchemaDescription = Blocks.schema ++ OperationGroups.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -78,4 +78,39 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
+
+  /** Entity class storing rows of table OperationGroups
+    *  @param hash Database column hash SqlType(varchar), PrimaryKey
+    *  @param blockId Database column block_id SqlType(varchar)
+    *  @param branch Database column branch SqlType(varchar)
+    *  @param source Database column source SqlType(varchar)
+    *  @param signature Database column signature SqlType(varchar) */
+  case class OperationGroupsRow(hash: String, blockId: String, branch: String, source: String, signature: String)
+  /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
+  implicit def GetResultOperationGroupsRow(implicit e0: GR[String]): GR[OperationGroupsRow] = GR{
+    prs => import prs._
+      OperationGroupsRow.tupled((<<[String], <<[String], <<[String], <<[String], <<[String]))
+  }
+  /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
+  class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
+    def * = (hash, blockId, branch, source, signature) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(hash), Rep.Some(blockId), Rep.Some(branch), Rep.Some(source), Rep.Some(signature)).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column hash SqlType(varchar), PrimaryKey */
+    val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column branch SqlType(varchar) */
+    val branch: Rep[String] = column[String]("branch")
+    /** Database column source SqlType(varchar) */
+    val source: Rep[String] = column[String]("source")
+    /** Database column signature SqlType(varchar) */
+    val signature: Rep[String] = column[String]("signature")
+
+    /** Foreign key referencing Blocks (database name OperationGroups_block_id_fkey) */
+    lazy val blocksFk = foreignKey("OperationGroups_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table OperationGroups */
+  lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 }

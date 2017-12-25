@@ -8,7 +8,8 @@ object TezosDatabaseOperations {
   def writeToDatabase(blocks: List[Block], dbHandle: Database) =
     dbHandle.run(
       DBIO.seq(
-        Tables.Blocks ++= blocks.map(blockToDatabaseRow)
+        Tables.Blocks ++= blocks.map(blockToDatabaseRow),
+        Tables.OperationGroups ++= blocks.map(operationGroupToDatabaseRow).flatten
       )
     )
 
@@ -28,5 +29,17 @@ object TezosDatabaseOperations {
       data = block.metadata.data,
       hash = block.metadata.hash
     )
+
+  private def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
+    block.operations.map{og =>
+      Tables.OperationGroupsRow(
+        hash = og.hash,
+        blockId = block.metadata.hash,
+        branch = og.branch,
+        source = og.source,
+        signature = og.signature
+      )
+    }
+
 
 }
