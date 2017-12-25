@@ -19,7 +19,6 @@ trait Tables {
   def ddl = schema
 
   /** Entity class storing rows of table Blocks
-    *  @param blockId Database column block_id SqlType(int4), PrimaryKey
     *  @param netId Database column net_id SqlType(varchar)
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param level Database column level SqlType(int4)
@@ -32,20 +31,18 @@ trait Tables {
     *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
     *  @param fitness1 Database column fitness_1 SqlType(varchar)
     *  @param fitness2 Database column fitness_2 SqlType(varchar) */
-  case class BlocksRow(blockId: Int, netId: String, protocol: String, level: Int, proto: Int, predecessor: Option[String] = None, validationPass: Int, operationsHash: String, data: String, hash: String, timestamp: Option[java.sql.Timestamp] = None, fitness1: String, fitness2: String)
+  case class BlocksRow(netId: String, protocol: String, level: Int, proto: Int, predecessor: Option[String] = None, validationPass: Int, operationsHash: String, data: String, hash: String, timestamp: Option[java.sql.Timestamp] = None, fitness1: String, fitness2: String)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
-  implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]], e3: GR[Option[java.sql.Timestamp]]): GR[BlocksRow] = GR{
+  implicit def GetResultBlocksRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]], e3: GR[Option[java.sql.Timestamp]]): GR[BlocksRow] = GR{
     prs => import prs._
-      BlocksRow.tupled((<<[Int], <<[String], <<[String], <<[Int], <<[Int], <<?[String], <<[Int], <<[String], <<[String], <<[String], <<?[java.sql.Timestamp], <<[String], <<[String]))
+      BlocksRow.tupled((<<[String], <<[String], <<[Int], <<[Int], <<?[String], <<[Int], <<[String], <<[String], <<[String], <<?[java.sql.Timestamp], <<[String], <<[String]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
-    def * = (blockId, netId, protocol, level, proto, predecessor, validationPass, operationsHash, data, hash, timestamp, fitness1, fitness2) <> (BlocksRow.tupled, BlocksRow.unapply)
+    def * = (netId, protocol, level, proto, predecessor, validationPass, operationsHash, data, hash, timestamp, fitness1, fitness2) <> (BlocksRow.tupled, BlocksRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(blockId), Rep.Some(netId), Rep.Some(protocol), Rep.Some(level), Rep.Some(proto), predecessor, Rep.Some(validationPass), Rep.Some(operationsHash), Rep.Some(data), Rep.Some(hash), timestamp, Rep.Some(fitness1), Rep.Some(fitness2)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get, _9.get, _10.get, _11, _12.get, _13.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(netId), Rep.Some(protocol), Rep.Some(level), Rep.Some(proto), predecessor, Rep.Some(validationPass), Rep.Some(operationsHash), Rep.Some(data), Rep.Some(hash), timestamp, Rep.Some(fitness1), Rep.Some(fitness2)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9.get, _10, _11.get, _12.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column block_id SqlType(int4), PrimaryKey */
-    val blockId: Rep[Int] = column[Int]("block_id", O.PrimaryKey)
     /** Database column net_id SqlType(varchar) */
     val netId: Rep[String] = column[String]("net_id")
     /** Database column protocol SqlType(varchar) */
