@@ -14,9 +14,44 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Blocks.schema ++ Endorsements.schema ++ OperationGroups.schema ++ Transactions.schema
+  lazy val schema: profile.SchemaDescription = Array(Ballots.schema, Blocks.schema, Delegations.schema, Endorsements.schema, FaucetTransactions.schema, OperationGroups.schema, Originations.schema, Proposals.schema, SeedNonceRevealations.schema, Transactions.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
+
+  /** Entity class storing rows of table Ballots
+    *  @param ballotId Database column ballot_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param period Database column period SqlType(int4)
+    *  @param proposal Database column proposal SqlType(varchar)
+    *  @param ballot Database column ballot SqlType(varchar) */
+  case class BallotsRow(ballotId: Int, operationGroupHash: String, period: Int, proposal: String, ballot: String)
+  /** GetResult implicit for fetching BallotsRow objects using plain SQL queries */
+  implicit def GetResultBallotsRow(implicit e0: GR[Int], e1: GR[String]): GR[BallotsRow] = GR{
+    prs => import prs._
+      BallotsRow.tupled((<<[Int], <<[String], <<[Int], <<[String], <<[String]))
+  }
+  /** Table description of table ballots. Objects of this class serve as prototypes for rows in queries. */
+  class Ballots(_tableTag: Tag) extends profile.api.Table[BallotsRow](_tableTag, "ballots") {
+    def * = (ballotId, operationGroupHash, period, proposal, ballot) <> (BallotsRow.tupled, BallotsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(ballotId), Rep.Some(operationGroupHash), Rep.Some(period), Rep.Some(proposal), Rep.Some(ballot)).shaped.<>({r=>import r._; _1.map(_=> BallotsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column ballot_id SqlType(serial), AutoInc, PrimaryKey */
+    val ballotId: Rep[Int] = column[Int]("ballot_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_group_hash SqlType(varchar) */
+    val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
+    /** Database column period SqlType(int4) */
+    val period: Rep[Int] = column[Int]("period")
+    /** Database column proposal SqlType(varchar) */
+    val proposal: Rep[String] = column[String]("proposal")
+    /** Database column ballot SqlType(varchar) */
+    val ballot: Rep[String] = column[String]("ballot")
+
+    /** Foreign key referencing OperationGroups (database name ballots_operation_group_hash_fkey) */
+    lazy val operationGroupsFk = foreignKey("ballots_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table Ballots */
+  lazy val Ballots = new TableQuery(tag => new Ballots(tag))
 
   /** Entity class storing rows of table Blocks
     *  @param netId Database column net_id SqlType(varchar)
@@ -76,6 +111,35 @@ trait Tables {
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
+  /** Entity class storing rows of table Delegations
+    *  @param delegationId Database column delegation_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param delegate Database column delegate SqlType(varchar) */
+  case class DelegationsRow(delegationId: Int, operationGroupHash: String, delegate: String)
+  /** GetResult implicit for fetching DelegationsRow objects using plain SQL queries */
+  implicit def GetResultDelegationsRow(implicit e0: GR[Int], e1: GR[String]): GR[DelegationsRow] = GR{
+    prs => import prs._
+      DelegationsRow.tupled((<<[Int], <<[String], <<[String]))
+  }
+  /** Table description of table delegations. Objects of this class serve as prototypes for rows in queries. */
+  class Delegations(_tableTag: Tag) extends profile.api.Table[DelegationsRow](_tableTag, "delegations") {
+    def * = (delegationId, operationGroupHash, delegate) <> (DelegationsRow.tupled, DelegationsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(delegationId), Rep.Some(operationGroupHash), Rep.Some(delegate)).shaped.<>({r=>import r._; _1.map(_=> DelegationsRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column delegation_id SqlType(serial), AutoInc, PrimaryKey */
+    val delegationId: Rep[Int] = column[Int]("delegation_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_group_hash SqlType(varchar) */
+    val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
+    /** Database column delegate SqlType(varchar) */
+    val delegate: Rep[String] = column[String]("delegate")
+
+    /** Foreign key referencing OperationGroups (database name delegations_operation_group_hash_fkey) */
+    lazy val operationGroupsFk = foreignKey("delegations_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table Delegations */
+  lazy val Delegations = new TableQuery(tag => new Delegations(tag))
+
   /** Entity class storing rows of table Endorsements
     *  @param endorsementId Database column endorsement_id SqlType(serial), AutoInc, PrimaryKey
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
@@ -109,6 +173,38 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Endorsements */
   lazy val Endorsements = new TableQuery(tag => new Endorsements(tag))
+
+  /** Entity class storing rows of table FaucetTransactions
+    *  @param faucetTransactionId Database column faucet_transaction_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param id Database column id SqlType(varchar)
+    *  @param nonce Database column nonce SqlType(varchar) */
+  case class FaucetTransactionsRow(faucetTransactionId: Int, operationGroupHash: String, id: String, nonce: String)
+  /** GetResult implicit for fetching FaucetTransactionsRow objects using plain SQL queries */
+  implicit def GetResultFaucetTransactionsRow(implicit e0: GR[Int], e1: GR[String]): GR[FaucetTransactionsRow] = GR{
+    prs => import prs._
+      FaucetTransactionsRow.tupled((<<[Int], <<[String], <<[String], <<[String]))
+  }
+  /** Table description of table faucet_transactions. Objects of this class serve as prototypes for rows in queries. */
+  class FaucetTransactions(_tableTag: Tag) extends profile.api.Table[FaucetTransactionsRow](_tableTag, "faucet_transactions") {
+    def * = (faucetTransactionId, operationGroupHash, id, nonce) <> (FaucetTransactionsRow.tupled, FaucetTransactionsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(faucetTransactionId), Rep.Some(operationGroupHash), Rep.Some(id), Rep.Some(nonce)).shaped.<>({r=>import r._; _1.map(_=> FaucetTransactionsRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column faucet_transaction_id SqlType(serial), AutoInc, PrimaryKey */
+    val faucetTransactionId: Rep[Int] = column[Int]("faucet_transaction_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_group_hash SqlType(varchar) */
+    val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
+    /** Database column id SqlType(varchar) */
+    val id: Rep[String] = column[String]("id")
+    /** Database column nonce SqlType(varchar) */
+    val nonce: Rep[String] = column[String]("nonce")
+
+    /** Foreign key referencing OperationGroups (database name faucet_transactions_operation_group_hash_fkey) */
+    lazy val operationGroupsFk = foreignKey("faucet_transactions_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table FaucetTransactions */
+  lazy val FaucetTransactions = new TableQuery(tag => new FaucetTransactions(tag))
 
   /** Entity class storing rows of table OperationGroups
     *  @param hash Database column hash SqlType(varchar), PrimaryKey
@@ -144,6 +240,114 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table OperationGroups */
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
+
+  /** Entity class storing rows of table Originations
+    *  @param originationId Database column origination_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param managerpubkey Database column managerPubkey SqlType(varchar), Default(None)
+    *  @param balance Database column balance SqlType(numeric), Default(None)
+    *  @param spendable Database column spendable SqlType(bool), Default(None)
+    *  @param delegatable Database column delegatable SqlType(bool), Default(None)
+    *  @param delegate Database column delegate SqlType(varchar), Default(None)
+    *  @param script Database column script SqlType(varchar), Default(None) */
+  case class OriginationsRow(originationId: Int, operationGroupHash: String, managerpubkey: Option[String] = None, balance: Option[scala.math.BigDecimal] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, delegate: Option[String] = None, script: Option[String] = None)
+  /** GetResult implicit for fetching OriginationsRow objects using plain SQL queries */
+  implicit def GetResultOriginationsRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]], e3: GR[Option[scala.math.BigDecimal]], e4: GR[Option[Boolean]]): GR[OriginationsRow] = GR{
+    prs => import prs._
+      OriginationsRow.tupled((<<[Int], <<[String], <<?[String], <<?[scala.math.BigDecimal], <<?[Boolean], <<?[Boolean], <<?[String], <<?[String]))
+  }
+  /** Table description of table originations. Objects of this class serve as prototypes for rows in queries. */
+  class Originations(_tableTag: Tag) extends profile.api.Table[OriginationsRow](_tableTag, "originations") {
+    def * = (originationId, operationGroupHash, managerpubkey, balance, spendable, delegatable, delegate, script) <> (OriginationsRow.tupled, OriginationsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(originationId), Rep.Some(operationGroupHash), managerpubkey, balance, spendable, delegatable, delegate, script).shaped.<>({r=>import r._; _1.map(_=> OriginationsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column origination_id SqlType(serial), AutoInc, PrimaryKey */
+    val originationId: Rep[Int] = column[Int]("origination_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_group_hash SqlType(varchar) */
+    val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
+    /** Database column managerPubkey SqlType(varchar), Default(None) */
+    val managerpubkey: Rep[Option[String]] = column[Option[String]]("managerPubkey", O.Default(None))
+    /** Database column balance SqlType(numeric), Default(None) */
+    val balance: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("balance", O.Default(None))
+    /** Database column spendable SqlType(bool), Default(None) */
+    val spendable: Rep[Option[Boolean]] = column[Option[Boolean]]("spendable", O.Default(None))
+    /** Database column delegatable SqlType(bool), Default(None) */
+    val delegatable: Rep[Option[Boolean]] = column[Option[Boolean]]("delegatable", O.Default(None))
+    /** Database column delegate SqlType(varchar), Default(None) */
+    val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
+    /** Database column script SqlType(varchar), Default(None) */
+    val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
+
+    /** Foreign key referencing OperationGroups (database name originations_operation_group_hash_fkey) */
+    lazy val operationGroupsFk = foreignKey("originations_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table Originations */
+  lazy val Originations = new TableQuery(tag => new Originations(tag))
+
+  /** Entity class storing rows of table Proposals
+    *  @param proposalId Database column proposal_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param period Database column period SqlType(int4)
+    *  @param proposal Database column proposal SqlType(varchar) */
+  case class ProposalsRow(proposalId: Int, operationGroupHash: String, period: Int, proposal: String)
+  /** GetResult implicit for fetching ProposalsRow objects using plain SQL queries */
+  implicit def GetResultProposalsRow(implicit e0: GR[Int], e1: GR[String]): GR[ProposalsRow] = GR{
+    prs => import prs._
+      ProposalsRow.tupled((<<[Int], <<[String], <<[Int], <<[String]))
+  }
+  /** Table description of table proposals. Objects of this class serve as prototypes for rows in queries. */
+  class Proposals(_tableTag: Tag) extends profile.api.Table[ProposalsRow](_tableTag, "proposals") {
+    def * = (proposalId, operationGroupHash, period, proposal) <> (ProposalsRow.tupled, ProposalsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(proposalId), Rep.Some(operationGroupHash), Rep.Some(period), Rep.Some(proposal)).shaped.<>({r=>import r._; _1.map(_=> ProposalsRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column proposal_id SqlType(serial), AutoInc, PrimaryKey */
+    val proposalId: Rep[Int] = column[Int]("proposal_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_group_hash SqlType(varchar) */
+    val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
+    /** Database column period SqlType(int4) */
+    val period: Rep[Int] = column[Int]("period")
+    /** Database column proposal SqlType(varchar) */
+    val proposal: Rep[String] = column[String]("proposal")
+
+    /** Foreign key referencing OperationGroups (database name proposals_operation_group_hash_fkey) */
+    lazy val operationGroupsFk = foreignKey("proposals_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table Proposals */
+  lazy val Proposals = new TableQuery(tag => new Proposals(tag))
+
+  /** Entity class storing rows of table SeedNonceRevealations
+    *  @param seedNonnceRevealationId Database column seed_nonnce_revealation_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param level Database column level SqlType(int4)
+    *  @param nonce Database column nonce SqlType(varchar) */
+  case class SeedNonceRevealationsRow(seedNonnceRevealationId: Int, operationGroupHash: String, level: Int, nonce: String)
+  /** GetResult implicit for fetching SeedNonceRevealationsRow objects using plain SQL queries */
+  implicit def GetResultSeedNonceRevealationsRow(implicit e0: GR[Int], e1: GR[String]): GR[SeedNonceRevealationsRow] = GR{
+    prs => import prs._
+      SeedNonceRevealationsRow.tupled((<<[Int], <<[String], <<[Int], <<[String]))
+  }
+  /** Table description of table seed_nonce_revealations. Objects of this class serve as prototypes for rows in queries. */
+  class SeedNonceRevealations(_tableTag: Tag) extends profile.api.Table[SeedNonceRevealationsRow](_tableTag, "seed_nonce_revealations") {
+    def * = (seedNonnceRevealationId, operationGroupHash, level, nonce) <> (SeedNonceRevealationsRow.tupled, SeedNonceRevealationsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(seedNonnceRevealationId), Rep.Some(operationGroupHash), Rep.Some(level), Rep.Some(nonce)).shaped.<>({r=>import r._; _1.map(_=> SeedNonceRevealationsRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column seed_nonnce_revealation_id SqlType(serial), AutoInc, PrimaryKey */
+    val seedNonnceRevealationId: Rep[Int] = column[Int]("seed_nonnce_revealation_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_group_hash SqlType(varchar) */
+    val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
+    /** Database column level SqlType(int4) */
+    val level: Rep[Int] = column[Int]("level")
+    /** Database column nonce SqlType(varchar) */
+    val nonce: Rep[String] = column[String]("nonce")
+
+    /** Foreign key referencing OperationGroups (database name seed_nonce_revealations_operation_group_hash_fkey) */
+    lazy val operationGroupsFk = foreignKey("seed_nonce_revealations_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table SeedNonceRevealations */
+  lazy val SeedNonceRevealations = new TableQuery(tag => new SeedNonceRevealations(tag))
 
   /** Entity class storing rows of table Transactions
     *  @param transactionId Database column transaction_id SqlType(serial), AutoInc, PrimaryKey

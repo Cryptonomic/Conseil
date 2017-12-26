@@ -34,7 +34,7 @@ object TezosTypes {
                       destination: Option[String],
                       //parameters: Option[Object],
                       managerPubKey: Option[String],
-                      balance: Option[Float],
+                      balance: Option[BigDecimal],
                       spendable: Option[Boolean],
                       delegatable: Option[Boolean],
                       delegate: Option[String],

@@ -18,7 +18,7 @@ object Lorre extends App with LazyLogging {
   db.close()
 
   def processTezos() = {
-    TezosNodeOperations.getBlocks("alphanet", 0, 1000, Some("BL1warkWwBLTUj5rTFig1Pwvki4KxwxHqtvDNBGurJyBr2gqrc1")) match {
+    TezosNodeOperations.getBlocks("alphanet", 751, 1000, Some("BMYSjJ2cZ48t3oX5ur18NtJYbS2sQQzVusTL2KPkEuZboHpbVix")) match {
       case Success(blocks) => {
         Try {
           val sortedBlocks = blocks.sortBy(_.metadata.level)
