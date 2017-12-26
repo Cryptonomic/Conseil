@@ -23,24 +23,24 @@ trait Tables {
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param level Database column level SqlType(int4)
     *  @param proto Database column proto SqlType(int4)
-    *  @param predecessor Database column predecessor SqlType(varchar), Default(None)
+    *  @param predecessor Database column predecessor SqlType(varchar)
     *  @param validationPass Database column validation_pass SqlType(int4)
     *  @param operationsHash Database column operations_hash SqlType(varchar)
     *  @param data Database column data SqlType(varchar)
     *  @param hash Database column hash SqlType(varchar)
-    *  @param timestamp Database column timestamp SqlType(timestamp), Default(None)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param fitness Database column fitness SqlType(varchar) */
-  case class BlocksRow(netId: String, protocol: String, level: Int, proto: Int, predecessor: Option[String] = None, validationPass: Int, operationsHash: String, data: String, hash: String, timestamp: Option[java.sql.Timestamp] = None, fitness: String)
+  case class BlocksRow(netId: String, protocol: String, level: Int, proto: Int, predecessor: String, validationPass: Int, operationsHash: String, data: String, hash: String, timestamp: java.sql.Timestamp, fitness: String)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
-  implicit def GetResultBlocksRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[String]], e3: GR[Option[java.sql.Timestamp]]): GR[BlocksRow] = GR{
+  implicit def GetResultBlocksRow(implicit e0: GR[String], e1: GR[Int], e2: GR[java.sql.Timestamp]): GR[BlocksRow] = GR{
     prs => import prs._
-      BlocksRow.tupled((<<[String], <<[String], <<[Int], <<[Int], <<?[String], <<[Int], <<[String], <<[String], <<[String], <<?[java.sql.Timestamp], <<[String]))
+      BlocksRow.tupled((<<[String], <<[String], <<[Int], <<[Int], <<[String], <<[Int], <<[String], <<[String], <<[String], <<[java.sql.Timestamp], <<[String]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
     def * = (netId, protocol, level, proto, predecessor, validationPass, operationsHash, data, hash, timestamp, fitness) <> (BlocksRow.tupled, BlocksRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(netId), Rep.Some(protocol), Rep.Some(level), Rep.Some(proto), predecessor, Rep.Some(validationPass), Rep.Some(operationsHash), Rep.Some(data), Rep.Some(hash), timestamp, Rep.Some(fitness)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7.get, _8.get, _9.get, _10, _11.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(netId), Rep.Some(protocol), Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(validationPass), Rep.Some(operationsHash), Rep.Some(data), Rep.Some(hash), Rep.Some(timestamp), Rep.Some(fitness)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column net_id SqlType(varchar) */
     val netId: Rep[String] = column[String]("net_id")
@@ -50,8 +50,8 @@ trait Tables {
     val level: Rep[Int] = column[Int]("level")
     /** Database column proto SqlType(int4) */
     val proto: Rep[Int] = column[Int]("proto")
-    /** Database column predecessor SqlType(varchar), Default(None) */
-    val predecessor: Rep[Option[String]] = column[Option[String]]("predecessor", O.Default(None))
+    /** Database column predecessor SqlType(varchar) */
+    val predecessor: Rep[String] = column[String]("predecessor")
     /** Database column validation_pass SqlType(int4) */
     val validationPass: Rep[Int] = column[Int]("validation_pass")
     /** Database column operations_hash SqlType(varchar) */
@@ -60,13 +60,13 @@ trait Tables {
     val data: Rep[String] = column[String]("data")
     /** Database column hash SqlType(varchar) */
     val hash: Rep[String] = column[String]("hash")
-    /** Database column timestamp SqlType(timestamp), Default(None) */
-    val timestamp: Rep[Option[java.sql.Timestamp]] = column[Option[java.sql.Timestamp]]("timestamp", O.Default(None))
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
     /** Database column fitness SqlType(varchar) */
     val fitness: Rep[String] = column[String]("fitness")
 
     /** Foreign key referencing Blocks (database name blocks_predecessor_fkey) */
-    lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => Rep.Some(r.hash), onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
 
     /** Index over (hash) (database name blocks_hash_idx) */
     val index1 = index("blocks_hash_idx", hash)
