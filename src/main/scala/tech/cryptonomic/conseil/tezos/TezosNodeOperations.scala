@@ -74,16 +74,16 @@ object TezosNodeOperations extends LazyLogging{
         })
     }
 
-  private def processBlocks(network: String, hash: String, minLevel: Int, maxLevel: Int): List[Block] =
+  private def processBlocks(network: String, hash: String, minLevel: Int, maxLevel: Int, blockSoFar: List[Block] = List[Block]()): List[Block] =
     TezosNodeOperations.getBlock(network, hash) match {
       case Success(block) => {
         logger.info(s"Current block height: ${block.metadata.level}")
         if(block.metadata.level == 0 || block.metadata.level == minLevel)
-          List[Block](block)
+          block :: blockSoFar
         else if(block.metadata.level > maxLevel)
-          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel)
+          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, blockSoFar)
         else if(block.metadata.level > minLevel)
-          block :: processBlocks(network, block.metadata.predecessor, minLevel, maxLevel)
+          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, block :: blockSoFar)
         else
           List[Block]()
       }

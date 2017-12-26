@@ -18,11 +18,10 @@ object Lorre extends App with LazyLogging {
   db.close()
 
   def processTezos() = {
-    TezosNodeOperations.getBlocks("alphanet", 751, 1000, Some("BMYSjJ2cZ48t3oX5ur18NtJYbS2sQQzVusTL2KPkEuZboHpbVix")) match {
+    TezosNodeOperations.getBlocks("alphanet", 850, 5000, Some("BLw5hR7MMvGuvYfctBjurEkvPCZp7bKmpUvX9deShiKYfQWNGLB")) match {
       case Success(blocks) => {
         Try {
-          val sortedBlocks = blocks.sortBy(_.metadata.level)
-          val dbFut = TezosDatabaseOperations.writeToDatabase(sortedBlocks, db)
+          val dbFut = TezosDatabaseOperations.writeToDatabase(blocks, db)
           dbFut onComplete {
             _ match {
               case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")

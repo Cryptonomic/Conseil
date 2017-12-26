@@ -38,7 +38,7 @@ object TezosTypes {
                       spendable: Option[Boolean],
                       delegatable: Option[Boolean],
                       delegate: Option[String],
-                      //script: Option[String],
+                      //script: Option[Any],
                       block: Option[String],
                       slot: Option[Int],
                       period: Option[Int],
