@@ -1,17 +1,22 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.TezosTypes.Block
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Block, BlockMetadata}
+
+import scala.concurrent.Future
 
 object TezosDatabaseOperations {
 
-  def writeToDatabase(blocks: List[Block], dbHandle: Database) =
+  def writeToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] = {
     dbHandle.run(
       DBIO.seq(
         Tables.Blocks ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups ++= blocks.map(operationGroupToDatabaseRow).flatten
+        Tables.OperationGroups ++= blocks.flatMap(operationGroupToDatabaseRow),
+        Tables.Transactions ++= blocks.flatMap(transactionsToDatabaseRows),
+        Tables.Endorsements ++= blocks.flatMap(endorsementsToDatabaseRows)
       )
     )
+  }
 
   private def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(
@@ -24,14 +29,13 @@ object TezosDatabaseOperations {
       timestamp = Some(block.metadata.timestamp),
       validationPass = block.metadata.validation_pass,
       operationsHash = block.metadata.operations_hash,
-      fitness1 = block.metadata.fitness.head,
-      fitness2 = block.metadata.fitness.tail.head,
       data = block.metadata.data,
-      hash = block.metadata.hash
+      hash = block.metadata.hash,
+      fitness = block.metadata.fitness.mkString(",")
     )
 
   private def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
-    block.operations.map{og =>
+    block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
         hash = og.hash,
         blockId = block.metadata.hash,
@@ -41,5 +45,28 @@ object TezosDatabaseOperations {
       )
     }
 
+  private def transactionsToDatabaseRows(block: Block): List[Tables.TransactionsRow] =
+    block.operationGroups.flatMap{ og =>
+      og.operations.filter(_.kind.get=="transaction").map{transaction =>
+        Tables.TransactionsRow(
+          transactionId = 0,
+          operationGroupHash = og.hash,
+          amount = transaction.amount.get,
+          destination = transaction.destination,
+          parameters = None
+        )
+      }
+    }
 
+  private def endorsementsToDatabaseRows(block: Block): List[Tables.EndorsementsRow] =
+    block.operationGroups.flatMap{ og =>
+      og.operations.filter(_.kind.get=="endorsement").map{transaction =>
+        Tables.EndorsementsRow(
+          endorsementId = 0,
+          operationGroupHash = og.hash,
+          blockId = transaction.block.get,
+          slot = transaction.slot.get
+        )
+      }
+    }
 }

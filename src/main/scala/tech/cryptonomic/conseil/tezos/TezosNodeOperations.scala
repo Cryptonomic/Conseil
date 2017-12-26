@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.Block
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Block, OperationGroup}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.util.{Failure, Success, Try}
@@ -36,9 +36,15 @@ object TezosNodeOperations extends LazyLogging{
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
     runQuery(network, s"blocks/${hash}").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
-        runQuery(network, s"blocks/${hash}/proto/operations").flatMap { jsonEncodedOperations =>
-          Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperations)).flatMap { itsOperations =>
-            Try(Block(theBlock, itsOperations.ok.head))
+        if(theBlock.level==0) Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations of the genesis blog, which seems like a bug.
+        else {
+          runQuery(network, s"blocks/${hash}/proto/operations").flatMap { jsonEncodedOperations =>
+            Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperations)).flatMap { itsOperations =>
+              itsOperations.ok.length match {
+                case 0 => Try(Block(theBlock, List[OperationGroup]()))
+                case _ => Try(Block(theBlock, itsOperations.ok.head))
+              }
+            }
           }
         }
       }
@@ -72,9 +78,11 @@ object TezosNodeOperations extends LazyLogging{
     TezosNodeOperations.getBlock(network, hash) match {
       case Success(block) => {
         logger.info(s"Current block height: ${block.metadata.level}")
-        if(block.metadata.level > maxLevel)
+        if(block.metadata.level == 0 || block.metadata.level == minLevel)
+          List[Block](block)
+        else if(block.metadata.level > maxLevel)
           processBlocks(network, block.metadata.predecessor, minLevel, maxLevel)
-        else if(block.metadata.level >= minLevel)
+        else if(block.metadata.level > minLevel)
           block :: processBlocks(network, block.metadata.predecessor, minLevel, maxLevel)
         else
           List[Block]()

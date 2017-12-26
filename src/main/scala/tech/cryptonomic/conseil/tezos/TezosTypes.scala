@@ -30,7 +30,7 @@ object TezosTypes {
 
   case class Operation(
                       kind: Option[String],
-                      amount: Option[Int],
+                      amount: Option[scala.math.BigDecimal],
                       destination: Option[String],
                       //parameters: Option[Object],
                       managerPubKey: Option[String],
@@ -40,7 +40,7 @@ object TezosTypes {
                       delegate: Option[String],
                       //script: Option[String],
                       block: Option[String],
-                      slot: Option[String],
+                      slot: Option[Int],
                       period: Option[Int],
                       proposal: Option[String],
                       ballot: Option[String],
@@ -52,9 +52,9 @@ object TezosTypes {
   case class OperationGroup(
                            hash: String,
                            branch: String,
-                           source: String,
+                           source: Option[String],
                            operations: List[Operation],
-                           signature: String
+                           signature: Option[String]
                            )
 
   case class OperationGroupContainer(
@@ -63,6 +63,7 @@ object TezosTypes {
 
   case class Block(
                     metadata: BlockMetadata,
-                    operations: List[OperationGroup]
+                    operationGroups: List[OperationGroup]
                   )
+
 }
