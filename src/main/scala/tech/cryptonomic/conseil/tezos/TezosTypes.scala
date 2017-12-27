@@ -90,8 +90,7 @@ object TezosTypes {
 
   case class Block(
                     metadata: BlockMetadata,
-                    operationGroups: List[OperationGroup],
-                    accounts: Map[String, Account]
+                    operationGroups: List[OperationGroup]
                   )
 
 }

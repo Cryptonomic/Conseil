@@ -67,14 +67,13 @@ object TezosNodeOperations extends LazyLogging{
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
     runQuery(network, s"blocks/${hash}").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
-        if(theBlock.level==0) Try(Block(theBlock, List[OperationGroup](), Map[String, Account]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+        if(theBlock.level==0)
+          Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else {
-          getAllAccountsForBlock(network, hash).flatMap{ itsAccounts =>
-            getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
-              itsOperations.length match {
-                case 0 => Try(Block(theBlock, List[OperationGroup](), Map[String, Account]()))
-                case _ => Try(Block(theBlock, itsOperations.head, itsAccounts))
-              }
+          getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
+            itsOperations.length match {
+              case 0 => Try(Block(theBlock, List[OperationGroup]()))
+              case _ => Try(Block(theBlock, itsOperations.head))
             }
           }
         }
@@ -84,6 +83,18 @@ object TezosNodeOperations extends LazyLogging{
   def getBlockHead(network: String): Try[TezosTypes.Block]= {
     getBlock(network, "head")
   }
+
+  def getBlocksNotInDatabase(network: String): Try[List[Block]] =
+    ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
+      getBlockHead(network).flatMap { blockHead =>
+        val headLevel = blockHead.metadata.level
+        val headHash  = blockHead.metadata.hash
+        if(headLevel <= maxLevel)
+          Try(List[Block]())
+        else
+          getBlocks(network, maxLevel+1, headLevel, Some(headHash))
+      }
+    }
 
   def getBlocks(network: String, offset: Int, startBlockHash: Option[String]): Try[List[Block]] =
     startBlockHash match {
@@ -126,7 +137,10 @@ object TezosNodeOperations extends LazyLogging{
       Try(AccountsWithBlockHash(blockHash, accounts))
     }
 
+  //def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
+  //  getBlockHead(network).flatMap{ blockHead => getAccounts(network, blockHead.metadata.hash)}
+
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
-    getBlockHead(network).flatMap{ blockHead => getAccounts(network, blockHead.metadata.hash)}
+    ApiOperations.fetchLatestBlock.flatMap( dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
 }
