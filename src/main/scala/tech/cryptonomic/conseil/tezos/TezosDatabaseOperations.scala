@@ -1,13 +1,13 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Block, BlockMetadata}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash, Block, BlockMetadata}
 
 import scala.concurrent.Future
 
 object TezosDatabaseOperations {
 
-  def writeToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] = {
+  def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
         Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
@@ -22,7 +22,26 @@ object TezosDatabaseOperations {
         Tables.FaucetTransactions     ++= blocks.flatMap(faucetTransactionsToDatabaseRows)
       )
     )
-  }
+
+  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHash, dbHandle: Database): Future[Unit] =
+    dbHandle.run(
+      DBIO.seq(
+        Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
+      )
+    )
+
+  private def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHash): List[Tables.AccountsRow] =
+    accountsInfo.accounts.map { account =>
+      Tables.AccountsRow(
+        accountId = account._1,
+        blockId = accountsInfo.block_hash,
+        manager = account._2.manager,
+        spendable = account._2.spendable,
+        delegateSetable = account._2.delegate.setable,
+        delegateValue = account._2.delegate.value,
+        counter = account._2.counter
+      )
+    }.toList
 
   private def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(

@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Block, OperationGroup}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash, Block, OperationGroup}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.util.{Failure, Success, Try}
@@ -20,9 +20,10 @@ object TezosNodeOperations extends LazyLogging{
     */
   def runQuery(network: String, path: String): Try[String] = {
     Try{
-      val tezos_hostname = conf.getString(s"platforms.tezos.${network}.node.hostname")
-      val tezos_port = conf.getInt(s"platforms.tezos.${network}.node.port")
-      val url = s"http://${tezos_hostname}:${tezos_port}/tezos/${network}/${path}"
+      val hostname = conf.getString(s"platforms.tezos.${network}.node.hostname")
+      val port = conf.getInt(s"platforms.tezos.${network}.node.port")
+      val pathPrefix = conf.getString(s"platforms.tezos.${network}.node.pathPrefix")
+      val url = s"http://${hostname}:${port}/${pathPrefix}${path}"
       logger.info(s"Querying URL ${url} for platform Tezos and network ${network}")
       val response: HttpResponse[String] = scalaj.http.Http(url).postData("""{}""")
         .header("Content-Type", "application/json")
@@ -33,16 +34,46 @@ object TezosNodeOperations extends LazyLogging{
     }
   }
 
+  def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
+    runQuery(network, s"blocks/${blockHash}/proto/context/contracts/${accountID}").flatMap { jsonEncodedAccount =>
+      Try(fromJson[TezosTypes.AccountContainer](jsonEncodedAccount)).flatMap(acctContainer => Try(acctContainer.ok))
+    }
+
+  def getAllAccountsForBlock(network: String, blockHash: String): Try[Map[String, TezosTypes.Account]] = Try {
+    runQuery(network, s"blocks/${blockHash}/proto/context/contracts") match {
+      case Success(jsonEncodedAccounts) =>
+        val accountIDs = fromJson[TezosTypes.AccountsContainer](jsonEncodedAccounts)
+        val listedAccounts: List[String] = accountIDs.ok
+        val accounts = listedAccounts.map(acctID => getAccountForBlock(network, blockHash, acctID))
+        accounts.filter(_.isFailure).length match {
+          case 0 =>
+            val justTheAccounts = accounts.map(_.get)
+            (listedAccounts zip justTheAccounts).toMap
+          case _ => throw new Exception(s"Could not decode one of the accounts for block ${blockHash}")
+        }
+      case Failure(e) =>
+        logger.error(s"Could not get a list of accounts for block ${blockHash}")
+        throw e
+    }
+  }
+
+  def getAllOperationsForBlock(network: String, blockHash: String) =
+    runQuery(network, s"blocks/${blockHash}/proto/operations").flatMap { jsonEncodedOperationsContainer =>
+      Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
+        Try(operationsContainer.ok)
+      }
+    }
+
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
     runQuery(network, s"blocks/${hash}").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
-        if(theBlock.level==0) Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations of the genesis blog, which seems like a bug.
+        if(theBlock.level==0) Try(Block(theBlock, List[OperationGroup](), Map[String, Account]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else {
-          runQuery(network, s"blocks/${hash}/proto/operations").flatMap { jsonEncodedOperations =>
-            Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperations)).flatMap { itsOperations =>
-              itsOperations.ok.length match {
-                case 0 => Try(Block(theBlock, List[OperationGroup]()))
-                case _ => Try(Block(theBlock, itsOperations.ok.head))
+          getAllAccountsForBlock(network, hash).flatMap{ itsAccounts =>
+            getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
+              itsOperations.length match {
+                case 0 => Try(Block(theBlock, List[OperationGroup](), Map[String, Account]()))
+                case _ => Try(Block(theBlock, itsOperations.head, itsAccounts))
               }
             }
           }
@@ -89,5 +120,13 @@ object TezosNodeOperations extends LazyLogging{
       }
       case Failure(e) => throw e
     }
+
+  def getAccounts(network: String, blockHash: String) =
+    getAllAccountsForBlock(network, blockHash).flatMap{ accounts =>
+      Try(AccountsWithBlockHash(blockHash, accounts))
+    }
+
+  def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
+    getBlockHead(network).flatMap{ blockHead => getAccounts(network, blockHead.metadata.hash)}
 
 }

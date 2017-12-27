@@ -14,9 +14,53 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Ballots.schema, Blocks.schema, Delegations.schema, Endorsements.schema, FaucetTransactions.schema, OperationGroups.schema, Originations.schema, Proposals.schema, SeedNonceRevealations.schema, Transactions.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, Ballots.schema, Blocks.schema, Delegations.schema, Endorsements.schema, FaucetTransactions.schema, OperationGroups.schema, Originations.schema, Proposals.schema, SeedNonceRevealations.schema, Transactions.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
+
+  /** Entity class storing rows of table Accounts
+    *  @param accountId Database column account_id SqlType(varchar)
+    *  @param blockId Database column block_id SqlType(varchar)
+    *  @param manager Database column manager SqlType(varchar)
+    *  @param spendable Database column spendable SqlType(bool)
+    *  @param delegateSetable Database column delegate_setable SqlType(bool)
+    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
+    *  @param counter Database column counter SqlType(int4) */
+  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int)
+  /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
+  implicit def GetResultAccountsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int]): GR[AccountsRow] = GR{
+    prs => import prs._
+      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int]))
+  }
+  /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
+  class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
+    def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter) <> (AccountsRow.tupled, AccountsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter)).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column account_id SqlType(varchar) */
+    val accountId: Rep[String] = column[String]("account_id")
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column manager SqlType(varchar) */
+    val manager: Rep[String] = column[String]("manager")
+    /** Database column spendable SqlType(bool) */
+    val spendable: Rep[Boolean] = column[Boolean]("spendable")
+    /** Database column delegate_setable SqlType(bool) */
+    val delegateSetable: Rep[Boolean] = column[Boolean]("delegate_setable")
+    /** Database column delegate_value SqlType(varchar), Default(None) */
+    val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
+    /** Database column counter SqlType(int4) */
+    val counter: Rep[Int] = column[Int]("counter")
+
+    /** Primary key of Accounts (database name accounts_pkey) */
+    val pk = primaryKey("accounts_pkey", (accountId, blockId))
+
+    /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
+    lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table Accounts */
+  lazy val Accounts = new TableQuery(tag => new Accounts(tag))
 
   /** Entity class storing rows of table Ballots
     *  @param ballotId Database column ballot_id SqlType(serial), AutoInc, PrimaryKey

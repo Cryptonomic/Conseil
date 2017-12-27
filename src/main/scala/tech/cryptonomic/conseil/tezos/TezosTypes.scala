@@ -61,9 +61,37 @@ object TezosTypes {
                                     ok: List[List[OperationGroup]]
                                     )
 
+  case class AccountDelegate(
+                            setable: Boolean,
+                            value: Option[String]
+                            )
+
+  case class Account(
+                    manager: String,
+                    balance: Any,  //Can be either an integer or a string! ¯\_(ツ)_/¯
+                    spendable: Boolean,
+                    delegate: AccountDelegate,
+                    script: Option[Any],
+                    counter: Integer
+                    )
+
+  case class AccountContainer(
+                             ok: Account
+                             )
+
+  case class AccountsContainer(
+                     ok: List[String]
+                     )
+
+  case class AccountsWithBlockHash(
+                                    block_hash: String,
+                                    accounts: Map[String, Account]
+                                  )
+
   case class Block(
                     metadata: BlockMetadata,
-                    operationGroups: List[OperationGroup]
+                    operationGroups: List[OperationGroup],
+                    accounts: Map[String, Account]
                   )
 
 }
