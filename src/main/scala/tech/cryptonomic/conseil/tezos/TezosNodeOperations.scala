@@ -8,6 +8,9 @@ import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import scala.util.{Failure, Success, Try}
 import scalaj.http.{HttpOptions, HttpResponse}
 
+/**
+  * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
+  */
 object TezosNodeOperations extends LazyLogging{
 
   val conf = ConfigFactory.load
@@ -16,7 +19,7 @@ object TezosNodeOperations extends LazyLogging{
     * Runs an RPC call against the configured Tezos node.
     * @param network  Which Tezos network to go against
     * @param path     RPC path to invoke
-    * @return
+    * @return         Result of the RPC call
     */
   def runQuery(network: String, path: String): Try[String] = {
     Try{
@@ -34,11 +37,24 @@ object TezosNodeOperations extends LazyLogging{
     }
   }
 
+  /**
+    * Fetches a specific account for a given block.
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of given block
+    * @param accountID  Account ID
+    * @return           The account
+    */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
     runQuery(network, s"blocks/${blockHash}/proto/context/contracts/${accountID}").flatMap { jsonEncodedAccount =>
       Try(fromJson[TezosTypes.AccountContainer](jsonEncodedAccount)).flatMap(acctContainer => Try(acctContainer.ok))
     }
 
+  /**
+    * Fetches all accounts for a given block.
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of given block.
+    * @return           Accounts
+    */
   def getAllAccountsForBlock(network: String, blockHash: String): Try[Map[String, TezosTypes.Account]] = Try {
     runQuery(network, s"blocks/${blockHash}/proto/context/contracts") match {
       case Success(jsonEncodedAccounts) =>
@@ -57,13 +73,26 @@ object TezosNodeOperations extends LazyLogging{
     }
   }
 
-  def getAllOperationsForBlock(network: String, blockHash: String) =
+  /**
+    * Returns all operation groups for a given block.
+    * The list of lists return type is intentional as it corresponds to the return value of the Tezos client.
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of the given block
+    * @return           Operation groups
+    */
+  def getAllOperationsForBlock(network: String, blockHash: String): Try[List[List[OperationGroup]]] =
     runQuery(network, s"blocks/${blockHash}/proto/operations").flatMap { jsonEncodedOperationsContainer =>
       Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
         Try(operationsContainer.ok)
       }
     }
 
+  /**
+    * Gets a given block.
+    * @param network  Which Tezos network to go against
+    * @param hash     Hash of the given block
+    * @return         Block
+    */
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
     runQuery(network, s"blocks/${hash}").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
@@ -80,10 +109,20 @@ object TezosNodeOperations extends LazyLogging{
       }
     }
 
+  /**
+    * Gets the block head.
+    * @param network  Which Tezos network to go against
+    * @return         Block head
+    */
   def getBlockHead(network: String): Try[TezosTypes.Block]= {
     getBlock(network, "head")
   }
 
+  /**
+    * Gets all blocks from the head down to the oldest block not already in the database.
+    * @param network  Which Tezos network to go against
+    * @return         Blocks
+    */
   def getBlocksNotInDatabase(network: String): Try[List[Block]] =
     ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
       getBlockHead(network).flatMap { blockHead =>
@@ -96,6 +135,13 @@ object TezosNodeOperations extends LazyLogging{
       }
     }
 
+  /**
+    * Gets the latest blocks from the database using an offset.
+    * @param network        Which Tezos network to go against
+    * @param offset         How many previous blocks to get from the start
+    * @param startBlockHash The block from which to offset, using the hash provided or the head if none is provided.
+    * @return               Blocks
+    */
   def getBlocks(network: String, offset: Int, startBlockHash: Option[String]): Try[List[Block]] =
     startBlockHash match {
       case None =>
@@ -104,6 +150,14 @@ object TezosNodeOperations extends LazyLogging{
         getBlock(network, hash).flatMap(block => getBlocks(network, block.metadata.level - offset, block.metadata.level, startBlockHash))
     }
 
+  /**
+    * Gets the blocks using a specified rage
+    * @param network        Which Tezos network to go against
+    * @param minLevel       Minimum block level
+    * @param maxLevel       Maximum block level
+    * @param startBlockHash If specified, start from the supplied block hash.
+    * @return               Blocks
+    */
   def getBlocks(network: String, minLevel: Int, maxLevel: Int, startBlockHash: Option[String]): Try[List[Block]] =
     startBlockHash match {
       case None =>
@@ -116,6 +170,15 @@ object TezosNodeOperations extends LazyLogging{
         })
     }
 
+  /**
+    * Traverses Tezos blockchain as parameterized.
+    * @param network    Which Tezos network to go against
+    * @param hash       Current block to fetch
+    * @param minLevel   Minimum level at which to stop
+    * @param maxLevel   Level at which to start collecting blocks
+    * @param blockSoFar Blocks collected so far
+    * @return           All collected block
+    */
   private def processBlocks(network: String, hash: String, minLevel: Int, maxLevel: Int, blockSoFar: List[Block] = List[Block]()): List[Block] =
     TezosNodeOperations.getBlock(network, hash) match {
       case Success(block) => {
@@ -132,14 +195,22 @@ object TezosNodeOperations extends LazyLogging{
       case Failure(e) => throw e
     }
 
-  def getAccounts(network: String, blockHash: String) =
+  /**
+    * Get all accounts for a given block
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of given block
+    * @return           Accounts with their corresponding block hash
+    */
+  def getAccounts(network: String, blockHash: String): Try[AccountsWithBlockHash] =
     getAllAccountsForBlock(network, blockHash).flatMap{ accounts =>
       Try(AccountsWithBlockHash(blockHash, accounts))
     }
 
-  //def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
-  //  getBlockHead(network).flatMap{ blockHead => getAccounts(network, blockHead.metadata.hash)}
-
+  /**
+    * Get accounts for the latest block in the database.
+    * @param network  Which Tezos network to go against
+    * @return         Accounts with their corresponding block hash
+    */
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock.flatMap( dbBlockHead => getAccounts(network, dbBlockHead.hash))
 

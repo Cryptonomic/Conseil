@@ -5,8 +5,17 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash
 
 import scala.concurrent.Future
 
+/**
+  * Functions for writing Tezos data to a database.
+  */
 object TezosDatabaseOperations {
 
+  /**
+    * Writes blocks and operations to a database.
+    * @param blocks   Block with operations.
+    * @param dbHandle Handle to database.
+    * @return         Future on database inserts.
+    */
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
@@ -23,6 +32,12 @@ object TezosDatabaseOperations {
       )
     )
 
+  /**
+    * Writes accounts from a specific blocks to a database.
+    * @param accountsInfo Accounts with their corresponding block hash.
+    * @param dbHandle     Handle to a database.
+    * @return             Future on database inserts.
+    */
   def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHash, dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
@@ -30,6 +45,11 @@ object TezosDatabaseOperations {
       )
     )
 
+  /**
+    * Generates database rows for accounts.
+    * @param accountsInfo Accounts
+    * @return             Database rows
+    */
   private def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHash): List[Tables.AccountsRow] =
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
@@ -43,6 +63,11 @@ object TezosDatabaseOperations {
       )
     }.toList
 
+  /**
+    * Generates database rows for blocks.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(
       netId = block.metadata.net_id,
@@ -58,6 +83,11 @@ object TezosDatabaseOperations {
       fitness = block.metadata.fitness.mkString(",")
     )
 
+  /**
+    * Generates database rows for a block's operation groups.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
     block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
@@ -69,6 +99,11 @@ object TezosDatabaseOperations {
       )
     }
 
+  /**
+    * Generates database rows for a block's transactions.
+    * @param block  Block
+    * @return       Database row
+    */
   private def transactionsToDatabaseRows(block: Block): List[Tables.TransactionsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="transaction").map{operation =>
@@ -82,6 +117,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's endorsements.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def endorsementsToDatabaseRows(block: Block): List[Tables.EndorsementsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="endorsement").map{operation =>
@@ -94,6 +134,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's originations.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def originationsToDatabaseRows(block: Block): List[Tables.OriginationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="origination").map{operation =>
@@ -110,6 +155,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's delegations.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def delegationsToDatabaseRows(block: Block): List[Tables.DelegationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="delegation").map{operation =>
@@ -121,6 +171,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's proposals.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def proposalsToDatabaseRows(block: Block): List[Tables.ProposalsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="proposal").map{operation =>
@@ -133,6 +188,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's ballots.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def ballotsToDatabaseRows(block: Block): List[Tables.BallotsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="ballot").map{operation =>
@@ -146,6 +206,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's seed nonce revealations.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def seedNonceRelealationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="seed_nonce_revelation").map{operation =>
@@ -158,6 +223,11 @@ object TezosDatabaseOperations {
       }
     }
 
+  /**
+    * Generates database rows for a block's faucet transactions.
+    * @param block  Block
+    * @return       Database rows
+    */
   private def faucetTransactionsToDatabaseRows(block: Block): List[Tables.FaucetTransactionsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="faucet").map{operation =>

@@ -9,6 +9,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
+/**
+  * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
+  */
 object Lorre extends App with LazyLogging {
 
   lazy val db = DatabaseUtil.db
@@ -16,7 +19,10 @@ object Lorre extends App with LazyLogging {
   processTezosAccounts()
   db.close()
 
-  def processTezosBlocks() = {
+  /**
+    * Fetches all blocks not in the database from the Tezos network and adds them to the database.
+    */
+  def processTezosBlocks(): Unit = {
     logger.info("Processing Tezos Blocks..")
     TezosNodeOperations.getBlocksNotInDatabase("alphanet") match {
       case Success(blocks) => {
@@ -35,7 +41,10 @@ object Lorre extends App with LazyLogging {
     }
   }
 
-  def processTezosAccounts() = {
+  /**
+    * Fetches and stores all accounts from the latest block stored in the database.
+    */
+  def processTezosAccounts(): Unit = {
     logger.info("Processing latest Tezos accounts data..")
     TezosNodeOperations.getLatestAccounts("alphanet") match {
       case Success(accountsInfo) =>

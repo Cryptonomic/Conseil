@@ -1,5 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
+/**
+  * Classes used for deserializing Tezos node RPC results.
+  */
 object TezosTypes {
 
   case class BlockMetadata(

@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosNodeOperations
 
 /**
-  * Tezos-specific functionality.
+  * Tezos-specific routes.
   */
 object Tezos extends LazyLogging {
 
