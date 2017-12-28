@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosNodeOperations
+import tech.cryptonomic.conseil.tezos.TezosNodeInterface
 
 /**
   * Tezos-specific routes.
@@ -14,24 +14,24 @@ object Tezos extends LazyLogging {
     pathPrefix("blocks") {
       get {
         pathEnd {
-          complete(TezosNodeOperations.runQuery(network, "blocks"))
+          complete(TezosNodeInterface.runQuery(network, "blocks"))
         } ~ path("head") {
-          complete(TezosNodeOperations.runQuery(network, "blocks/head"))
+          complete(TezosNodeInterface.runQuery(network, "blocks/head"))
         } ~ path(Segment) { blockId =>
-          complete(TezosNodeOperations.runQuery(network, s"blocks/$blockId"))
+          complete(TezosNodeInterface.runQuery(network, s"blocks/$blockId"))
         }
       }
     } ~ pathPrefix("accounts") {
       get {
         pathEnd {
-          complete(TezosNodeOperations.runQuery(network, "blocks/head/proto/context/contracts"))
+          complete(TezosNodeInterface.runQuery(network, "blocks/head/proto/context/contracts"))
         } ~ path(Segment) { accountId =>
-          complete(TezosNodeOperations.runQuery(network, s"blocks/head/proto/context/contracts/$accountId"))
+          complete(TezosNodeInterface.runQuery(network, s"blocks/head/proto/context/contracts/$accountId"))
         }
       } ~ pathPrefix("operations") {
         get {
           pathEnd {
-            complete(TezosNodeOperations.runQuery(network, "blocks/head/proto/operations"))
+            complete(TezosNodeInterface.runQuery(network, "blocks/head/proto/operations"))
           }
         }
       }

@@ -17,7 +17,8 @@ libraryDependencies  ++=  Seq(
   //"org.slf4j" % "slf4j-nop" % "1.6.4",
   "com.typesafe.slick" %% "slick-hikaricp" % "3.2.1",
   "org.postgresql" % "postgresql" % "42.1.4",
-  "com.typesafe.slick" %% "slick-codegen" % "3.2.1"
+  "com.typesafe.slick" %% "slick-codegen" % "3.2.1",
+  "org.scalamock" %% "scalamock" % "4.0.0" % Test
 )
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")

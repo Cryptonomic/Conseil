@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil
 
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations, TezosNodeOperations}
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
@@ -15,8 +15,12 @@ import scala.util.{Failure, Success, Try}
 object Lorre extends App with LazyLogging {
 
   lazy val db = DatabaseUtil.db
+  val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+
   processTezosBlocks()
   processTezosAccounts()
+
+
   db.close()
 
   /**
@@ -24,7 +28,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Unit = {
     logger.info("Processing Tezos Blocks..")
-    TezosNodeOperations.getBlocksNotInDatabase("alphanet") match {
+    tezosNodeOperator.getBlocksNotInDatabase("alphanet") match {
       case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
@@ -43,7 +47,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosAccounts(): Unit = {
     logger.info("Processing latest Tezos accounts data..")
-    TezosNodeOperations.getLatestAccounts("alphanet") match {
+    tezosNodeOperator.getLatestAccounts("alphanet") match {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)

@@ -1,41 +1,16 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.util.{Failure, Success, Try}
-import scalaj.http.{HttpOptions, HttpResponse}
+
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
-object TezosNodeOperations extends LazyLogging{
-
-  private val conf = ConfigFactory.load
-
-  /**
-    * Runs an RPC call against the configured Tezos node.
-    * @param network  Which Tezos network to go against
-    * @param path     RPC path to invoke
-    * @return         Result of the RPC call
-    */
-  def runQuery(network: String, path: String): Try[String] = {
-    Try{
-      val hostname = conf.getString(s"platforms.tezos.$network}.node.hostname")
-      val port = conf.getInt(s"platforms.tezos.$network.node.port")
-      val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
-      val url = s"http://$hostname:$port/$pathPrefix$path"
-      logger.info(s"Querying URL $url for platform Tezos and network $network")
-      val response: HttpResponse[String] = scalaj.http.Http(url).postData("""{}""")
-        .header("Content-Type", "application/json")
-        .header("Charset", "UTF-8")
-        .option(HttpOptions.readTimeout(100000))
-        .option(HttpOptions.connTimeout(100000)).asString
-      response.body
-    }
-  }
+class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   /**
     * Fetches a specific account for a given block.
@@ -45,7 +20,7 @@ object TezosNodeOperations extends LazyLogging{
     * @return           The account
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
-    runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
+    node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
       Try(fromJson[TezosTypes.AccountContainer](jsonEncodedAccount)).flatMap(acctContainer => Try(acctContainer.ok))
     }
 
@@ -56,7 +31,7 @@ object TezosNodeOperations extends LazyLogging{
     * @return           Accounts
     */
   def getAllAccountsForBlock(network: String, blockHash: String): Try[Map[String, TezosTypes.Account]] = Try {
-    runQuery(network, s"blocks/$blockHash/proto/context/contracts") match {
+    node.runQuery(network, s"blocks/$blockHash/proto/context/contracts") match {
       case Success(jsonEncodedAccounts) =>
         val accountIDs = fromJson[TezosTypes.AccountsContainer](jsonEncodedAccounts)
         val listedAccounts: List[String] = accountIDs.ok
@@ -81,7 +56,7 @@ object TezosNodeOperations extends LazyLogging{
     * @return           Operation groups
     */
   def getAllOperationsForBlock(network: String, blockHash: String): Try[List[List[OperationGroup]]] =
-    runQuery(network, s"blocks/$blockHash/proto/operations").flatMap { jsonEncodedOperationsContainer =>
+    node.runQuery(network, s"blocks/$blockHash/proto/operations").flatMap { jsonEncodedOperationsContainer =>
       Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
         Try(operationsContainer.ok)
       }
@@ -94,7 +69,7 @@ object TezosNodeOperations extends LazyLogging{
     * @return         Block
     */
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
-    runQuery(network, s"blocks/$hash").flatMap { jsonEncodedBlock =>
+    node.runQuery(network, s"blocks/$hash").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
         if(theBlock.level==0)
           Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -180,7 +155,7 @@ object TezosNodeOperations extends LazyLogging{
     * @return           All collected block
     */
   private def processBlocks(network: String, hash: String, minLevel: Int, maxLevel: Int, blockSoFar: List[Block] = List[Block]()): List[Block] =
-    TezosNodeOperations.getBlock(network, hash) match {
+    getBlock(network, hash) match {
       case Success(block) =>
         logger.info(s"Current block height: ${block.metadata.level}")
         if(block.metadata.level == 0 || block.metadata.level == minLevel)

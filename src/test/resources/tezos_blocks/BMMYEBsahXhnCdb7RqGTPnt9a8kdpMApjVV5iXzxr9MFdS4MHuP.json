@@ -1,0 +1,19 @@
+{
+  "hash": "BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP",
+  "net_id": "NetXj4yEEKnjaK8",
+  "operations": [
+    []
+  ],
+  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+  "level": 2,
+  "proto": 1,
+  "predecessor": "BM7uW88Qavxu5Z3jWQ11xuF79n4F4iNPnjoyA3tG3USZMKo2FKh",
+  "timestamp": "2017-11-20T01:41:42Z",
+  "validation_pass": 1,
+  "operations_hash": "LLoaGLRPRx3Zf8kB4ACtgku8F4feeBiskeb41J1ciwfcXB3KzHKXc",
+  "fitness": [
+    "00",
+    "0000000000000002"
+  ],
+  "data": "000265493e36a0fa085f75e863f66b0ff33b022561fdadc1d8c40f1c914e3225ffd7bccabaa16d2b09636ce39e7dfc406bc473373b90c8fe2da5841df75ecb566c4c22e824f740451f5929c4e3e2ccd153f629acd4615225c59c0239bc395af2116b4156c33d0cd0910c"
+}
