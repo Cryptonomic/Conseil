@@ -22,9 +22,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
 
   val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]]{
     case Tuple1(apiKey) =>
-      SecurityUtil.validateApiKey(apiKey) match {
-        case true => provide (apiKey)
-        case false => complete((Unauthorized, "Incorrect API key"))
+      if (SecurityUtil.validateApiKey(apiKey)) {
+        provide(apiKey)
+      } else {
+        complete((Unauthorized, "Incorrect API key"))
       }
   }
 
@@ -38,7 +39,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
   val sslConfig = AkkaSSLConfig()
 
   val route = enableCORS {
-    validateApiKey { apiKey =>
+    validateApiKey { _ =>
       pathPrefix("tezos") {
         Tezos.route
       }

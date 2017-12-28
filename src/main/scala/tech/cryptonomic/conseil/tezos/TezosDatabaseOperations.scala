@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash, Block, BlockMetadata}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
 
 import scala.concurrent.Future
 
@@ -27,7 +27,7 @@ object TezosDatabaseOperations {
         Tables.Delegations            ++= blocks.flatMap(delegationsToDatabaseRows),
         Tables.Proposals              ++= blocks.flatMap(proposalsToDatabaseRows),
         Tables.Ballots                ++= blocks.flatMap(ballotsToDatabaseRows),
-        Tables.SeedNonceRevealations  ++= blocks.flatMap(seedNonceRelealationsToDatabaseRows),
+        Tables.SeedNonceRevealations  ++= blocks.flatMap(seedNonceRevelationsToDatabaseRows),
         Tables.FaucetTransactions     ++= blocks.flatMap(faucetTransactionsToDatabaseRows)
       )
     )
@@ -207,11 +207,11 @@ object TezosDatabaseOperations {
     }
 
   /**
-    * Generates database rows for a block's seed nonce revealations.
+    * Generates database rows for a block's seed nonce revelations.
     * @param block  Block
     * @return       Database rows
     */
-  private def seedNonceRelealationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
+  private def seedNonceRevelationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="seed_nonce_revelation").map{operation =>
         Tables.SeedNonceRevealationsRow(

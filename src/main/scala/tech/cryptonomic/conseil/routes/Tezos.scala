@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosNodeOperations
 
@@ -9,7 +10,7 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperations
   */
 object Tezos extends LazyLogging {
 
-  val route = pathPrefix(Segment) { network =>
+  val route: Route = pathPrefix(Segment) { network =>
     pathPrefix("blocks") {
       get {
         pathEnd {
@@ -17,7 +18,7 @@ object Tezos extends LazyLogging {
         } ~ path("head") {
           complete(TezosNodeOperations.runQuery(network, "blocks/head"))
         } ~ path(Segment) { blockId =>
-          complete(TezosNodeOperations.runQuery(network, s"blocks/${blockId}"))
+          complete(TezosNodeOperations.runQuery(network, s"blocks/$blockId"))
         }
       }
     } ~ pathPrefix("accounts") {
@@ -25,7 +26,7 @@ object Tezos extends LazyLogging {
         pathEnd {
           complete(TezosNodeOperations.runQuery(network, "blocks/head/proto/context/contracts"))
         } ~ path(Segment) { accountId =>
-          complete(TezosNodeOperations.runQuery(network, s"blocks/head/proto/context/contracts/${accountId}"))
+          complete(TezosNodeOperations.runQuery(network, s"blocks/head/proto/context/contracts/$accountId"))
         }
       } ~ pathPrefix("operations") {
         get {

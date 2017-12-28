@@ -25,19 +25,16 @@ object Lorre extends App with LazyLogging {
   def processTezosBlocks(): Unit = {
     logger.info("Processing Tezos Blocks..")
     TezosNodeOperations.getBlocksNotInDatabase("alphanet") match {
-      case Success(blocks) => {
+      case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
           dbFut onComplete {
-            _ match {
-              case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
-              case Failure(e) => logger.error(s"Could not write blocks to the database because ${e}")
-            }
+            case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
+            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
           }
           Await.result(dbFut, Duration.Inf)
         }
-      }
-      case Failure(e) => logger.error(s"Could not fetch blocks from client because ${e}")
+      case Failure(e) => logger.error(s"Could not fetch blocks from client because $e")
     }
   }
 
@@ -51,14 +48,12 @@ object Lorre extends App with LazyLogging {
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)
           dbFut onComplete {
-            _ match {
-              case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
-              case Failure(e) => logger.error(s"Could not write accounts to the database because ${e}")
-            }
+            case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
+            case Failure(e) => logger.error(s"Could not write accounts to the database because $e")
           }
           Await.result(dbFut, Duration.Inf)
         }
-      case Failure(e) => logger.error(s"Could not fetch accounts from client because ${e}")
+      case Failure(e) => logger.error(s"Could not fetch accounts from client because $e")
     }
   }
 
