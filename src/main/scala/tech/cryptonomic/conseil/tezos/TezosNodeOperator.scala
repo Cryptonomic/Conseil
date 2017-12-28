@@ -99,7 +99,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return         Blocks
     */
   def getBlocksNotInDatabase(network: String): Try[List[Block]] =
-    ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
+    ApiOperations.fetchMaxLevel().orElse{
+      logger.warn("There were apparently no rows in the database. Dumping the whole chain.")
+      Try(-1)
+    }.flatMap{ maxLevel =>
       getBlockHead(network).flatMap { blockHead =>
         val headLevel = blockHead.metadata.level
         val headHash  = blockHead.metadata.hash
