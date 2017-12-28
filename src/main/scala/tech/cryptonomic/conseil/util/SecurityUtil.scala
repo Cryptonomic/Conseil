@@ -7,13 +7,13 @@ import com.typesafe.config.ConfigFactory
   */
 object SecurityUtil {
 
-  val conf = ConfigFactory.load
+  private val conf = ConfigFactory.load
 
   /**
     * Determines whether a given API key is valid.
-    * @param candidateApiKey
-    * @return
+    * @param candidateApiKey  The given API key
+    * @return                 True is valid, false otherwise.
     */
-  def validateApiKey(candidateApiKey: String) = conf.getStringList("security.apiKeys.keys").contains(candidateApiKey)
+  def validateApiKey(candidateApiKey: String): Boolean = conf.getStringList("security.apiKeys.keys").contains(candidateApiKey)
 
 }
