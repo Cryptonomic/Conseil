@@ -123,9 +123,9 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getBlocks(network: String, offset: Int, startBlockHash: Option[String]): Try[List[Block]] =
     startBlockHash match {
       case None =>
-        getBlockHead(network).flatMap(head => getBlocks(network, head.metadata.level - offset, head.metadata.level, startBlockHash))
+        getBlockHead(network).flatMap(head => getBlocks(network, head.metadata.level - offset + 1, head.metadata.level, startBlockHash))
       case Some(hash) =>
-        getBlock(network, hash).flatMap(block => getBlocks(network, block.metadata.level - offset, block.metadata.level, startBlockHash))
+        getBlock(network, hash).flatMap(block => getBlocks(network, block.metadata.level - offset + 1, block.metadata.level, startBlockHash))
     }
 
   /**
@@ -161,7 +161,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     getBlock(network, hash) match {
       case Success(block) =>
         logger.info(s"Current block height: ${block.metadata.level}")
-        if(block.metadata.level == 0 || block.metadata.level == minLevel)
+        if((block.metadata.level == 0 && minLevel <= 0) || block.metadata.level == minLevel)
           block :: blockSoFar
         else if(block.metadata.level > maxLevel)
           processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, blockSoFar)
