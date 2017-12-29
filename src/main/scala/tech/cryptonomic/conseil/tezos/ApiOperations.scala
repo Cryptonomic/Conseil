@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic
+import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
@@ -36,10 +38,19 @@ object ApiOperations {
     fetchMaxLevel().flatMap { maxLevel =>
       Try {
           val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
-          val result: Seq[Tables.BlocksRow] = Await.result(op, Duration.Inf)
-          result.head
+          Await.result(op, Duration.Inf).head
       }
     }
+  }
+
+  def fetchBlock(hash: String): Try[Tables.BlocksRow] = Try{
+    val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
+    Await.result(op, Duration.Inf).head
+  }
+
+  def fetchBlocks(): Try[Seq[Tables.BlocksRow]] = Try{
+    val op = dbHandle.run(Tables.Blocks.take(1000).result)
+    Await.result(op, Duration.Inf)
   }
 }
 
