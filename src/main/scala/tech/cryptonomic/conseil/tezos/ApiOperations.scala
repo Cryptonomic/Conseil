@@ -17,8 +17,7 @@ object ApiOperations {
 
   /**
     * Fetches the level of the most recent block stored in the database.
-    *
-    * @return Max level.
+    * @return Max level
     */
   def fetchMaxLevel(): Try[Int] = Try {
     val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks
@@ -33,10 +32,9 @@ object ApiOperations {
 
   /**
     * Fetches the most recent block stored in the database.
-    *
-    * @return Latest block.
+    * @return Latest block
     */
-  def fetchLatestBlock(): Try[Tables.BlocksRow] = {
+  def fetchLatestBlock(): Try[Tables.BlocksRow] =
     fetchMaxLevel().flatMap { maxLevel =>
       Try {
         val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks
@@ -45,12 +43,10 @@ object ApiOperations {
         Await.result(op, Duration.Inf).head
       }
     }
-  }
 
   /**
     * Fetches all blocks from the db.
-    *
-    * @return list of blocks
+    * @return List of blocks
     */
   def fetchBlocks(): Try[Seq[Tables.BlocksRow]] = Try {
     val op = dbHandle.run(Tables.Blocks
@@ -60,8 +56,8 @@ object ApiOperations {
 
   /**
     * Fetches a block by block hash from the db.
-    * @param hash the block's hash
-    * @return block
+    * @param hash   The block's hash
+    * @return       Block
     */
   def fetchBlock(hash: String): Try[Tables.BlocksRow] = Try {
     val op = dbHandle.run(Tables.Blocks
@@ -71,11 +67,10 @@ object ApiOperations {
   }
 
   /**
-    * Fetches a list of accounts from the db.
-    *
-    * @return list of accounts
+    * Fetches   A list of accounts from the db.
+    * @return   List of accounts
     */
-  def fetchAccounts(): Try[Seq[String]] = {
+  def fetchAccounts(): Try[Seq[String]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op = dbHandle.run(Tables.Accounts
@@ -84,15 +79,13 @@ object ApiOperations {
         Await.result(op, Duration.Inf)
       }
     }
-  }
 
   /**
     * Fetches an account by account_id from the db.
-    *
-    * @param account_id the account's id number
-    * @return account
+    * @param account_id   The account's id number
+    * @return             Account
     */
-  def fetchAccount(account_id: String): Try[Tables.AccountsRow] = {
+  def fetchAccount(account_id: String): Try[Tables.AccountsRow] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op: Future[Seq[tezos.Tables.AccountsRow]] = dbHandle.run(Tables.Accounts
@@ -102,40 +95,73 @@ object ApiOperations {
         Await.result(op, Duration.Inf).head
       }
     }
-  }
+
+  /**
+    * Gets all transactions linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return A list of transaction records
+    */
+  def getTransactions(operation_group_hash: String): Try[Seq[Tables.TransactionsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Transactions
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all endorsements linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return A list of endorsement records
+    */
+  def getEndorsements(operation_group_hash: String): Try[Seq[Tables.EndorsementsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Endorsements
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
 
   /**
     * Fetches all operation groups from the database.
-    *
-    * @return a list of operation groups
+    * @return A list of operation groups
     */
-  def fetchOperationGroups(): Try[Seq[String]] = {
-    fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-        val op = dbHandle.run(Tables.OperationGroups
-          .filter(_.blockId === latestBlock.hash)
-          .map(_.hash).result)
-        Await.result(op, Duration.Inf)
-      }
+  def fetchOperationGroups(): Try[Seq[String]] =
+    Try {
+      val op = dbHandle.run(Tables.OperationGroups
+        .map(_.hash).take(1000).result)
+      Await.result(op, Duration.Inf)
     }
-  }
 
   /**
     * Fetches an operation group from the database by its operation group hash.
-    *
-    * @param operation_group_hash the hash of an operation group
-    * @return a record of an operation group
+    * @param  operation_group_hash The hash of an operation group
+    * @return A record of an operation group
     */
-  def fetchOperationGroup(operation_group_hash: String): Try[Tables.OperationGroupsRow] = {
-    fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-        val op: Future[Seq[tezos.Tables.OperationGroupsRow]] = dbHandle.run(Tables.OperationGroups
-          .filter(_.blockId === latestBlock.hash)
-          .filter(_.hash === operation_group_hash)
-          .take(1).result)
-        Await.result(op, Duration.Inf).head
+  def fetchOperationGroup(operation_group_hash: String): Try[Seq[Tables.OperationGroupsRow]] =
+    Try {
+      val op: Future[Seq[tezos.Tables.OperationGroupsRow]] = dbHandle.run(Tables.OperationGroups
+        .filter(_.hash === operation_group_hash)
+        .take(1).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Fetches an operation group's metadata and operations from the db by is operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return Operation group metadata and operations as a json string
+    */
+  def fetchOperationGroupWithOperations(operation_group_hash: String): Try[Map[String, Seq[Product with Serializable]]] =
+    fetchOperationGroup(operation_group_hash).flatMap {  metadata =>
+      getTransactions(operation_group_hash).flatMap { transactions =>
+        getEndorsements(operation_group_hash).flatMap { endorsements =>
+          Try {
+            Map(
+              "metadata" -> metadata,
+              "transactions" -> transactions,
+              "endorsements" -> endorsements
+            )
+          }
+        }
       }
     }
-  }
 
 }
