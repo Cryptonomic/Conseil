@@ -39,9 +39,15 @@ object Tezos extends LazyLogging {
     } ~ pathPrefix("accounts") {
       get {
         pathEnd {
-          complete(TezosNodeInterface.runQuery(network, "blocks/head/proto/context/contracts"))
+          ApiOperations.fetchAccounts match {
+            case Success(accounts) => complete(JsonUtil.toJson(accounts))
+            case Failure(e) => failWith(e)
+          }
         } ~ path(Segment) { accountId =>
-          complete(TezosNodeInterface.runQuery(network, s"blocks/head/proto/context/contracts/$accountId"))
+          ApiOperations.fetchAccount(accountId) match {
+            case Success(account) => complete(JsonUtil.toJson(account))
+            case Failure(e) => failWith(e)
+          }
         }
       } ~ pathPrefix("operations") {
         get {

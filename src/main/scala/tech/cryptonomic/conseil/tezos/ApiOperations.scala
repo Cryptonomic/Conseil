@@ -1,8 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
@@ -19,6 +17,7 @@ object ApiOperations {
 
   /**
     * Fetches the level of the most recent block stored in the database.
+    *
     * @return Max level.
     */
   def fetchMaxLevel(): Try[Int] = Try {
@@ -32,25 +31,68 @@ object ApiOperations {
 
   /**
     * Fetches the most recent block stored in the database.
+    *
     * @return Latest block.
     */
   def fetchLatestBlock(): Try[Tables.BlocksRow] = {
     fetchMaxLevel().flatMap { maxLevel =>
       Try {
-          val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
-          Await.result(op, Duration.Inf).head
+        val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
+        Await.result(op, Duration.Inf).head
       }
     }
   }
 
-  def fetchBlock(hash: String): Try[Tables.BlocksRow] = Try{
+  /**
+    * Fetches a block by block hash from the db.
+    * @param hash the block's hash
+    * @return block
+    */
+  def fetchBlock(hash: String): Try[Tables.BlocksRow] = Try {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
     Await.result(op, Duration.Inf).head
   }
 
-  def fetchBlocks(): Try[Seq[Tables.BlocksRow]] = Try{
+  /**
+    * Fetches all blocks from the db.
+    *
+    * @return list of blocks
+    */
+  def fetchBlocks(): Try[Seq[Tables.BlocksRow]] = Try {
     val op = dbHandle.run(Tables.Blocks.take(1000).result)
     Await.result(op, Duration.Inf)
   }
+
+  /**
+    * Fetches an account by account_id from the db.
+    *
+    * @param account_id the account's id number
+    * @return account
+    */
+  def fetchAccount(account_id: String): Try[Tables.AccountsRow] = {
+    fetchLatestBlock().flatMap { latestBlock =>
+      Try {
+        val op: Future[Seq[tezos.Tables.AccountsRow]] = dbHandle.run(Tables.Accounts
+          .filter(_.blockId === latestBlock.hash)
+          .filter(_.accountId === account_id).take(1).result)
+        Await.result(op, Duration.Inf).head
+      }
+    }
+  }
+
+  /**
+    * Fetches a list of accounts from the db.
+    *
+    * @return list of accounts
+    */
+  def fetchAccounts(): Try[Seq[String]] = {
+    fetchLatestBlock().flatMap { latestBlock =>
+      Try {
+        val op = dbHandle.run(Tables.Accounts.filter(_.blockId === latestBlock.hash).map(_.accountId).result)
+        Await.result(op, Duration.Inf)
+      }
+    }
+  }
+
 }
 
