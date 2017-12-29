@@ -49,10 +49,18 @@ object Tezos extends LazyLogging {
             case Failure(e) => failWith(e)
           }
         }
-      } ~ pathPrefix("operations") {
-        get {
-          pathEnd {
-            complete(TezosNodeInterface.runQuery(network, "blocks/head/proto/operations"))
+      }
+    } ~ pathPrefix("operations") {
+      get {
+        pathEnd {
+          ApiOperations.fetchOperationGroups match {
+            case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
+            case Failure(e) => failWith(e)
+          }
+        } ~ path(Segment) { operation_group_hash =>
+          ApiOperations.fetchOperationGroup(operation_group_hash) match {
+            case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
+            case Failure(e) => failWith(e)
           }
         }
       }
