@@ -18,7 +18,7 @@ object JsonUtil {
   }
 
   def toJson(value: Any): String = {
-    mapper.writeValueAsString(value)
+    mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value)
   }
 
   def toMap[V](json:String)(implicit m: Manifest[V]): Map[String, V] = fromJson[Map[String,V]](json)
