@@ -17,11 +17,12 @@ object ApiOperations {
 
   /**
     * Fetches the level of the most recent block stored in the database.
-    *
-    * @return Max level.
+    * @return Max level
     */
   def fetchMaxLevel(): Try[Int] = Try {
-    val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
+    val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks
+      .map(_.level)
+      .max.result)
     val maxLevelOpt = Await.result(op, Duration.Inf)
     maxLevelOpt match {
       case Some(maxLevel) => maxLevel
@@ -31,68 +32,226 @@ object ApiOperations {
 
   /**
     * Fetches the most recent block stored in the database.
-    *
-    * @return Latest block.
+    * @return Latest block
     */
-  def fetchLatestBlock(): Try[Tables.BlocksRow] = {
+  def fetchLatestBlock(): Try[Tables.BlocksRow] =
     fetchMaxLevel().flatMap { maxLevel =>
       Try {
-        val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
+        val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks
+          .filter(_.level === maxLevel)
+          .take(1).result)
         Await.result(op, Duration.Inf).head
       }
     }
-  }
-
-  /**
-    * Fetches a block by block hash from the db.
-    * @param hash the block's hash
-    * @return block
-    */
-  def fetchBlock(hash: String): Try[Tables.BlocksRow] = Try {
-    val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
-    Await.result(op, Duration.Inf).head
-  }
 
   /**
     * Fetches all blocks from the db.
-    *
-    * @return list of blocks
+    * @return List of blocks
     */
   def fetchBlocks(): Try[Seq[Tables.BlocksRow]] = Try {
-    val op = dbHandle.run(Tables.Blocks.take(1000).result)
+    val op = dbHandle.run(Tables.Blocks
+      .take(1000).result)
     Await.result(op, Duration.Inf)
   }
 
   /**
-    * Fetches an account by account_id from the db.
-    *
-    * @param account_id the account's id number
-    * @return account
+    * Fetches a block by block hash from the db.
+    * @param hash   The block's hash
+    * @return       Block
     */
-  def fetchAccount(account_id: String): Try[Tables.AccountsRow] = {
+  def fetchBlock(hash: String): Try[Tables.BlocksRow] = Try {
+    val op = dbHandle.run(Tables.Blocks
+      .filter(_.hash === hash)
+      .take(1).result)
+    Await.result(op, Duration.Inf).head
+  }
+
+  /**
+    * Fetches   A list of accounts from the db.
+    * @return   List of accounts
+    */
+  def fetchAccounts(): Try[Seq[String]] =
+    fetchLatestBlock().flatMap { latestBlock =>
+      Try {
+        val op = dbHandle.run(Tables.Accounts
+          .filter(_.blockId === latestBlock.hash)
+          .map(_.accountId).result)
+        Await.result(op, Duration.Inf)
+      }
+    }
+
+  /**
+    * Fetches an account by account_id from the db.
+    * @param account_id   The account's id number
+    * @return             Account
+    */
+  def fetchAccount(account_id: String): Try[Tables.AccountsRow] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op: Future[Seq[tezos.Tables.AccountsRow]] = dbHandle.run(Tables.Accounts
           .filter(_.blockId === latestBlock.hash)
-          .filter(_.accountId === account_id).take(1).result)
+          .filter(_.accountId === account_id)
+          .take(1).result)
         Await.result(op, Duration.Inf).head
       }
     }
-  }
 
   /**
-    * Fetches a list of accounts from the db.
-    *
-    * @return list of accounts
+    * Gets all transactions linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of transaction records
     */
-  def fetchAccounts(): Try[Seq[String]] = {
-    fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-        val op = dbHandle.run(Tables.Accounts.filter(_.blockId === latestBlock.hash).map(_.accountId).result)
-        Await.result(op, Duration.Inf)
+  def getTransactions(operation_group_hash: String): Try[Seq[Tables.TransactionsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Transactions
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all endorsements linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of endorsement records
+    */
+  def getEndorsements(operation_group_hash: String): Try[Seq[Tables.EndorsementsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Endorsements
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all delegations linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of delegation records
+    */
+  def getDelegations(operation_group_hash: String): Try[Seq[Tables.DelegationsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Delegations
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all originations linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of origination records
+    */
+  def getOriginations(operation_group_hash: String): Try[Seq[Tables.OriginationsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Originations
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all proposal linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of proposal records
+    */
+  def getProposals(operation_group_hash: String): Try[Seq[Tables.ProposalsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Proposals
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all ballot linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of ballot records
+    */
+  def getBallots(operation_group_hash: String): Try[Seq[Tables.BallotsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Ballots
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all endorsements linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of endorsement records
+    */
+  def getFaucetTransactions(operation_group_hash: String): Try[Seq[Tables.FaucetTransactionsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.FaucetTransactions
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all seed nonce revelations linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of seed nonce revelations records
+    */
+  def getSeedNonceRevelations(operation_group_hash: String): Try[Seq[Tables.SeedNonceRevealationsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.SeedNonceRevealations
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Fetches all operation groups from the database.
+    * @return A list of operation groups
+    */
+  def fetchOperationGroups(): Try[Seq[String]] =
+    Try {
+      val op = dbHandle.run(Tables.OperationGroups
+        .map(_.hash).take(1000).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Fetches an operation group from the database by its operation group hash.
+    * @param  operation_group_hash  The hash of an operation group
+    * @return                       A record of an operation group
+    */
+  def fetchOperationGroup(operation_group_hash: String): Try[Seq[Tables.OperationGroupsRow]] =
+    Try {
+      val op: Future[Seq[tezos.Tables.OperationGroupsRow]] = dbHandle.run(Tables.OperationGroups
+        .filter(_.hash === operation_group_hash)
+        .take(1).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Fetches an operation group's metadata and operations from the db by is operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     Operation group metadata and operations as a json string
+    */
+  def fetchOperationGroupWithOperations(operation_group_hash: String): Try[Map[String, Seq[Product with Serializable]]] =
+    fetchOperationGroup(operation_group_hash).flatMap {  metadata =>
+      getTransactions(operation_group_hash).flatMap { transactions =>
+        getEndorsements(operation_group_hash).flatMap { endorsements =>
+          getDelegations(operation_group_hash).flatMap { delegations =>
+            getOriginations(operation_group_hash).flatMap { originations =>
+              getProposals(operation_group_hash).flatMap { proposals =>
+                getBallots(operation_group_hash).flatMap { ballots =>
+                  getFaucetTransactions(operation_group_hash).flatMap { faucet_transactions =>
+                    getSeedNonceRevelations(operation_group_hash).flatMap { seed_nonce_revelations =>
+                      Try {
+                        Map(
+                          "metadata" -> metadata,
+                          "transactions" -> transactions,
+                          "endorsements" -> endorsements,
+                          "delegations" -> delegations,
+                          "originations" -> originations,
+                          "proposals" -> proposals,
+                          "ballots" -> ballots,
+                          "faucet_transactions" -> faucet_transactions,
+                          "seed_nonce_revelations" -> seed_nonce_revelations
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
-  }
 
 }
-

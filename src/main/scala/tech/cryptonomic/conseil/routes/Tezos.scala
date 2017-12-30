@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface}
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 
 import scala.util.{Failure, Success}
@@ -20,12 +20,12 @@ object Tezos extends LazyLogging {
     pathPrefix("blocks") {
       get {
         pathEnd {
-          ApiOperations.fetchBlocks match {
+          ApiOperations.fetchBlocks() match {
             case Success(blocks) => complete(JsonUtil.toJson(blocks))
             case Failure(e) => failWith(e)
           }
         } ~ path("head") {
-          ApiOperations.fetchLatestBlock match {
+          ApiOperations.fetchLatestBlock() match {
             case Success(block) => complete(JsonUtil.toJson(block))
             case Failure(e) => failWith(e)
           }
@@ -39,7 +39,7 @@ object Tezos extends LazyLogging {
     } ~ pathPrefix("accounts") {
       get {
         pathEnd {
-          ApiOperations.fetchAccounts match {
+          ApiOperations.fetchAccounts() match {
             case Success(accounts) => complete(JsonUtil.toJson(accounts))
             case Failure(e) => failWith(e)
           }
@@ -49,10 +49,18 @@ object Tezos extends LazyLogging {
             case Failure(e) => failWith(e)
           }
         }
-      } ~ pathPrefix("operations") {
-        get {
-          pathEnd {
-            complete(TezosNodeInterface.runQuery(network, "blocks/head/proto/operations"))
+      }
+    } ~ pathPrefix("operations") {
+      get {
+        pathEnd {
+          ApiOperations.fetchOperationGroups() match {
+            case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
+            case Failure(e) => failWith(e)
+          }
+        } ~ path(Segment) { operation_group_hash =>
+          ApiOperations.fetchOperationGroupWithOperations(operation_group_hash) match {
+            case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
+            case Failure(e) => failWith(e)
           }
         }
       }

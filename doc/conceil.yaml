@@ -248,28 +248,6 @@ paths:
         default:
           description: Default response
   '/tezos/{networkid}/accounts/{accountid}/delegate':
-    get:
-      tags:
-        - accounts
-      summary: Returns delegate for the given account
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: accountid
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Account ID for which the delegate is needed
-      operationId: getDelegateForAccountID
-      responses:
-        default:
-          description: Default response
     put:
       tags:
         - accounts
