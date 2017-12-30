@@ -99,7 +99,7 @@ object ApiOperations {
   /**
     * Gets all transactions linked to an operation group hash.
     * @param operation_group_hash The hash of an operation group
-    * @return A list of transaction records
+    * @return                     A list of transaction records
     */
   def getTransactions(operation_group_hash: String): Try[Seq[Tables.TransactionsRow]] =
     Try {
@@ -111,11 +111,83 @@ object ApiOperations {
   /**
     * Gets all endorsements linked to an operation group hash.
     * @param operation_group_hash The hash of an operation group
-    * @return A list of endorsement records
+    * @return                     A list of endorsement records
     */
   def getEndorsements(operation_group_hash: String): Try[Seq[Tables.EndorsementsRow]] =
     Try {
       val op = dbHandle.run(Tables.Endorsements
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all delegations linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of delegation records
+    */
+  def getDelegations(operation_group_hash: String): Try[Seq[Tables.DelegationsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Delegations
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all originations linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of origination records
+    */
+  def getOriginations(operation_group_hash: String): Try[Seq[Tables.OriginationsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Originations
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all proposal linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of proposal records
+    */
+  def getProposals(operation_group_hash: String): Try[Seq[Tables.ProposalsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Proposals
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all ballot linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of ballot records
+    */
+  def getBallots(operation_group_hash: String): Try[Seq[Tables.BallotsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.Ballots
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all endorsements linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of endorsement records
+    */
+  def getFaucetTransactions(operation_group_hash: String): Try[Seq[Tables.FaucetTransactionsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.FaucetTransactions
+        .filter(_.operationGroupHash === operation_group_hash).result)
+      Await.result(op, Duration.Inf)
+    }
+
+  /**
+    * Gets all seed nonce revelations linked to an operation group hash.
+    * @param operation_group_hash The hash of an operation group
+    * @return                     A list of seed nonce revelations records
+    */
+  def getSeedNonceRevelations(operation_group_hash: String): Try[Seq[Tables.SeedNonceRevealationsRow]] =
+    Try {
+      val op = dbHandle.run(Tables.SeedNonceRevealations
         .filter(_.operationGroupHash === operation_group_hash).result)
       Await.result(op, Duration.Inf)
     }
@@ -133,8 +205,8 @@ object ApiOperations {
 
   /**
     * Fetches an operation group from the database by its operation group hash.
-    * @param  operation_group_hash The hash of an operation group
-    * @return A record of an operation group
+    * @param  operation_group_hash  The hash of an operation group
+    * @return                       A record of an operation group
     */
   def fetchOperationGroup(operation_group_hash: String): Try[Seq[Tables.OperationGroupsRow]] =
     Try {
@@ -147,18 +219,36 @@ object ApiOperations {
   /**
     * Fetches an operation group's metadata and operations from the db by is operation group hash.
     * @param operation_group_hash The hash of an operation group
-    * @return Operation group metadata and operations as a json string
+    * @return                     Operation group metadata and operations as a json string
     */
   def fetchOperationGroupWithOperations(operation_group_hash: String): Try[Map[String, Seq[Product with Serializable]]] =
     fetchOperationGroup(operation_group_hash).flatMap {  metadata =>
       getTransactions(operation_group_hash).flatMap { transactions =>
         getEndorsements(operation_group_hash).flatMap { endorsements =>
-          Try {
-            Map(
-              "metadata" -> metadata,
-              "transactions" -> transactions,
-              "endorsements" -> endorsements
-            )
+          getDelegations(operation_group_hash).flatMap { delegations =>
+            getOriginations(operation_group_hash).flatMap { originations =>
+              getProposals(operation_group_hash).flatMap { proposals =>
+                getBallots(operation_group_hash).flatMap { ballots =>
+                  getFaucetTransactions(operation_group_hash).flatMap { faucet_transactions =>
+                    getSeedNonceRevelations(operation_group_hash).flatMap { seed_nonce_revelations =>
+                      Try {
+                        Map(
+                          "metadata" -> metadata,
+                          "transactions" -> transactions,
+                          "endorsements" -> endorsements,
+                          "delegations" -> delegations,
+                          "originations" -> originations,
+                          "proposals" -> proposals,
+                          "ballots" -> ballots,
+                          "faucet_transactions" -> faucet_transactions,
+                          "seed_nonce_revelations" -> seed_nonce_revelations
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
