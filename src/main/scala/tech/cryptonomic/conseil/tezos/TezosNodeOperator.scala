@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.SodiumLibrary
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Base58
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
@@ -31,7 +31,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                       delegate: AccountID
                       )
 
-  case class OperationGroup(
+  case class TransactionOperationGroup(
                            branch: String,
                            source: AccountID,
                            operations: List[Operation],
@@ -222,7 +222,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getCounterForAccount(network: String, accountID: AccountID) =
     node.runQuery(network, s"/blocks/prevalidation/proto/context/contracts/$accountID/counter")
 
-  def forgeOperations(network: String, operationGroup: OperationGroup) =
+  def forgeOperations(network: String, operationGroup: TransactionOperationGroup) =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
@@ -250,7 +250,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def sendOperation(network: String, operation: Operation, keys: KeyPair, fee: Float) = {
     getBlockHead(network).flatMap{ blockHead =>
       getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
-        val operationGroup = OperationGroup(
+        val operationGroup = TransactionOperationGroup(
           blockHead.metadata.predecessor,
           keys.publicKey,
           List[Operation](operation),
