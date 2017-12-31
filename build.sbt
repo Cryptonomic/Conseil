@@ -21,4 +21,6 @@ libraryDependencies  ++=  Seq(
   "org.scalamock" %% "scalamock" % "4.0.0" % Test
 )
 
+libraryDependencies += "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4"
+
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")

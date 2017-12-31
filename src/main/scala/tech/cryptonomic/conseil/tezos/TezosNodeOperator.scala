@@ -1,7 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.muquit.libsodiumjna.SodiumLibrary
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
+import fr.acinq.bitcoin.Base58
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
+import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.util.{Failure, Success, Try}
@@ -11,6 +14,31 @@ import scala.util.{Failure, Success, Try}
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
 class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
+
+  type AccountID = String
+
+  case class KeyPair(publicKey: String, privateKey: String)
+
+  case class Script(code: String, storage: String)
+
+  case class Operation(
+                      kind: String,
+                      balance: Float,
+                      managerPubKey: String,
+                      script: Script,
+                      spendable: Boolean,
+                      delegatable: Boolean,
+                      delegate: AccountID
+                      )
+
+  case class OperationGroup(
+                           branch: String,
+                           source: AccountID,
+                           operations: List[Operation],
+                           fee: Float,
+                           counter: Int,
+                           public_key: AccountID
+                           )
 
   /**
     * Fetches a specific account for a given block.
@@ -191,4 +219,72 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
+  def getCounterForAccount(network: String, accountID: AccountID) =
+    node.runQuery(network, s"/blocks/prevalidation/proto/context/contracts/$accountID/counter")
+
+  def forgeOperations(network: String, operationGroup: OperationGroup) =
+    node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
+
+  def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
+    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toArray)
+    val edsig = Base58.encode(sig)
+    bytes ++ sig
+  }
+
+  def applyOperation(network: String, payload: ApplyOperationPayload) =
+    node.runQuery(network, "", Some(JsonUtil.toJson(payload)))
+
+  case class ApplyOperationPayload(
+    pred_block: String,
+    operation_hash: String,
+    forged_operation: String,
+    signature: Array[Byte]
+                         )
+
+  def injectOperation(network: String, signedOperation: Array[Byte]) =
+    node.runQuery(network,
+      "inject_operation",
+      Some(JsonUtil.toJson(Map("signedOperationContents" -> signedOperation.toString)))
+    )
+
+  def sendOperation(network: String, operation: Operation, keys: KeyPair, fee: Float) = {
+    getBlockHead(network).flatMap{ blockHead =>
+      getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
+        val operationGroup = OperationGroup(
+          blockHead.metadata.predecessor,
+          keys.publicKey,
+          List[Operation](operation),
+          fee,
+          counter.toInt,
+          keys.publicKey
+        )
+        forgeOperations(network, operationGroup).flatMap{forgedOperation =>
+          val sopbytes: Array[Byte] = signOperation(forgedOperation.getBytes(), keys.privateKey)
+          val oh = Base58.encode(SodiumLibrary.cryptoGenerichash(sopbytes ,32))
+          val aoPayload = ApplyOperationPayload(
+            blockHead.metadata.predecessor,
+            oh,
+            forgedOperation,
+            sopbytes
+          )
+          applyOperation(network, aoPayload).flatMap{ contracts =>
+            injectOperation(network, sopbytes)
+          }
+        }
+      }
+    }
+  }
+
+  def originateAccount(
+                        networkid: String,
+                        keys: KeyPair,
+                        balance: Float,
+                        spendable: Boolean,
+                        delegatable: Boolean,
+                        delegate: String,
+                        code: Script,
+                        fee: Float
+                      ) = {
+
+  }
 }
