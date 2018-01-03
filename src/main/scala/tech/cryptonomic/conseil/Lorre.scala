@@ -17,8 +17,22 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
-  processTezosBlocks()
-  processTezosAccounts()
+  //processTezosBlocks()
+  //processTezosAccounts()
+
+  val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+  nodeOp.originateAccount(
+    "alphanet",
+    "pubic",
+    "privates",
+    0f,
+    false,
+    false,
+    "",
+    "beep boop boop",
+    "much many sotrages",
+    0f
+  )
 
 
   db.close()

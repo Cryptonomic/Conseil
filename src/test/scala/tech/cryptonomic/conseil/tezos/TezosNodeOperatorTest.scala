@@ -8,7 +8,7 @@ import scala.util.Try
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
 
   object MockTezosNode extends TezosRPCInterface {
-    def runQuery(network: String, command: String): Try[String] = Try{
+    def runQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try{
       command match {
         case "blocks/BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G" =>
           getStoredBlock("BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G")
@@ -58,7 +58,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
 
   object MockTezosNodeWithErrors extends TezosRPCInterface {
 
-    def runQuery(network: String, command: String): Try[String] = Try {
+    def runQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try {
       command match {
         case "blocks/BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP" =>
           throw new Exception("A block request failed due to an alien invasion.")
@@ -134,5 +134,21 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
     val accounts = nodeOp.getAccounts("alphanet", "BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP")
     accounts.isFailure should be (true)
+  }
+
+  "originateAccount" should "correctly originate an account" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    nodeOp.originateAccount(
+      "alphanet",
+      "pubic",
+      "privates",
+      0f,
+      false,
+      false,
+      "",
+      "beep boop boop",
+      "much many sotrages",
+      0f
+    )
   }
 }

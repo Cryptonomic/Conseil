@@ -226,7 +226,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
-    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toArray)
+    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toString().toArray[Byte])
     val edsig = Base58.encode(sig)
     bytes ++ sig
   }
@@ -249,7 +249,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   def sendOperation(network: String, operation: Operation, keys: KeyPair, fee: Float) = {
     getBlockHead(network).flatMap{ blockHead =>
-      getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
+      //getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
+      Try("0").flatMap{ counter =>
         val operationGroup = TransactionOperationGroup(
           blockHead.metadata.predecessor,
           keys.publicKey,
@@ -276,15 +277,28 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   }
 
   def originateAccount(
-                        networkid: String,
-                        keys: KeyPair,
+                        network: String,
+                        publicKey: String,
+                        privateKey: String,
                         balance: Float,
                         spendable: Boolean,
                         delegatable: Boolean,
                         delegate: String,
-                        code: Script,
+                        code: String,
+                        storage: String,
                         fee: Float
                       ) = {
-
+    val keys = KeyPair(publicKey, privateKey)
+    val script = Script(code,storage)
+    val operation = Operation(
+      "origination",
+      balance,
+      keys.publicKey,
+      script,
+      spendable,
+      delegatable,
+      delegate
+    )
+    sendOperation(network, operation, keys, fee)
   }
 }
