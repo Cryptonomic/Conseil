@@ -249,8 +249,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   def sendOperation(network: String, operation: Operation, keys: KeyPair, fee: Float) = {
     getBlockHead(network).flatMap{ blockHead =>
-      //getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
-      Try("0").flatMap{ counter =>
+      getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
+      //Try("0").flatMap{ counter =>
         val operationGroup = TransactionOperationGroup(
           blockHead.metadata.predecessor,
           keys.publicKey,
