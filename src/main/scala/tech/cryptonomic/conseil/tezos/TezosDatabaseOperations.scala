@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
+import tech.cryptonomic.conseil.util.JsonUtil
 
 import scala.concurrent.Future
 
@@ -59,7 +60,8 @@ object TezosDatabaseOperations {
         spendable = account._2.spendable,
         delegateSetable = account._2.delegate.setable,
         delegateValue = account._2.delegate.value,
-        counter = account._2.counter
+        counter = account._2.counter,
+        script = Some(JsonUtil.toJson(account._2.script.get))
       )
     }.toList
 

@@ -17,7 +17,7 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
-  processTezosBlocks()
+  //processTezosBlocks()
   processTezosAccounts()
 
 
@@ -61,5 +61,5 @@ object Lorre extends App with LazyLogging {
     }
   }
 
-
+  scala.io.StdIn.readLine()
 }

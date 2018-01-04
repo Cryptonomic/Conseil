@@ -74,7 +74,7 @@ object TezosTypes {
                     balance: Any,  //Can be either an integer or a string! ¯\_(ツ)_/¯
                     spendable: Boolean,
                     delegate: AccountDelegate,
-                    script: Option[Any],
+                    script: Option[Script],
                     counter: Integer
                     )
 
@@ -95,5 +95,21 @@ object TezosTypes {
                     metadata: BlockMetadata,
                     operationGroups: List[OperationGroup]
                   )
+
+  case class ScriptObject(
+                         prim: String,
+                         args: List[ScriptExpression],
+                         annot: Option[String]
+                   )
+
+  case class ScriptExpression(
+                             int: Option[String],
+                             string: Option[String],
+                             )
+
+  case class Script(
+                   code: Any,
+                   storage: ScriptExpression
+                   )
 
 }

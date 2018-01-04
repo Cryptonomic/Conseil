@@ -21,7 +21,14 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
     node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
-      Try(fromJson[TezosTypes.AccountContainer](jsonEncodedAccount)).flatMap(acctContainer => Try(acctContainer.ok))
+      Try{
+        fromJson[TezosTypes.AccountContainer](jsonEncodedAccount.replaceAll("object","objekt"))
+      } match {
+        case Success(acctContainer) => Try(acctContainer.ok)
+        case Failure(e) =>
+          logger.error("Could not decode account payload", e)
+          throw e
+      }
     }
 
   /**
