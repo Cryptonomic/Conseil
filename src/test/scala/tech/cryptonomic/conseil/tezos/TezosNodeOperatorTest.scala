@@ -1,14 +1,17 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
+class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
 
   object MockTezosNode extends TezosRPCInterface {
+
     def runQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try{
+      logger.info(s"Ran Tezos Query: Network = $network, Command = $command, Payload = $payload")
       command match {
         case "blocks/BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G" =>
           getStoredBlock("BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G")
@@ -136,11 +139,11 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
     accounts.isFailure should be (true)
   }
 
-  "originateAccount" should "correctly originate an account" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    nodeOp.originateAccount(
+  /*"originateAccount" should "correctly originate an account" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
+    val moo = nodeOp.originateAccount(
       "alphanet",
-      "pubic",
+      "tz1ey28xfyVvtPRPN9d43Wbf1vkPs868CGXM",
       "privates",
       0f,
       false,
@@ -150,5 +153,32 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
       "much many sotrages",
       0f
     )
+    moo match {
+      case Failure(e) =>
+        println(e)
+        e.printStackTrace()
+      case Success(_) => println("wee")
+    }
+    moo.isFailure should be (false)
+  }*/
+
+  "sendTransaction" should "correctly send a transaction" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
+    val moo = nodeOp.sendTransaction(
+      "alphanet",
+      "pubics",
+      "privates",
+      "tz1ey28xfyVvtPRPN9d43Wbf1vkPs868CGXM",
+      "tz1ey28xfyVvtPRPN9d43Wbf1vkPs868CGXM",
+      0f,
+      0f
+    )
+    moo match {
+      case Failure(e) =>
+        println(e)
+        e.printStackTrace()
+      case Success(_) => println("wee")
+    }
+    moo.isFailure should be (false)
   }
 }

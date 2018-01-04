@@ -75,7 +75,7 @@ object TezosTypes {
                     spendable: Boolean,
                     delegate: AccountDelegate,
                     script: Option[Any],
-                    counter: Integer
+                    counter: Int
                     )
 
   case class AccountContainer(

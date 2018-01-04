@@ -19,27 +19,6 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   case class KeyPair(publicKey: String, privateKey: String)
 
-  case class Script(code: String, storage: String)
-
-  case class Operation(
-                      kind: String,
-                      balance: Float,
-                      managerPubKey: String,
-                      script: Script,
-                      spendable: Boolean,
-                      delegatable: Boolean,
-                      delegate: AccountID
-                      )
-
-  case class TransactionOperationGroup(
-                           branch: String,
-                           source: AccountID,
-                           operations: List[Operation],
-                           fee: Float,
-                           counter: Int,
-                           public_key: AccountID
-                           )
-
   /**
     * Fetches a specific account for a given block.
     * @param network    Which Tezos network to go against
@@ -222,11 +201,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getCounterForAccount(network: String, accountID: AccountID) =
     node.runQuery(network, s"/blocks/prevalidation/proto/context/contracts/$accountID/counter")
 
-  def forgeOperations(network: String, operationGroup: TransactionOperationGroup) =
+  def forgeOperations(network: String, operationGroup: Map[String, Any]) =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
-    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toString().toArray[Byte])
+    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toArray[Byte])
     val edsig = Base58.encode(sig)
     bytes ++ sig
   }
@@ -247,17 +226,16 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       Some(JsonUtil.toJson(Map("signedOperationContents" -> signedOperation.toString)))
     )
 
-  def sendOperation(network: String, operation: Operation, keys: KeyPair, fee: Float) = {
+  def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: AccountID, fee: Float) = {
     getBlockHead(network).flatMap{ blockHead =>
-      getCounterForAccount(network, keys.publicKey).flatMap{ counter =>
-      //Try("0").flatMap{ counter =>
-        val operationGroup = TransactionOperationGroup(
-          blockHead.metadata.predecessor,
-          keys.publicKey,
-          List[Operation](operation),
-          fee,
-          counter.toInt,
-          keys.publicKey
+      getAccountForBlock(network, blockHead.metadata.hash, accountID).flatMap{ account =>
+        val operationGroup : Map[String, Any] = Map(
+          "branch"      -> blockHead.metadata.predecessor,
+          "source"      -> accountID,
+          "operations"  -> List[Map[String,Any]](operation),
+          "counter"     -> (account.counter + 1),
+          "fee"         -> fee,
+          "public_key"  -> keys.publicKey
         )
         forgeOperations(network, operationGroup).flatMap{forgedOperation =>
           val sopbytes: Array[Byte] = signOperation(forgedOperation.getBytes(), keys.privateKey)
@@ -276,7 +254,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
   }
 
-  def originateAccount(
+  /*def originateAccount(
                         network: String,
                         publicKey: String,
                         privateKey: String,
@@ -290,7 +268,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                       ) = {
     val keys = KeyPair(publicKey, privateKey)
     val script = Script(code,storage)
-    val operation = Operation(
+    val operation = OriginationOp(
       "origination",
       balance,
       keys.publicKey,
@@ -299,6 +277,24 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       delegatable,
       delegate
     )
-    sendOperation(network, operation, keys, fee)
+    sendOperation(network, JsonUtil.toJson(operation), keys, fee)
+  }*/
+
+  def sendTransaction(
+                       network: String,
+                       publicKey: String,
+                       privateKey: String,
+                       from: AccountID,
+                       to: AccountID,
+                       amount: Float,
+                       fee: Float
+                     ) = {
+    val keys = KeyPair(publicKey, privateKey)
+    val transactionMap: Map[String,Any] = Map(
+      "kind"        -> "transaction",
+      "amount"      -> amount,
+      "destination" -> to
+    )
+    sendOperation(network, transactionMap, keys, from, fee)
   }
 }
