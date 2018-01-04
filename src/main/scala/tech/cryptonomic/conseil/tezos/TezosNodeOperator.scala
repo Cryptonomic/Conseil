@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.muquit.libsodiumjna.SodiumLibrary
 import com.typesafe.scalalogging.LazyLogging
-import fr.acinq.bitcoin.Base58
+import fr.acinq.bitcoin.{Base58, BinaryData}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
@@ -198,9 +198,6 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
-  def getCounterForAccount(network: String, accountID: AccountID) =
-    node.runQuery(network, s"/blocks/prevalidation/proto/context/contracts/$accountID/counter")
-
   def forgeOperations(network: String, operationGroup: Map[String, Any]) =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
     .flatMap { json =>
@@ -210,13 +207,16 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
-    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toArray[Byte])
+    val decodedPrivateKey: BinaryData = Base58.decode(privateKey)
+    val pvBytes: Array[Byte] = decodedPrivateKey.data.toArray
+    SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
+    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
     val edsig = Base58.encode(sig)
     bytes ++ sig
   }
 
   def applyOperation(network: String, payload: ApplyOperationPayload) =
-    node.runQuery(network, "", Some(JsonUtil.toJson(payload)))
+    node.runQuery(network, "/blocks/prevalidation/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
 
   case class ApplyOperationPayload(
     pred_block: String,
