@@ -96,4 +96,8 @@ object TezosTypes {
                     operationGroups: List[OperationGroup]
                   )
 
+  case class ForgedOperationContainer(ok: SuccessfulForgedOperation)
+
+  case class SuccessfulForgedOperation(operation: String)
+
 }

@@ -203,6 +203,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   def forgeOperations(network: String, operationGroup: Map[String, Any]) =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
+    .flatMap { json =>
+      Try{
+        JsonUtil.fromJson[TezosTypes.ForgedOperationContainer](json).ok.operation
+      }
+    }
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, Base58.decode(privateKey).toArray[Byte])

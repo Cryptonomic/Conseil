@@ -163,13 +163,13 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
   }*/
 
   "sendTransaction" should "correctly send a transaction" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val moo = nodeOp.sendTransaction(
       "alphanet",
-      "pubics",
-      "privates",
-      "tz1ey28xfyVvtPRPN9d43Wbf1vkPs868CGXM",
-      "tz1ey28xfyVvtPRPN9d43Wbf1vkPs868CGXM",
+      "edpku5ViG6Pc3uYooHuWhLr3eb2x86xNettKRm5SXBg9AfoYqrWdZc",
+      "edskRtLP6MGr3Y4taNfC19f4TjU3KYYHpfLQzxxovzX5aS4TztpbpajTVUzruNj53iLvymkwTKAnfE72dvPx7BPBan5tvdTrAg",
+      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
       0f,
       0f
     )
