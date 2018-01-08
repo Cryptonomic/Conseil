@@ -198,7 +198,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
-  def forgeOperations(network: String, operationGroup: Map[String, Any]) =
+  def forgeOperations(network: String, operationGroup: Map[String, Any]): Try[String] =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
     .flatMap { json =>
       Try{
@@ -208,11 +208,13 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
     val decodedPrivateKey: BinaryData = Base58.decode(privateKey)
-    val pvBytes: Array[Byte] = decodedPrivateKey.data.toArray
+    val pvBytesInter: Array[Byte] = decodedPrivateKey.data.toArray
+    val pvBytes = pvBytesInter.slice(4, pvBytesInter.length)
     SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
     val edsig = Base58.encode(sig)
-    bytes ++ sig
+    val sbytes = bytes ++ sig
+    sbytes
   }
 
   def applyOperation(network: String, payload: ApplyOperationPayload) =
@@ -258,32 +260,6 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       }
     }
   }
-
-  /*def originateAccount(
-                        network: String,
-                        publicKey: String,
-                        privateKey: String,
-                        balance: Float,
-                        spendable: Boolean,
-                        delegatable: Boolean,
-                        delegate: String,
-                        code: String,
-                        storage: String,
-                        fee: Float
-                      ) = {
-    val keys = KeyPair(publicKey, privateKey)
-    val script = Script(code,storage)
-    val operation = OriginationOp(
-      "origination",
-      balance,
-      keys.publicKey,
-      script,
-      spendable,
-      delegatable,
-      delegate
-    )
-    sendOperation(network, JsonUtil.toJson(operation), keys, fee)
-  }*/
 
   def sendTransaction(
                        network: String,
