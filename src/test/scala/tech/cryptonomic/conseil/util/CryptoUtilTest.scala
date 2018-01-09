@@ -13,10 +13,11 @@ class CryptoUtilTest extends FlatSpec with Matchers {
   }*/
 
   "base58decode" should "correctly decode a string" in {
-    val moo: Try[Array[Byte]] = CryptoUtil.base58decode("tz1foo", "tz1")
-    val goo: Try[String] = CryptoUtil.base58encode(moo.get.toList, "tz1")
-    println(s"decoded: $moo")
-    println(s"encoded: $goo")
+    val he = List[Byte](72.toByte, 69.toByte)
+    val encoded: Try[String] = CryptoUtil.base58encode(he, "tz1")
+    val decoded: Try[Array[Byte]] = CryptoUtil.base58decode(encoded.get, "tz1")
+    println(s"encoded: $encoded")
+    println(s"decoded: $decoded")
   }
 
 }

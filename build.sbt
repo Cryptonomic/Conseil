@@ -18,7 +18,8 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % "3.2.1",
   "org.postgresql" % "postgresql" % "42.1.4",
   "com.typesafe.slick" %% "slick-codegen" % "3.2.1",
-  "org.scalamock" %% "scalamock" % "4.0.0" % Test
+  "org.scalamock" %% "scalamock" % "4.0.0" % Test,
+  "com.madgag.spongycastle" % "core" % "1.58.0.0"
 )
 
 libraryDependencies += "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4"
