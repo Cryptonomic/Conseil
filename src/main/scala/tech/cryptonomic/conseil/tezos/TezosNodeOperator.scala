@@ -4,7 +4,7 @@ import com.muquit.libsodiumjna.SodiumLibrary
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.{Base58, BinaryData}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
-import tech.cryptonomic.conseil.util.JsonUtil
+import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.util.{Failure, Success, Try}
@@ -207,12 +207,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
 
   def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
-    val decodedPrivateKey: BinaryData = Base58.decode(privateKey)
-    val pvBytesInter: Array[Byte] = decodedPrivateKey.data.toArray
-    val pvBytes = pvBytesInter.slice(4, pvBytesInter.length)
+    val pvBytes = CryptoUtil.base58decode(privateKey, "edsk").get
     SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
-    val edsig = Base58.encode(sig)
+    val edsig = CryptoUtil.base58encode(sig.toList, "edsig")
     val sbytes = bytes ++ sig
     sbytes
   }
@@ -246,7 +244,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         )
         forgeOperations(network, operationGroup).flatMap{forgedOperation =>
           val sopbytes: Array[Byte] = signOperation(forgedOperation.getBytes(), keys.privateKey)
-          val oh = Base58.encode(SodiumLibrary.cryptoGenerichash(sopbytes ,32))
+          val oh = CryptoUtil.base58encode(SodiumLibrary.cryptoGenerichash(sopbytes ,32).toList, "op").get
           val aoPayload = ApplyOperationPayload(
             blockHead.metadata.predecessor,
             oh,
