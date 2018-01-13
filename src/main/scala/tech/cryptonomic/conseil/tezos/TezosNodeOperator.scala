@@ -1,11 +1,12 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.math.BigInteger
+
 import com.muquit.libsodiumjna.SodiumLibrary
 import com.typesafe.scalalogging.LazyLogging
-import fr.acinq.bitcoin.{Base58, BinaryData}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
-import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
+import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 
 import scala.util.{Failure, Success, Try}
 
@@ -206,30 +207,20 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       }
     }
 
-  def signOperation(bytes: Array[Byte], privateKey: String): Array[Byte] = {
-    val pvBytes = CryptoUtil.base58decode(privateKey, "edsk").get
+  def signOperation(bytes: Array[Byte], privateKey: String): Tuple2[Array[Byte], String] = {
+    val pvBytes = CryptoUtil.base58CheckDecode(privateKey, "edsk").get
     SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
-    val edsig = CryptoUtil.base58encode(sig.toList, "edsig")
+    val edsig: String = CryptoUtil.base58CheckEncode(sig.toList, "edsig").get
     val sbytes = bytes ++ sig
-    sbytes
+    (sbytes, edsig)
   }
 
-  def applyOperation(network: String, payload: ApplyOperationPayload) =
+  def applyOperation(network: String, payload: Map[String, Any]) =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
 
-  case class ApplyOperationPayload(
-    pred_block: String,
-    operation_hash: String,
-    forged_operation: String,
-    signature: Array[Byte]
-                         )
-
-  def injectOperation(network: String, signedOperation: Array[Byte]) =
-    node.runQuery(network,
-      "inject_operation",
-      Some(JsonUtil.toJson(Map("signedOperationContents" -> signedOperation.toString)))
-    )
+  def injectOperation(network: String, payload: Map[String, Any]) =
+    node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
 
   def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: AccountID, fee: Float) = {
     getBlockHead(network).flatMap{ blockHead =>
@@ -243,16 +234,20 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           "public_key"  -> keys.publicKey
         )
         forgeOperations(network, operationGroup).flatMap{forgedOperation =>
-          val sopbytes: Array[Byte] = signOperation(forgedOperation.getBytes(), keys.privateKey)
-          val oh = CryptoUtil.base58encode(SodiumLibrary.cryptoGenerichash(sopbytes ,32).toList, "op").get
-          val aoPayload = ApplyOperationPayload(
-            blockHead.metadata.predecessor,
-            oh,
-            forgedOperation,
-            sopbytes
+          val opBytes = new BigInteger(forgedOperation, 16).toByteArray
+          val (sopbytes, edsig) = signOperation(opBytes, keys.privateKey)
+          val oh = CryptoUtil.base58CheckEncode(SodiumLibrary.cryptoGenerichash(sopbytes ,32).toList, "op").get
+          val opMap: Map[String, Any] = Map(
+            "pred_block"        -> blockHead.metadata.predecessor,
+            "operation_hash"    -> oh,
+            "forged_operation"  -> forgedOperation,
+            "signature"         -> edsig
           )
-          applyOperation(network, aoPayload).flatMap{ contracts =>
-            injectOperation(network, sopbytes)
+          applyOperation(network, opMap).flatMap{ contracts =>
+            val injectionMap: Map[String, Any] = Map(
+              "signedOperationContents" -> sopbytes.map("%02X" format _).mkString
+            )
+            injectOperation(network, injectionMap)
           }
         }
       }

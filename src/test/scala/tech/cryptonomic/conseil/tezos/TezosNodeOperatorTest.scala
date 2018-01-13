@@ -177,7 +177,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       case Failure(e) =>
         println(e)
         e.printStackTrace()
-      case Success(_) => println("wee")
+      case Success(str) => println(str)
     }
     moo.isFailure should be (false)
   }

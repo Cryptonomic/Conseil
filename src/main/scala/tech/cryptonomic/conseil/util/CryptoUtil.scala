@@ -1,8 +1,7 @@
 package tech.cryptonomic.conseil.util
 
-import fr.acinq.bitcoin.{Base58, Base58Check, BinaryData}
+import fr.acinq.bitcoin.Base58Check
 
-import scala.io.Source
 import scala.util.Try
 
 /**
@@ -12,23 +11,23 @@ object CryptoUtil {
 
   def getAsciiForPrefix(prefix: String): Try[List[Byte]] = Try {
     prefix match {
-      case "tz1"    => List[Byte](116.toByte, 122.toByte, 49.toByte)
-      case "edpk"   => List[Byte](101.toByte, 100.toByte, 112.toByte, 107.toByte)
-      case "edsk"   => List[Byte](101.toByte, 100.toByte, 115.toByte, 107.toByte)
-      case "edsig"  => List[Byte](101.toByte, 100.toByte, 115.toByte, 105.toByte, 103.toByte)
-      case "op"     => List[Byte](111.toByte, 112.toByte)
+      case "tz1"    => List[Byte](3.toByte, 99.toByte, 29.toByte)
+      case "edpk"   => List[Byte](13.toByte, 15.toByte, 37.toByte, 217.toByte)
+      case "edsk"   => List[Byte](43.toByte, 246.toByte, 78.toByte, 7.toByte)
+      case "edsig"  => List[Byte](9.toByte, 245.toByte, 205.toByte, 134.toByte, 18.toByte)
+      case "op"     => List[Byte](5.toByte, 116.toByte)
       case _        => throw new Exception(s"Could not find prefix for $prefix!")
     }
   }
 
-  def base58encode(payload: List[Byte], prefix: String): Try[String] =
+  def base58CheckEncode(payload: List[Byte], prefix: String): Try[String] =
     getAsciiForPrefix(prefix).flatMap { asciiDigits =>
       Try {
         Base58Check.encode(asciiDigits, payload)
       }
     }
 
-  def base58decode(s: String, prefix: String): Try[Array[Byte]] =
+  def base58CheckDecode(s: String, prefix: String): Try[Array[Byte]] =
     getAsciiForPrefix(prefix).flatMap{ asciiDigits =>
       Try {
         val charsToSlice = asciiDigits.length
