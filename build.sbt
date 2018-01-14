@@ -19,9 +19,8 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.slick" %% "slick-codegen" % "3.2.1",
   "org.scalamock" %% "scalamock" % "4.0.0" % Test,
   "com.madgag.spongycastle" % "core" % "1.58.0.0",
-  "org.scorexfoundation" %% "scrypto" % "2.0.0"
+  "org.scorexfoundation" %% "scrypto" % "2.0.0",
+  "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4"
 )
-
-libraryDependencies += "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4"
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")

@@ -209,7 +209,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   /**
     * Get accounts for the latest block in the database.
     * @param network  Which Tezos network to go against
-    * @return         Accounts with their corresponding block hashsignedOpGroup
+    * @return         Accounts with their corresponding block hash
     */
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
