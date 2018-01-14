@@ -141,7 +141,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "sendTransaction" should "correctly send a transaction" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val moo = nodeOp.sendTransaction(
+    val result = nodeOp.sendTransaction(
       "alphanet",
       "edpku5ViG6Pc3uYooHuWhLr3eb2x86xNettKRm5SXBg9AfoYqrWdZc",
       "edskRtLP6MGr3Y4taNfC19f4TjU3KYYHpfLQzxxovzX5aS4TztpbpajTVUzruNj53iLvymkwTKAnfE72dvPx7BPBan5tvdTrAg",
@@ -150,12 +150,6 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       0f,
       0f
     )
-    moo match {
-      case Failure(e) =>
-        println(e)
-        e.printStackTrace()
-      case Success(str) => println(str)
-    }
-    moo.isFailure should be (false)
+    result.isFailure should be (false)
   }
 }

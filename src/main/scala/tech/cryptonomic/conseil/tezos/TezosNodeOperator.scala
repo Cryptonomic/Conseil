@@ -218,7 +218,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .flatMap { json =>
         Try {
-          JsonUtil.fromJson[TezosTypes.ForgedOperationContainer](json).ok.operation
+          val forgedOperation = JsonUtil.fromJson[TezosTypes.ForgedOperationContainer](json)
+          forgedOperation.ok match {
+            case Some(ok) => ok.operation
+            case None => throw new Exception(s"Could not forge operation because: ${forgedOperation.error.get}")
+          }
         }
       }
   }
@@ -243,7 +247,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                       blockHead: TezosTypes.Block,
                       operationGroupHash: String,
                       forgedOperationGroup: String,
-                      signedOpGroup: SignedOperationGroup): Try[String] = {
+                      signedOpGroup: SignedOperationGroup): Try[Array[String]] = {
     val payload: Map[String, Any] = Map(
       "pred_block" -> blockHead.metadata.predecessor,
       "operation_hash" -> operationGroupHash,
@@ -251,23 +255,40 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "signature" -> signedOpGroup.signature
     )
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+      .flatMap { result =>
+        Try {
+          val appliedOP = JsonUtil.fromJson[TezosTypes.AppliedOperationContainer](result)
+          appliedOP.ok match {
+            case Some(_) => appliedOP.ok.get.contracts
+            case None => throw new Exception(s"Could not apply operation because: ${appliedOP.error.get}")
+          }
+        }
+      }
   }
 
   def injectOperation(network: String, signedOpGroup: SignedOperationGroup): Try[String] = {
     val payload: Map[String, Any] = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
     )
-    node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
+    node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload))).flatMap{result =>
+      Try {
+        val injectedOp = JsonUtil.fromJson[TezosTypes.InjectedOperationContainer](result)
+        injectedOp.ok match {
+          case Some(ok) => ok.injectedOperation
+          case None => throw new Exception(s"Could not inject operation because: ${injectedOp.error.get}")
+        }
+      }
+    }
   }
 
-  def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: String, fee: Float): Try[String] = {
+  def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: String, fee: Float): Try[Array[String]] = {
     getBlockHead(network).flatMap{ blockHead =>
       getAccountForBlock(network, blockHead.metadata.hash, accountID).flatMap{ account =>
         forgeOperations(network, blockHead, account, operation, keys, accountID, fee).flatMap { forgedOperationGroup =>
           signOperationGroup(forgedOperationGroup, keys.privateKey).flatMap { signedOpGroup =>
             computeOperationHash(signedOpGroup).flatMap { operationGroupHash =>
               applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup).flatMap { contracts =>
-                injectOperation(network, signedOpGroup).flatMap{result =>
+                injectOperation(network, signedOpGroup).flatMap{ _ =>
                   Try(contracts)
                 }
               }
@@ -286,7 +307,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                        to: String,
                        amount: Float,
                        fee: Float
-                     ): Try[String] = {
+                     ): Try[Array[String]] = {
     val keys = KeyPair(publicKey, privateKey)
     val transactionMap: Map[String,Any] = Map(
       "kind"        -> "transaction",
