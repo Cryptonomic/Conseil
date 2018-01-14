@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.math.BigInteger
 
 import com.muquit.libsodiumjna.SodiumLibrary
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
@@ -16,8 +17,22 @@ import scala.util.{Failure, Success, Try}
   */
 class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
+  private val conf = ConfigFactory.load
+
+  val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
+
+  /**
+    * Tezos public/private key pair, encoded using Base58Check
+    * @param publicKey  Public key
+    * @param privateKey Private key
+    */
   case class KeyPair(publicKey: String, privateKey: String)
 
+  /**
+    * Output of transaction signing.
+    * @param bytes      Signed bytes of the transaction
+    * @param signature  The actual signature
+    */
   case class SignedOperationGroup(bytes: Array[Byte], signature: String)
 
   /**
@@ -199,6 +214,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
+  /**
+    * Forge an operation group using the Tezos RPC client.
+    * @param network    Which Tezos network to go against
+    * @param blockHead  The block head
+    * @param account    The sender's account
+    * @param operation  The operation being forged as part of this operation group
+    * @param keys       Public/private key pair
+    * @param accountID  Public key hash to which the transaction is being sent
+    * @param fee        Fee to be paid
+    * @return           Forged operation bytes (as a hex string)
+    */
   def forgeOperations(  network: String,
                         blockHead: TezosTypes.Block,
                         account: TezosTypes.Account,
@@ -227,21 +253,44 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       }
   }
 
+  /**
+    * Signs a forged operation
+    * @param forgedOperation  Forged operation group returned by the Tezos client (as a hex string)
+    * @param privateKey       Private key
+    * @return                 Bytes of the signed operation along with the actual signature
+    */
   def signOperationGroup(forgedOperation: String, privateKey: String): Try[SignedOperationGroup] = Try{
+    SodiumLibrary.setLibraryPath(sodiumLibraryPath)
     val bytes = new BigInteger(forgedOperation, 16).toByteArray
     val pvBytes = CryptoUtil.base58CheckDecode(privateKey, "edsk").get
-    SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
     val edsig: String = CryptoUtil.base58CheckEncode(sig.toList, "edsig").get
     val sbytes = bytes ++ sig
     SignedOperationGroup(sbytes, edsig)
   }
 
+  /**
+    * Computes the ID of an operation group using Base58Check.
+    * @param signedOpGroup  Signed operation group
+    * @return               Base58Check hash of signed operation
+    */
   def computeOperationHash(signedOpGroup: SignedOperationGroup): Try[String] =
-    Try(SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32)).flatMap { hash =>
+    Try{
+      SodiumLibrary.setLibraryPath(sodiumLibraryPath)
+      SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32)
+    }.flatMap { hash =>
       CryptoUtil.base58CheckEncode(hash.toList, "op")
     }
 
+  /**
+    * Applies an operation using the Tezos RPC client.
+    * @param network              Which Tezos network to go against
+    * @param blockHead            Block head
+    * @param operationGroupHash   Hash of the operation group being applied (in Base58Check format)
+    * @param forgedOperationGroup Forged operation group returned by the Tezos client (as a hex string)
+    * @param signedOpGroup        Signed operation group
+    * @return                     Array of contract handles
+    */
   def applyOperation(
                       network: String,
                       blockHead: TezosTypes.Block,
@@ -266,6 +315,12 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       }
   }
 
+  /**
+    * Injects an opertion using the Tezos RPC client.
+    * @param network        Which Tezos network to go against
+    * @param signedOpGroup  Signed operation group
+    * @return               ID of injected operation
+    */
   def injectOperation(network: String, signedOpGroup: SignedOperationGroup): Try[String] = {
     val payload: Map[String, Any] = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
@@ -281,6 +336,15 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
   }
 
+  /**
+    * Master function for creating and sending all supported types of operations.
+    * @param network    Which Tezos network to go against
+    * @param operation  The operation to create and send
+    * @param keys       Public/private key pair
+    * @param accountID  The public key hash to send the operation to
+    * @param fee        The fee to use
+    * @return           The ID of the created operation group
+    */
   def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: String, fee: Float): Try[Array[String]] = {
     getBlockHead(network).flatMap{ blockHead =>
       getAccountForBlock(network, blockHead.metadata.hash, accountID).flatMap{ account =>
@@ -299,6 +363,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
   }
 
+  /**
+    * Creates and sends a transaction operation.
+    * @param network    Which Tezos network to go against
+    * @param publicKey  Public key
+    * @param privateKey Private key
+    * @param from       Source public key hash
+    * @param to         Destination public key hash
+    * @param amount     Amount to send
+    * @param fee        Fee to use
+    * @return           The ID of the created operation group
+    */
   def sendTransaction(
                        network: String,
                        publicKey: String,

@@ -5,7 +5,7 @@ import org.scalatest.{FlatSpec, Matchers}
 class CryptoUtilTest extends FlatSpec with Matchers {
 
   "CryptoUtilTest" should "correctly decode and encode a Tezos account ID" in {
-    val accountID = "TZ1Xn4Khg8VV4ZW5Qj1AWHcidJkNdKJnBWoJ"
+    val accountID = "tz1Z5pFi5Sy99Kcz36XA5WtKW7Z6NVG9LdA4"
     val decoded = CryptoUtil.base58CheckDecode(accountID, "tz1").get
     val encoded = CryptoUtil.base58CheckEncode(decoded.toList, "tz1").get
     encoded should be (accountID)
