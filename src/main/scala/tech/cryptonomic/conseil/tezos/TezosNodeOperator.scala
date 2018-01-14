@@ -18,7 +18,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   case class KeyPair(publicKey: String, privateKey: String)
 
-  case class OperationGroupSignature(bytes: Array[Byte], signature: String)
+  case class SignedOperationGroup(bytes: Array[Byte], signature: String)
 
   /**
     * Fetches a specific account for a given block.
@@ -194,65 +194,82 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   /**
     * Get accounts for the latest block in the database.
     * @param network  Which Tezos network to go against
-    * @return         Accounts with their corresponding block hash
+    * @return         Accounts with their corresponding block hashsignedOpGroup
     */
   def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
-  def forgeOperations(network: String, operationGroup: Map[String, Any]): Try[String] =
-    node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(operationGroup)))
-    .flatMap { json =>
-      Try{
-        JsonUtil.fromJson[TezosTypes.ForgedOperationContainer](json).ok.operation
+  def forgeOperations(  network: String,
+                        blockHead: TezosTypes.Block,
+                        account: TezosTypes.Account,
+                        operation: Map[String,Any],
+                        keys: KeyPair,
+                        accountID: String,
+                        fee: Float
+                     ): Try[String] = {
+    val payload: Map[String, Any] = Map(
+      "branch" -> blockHead.metadata.predecessor,
+      "source" -> accountID,
+      "operations" -> List[Map[String, Any]](operation),
+      "counter" -> (account.counter + 1),
+      "fee" -> fee,
+      "public_key" -> keys.publicKey
+    )
+    node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
+      .flatMap { json =>
+        Try {
+          JsonUtil.fromJson[TezosTypes.ForgedOperationContainer](json).ok.operation
+        }
       }
-    }
+  }
 
-  def signOperationGroup(bytes: Array[Byte], privateKey: String): Try[OperationGroupSignature] = Try{
+  def signOperationGroup(forgedOperation: String, privateKey: String): Try[SignedOperationGroup] = Try{
+    val bytes = new BigInteger(forgedOperation, 16).toByteArray
     val pvBytes = CryptoUtil.base58CheckDecode(privateKey, "edsk").get
     SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
     val edsig: String = CryptoUtil.base58CheckEncode(sig.toList, "edsig").get
     val sbytes = bytes ++ sig
-    OperationGroupSignature(sbytes, edsig)
+    SignedOperationGroup(sbytes, edsig)
   }
 
-  def computeOperationHash(signedOpGroup: OperationGroupSignature): Try[String] =
+  def computeOperationHash(signedOpGroup: SignedOperationGroup): Try[String] =
     Try(SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32)).flatMap { hash =>
       CryptoUtil.base58CheckEncode(hash.toList, "op")
     }
 
-  def applyOperation(network: String, payload: Map[String, Any]): Try[String] =
+  def applyOperation(
+                      network: String,
+                      blockHead: TezosTypes.Block,
+                      operationGroupHash: String,
+                      forgedOperationGroup: String,
+                      signedOpGroup: SignedOperationGroup): Try[String] = {
+    val payload: Map[String, Any] = Map(
+      "pred_block" -> blockHead.metadata.predecessor,
+      "operation_hash" -> operationGroupHash,
+      "forged_operation" -> forgedOperationGroup,
+      "signature" -> signedOpGroup.signature
+    )
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+  }
 
-  def injectOperation(network: String, payload: Map[String, Any]): Try[String] =
+  def injectOperation(network: String, signedOpGroup: SignedOperationGroup): Try[String] = {
+    val payload: Map[String, Any] = Map(
+      "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
+    )
     node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
+  }
 
   def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: String, fee: Float): Try[String] = {
     getBlockHead(network).flatMap{ blockHead =>
       getAccountForBlock(network, blockHead.metadata.hash, accountID).flatMap{ account =>
-        val operationGroup : Map[String, Any] = Map(
-          "branch"      -> blockHead.metadata.predecessor,
-          "source"      -> accountID,
-          "operations"  -> List[Map[String,Any]](operation),
-          "counter"     -> (account.counter + 1),
-          "fee"         -> fee,
-          "public_key"  -> keys.publicKey
-        )
-        forgeOperations(network, operationGroup).flatMap { forgedOperation =>
-          val opBytes = new BigInteger(forgedOperation, 16).toByteArray
-          signOperationGroup(opBytes, keys.privateKey).flatMap { signedOpGroup =>
-            computeOperationHash(signedOpGroup).flatMap { oh =>
-              val opMap: Map[String, Any] = Map(
-                "pred_block" -> blockHead.metadata.predecessor,
-                "operation_hash" -> oh,
-                "forged_operation" -> forgedOperation,
-                "signature" -> signedOpGroup.signature
-              )
-              applyOperation(network, opMap).flatMap { contracts =>
-                val injectionMap: Map[String, Any] = Map(
-                  "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
-                )
-                injectOperation(network, injectionMap)
+        forgeOperations(network, blockHead, account, operation, keys, accountID, fee).flatMap { forgedOperationGroup =>
+          signOperationGroup(forgedOperationGroup, keys.privateKey).flatMap { signedOpGroup =>
+            computeOperationHash(signedOpGroup).flatMap { operationGroupHash =>
+              applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup).flatMap { contracts =>
+                injectOperation(network, signedOpGroup).flatMap{result =>
+                  Try(contracts)
+                }
               }
             }
           }
