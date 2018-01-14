@@ -16,9 +16,9 @@ import scala.util.{Failure, Success, Try}
   */
 class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
-  type AccountID = String
-
   case class KeyPair(publicKey: String, privateKey: String)
+
+  case class OperationGroupSignature(bytes: Array[Byte], signature: String)
 
   /**
     * Fetches a specific account for a given block.
@@ -207,22 +207,27 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       }
     }
 
-  def signOperation(bytes: Array[Byte], privateKey: String): Tuple2[Array[Byte], String] = {
+  def signOperationGroup(bytes: Array[Byte], privateKey: String): Try[OperationGroupSignature] = Try{
     val pvBytes = CryptoUtil.base58CheckDecode(privateKey, "edsk").get
     SodiumLibrary.setLibraryPath("/usr/lib/x86_64-linux-gnu/libsodium.so.18.1.1")
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes)
     val edsig: String = CryptoUtil.base58CheckEncode(sig.toList, "edsig").get
     val sbytes = bytes ++ sig
-    (sbytes, edsig)
+    OperationGroupSignature(sbytes, edsig)
   }
 
-  def applyOperation(network: String, payload: Map[String, Any]) =
+  def computeOperationHash(signedOpGroup: OperationGroupSignature): Try[String] =
+    Try(SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32)).flatMap { hash =>
+      CryptoUtil.base58CheckEncode(hash.toList, "op")
+    }
+
+  def applyOperation(network: String, payload: Map[String, Any]): Try[String] =
     node.runQuery(network, "/blocks/prevalidation/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
 
-  def injectOperation(network: String, payload: Map[String, Any]) =
+  def injectOperation(network: String, payload: Map[String, Any]): Try[String] =
     node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
 
-  def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: AccountID, fee: Float) = {
+  def sendOperation(network: String, operation: Map[String,Any], keys: KeyPair, accountID: String, fee: Float): Try[String] = {
     getBlockHead(network).flatMap{ blockHead =>
       getAccountForBlock(network, blockHead.metadata.hash, accountID).flatMap{ account =>
         val operationGroup : Map[String, Any] = Map(
@@ -233,21 +238,23 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           "fee"         -> fee,
           "public_key"  -> keys.publicKey
         )
-        forgeOperations(network, operationGroup).flatMap{forgedOperation =>
+        forgeOperations(network, operationGroup).flatMap { forgedOperation =>
           val opBytes = new BigInteger(forgedOperation, 16).toByteArray
-          val (sopbytes, edsig) = signOperation(opBytes, keys.privateKey)
-          val oh = CryptoUtil.base58CheckEncode(SodiumLibrary.cryptoGenerichash(sopbytes ,32).toList, "op").get
-          val opMap: Map[String, Any] = Map(
-            "pred_block"        -> blockHead.metadata.predecessor,
-            "operation_hash"    -> oh,
-            "forged_operation"  -> forgedOperation,
-            "signature"         -> edsig
-          )
-          applyOperation(network, opMap).flatMap{ contracts =>
-            val injectionMap: Map[String, Any] = Map(
-              "signedOperationContents" -> sopbytes.map("%02X" format _).mkString
-            )
-            injectOperation(network, injectionMap)
+          signOperationGroup(opBytes, keys.privateKey).flatMap { signedOpGroup =>
+            computeOperationHash(signedOpGroup).flatMap { oh =>
+              val opMap: Map[String, Any] = Map(
+                "pred_block" -> blockHead.metadata.predecessor,
+                "operation_hash" -> oh,
+                "forged_operation" -> forgedOperation,
+                "signature" -> signedOpGroup.signature
+              )
+              applyOperation(network, opMap).flatMap { contracts =>
+                val injectionMap: Map[String, Any] = Map(
+                  "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
+                )
+                injectOperation(network, injectionMap)
+              }
+            }
           }
         }
       }
@@ -258,11 +265,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                        network: String,
                        publicKey: String,
                        privateKey: String,
-                       from: AccountID,
-                       to: AccountID,
+                       from: String,
+                       to: String,
                        amount: Float,
                        fee: Float
-                     ) = {
+                     ): Try[String] = {
     val keys = KeyPair(publicKey, privateKey)
     val transactionMap: Map[String,Any] = Map(
       "kind"        -> "transaction",

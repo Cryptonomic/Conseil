@@ -139,29 +139,6 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     accounts.isFailure should be (true)
   }
 
-  /*"originateAccount" should "correctly originate an account" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val moo = nodeOp.originateAccount(
-      "alphanet",
-      "tz1ey28xfyVvtPRPN9d43Wbf1vkPs868CGXM",
-      "privates",
-      0f,
-      false,
-      false,
-      "",
-      "beep boop boop",
-      "much many sotrages",
-      0f
-    )
-    moo match {
-      case Failure(e) =>
-        println(e)
-        e.printStackTrace()
-      case Success(_) => println("wee")
-    }
-    moo.isFailure should be (false)
-  }*/
-
   "sendTransaction" should "correctly send a transaction" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val moo = nodeOp.sendTransaction(
