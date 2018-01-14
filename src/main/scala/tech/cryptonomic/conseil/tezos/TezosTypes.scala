@@ -75,7 +75,7 @@ object TezosTypes {
                     spendable: Boolean,
                     delegate: AccountDelegate,
                     script: Option[Any],
-                    counter: Integer
+                    counter: Int
                     )
 
   case class AccountContainer(
@@ -95,5 +95,17 @@ object TezosTypes {
                     metadata: BlockMetadata,
                     operationGroups: List[OperationGroup]
                   )
+
+  case class ForgedOperationContainer(ok: Option[SuccessfulForgedOperation], error: Option[Any])
+
+  case class SuccessfulForgedOperation(operation: String)
+
+  case class AppliedOperationContainer(ok: Option[AppliedOperation], error: Option[Any])
+
+  case class AppliedOperation(contracts: Array[String])
+
+  case class InjectedOperationContainer(ok: Option[InjectedOperation], error: Option[Any])
+
+  case class InjectedOperation(injectedOperation: String)
 
 }

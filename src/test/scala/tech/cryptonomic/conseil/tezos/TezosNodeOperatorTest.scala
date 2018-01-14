@@ -1,14 +1,17 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.util.Try
 
-class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
+class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
 
   object MockTezosNode extends TezosRPCInterface {
-    def runQuery(network: String, command: String): Try[String] = Try{
+
+    def runQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try{
+      logger.info(s"Ran Tezos Query: Network = $network, Command = $command, Payload = $payload")
       command match {
         case "blocks/BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G" =>
           getStoredBlock("BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G")
@@ -58,7 +61,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
 
   object MockTezosNodeWithErrors extends TezosRPCInterface {
 
-    def runQuery(network: String, command: String): Try[String] = Try {
+    def runQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try {
       command match {
         case "blocks/BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP" =>
           throw new Exception("A block request failed due to an alien invasion.")
@@ -134,5 +137,19 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
     val accounts = nodeOp.getAccounts("alphanet", "BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP")
     accounts.isFailure should be (true)
+  }
+
+  "sendTransaction" should "correctly send a transaction" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.sendTransaction(
+      "alphanet",
+      "edpku5ViG6Pc3uYooHuWhLr3eb2x86xNettKRm5SXBg9AfoYqrWdZc",
+      "edskRtLP6MGr3Y4taNfC19f4TjU3KYYHpfLQzxxovzX5aS4TztpbpajTVUzruNj53iLvymkwTKAnfE72dvPx7BPBan5tvdTrAg",
+      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      0f,
+      0f
+    )
+    result.isFailure should be (true)   // TODO: Set to expect success state once transaction logic is fixed.
   }
 }

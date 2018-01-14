@@ -20,7 +20,6 @@ object Lorre extends App with LazyLogging {
   processTezosBlocks()
   processTezosAccounts()
 
-
   db.close()
 
   /**
