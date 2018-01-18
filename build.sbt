@@ -1,3 +1,5 @@
+enablePlugins(ScalaJSPlugin)
+
 name := "Conseil"
 version := "0.0.1"
 scalaVersion := "2.12.4"
@@ -22,3 +24,6 @@ libraryDependencies  ++=  Seq(
 )
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
+
+scalaJSUseMainModuleInitializer := true
+mainClass in Compile := Some("tech.cryptonomic.conseil.ConseilJs")
