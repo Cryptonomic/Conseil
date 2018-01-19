@@ -17,15 +17,15 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
-  processTezosBlocks()
-  processTezosAccounts()
-
-  db.close()
+  try {
+    processTezosBlocks()
+    processTezosAccounts()
+  } finally db.close()
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(): Unit = {
+  def processTezosBlocks(): Try[Unit] = {
     logger.info("Processing Tezos Blocks..")
     tezosNodeOperator.getBlocksNotInDatabase("alphanet") match {
       case Success(blocks) =>
@@ -37,14 +37,16 @@ object Lorre extends App with LazyLogging {
           }
           Await.result(dbFut, Duration.Inf)
         }
-      case Failure(e) => logger.error(s"Could not fetch blocks from client because $e")
+      case Failure(e) =>
+        logger.error(s"Could not fetch blocks from client because $e")
+        throw e
     }
   }
 
   /**
     * Fetches and stores all accounts from the latest block stored in the database.
     */
-  def processTezosAccounts(): Unit = {
+  def processTezosAccounts(): Try[Unit] = {
     logger.info("Processing latest Tezos accounts data..")
     tezosNodeOperator.getLatestAccounts("alphanet") match {
       case Success(accountsInfo) =>
@@ -56,7 +58,9 @@ object Lorre extends App with LazyLogging {
           }
           Await.result(dbFut, Duration.Inf)
         }
-      case Failure(e) => logger.error(s"Could not fetch accounts from client because $e")
+      case Failure(e) =>
+        logger.error(s"Could not fetch accounts from client because $e")
+        throw e
     }
   }
 

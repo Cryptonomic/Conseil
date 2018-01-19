@@ -16,7 +16,7 @@ trait Tables {
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Array(Accounts.schema, Ballots.schema, Blocks.schema, Delegations.schema, Endorsements.schema, FaucetTransactions.schema, OperationGroups.schema, Originations.schema, Proposals.schema, SeedNonceRevealations.schema, Transactions.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
-  def ddl = schema
+  def ddl: profile.DDL = schema
 
   /** Entity class storing rows of table Accounts
     *  @param accountId Database column account_id SqlType(varchar)
@@ -143,9 +143,6 @@ trait Tables {
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
     /** Database column fitness SqlType(varchar) */
     val fitness: Rep[String] = column[String]("fitness")
-
-    /** Foreign key referencing Blocks (database name blocks_predecessor_fkey) */
-    lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
 
     /** Index over (hash) (database name blocks_hash_idx) */
     val index1 = index("blocks_hash_idx", hash)
