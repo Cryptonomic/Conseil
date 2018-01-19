@@ -23,4 +23,9 @@ libraryDependencies  ++=  Seq(
   "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4"
 )
 
+assemblyExcludedJars in assembly := {
+  val cp = (fullClasspath in assembly).value
+  cp filter {_.data.getName == "slf4j-log4j12-1.7.21.jar"}
+}
+
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
