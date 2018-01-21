@@ -122,10 +122,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return         Blocks
     */
   def getBlocksNotInDatabase(network: String): Try[List[Block]] =
-    ApiOperations.fetchMaxLevel().orElse{
-      logger.warn("There were apparently no rows in the database. Dumping the whole chain.")
-      Try(-1)
-    }.flatMap{ maxLevel =>
+    ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
+      if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
         val headLevel = blockHead.metadata.level
         val headHash  = blockHead.metadata.hash
@@ -178,14 +176,29 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param minLevel   Minimum level at which to stop
     * @param maxLevel   Level at which to start collecting blocks
     * @param blockSoFar Blocks collected so far
-    * @return           All collected block
+    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
+    * @return           All collected blocks
     */
-  private def processBlocks(network: String, hash: String, minLevel: Int, maxLevel: Int, blockSoFar: List[Block] = List[Block]()): List[Block] =
+  private def processBlocks(
+                             network: String,
+                             hash: String,
+                             minLevel: Int,
+                             maxLevel: Int,
+                             blockSoFar: List[Block] = List[Block](),
+                             followFork: Boolean = true
+                           ): List[Block] =
     getBlock(network, hash) match {
       case Success(block) =>
         logger.info(s"Current block height: ${block.metadata.level}")
-        if((block.metadata.level == 0 && minLevel <= 0) || block.metadata.level == minLevel)
+        if(block.metadata.level == 0 && minLevel <= 0)
           block :: blockSoFar
+        else if(block.metadata.level == minLevel && !followFork)
+          block :: blockSoFar
+        else if(block.metadata.level <= minLevel && followFork)
+          ApiOperations.fetchBlock(block.metadata.predecessor) match {
+            case Success(s)     => block :: blockSoFar
+            case Failure(e)     => processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, block :: blockSoFar)
+          }
         else if(block.metadata.level > maxLevel)
           processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, blockSoFar)
         else if(block.metadata.level > minLevel)

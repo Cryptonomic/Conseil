@@ -18,14 +18,14 @@ object ApiOperations {
   /**
     * Fetches the level of the most recent block stored in the database.
     *
-    * @return Max level.
+    * @return Max level or -1 if no blocks were found in the database.
     */
   def fetchMaxLevel(): Try[Int] = Try {
     val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
     val maxLevelOpt = Await.result(op, Duration.Inf)
     maxLevelOpt match {
       case Some(maxLevel) => maxLevel
-      case None => throw new Exception("No blocks in the database!")
+      case None => -1
     }
   }
 

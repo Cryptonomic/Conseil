@@ -83,6 +83,8 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     blocks.get.length should be (4)
   }
 
+  // Once we can mock the database, we should test whether getBlocks() works on a forked chain.
+
   "getBlocks" should "handle a failed RPC request" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNodeWithErrors)
     val blocks = nodeOp.getBlocks("alphanet", 0, 3, None)
