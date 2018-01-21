@@ -49,9 +49,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
   // Begin HTTPS setup
   // Drawn from https://doc.akka.io/docs/akka-http/10.0.11/scala/http/server-side/server-https-support.html#ssl-config
 
+  val keyStoreFile = conf.getString("security.ssl.keystore-file")
   val password: Array[Char] = conf.getString("security.ssl.keystore-password").toCharArray
   val ks: KeyStore = KeyStore.getInstance("PKCS12")
-  val keystore: InputStream = getClass.getClassLoader.getResourceAsStream("conseil.p12")
+  val keystore: InputStream = getClass.getClassLoader.getResourceAsStream(keyStoreFile)
 
   require(keystore != null, "Keystore required!")
   ks.load(keystore, password)
