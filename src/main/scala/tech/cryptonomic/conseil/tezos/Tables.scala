@@ -144,6 +144,9 @@ trait Tables {
     /** Database column fitness SqlType(varchar) */
     val fitness: Rep[String] = column[String]("fitness")
 
+    /** Foreign key referencing Blocks (database name blocks_predecessor_fkey) */
+    lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
     /** Index over (hash) (database name blocks_hash_idx) */
     val index1 = index("blocks_hash_idx", hash)
     /** Uniqueness Index over (hash) (database name blocks_hash_key) */
