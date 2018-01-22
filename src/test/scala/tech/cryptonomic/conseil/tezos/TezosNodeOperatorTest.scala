@@ -79,7 +79,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "getBlocks" should "fetch the correct number of blocks" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("alphanet", 0, 3, None)
+    val blocks = nodeOp.getBlocks("alphanet", 0, 3, None, followFork = false)
     blocks.get.length should be (4)
   }
 
@@ -87,37 +87,37 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "getBlocks" should "handle a failed RPC request" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNodeWithErrors)
-    val blocks = nodeOp.getBlocks("alphanet", 0, 3, None)
+    val blocks = nodeOp.getBlocks("alphanet", 0, 3, None, followFork = false)
     blocks.isFailure should be (true)
   }
 
   "getBlocks" should "work correctly with a hint whose level is too high" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("alphanet", 0, 2, Some("BMXXHxiX1zsCAMvvSUMR3jhNEBVWAp2CdviAgYrJ5NYYUJbL1zF"))
+    val blocks = nodeOp.getBlocks("alphanet", 0, 2, Some("BMXXHxiX1zsCAMvvSUMR3jhNEBVWAp2CdviAgYrJ5NYYUJbL1zF"), followFork = false)
     blocks.get.length should be (3)
   }
 
   "getBlocks" should "work correctly with a hint whose level is too low" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("alphanet", 2, 3, Some("BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G"))
+    val blocks = nodeOp.getBlocks("alphanet", 2, 3, Some("BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G"), followFork = false)
     blocks.get.length should be (0)
   }
 
   "getBlocks" should "handle an invalid block payload" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("alphanet", 0, 3, Some("fakeblock"))
+    val blocks = nodeOp.getBlocks("alphanet", 0, 3, Some("fakeblock"), followFork = false)
     blocks.isFailure should be (true)
   }
 
   "getBlocks" should "work correctly with an offset" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("alphanet", 3, None)
+    val blocks = nodeOp.getBlocks("alphanet", 3, None, followFork = false)
     blocks.get.size should be (3)
   }
 
   "getBlocks" should "work correctly with an offset and hint" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("alphanet", 3, Some("BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP"))
+    val blocks = nodeOp.getBlocks("alphanet", 3, Some("BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP"), followFork = false)
     blocks.get.head.metadata.hash should be ("BLockGenesisGenesisGenesisGenesisGenesisFFFFFgtaC8G")
   }
 
