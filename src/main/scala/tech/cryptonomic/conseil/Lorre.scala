@@ -37,7 +37,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Try[Unit] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase("alphanet") match {
+    tezosNodeOperator.getBlocksNotInDatabase("alphanet", followFork = true) match {
       case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)

@@ -118,10 +118,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
-    * @param network  Which Tezos network to go against
-    * @return         Blocks
+    * @param network    Which Tezos network to go against
+    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
+    * @return           Blocks
     */
-  def getBlocksNotInDatabase(network: String): Try[List[Block]] =
+  def getBlocksNotInDatabase(network: String, followFork: Boolean): Try[List[Block]] =
     ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
@@ -130,7 +131,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         if(headLevel <= maxLevel)
           Try(List[Block]())
         else
-          getBlocks(network, maxLevel+1, headLevel, Some(headHash))
+          getBlocks(network, maxLevel+1, headLevel, Some(headHash), followFork)
       }
     }
 
@@ -139,14 +140,15 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param network        Which Tezos network to go against
     * @param offset         How many previous blocks to get from the start
     * @param startBlockHash The block from which to offset, using the hash provided or the head if none is provided.
+    * @param followFork     If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return               Blocks
     */
-  def getBlocks(network: String, offset: Int, startBlockHash: Option[String]): Try[List[Block]] =
+  def getBlocks(network: String, offset: Int, startBlockHash: Option[String], followFork: Boolean): Try[List[Block]] =
     startBlockHash match {
       case None =>
-        getBlockHead(network).flatMap(head => getBlocks(network, head.metadata.level - offset + 1, head.metadata.level, startBlockHash))
+        getBlockHead(network).flatMap(head => getBlocks(network, head.metadata.level - offset + 1, head.metadata.level, startBlockHash, followFork))
       case Some(hash) =>
-        getBlock(network, hash).flatMap(block => getBlocks(network, block.metadata.level - offset + 1, block.metadata.level, startBlockHash))
+        getBlock(network, hash).flatMap(block => getBlocks(network, block.metadata.level - offset + 1, block.metadata.level, startBlockHash, followFork))
     }
 
   /**
@@ -155,17 +157,18 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param minLevel       Minimum block level
     * @param maxLevel       Maximum block level
     * @param startBlockHash If specified, start from the supplied block hash.
+    * @param followFork     If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return               Blocks
     */
-  def getBlocks(network: String, minLevel: Int, maxLevel: Int, startBlockHash: Option[String]): Try[List[Block]] =
+  def getBlocks(network: String, minLevel: Int, maxLevel: Int, startBlockHash: Option[String], followFork: Boolean): Try[List[Block]] =
     startBlockHash match {
       case None =>
         getBlockHead(network).flatMap(head => Try {
-          processBlocks(network, head.metadata.hash, minLevel, maxLevel)
+          processBlocks(network, head.metadata.hash, minLevel, maxLevel, followFork = followFork)
         })
       case Some(hash) =>
         getBlock(network, hash).flatMap(block => Try {
-          processBlocks(network, block.metadata.hash, minLevel, maxLevel)
+          processBlocks(network, block.metadata.hash, minLevel, maxLevel, followFork = followFork)
         })
     }
 
@@ -185,7 +188,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                              minLevel: Int,
                              maxLevel: Int,
                              blockSoFar: List[Block] = List[Block](),
-                             followFork: Boolean = true
+                             followFork: Boolean
                            ): List[Block] =
     getBlock(network, hash) match {
       case Success(block) =>
@@ -196,13 +199,13 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           block :: blockSoFar
         else if(block.metadata.level <= minLevel && followFork)
           ApiOperations.fetchBlock(block.metadata.predecessor) match {
-            case Success(s)     => block :: blockSoFar
-            case Failure(e)     => processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, block :: blockSoFar)
+            case Success(_)     => block :: blockSoFar
+            case Failure(_)     => processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, block :: blockSoFar, followFork)
           }
         else if(block.metadata.level > maxLevel)
-          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, blockSoFar)
+          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, blockSoFar, followFork)
         else if(block.metadata.level > minLevel)
-          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, block :: blockSoFar)
+          processBlocks(network, block.metadata.predecessor, minLevel, maxLevel, block :: blockSoFar, followFork)
         else
           List[Block]()
       case Failure(e) => throw e
