@@ -16,7 +16,7 @@ import scala.util.{Failure, Success, Try}
 object Lorre extends App with LazyLogging {
 
   private val conf = ConfigFactory.load
-  val refreshIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
+  val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
@@ -28,7 +28,7 @@ object Lorre extends App with LazyLogging {
       logger.info("Fetching accounts")
       processTezosAccounts()
       logger.info("Taking a nap")
-      Thread.sleep(refreshIntervalInSeconds * 1000)
+      Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
 
