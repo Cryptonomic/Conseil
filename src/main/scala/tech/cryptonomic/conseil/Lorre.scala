@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil
 
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -14,12 +15,21 @@ import scala.util.{Failure, Success, Try}
   */
 object Lorre extends App with LazyLogging {
 
+  private val conf = ConfigFactory.load
+  val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
+
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   try {
-    processTezosBlocks()
-    processTezosAccounts()
+    while(true) {
+      logger.info("Fetching blocks")
+      processTezosBlocks()
+      logger.info("Fetching accounts")
+      processTezosAccounts()
+      logger.info("Taking a nap")
+      Thread.sleep(sleepIntervalInSeconds * 1000)
+    }
   } finally db.close()
 
   /**
