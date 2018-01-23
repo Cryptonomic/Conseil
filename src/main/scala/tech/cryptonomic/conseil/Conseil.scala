@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil
 
-import java.io.InputStream
+import java.io.{FileInputStream, InputStream}
 import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
@@ -52,7 +52,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
   val keyStoreFile = conf.getString("security.ssl.keystore-file")
   val password: Array[Char] = conf.getString("security.ssl.keystore-password").toCharArray
   val ks: KeyStore = KeyStore.getInstance("PKCS12")
-  val keystore: InputStream = getClass.getClassLoader.getResourceAsStream(keyStoreFile)
+  val keystore: InputStream = new FileInputStream(keyStoreFile)
 
   require(keystore != null, "Keystore required!")
   ks.load(keystore, password)
