@@ -14,18 +14,19 @@ import scala.util.{Failure, Success}
 object Tezos extends LazyLogging {
 
   val dbHandle = DatabaseUtil.db
-  //val tezosDB = ApiOperations
 
   val route: Route = pathPrefix(Segment) { network =>
     pathPrefix("blocks") {
       get {
         pathEnd {
-          ApiOperations.fetchBlocks match {
-            case Success(blocks) => complete(JsonUtil.toJson(blocks))
-            case Failure(e) => failWith(e)
+          parameters("limit".as[Int] ? 100) { (limit) =>
+            ApiOperations.fetchBlocks(limit) match {
+              case Success(blocks) => complete(JsonUtil.toJson(blocks))
+              case Failure(e) => failWith(e)
+            }
           }
         } ~ path("head") {
-          ApiOperations.fetchLatestBlock match {
+          ApiOperations.fetchLatestBlock() match {
             case Success(block) => complete(JsonUtil.toJson(block))
             case Failure(e) => failWith(e)
           }
@@ -39,7 +40,7 @@ object Tezos extends LazyLogging {
     } ~ pathPrefix("accounts") {
       get {
         pathEnd {
-          ApiOperations.fetchAccounts match {
+          ApiOperations.fetchAccounts() match {
             case Success(accounts) => complete(JsonUtil.toJson(accounts))
             case Failure(e) => failWith(e)
           }

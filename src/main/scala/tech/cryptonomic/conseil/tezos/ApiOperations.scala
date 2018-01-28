@@ -58,8 +58,10 @@ object ApiOperations {
     *
     * @return list of blocks
     */
-  def fetchBlocks(): Try[Seq[Tables.BlocksRow]] = Try {
-    val op = dbHandle.run(Tables.Blocks.take(1000).result)
+  def fetchBlocks(
+                 limit: Int = 100
+                 ): Try[Seq[Tables.BlocksRow]] = Try {
+    val op = dbHandle.run(Tables.Blocks.take(limit).result)
     Await.result(op, Duration.Inf)
   }
 
