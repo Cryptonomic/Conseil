@@ -1,6 +1,9 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
+import slick.lifted.{QueryBase, Rep}
+import tech.cryptonomic
+import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
@@ -59,9 +62,13 @@ object ApiOperations {
     * @return list of blocks
     */
   def fetchBlocks(
-                 limit: Int = 100
+                 limit:     Option[Int]         = Some(10),
+                 blockIDs:  Option[Set[String]] = Some(Set[String]())
                  ): Try[Seq[Tables.BlocksRow]] = Try {
-    val op = dbHandle.run(Tables.Blocks.take(limit).result)
+    val qLimit = if(limit.isDefined) limit.get else 10
+    var action = Tables.Blocks.take(qLimit)
+    action = if(blockIDs.isDefined && !blockIDs.get.isEmpty) action.filter(_.hash.inSet(blockIDs.get)) else action
+    val op = dbHandle.run(action.result)
     Await.result(op, Duration.Inf)
   }
 

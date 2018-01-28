@@ -19,8 +19,11 @@ object Tezos extends LazyLogging {
     pathPrefix("blocks") {
       get {
         pathEnd {
-          parameters("limit".as[Int] ? 100) { (limit) =>
-            ApiOperations.fetchBlocks(limit) match {
+          parameters(
+            "limit".as[Int].?,
+            "blockids".as[String].*
+          ) { (limit, blockids) =>
+            ApiOperations.fetchBlocks(limit, Some(blockids.toSet)) match {
               case Success(blocks) => complete(JsonUtil.toJson(blocks))
               case Failure(e) => failWith(e)
             }
