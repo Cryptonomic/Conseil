@@ -1,7 +1,9 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+
 import slick.jdbc.PostgresProfile.api._
-import slick.lifted.{QueryBase, Rep}
+import slick.lifted.QueryBase
 import tech.cryptonomic
 import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
@@ -64,13 +66,29 @@ object ApiOperations {
   def fetchBlocks(
                  limit:     Option[Int]         = Some(10),
                  blockIDs:  Option[Set[String]] = Some(Set[String]())
-                 ): Try[Seq[Tables.BlocksRow]] = Try {
-    val qLimit = if(limit.isDefined) limit.get else 10
-    var action = Tables.Blocks.take(qLimit)
-    action = if(blockIDs.isDefined && !blockIDs.get.isEmpty) action.filter(_.hash.inSet(blockIDs.get)) else action
-    val op = dbHandle.run(action.result)
-    Await.result(op, Duration.Inf)
-  }
+                 ): Try[Seq[Tables.BlocksRow]] =
+    fetchLatestBlock().flatMap {
+      latestBlock =>
+      Try {
+
+        def filterBlockIDs(b: Tables.Blocks): Rep[Boolean] = {
+          if (blockIDs.isDefined && blockIDs.get.nonEmpty)
+            b.hash.inSet(blockIDs.get)
+          else
+            true
+        }
+
+        val qLimit = if (limit.isDefined) limit.get else 10
+        val action = for {
+          b: Tables.Blocks <- Tables.Blocks
+          og <- Tables.OperationGroups
+          if b.hash === og.blockId && filterBlockIDs(b)
+        } yield (b.netId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.data, b.hash, b.timestamp, b.fitness)
+        val op = dbHandle.run(action.distinct.take(qLimit).result)
+        val results = Await.result(op, Duration.Inf)
+        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
+      }
+    }
 
   /**
     * Fetches an account by account_id from the db.
