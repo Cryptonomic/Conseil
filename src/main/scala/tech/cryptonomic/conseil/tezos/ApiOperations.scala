@@ -102,25 +102,43 @@ object ApiOperations {
     * @return list of blocks
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] = Try {
-        val action = for {
-          b: Tables.Blocks <- Tables.Blocks
-          og <- Tables.OperationGroups
-          if b.hash === og.blockId &&
-          filterBlockIDs(filter, b) &&
-          filterBlockLevels(filter, b) &&
-          filterNetIDs(filter, b) &&
-          filterProtocols(filter, b) &&
-          filterOperationIDs(filter, og) &&
-          filterOperationSources(filter, og)
-        } yield (b.netId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.data, b.hash, b.timestamp, b.fitness)
-        val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.Inf)
-        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
-      }
+    val action = for {
+      b: Tables.Blocks <- Tables.Blocks
+      og <- Tables.OperationGroups
+      if b.hash === og.blockId &&
+      filterBlockIDs(filter, b) &&
+      filterBlockLevels(filter, b) &&
+      filterNetIDs(filter, b) &&
+      filterProtocols(filter, b) &&
+      filterOperationIDs(filter, og) &&
+      filterOperationSources(filter, og)
+    } yield (b.netId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.data, b.hash, b.timestamp, b.fitness)
+    val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
+    val results = Await.result(op, Duration.Inf)
+    results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
+  }
 
-  //def fetchOperationGroup(operationGroup_id: String): Try[Tables.OperationGroupsRow] = {
-  //
-  //}
+  def fetchOperationGroup(operationGroupHash: String) : Try[Tables.OperationGroupsRow] = Try {
+    val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
+    Await.result(op, Duration.Inf).head
+  }
+
+  def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] = Try {
+    val action = for {
+      b: Tables.Blocks <- Tables.Blocks
+      og <- Tables.OperationGroups
+      if b.hash === og.blockId &&
+        filterBlockIDs(filter, b) &&
+        filterBlockLevels(filter, b) &&
+        filterNetIDs(filter, b) &&
+        filterProtocols(filter, b) &&
+        filterOperationIDs(filter, og) &&
+        filterOperationSources(filter, og)
+    } yield (og.hash, og.blockId, og.branch, og.source, og.signature)
+    val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
+    val results = Await.result(op, Duration.Inf)
+    results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5))
+  }
 
   /**
     * Fetches an account by account_id from the db.
