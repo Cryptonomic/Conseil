@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.duration.Duration
@@ -117,13 +118,17 @@ object ApiOperations {
         results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
       }
 
+  //def fetchOperationGroup(operationGroup_id: String): Try[Tables.OperationGroupsRow] = {
+  //
+  //}
+
   /**
     * Fetches an account by account_id from the db.
     *
     * @param account_id the account's id number
     * @return account
     */
-  def fetchAccount(account_id: String): Try[Tables.AccountsRow] = {
+  def fetchAccount(account_id: String): Try[Tables.AccountsRow] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op: Future[Seq[tezos.Tables.AccountsRow]] = dbHandle.run(Tables.Accounts
@@ -132,21 +137,27 @@ object ApiOperations {
         Await.result(op, Duration.Inf).head
       }
     }
-  }
 
   /**
     * Fetches a list of accounts from the db.
     *
     * @return list of accounts
     */
-  def fetchAccounts(): Try[Seq[String]] = {
+  def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
-        val op = dbHandle.run(Tables.Accounts.filter(_.blockId === latestBlock.hash).map(_.accountId).result)
-        Await.result(op, Duration.Inf)
+        val action = for {
+          a: Tables.Accounts <- Tables.Accounts
+          if a.blockId === latestBlock.hash &&
+          filterAccountIDs(filter, a) &&
+          filterAccountDelegates(filter, a) &&
+          filterAccountManagers(filter, a)
+        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter)
+        val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
+        val results = Await.result(op, Duration.Inf)
+        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7))
       }
     }
-  }
 
 }
 
