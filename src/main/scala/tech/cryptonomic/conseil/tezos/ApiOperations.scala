@@ -45,7 +45,9 @@ object ApiOperations {
     if (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) op.hash.inSet(filter.operationIDs.get) else true
 
   private def filterOperationSources(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
-    if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) op.source.get.inSet(filter.operationSources.get) else true
+    if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
+      op.source.getOrElse("").inSet(filter.operationSources.get)
+    else true
 
   private def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
     if (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) a.accountId.inSet(filter.accountIDs.get) else true
@@ -54,7 +56,9 @@ object ApiOperations {
     if (filter.accountManagers.isDefined && filter.accountManagers.get.nonEmpty) a.manager.inSet(filter.accountManagers.get) else true
 
   private def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-    if (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty) a.delegateValue.get.inSet(filter.accountDelegates.get) else true
+    if (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty)
+      a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
+    else true
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
