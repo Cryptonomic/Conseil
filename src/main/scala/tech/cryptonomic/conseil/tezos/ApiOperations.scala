@@ -1,11 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import java.sql.Timestamp
-
 import slick.jdbc.PostgresProfile.api._
-import slick.lifted.QueryBase
-import tech.cryptonomic
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
@@ -19,6 +14,48 @@ import scala.util.Try
 object ApiOperations {
 
   lazy val dbHandle: Database = DatabaseUtil.db
+
+  case class Filter(
+                     limit: Option[Int] = Some(10),
+                     blockIDs: Option[Set[String]] = Some(Set[String]()),
+                     levels: Option[Set[Int]] = Some(Set[Int]()),
+                     netIDs: Option[Set[String]] = Some(Set[String]()),
+                     protocols: Option[Set[String]] = Some(Set[String]()),
+                     operationIDs: Option[Set[String]] = Some(Set[String]()),
+                     operationSources: Option[Set[String]] = Some(Set[String]()),
+                     accountIDs: Option[Set[String]] = Some(Set[String]()),
+                     accountManagers: Option[Set[String]] = Some(Set[String]()),
+                     accountDelegates: Option[Set[String]] = Some(Set[String]()),
+                   )
+
+  private def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    if (filter.blockIDs.isDefined && filter.blockIDs.get.nonEmpty) b.hash.inSet(filter.blockIDs.get) else true
+
+  private def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    if (filter.levels.isDefined && filter.levels.get.nonEmpty) b.level.inSet(filter.levels.get) else true
+
+  private def filterNetIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    if (filter.netIDs.isDefined && filter.netIDs.get.nonEmpty) b.netId.inSet(filter.netIDs.get) else true
+
+  private def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    if (filter.protocols.isDefined && filter.protocols.get.nonEmpty) b.protocol.inSet(filter.protocols.get) else true
+
+  private def filterOperationIDs(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
+    if (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) op.hash.inSet(filter.operationIDs.get) else true
+
+  private def filterOperationSources(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
+    if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) op.source.get.inSet(filter.operationSources.get) else true
+
+  private def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
+    if (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) a.accountId.inSet(filter.accountIDs.get) else true
+
+  private def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
+    if (filter.accountManagers.isDefined && filter.accountManagers.get.nonEmpty) a.manager.inSet(filter.accountManagers.get) else true
+
+  private def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
+    if (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty) a.delegateValue.get.inSet(filter.accountDelegates.get) else true
+
+  private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
   /**
     * Fetches the level of the most recent block stored in the database.
@@ -63,32 +100,22 @@ object ApiOperations {
     *
     * @return list of blocks
     */
-  def fetchBlocks(
-                 limit:     Option[Int]         = Some(10),
-                 blockIDs:  Option[Set[String]] = Some(Set[String]())
-                 ): Try[Seq[Tables.BlocksRow]] =
-    fetchLatestBlock().flatMap {
-      latestBlock =>
-      Try {
-
-        def filterBlockIDs(b: Tables.Blocks): Rep[Boolean] = {
-          if (blockIDs.isDefined && blockIDs.get.nonEmpty)
-            b.hash.inSet(blockIDs.get)
-          else
-            true
-        }
-
-        val qLimit = if (limit.isDefined) limit.get else 10
+  def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] = Try {
         val action = for {
           b: Tables.Blocks <- Tables.Blocks
           og <- Tables.OperationGroups
-          if b.hash === og.blockId && filterBlockIDs(b)
+          if b.hash === og.blockId &&
+          filterBlockIDs(filter, b) &&
+          filterBlockLevels(filter, b) &&
+          filterNetIDs(filter, b) &&
+          filterProtocols(filter, b) &&
+          filterOperationIDs(filter, og) &&
+          filterOperationSources(filter, og)
         } yield (b.netId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.data, b.hash, b.timestamp, b.fitness)
-        val op = dbHandle.run(action.distinct.take(qLimit).result)
+        val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
       }
-    }
 
   /**
     * Fetches an account by account_id from the db.
