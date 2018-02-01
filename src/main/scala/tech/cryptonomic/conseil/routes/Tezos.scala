@@ -3,8 +3,8 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
-import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface}
 import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 
 import scala.util.{Failure, Success}

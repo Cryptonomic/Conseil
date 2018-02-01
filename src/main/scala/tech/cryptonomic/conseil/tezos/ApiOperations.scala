@@ -16,6 +16,19 @@ object ApiOperations {
 
   lazy val dbHandle: Database = DatabaseUtil.db
 
+  /**
+    * Repesents a query filter submitted to the Conseil API.
+    * @param limit              How many records to return
+    * @param blockIDs           Block IDs
+    * @param levels             Block levels
+    * @param netIDs             Network IDs
+    * @param protocols          Protocols
+    * @param operationIDs       Operation IDs
+    * @param operationSources   Operation sources
+    * @param accountIDs         Account IDs
+    * @param accountManagers    Account managers
+    * @param accountDelegates   Account delegates
+    */
   case class Filter(
                      limit: Option[Int] = Some(10),
                      blockIDs: Option[Set[String]] = Some(Set[String]()),
@@ -28,6 +41,8 @@ object ApiOperations {
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
                    )
+
+  // Start helper functions for constructing Slick queries
 
   private def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
     if (filter.blockIDs.isDefined && filter.blockIDs.get.nonEmpty) b.hash.inSet(filter.blockIDs.get) else true
@@ -62,9 +77,10 @@ object ApiOperations {
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
+  // End helper functions for constructing Slick queries
+
   /**
     * Fetches the level of the most recent block stored in the database.
-    *
     * @return Max level or -1 if no blocks were found in the database.
     */
   def fetchMaxLevel(): Try[Int] = Try {
@@ -78,7 +94,6 @@ object ApiOperations {
 
   /**
     * Fetches the most recent block stored in the database.
-    *
     * @return Latest block.
     */
   def fetchLatestBlock(): Try[Tables.BlocksRow] = {
@@ -92,8 +107,8 @@ object ApiOperations {
 
   /**
     * Fetches a block by block hash from the db.
-    * @param hash the block's hash
-    * @return block
+    * @param hash The block's hash
+    * @return     The block along with its operations
     */
   def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
@@ -105,8 +120,8 @@ object ApiOperations {
 
   /**
     * Fetches all blocks from the db.
-    *
-    * @return list of blocks
+    * @param filter Filters to apply
+    * @return       List of blocks
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] = Try {
     val action = for {
@@ -125,6 +140,11 @@ object ApiOperations {
     results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
   }
 
+  /**
+    * Fetch a given operation group
+    * @param operationGroupHash Operation group hash
+    * @return                   Operation group along with associated operations
+    */
   def fetchOperationGroup(operationGroupHash: String) : Try[Map[String, Any]] = Try {
     val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
     val opGroup = Await.result(op, Duration.Inf).head
@@ -157,6 +177,11 @@ object ApiOperations {
     )
   }
 
+  /**
+    * Fetches all operation groups.
+    * @param filter Filters to apply
+    * @return       List of operation groups
+    */
   def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] = Try {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
@@ -175,10 +200,9 @@ object ApiOperations {
   }
 
   /**
-    * Fetches an account by account_id from the db.
-    *
-    * @param account_id the account's id number
-    * @return account
+    * Fetches an account by account id from the db.
+    * @param account_id The account's id number
+    * @return           The account with its associated operation groups
     */
   def fetchAccount(account_id: String): Try[Map[String, Any]] =
     fetchLatestBlock().flatMap { latestBlock =>
@@ -195,8 +219,8 @@ object ApiOperations {
 
   /**
     * Fetches a list of accounts from the db.
-    *
-    * @return list of accounts
+    * @param filter Filters to apply
+    * @return       List of accounts
     */
   def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] =
     fetchLatestBlock().flatMap { latestBlock =>
