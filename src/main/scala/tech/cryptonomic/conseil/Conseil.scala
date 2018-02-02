@@ -5,6 +5,7 @@ import java.security.{KeyStore, SecureRandom}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
@@ -40,8 +41,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
 
   val route = enableCORS {
     validateApiKey { _ =>
-      pathPrefix("tezos") {
-        Tezos.route
+      logRequest("Conseil", Logging.InfoLevel) {
+        pathPrefix("tezos") {
+          Tezos.route
+        }
       }
     }
   }
