@@ -143,38 +143,47 @@ object ApiOperations {
   /**
     * Fetch a given operation group
     * @param operationGroupHash Operation group hash
-    * @return                   Operation group along with associated operations
+    * @return                   Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String) : Try[Map[String, Any]] = Try {
-    val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
-    val opGroup = Await.result(op, Duration.Inf).head
-    val op2 = dbHandle.run(Tables.Transactions.filter(_.operationGroupHash === operationGroupHash).result)
-    val transactions = Await.result(op2, Duration.Inf)
-    val op3 = dbHandle.run(Tables.Originations.filter(_.operationGroupHash === operationGroupHash).result)
-    val originations = Await.result(op3, Duration.Inf)
-    val op4 = dbHandle.run(Tables.Delegations.filter(_.operationGroupHash === operationGroupHash).result)
-    val delegations = Await.result(op4, Duration.Inf)
-    val op5 = dbHandle.run(Tables.Endorsements.filter(_.operationGroupHash === operationGroupHash).result)
-    val endorsements = Await.result(op5, Duration.Inf)
-    val op6 = dbHandle.run(Tables.Proposals.filter(_.operationGroupHash === operationGroupHash).result)
-    val proposals = Await.result(op6, Duration.Inf)
-    val op7 = dbHandle.run(Tables.Ballots.filter(_.operationGroupHash === operationGroupHash).result)
-    val ballots = Await.result(op7, Duration.Inf)
-    val op8 = dbHandle.run(Tables.SeedNonceRevealations.filter(_.operationGroupHash === operationGroupHash).result)
-    val seedNonceRevealations = Await.result(op8, Duration.Inf)
-    val op9 = dbHandle.run(Tables.FaucetTransactions.filter(_.operationGroupHash === operationGroupHash).result)
-    val faucetTransactions = Await.result(op9, Duration.Inf)
-    Map(
-      "operation_group"         -> opGroup,
-      "transactions"            -> transactions,
-      "originations"            -> originations,
-      "delegations"             -> delegations,
-      "endorsements"            -> endorsements,
-      "proposals"               -> proposals,
-      "ballots"                 -> ballots,
-      "seed_nonce_revelations"  -> seedNonceRevealations,
-      "faucet_transactions"     -> faucetTransactions
-    )
+  def fetchOperationGroup(operationGroupHash: String) : Try[Map[String, Any]] =
+    fetchLatestBlock().flatMap { latestBlock =>
+      Try {
+        val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
+        val opGroup = Await.result(op, Duration.Inf).head
+        val op2 = dbHandle.run(Tables.Transactions.filter(_.operationGroupHash === operationGroupHash).result)
+        val transactions = Await.result(op2, Duration.Inf)
+        val op3 = dbHandle.run(Tables.Originations.filter(_.operationGroupHash === operationGroupHash).result)
+        val originations = Await.result(op3, Duration.Inf)
+        val op4 = dbHandle.run(Tables.Delegations.filter(_.operationGroupHash === operationGroupHash).result)
+        val delegations = Await.result(op4, Duration.Inf)
+        val op5 = dbHandle.run(Tables.Endorsements.filter(_.operationGroupHash === operationGroupHash).result)
+        val endorsements = Await.result(op5, Duration.Inf)
+        val op6 = dbHandle.run(Tables.Proposals.filter(_.operationGroupHash === operationGroupHash).result)
+        val proposals = Await.result(op6, Duration.Inf)
+        val op7 = dbHandle.run(Tables.Ballots.filter(_.operationGroupHash === operationGroupHash).result)
+        val ballots = Await.result(op7, Duration.Inf)
+        val op8 = dbHandle.run(Tables.SeedNonceRevealations.filter(_.operationGroupHash === operationGroupHash).result)
+        val seedNonceRevealations = Await.result(op8, Duration.Inf)
+        val op9 = dbHandle.run(Tables.FaucetTransactions.filter(_.operationGroupHash === operationGroupHash).result)
+        val faucetTransactions = Await.result(op9, Duration.Inf)
+        val op10 = dbHandle.run(Tables.Accounts.
+          filter(_.accountId === opGroup.source.getOrElse("")).
+          filter(_.blockId === latestBlock.hash).
+          result)
+        val accounts = Await.result(op10, Duration.Inf)
+        Map(
+          "operation_group" -> opGroup,
+          "transactions" -> transactions,
+          "originations" -> originations,
+          "delegations" -> delegations,
+          "endorsements" -> endorsements,
+          "proposals" -> proposals,
+          "ballots" -> ballots,
+          "seed_nonce_revelations" -> seedNonceRevealations,
+          "faucet_transactions" -> faucetTransactions,
+          "accounts" -> accounts
+        )
+      }
   }
 
   /**
@@ -227,10 +236,13 @@ object ApiOperations {
       Try {
         val action = for {
           a: Tables.Accounts <- Tables.Accounts
+          og <- Tables.OperationGroups
           if a.blockId === latestBlock.hash &&
+          og.source === a.accountId &&
           filterAccountIDs(filter, a) &&
           filterAccountDelegates(filter, a) &&
-          filterAccountManagers(filter, a)
+          filterAccountManagers(filter, a) &&
+          filterOperationIDs(filter, og)
         } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter)
         val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
