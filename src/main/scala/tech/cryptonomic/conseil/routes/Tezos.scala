@@ -19,6 +19,7 @@ object Tezos extends LazyLogging {
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
+  // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
     "limit".as[Int].?,
     "block_id".as[String].*,
@@ -46,6 +47,7 @@ object Tezos extends LazyLogging {
     provide(filter)
   }
 
+  // Directive for gathering account information for most POST operations.
   val gatherKeyInfo: Directive[Tuple1[KeyStore]] = parameters(
     "publicKey".as[String],
     "privateKey".as[String],

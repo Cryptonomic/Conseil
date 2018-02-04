@@ -21,12 +21,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
 
   /**
-    * Output of transaction signing.
+    * Output of operation signing.
     * @param bytes      Signed bytes of the transaction
     * @param signature  The actual signature
     */
   case class SignedOperationGroup(bytes: Array[Byte], signature: String)
 
+  /**
+    * Result of a successfully sent operation
+    * @param accounts         Handles of any accounts created, e.g. by origination
+    * @param operationGroupID Operation group ID
+    */
   case class OperationResult(accounts: Seq[String], operationGroupID: String)
 
   /**
@@ -277,7 +282,6 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def signOperationGroup(forgedOperation: String, keyStore: KeyStore): Try[SignedOperationGroup] = Try{
     SodiumLibrary.setLibraryPath(sodiumLibraryPath)
-    //val bytes = new BigInteger(forgedOperation, 16).toByteArray
     val bytes = SodiumUtils.hex2Binary(forgedOperation)
     val pvBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
     val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes.toArray)
@@ -404,12 +408,23 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     sendOperation(network, transactionMap, keyStore, Some(fee))
   }
 
+  /**
+    * Helper for generating hex nonces.
+    * Will be generalized in the future and moved to an appropriate package.
+    * @return Hex nonce
+    */
   private def generateHexNonce() : String = {
     val random = new scala.util.Random
     val alphabet = "0123456789abcedf"
     Stream.continually(random.nextInt(alphabet.length)).map(alphabet).take(32).mkString
   }
 
+  /**
+    * Creates and sends a faucet request for obtaining free tezzies.
+    * @param network  Which Tezos network to go against
+    * @param keyStore Key pair along with public key hash
+    * @return
+    */
   def sendFaucetOperation(
                          network: String,
                          keyStore: KeyStore
@@ -422,6 +437,12 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     sendOperation(network, transactionMap, keyStore, None)
   }
 
+  /**
+    * Funds a given account with free funds on test network.
+    * @param network  Which Tezos network to go against
+    * @param keyStore Key pair along with public key hash
+    * @return
+    */
   def fundAccountWithFaucet(
                              network: String,
                              keyStore: KeyStore
@@ -437,6 +458,14 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       }
     }
 
+  /**
+    * Creates and sends a delegation operation.
+    * @param network  Which Tezos network to go against
+    * @param keyStore Key pair along with public key hash
+    * @param delegate Account ID to delegate to
+    * @param fee      Operation fee
+    * @return
+    */
   def sendDelegationOperation(
                                network: String,
                                keyStore: KeyStore,
@@ -450,6 +479,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     sendOperation(network, transactionMap, keyStore, Some(fee))
   }
 
+  /**
+    * Creates and sends an origination operation.
+    * @param network      Which Tezos network to go against
+    * @param keyStore     Key pair along with public key hash
+    * @param amount       Initial funding amount of new account
+    * @param delegate     Account ID to delegate to, blank if none
+    * @param spendable    Is account spendable?
+    * @param delegatable  Is account delegatable?
+    * @param fee          Operation fee
+    * @return
+    */
   def sendOriginationOperation(
                                network: String,
                                keyStore: KeyStore,
@@ -470,6 +510,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     sendOperation(network, transactionMap, keyStore, Some(fee))
   }
 
+  /**
+    * Creates a new Tezos identity.
+    * @return A new key pair along with a public key hash
+    */
   def createIdentity(): Try[KeyStore] = {
     SodiumLibrary.setLibraryPath(sodiumLibraryPath)
 
