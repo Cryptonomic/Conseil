@@ -452,9 +452,12 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         if(faucetResult.accounts.isEmpty) throw new Exception("Free account was not created.")
         else faucetResult.accounts.head
       }.flatMap{ freeAccount =>
-        val freeAccountKeyStore = keyStore.copy(publicKeyHash = freeAccount)
-        // The hardcoded amount is a hack and will soon be mercilessly removed.
-        sendTransactionOperation(network, freeAccountKeyStore, keyStore.publicKeyHash, 1000f, 0f)
+        getAccountForBlock(network, "prevalidation", freeAccount).flatMap{account =>
+          Try(account.balance.toString.toFloat).flatMap{balance =>
+            val freeAccountKeyStore = keyStore.copy(publicKeyHash = freeAccount)
+            sendTransactionOperation(network, freeAccountKeyStore, keyStore.publicKeyHash, balance, 0f)
+          }
+        }
       }
     }
 
