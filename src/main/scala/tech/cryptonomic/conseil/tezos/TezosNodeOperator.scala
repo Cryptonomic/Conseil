@@ -465,7 +465,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "managerPubkey" -> keyStore.publicKeyHash,
       "spendable"     -> spendable,
       "delegatable"   -> delegatable,
-      "delegate"      -> keyStore.publicKeyHash
+      "delegate"      -> delegate
     )
     sendOperation(network, transactionMap, keyStore, Some(fee))
   }
