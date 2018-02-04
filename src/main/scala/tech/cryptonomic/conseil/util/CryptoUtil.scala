@@ -9,6 +9,8 @@ import scala.util.Try
   */
 object CryptoUtil {
 
+  case class KeyStore(publicKey: String, privateKey: String, publicKeyHash: String)
+
   /**
     * Get byte prefix for Base58Check encoding and decoding of a given type of data.
     * @param prefix The type of data
@@ -31,7 +33,7 @@ object CryptoUtil {
     * @param prefix   Prefix
     * @return         Encoded string
     */
-  def base58CheckEncode(payload: List[Byte], prefix: String): Try[String] =
+  def base58CheckEncode(payload: Seq[Byte], prefix: String): Try[String] =
     getBase58BytesForPrefix(prefix).flatMap { prefix =>
       Try {
         Base58Check.encode(prefix, payload)
@@ -44,7 +46,7 @@ object CryptoUtil {
     * @param prefix Prefix
     * @return       Decoded bytes
     */
-  def base58CheckDecode(s: String, prefix: String): Try[Array[Byte]] =
+  def base58CheckDecode(s: String, prefix: String): Try[Seq[Byte]] =
     getBase58BytesForPrefix(prefix).flatMap{ prefix =>
       Try {
         val charsToSlice = prefix.length

@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
+import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 
 import scala.util.Try
 
@@ -70,6 +71,18 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     }
 
   }
+
+  val keyStore: KeyStore = KeyStore(
+    publicKey = "edpku8PouyaJa2GPyXNsqsFiqjc3PZ2bc2ujzNUJQJ87N1jwTckp7n",
+    privateKey = "edskRjp9WGL5QDFBcjHJGdxh6wfNtAYZY7CFmjSXbXSHWDydw8S9VVbaPJNFaDpHC2UscMTJWVryEQCUewQ8SNEChG2Vnb6GXA",
+    publicKeyHash = "tz1eyrhHFQ6McdKkTeZtBKoRYUsgRgARN7QE"
+  )
+
+  /*val keyStore: KeyStore = KeyStore(
+    publicKey = "edpku5ViG6Pc3uYooHuWhLr3eb2x86xNettKRm5SXBg9AfoYqrWdZc",
+    privateKey = "edskRtLP6MGr3Y4taNfC19f4TjU3KYYHpfLQzxxovzX5aS4TztpbpajTVUzruNj53iLvymkwTKAnfE72dvPx7BPBan5tvdTrAg",
+    publicKeyHash = "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z"
+  )*/
 
   "getBlock" should "should correctly fetch the genesis block" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
@@ -143,15 +156,62 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "sendTransaction" should "correctly send a transaction" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.sendTransaction(
+    val result = nodeOp.sendTransactionOperation(
       "alphanet",
-      "edpku5ViG6Pc3uYooHuWhLr3eb2x86xNettKRm5SXBg9AfoYqrWdZc",
-      "edskRtLP6MGr3Y4taNfC19f4TjU3KYYHpfLQzxxovzX5aS4TztpbpajTVUzruNj53iLvymkwTKAnfE72dvPx7BPBan5tvdTrAg",
+      keyStore,
       "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
-      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
-      0f,
-      0f
+      100f,
+      1f
     )
-    result.isFailure should be (true)   // TODO: Set to expect success state once transaction logic is fixed.
+    result.isSuccess should be (true)
+  }
+
+  "sendFaucetRequest" should "correctly create a free account" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.sendFaucetOperation(
+      "alphanet",
+      keyStore
+    )
+    result.isSuccess should be (true)
+  }
+
+  "fundAccountWithFaucet" should "fund a given account using the faucet" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.fundAccountWithFaucet(
+      "alphanet",
+      keyStore
+    )
+    result.isSuccess should be (true)
+  }
+
+  "sendDelegationOperation" should "correctly delegate to a given account" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.sendDelegationOperation(
+      "alphanet",
+      keyStore,
+      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      1f
+    )
+    result.isSuccess should be (true)
+  }
+
+  "sendOriginationOperation" should "originate an account" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.sendOriginationOperation(
+      "alphanet",
+      keyStore,
+      100f,
+      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      spendable = true,
+      delegatable = true,
+      1f
+    )
+    result.isSuccess should be (true)
+  }
+
+  "createAccount" should "generate a new Tezos key pair" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.createIdentity()
+    result.isSuccess should be (true)
   }
 }
