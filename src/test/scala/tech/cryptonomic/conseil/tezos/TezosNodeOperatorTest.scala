@@ -166,8 +166,9 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     result.isSuccess should be (true)
   }
 
-  //The following three tests are commented out until a full mock can be implemented.
-  /*"sendFaucetRequest" should "correctly create a free account" in {
+  //The following tests are commented out until a full mock can be implemented.
+  /*
+  "sendFaucetRequest" should "correctly create a free account" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.sendFaucetOperation(
       "alphanet",
@@ -196,7 +197,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       1f
     )
     result.isSuccess should be (true)
-  }*/
+  }
 
   "sendOriginationOperation" should "originate an account" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
@@ -216,5 +217,5 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.createIdentity()
     result.isSuccess should be (true)
-  }
+  }*/
 }
