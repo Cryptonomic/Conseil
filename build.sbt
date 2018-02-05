@@ -20,13 +20,12 @@ libraryDependencies  ++=  Seq(
   "org.scalamock" %% "scalamock" % "4.0.0" % Test,
   "com.madgag.spongycastle" % "core" % "1.58.0.0",
   "org.scorexfoundation" %% "scrypto" % "2.0.0",
-  "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4",
+  "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
   "com.github.alanverbner" %% "bip39" % "0.1"
 )
 
-assemblyExcludedJars in assembly := {
-  val cp = (fullClasspath in assembly).value
-  cp filter {_.data.getName == "slf4j-log4j12-1.7.21.jar"}
-}
+excludeDependencies ++= Seq(
+  "org.consensusresearch" %% "scrypto"
+)
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
