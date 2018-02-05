@@ -1,305 +1,580 @@
-openapi: 3.0.0
-servers:
-  - url: 'https://cryptonomic.tech/conseil'
-    description: Pre-alpha deployment
-info:
-  description: Specification for Conceil - a RESTful API for Tezos.
-  version: 0.0.1
-  title: Conceil
-  termsOfService: ''
-  contact:
-    email: api@cryptonomic.tech
-    name: Vishakh
-    url: 'https://cryptonomic.tech'
-  license:
-    name: Apache-2.0
-    url: 'https://opensource.org/licenses/Apache-2.0'
-tags:
-  - name: blocks
-    description: Information about blocks.
-  - name: accounts
-    description: 'Information, creation and modifications of accounts.'
-  - name: operations
-    description: Information and creation of operations.
-paths:
-  '/tezos/{networkid}/blocks':
-    get:
-      tags:
-        - blocks
-      summary: All available blocks on the given network.
-      responses:
-        default:
-          description: Default response
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-      operationId: getAllBlocks
-  '/tezos/{networkid}/blocks/{blockid}':
-    get:
-      tags:
-        - blocks
-      summary: Information about a given block.
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: blockid
-          in: path
-          description: ID of block to return
-          required: true
-          schema:
-            type: string
-            format: string
-      responses:
-        default:
-          description: Default response
-      operationId: getBlockByID
-  '/tezos/{networkid}/blocks/head':
-    get:
-      tags:
-        - blocks
-      summary: Information about the block head.
-      responses:
-        default:
-          description: Default response
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-      operationId: getBlockHead
-  '/tezos/{networkid}/operations':
-    get:
-      tags:
-        - operations
-      summary: All available operations.
-      responses:
-        default:
-          description: Default response
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-      operationId: getAllOperations
-    post:
-      tags:
-        - operations
-      summary: Posts a transaction to the blockchain.
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: integer
-          description: Amount to send in Tez
-        - name: destination
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Account ID to send the transaction
-        - name: parameter
-          in: query
-          required: false
-          schema:
-            type: object
-          description: Michelson program parameters
-      operationId: createTransaction
-      responses:
-        default:
-          description: Default response
-  '/tezos/{networkid}/operations/{operationid}':
-    get:
-      tags:
-        - operations
-      summary: Information about a given operation
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: operationid
-          in: path
-          description: ID of operation to return
-          required: true
-          schema:
-            type: string
-            format: string
-      responses:
-        default:
-          description: Default response
-      operationId: getOperationByID
-  '/tezos/{networkid}/accounts':
-    get:
-      tags:
-        - accounts
-      summary: All available accounts
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-      operationId: getAllAccounts
-      responses:
-        default:
-          description: Default response
-    post:
-      tags:
-        - accounts
-      summary: Creates a new account
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: managerPubkey
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Manager's account ID
-        - name: balance
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Funding amount
-        - name: spendable
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Is it spendable?
-        - name: delegatable
-          in: query
-          required: false
-          schema:
-            type: string
-          description: 'Is it delegatable? '
-        - name: delegate
-          in: query
-          required: false
-          schema:
-            type: string
-          description: The delegate's account ID
-        - name: script
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Code and storage for a contract account
-      operationId: createAccount
-      responses:
-        default:
-          description: Default response
-  '/tezos/{networkid}/accounts/{accountid}':
-    get:
-      tags:
-        - accounts
-      summary: Get information about a given account
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: accountID
-          in: query
-          required: true
-          schema:
-            type: string
-          description: ID of the account to get information for
-      operationId: getAccountByID
-      responses:
-        default:
-          description: Default response
-  '/tezos/{networkid}/accounts/{accountid}/delegate':
-    get:
-      tags:
-        - accounts
-      summary: Returns delegate for the given account
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: accountid
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Account ID for which the delegate is needed
-      operationId: getDelegateForAccountID
-      responses:
-        default:
-          description: Default response
-    put:
-      tags:
-        - accounts
-      summary: Sets delegate for account
-      parameters:
-        - name: networkid
-          in: path
-          description: Network to use, e.g. 'alphanet' or 'livenet'
-          required: true
-          schema:
-            type: string
-            format: string
-        - name: delegate
-          in: query
-          required: true
-          schema:
-            type: string
-          description: The updated delegate for account
-      operationId: assignDelegateForAccountID
-      responses:
-        default:
-          description: Default response
-security:
-  - conseilApiKey: []
-components:
-  links: {}
-  callbacks: {}
-  schemas: {}
-  securitySchemes:
-    conseilApiKey:
-      type: apiKey
-      name: apiKey
-      in: query
+{
+    "openapi": "3.0.0",
+    "servers": [
+        {
+            "url": "https://cryptonomic.tech:1337/",
+            "description": "Pre-alpha deployment"
+        }
+    ],
+    "info": {
+        "description": "A REST API for querying blockchains",
+        "version": "0.0.2",
+        "title": "Conseil",
+        "termsOfService": "",
+        "contact": {
+            "email": "api@cryptonomic.tech",
+            "name": "Cryptonomic",
+            "url": "https://cryptonomic.tech"
+        },
+        "license": {
+            "name": "GNU General Public License v3.0",
+            "url": "https://raw.githubusercontent.com/Cryptonomic/Conseil/master/LICENSE"
+        }
+    },
+    "tags": [
+        {
+            "name": "blocks",
+            "description": "Information about blocks."
+        },
+        {
+            "name": "accounts",
+            "description": "Information about accounts."
+        },
+        {
+            "name": "operations",
+            "description": "Information about operations."
+        },
+        {
+            "name": "actions",
+            "description": "Routes for generating keys and submitting operations."
+        }
+    ],
+    "paths": {
+        "/tezos/{networkid}/blocks": {
+            "get": {
+                "tags": [
+                    "blocks"
+                ],
+                "summary": "All available blocks on the given network.",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "operationId": "getAllBlocks"
+            }
+        },
+        "/tezos/{networkid}/blocks/{blockid}": {
+            "get": {
+                "tags": [
+                    "blocks"
+                ],
+                "summary": "Information about a given block.",
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    },
+                    {
+                        "name": "blockid",
+                        "in": "path",
+                        "description": "ID of block to return",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                },
+                "operationId": "getBlockByID"
+            }
+        },
+        "/tezos/{networkid}/blocks/head": {
+            "get": {
+                "tags": [
+                    "blocks"
+                ],
+                "summary": "Information about the block head.",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "operationId": "getBlockHead"
+            }
+        },
+        "/tezos/{networkid}/operations": {
+            "get": {
+                "tags": [
+                    "operations"
+                ],
+                "summary": "All available operation groups.",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "operationId": "getAllOperationGroups"
+            }
+        },
+        "/tezos/{networkid}/operations/{operationid}": {
+            "get": {
+                "tags": [
+                    "operations"
+                ],
+                "summary": "Information about a given operation group",
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    },
+                    {
+                        "name": "operationid",
+                        "in": "path",
+                        "description": "ID of operation group to return",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                },
+                "operationId": "getOperationGroupByID"
+            }
+        },
+        "/tezos/{networkid}/accounts": {
+            "get": {
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "All available accounts",
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "operationId": "getAllAccounts",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                }
+            }
+        },
+        "/tezos/{networkid}/accounts/{accountid}": {
+            "get": {
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Inforation about a given account",
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    },
+                    {
+                        "name": "accountid",
+                        "in": "path",
+                        "description": "ID of account to return",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "operationId": "getAccountById",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                }
+            }
+        },
+        "/tezos/{networkid}/blocks": {
+            "get": {
+                "tags": [
+                    "blocks"
+                ],
+                "summary": "All available blocks on the given network.",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "networkid",
+                        "in": "path",
+                        "description": "Network to use, e.g. 'alphanet' or 'livenet'",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "string"
+                        }
+                    }
+                ],
+                "operationId": "getAllBlocks"
+            }
+        },
+        "/tezos/{networkid}/generate_identity": {
+            "post": {
+                "tags": [
+                    "actions"
+                ],
+                "summary": "Generates a new key pair along with a public key hash",
+                "description": "",
+                "operationId": "generateIdentity",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                }
+            }
+        },
+        "/tezos/{networkid}/request_faucet": {
+            "post": {
+                "tags": [
+                    "actions"
+                ],
+                "summary": "Requests funds from the faucet on test networks",
+                "description": "",
+                "parameters": [
+                    {
+                        "name": "publicKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key"
+                    },
+                    {
+                        "name": "privateKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Private key"
+                    },
+                    {
+                        "name": "publicKeyHash",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key hash"
+                    }
+                ],
+                "operationId": "requestFaucet",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                }
+            }
+        },
+        "/tezos/{networkid}/originate_account": {
+            "post": {
+                "tags": [
+                    "actions"
+                ],
+                "summary": "Originates a new account",
+                "description": "",
+                "parameters": [
+                    {
+                        "name": "publicKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key"
+                    },
+                    {
+                        "name": "privateKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Private key"
+                    },
+                    {
+                        "name": "publicKeyHash",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key hash"
+                    },
+                    {
+                        "name": "amount",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Amount to send the originated account"
+                    },
+                    {
+                        "name": "spendable",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Should the originated contract be spendable?"
+                    },
+                    {
+                        "name": "delegatable",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Should the originated contract be delegatable?"
+                    },
+                    {
+                        "name": "delegate",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key hash of the delegate for the originated account"
+                    },
+                    {
+                        "name": "fee",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Fee to use for this operation"
+                    }
+                ],
+                "operationId": "originateAccount",
+                "responses": {
+                    "default": {
+                        "description": "Default response,"
+                    }
+                }
+            }
+        },
+        "/tezos/{networkid}/set_delegate": {
+            "post": {
+                "tags": [
+                    "actions"
+                ],
+                "summary": "Sets the delegate of a given account",
+                "description": "",
+                "parameters": [
+                    {
+                        "name": "publicKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key"
+                    },
+                    {
+                        "name": "privateKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Private key"
+                    },
+                    {
+                        "name": "publicKeyHash",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key hash"
+                    },
+                    {
+                        "name": "delegate",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key hash of the delegate for the originated account"
+                    },
+                    {
+                        "name": "fee",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Fee to use for this operation"
+                    }
+                ],
+                "operationId": "setDelegate",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                }
+            }
+        },
+        "/tezos/{networkid}/send_transaction": {
+            "post": {
+                "tags": [
+                    "actions"
+                ],
+                "summary": "Sends tezzies to a given account",
+                "description": "",
+                "parameters": [
+                    {
+                        "name": "publicKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key"
+                    },
+                    {
+                        "name": "privateKey",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Private key"
+                    },
+                    {
+                        "name": "publicKeyHash",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Public key hash"
+                    },
+                    {
+                        "name": "amount",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Amount to send the originated account"
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Account ID / public key hash of the recepient"
+                    },
+                    {
+                        "name": "fee",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Fee to use for this operation"
+                    }
+                ],
+                "operationId": "sendTransaction",
+                "responses": {
+                    "default": {
+                        "description": "Default response"
+                    }
+                }
+            }
+        }
+    },
+    "security": [
+        {
+            "conseilApiKey": []
+        }
+    ],
+    "components": {
+        "links": {},
+        "callbacks": {},
+        "schemas": {},
+        "securitySchemes": {
+            "conseilApiKey": {
+                "type": "apiKey",
+                "name": "apiKey",
+                "in": "header"
+            }
+        }
+    }
+}
