@@ -59,6 +59,7 @@ object TezosDatabaseOperations {
         spendable = account._2.spendable,
         delegateSetable = account._2.delegate.setable,
         delegateValue = account._2.delegate.value,
+        balance = account._2.balance,
         counter = account._2.counter
       )
     }.toList
