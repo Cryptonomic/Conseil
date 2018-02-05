@@ -71,7 +71,7 @@ object TezosTypes {
 
   case class Account(
                     manager: String,
-                    balance: Any,  //Can be either an integer or a string! ¯\_(ツ)_/¯
+                    balance: scala.math.BigDecimal,
                     spendable: Boolean,
                     delegate: AccountDelegate,
                     script: Option[Any],
