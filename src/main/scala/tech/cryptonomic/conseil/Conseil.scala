@@ -41,7 +41,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
 
   val route = enableCORS {
     validateApiKey { _ =>
-      logRequest("Conseil", Logging.InfoLevel) {
+      logRequest("Conseil", Logging.DebugLevel) {
         pathPrefix("tezos") {
           Tezos.route
         }

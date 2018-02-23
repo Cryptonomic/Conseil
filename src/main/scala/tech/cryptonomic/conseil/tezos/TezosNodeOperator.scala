@@ -191,7 +191,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                            ): List[Block] =
     getBlock(network, hash) match {
       case Success(block) =>
-        logger.info(s"Current block height: ${block.metadata.level}")
+        logger.debug(s"Current block height: ${block.metadata.level}")
         if(block.metadata.level == 0 && minLevel <= 0)
           block :: blockSoFar
         else if(block.metadata.level == minLevel && !followFork)
