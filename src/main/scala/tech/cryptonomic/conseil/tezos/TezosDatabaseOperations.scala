@@ -50,7 +50,7 @@ object TezosDatabaseOperations {
     * @param accountsInfo Accounts
     * @return             Database rows
     */
-  private def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHash): List[Tables.AccountsRow] =
+  def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHash): List[Tables.AccountsRow] =
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
         accountId = account._1,
@@ -69,7 +69,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def blockToDatabaseRow(block: Block): Tables.BlocksRow =
+  def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(
       netId = block.metadata.net_id,
       protocol = block.metadata.protocol,
@@ -89,7 +89,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
+  def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
     block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
         hash = og.hash,
@@ -105,7 +105,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database row
     */
-  private def transactionsToDatabaseRows(block: Block): List[Tables.TransactionsRow] =
+  def transactionsToDatabaseRows(block: Block): List[Tables.TransactionsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="transaction").map{operation =>
         Tables.TransactionsRow(
@@ -123,7 +123,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def endorsementsToDatabaseRows(block: Block): List[Tables.EndorsementsRow] =
+  def endorsementsToDatabaseRows(block: Block): List[Tables.EndorsementsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="endorsement").map{operation =>
         Tables.EndorsementsRow(
@@ -140,7 +140,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def originationsToDatabaseRows(block: Block): List[Tables.OriginationsRow] =
+  def originationsToDatabaseRows(block: Block): List[Tables.OriginationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="origination").map{operation =>
         Tables.OriginationsRow(
@@ -161,7 +161,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def delegationsToDatabaseRows(block: Block): List[Tables.DelegationsRow] =
+  def delegationsToDatabaseRows(block: Block): List[Tables.DelegationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="delegation").map{operation =>
         Tables.DelegationsRow(
@@ -177,7 +177,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def proposalsToDatabaseRows(block: Block): List[Tables.ProposalsRow] =
+  def proposalsToDatabaseRows(block: Block): List[Tables.ProposalsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="proposal").map{operation =>
         Tables.ProposalsRow(
@@ -194,7 +194,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def ballotsToDatabaseRows(block: Block): List[Tables.BallotsRow] =
+  def ballotsToDatabaseRows(block: Block): List[Tables.BallotsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="ballot").map{operation =>
         Tables.BallotsRow(
@@ -212,7 +212,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def seedNonceRevelationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
+  def seedNonceRevelationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="seed_nonce_revelation").map{operation =>
         Tables.SeedNonceRevealationsRow(
@@ -229,7 +229,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  private def faucetTransactionsToDatabaseRows(block: Block): List[Tables.FaucetTransactionsRow] =
+  def faucetTransactionsToDatabaseRows(block: Block): List[Tables.FaucetTransactionsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations.filter(_.kind.get=="faucet").map{operation =>
         Tables.FaucetTransactionsRow(
