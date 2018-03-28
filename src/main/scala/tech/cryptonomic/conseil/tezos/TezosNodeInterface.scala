@@ -1,10 +1,15 @@
 package tech.cryptonomic.conseil.tezos
 
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model._
+import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 
+import scala.concurrent.duration.{Duration, _}
+import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.Try
-import scalaj.http.{HttpOptions, HttpResponse}
 
 /**
   * Interface into the Tezos blockchain.
@@ -19,6 +24,10 @@ trait TezosRPCInterface {
 object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   private val conf = ConfigFactory.load
+
+  implicit val system: ActorSystem = ActorSystem("lorre-system")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   /**
     * Runs an RPC call against the configured Tezos node.
@@ -38,12 +47,18 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
         case None => """{}"""
         case Some(str) => str
       }
-      val response: HttpResponse[String] = scalaj.http.Http(url).postData(postedData)
-        .header("Content-Type", "application/json")
-        .header("Charset", "UTF-8")
-        .option(HttpOptions.readTimeout(100000))
-        .option(HttpOptions.connTimeout(100000)).asString
-      response.body
+
+      val responseFuture: Future[HttpResponse] =
+        Http(system).singleRequest(
+          HttpRequest(
+            HttpMethods.POST,
+            url,
+            entity = HttpEntity(ContentTypes.`application/json`, postedData.getBytes())
+          )
+        )
+      val response: HttpResponse = Await.result(responseFuture, Duration.Inf)
+      val responseBodyFuture = response.entity.toStrict(1.second).map(_.data).map(_.utf8String)
+      Await.result(responseBodyFuture, Duration.Inf)
     }
   }
 
