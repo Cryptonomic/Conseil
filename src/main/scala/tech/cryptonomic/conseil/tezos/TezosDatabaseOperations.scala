@@ -20,15 +20,16 @@ object TezosDatabaseOperations {
     dbHandle.run(
       DBIO.seq(
         Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Transactions           ++= blocks.flatMap(transactionsToDatabaseRows),
+        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow)
+        //REMOVED FOR ZERONET COMPATIBILTY
+        /*Tables.Transactions           ++= blocks.flatMap(transactionsToDatabaseRows),
         Tables.Endorsements           ++= blocks.flatMap(endorsementsToDatabaseRows),
         Tables.Originations           ++= blocks.flatMap(originationsToDatabaseRows),
         Tables.Delegations            ++= blocks.flatMap(delegationsToDatabaseRows),
         Tables.Proposals              ++= blocks.flatMap(proposalsToDatabaseRows),
         Tables.Ballots                ++= blocks.flatMap(ballotsToDatabaseRows),
         Tables.SeedNonceRevealations  ++= blocks.flatMap(seedNonceRevelationsToDatabaseRows),
-        Tables.FaucetTransactions     ++= blocks.flatMap(faucetTransactionsToDatabaseRows)
+        Tables.FaucetTransactions     ++= blocks.flatMap(faucetTransactionsToDatabaseRows)*/
       )
     )
 
@@ -71,7 +72,7 @@ object TezosDatabaseOperations {
     */
   def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(
-      netId = block.metadata.net_id,
+      netId = block.metadata.chain_id,
       protocol = block.metadata.protocol,
       level = block.metadata.level,
       proto = block.metadata.proto,
@@ -79,7 +80,7 @@ object TezosDatabaseOperations {
       timestamp = block.metadata.timestamp,
       validationPass = block.metadata.validation_pass,
       operationsHash = block.metadata.operations_hash,
-      data = block.metadata.data,
+      data = block.metadata.protocol_data,
       hash = block.metadata.hash,
       fitness = block.metadata.fitness.mkString(",")
     )
@@ -89,17 +90,20 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
-    block.operationGroups.map{ og =>
+  def operationGroupToDatabaseRow(_block: Block): List[Tables.OperationGroupsRow] =
+    _block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
         hash = og.hash,
-        blockId = block.metadata.hash,
+        block = og.block,
         branch = og.branch,
-        source = og.source,
-        signature = og.signature
+        signature = og.signature,
+        slots = og.slots.mkString,
+        level = og.level,
+        kind = og.kind
       )
+      Tables.OperationGroupsRow(hash = og.hash, block = og.block, br)
     }
-
+  /* REMOVED FOR ZERONET COMPATIBILITY
   /**
     * Generates database rows for a block's transactions.
     * @param block  Block
@@ -240,4 +244,5 @@ object TezosDatabaseOperations {
         )
       }
     }
+    */
 }
