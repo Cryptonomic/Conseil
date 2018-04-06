@@ -69,7 +69,7 @@ object TezosTypes {
   //Make ManagerOperation a Trait
   case class Transaction(
                         kind: String,
-                        amount: Int,
+                        amount: scala.math.BigDecimal,
                         destination: String,
                         //parameters is a Micheline expression, figure out how to parse later
                         parameters: Option[String]
@@ -83,7 +83,7 @@ object TezosTypes {
   case class Origination(
                         kind: String,
                         managerPubKey: String,
-                        balance: Int,
+                        balance: BigDecimal,
                         spendable: Option[Boolean],
                         delegatable: Option[Boolean],
                         delegate: Option[String]

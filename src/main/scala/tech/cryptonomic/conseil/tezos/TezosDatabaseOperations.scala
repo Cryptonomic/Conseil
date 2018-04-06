@@ -80,19 +80,15 @@ object TezosDatabaseOperations {
     */
   def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(
-      netId = block.metadata.chain_id,
-      protocol = block.metadata.protocol,
-      level = block.metadata.level,
-      proto = block.metadata.proto,
-      predecessor = block.metadata.predecessor,
-      timestamp = block.metadata.timestamp,
-      validationPass = block.metadata.validation_pass,
-      operationsHash = block.metadata.operations_hash,
-      data = block.metadata.protocol_data,
-      hash = block.metadata.hash,
-      fitness = block.metadata.fitness.mkString(",")
+      block.metadata.chain_id, block.metadata.protocol,
+      block.metadata.level, block.metadata.proto,
+      block.metadata.predecessor, block.metadata.validation_pass,
+      block.metadata.operations_hash, block.metadata.protocol_data,
+      block.metadata.hash, block.metadata.timestamp,
+      block.metadata.fitness.mkString(","), Some(block.metadata.context)
     )
 
+  // No block information in OperationGroup schema?
   /**
     * Generates database rows for a block's operation groups.
     * @param block  Block
@@ -101,17 +97,12 @@ object TezosDatabaseOperations {
   def operationGroupToDatabaseRow(_block: Block): List[Tables.OperationGroupsRow] =
     _block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
-        hash = og.hash,
-        block = og.block,
-        branch = og.branch,
-        signature = og.signature,
-        slots = og.slots.mkString,
-        level = og.level,
-        kind = og.kind
+        og.hash, _block.metadata.hash, og.branch, og.signature, og.kind, og.source, og.fee,
+        og.counter
       )
-      Tables.OperationGroupsRow(hash = og.hash, block = og.block, br)
     }
-  /* REMOVED FOR ZERONET COMPATIBILITY
+
+
   /**
     * Generates database rows for a block's transactions.
     * @param block  Block
@@ -119,25 +110,25 @@ object TezosDatabaseOperations {
     */
   def transactionsToDatabaseRows(block: Block): List[Tables.TransactionsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.filter(_.kind.get=="transaction").map{operation =>
+      og.operations.map{operation =>
+        //filter(_.kind.get=="transaction").map{operation =>
         Tables.TransactionsRow(
-          transactionId = 0,
-          operationGroupHash = og.hash,
-          amount = operation.amount.get,
-          destination = operation.destination,
-          parameters = None
+          0, og.hash, operation.transaction.get.amount,
+          Some(operation.transaction.get.destination), //is this nullable or not? mismatch in schema and type
+          operation.transaction.get.parameters
         )
       }
     }
 
+  /* No endorsements in new operationGroup as of yet
   /**
     * Generates database rows for a block's endorsements.
     * @param block  Block
     * @return       Database rows
     */
   def endorsementsToDatabaseRows(block: Block): List[Tables.EndorsementsRow] =
-    block.operationGroups.flatMap{ og =>
-      og.operations.filter(_.kind.get=="endorsement").map{operation =>
+    block.operationGroups.map{ og =>
+      og.operations.map{operation =>
         Tables.EndorsementsRow(
           endorsementId = 0,
           operationGroupHash = og.hash,
@@ -146,6 +137,8 @@ object TezosDatabaseOperations {
         )
       }
     }
+  */
+
 
   /**
     * Generates database rows for a block's originations.
@@ -154,16 +147,14 @@ object TezosDatabaseOperations {
     */
   def originationsToDatabaseRows(block: Block): List[Tables.OriginationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.filter(_.kind.get=="origination").map{operation =>
+      og.operations.map{operation =>
         Tables.OriginationsRow(
-          originationId = 0,
-          operationGroupHash = og.hash,
-          managerpubkey = operation.managerPubKey,
-          balance = operation.balance,
-          spendable = operation.spendable,
-          delegatable = operation.delegatable,
-          delegate = operation.delegate,
-          script = None
+          0, og.hash, Some(operation.origination.get.managerPubKey), //is it nullable or not?
+          Some(operation.origination.get.balance), //is it nullable or not?
+          operation.origination.get.spendable,
+          operation.origination.get.delegatable,
+          operation.origination.get.delegate,
+            None
         )
       }
     }
@@ -174,16 +165,15 @@ object TezosDatabaseOperations {
     * @return       Database rows
     */
   def delegationsToDatabaseRows(block: Block): List[Tables.DelegationsRow] =
-    block.operationGroups.flatMap{ og =>
-      og.operations.filter(_.kind.get=="delegation").map{operation =>
+    block.operationGroups.map{ og =>
+      og.operations.map{operation =>
         Tables.DelegationsRow(
-          delegationId = 0,
-          operationGroupHash = og.hash,
-          delegate = operation.delegate.get
+         0, og.hash, operation.delegation.get.delegate // nullable?
         )
       }
     }
 
+  /* REMOVED FOR ZERONET COMPATIBILITY
   /**
     * Generates database rows for a block's proposals.
     * @param block  Block
