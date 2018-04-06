@@ -54,6 +54,14 @@ object TezosDatabaseOperations {
   def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHash): List[Tables.AccountsRow] =
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
+        account._1, accountsInfo.block_hash, account._2.manager, account._2.spendable,
+        account._2.delegate.setable, account._2.delegate.value, account._2.balance,
+        account._2.counter
+      )
+    }
+    //WON'T RECOGNIZE FIELD NAMES IN INSTANTIATION
+    /*accountsInfo.accounts.map { account =>
+      Tables.AccountsRow(
         accountId = account._1,
         blockId = accountsInfo.block_hash,
         manager = account._2.manager,
@@ -63,7 +71,7 @@ object TezosDatabaseOperations {
         balance = account._2.balance,
         counter = account._2.counter
       )
-    }.toList
+    }.toList*/
 
   /**
     * Generates database rows for blocks.

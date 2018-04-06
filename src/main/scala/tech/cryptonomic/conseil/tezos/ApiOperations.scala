@@ -204,7 +204,7 @@ object ApiOperations {
         filterProtocols(filter, b) &&
         filterOperationIDs(filter, og) //&& NEED to figure out how to get operation sources in the future
         //filterOperationSources(filter, og)
-    } yield (og.hash, og.block, og.branch, og.source, og.signature)
+    } yield (og.hash, og.block, og.branch, og.signature, og.kind, og.source, og.fee, og.counter)
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5))
@@ -245,7 +245,7 @@ object ApiOperations {
           filterAccountDelegates(filter, a) &&
           filterAccountManagers(filter, a) &&
           filterOperationIDs(filter, og)
-        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.balance, a.counter)
+        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script)
         val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8))

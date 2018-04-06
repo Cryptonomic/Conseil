@@ -26,18 +26,18 @@ trait Tables {
     *  @param delegateSetable Database column delegate_setable SqlType(bool)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param counter Database column counter SqlType(int4)
-    *  @param script Database column script SqlType(json), Length(2147483647,false), Default(None) */
-  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None)
+    *  @param script Database column script SqlType(varchar) */
+  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: String)
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
   implicit def GetResultAccountsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int]): GR[AccountsRow] = GR{
     prs => import prs._
-      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String]))
+      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<[String]))
   }
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
   class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
     def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter, script) <> (AccountsRow.tupled, AccountsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), Rep.Some(script)).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
@@ -53,8 +53,8 @@ trait Tables {
     val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
     /** Database column counter SqlType(int4) */
     val counter: Rep[Int] = column[Int]("counter")
-    /** Database column script SqlType(json), Length(2147483647,false), Default(None) */
-    val script: Rep[Option[String]] = column[Option[String]]("script", O.Length(2147483647,varying=false), O.Default(None))
+    /** Database column script SqlType(varchar) */
+    val script: Rep[String] = column[String]("script")
 
     /** Primary key of Accounts (database name accounts_pkey) */
     val pk = primaryKey("accounts_pkey", (accountId, blockId))
@@ -261,20 +261,21 @@ trait Tables {
     *  @param block Database column block SqlType(varchar)
     *  @param branch Database column branch SqlType(varchar)
     *  @param signature Database column signature SqlType(varchar), Default(None)
-    *  @param slots Database column slots SqlType(varchar)
-    *  @param level Database column level SqlType(int4), Default(None)
-    *  @param kind Database column kind SqlType(varchar) */
-  case class OperationGroupsRow(hash: String, block: String, branch: String, signature: Option[String] = None, slots: String, level: Option[Int] = None, kind: String)
+    *  @param kind Database column kind SqlType(varchar)
+    *  @param source Database column source SqlType(varchar), Default(None)
+    *  @param fee Database column fee SqlType(numeric), Default(None)
+    *  @param counter Database column counter SqlType(numeric), Default(None) */
+  case class OperationGroupsRow(hash: String, block: String, branch: String, signature: Option[String] = None, kind: String, source: Option[String] = None, fee: Option[scala.math.BigDecimal] = None, counter: Option[scala.math.BigDecimal] = None)
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
-  implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[Int]]): GR[OperationGroupsRow] = GR{
+  implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[scala.math.BigDecimal]]): GR[OperationGroupsRow] = GR{
     prs => import prs._
-      OperationGroupsRow.tupled((<<[String], <<[String], <<[String], <<?[String], <<[String], <<?[Int], <<[String]))
+      OperationGroupsRow.tupled((<<[String], <<[String], <<[String], <<?[String], <<[String], <<?[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal]))
   }
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
-    def * = (hash, block, branch, signature, slots, level, kind) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
+    def * = (hash, block, branch, signature, kind, source, fee, counter) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(hash), Rep.Some(block), Rep.Some(branch), signature, Rep.Some(slots), level, Rep.Some(kind)).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2.get, _3.get, _4, _5.get, _6, _7.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(hash), Rep.Some(block), Rep.Some(branch), signature, Rep.Some(kind), source, fee, counter).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2.get, _3.get, _4, _5.get, _6, _7, _8)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column hash SqlType(varchar), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
@@ -284,12 +285,14 @@ trait Tables {
     val branch: Rep[String] = column[String]("branch")
     /** Database column signature SqlType(varchar), Default(None) */
     val signature: Rep[Option[String]] = column[Option[String]]("signature", O.Default(None))
-    /** Database column slots SqlType(varchar) */
-    val slots: Rep[String] = column[String]("slots")
-    /** Database column level SqlType(int4), Default(None) */
-    val level: Rep[Option[Int]] = column[Option[Int]]("level", O.Default(None))
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
+    /** Database column source SqlType(varchar), Default(None) */
+    val source: Rep[Option[String]] = column[Option[String]]("source", O.Default(None))
+    /** Database column fee SqlType(numeric), Default(None) */
+    val fee: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("fee", O.Default(None))
+    /** Database column counter SqlType(numeric), Default(None) */
+    val counter: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("counter", O.Default(None))
 
     /** Foreign key referencing Blocks (database name OperationGroups_block_id_fkey) */
     lazy val blocksFk = foreignKey("OperationGroups_block_id_fkey", block, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
@@ -377,18 +380,19 @@ trait Tables {
     *  @param seedNonnceRevealationId Database column seed_nonnce_revealation_id SqlType(serial), AutoInc, PrimaryKey
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
     *  @param level Database column level SqlType(int4)
-    *  @param nonce Database column nonce SqlType(varchar) */
-  case class SeedNonceRevealationsRow(seedNonnceRevealationId: Int, operationGroupHash: String, level: Int, nonce: String)
+    *  @param nonce Database column nonce SqlType(varchar)
+    *  @param publicKey Database column public_key SqlType(varchar) */
+  case class SeedNonceRevealationsRow(seedNonnceRevealationId: Int, operationGroupHash: String, level: Int, nonce: String, publicKey: String)
   /** GetResult implicit for fetching SeedNonceRevealationsRow objects using plain SQL queries */
   implicit def GetResultSeedNonceRevealationsRow(implicit e0: GR[Int], e1: GR[String]): GR[SeedNonceRevealationsRow] = GR{
     prs => import prs._
-      SeedNonceRevealationsRow.tupled((<<[Int], <<[String], <<[Int], <<[String]))
+      SeedNonceRevealationsRow.tupled((<<[Int], <<[String], <<[Int], <<[String], <<[String]))
   }
   /** Table description of table seed_nonce_revealations. Objects of this class serve as prototypes for rows in queries. */
   class SeedNonceRevealations(_tableTag: Tag) extends profile.api.Table[SeedNonceRevealationsRow](_tableTag, "seed_nonce_revealations") {
-    def * = (seedNonnceRevealationId, operationGroupHash, level, nonce) <> (SeedNonceRevealationsRow.tupled, SeedNonceRevealationsRow.unapply)
+    def * = (seedNonnceRevealationId, operationGroupHash, level, nonce, publicKey) <> (SeedNonceRevealationsRow.tupled, SeedNonceRevealationsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(seedNonnceRevealationId), Rep.Some(operationGroupHash), Rep.Some(level), Rep.Some(nonce)).shaped.<>({r=>import r._; _1.map(_=> SeedNonceRevealationsRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(seedNonnceRevealationId), Rep.Some(operationGroupHash), Rep.Some(level), Rep.Some(nonce), Rep.Some(publicKey)).shaped.<>({r=>import r._; _1.map(_=> SeedNonceRevealationsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column seed_nonnce_revealation_id SqlType(serial), AutoInc, PrimaryKey */
     val seedNonnceRevealationId: Rep[Int] = column[Int]("seed_nonnce_revealation_id", O.AutoInc, O.PrimaryKey)
@@ -398,6 +402,8 @@ trait Tables {
     val level: Rep[Int] = column[Int]("level")
     /** Database column nonce SqlType(varchar) */
     val nonce: Rep[String] = column[String]("nonce")
+    /** Database column public_key SqlType(varchar) */
+    val publicKey: Rep[String] = column[String]("public_key")
 
     /** Foreign key referencing OperationGroups (database name seed_nonce_revealations_operation_group_hash_fkey) */
     lazy val operationGroupsFk = foreignKey("seed_nonce_revealations_operation_group_hash_fkey", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
