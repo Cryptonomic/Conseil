@@ -61,8 +61,8 @@ object TezosTypes {
                     branch: String,
                     kind: String,
                     source: Option[String],
-                    fee: Option[Int],
-                    counter: Option[Int],
+                    fee: Option[scala.math.BigDecimal],
+                    counter: Option[scala.math.BigDecimal],
                     operations: List[ManagerOperation],
                     signature: Option[String]
                     )
@@ -77,7 +77,7 @@ object TezosTypes {
 
   case class Delegation(
                        kind: String,
-                       delegate: Option[String]
+                       delegate: String //nullable?
                        )
 
   case class Origination(
@@ -150,7 +150,7 @@ object TezosTypes {
                     balance: scala.math.BigDecimal,
                     spendable: Boolean,
                     delegate: AccountDelegate,
-                    script: Option[Any],
+                    script: String,//Option[Any],
                     counter: Int
                     )
 

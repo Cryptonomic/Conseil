@@ -20,16 +20,16 @@ object TezosDatabaseOperations {
     dbHandle.run(
       DBIO.seq(
         Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow)
-        //REMOVED FOR ZERONET COMPATIBILTY
-        /*Tables.Transactions           ++= blocks.flatMap(transactionsToDatabaseRows),
-        Tables.Endorsements           ++= blocks.flatMap(endorsementsToDatabaseRows),
+        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
+        //SOME REMOVED FOR ZERONET COMPATIBILTY
+        Tables.Transactions           ++= blocks.flatMap(transactionsToDatabaseRows),
+        //Tables.Endorsements           ++= blocks.flatMap(endorsementsToDatabaseRows),
         Tables.Originations           ++= blocks.flatMap(originationsToDatabaseRows),
         Tables.Delegations            ++= blocks.flatMap(delegationsToDatabaseRows),
-        Tables.Proposals              ++= blocks.flatMap(proposalsToDatabaseRows),
-        Tables.Ballots                ++= blocks.flatMap(ballotsToDatabaseRows),
+        //Tables.Proposals              ++= blocks.flatMap(proposalsToDatabaseRows),
+        //Tables.Ballots                ++= blocks.flatMap(ballotsToDatabaseRows),
         Tables.SeedNonceRevealations  ++= blocks.flatMap(seedNonceRevelationsToDatabaseRows),
-        Tables.FaucetTransactions     ++= blocks.flatMap(faucetTransactionsToDatabaseRows)*/
+        //Tables.FaucetTransactions     ++= blocks.flatMap(faucetTransactionsToDatabaseRows)
       )
     )
 
@@ -55,10 +55,10 @@ object TezosDatabaseOperations {
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
         account._1, accountsInfo.block_hash, account._2.manager, account._2.spendable,
-        account._2.delegate.setable, account._2.delegate.value, account._2.balance,
-        account._2.counter
+        account._2.delegate.setable, account._2.delegate.value,
+        account._2.counter, account._2.script
       )
-    }
+    }.toList
     //WON'T RECOGNIZE FIELD NAMES IN INSTANTIATION
     /*accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
@@ -94,10 +94,10 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  def operationGroupToDatabaseRow(_block: Block): List[Tables.OperationGroupsRow] =
-    _block.operationGroups.map{ og =>
+  def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
+    block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
-        og.hash, _block.metadata.hash, og.branch, og.signature, og.kind, og.source, og.fee,
+        og.hash, block.metadata.hash, og.branch, og.signature, og.kind, og.source, og.fee,
         og.counter
       )
     }
@@ -165,7 +165,7 @@ object TezosDatabaseOperations {
     * @return       Database rows
     */
   def delegationsToDatabaseRows(block: Block): List[Tables.DelegationsRow] =
-    block.operationGroups.map{ og =>
+    block.operationGroups.flatMap{ og =>
       og.operations.map{operation =>
         Tables.DelegationsRow(
          0, og.hash, operation.delegation.get.delegate // nullable?
@@ -208,7 +208,8 @@ object TezosDatabaseOperations {
         )
       }
     }
-
+  */
+  //currently no level or nonce for reveal in database, using 0 as placeholder
   /**
     * Generates database rows for a block's seed nonce revelations.
     * @param block  Block
@@ -216,31 +217,29 @@ object TezosDatabaseOperations {
     */
   def seedNonceRevelationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.filter(_.kind.get=="seed_nonce_revelation").map{operation =>
+      og.operations.map{operation =>
         Tables.SeedNonceRevealationsRow(
-          seedNonnceRevealationId = 0,
-          operationGroupHash = og.hash,
-          level = operation.level.get,
-          nonce = operation.nonce.get
+          0, og.hash, 0, "", operation.reveal.get.publicKey
         )
       }
     }
 
-  /**
-    * Generates database rows for a block's faucet transactions.
-    * @param block  Block
-    * @return       Database rows
-    */
-  def faucetTransactionsToDatabaseRows(block: Block): List[Tables.FaucetTransactionsRow] =
-    block.operationGroups.flatMap{ og =>
-      og.operations.filter(_.kind.get=="faucet").map{operation =>
-        Tables.FaucetTransactionsRow(
-          faucetTransactionId = 0,
-          operationGroupHash = og.hash,
-          id = operation.id.get,
-          nonce = operation.nonce.get
-        )
-      }
-    }
-    */
+  /* REMOVED FOR ZERONET COMPATIBILITY
+ /**
+   * Generates database rows for a block's faucet transactions.
+   * @param block  Block
+   * @return       Database rows
+   */
+ def faucetTransactionsToDatabaseRows(block: Block): List[Tables.FaucetTransactionsRow] =
+   block.operationGroups.flatMap{ og =>
+     og.operations.filter(_.kind.get=="faucet").map{operation =>
+       Tables.FaucetTransactionsRow(
+         faucetTransactionId = 0,
+         operationGroupHash = og.hash,
+         id = operation.id.get,
+         nonce = operation.nonce.get
+       )
+     }
+   }
+   */
 }

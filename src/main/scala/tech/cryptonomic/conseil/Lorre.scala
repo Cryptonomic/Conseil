@@ -46,7 +46,8 @@ object Lorre extends App with LazyLogging {
             case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
             case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
           }
-          Await.result(dbFut, Duration.Inf)
+          val foobar = Await.result(dbFut, Duration.Inf)
+          foobar
         }
       case Failure(e) =>
         logger.error(s"Could not fetch blocks from client because $e")
