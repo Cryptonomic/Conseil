@@ -10,7 +10,6 @@ object TezosTypes {
   case class BlockMetadata(
                             hash: String,
                             chain_id: String,
-                            operations: Seq[Seq[BlockOperationMetadata]],
                             protocol: String,
                             level: Int,
                             proto: Int,
@@ -66,6 +65,7 @@ object TezosTypes {
                     operations: List[ManagerOperation],
                     signature: Option[String]
                     )
+
   //Make ManagerOperation a Trait
   case class Transaction(
                         kind: String,
