@@ -183,7 +183,7 @@ object ApiOperations {
     } yield (og.hash, og.block, og.branch, og.signature, og.kind, og.source, og.fee, og.counter)
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
-    results.map(x => Tables.OperationGroupsRow(x._1, x._2.get, Some(x._3), x._4, Some(1.0)))
+    results.map(x => Tables.OperationGroupsRow(x._1, x._2.get, Some(x._3), x._4, Some(1)))
   }
 
   /**
