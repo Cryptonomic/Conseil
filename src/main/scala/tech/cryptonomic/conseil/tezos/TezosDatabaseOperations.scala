@@ -97,11 +97,10 @@ object TezosDatabaseOperations {
   def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
     block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
-        og.hash, block.metadata.hash, og.branch, og.signature, og.kind, og.source, og.fee,
-        og.counter
+        og.hash, block.metadata.hash, og.branch, Some(og.signature), og.kind, Some(og.source), Some(og.fee),
+        Some(og.counter)
       )
     }
-
 
   /**
     * Generates database rows for a block's transactions.
@@ -109,16 +108,15 @@ object TezosDatabaseOperations {
     * @return       Database row
     */
   def transactionsToDatabaseRows(block: Block): List[Tables.TransactionsRow] =
-    block.operationGroups.flatMap{ og =>
-      og.operations.map{operation =>
-        //filter(_.kind.get=="transaction").map{operation =>
+    block.operationGroups.flatMap{og =>
+      og.operations.filter(_.kind == "transaction").map{operation =>
         Tables.TransactionsRow(
-          0, og.hash, operation.transaction.get.amount,
-          Some(operation.transaction.get.destination), //is this nullable or not? mismatch in schema and type
-          operation.transaction.get.parameters
+          0, og.hash, operation.amount, Some(operation.destination), None
         )
       }
     }
+
+
 
   /* No endorsements in new operationGroup as of yet
   /**
@@ -147,15 +145,9 @@ object TezosDatabaseOperations {
     */
   def originationsToDatabaseRows(block: Block): List[Tables.OriginationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.map{operation =>
-        Tables.OriginationsRow(
-          0, og.hash, Some(operation.origination.get.managerPubKey), //is it nullable or not?
-          Some(operation.origination.get.balance), //is it nullable or not?
-          operation.origination.get.spendable,
-          operation.origination.get.delegatable,
-          operation.origination.get.delegate,
-            None
-        )
+      og.operations.filter(_.kind == "origination").map{ operation =>
+        Tables.OriginationsRow(0, og.hash, Some(operation.managerPubKey), Some(operation.balance),
+          Some(operation.spendable), Some(operation.delegatable), Some(operation.delegate), None)
       }
     }
 
@@ -166,9 +158,9 @@ object TezosDatabaseOperations {
     */
   def delegationsToDatabaseRows(block: Block): List[Tables.DelegationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.map{operation =>
+      og.operations.filter(_.kind == "delegation").map{operation =>
         Tables.DelegationsRow(
-         0, og.hash, operation.delegation.get.delegate // nullable?
+         0, og.hash, operation.delegate // nullable?
         )
       }
     }
@@ -217,9 +209,9 @@ object TezosDatabaseOperations {
     */
   def seedNonceRevelationsToDatabaseRows(block: Block): List[Tables.SeedNonceRevealationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.map{operation =>
+      og.operations.filter(_.kind=="seed_nonce_revelation").map{operation =>
         Tables.SeedNonceRevealationsRow(
-          0, og.hash, 0, "", operation.reveal.get.publicKey
+          0, og.hash, 0, "", operation.public_key
         )
       }
     }

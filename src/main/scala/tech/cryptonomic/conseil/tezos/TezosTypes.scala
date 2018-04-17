@@ -32,6 +32,46 @@ object TezosTypes {
                                   prim: Option[String],
                                   args: Option[List[String]]
                                   )
+
+  case class Operation (
+                       kind: String,
+                       level: Int,
+                       nonce: String,
+                       op1: Operation,
+                       op2: Operation,
+                       //another op1/op2, worry about that later
+                       id: String,
+                       public_key: String,
+                       amount: scala.math.BigDecimal, //String?
+                       destination: String,
+                       //parameters: michexp, figure out how to parse later
+                       managerPubKey: String,
+                       balance: scala.math.BigDecimal, //String?
+                       spendable: Boolean,
+                       delegatable: Boolean,
+                       delegate: String
+                       //script: michexp
+                       )
+
+  case class OperationGroup (
+                            hash: String,
+                            branch: String,
+                            kind: String,
+                            block: String,
+                            level: Int,
+                            slots: List[Int],
+                            signature: String,
+                            proposals: String,
+                            period: Int,
+                            source: String,
+                            proposal: String,
+                            ballot: String,
+                            chain: String,
+                            operations: List[Operation],
+                            counter: scala.math.BigDecimal, //String?
+                            fee: scala.math.BigDecimal  //String?
+                            )
+
   /*
   case class Operation (
                        hash: String,
@@ -54,6 +94,7 @@ object TezosTypes {
 
                             )
   */
+  /*
   //(Manager Operation) is considered an OperationGroup
   case class OperationGroup(
                     hash: String,
@@ -103,6 +144,8 @@ object TezosTypes {
                              reveal: Option[Reveal]
                              )
 
+  */
+  /*
   case class Operation(
                       kind: Option[String],
                       amount: Option[scala.math.BigDecimal],
@@ -123,6 +166,10 @@ object TezosTypes {
                       nonce: Option[String],
                       id: Option[String]
                       )
+
+ */
+
+
 /*
   case class OperationGroup(
                            hash: String,
