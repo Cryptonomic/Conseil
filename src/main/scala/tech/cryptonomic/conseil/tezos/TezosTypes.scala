@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import tech.cryptonomic.conseil.tezos.Tables.Proposals
-
 /**
   * Classes used for deserializing Tezos node RPC results.
   */
@@ -35,154 +33,43 @@ object TezosTypes {
 
   case class Operation (
                        kind: String,
-                       level: Int,
-                       nonce: String,
-                       op1: Operation,
-                       op2: Operation,
+                       level: Option[Int],
+                       nonce: Option[String],
+                       op1: Option[Operation],
+                       op2: Option[Operation],
                        //another op1/op2, worry about that later
-                       id: String,
-                       public_key: String,
-                       amount: scala.math.BigDecimal, //String?
-                       destination: String,
-                       //parameters: michexp, figure out how to parse later
-                       managerPubKey: String,
-                       balance: scala.math.BigDecimal, //String?
-                       spendable: Boolean,
-                       delegatable: Boolean,
-                       delegate: String
-                       //script: michexp
+                       id: Option[String],
+                       public_key: Option[String],
+                       amount: Option[scala.math.BigDecimal], //String?
+                       destination: Option[String],
+                       parameters: Option[Any], //michexp, figure out how to parse later
+                       managerPubKey: Option[String],
+                       balance: Option[scala.math.BigDecimal], //String?
+                       spendable: Option[Boolean],
+                       delegatable: Option[Boolean],
+                       delegate: Option[String],
+                       script: Option[Any]// michexp
                        )
 
   case class OperationGroup (
                             hash: String,
                             branch: String,
-                            kind: String,
-                            block: String,
-                            level: Int,
-                            slots: List[Int],
-                            signature: String,
-                            proposals: String,
-                            period: Int,
-                            source: String,
-                            proposal: String,
-                            ballot: String,
-                            chain: String,
-                            operations: List[Operation],
-                            counter: scala.math.BigDecimal, //String?
-                            fee: scala.math.BigDecimal  //String?
+                            kind: Option[String],
+                            block: Option[String],
+                            level: Option[Int],
+                            slots: Option[List[Int]],
+                            signature: Option[String],
+                            proposals: Option[String],
+                            period: Option[BigDecimal],
+                            source: Option[String],
+                            proposal: Option[String],
+                            ballot: Option[String],
+                            chain: Option[String],
+                            operations: Option[List[Operation]],
+                            counter: Option[scala.math.BigDecimal], //String?
+                            fee: Option[String]  //String?
                             )
 
-  /*
-  case class Operation (
-                       hash: String,
-                       branch: String,
-                       kind: String,
-                       block: Option[String],
-                       level: Option[Int],
-                       slots: Option[List[Int]],
-                       signature: Option[String],
-                       source: Option[String],
-                       period: Option[Int],
-                       proposals: Option[String],
-                       ballot: Option[String],
-                       fee: Option[Int],
-                       counter: Option[Int],
-                       operations: Option[List[OperationGroup]]
-                       )
-
-  case class OperationGroup (
-
-                            )
-  */
-  /*
-  //(Manager Operation) is considered an OperationGroup
-  case class OperationGroup(
-                    hash: String,
-                    branch: String,
-                    kind: String,
-                    source: Option[String],
-                    fee: Option[scala.math.BigDecimal],
-                    counter: Option[scala.math.BigDecimal],
-                    operations: List[ManagerOperation],
-                    signature: Option[String]
-                    )
-
-  //Make ManagerOperation a Trait
-  case class Transaction(
-                        kind: String,
-                        amount: scala.math.BigDecimal,
-                        destination: String,
-                        //parameters is a Micheline expression, figure out how to parse later
-                        parameters: Option[String]
-                        )
-
-  case class Delegation(
-                       kind: String,
-                       delegate: String //nullable?
-                       )
-
-  case class Origination(
-                        kind: String,
-                        managerPubKey: String,
-                        balance: BigDecimal,
-                        spendable: Option[Boolean],
-                        delegatable: Option[Boolean],
-                        delegate: Option[String]
-                        //script is a Micheline expression, figure out how to parse later
-                        //script: Option[Any]
-                        )
-
-  case class Reveal(
-                   kind: String,
-                   publicKey: String
-                   )
-
-  case class ManagerOperation(
-                             transaction: Option[Transaction],
-                             delegation: Option[Delegation],
-                             origination: Option[Origination],
-                             reveal: Option[Reveal]
-                             )
-
-  */
-  /*
-  case class Operation(
-                      kind: Option[String],
-                      amount: Option[scala.math.BigDecimal],
-                      destination: Option[String],
-                      //parameters: Option[Object],
-                      managerPubKey: Option[String],
-                      balance: Option[BigDecimal],
-                      spendable: Option[Boolean],
-                      delegatable: Option[Boolean],
-                      delegate: Option[String],
-                      //script: Option[Any],
-                      block: Option[String],
-                      slot: Option[Int],
-                      period: Option[Int],
-                      proposal: Option[String],
-                      ballot: Option[String],
-                      level: Option[Int],
-                      nonce: Option[String],
-                      id: Option[String]
-                      )
-
- */
-
-
-/*
-  case class OperationGroup(
-                           hash: String,
-                           branch: String,
-                           kind: String,
-                           block: String,
-                           level: Int,
-                           slots: List[Int],
-                           //source: Option[String],
-                           //operations: List[Operation],
-                           signature: Option[String]
-                           )
-*/
   case class OperationGroupContainer(
                                     ok: List[List[OperationGroup]]
                                     )
