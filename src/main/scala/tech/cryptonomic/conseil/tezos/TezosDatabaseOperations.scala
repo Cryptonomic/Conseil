@@ -20,7 +20,8 @@ object TezosDatabaseOperations {
     dbHandle.run(
       DBIO.seq(
         Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow)
+        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
+        Tables.Operations             ++= blocks.flatMap(operationToDatabaseRow)
       )
     )
 
@@ -101,6 +102,37 @@ object TezosDatabaseOperations {
         og.fee
       )
     }
+
+  //Operation List is nullable, should this be reflected in the return type?
+  /**
+    * Generates database rows for a block's operations.
+    * @param block  Block
+    * @return       Database rows
+    */
+  def operationToDatabaseRow(block: Block): List[Tables.OperationsRow] =
+    block.operationGroups.flatMap{ og =>
+      og.operations.get.map { operation =>
+        Tables.OperationsRow(
+          0, // what's the difference between operationId and Id fields?
+          og.hash,
+          operation.kind,
+          operation.level,
+          operation.nonce,
+          operation.id,
+          operation.public_key,
+          operation.amount,
+          operation.destination,
+          Some(operation.parameters.toString),
+          operation.managerPubKey,
+          operation.balance,
+          operation.spendable,
+          operation.delegatable,
+          operation.delegate,
+          Some(operation.script.toString)
+        )
+      }
+    }
+
 
   private def fixSlots(slots: Option[List[Int]]): Option[String] =
     slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}

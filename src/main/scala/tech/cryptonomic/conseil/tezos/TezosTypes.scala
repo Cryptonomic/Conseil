@@ -33,22 +33,22 @@ object TezosTypes {
 
   case class Operation (
                        kind: String,
-                       level: Option[Int],
+                       level: Option[BigDecimal], //Int?
                        nonce: Option[String],
                        op1: Option[Operation],
                        op2: Option[Operation],
                        //another op1/op2, worry about that later
                        id: Option[String],
                        public_key: Option[String],
-                       amount: Option[scala.math.BigDecimal], //String?
+                       amount: Option[String], //BigDecimal?
                        destination: Option[String],
-                       parameters: Option[Any], //michexp, figure out how to parse later
+                       parameters: Option[Any], //michexp, figure out how to parse later, Any vs String
                        managerPubKey: Option[String],
-                       balance: Option[scala.math.BigDecimal], //String?
+                       balance: Option[String], //BigDecimal?
                        spendable: Option[Boolean],
                        delegatable: Option[Boolean],
                        delegate: Option[String],
-                       script: Option[Any]// michexp
+                       script: Option[Any]// michexp, Any, String
                        )
 
   case class OperationGroup (
