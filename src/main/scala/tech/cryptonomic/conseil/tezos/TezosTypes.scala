@@ -84,17 +84,9 @@ object TezosTypes {
                     balance: scala.math.BigDecimal,
                     spendable: Boolean,
                     delegate: AccountDelegate,
-                    script: String,//Option[Any],
+                    script: Option[Any],//Option[Any],
                     counter: Int
                     )
-
-  case class AccountContainer(
-                             ok: Account
-                             )
-
-  case class AccountsContainer(
-                     ok: List[String]
-                     )
 
   case class AccountsWithBlockHash(
                                     block_hash: String,

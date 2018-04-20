@@ -43,7 +43,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
     node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
-      Try(fromJson[TezosTypes.AccountContainer](jsonEncodedAccount)).flatMap(acctContainer => Try(acctContainer.ok))
+      Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
     }
 
   /**
@@ -125,8 +125,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
-        val headLevel = 22 //blockHead.metadata.level //10
-        val headHash  = "BKiPhQN8efftUpkkh6uDvz8H45ssyapCWPoktQPWcLQQg6oDXgL" //blockHead.metadata.hash //BKiKXfc4Ljr9Ngwar316nK9MEVLYxaoVtM6bAEpT47LSrqETh6A
+        val headLevel = blockHead.metadata.level
+        val headHash  = blockHead.metadata.hash
         if(headLevel <= maxLevel)
           Try(List[Block]())
         else

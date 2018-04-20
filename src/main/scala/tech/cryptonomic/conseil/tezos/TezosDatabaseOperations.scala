@@ -53,7 +53,7 @@ object TezosDatabaseOperations {
         account._2.delegate.setable,
         account._2.delegate.value,
         account._2.counter,
-        Some(account._2.script)
+        account._2.script.flatMap(x => Some(x.toString))
       )
     }.toList
 
@@ -103,7 +103,6 @@ object TezosDatabaseOperations {
       )
     }
 
-  //Operation List is nullable, should this be reflected in the return type?
   /**
     * Generates database rows for a block's operations.
     * @param block  Block
@@ -125,13 +124,13 @@ object TezosDatabaseOperations {
               operation.public_key,
               operation.amount,
               operation.destination,
-              Some(operation.parameters.toString),
+              operation.parameters.flatMap(x => Some(x.toString)),
               operation.managerPubKey,
               operation.balance,
               operation.spendable,
               operation.delegatable,
               operation.delegate,
-              Some(operation.script.toString)
+              operation.script.flatMap(x => Some(x.toString))
             )
           }
       }
