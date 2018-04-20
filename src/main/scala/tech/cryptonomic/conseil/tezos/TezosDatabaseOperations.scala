@@ -111,25 +111,29 @@ object TezosDatabaseOperations {
     */
   def operationToDatabaseRow(block: Block): List[Tables.OperationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations.get.map { operation =>
-        Tables.OperationsRow(
-          0, // what's the difference between operationId and Id fields?
-          og.hash,
-          operation.kind,
-          operation.level,
-          operation.nonce,
-          operation.id,
-          operation.public_key,
-          operation.amount,
-          operation.destination,
-          Some(operation.parameters.toString),
-          operation.managerPubKey,
-          operation.balance,
-          operation.spendable,
-          operation.delegatable,
-          operation.delegate,
-          Some(operation.script.toString)
-        )
+      og.operations match {
+        case None =>  List[Tables.OperationsRow]()
+        case Some(operations) =>
+          operations.map { operation =>
+            Tables.OperationsRow(
+              0, // what's the difference between operationId and Id fields?
+              og.hash,
+              operation.kind,
+              operation.level,
+              operation.nonce,
+              operation.id,
+              operation.public_key,
+              operation.amount,
+              operation.destination,
+              Some(operation.parameters.toString),
+              operation.managerPubKey,
+              operation.balance,
+              operation.spendable,
+              operation.delegatable,
+              operation.delegate,
+              Some(operation.script.toString)
+            )
+          }
       }
     }
 
