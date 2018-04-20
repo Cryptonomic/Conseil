@@ -37,7 +37,6 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Try[Unit] = {
     logger.info("Processing Tezos Blocks..")
-    //used to be alphanet
     tezosNodeOperator.getBlocksNotInDatabase("zeronet", followFork = true) match {
       case Success(blocks) =>
         Try {
@@ -46,8 +45,7 @@ object Lorre extends App with LazyLogging {
             case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
             case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
           }
-          val foobar = Await.result(dbFut, Duration.Inf)
-          foobar
+          Await.result(dbFut, Duration.Inf)
         }
       case Failure(e) =>
         logger.error(s"Could not fetch blocks from client because $e")

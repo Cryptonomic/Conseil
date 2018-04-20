@@ -21,7 +21,7 @@ object TezosDatabaseOperations {
       DBIO.seq(
         Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
         Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationToDatabaseRow)
+        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
       )
     )
 
@@ -108,7 +108,7 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  def operationToDatabaseRow(block: Block): List[Tables.OperationsRow] =
+  def operationsToDatabaseRow(block: Block): List[Tables.OperationsRow] =
     block.operationGroups.flatMap{ og =>
       og.operations match {
         case None =>  List[Tables.OperationsRow]()
