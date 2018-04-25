@@ -113,7 +113,6 @@ object ApiOperations {
   def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
     val block = Await.result(op, Duration.Inf).head
-    //_.blockId initially
     val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
     val operationGroups = Await.result(op2, Duration.Inf)
     Map("block" -> block, "operation_groups" -> operationGroups)
@@ -133,8 +132,8 @@ object ApiOperations {
       filterBlockLevels(filter, b) &&
       filterChainIDs(filter, b) &&
       filterProtocols(filter, b) &&
-      filterOperationIDs(filter, og) //&&
-      //filterOperationSources(filter, og)
+      filterOperationIDs(filter, og) &&
+      filterOperationSources(filter, og)
     } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
