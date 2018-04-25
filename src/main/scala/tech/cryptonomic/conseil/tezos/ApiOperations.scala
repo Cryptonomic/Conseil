@@ -58,12 +58,11 @@ object ApiOperations {
 
   private def filterOperationIDs(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
     if (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) op.hash.inSet(filter.operationIDs.get) else true
-  /*
+
   private def filterOperationSources(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
     if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
       op.source.getOrElse("").inSet(filter.operationSources.get)
     else true
-  */
 
   private def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
     if (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) a.accountId.inSet(filter.accountIDs.get) else true
@@ -115,7 +114,7 @@ object ApiOperations {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
     val block = Await.result(op, Duration.Inf).head
     //_.blockId initially
-    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.hash === hash).result)
+    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
     val operationGroups = Await.result(op2, Duration.Inf)
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
@@ -129,7 +128,7 @@ object ApiOperations {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
       og <- Tables.OperationGroups
-      if b.hash === og.hash &&
+      if b.hash === og.blockId &&
       filterBlockIDs(filter, b) &&
       filterBlockLevels(filter, b) &&
       filterChainIDs(filter, b) &&
@@ -152,13 +151,16 @@ object ApiOperations {
       Try {
         val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
         val opGroup = Await.result(op, Duration.Inf).head
-        val op10 = dbHandle.run(Tables.Accounts.
+        val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
+        val operations = Await.result(op2, Duration.Inf)
+        val op3 = dbHandle.run(Tables.Accounts.
           filter(_.accountId === opGroup.source.getOrElse("")).
           filter(_.blockId === latestBlock.hash).
           result)
-        val accounts = Await.result(op10, Duration.Inf)
+        val accounts = Await.result(op3, Duration.Inf)
         Map(
           "operation_group" -> opGroup,
+          "operations"  -> operations,
           "accounts" -> accounts
         )
       }
@@ -173,17 +175,50 @@ object ApiOperations {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
       og <- Tables.OperationGroups
-      if b.hash === og.block && //Used to be BlockId before the schema change
+      if b.hash === og.blockId &&
         filterBlockIDs(filter, b) &&
         filterBlockLevels(filter, b) &&
         filterChainIDs(filter, b) &&
         filterProtocols(filter, b) &&
-        filterOperationIDs(filter, og) //&& NEED to figure out how to get operation sources in the future
-        //filterOperationSources(filter, og)
-    } yield (og.hash, og.block, og.branch, og.signature, og.kind, og.source, og.fee, og.counter)
+        filterOperationIDs(filter, og) &&
+        filterOperationSources(filter, og)
+    } yield (
+      og.hash,
+      og.branch,
+      og.kind,
+      og.block,
+      og.level,
+      og.slots,
+      og.signature,
+      og.proposals,
+      og.period,
+      og.source,
+      og.proposal,
+      og.ballot,
+      og.chain,
+      og.counter,
+      og.fee,
+      og.blockId)
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
-    results.map(x => Tables.OperationGroupsRow(x._1, x._2.get, Some(x._3), x._4, Some(1)))
+    results.map(x => Tables.OperationGroupsRow(
+      x._1,
+      x._2,
+      x._3,
+      x._4,
+      x._5,
+      x._6,
+      x._7,
+      x._8,
+      x._9,
+      x._10,
+      x._11,
+      x._12,
+      x._13,
+      x._14,
+      x._15,
+      x._16
+    ))
   }
 
   /**
