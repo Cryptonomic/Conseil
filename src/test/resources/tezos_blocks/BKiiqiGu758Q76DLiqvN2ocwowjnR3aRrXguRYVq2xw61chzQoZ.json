@@ -1,0 +1,23 @@
+{
+  "hash": "BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ",
+  "chain_id": "NetXx3WP6e27c7k",
+  "operations": [
+    [],
+    [],
+    [],
+    []
+  ],
+  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+  "level": 2,
+  "proto": 1,
+  "predecessor": "BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe",
+  "timestamp": "2018-04-17T12:44:20Z",
+  "validation_pass": 4,
+  "operations_hash": "LLoa7bxRTKaQN2bLYoitYB6bU2DvLnBAqrVjZcvJ364cTcX2PZYKU",
+  "fitness": [
+    "00",
+    "0000000000000002"
+  ],
+  "context": "CoVtxXrkAzHdQwJpNYQDstQ4m5ayLa8pLKB2vtAncwbBfNLurS8M",
+  "protocol_data": "0001af5dfb6ddddddf2900425066725e4a9d2704a1ffdc4b839847a42b40744bc58277a6ed8e6676c7156ad5de71d9bb94a4e538fd90f02ea1cef752203b821346cc3274c02cc25f601a01"
+}
