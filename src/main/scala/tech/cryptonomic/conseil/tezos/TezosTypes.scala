@@ -7,8 +7,7 @@ object TezosTypes {
 
   case class BlockMetadata(
                             hash: String,
-                            net_id: String,
-                            operations: Seq[Seq[BlockOperationMetadata]],
+                            chain_id: String,
                             protocol: String,
                             level: Int,
                             proto: Int,
@@ -17,52 +16,47 @@ object TezosTypes {
                             validation_pass: Int,
                             operations_hash: String,
                             fitness: Seq[String],
-                            data: String
+                            context: String,
+                            protocol_data: String
                   )
 
-  case class BlockOperationMetadata(
-                           hash: String,
-                           branch: String,
-                           data: String
-                           )
+  case class Operation (
+                       kind: String,
+                       level: Option[BigDecimal],
+                       nonce: Option[String],
+                       op1: Option[Operation],
+                       op2: Option[Operation],
+                       id: Option[String],
+                       public_key: Option[String],
+                       amount: Option[String],
+                       destination: Option[String],
+                       parameters: Option[Any],
+                       managerPubKey: Option[String],
+                       balance: Option[String],
+                       spendable: Option[Boolean],
+                       delegatable: Option[Boolean],
+                       delegate: Option[String],
+                       script: Option[Any]
+                       )
 
-  case class TezosScriptExpression(
-                                  prim: Option[String],
-                                  args: Option[List[String]]
-                                  )
-
-  case class Operation(
-                      kind: Option[String],
-                      amount: Option[scala.math.BigDecimal],
-                      destination: Option[String],
-                      //parameters: Option[Object],
-                      managerPubKey: Option[String],
-                      balance: Option[BigDecimal],
-                      spendable: Option[Boolean],
-                      delegatable: Option[Boolean],
-                      delegate: Option[String],
-                      //script: Option[Any],
-                      block: Option[String],
-                      slot: Option[Int],
-                      period: Option[Int],
-                      proposal: Option[String],
-                      ballot: Option[String],
-                      level: Option[Int],
-                      nonce: Option[String],
-                      id: Option[String]
-                      )
-
-  case class OperationGroup(
-                           hash: String,
-                           branch: String,
-                           source: Option[String],
-                           operations: List[Operation],
-                           signature: Option[String]
-                           )
-
-  case class OperationGroupContainer(
-                                    ok: List[List[OperationGroup]]
-                                    )
+  case class OperationGroup (
+                            hash: String,
+                            branch: String,
+                            kind: Option[String],
+                            block: Option[String],
+                            level: Option[Int],
+                            slots: Option[List[Int]],
+                            signature: Option[String],
+                            proposals: Option[String],
+                            period: Option[BigDecimal],
+                            source: Option[String],
+                            proposal: Option[String],
+                            ballot: Option[String],
+                            chain: Option[String],
+                            operations: Option[List[Operation]],
+                            counter: Option[scala.math.BigDecimal],
+                            fee: Option[String]
+                            )
 
   case class AccountDelegate(
                             setable: Boolean,
@@ -77,14 +71,6 @@ object TezosTypes {
                     script: Option[Any],
                     counter: Int
                     )
-
-  case class AccountContainer(
-                             ok: Account
-                             )
-
-  case class AccountsContainer(
-                     ok: List[String]
-                     )
 
   case class AccountsWithBlockHash(
                                     block_hash: String,

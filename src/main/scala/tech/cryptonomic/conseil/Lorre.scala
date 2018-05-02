@@ -37,7 +37,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Try[Unit] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase("alphanet", followFork = true) match {
+    tezosNodeOperator.getBlocksNotInDatabase("zeronet", followFork = true) match {
       case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
@@ -58,7 +58,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosAccounts(): Try[Unit] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts("alphanet") match {
+    tezosNodeOperator.getLatestAccounts("zeronet") match {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)

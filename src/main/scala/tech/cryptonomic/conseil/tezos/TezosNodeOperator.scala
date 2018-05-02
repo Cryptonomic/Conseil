@@ -43,7 +43,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
     node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
-      Try(fromJson[TezosTypes.AccountContainer](jsonEncodedAccount)).flatMap(acctContainer => Try(acctContainer.ok))
+      Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
     }
 
   /**
@@ -55,8 +55,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getAllAccountsForBlock(network: String, blockHash: String): Try[Map[String, TezosTypes.Account]] = Try {
     node.runQuery(network, s"blocks/$blockHash/proto/context/contracts") match {
       case Success(jsonEncodedAccounts) =>
-        val accountIDs = fromJson[TezosTypes.AccountsContainer](jsonEncodedAccounts)
-        val listedAccounts: List[String] = accountIDs.ok
+        val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
+        val listedAccounts: List[String] = accountIDs
         val accounts = listedAccounts.map(acctID => getAccountForBlock(network, blockHash, acctID))
         accounts.count(_.isFailure) match {
           case 0 =>
@@ -79,8 +79,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAllOperationsForBlock(network: String, blockHash: String): Try[List[List[OperationGroup]]] =
     node.runQuery(network, s"blocks/$blockHash/proto/operations").flatMap { jsonEncodedOperationsContainer =>
-      Try(fromJson[TezosTypes.OperationGroupContainer](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
-        Try(operationsContainer.ok)
+      Try(fromJson[List[List[OperationGroup]]](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
+        Try(operationsContainer)
       }
     }
 
@@ -99,7 +99,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
             itsOperations.length match {
               case 0 => Try(Block(theBlock, List[OperationGroup]()))
-              case _ => Try(Block(theBlock, itsOperations.head))
+              case _ => Try(Block(theBlock, itsOperations.flatten))
             }
           }
         }
