@@ -19,9 +19,7 @@ class TezosDatabaseOperationsTest extends FlatSpec with MockFactory with Matcher
     val balance: scala.math.BigDecimal = 500.0
     val spendable: Boolean = false
     val delegateValue: Option[String] = None
-    val delegate: AccountDelegate = {
-      AccountDelegate(setable = false, delegateValue)
-    }
+    val delegate: AccountDelegate = AccountDelegate(setable = false, delegateValue)
     val script: Option[Any] = None
     val counter: Int = 0
     val account: Account = Account(manager, balance, spendable, delegate, script, counter)

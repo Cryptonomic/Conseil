@@ -113,7 +113,7 @@ object ApiOperations {
   def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
     val block = Await.result(op, Duration.Inf).head
-    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
+    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.block === hash).result)
     val operationGroups = Await.result(op2, Duration.Inf)
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
@@ -127,7 +127,7 @@ object ApiOperations {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
       og <- Tables.OperationGroups
-      if b.hash === og.blockId &&
+      if b.hash === og.block &&
       filterBlockIDs(filter, b) &&
       filterBlockLevels(filter, b) &&
       filterChainIDs(filter, b) &&
@@ -174,7 +174,7 @@ object ApiOperations {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
       og <- Tables.OperationGroups
-      if b.hash === og.blockId &&
+      if b.hash === og.block &&
         filterBlockIDs(filter, b) &&
         filterBlockLevels(filter, b) &&
         filterChainIDs(filter, b) &&
@@ -197,7 +197,7 @@ object ApiOperations {
       og.chain,
       og.counter,
       og.fee,
-      og.blockId)
+      og.block)
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.OperationGroupsRow(
@@ -215,8 +215,7 @@ object ApiOperations {
       x._12,
       x._13,
       x._14,
-      x._15,
-      x._16
+      x._15
     ))
   }
 
@@ -255,10 +254,10 @@ object ApiOperations {
           filterAccountDelegates(filter, a) &&
           filterAccountManagers(filter, a) &&
           filterOperationIDs(filter, og)
-        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script)
+        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
         val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
-        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8))
+        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
       }
     }
 

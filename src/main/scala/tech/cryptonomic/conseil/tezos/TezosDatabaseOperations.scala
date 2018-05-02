@@ -53,7 +53,8 @@ object TezosDatabaseOperations {
         account._2.delegate.setable,
         account._2.delegate.value,
         account._2.counter,
-        account._2.script.flatMap(x => Some(x.toString))
+        account._2.script.flatMap(x => Some(x.toString)),
+        account._2.balance
       )
     }.toList
 
@@ -99,8 +100,7 @@ object TezosDatabaseOperations {
         og.ballot,
         og.chain,
         og.counter,
-        og.fee,
-        block.metadata.hash
+        og.fee
       )
     }
 
