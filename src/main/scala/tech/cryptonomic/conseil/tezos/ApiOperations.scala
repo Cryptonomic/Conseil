@@ -40,14 +40,8 @@ object ApiOperations {
                      accountIDs: Option[Set[String]] = Some(Set[String]()),
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
-                     endorsements: Option[Set[String]] = Some(Set[String]()),
-                     proposals: Option[Set[String]] = Some(Set[String]()),
-                     ballots: Option[Set[String]] = Some(Set[String]()),
-                     managers: Option[Set[String]] = Some(Set[String]()),
-                     revelations: Option[Set[String]] = Some(Set[String]()),
-                     transactions: Option[Set[String]] = Some(Set[String]()),
-                     originations: Option[Set[String]] = Some(Set[String]()),
-                     delegations: Option[Set[String]] = Some(Set[String]())
+                     operationKinds: Option[Set[String]] = Some(Set[String]()),
+                     operationGroupKinds: Option[Set[String]] = Some(Set[String]())
                    )
 
   // Start helper functions for constructing Slick queries
@@ -83,9 +77,13 @@ object ApiOperations {
       a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
     else true
 
-  private def filterEndorsements(filter:Filter, op: Tables.OperationGroups): Rep[Boolean] =
-    if (filter.endorsements.isDefined && filter.endorsements.get.nonEmpty)
+  private def filterOperationGroupKinds(filter:Filter, op: Tables.OperationGroups): Rep[Boolean] =
+    if (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
+      op.kind.getOrElse("").inSet(filter.operationGroupKinds.get) else true
 
+  private def filterOperationKinds(filter:Filter, op: Tables.Operations): Rep[Boolean] =
+    if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
+      op.opKind.inSet(filter.operationKinds.get) else true
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
@@ -139,13 +137,17 @@ object ApiOperations {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
       og <- Tables.OperationGroups
+      o <- Tables.Operations
       if b.hash === og.blockId &&
+      og.hash === o.operationGroupHash &&
       filterBlockIDs(filter, b) &&
       filterBlockLevels(filter, b) &&
       filterChainIDs(filter, b) &&
       filterProtocols(filter, b) &&
       filterOperationIDs(filter, og) &&
-      filterOperationSources(filter, og)
+      filterOperationSources(filter, og) &&
+      filterOperationGroupKinds(filter, og) &&
+      filterOperationKinds(filter, o)
     } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
@@ -186,13 +188,17 @@ object ApiOperations {
     val action = for {
       b: Tables.Blocks <- Tables.Blocks
       og <- Tables.OperationGroups
+      o <- Tables.Operations
       if b.hash === og.blockId &&
+        og.hash === o.operationGroupHash &&
         filterBlockIDs(filter, b) &&
         filterBlockLevels(filter, b) &&
         filterChainIDs(filter, b) &&
         filterProtocols(filter, b) &&
         filterOperationIDs(filter, og) &&
-        filterOperationSources(filter, og)
+        filterOperationSources(filter, og) &&
+        filterOperationGroupKinds(filter, og) &&
+        filterOperationKinds(filter, o)
     } yield (
       og.hash,
       og.branch,
@@ -261,12 +267,16 @@ object ApiOperations {
         val action = for {
           a: Tables.Accounts <- Tables.Accounts
           og <- Tables.OperationGroups
+          o <- Tables.Operations
           if a.blockId === latestBlock.hash &&
+          og.hash === o.operationGroupHash &&
           og.source === a.accountId &&
           filterAccountIDs(filter, a) &&
           filterAccountDelegates(filter, a) &&
           filterAccountManagers(filter, a) &&
-          filterOperationIDs(filter, og)
+          filterOperationIDs(filter, og) &&
+          filterOperationGroupKinds(filter, og) &&
+          filterOperationKinds(filter, o)
         } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
         val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
