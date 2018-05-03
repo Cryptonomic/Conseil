@@ -144,18 +144,19 @@ trait Tables {
     *  @param ballot Database column ballot SqlType(varchar), Default(None)
     *  @param chain Database column chain SqlType(varchar), Default(None)
     *  @param counter Database column counter SqlType(numeric), Default(None)
-    *  @param fee Database column fee SqlType(varchar), Default(None) */
-  case class OperationGroupsRow(hash: String, branch: String, kind: Option[String] = None, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, signature: Option[String] = None, proposals: Option[String] = None, period: Option[scala.math.BigDecimal] = None, source: Option[String] = None, proposal: Option[String] = None, ballot: Option[String] = None, chain: Option[String] = None, counter: Option[scala.math.BigDecimal] = None, fee: Option[String] = None)
+    *  @param fee Database column fee SqlType(varchar), Default(None)
+    *  @param blockId Database column block_id SqlType(varchar) */
+  case class OperationGroupsRow(hash: String, branch: String, kind: Option[String] = None, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, signature: Option[String] = None, proposals: Option[String] = None, period: Option[scala.math.BigDecimal] = None, source: Option[String] = None, proposal: Option[String] = None, ballot: Option[String] = None, chain: Option[String] = None, counter: Option[scala.math.BigDecimal] = None, fee: Option[String] = None, blockId: String)
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
   implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[Int]], e3: GR[Option[scala.math.BigDecimal]]): GR[OperationGroupsRow] = GR{
     prs => import prs._
-      OperationGroupsRow.tupled((<<[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[String], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[String]))
+      OperationGroupsRow.tupled((<<[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[String], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[String], <<[String]))
   }
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
-    def * = (hash, branch, kind, block, level, slots, signature, proposals, period, source, proposal, ballot, chain, counter, fee) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
+    def * = (hash, branch, kind, block, level, slots, signature, proposals, period, source, proposal, ballot, chain, counter, fee, blockId) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(hash), Rep.Some(branch), kind, block, level, slots, signature, proposals, period, source, proposal, ballot, chain, counter, fee).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(hash), Rep.Some(branch), kind, block, level, slots, signature, proposals, period, source, proposal, ballot, chain, counter, fee, Rep.Some(blockId)).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column hash SqlType(varchar), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
@@ -187,6 +188,8 @@ trait Tables {
     val counter: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("counter", O.Default(None))
     /** Database column fee SqlType(varchar), Default(None) */
     val fee: Rep[Option[String]] = column[Option[String]]("fee", O.Default(None))
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
 
     /** Foreign key referencing Blocks (database name block) */
     lazy val blocksFk = foreignKey("block", block, Blocks)(r => Rep.Some(r.hash), onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)

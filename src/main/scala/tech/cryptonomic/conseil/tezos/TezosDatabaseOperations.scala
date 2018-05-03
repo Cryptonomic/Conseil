@@ -100,7 +100,8 @@ object TezosDatabaseOperations {
         ballot = og.ballot,
         chain = og.chain,
         counter = og.counter,
-        fee = og.fee
+        fee = og.fee,
+        blockId = block.metadata.hash
       )
     }
 
