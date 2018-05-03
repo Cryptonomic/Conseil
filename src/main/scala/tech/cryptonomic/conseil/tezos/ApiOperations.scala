@@ -40,6 +40,14 @@ object ApiOperations {
                      accountIDs: Option[Set[String]] = Some(Set[String]()),
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
+                     endorsements: Option[Set[String]] = Some(Set[String]()),
+                     proposals: Option[Set[String]] = Some(Set[String]()),
+                     ballots: Option[Set[String]] = Some(Set[String]()),
+                     managers: Option[Set[String]] = Some(Set[String]()),
+                     revelations: Option[Set[String]] = Some(Set[String]()),
+                     transactions: Option[Set[String]] = Some(Set[String]()),
+                     originations: Option[Set[String]] = Some(Set[String]()),
+                     delegations: Option[Set[String]] = Some(Set[String]())
                    )
 
   // Start helper functions for constructing Slick queries
@@ -74,6 +82,10 @@ object ApiOperations {
     if (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty)
       a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
     else true
+
+  private def filterEndorsements(filter:Filter, op: Tables.OperationGroups): Rep[Boolean] =
+    if (filter.endorsements.isDefined && filter.endorsements.get.nonEmpty)
+
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
