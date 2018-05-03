@@ -2,11 +2,14 @@ name := "Conseil"
 version := "0.0.1"
 scalaVersion := "2.12.4"
 
-val akkaHttpVersion = "10.0.11"
+val akkaHttpVersion = "10.1.0"
+val akkaVersion = "2.5.11"
 
 libraryDependencies  ++=  Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
+  "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe" % "config" % "1.3.1",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
   "org.scalaj" % "scalaj-http_2.12" % "2.3.0",
@@ -21,7 +24,8 @@ libraryDependencies  ++=  Seq(
   "com.madgag.spongycastle" % "core" % "1.58.0.0",
   "org.scorexfoundation" %% "scrypto" % "2.0.0",
   "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
-  "com.github.alanverbner" %% "bip39" % "0.1"
+  "com.github.alanverbner" %% "bip39" % "0.1",
+  "ch.megard" %% "akka-http-cors" % "0.3.0"
 )
 
 excludeDependencies ++= Seq(
