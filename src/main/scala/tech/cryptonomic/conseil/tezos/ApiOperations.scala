@@ -103,66 +103,6 @@ object ApiOperations {
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
-  private def fetchJoinedBlockTable(filter: Filter):
-    Query[(Tables.Blocks,
-           Rep[Option[(Tables.OperationGroups, Rep[Option[Tables.Operations]])]]),
-                      (Tables.Blocks#TableElementType, Option[(Tables.OperationGroupsRow, Option[Tables.OperationsRow])]),
-                      Seq] = {
-    val filteredBlocks = Tables.Blocks.filter({block =>
-        filterBlockIDs(filter, block) &&
-        filterBlockLevels(filter, block) &&
-        filterChainIDs(filter, block) &&
-        filterProtocols(filter, block)})
-    val filteredOpGroups = Tables.OperationGroups.filter({opGroup =>
-        filterOperationIDs(filter, opGroup) &&
-        filterOperationSources(filter, opGroup) &&
-        filterOperationGroupKinds(filter, opGroup)})
-    val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
-    val combinedOps = filteredOpGroups.joinLeft(filteredOps).on(_.hash === _.operationGroupHash)
-    return filteredBlocks
-      .joinLeft(combinedOps).on(_.hash === _._1.blockId)
-  }
-
-  private def fetchJoinedOpGroupTable(filter: Filter):
-  Query[
-    ((Tables.OperationGroups, Rep[Option[Tables.Blocks]]), Rep[Option[Tables.Operations]]),
-    ((Tables.OperationGroups#TableElementType, Option[Tables.BlocksRow]), Option[Tables.OperationsRow]),
-    Seq] = {
-    val filteredBlocks = Tables.Blocks.filter({block =>
-      filterBlockIDs(filter, block) &&
-        filterBlockLevels(filter, block) &&
-        filterChainIDs(filter, block) &&
-        filterProtocols(filter, block)})
-    val filteredOpGroups = Tables.OperationGroups.filter({opGroup =>
-      filterOperationIDs(filter, opGroup) &&
-        filterOperationSources(filter, opGroup) &&
-        filterOperationGroupKinds(filter, opGroup)})
-    val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
-    return filteredOpGroups
-      .joinLeft(filteredBlocks).on(_.blockId === _.hash)
-      .joinLeft(filteredOps).on(_._1.hash === _.operationGroupHash)
-  }
-
-  private def fetchJoinedAccountTable(filter: Filter, latestBlock : Tables.BlocksRow):
-    Query[((Tables.Accounts, Rep[Option[Tables.OperationGroups]]), Rep[Option[Tables.Operations]]),
-          ((Tables.Accounts#TableElementType, Option[Tables.OperationGroupsRow]), Option[Tables.OperationsRow]),
-          Seq] = {
-    val filteredAccounts = Tables.Accounts.filter({account =>
-        filterAccountIDs(filter, account) &&
-        filterAccountDelegates(filter, account) &&
-        filterAccountManagers(filter, account) &&
-        account.blockId === latestBlock.hash})
-    val filteredOpGroups = Tables.OperationGroups.filter({opGroup =>
-        filterOperationIDs(filter, opGroup) &&
-        filterOperationSources(filter, opGroup) &&
-        filterOperationGroupKinds(filter, opGroup)})
-    val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
-    return filteredAccounts
-      .joinLeft(filteredOpGroups).on(_.accountId === _.source)
-      .joinLeft(filteredOps).on(_._2.map(_.hash) === _.operationGroupHash)
-  }
-
-
   // End helper functions for constructing Slick queries
 
   /**
@@ -288,47 +228,66 @@ object ApiOperations {
     * @return       List of operation groups
     */
   def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] = Try {
-    val joinedTable = fetchJoinedOpGroupTable(filter)
-    val action = for {
-      ((opGroups, blocks), ops) <- joinedTable
-    } yield (
-      opGroups.hash,
-      opGroups.branch,
-      opGroups.kind,
-      opGroups.block,
-      opGroups.level,
-      opGroups.slots,
-      opGroups.signature,
-      opGroups.proposals,
-      opGroups.period,
-      opGroups.source,
-      opGroups.proposal,
-      opGroups.ballot,
-      opGroups.chain,
-      opGroups.counter,
-      opGroups.fee,
-      opGroups.blockId
-    )
+
+    val filteredBlocks = Tables.Blocks.filter({block =>
+        filterBlockIDs(filter, block) &&
+        filterBlockLevels(filter, block) &&
+        filterChainIDs(filter, block) &&
+        filterProtocols(filter, block)})
+    val filteredOpGroups = Tables.OperationGroups.filter({opGroup =>
+        filterOperationIDs(filter, opGroup) &&
+        filterOperationSources(filter, opGroup) &&
+        filterOperationGroupKinds(filter, opGroup)})
+    val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
+
+    val isBFilter = isBlockFilter(filter)
+    val isOFilter = isOperationFilter(filter)
+
+    // Join tables in appropriate ways dependents on filters chosen by user
+    val action = (isBFilter, isOFilter) match {
+
+      case (true, false)  => {
+        val table = filteredOpGroups.join(filteredBlocks).on(_.blockId === _.hash)
+        for {
+          (opGroups, b) <- table
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+      }
+
+      case (false, false) => {
+        for {
+          opGroups <- filteredOpGroups
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+      }
+
+      case (false, true) => {
+        val table = filteredOpGroups.join(filteredOps).on(_.hash === _.operationGroupHash)
+        for {
+          (opGroups, ops) <- table
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+      }
+      case (true, true) => {
+        val table = filteredOpGroups
+          .join(filteredBlocks).on(_.blockId === _.hash)
+          .join(filteredOps).on(_._1.hash === _.operationGroupHash)
+        for {
+          ((opGroups, b), ops) <- table
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+      }
+
+    }
+
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.OperationGroupsRow(
-      x._1,
-      x._2,
-      x._3,
-      x._4,
-      x._5,
-      x._6,
-      x._7,
-      x._8,
-      x._9,
-      x._10,
-      x._11,
-      x._12,
-      x._13,
-      x._14,
-      x._15,
-      x._16
-    ))
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14, x._15, x._16))
   }
 
   /**
@@ -357,10 +316,47 @@ object ApiOperations {
   def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
-        val joinedTable = fetchJoinedAccountTable(filter, latestBlock)
-        val action = for {
-          ((a, opGroups), ops) <- joinedTable
-        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+        val filteredAccounts = Tables.Accounts.filter({account =>
+            filterAccountIDs(filter, account) &&
+            filterAccountDelegates(filter, account) &&
+            filterAccountManagers(filter, account) &&
+            account.blockId === latestBlock.hash})
+        val filteredOpGroups = Tables.OperationGroups.filter({opGroup =>
+            filterOperationIDs(filter, opGroup) &&
+            filterOperationSources(filter, opGroup) &&
+            filterOperationGroupKinds(filter, opGroup)})
+        val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
+
+        val isOGFilter = isOperationGroupFilter(filter)
+        val isOFilter = isOperationFilter(filter)
+
+        // Join tables in appropriate ways dependents on filters chosen by user
+        val action = (isOGFilter, isOFilter) match {
+
+          case (true, false)  => {
+            val table = filteredAccounts.join(filteredOpGroups).on(_.accountId === _.source)
+            for {
+              (a, opGroups) <- table
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+          }
+
+          case (false, false) => {
+            for {
+              a <- filteredAccounts
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+          }
+
+          case _ => {
+            val table = filteredAccounts
+              .join(filteredOpGroups).on(_.accountId === _.source)
+              .join(filteredOps).on(_._2.hash === _.operationGroupHash)
+            for {
+              ((a, opGroups), ops) <- table
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+          }
+
+        }
+
         val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
