@@ -21,12 +21,16 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
+  //get network (zeronet) and blockchain (tezos) from the command line here
+  val network = "zeronet"
+  val blockchain = "tezos"
+
   try {
     while(true) {
       logger.info("Fetching blocks")
-      processTezosBlocks()
+      processTezosBlocks(network, blockchain)
       logger.info("Fetching accounts")
-      processTezosAccounts()
+      processTezosAccounts(network, blockchain)
       logger.info("Taking a nap")
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
@@ -35,9 +39,10 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(): Try[Unit] = {
-    logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase("zeronet", followFork = true) match {
+  def processTezosBlocks(network: String, blockchain: String): Try[Unit] = {
+    logger.info("Processing " + blockchain + " Blocks..")
+    //eventually, pattern match on blockchain for which nodeOperator to use
+    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
       case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
@@ -56,9 +61,10 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches and stores all accounts from the latest block stored in the database.
     */
-  def processTezosAccounts(): Try[Unit] = {
-    logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts("zeronet") match {
+  def processTezosAccounts(network: String, blockchain: String): Try[Unit] = {
+    logger.info("Processing latest " + blockchain + " accounts data..")
+    //eventually, pattern match on blockchain for which nodeOperator to use
+    tezosNodeOperator.getLatestAccounts(network) match {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)

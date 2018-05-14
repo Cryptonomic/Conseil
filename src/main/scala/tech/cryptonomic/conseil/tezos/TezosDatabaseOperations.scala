@@ -138,6 +138,13 @@ object TezosDatabaseOperations {
       }
     }
 
+  private def parseScript(script: Option[Any]): Option[String] = {
+    for {
+      contents <- script
+      script_string = contents.toString
+      
+    }
+  }
 
   private def fixSlots(slots: Option[List[Int]]): Option[String] =
     slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}
