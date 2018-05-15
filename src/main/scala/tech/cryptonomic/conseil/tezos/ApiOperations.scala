@@ -60,6 +60,9 @@ object ApiOperations {
   private def isOperationFilter(filter: Filter): Boolean =
     filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty
 
+  private def isOpGroupOrOpFilter(filter: Filter): (Boolean, Boolean) =
+    (isOperationGroupFilter(filter), isOperationFilter(filter))
+
   // Start helper functions for constructing Slick queries
 
   private def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
@@ -162,14 +165,12 @@ object ApiOperations {
         filterOperationGroupKinds(filter, opGroup)})
     val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
 
-    val isOGFilter = isOperationGroupFilter(filter)
-    val isOFilter = isOperationFilter(filter)
-
     // Join tables in appropriate ways dependents on filters chosen by user
-    val action = (isOGFilter, isOFilter) match {
+    val action = isOpGroupOrOpFilter(filter) match {
 
       case (true, false)  => {
         val table = filteredBlocks.join(filteredOpGroups).on(_.hash === _.blockId)
+
         for {
           (b, opGroups) <- table
         } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
@@ -191,6 +192,8 @@ object ApiOperations {
       }
 
     }
+
+
 
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
@@ -240,11 +243,8 @@ object ApiOperations {
         filterOperationGroupKinds(filter, opGroup)})
     val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
 
-    val isBFilter = isBlockFilter(filter)
-    val isOFilter = isOperationFilter(filter)
-
     // Join tables in appropriate ways dependents on filters chosen by user
-    val action = (isBFilter, isOFilter) match {
+    val action = isOpGroupOrOpFilter(filter) match {
 
       case (true, false)  => {
         val table = filteredOpGroups.join(filteredBlocks).on(_.blockId === _.hash)
@@ -327,11 +327,8 @@ object ApiOperations {
             filterOperationGroupKinds(filter, opGroup)})
         val filteredOps = Tables.Operations.filter({op => filterOperationKinds(filter, op)})
 
-        val isOGFilter = isOperationGroupFilter(filter)
-        val isOFilter = isOperationFilter(filter)
-
         // Join tables in appropriate ways dependents on filters chosen by user
-        val action = (isOGFilter, isOFilter) match {
+        val action = isOpGroupOrOpFilter(filter) match {
 
           case (true, false)  => {
             val table = filteredAccounts.join(filteredOpGroups).on(_.accountId === _.source)
