@@ -82,11 +82,7 @@ object TezosTypes {
                     operationGroups: List[OperationGroup]
                   )
 
-  case class ForgedOperationContainer(ok: Option[SuccessfulForgedOperation], error: Option[Any])
-
   case class SuccessfulForgedOperation(operation: String)
-
-  case class AppliedOperationContainer(ok: Option[AppliedOperation], error: Option[Any])
 
   case class AppliedOperation(contracts: Array[String])
 

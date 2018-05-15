@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, OperationGroup}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, AppliedOperation, Block, OperationGroup}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
@@ -254,7 +254,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           "operations" -> List[Map[String, Any]](operation),
           "counter" -> (account.counter + 1),
           "fee" -> feeAmt,
-          "public_key" -> keyStore.publicKey
+          "kind" -> "manager"
         )
       case None =>
         Map(
@@ -262,17 +262,13 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           "operations" -> List[Map[String, Any]](operation)
         )
     }
-    node.runQuery(network, "/blocks/prevalidation/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
+    node.runQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .flatMap { json =>
-        Try {
-          val forgedOperation = JsonUtil.fromJson[TezosTypes.ForgedOperationContainer](json)
-          forgedOperation.ok match {
-            case Some(ok) => ok.operation
-            case None => throw new Exception(s"Could not forge operation because: ${forgedOperation.error.get}")
+        Try(JsonUtil.fromJson[TezosTypes.SuccessfulForgedOperation](json)).flatMap{ forgedOperation =>
+          Try(forgedOperation.operation)
           }
         }
       }
-  }
 
   /**
     * Signs a forged operation
@@ -324,14 +320,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "forged_operation" -> forgedOperationGroup,
       "signature" -> signedOpGroup.signature
     )
-    node.runQuery(network, "/blocks/prevalidation/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+    node.runQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
       .flatMap { result =>
-        Try {
-          val appliedOP = JsonUtil.fromJson[TezosTypes.AppliedOperationContainer](result)
-          appliedOP.ok match {
-            case Some(_) => appliedOP.ok.get.contracts
-            case None => throw new Exception(s"Could not apply operation because: ${appliedOP.error.get}")
-          }
+        logger.debug(s"Result of operation application: ${result}")
+        Try(JsonUtil.fromJson[TezosTypes.AppliedOperation](result)).flatMap{ appliedOP =>
+          Try(appliedOP.contracts)
         }
       }
   }
@@ -367,7 +360,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def sendOperation(network: String, operation: Map[String,Any], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = {
     getBlockHead(network).flatMap{ blockHead =>
-      getAccountForBlock(network, "prevalidation", keyStore.publicKeyHash).flatMap{ account =>
+      getAccountForBlock(network, "head", keyStore.publicKeyHash).flatMap{ account =>
         forgeOperations(network, blockHead, account, operation, keyStore, fee).flatMap { forgedOperationGroup =>
           signOperationGroup(forgedOperationGroup, keyStore).flatMap { signedOpGroup =>
             computeOperationHash(signedOpGroup).flatMap { operationGroupHash =>
@@ -418,48 +411,6 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val alphabet = "0123456789abcedf"
     Stream.continually(random.nextInt(alphabet.length)).map(alphabet).take(32).mkString
   }
-
-  /**
-    * Creates and sends a faucet request for obtaining free tezzies.
-    * @param network  Which Tezos network to go against
-    * @param keyStore Key pair along with public key hash
-    * @return
-    */
-  def sendFaucetOperation(
-                         network: String,
-                         keyStore: KeyStore
-                       ): Try[OperationResult] = {
-    val transactionMap: Map[String,Any] = Map(
-      "kind"        -> "faucet",
-      "id"          -> keyStore.publicKeyHash,
-      "nonce"       -> generateHexNonce()
-    )
-    sendOperation(network, transactionMap, keyStore, None)
-  }
-
-  /**
-    * Funds a given account with free funds on test network.
-    * @param network  Which Tezos network to go against
-    * @param keyStore Key pair along with public key hash
-    * @return
-    */
-  def fundAccountWithFaucet(
-                             network: String,
-                             keyStore: KeyStore
-                           ): Try[OperationResult] =
-    sendFaucetOperation(network, keyStore).flatMap{ faucetResult =>
-      Try{
-        if(faucetResult.accounts.isEmpty) throw new Exception("Free account was not created.")
-        else faucetResult.accounts.head
-      }.flatMap{ freeAccount =>
-        getAccountForBlock(network, "prevalidation", freeAccount).flatMap{account =>
-          Try(account.balance.toString.toFloat).flatMap{balance =>
-            val freeAccountKeyStore = keyStore.copy(publicKeyHash = freeAccount)
-            sendTransactionOperation(network, freeAccountKeyStore, keyStore.publicKeyHash, balance, 0f)
-          }
-        }
-      }
-    }
 
   /**
     * Creates and sends a delegation operation.
