@@ -48,6 +48,9 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
             Tezos.route
           }
         }
+      } ~ options {
+        // Support for CORS pre-flight checks.
+        complete(s"Supported methods : GET and POST.")
       }
     }
   }
