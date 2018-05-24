@@ -249,7 +249,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val payload: Map[String, Any] = fee match {
       case Some(feeAmt) =>
         Map(
-          "branch" -> blockHead.metadata.predecessor,
+          "branch" -> blockHead.metadata.hash,
           "source" -> keyStore.publicKeyHash,
           "operations" -> operations,
           "counter" -> (account.counter + 1),
