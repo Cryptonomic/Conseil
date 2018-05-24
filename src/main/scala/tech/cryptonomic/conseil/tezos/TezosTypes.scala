@@ -90,4 +90,6 @@ object TezosTypes {
 
   case class InjectedOperation(injectedOperation: String)
 
+  case class MichelsonExpression(prim: String, args: List[String])
+
 }

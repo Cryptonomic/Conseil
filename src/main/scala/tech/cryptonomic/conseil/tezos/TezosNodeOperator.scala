@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, AppliedOperation, Block, OperationGroup}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, MichelsonExpression, OperationGroup}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
@@ -234,7 +234,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param network    Which Tezos network to go against
     * @param blockHead  The block head
     * @param account    The sender's account
-    * @param operation  The operation being forged as part of this operation group
+    * @param operations The operations being forged as part of this operation group
     * @param keyStore   Key pair along with public key hash
     * @param fee        Fee to be paid
     * @return           Forged operation bytes (as a hex string)
@@ -242,7 +242,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def forgeOperations(  network: String,
                         blockHead: TezosTypes.Block,
                         account: TezosTypes.Account,
-                        operation: Map[String,Any],
+                        operations: List[Map[String,Any]],
                         keyStore: KeyStore,
                         fee: Option[Float]
                      ): Try[String] = {
@@ -251,7 +251,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         Map(
           "branch" -> blockHead.metadata.predecessor,
           "source" -> keyStore.publicKeyHash,
-          "operations" -> List[Map[String, Any]](operation),
+          "operations" -> operations,
           "counter" -> (account.counter + 1),
           "fee" -> feeAmt,
           "kind" -> "manager"
@@ -259,7 +259,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       case None =>
         Map(
           "branch" -> blockHead.metadata.predecessor,
-          "operations" -> List[Map[String, Any]](operation)
+          "operations" -> operations
         )
     }
     node.runQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
@@ -322,7 +322,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     )
     node.runQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
       .flatMap { result =>
-        logger.debug(s"Result of operation application: ${result}")
+        logger.debug(s"Result of operation application: $result")
         Try(JsonUtil.fromJson[TezosTypes.AppliedOperation](result)).flatMap{ appliedOP =>
           Try(appliedOP.contracts)
         }
@@ -353,15 +353,15 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   /**
     * Master function for creating and sending all supported types of operations.
     * @param network    Which Tezos network to go against
-    * @param operation  The operation to create and send
+    * @param operations The operations to create and send
     * @param keyStore   Key pair along with public key hash
     * @param fee        The fee to use
     * @return           The ID of the created operation group
     */
-  def sendOperation(network: String, operation: Map[String,Any], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = {
+  def sendOperation(network: String, operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = {
     getBlockHead(network).flatMap{ blockHead =>
       getAccountForBlock(network, "head", keyStore.publicKeyHash).flatMap{ account =>
-        forgeOperations(network, blockHead, account, operation, keyStore, fee).flatMap { forgedOperationGroup =>
+        forgeOperations(network, blockHead, account, operations, keyStore, fee).flatMap { forgedOperationGroup =>
           signOperationGroup(forgedOperationGroup, keyStore).flatMap { signedOpGroup =>
             computeOperationHash(signedOpGroup).flatMap { operationGroupHash =>
               applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup).flatMap { accounts =>
@@ -396,9 +396,15 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val transactionMap: Map[String,Any] = Map(
       "kind"        -> "transaction",
       "amount"      -> amount,
-      "destination" -> to
+      "destination" -> to,
+      "parameters"  -> MichelsonExpression("Unit", List[String]())
     )
-    sendOperation(network, transactionMap, keyStore, Some(fee))
+    val revealMap: Map[String, Any] = Map(
+      "kind"        -> "reveal",
+      "public_key"  -> keyStore.publicKey
+    )
+    val operations = transactionMap :: revealMap :: Nil
+    sendOperation(network, operations, keyStore, Some(fee))
   }
 
   /**
@@ -430,7 +436,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "kind"        -> "delegation",
       "delegate"    -> delegate
     )
-    sendOperation(network, transactionMap, keyStore, Some(fee))
+    val operations = transactionMap :: Nil
+    sendOperation(network, operations, keyStore, Some(fee))
   }
 
   /**
@@ -461,7 +468,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "delegatable"   -> delegatable,
       "delegate"      -> delegate
     )
-    sendOperation(network, transactionMap, keyStore, Some(fee))
+    val operations = transactionMap :: Nil
+    sendOperation(network, operations, keyStore, Some(fee))
   }
 
   /**

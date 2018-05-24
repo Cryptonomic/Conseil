@@ -154,7 +154,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val result = nodeOp.sendTransactionOperation(
       "zeronet",
       keyStore,
-      "TZ1akACBXUC3vSAjXdNsEGjGJLWHNdXGgcok",
+      "TZ1kH9tmxaV7KJsKFCXsb1eKEVUq1ErDhJh1",
       100f,
       1f
     )
