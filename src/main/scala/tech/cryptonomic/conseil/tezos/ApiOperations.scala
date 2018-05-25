@@ -47,6 +47,13 @@ object ApiOperations {
   case class isOperationGroupFilter(exists: Boolean)
   case class isOperationFilter(exists: Boolean)
 
+  case class filteredTables(
+                           filteredAccounts: Option[Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq]],
+                           filteredBlocks: Query[Tables.Blocks, Tables.Blocks#TableElementType, Seq],
+                           filteredOperationGroups: Query[Tables.OperationGroups, Tables.OperationGroups#TableElementType, Seq],
+                           filteredOperations: Query[Tables.Operations, Tables.Operations#TableElementType, Seq]
+                           )
+
   // Predicates to determine existence of specific type of filter
 
   private def isBlockFilter(filter: Filter): Boolean =
@@ -111,11 +118,7 @@ object ApiOperations {
 
   // End helper functions for constructing Slick queries
 
-  private def getFilteredTables(filter: Filter, latestBlock: Option[Tables.BlocksRow]):
-    (Option[Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq]],
-            Query[Tables.Blocks, Tables.Blocks#TableElementType, Seq],
-            Query[Tables.OperationGroups, Tables.OperationGroups#TableElementType, Seq],
-            Query[Tables.Operations, Tables.Operations#TableElementType, Seq]) = {
+  private def getFilteredTables(filter: Filter, latestBlock: Option[Tables.BlocksRow]): filteredTables= {
     val filteredAccounts = latestBlock.flatMap(block =>
       Some(
         Tables.Accounts.filter({ account =>
@@ -136,7 +139,7 @@ object ApiOperations {
         filterChainIDs(filter, block) &&
         filterProtocols(filter, block)
     })
-    (filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+    filteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
   }
 
   /**
@@ -185,7 +188,7 @@ object ApiOperations {
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] = Try {
 
-    val (_, filteredBlocks, filteredOpGroups, filteredOps) = getFilteredTables(filter, None)
+    val filteredTables(_, filteredBlocks, filteredOpGroups, filteredOps) = getFilteredTables(filter, None)
 
     // Join tables in appropriate ways dependents on filters chosen by user
     val action = isOpGroupOrOpFilter(filter) match {
@@ -251,7 +254,7 @@ object ApiOperations {
     */
   def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] = Try {
 
-    val (_, filteredBlocks, filteredOpGroups, filteredOps) = getFilteredTables(filter, None)
+    val filteredTables(_, filteredBlocks, filteredOpGroups, filteredOps) = getFilteredTables(filter, None)
 
     // Join tables in appropriate ways dependents on filters chosen by user
     val action = isOpGroupOrOpFilter(filter) match {
@@ -324,7 +327,7 @@ object ApiOperations {
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
 
-        val (someFilteredAccounts, _, filteredOpGroups, filteredOps) = getFilteredTables(filter, Some(latestBlock))
+        val filteredTables(someFilteredAccounts, _, filteredOpGroups, filteredOps) = getFilteredTables(filter, Some(latestBlock))
         val filteredAccounts = someFilteredAccounts.get
 
         // Join tables in appropriate ways dependents on filters chosen by user
