@@ -40,7 +40,32 @@ object ApiOperations {
                      accountIDs: Option[Set[String]] = Some(Set[String]()),
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
+                     operationKinds: Option[Set[String]] = Some(Set[String]()),
+                     operationGroupKinds: Option[Set[String]] = Some(Set[String]())
                    )
+
+  case class OperationGroupFilterFlag(exists: Boolean)
+  case class OperationFilterFlag(exists: Boolean)
+
+  case class FilteredTables(
+                           filteredAccounts: Option[Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq]],
+                           filteredBlocks: Query[Tables.Blocks, Tables.Blocks#TableElementType, Seq],
+                           filteredOperationGroups: Query[Tables.OperationGroups, Tables.OperationGroups#TableElementType, Seq],
+                           filteredOperations: Query[Tables.Operations, Tables.Operations#TableElementType, Seq]
+                           )
+
+  // Predicates to determine existence of specific type of filter
+
+  private def isOperationGroupFilter(filter: Filter): Boolean =
+    (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) ||
+      (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) ||
+      (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
+
+  private def isOperationFilter(filter: Filter): Boolean =
+    filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty
+
+  private def isOpGroupOrOpFilter(filter: Filter): (OperationGroupFilterFlag, OperationFilterFlag) =
+    (OperationGroupFilterFlag(isOperationGroupFilter(filter)), OperationFilterFlag(isOperationFilter(filter)))
 
   // Start helper functions for constructing Slick queries
 
@@ -75,9 +100,41 @@ object ApiOperations {
       a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
     else true
 
+  private def filterOperationGroupKinds(filter:Filter, op: Tables.OperationGroups): Rep[Boolean] =
+    if (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
+      op.kind.getOrElse("").inSet(filter.operationGroupKinds.get) else true
+
+  private def filterOperationKinds(filter:Filter, op: Tables.Operations): Rep[Boolean] =
+    if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
+      op.opKind.inSet(filter.operationKinds.get) else true
+
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
   // End helper functions for constructing Slick queries
+
+  private def getFilteredTables(filter: Filter, latestBlock: Option[Tables.BlocksRow]): FilteredTables= {
+    val filteredAccounts = latestBlock.flatMap(block =>
+      Some(
+        Tables.Accounts.filter({ account =>
+        filterAccountIDs(filter, account) &&
+        filterAccountDelegates(filter, account) &&
+        filterAccountManagers(filter, account) &&
+        account.blockId === block.hash
+      })))
+    val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
+      filterOperationIDs(filter, opGroup) &&
+        filterOperationSources(filter, opGroup) &&
+        filterOperationGroupKinds(filter, opGroup)
+    })
+    val filteredOps = Tables.Operations.filter({ op => filterOperationKinds(filter, op) })
+    val filteredBlocks = Tables.Blocks.filter({ block =>
+      filterBlockIDs(filter, block) &&
+        filterBlockLevels(filter, block) &&
+        filterChainIDs(filter, block) &&
+        filterProtocols(filter, block)
+    })
+    FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+  }
 
   /**
     * Fetches the level of the most recent block stored in the database.
@@ -124,17 +181,36 @@ object ApiOperations {
     * @return       List of blocks
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] = Try {
-    val action = for {
-      b: Tables.Blocks <- Tables.Blocks
-      og <- Tables.OperationGroups
-      if b.hash === og.blockId &&
-      filterBlockIDs(filter, b) &&
-      filterBlockLevels(filter, b) &&
-      filterChainIDs(filter, b) &&
-      filterProtocols(filter, b) &&
-      filterOperationIDs(filter, og) &&
-      filterOperationSources(filter, og)
-    } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+
+    val FilteredTables(_, filteredBlocks, filteredOpGroups, filteredOps) = getFilteredTables(filter, None)
+
+    // Join tables in appropriate ways dependents on filters chosen by user
+    val action = isOpGroupOrOpFilter(filter) match {
+
+      case (OperationGroupFilterFlag(true), OperationFilterFlag(false))  =>
+        val table = filteredBlocks.join(filteredOpGroups).on(_.hash === _.blockId)
+
+        for {
+          (b, _) <- table
+        } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+
+      case (OperationGroupFilterFlag(false), OperationFilterFlag(false)) =>
+        for {
+          b <- filteredBlocks
+        } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+
+      case _ =>
+        val table = filteredBlocks
+          .join(filteredOpGroups).on(_.hash === _.blockId)
+          .join(filteredOps).on(_._2.hash === _.operationGroupHash)
+        for {
+          ((b, _), _) <- table
+        } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+
+    }
+
+
+
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
@@ -163,7 +239,7 @@ object ApiOperations {
           "accounts" -> accounts
         )
       }
-  }
+    }
 
   /**
     * Fetches all operation groups.
@@ -171,53 +247,51 @@ object ApiOperations {
     * @return       List of operation groups
     */
   def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] = Try {
-    val action = for {
-      b: Tables.Blocks <- Tables.Blocks
-      og <- Tables.OperationGroups
-      if b.hash === og.blockId &&
-        filterBlockIDs(filter, b) &&
-        filterBlockLevels(filter, b) &&
-        filterChainIDs(filter, b) &&
-        filterProtocols(filter, b) &&
-        filterOperationIDs(filter, og) &&
-        filterOperationSources(filter, og)
-    } yield (
-      og.hash,
-      og.branch,
-      og.kind,
-      og.block,
-      og.level,
-      og.slots,
-      og.signature,
-      og.proposals,
-      og.period,
-      og.source,
-      og.proposal,
-      og.ballot,
-      og.chain,
-      og.counter,
-      og.fee,
-      og.blockId)
+
+    val FilteredTables(_, filteredBlocks, filteredOpGroups, filteredOps) = getFilteredTables(filter, None)
+
+    // Join tables in appropriate ways dependents on filters chosen by user
+    val action = isOpGroupOrOpFilter(filter) match {
+
+      case (OperationGroupFilterFlag(true), OperationFilterFlag(false))  =>
+        val table = filteredOpGroups.join(filteredBlocks).on(_.blockId === _.hash)
+        for {
+          (opGroups, _) <- table
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+
+      case (OperationGroupFilterFlag(false), OperationFilterFlag(false)) =>
+        for {
+          opGroups <- filteredOpGroups
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+
+      case (OperationGroupFilterFlag(false), OperationFilterFlag(true)) =>
+        val table = filteredOpGroups.join(filteredOps).on(_.hash === _.operationGroupHash)
+        for {
+          (opGroups, _) <- table
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+
+      case (OperationGroupFilterFlag(true), OperationFilterFlag(true)) =>
+        val table = filteredOpGroups
+          .join(filteredBlocks).on(_.blockId === _.hash)
+          .join(filteredOps).on(_._1.hash === _.operationGroupHash)
+        for {
+          ((opGroups, _), _) <- table
+        } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
+          opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
+          opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+
+    }
+
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.OperationGroupsRow(
-      x._1,
-      x._2,
-      x._3,
-      x._4,
-      x._5,
-      x._6,
-      x._7,
-      x._8,
-      x._9,
-      x._10,
-      x._11,
-      x._12,
-      x._13,
-      x._14,
-      x._15,
-      x._16
-    ))
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14, x._15, x._16))
   }
 
   /**
@@ -246,16 +320,34 @@ object ApiOperations {
   def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
-        val action = for {
-          a: Tables.Accounts <- Tables.Accounts
-          og <- Tables.OperationGroups
-          if a.blockId === latestBlock.hash &&
-          og.source === a.accountId &&
-          filterAccountIDs(filter, a) &&
-          filterAccountDelegates(filter, a) &&
-          filterAccountManagers(filter, a) &&
-          filterOperationIDs(filter, og)
-        } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+        val FilteredTables(someFilteredAccounts, _, filteredOpGroups, filteredOps) = getFilteredTables(filter, Some(latestBlock))
+        val filteredAccounts = someFilteredAccounts.get
+
+        // Join tables in appropriate ways dependents on filters chosen by user
+        val action = isOpGroupOrOpFilter(filter) match {
+
+          case (OperationGroupFilterFlag(true), OperationFilterFlag(false))  =>
+            val table = filteredAccounts.join(filteredOpGroups).on(_.accountId === _.source)
+            for {
+              (a, _) <- table
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+          case (OperationGroupFilterFlag(false), OperationFilterFlag(false)) =>
+            for {
+              a <- filteredAccounts
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+          case _ =>
+            val table = filteredAccounts
+              .join(filteredOpGroups).on(_.accountId === _.source)
+              .join(filteredOps).on(_._2.hash === _.operationGroupHash)
+            for {
+              ((a, _), _) <- table
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+        }
+
         val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
@@ -263,4 +355,5 @@ object ApiOperations {
     }
 
 }
+
 
