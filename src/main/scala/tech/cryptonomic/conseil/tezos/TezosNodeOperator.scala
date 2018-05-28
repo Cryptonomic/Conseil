@@ -278,12 +278,12 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def signOperationGroup(forgedOperation: String, keyStore: KeyStore): Try[SignedOperationGroup] = Try{
     SodiumLibrary.setLibraryPath(sodiumLibraryPath)
-    val bytes = SodiumUtils.hex2Binary(forgedOperation)
-    val pvBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
-    val sig: Array[Byte] = SodiumLibrary.cryptoSignDetached(bytes, pvBytes.toArray)
-    val edsig: String = CryptoUtil.base58CheckEncode(sig.toList, "edsig").get
-    val sbytes = bytes ++ sig
-    SignedOperationGroup(sbytes, edsig)
+    val forgedOperationBytes = SodiumUtils.hex2Binary(forgedOperation)
+    val privateKeyBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
+    val opSignature: Array[Byte] = SodiumLibrary.cryptoSignDetached(forgedOperationBytes, privateKeyBytes.toArray)
+    val hexSignature: String = CryptoUtil.base58CheckEncode(opSignature.toList, "edsig").get
+    val signedOpBytes = forgedOperationBytes ++ opSignature
+    SignedOperationGroup(signedOpBytes, hexSignature)
   }
 
   /**
@@ -403,7 +403,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "kind"        -> "reveal",
       "public_key"  -> keyStore.publicKey
     )
-    val operations = transactionMap :: revealMap :: Nil
+    val operations = revealMap :: transactionMap :: Nil
     sendOperation(network, operations, keyStore, Some(fee))
   }
 

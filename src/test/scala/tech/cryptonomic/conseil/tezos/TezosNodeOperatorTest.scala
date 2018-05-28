@@ -69,9 +69,9 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
   }
 
   val keyStore: KeyStore = KeyStore(
-    publicKey = "edpkuqR4dumd2aDtkrJLCWbWgasBCTQBHCvUjgWXdz5aKWszbEkAeN",
-    privateKey = "edsk378RBriXrz4t3UbCdpku4bmBuqnbrgiN9dpwRN2LqhmaRcQGrz",
-    publicKeyHash = "tz1iozn37HjyrvAu3bSkUkAXHrTNcaFMjRYR"
+    publicKey = "edpkv3azzeq9vL869TujYhdQY5FKiQH4CGwJEzqG7m6PoX7VEpdPc9",
+    privateKey = "edsk4HUL173sSXZgq8og6kBqyZzxk8RoU4sDbU9sS9V3FdQZET3ZkF",
+    publicKeyHash = "tz1hcXqtiMYFhvuirD4guE7ts4yDuCAmtD95"
   )
 
   "getBlock" should "should correctly fetch the genesis block" in {
@@ -154,9 +154,9 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val result = nodeOp.sendTransactionOperation(
       "zeronet",
       keyStore,
-      "TZ1nBdqecGtSur6p59a5gwHpnMx5n7GwV6SL",
-      100f,
-      1f
+      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
+      100000000f,
+      50000f
     )
     result.isSuccess should be (true)
   }
