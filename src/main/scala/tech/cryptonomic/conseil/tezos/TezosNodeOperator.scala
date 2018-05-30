@@ -284,9 +284,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val watermarkedForgedOperationBytes = SodiumUtils.hex2Binary(watermark + forgedOperation)
     val privateKeyBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
     val hashedWatermarkedOpBytes = SodiumLibrary.cryptoGenerichash(watermarkedForgedOperationBytes, 32)
+    val hashedWatermarkedOpBytesInHex = hashedWatermarkedOpBytes.map("%02X" format _).mkString
     val opSignature: Array[Byte] = SodiumLibrary.cryptoSignDetached(hashedWatermarkedOpBytes, privateKeyBytes.toArray)
+    val opSignatureInHex = opSignature.map("%02X" format _).mkString
     val hexSignature: String = CryptoUtil.base58CheckEncode(opSignature.toList, "edsig").get
-    val signedOpBytes = watermarkedForgedOperationBytes ++ opSignature
+    val signedOpBytes = SodiumUtils.hex2Binary(forgedOperation) ++ opSignature
     SignedOperationGroup(signedOpBytes, hexSignature)
   }
 
