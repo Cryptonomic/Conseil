@@ -53,7 +53,14 @@ object ApiOperations {
                      order: Option[String] = Some("DESC")
                    )
 
-  // Represents queries for all tables after filters have been applied to them
+  /**
+    * Represents queries for filtered tables for Accounts, Blocks, Operation Groups, and Operations.
+    *
+    * @param filteredAccounts         Filtered Accounts table
+    * @param filteredBlocks           Filtered Blocks table
+    * @param filteredOperationGroups  Filtered OperationGroups table
+    * @param filteredOperations       Filtered Operations table
+   */
   case class FilteredTables(
                              filteredAccounts: Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq],
                              filteredBlocks: Query[Tables.Blocks, Tables.Blocks#TableElementType, Seq],
@@ -61,7 +68,15 @@ object ApiOperations {
                              filteredOperations: Query[Tables.Operations, Tables.Operations#TableElementType, Seq]
                            )
 
-  // Represents queries for all possible joins
+  /**
+    * Represents all possible joins of tables that can be made from Accounts, Blocks, Operation Groups, and Operations.
+    *
+    * Example: BlocksOperationGroupsOperationsAccounts corresponds to the four way inner join between the Blocks,
+    * Operation Groups, Operations, and Accounts tables.
+    *
+    * Example: OperationGroupsOperationsAccounts corresponds to the three way join between the Operation Groups,
+    * Operations, and Accounts Tables.
+    */
   sealed trait JoinedTables
 
   case class BlocksOperationGroupsOperationsAccounts
@@ -136,7 +151,12 @@ object ApiOperations {
   case class Accounts
   (table: Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq]) extends JoinedTables
 
-  // Represents types for all possible sorted slick actions
+  /**
+    * This represents a database query that returns all of the columns of the table in a scala tuple.
+    * The only options available are for the Blocks, Operation Groups, and Operations Table,
+    * corresponding to the functions fetchBlocks, fetchOperationGroups, and fetchOperations, and these
+    * types are used for convenience in fetchSortedTables.
+    */
   sealed trait Action
 
   case class BlocksAction
@@ -223,7 +243,11 @@ object ApiOperations {
   // End helper functions for constructing Slick queries
 
 
-  // Filter all possible tables based on user input
+  /**
+    * Filters Accounts, Operation Groups, Operations, and Blocks tables based on users input to the filter.
+    * @param filter
+    * @return
+    */
   private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
@@ -252,7 +276,17 @@ object ApiOperations {
     }
   }
 
-  // Return appropriate joined table based on user request and filter, if possible
+  /**
+    * Returns the join of some combination of the Blocks, Operation Groups, Operations, and Accounts
+    * tables, given the flags of which tables are necessary. If a table shouldn't be created based
+    * on domain specific knowledge of Tezos, return None.
+    * @param blockFlag
+    * @param operationGroupFlag
+    * @param operationFlag
+    * @param accountFlag
+    * @param tables
+    * @return
+    */
   private def getJoinedTables(blockFlag: Boolean,
                               operationGroupFlag: Boolean,
                               operationFlag: Boolean,
@@ -315,8 +349,15 @@ object ApiOperations {
     }
   }
 
-  // this will be refactored out later, initial solution to user wanting to sort by columns in current schema
-  // will break if schema changes
+  /**
+    * Return table query which is the sorted verion of action, based on database column name, sortBy, and the order.
+    * This will be refactored out later, as this is just an initial solution to the user wanting to sort by columns
+    * according to the current schema. This will break if the schema changes.
+    * @param order
+    * @param action
+    * @param sortBy
+    * @return
+    */
   private def fetchSortedAction(order: Option[String], action: Action, sortBy: Option[String]): Action = {
 
     //default is sorting descending by block level, operation group hash, and account ID, otherwise order and sorting column chosen by user
