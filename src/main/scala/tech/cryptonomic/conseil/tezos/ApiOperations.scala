@@ -8,6 +8,8 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
+import java.sql.Timestamp
+
 
 /**
   * Functionality for fetching data from the Conseil database.
@@ -42,17 +44,12 @@ object ApiOperations {
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
                      operationKinds: Option[Set[String]] = Some(Set[String]()),
-                     operationGroupKinds: Option[Set[String]] = Some(Set[String]())
-                     //sortBy: Option[String] Column name
-                     //order: Option[String] DESC/ASC
+                     operationGroupKinds: Option[Set[String]] = Some(Set[String]()),
+                     sortBy: Option[String] = Some(""),
+                     order: Option[String] = Some("DESC")
                    )
 
-  case class OperationGroupFilterFlag(exists: Boolean)
-
-  case class OperationFilterFlag(exists: Boolean)
-
-  case class AccountFilterFlag(exists: Boolean)
-
+  // Represents queries for all tables after filters have been applied to them
   case class FilteredTables(
                              filteredAccounts: Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq],
                              filteredBlocks: Query[Tables.Blocks, Tables.Blocks#TableElementType, Seq],
@@ -60,79 +57,100 @@ object ApiOperations {
                              filteredOperations: Query[Tables.Operations, Tables.Operations#TableElementType, Seq]
                            )
 
+  // Represents queries for all possible joins
   sealed trait JoinedTables
 
   case class BlocksOperationGroupsOperationsAccounts
   (table: Query[(((Tables.Blocks, Tables.OperationGroups), Tables.Operations), Tables.Accounts),
-    (((Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
-      Tables.Operations#TableElementType), Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                (((Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
+                   Tables.Operations#TableElementType), Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class BlocksOperationGroupsOperations
   (table: Query[((Tables.Blocks, Tables.OperationGroups), Tables.Operations),
-    ((Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
-      Tables.Operations#TableElementType),
-    Seq]) extends JoinedTables
+                ((Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
+                  Tables.Operations#TableElementType),
+                Seq]) extends JoinedTables
 
   case class BlocksOperationGroupsAccounts
   (table: Query[((Tables.Blocks, Tables.OperationGroups), Tables.Accounts),
-    ((Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
-      Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                ((Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
+                  Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class BlocksOperationGroups
   (table: Query[(Tables.Blocks, Tables.OperationGroups),
-    (Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
-    Seq]) extends JoinedTables
+                (Tables.Blocks#TableElementType, Tables.OperationGroups#TableElementType),
+                Seq]) extends JoinedTables
 
   case class BlocksOperationsAccounts
   (table: Query[((Tables.Blocks, Tables.Operations), Tables.Accounts),
-    ((Tables.Blocks#TableElementType, Tables.Operations#TableElementType),
-      Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                ((Tables.Blocks#TableElementType, Tables.Operations#TableElementType),
+                  Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class BlocksOperations
   (table: Query[(Tables.Blocks, Tables.Operations),
-    (Tables.Blocks#TableElementType, Tables.Operations#TableElementType),
-    Seq]) extends JoinedTables
+                (Tables.Blocks#TableElementType, Tables.Operations#TableElementType),
+                Seq]) extends JoinedTables
 
   case class BlocksAccounts
   (table: Query[(Tables.Blocks, Tables.Accounts),
-    (Tables.Blocks#TableElementType, Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                (Tables.Blocks#TableElementType, Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class Blocks
   (table: Query[Tables.Blocks, Tables.Blocks#TableElementType, Seq]) extends JoinedTables
 
   case class OperationGroupsOperationsAccounts
   (table: Query[((Tables.OperationGroups, Tables.Operations), Tables.Accounts),
-    ((Tables.OperationGroups#TableElementType, Tables.Operations#TableElementType),
-      Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                ((Tables.OperationGroups#TableElementType, Tables.Operations#TableElementType),
+                  Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class OperationGroupsOperations
   (table: Query[(Tables.OperationGroups, Tables.Operations),
-    (Tables.OperationGroups#TableElementType, Tables.Operations#TableElementType),
-    Seq]) extends JoinedTables
+                (Tables.OperationGroups#TableElementType, Tables.Operations#TableElementType),
+                Seq]) extends JoinedTables
 
   case class OperationGroupsAccounts
   (table: Query[(Tables.OperationGroups, Tables.Accounts),
-    (Tables.OperationGroups#TableElementType, Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                (Tables.OperationGroups#TableElementType, Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class OperationGroups
   (table: Query[Tables.OperationGroups, Tables.OperationGroups#TableElementType, Seq]) extends JoinedTables
 
   case class OperationsAccounts
   (table: Query[(Tables.Operations, Tables.Accounts),
-    (Tables.Operations#TableElementType, Tables.Accounts#TableElementType),
-    Seq]) extends JoinedTables
+                (Tables.Operations#TableElementType, Tables.Accounts#TableElementType),
+                Seq]) extends JoinedTables
 
   case class Operations
   (table: Query[Tables.Operations, Tables.Operations#TableElementType, Seq]) extends JoinedTables
 
   case class Accounts
   (table: Query[Tables.Accounts, Tables.Accounts#TableElementType, Seq]) extends JoinedTables
+
+  // Represents types for all possible sorted slick actions
+  sealed trait Action
+
+  case class BlocksAction
+  (action: Query[(Rep[String], Rep[String], Rep[Int], Rep[Int], Rep[String], Rep[Int], Rep[String], Rep[String], Rep[String], Rep[Timestamp], Rep[String], Rep[Option[String]]),
+                 (String, String, Int, Int, String, Int, String, String, String, Timestamp, String, Option[String]),
+                 Seq]) extends Action
+
+  case class OperationGroupsAction
+  (action: Query [(Rep[String], Rep[String], Rep[Option[String]], Rep[Option[String]], Rep[Option[Int]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]],
+                    Rep[Option[BigDecimal]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]], Rep[Option[BigDecimal]], Rep[Option[String]], Rep[String]),
+                  (String, String, Option[String], Option[String], Option[Int], Option[String], Option[String], Option[String], Option[BigDecimal], Option[String], Option[String],
+                    Option[String], Option[String], Option[BigDecimal], Option[String], String),
+                  Seq]) extends Action
+
+  case class AccountsAction
+  (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
+                  (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal),
+                  Seq]) extends Action
 
   // Predicates to determine existence of specific type of filter
 
@@ -154,10 +172,6 @@ object ApiOperations {
     (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty) ||
       (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) ||
       (filter.accountManagers.isDefined && filter.accountManagers.get.nonEmpty)
-
-  private def isOpGroupOrOpOrAccountFilter(filter: Filter): (OperationGroupFilterFlag, OperationFilterFlag, AccountFilterFlag) =
-    (OperationGroupFilterFlag(isOperationGroupFilter(filter)), OperationFilterFlag(isOperationFilter(filter)),
-      AccountFilterFlag(isAccountFilter(filter)))
 
   // Start helper functions for constructing Slick queries
 
@@ -204,43 +218,49 @@ object ApiOperations {
 
   // End helper functions for constructing Slick queries
 
+
+  // Filter all possible tables based on user input
   private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
-        val filteredAccounts =
-          Tables.Accounts.filter({ account =>
+
+        val filteredAccounts = Tables.Accounts.filter({ account =>
             filterAccountIDs(filter, account) &&
-              filterAccountDelegates(filter, account) &&
-              filterAccountManagers(filter, account) &&
-              account.blockId === latestBlock.hash
-          })
+            filterAccountDelegates(filter, account) &&
+            filterAccountManagers(filter, account) &&
+            account.blockId === latestBlock.hash })
+
         val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-          filterOperationIDs(filter, opGroup) &&
+            filterOperationIDs(filter, opGroup) &&
             filterOperationSources(filter, opGroup) &&
-            filterOperationGroupKinds(filter, opGroup)
-        })
+            filterOperationGroupKinds(filter, opGroup) })
+
         val filteredOps = Tables.Operations.filter({ op => filterOperationKinds(filter, op) })
+
         val filteredBlocks = Tables.Blocks.filter({ block =>
-          filterBlockIDs(filter, block) &&
+            filterBlockIDs(filter, block) &&
             filterBlockLevels(filter, block) &&
             filterChainIDs(filter, block) &&
-            filterProtocols(filter, block)
-        })
+            filterProtocols(filter, block)})
+
         FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
       }
     }
   }
 
-  private def getJoinedTables(isBlockFilter: Boolean,
-                              isOperationGroupFilter: Boolean,
-                              isOperationFilter: Boolean,
-                              isAccountFilter: Boolean,
+  // Return appropriate joined table based on user request and filter, if possible
+  private def getJoinedTables(blockFlag: Boolean,
+                              operationGroupFlag: Boolean,
+                              operationFlag: Boolean,
+                              accountFlag: Boolean,
                               tables: FilteredTables): Option[JoinedTables] = {
+
     val blocks = tables.filteredBlocks
     val operationGroups = tables.filteredOperationGroups
     val operations = tables.filteredOperations
     val accounts = tables.filteredAccounts
-    (isBlockFilter, isOperationGroupFilter, isOperationFilter, isAccountFilter) match {
+
+    (blockFlag, operationGroupFlag, operationFlag, accountFlag) match {
       case (true, true, true, true) =>
         Some(BlocksOperationGroupsOperationsAccounts(
           blocks
@@ -279,12 +299,275 @@ object ApiOperations {
       case (false, true, false, false) =>
         Some(OperationGroups(operationGroups))
       case (false, false, true, true) =>
-        None
+        Some(OperationGroupsOperationsAccounts(operationGroups
+          .join(operations).on(_.hash === _.operationGroupHash)
+          .join(accounts).on(_._1.source === _.accountId)))
       case (false, false, true, false) =>
         None
       case (false, false, false, true) =>
         Some(Accounts(accounts))
+      case (false, false, false, false) =>
+        None
     }
+  }
+
+  private def fetchSortedAction(order: Option[String], action: Action, sortBy: Option[String]): Action = {
+
+    //default is sorting descending by block level, operation group hash, and account ID, otherwise order and sorting column chosen by user
+    val sortedAction =
+      action match {
+        case BlocksAction(blockAction) =>
+          sortBy match {
+            case Some(x) if x.toLowerCase() == "chain_id" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._1.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._1.desc))
+                case None => BlocksAction(blockAction.sortBy(_._1.desc))
+              }
+            case Some(x) if x.toLowerCase() == "protocol" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._2.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._2.desc))
+                case None => BlocksAction(blockAction.sortBy(_._2.desc))
+              }
+            case Some(x) if x.toLowerCase() == "level" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._3.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._3.desc))
+                case None => BlocksAction(blockAction.sortBy(_._3.desc))
+              }
+            case Some(x) if x.toLowerCase() == "proto" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._4.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._4.desc))
+                case None => BlocksAction(blockAction.sortBy(_._4.desc))
+              }
+            case Some(x) if x.toLowerCase() == "predecessor" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._5.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._5.desc))
+                case None => BlocksAction(blockAction.sortBy(_._5.desc))
+              }
+            case Some(x) if x.toLowerCase() == "validation_pass" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._6.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._6.desc))
+                case None => BlocksAction(blockAction.sortBy(_._6.desc))
+              }
+            case Some(x) if x.toLowerCase() == "operations_hash" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._7.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._7.desc))
+                case None => BlocksAction(blockAction.sortBy(_._7.desc))
+              }
+            case Some(x) if x.toLowerCase() == "protocol_data" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._8.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._8.desc))
+                case None => BlocksAction(blockAction.sortBy(_._8.desc))
+              }
+            case Some(x) if x.toLowerCase() == "hash" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._9.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._9.desc))
+                case None => BlocksAction(blockAction.sortBy(_._9.desc))
+              }
+            case Some(x) if x.toLowerCase() == "timestamp" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._10.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._10.desc))
+                case None => BlocksAction(blockAction.sortBy(_._10.desc))
+              }
+            case Some(x) if x.toLowerCase() == "fitness" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._11.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._11.desc))
+                case None => BlocksAction(blockAction.sortBy(_._11.desc))
+              }
+            case Some(x) if x.toLowerCase() == "context" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._12.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._12.desc))
+                case None => BlocksAction(blockAction.sortBy(_._12.desc))
+              }
+            case None =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => BlocksAction(blockAction.sortBy(_._3.asc))
+                case Some(x) if x.toLowerCase() == "desc" => BlocksAction(blockAction.sortBy(_._3.desc))
+                case None => BlocksAction(blockAction.sortBy(_._3.desc))
+              }
+          }
+        case OperationGroupsAction(opGroupAction) =>
+          sortBy match {
+            case Some(x) if x.toLowerCase() == "hash" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._1.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
+              }
+            case Some(x) if x.toLowerCase() == "branch" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._2.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
+              }
+            case Some(x) if x.toLowerCase() == "kind" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
+              }
+            case Some(x) if x.toLowerCase() == "block" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._4.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
+              }
+            case Some(x) if x.toLowerCase() == "level" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._5.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
+              }
+            case Some(x) if x.toLowerCase() == "slots" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._6.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
+              }
+            case Some(x) if x.toLowerCase() == "signature" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._7.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._7.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._7.desc))
+              }
+            case Some(x) if x.toLowerCase() == "proposals" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._8.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._8.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._8.desc))
+              }
+            case Some(x) if x.toLowerCase() == "period" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._9.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._9.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._9.desc))
+              }
+            case Some(x) if x.toLowerCase() == "source" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._10.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._10.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._10.desc))
+              }
+            case Some(x) if x.toLowerCase() == "proposal" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._11.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._11.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._11.desc))
+              }
+            case Some(x) if x.toLowerCase() == "ballot" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._12.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._12.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._12.desc))
+              }
+            case Some(x) if x.toLowerCase() == "chain" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._13.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._13.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._13.desc))
+              }
+            case Some(x) if x.toLowerCase() == "counter" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._14.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._14.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._14.desc))
+              }
+            case Some(x) if x.toLowerCase() == "fee" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._15.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._15.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._15.desc))
+              }
+            case Some(x) if x.toLowerCase() == "block_id" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._16.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._16.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._16.desc))
+              }
+            case None =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._1.asc))
+                case Some(x) if x.toLowerCase() == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
+              }
+          }
+        case AccountsAction(accountAction) =>
+          sortBy match {
+            case Some(x) if x.toLowerCase() == "account_id" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._1.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._1.desc))
+                case None => AccountsAction(accountAction.sortBy(_._1.desc))
+              }
+            case Some(x) if x.toLowerCase() == "block_id" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._2.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._2.desc))
+                case None => AccountsAction(accountAction.sortBy(_._2.desc))
+              }
+            case Some(x) if x.toLowerCase() == "manager" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._3.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._3.desc))
+                case None => AccountsAction(accountAction.sortBy(_._3.desc))
+              }
+            case Some(x) if x.toLowerCase() == "spendable" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._4.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._4.desc))
+                case None => AccountsAction(accountAction.sortBy(_._4.desc))
+              }
+            case Some(x) if x.toLowerCase() == "delegate_setable" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._5.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._5.desc))
+                case None => AccountsAction(accountAction.sortBy(_._5.desc))
+              }
+            case Some(x) if x.toLowerCase() == "delegate_value" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._6.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._6.desc))
+                case None => AccountsAction(accountAction.sortBy(_._6.desc))
+              }
+            case Some(x) if x.toLowerCase() == "counter" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._7.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._7.desc))
+                case None => AccountsAction(accountAction.sortBy(_._7.desc))
+              }
+            case Some(x) if x.toLowerCase() == "script" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._8.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._8.desc))
+                case None => AccountsAction(accountAction.sortBy(_._8.desc))
+              }
+            case Some(x) if x.toLowerCase() == "balance" =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._9.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._9.desc))
+                case None => AccountsAction(accountAction.sortBy(_._9.desc))
+              }
+            case None =>
+              order match {
+                case Some(x) if x.toLowerCase() == "asc" => AccountsAction(accountAction.sortBy(_._1.asc))
+                case Some(x) if x.toLowerCase() == "desc" => AccountsAction(accountAction.sortBy(_._1.desc))
+                case None => AccountsAction(accountAction.sortBy(_._1.desc))
+              }
+          }
+      }
+
+    sortedAction
   }
 
   /**
@@ -338,38 +621,43 @@ object ApiOperations {
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
 
     getFilteredTables(filter).flatMap { filteredTables =>
+
       Try {
+
+        // Blocks need to be fetch, other tables needed if user asks for them via the filter
         val blockFlag = true
         val operationGroupFlag = isOperationGroupFilter(filter)
         val operationFlag = isOperationFilter(filter)
         val accountFlag = isAccountFilter(filter)
         val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables)
+
         val action = joinedTables match {
 
           case Some(Blocks(blocks)) =>
             for {
               b <- blocks
-            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness, b.context)
 
           case Some(BlocksOperationGroups(blocksOperationGroups)) =>
             for {
               (b, _) <- blocksOperationGroups
-            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness, b.context)
 
           case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
             for {
               ((b, _), _) <- blocksOperationGroupsOperations
-            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness)
+            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness, b.context)
 
-          case None =>
-            throw new Exception("")
+          case _ =>
+            throw new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
+
         }
 
         // sort by level
-        val sortedAction = action.sortBy(_._3.desc)
+        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)//action.sortBy(_._3.desc)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
-        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11))
+        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
       }
     }
 
@@ -465,12 +753,12 @@ object ApiOperations {
               opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
               opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
 
-          case None =>
-            throw new Exception("")
+          case _ =>
+            throw new Exception("This exception should never be reached, but is included for completeness.")
         }
 
         //sort by hash
-        val sortedAction = action.sortBy(_._1.desc)
+        val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy) //action.sortBy(_._1.desc)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.OperationGroupsRow(
@@ -502,40 +790,47 @@ object ApiOperations {
     * @return       List of accounts
     */
   def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] = {
-    getFilteredTables(filter).flatMap { filteredTables => Try {
-      val blockFlag = isBlockFilter(filter)
-      val operationGroupFlag = isOperationGroupFilter(filter)
-      val operationFlag = isOperationFilter(filter)
-      val accountFlag = true
-      val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables)
-      val action = joinedTables match {
+    getFilteredTables(filter).flatMap { filteredTables =>
 
-        case Some(Accounts(accounts)) =>
-          for {
-            a <- accounts
-          } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+      Try {
 
-        case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
-          for {
-            (_, a) <- operationGroupsAccounts
-          } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+        val blockFlag = isBlockFilter(filter)
+        val operationGroupFlag = isOperationGroupFilter(filter)
+        val operationFlag = isOperationFilter(filter)
+        val accountFlag = true
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables)
 
-        case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
-          for {
-            ((_, _), a) <- operationGroupsOperationsAccounts
-          } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+        val action = joinedTables match {
 
-        case _ =>
-          throw new Exception("Accounts can only be fetched with no filter, or filters on operation groups or operations.")
+          case Some(Accounts(accounts)) =>
+            for {
+              a <- accounts
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+          case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
+            for {
+              (_, a) <- operationGroupsAccounts
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+          case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
+            for {
+              ((_, _), a) <- operationGroupsOperationsAccounts
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+
+          case _ =>
+            throw new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
+        }
+
+        //sort by accountId
+        val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)  //action.sortBy(_._1.desc)
+        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
+        val results = Await.result(op, Duration.Inf)
+        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
+
       }
 
-      //sort by accountId
-      val sortedAction = action.sortBy(_._1.desc)
-      val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-      val results = Await.result(op, Duration.Inf)
-      results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
-      }
     }
+
   }
 
 }
