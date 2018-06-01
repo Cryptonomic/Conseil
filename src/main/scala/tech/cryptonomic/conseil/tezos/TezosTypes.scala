@@ -84,7 +84,33 @@ object TezosTypes {
 
   case class ForgedOperation(operation: String)
 
-  case class AppliedOperation(contracts: Array[String])
+  case class AppliedOperationBalanceUpdates(
+                                           kind: String,
+                                           contract: String,
+                                           debited: Option[String],
+                                           credited: Option[String]
+                                           )
+
+  case class AppliedOperationError(
+                                  kind: String,
+                                  id: String,
+                                  hash: String
+                                  )
+
+  case class AppliedOperationResult(
+                                   operation: String,
+                                   status: String,
+                                   operation_kind: Option[String],
+                                   balance_updates: Option[List[AppliedOperationBalanceUpdates]],
+                                   originated_contracts: Option[List[String]],
+                                   errors: Option[List[AppliedOperationError]]
+                                   )
+
+  case class AppliedOperation(
+                             kind: String,
+                             balance_updates: List[AppliedOperationBalanceUpdates],
+                             operation_results: List[AppliedOperationResult]
+                             )
 
   case class InjectedOperation(injectedOperation: String)
 

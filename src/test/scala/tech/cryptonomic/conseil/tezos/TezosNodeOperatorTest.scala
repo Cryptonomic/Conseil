@@ -70,7 +70,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   val keyStore: KeyStore = KeyStore(
     publicKey = "edpkv3azzeq9vL869TujYhdQY5FKiQH4CGwJEzqG7m6PoX7VEpdPc9",
-    privateKey = "edsk4HUL173sSXZgq8og6kBqyZzxk8RoU4sDbU9sS9V3FdQZET3ZkF",
+    privateKey = "edskS5owtVaAtWifnCNo8tUpAw2535AXEDY4RXBRV1NHbQ58RDdpaWz2KyrvFXE4SuCTbHU8exUecW33GRqkAfLeNLBS5sPyoi",
     publicKeyHash = "tz1hcXqtiMYFhvuirD4guE7ts4yDuCAmtD95"
   )
 
@@ -149,6 +149,15 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     accounts.isFailure should be (true)
   }
 
+  "signOperationGroup" should "correctly compute an operation signature" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.signOperationGroup(
+      "8f90f8f1f79bd69ae7d261252c51a1f5e8910f4fa2712a026f2acadb960416d900020000f10a450269188ebd9d29c6402d186bc381770fae000000000000c3500000001900000026010000000005f5e1000000bad6e61eb7b96f08783a476508e3d83b2bb15e19ff00000002030bb8010000000000000000",
+      keyStore
+    )
+    result.get.signature should be ("edsigtu4NbVsyomvHbAtstQAMpXFSKkDxH1YoshhQQmJhVe2pyWRUYvQr7dDLetLvyL7Yi78Pe846mG6hBGLx2WJXkuqSCU6Ff2")
+  }
+
   "sendTransaction" should "correctly send a transaction" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.sendTransactionOperation(
@@ -159,15 +168,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       50000f
     )
     result.isSuccess should be (true)
-  }
-
-  "signOperationGroup" should "correctly compute an operation signature" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.signOperationGroup(
-      "8f90f8f1f79bd69ae7d261252c51a1f5e8910f4fa2712a026f2acadb960416d900020000f10a450269188ebd9d29c6402d186bc381770fae000000000000c3500000001900000026010000000005f5e1000000bad6e61eb7b96f08783a476508e3d83b2bb15e19ff00000002030bb8010000000000000000",
-      keyStore
-    )
-    result.get.signature should be ("edsigtu4NbVsyomvHbAtstQAMpXFSKkDxH1YoshhQQmJhVe2pyWRUYvQr7dDLetLvyL7Yi78Pe846mG6hBGLx2WJXkuqSCU6Ff2")
+    result.get.results.operation_results.filter(_.errors.isDefined).size should be (0)
   }
 
   "sendDelegationOperation" should "correctly delegate to a given account" in {
@@ -176,10 +177,11 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val result = nodeOp.sendDelegationOperation(
       "zeronet",
       delegatedKeyStore,
-      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
+      keyStore.publicKeyHash,
       1f
     )
     result.isSuccess should be (true)
+    result.get.results.operation_results.filter(_.errors.isDefined).size should be (0)
   }
 
   "sendOriginationOperation" should "originate an account" in {
@@ -188,15 +190,16 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       "zeronet",
       keyStore,
       100f,
-      "tz1QdZSY2nEYyTEoKYrryhAQxaiUfG9VkZ23",
+      keyStore.publicKeyHash,
       spendable = true,
       delegatable = true,
       1f
     )
     result.isSuccess should be (true)
+    result.get.results.operation_results.filter(_.errors.isDefined).size should be (0)
   }
 
-  "createAccount" should "generate a new Tezos key pair" in {
+  "createIdentity" should "generate a new Tezos key pair" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.createIdentity()
     result.isSuccess should be (true)

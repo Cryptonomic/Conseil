@@ -29,10 +29,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   /**
     * Result of a successfully sent operation
-    * @param accounts         Handles of any accounts created, e.g. by origination
+    * @param results          Results of operation application
     * @param operationGroupID Operation group ID
     */
-  case class OperationResult(accounts: Seq[String], operationGroupID: String)
+  case class OperationResult(results: TezosTypes.AppliedOperation, operationGroupID: String)
 
   /**
     * Fetches a specific account for a given block.
@@ -317,7 +317,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                       blockHead: TezosTypes.Block,
                       operationGroupHash: String,
                       forgedOperationGroup: String,
-                      signedOpGroup: SignedOperationGroup): Try[Array[String]] = {
+                      signedOpGroup: SignedOperationGroup): Try[TezosTypes.AppliedOperation] = {
     val payload: Map[String, Any] = Map(
       "pred_block" -> blockHead.metadata.predecessor,
       "operation_hash" -> operationGroupHash,
@@ -327,9 +327,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     node.runQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
       .flatMap { result =>
         logger.debug(s"Result of operation application: $result")
-        Try(JsonUtil.fromJson[TezosTypes.AppliedOperation](result)).flatMap{ appliedOP =>
-          Try(appliedOP.contracts)
-        }
+        Try(JsonUtil.fromJson[TezosTypes.AppliedOperation](result))
       }
   }
 
@@ -365,10 +363,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         forgeOperations(network, blockHead, account, operations, keyStore, fee).flatMap { forgedOperationGroup =>
           signOperationGroup(forgedOperationGroup, keyStore).flatMap { signedOpGroup =>
             computeOperationHash(signedOpGroup).flatMap { operationGroupHash =>
-              applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup).flatMap { accounts =>
+              applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup).flatMap { appliedOp =>
                 injectOperation(network, signedOpGroup).flatMap{ operation =>
                   logger.info(operation)
-                  Try(OperationResult(accounts, operation))
+                  Try(OperationResult(appliedOp, operation))
                 }
               }
             }
