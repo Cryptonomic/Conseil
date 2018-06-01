@@ -21,16 +21,20 @@ object ApiOperations {
   /**
     * Repesents a query filter submitted to the Conseil API.
     *
-    * @param limit            How many records to return
-    * @param blockIDs         Block IDs
-    * @param levels           Block levels
-    * @param chainIDs         Chain IDs
-    * @param protocols        Protocols
-    * @param operationIDs     Operation IDs
-    * @param operationSources Operation sources
-    * @param accountIDs       Account IDs
-    * @param accountManagers  Account managers
-    * @param accountDelegates Account delegates
+    * @param limit                How many records to return
+    * @param blockIDs             Block IDs
+    * @param levels               Block levels
+    * @param chainIDs             Chain IDs
+    * @param protocols            Protocols
+    * @param operationIDs         Operation IDs
+    * @param operationSources     Operation sources
+    * @param accountIDs           Account IDs
+    * @param accountManagers      Account managers
+    * @param accountDelegates     Account delegates
+    * @param operationKinds       Operation outer kind
+    * @param operationGroupKinds  Operation inner kind
+    * @param sortBy               Database column name to sort by
+    * @param order                Sort items ascending or descending
     */
   case class Filter(
                      limit: Option[Int] = Some(10),
@@ -45,7 +49,7 @@ object ApiOperations {
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
                      operationKinds: Option[Set[String]] = Some(Set[String]()),
                      operationGroupKinds: Option[Set[String]] = Some(Set[String]()),
-                     sortBy: Option[String] = Some(""),
+                     sortBy: Option[String] = None,
                      order: Option[String] = Some("DESC")
                    )
 
@@ -311,6 +315,8 @@ object ApiOperations {
     }
   }
 
+  // this will be refactored out later, initial solution to user wanting to sort by columns in current schema
+  // will break if schema changes
   private def fetchSortedAction(order: Option[String], action: Action, sortBy: Option[String]): Action = {
 
     //default is sorting descending by block level, operation group hash, and account ID, otherwise order and sorting column chosen by user
@@ -653,8 +659,7 @@ object ApiOperations {
 
         }
 
-        // sort by level
-        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)//action.sortBy(_._3.desc)
+        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
@@ -663,7 +668,6 @@ object ApiOperations {
 
   /**
     * Fetch a given operation group
-    *
     * @param operationGroupHash Operation group hash
     * @return Operation group along with associated operations and accounts
     */
@@ -689,7 +693,6 @@ object ApiOperations {
 
   /**
     * Fetches all operation groups.
-    *
     * @param filter Filters to apply
     * @return List of operation groups
     */
@@ -757,8 +760,7 @@ object ApiOperations {
             throw new Exception("This exception should never be reached, but is included for completeness.")
         }
 
-        //sort by hash
-        val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy) //action.sortBy(_._1.desc)
+        val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.OperationGroupsRow(
@@ -821,8 +823,7 @@ object ApiOperations {
             throw new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
         }
 
-        //sort by accountId
-        val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)  //action.sortBy(_._1.desc)
+        val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
