@@ -167,16 +167,16 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       "8f90f8f1f79bd69ae7d261252c51a1f5e8910f4fa2712a026f2acadb960416d900020000f10a450269188ebd9d29c6402d186bc381770fae000000000000c3500000001900000026010000000005f5e1000000bad6e61eb7b96f08783a476508e3d83b2bb15e19ff00000002030bb8010000000000000000",
       keyStore
     )
-    result.isSuccess should be (true)
+    result.get.signature should be ("edsigtu4NbVsyomvHbAtstQAMpXFSKkDxH1YoshhQQmJhVe2pyWRUYvQr7dDLetLvyL7Yi78Pe846mG6hBGLx2WJXkuqSCU6Ff2")
   }
 
   "sendDelegationOperation" should "correctly delegate to a given account" in {
-    val delegatedKeyStore = keyStore.copy(publicKeyHash = "TZ1eC3DHVJeWkodQjtDAPx4UobEXeHzmhJnA")
+    val delegatedKeyStore = keyStore.copy(publicKeyHash = "TZ1tmv69RYRXaney2zX6QA5J8ZwM1SPnZaM4")
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.sendDelegationOperation(
       "zeronet",
       delegatedKeyStore,
-      "tz1QdZSY2nEYyTEoKYrryhAQxaiUfG9VkZ23",
+      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
       1f
     )
     result.isSuccess should be (true)

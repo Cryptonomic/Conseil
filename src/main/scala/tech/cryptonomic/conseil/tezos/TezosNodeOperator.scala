@@ -266,7 +266,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
     node.runQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .flatMap { json =>
-        Try(JsonUtil.fromJson[TezosTypes.SuccessfulForgedOperation](json)).flatMap{ forgedOperation =>
+        Try(JsonUtil.fromJson[TezosTypes.ForgedOperation](json)).flatMap{ forgedOperation =>
           Try(forgedOperation.operation)
           }
         }
@@ -280,13 +280,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def signOperationGroup(forgedOperation: String, keyStore: KeyStore): Try[SignedOperationGroup] = Try{
     SodiumLibrary.setLibraryPath(sodiumLibraryPath)
-    val watermark = "03"
-    val watermarkedForgedOperationBytes = SodiumUtils.hex2Binary(watermark + forgedOperation)
     val privateKeyBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
+    val watermark = "03"  // In the future, we must support "0x02" for endorsements and "0x01" for block signing.
+    val watermarkedForgedOperationBytes = SodiumUtils.hex2Binary(watermark + forgedOperation)
     val hashedWatermarkedOpBytes = SodiumLibrary.cryptoGenerichash(watermarkedForgedOperationBytes, 32)
-    val hashedWatermarkedOpBytesInHex = hashedWatermarkedOpBytes.map("%02X" format _).mkString
     val opSignature: Array[Byte] = SodiumLibrary.cryptoSignDetached(hashedWatermarkedOpBytes, privateKeyBytes.toArray)
-    val opSignatureInHex = opSignature.map("%02X" format _).mkString
     val hexSignature: String = CryptoUtil.base58CheckEncode(opSignature.toList, "edsig").get
     val signedOpBytes = SodiumUtils.hex2Binary(forgedOperation) ++ opSignature
     SignedOperationGroup(signedOpBytes, hexSignature)
@@ -347,14 +345,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     )
     node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload))).flatMap{result =>
       Try {
-        val injectedOp = JsonUtil.fromJson[TezosTypes.InjectedOperationContainer](result)
-        injectedOp.ok match {
-          case Some(ok) => ok.injectedOperation
-          case None => throw new Exception(s"Could not inject operation because: ${injectedOp.error.get}")
+        val injectedOp = JsonUtil.fromJson[TezosTypes.InjectedOperation](result)
+        injectedOp.injectedOperation
         }
       }
     }
-  }
 
   /**
     * Master function for creating and sending all supported types of operations.
@@ -442,7 +437,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "kind"        -> "delegation",
       "delegate"    -> delegate
     )
-    val operations = transactionMap :: Nil
+    val revealMap: Map[String, Any] = Map(
+      "kind"        -> "reveal",
+      "public_key"  -> keyStore.publicKey
+    )
+    val operations = revealMap :: transactionMap :: Nil
     sendOperation(network, operations, keyStore, Some(fee))
   }
 
