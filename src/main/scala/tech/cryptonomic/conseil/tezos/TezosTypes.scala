@@ -82,6 +82,11 @@ object TezosTypes {
                     operationGroups: List[OperationGroup]
                   )
 
+  case class ManagerKey(
+                       manager: String,
+                       key: Option[String]
+                       )
+
   case class ForgedOperation(operation: String)
 
   case class AppliedOperationBalanceUpdates(
@@ -108,8 +113,10 @@ object TezosTypes {
 
   case class AppliedOperation(
                              kind: String,
-                             balance_updates: List[AppliedOperationBalanceUpdates],
-                             operation_results: List[AppliedOperationResult]
+                             balance_updates: Option[List[AppliedOperationBalanceUpdates]],
+                             operation_results: Option[List[AppliedOperationResult]],
+                             id: Option[String],
+                             contract: Option[String]
                              )
 
   case class InjectedOperation(injectedOperation: String)

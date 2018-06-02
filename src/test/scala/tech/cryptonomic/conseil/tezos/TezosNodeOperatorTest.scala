@@ -168,7 +168,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       50000f
     )
     result.isSuccess should be (true)
-    result.get.results.operation_results.filter(_.errors.isDefined).size should be (0)
+    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
   }
 
   "sendDelegationOperation" should "correctly delegate to a given account" in {
@@ -177,11 +177,11 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val result = nodeOp.sendDelegationOperation(
       "zeronet",
       delegatedKeyStore,
-      keyStore.publicKeyHash,
+      "TZ1tmv69RYRXaney2zX6QA5J8ZwM1SPnZaM4",
       1f
     )
     result.isSuccess should be (true)
-    result.get.results.operation_results.filter(_.errors.isDefined).size should be (0)
+    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
   }
 
   "sendOriginationOperation" should "originate an account" in {
@@ -196,7 +196,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       1f
     )
     result.isSuccess should be (true)
-    result.get.results.operation_results.filter(_.errors.isDefined).size should be (0)
+    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
   }
 
   "createIdentity" should "generate a new Tezos key pair" in {

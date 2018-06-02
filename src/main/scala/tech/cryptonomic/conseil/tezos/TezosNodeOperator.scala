@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, MichelsonExpression, OperationGroup}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
@@ -44,6 +44,18 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
     node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
       Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
+    }
+
+  /**
+    * Fetches the manager of a specific account for a given block.
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of given block
+    * @param accountID  Account ID
+    * @return           The account
+    */
+  def getAccountManagerForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.ManagerKey] =
+    node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID/manager_key").flatMap { json =>
+      Try(fromJson[TezosTypes.ManagerKey](json)).flatMap(managerKey => Try(managerKey))
     }
 
   /**
@@ -230,6 +242,30 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
 
   /**
+    * Appends a key reveal operation to an operation group if needed.
+    * @param operations The operations being forged as part of this operation group
+    * @param managerKey The sending account's manager information
+    * @param keyStore   Key pair along with public key hash
+    * @return           Operation group enriched with a key reveal if necessary
+    */
+  def handleKeyRevealForOperations(
+                                    operations: List[Map[String, Any]],
+                                    managerKey: TezosTypes.ManagerKey,
+                                    keyStore: KeyStore)
+                                    : Try[List[Map[String, Any]]] =
+  Try{
+    managerKey.key match {
+      case Some(_) => operations
+      case None =>
+        val revealMap: Map[String, Any] = Map(
+          "kind"        -> "reveal",
+          "public_key"  -> keyStore.publicKey
+        )
+        revealMap :: operations
+    }
+  }
+
+  /**
     * Forge an operation group using the Tezos RPC client.
     * @param network    Which Tezos network to go against
     * @param blockHead  The block head
@@ -357,24 +393,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param fee        The fee to use
     * @return           The ID of the created operation group
     */
-  def sendOperation(network: String, operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = {
-    getBlockHead(network).flatMap{ blockHead =>
-      getAccountForBlock(network, "head", keyStore.publicKeyHash).flatMap{ account =>
-        forgeOperations(network, blockHead, account, operations, keyStore, fee).flatMap { forgedOperationGroup =>
-          signOperationGroup(forgedOperationGroup, keyStore).flatMap { signedOpGroup =>
-            computeOperationHash(signedOpGroup).flatMap { operationGroupHash =>
-              applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup).flatMap { appliedOp =>
-                injectOperation(network, signedOpGroup).flatMap{ operation =>
-                  logger.info(operation)
-                  Try(OperationResult(appliedOp, operation))
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+  def sendOperation(network: String, operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = for {
+    blockHead <- getBlockHead(network)
+    account <- getAccountForBlock(network, "head", keyStore.publicKeyHash)
+    accountManager <- getAccountManagerForBlock(network, "head", keyStore.publicKeyHash)
+    operationsWithKeyReveal <- handleKeyRevealForOperations(operations, accountManager, keyStore)
+    forgedOperationGroup <- forgeOperations(network, blockHead, account, operationsWithKeyReveal, keyStore, fee)
+    signedOpGroup <- signOperationGroup(forgedOperationGroup, keyStore)
+    operationGroupHash <- computeOperationHash(signedOpGroup)
+    appliedOp <- applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
+    operation <- injectOperation(network, signedOpGroup)
+  } yield OperationResult(appliedOp, operation)
 
   /**
     * Creates and sends a transaction operation.
@@ -398,23 +427,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "destination" -> to,
       "parameters"  -> MichelsonExpression("Unit", List[String]())
     )
-    val revealMap: Map[String, Any] = Map(
-      "kind"        -> "reveal",
-      "public_key"  -> keyStore.publicKey
-    )
     val operations = transactionMap :: Nil
     sendOperation(network, operations, keyStore, Some(fee))
-  }
-
-  /**
-    * Helper for generating hex nonces.
-    * Will be generalized in the future and moved to an appropriate package.
-    * @return Hex nonce
-    */
-  private def generateHexNonce() : String = {
-    val random = new scala.util.Random
-    val alphabet = "0123456789abcedf"
-    Stream.continually(random.nextInt(alphabet.length)).map(alphabet).take(32).mkString
   }
 
   /**
@@ -435,11 +449,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "kind"        -> "delegation",
       "delegate"    -> delegate
     )
-    val revealMap: Map[String, Any] = Map(
-      "kind"        -> "reveal",
-      "public_key"  -> keyStore.publicKey
-    )
-    val operations = revealMap :: transactionMap :: Nil
+    val operations = transactionMap :: Nil
     sendOperation(network, operations, keyStore, Some(fee))
   }
 
