@@ -82,16 +82,45 @@ object TezosTypes {
                     operationGroups: List[OperationGroup]
                   )
 
-  case class ForgedOperationContainer(ok: Option[SuccessfulForgedOperation], error: Option[Any])
+  case class ManagerKey(
+                       manager: String,
+                       key: Option[String]
+                       )
 
-  case class SuccessfulForgedOperation(operation: String)
+  case class ForgedOperation(operation: String)
 
-  case class AppliedOperationContainer(ok: Option[AppliedOperation], error: Option[Any])
+  case class AppliedOperationBalanceUpdates(
+                                           kind: String,
+                                           contract: String,
+                                           debited: Option[String],
+                                           credited: Option[String]
+                                           )
 
-  case class AppliedOperation(contracts: Array[String])
+  case class AppliedOperationError(
+                                  kind: String,
+                                  id: String,
+                                  hash: String
+                                  )
 
-  case class InjectedOperationContainer(ok: Option[InjectedOperation], error: Option[Any])
+  case class AppliedOperationResult(
+                                   operation: String,
+                                   status: String,
+                                   operation_kind: Option[String],
+                                   balance_updates: Option[List[AppliedOperationBalanceUpdates]],
+                                   originated_contracts: Option[List[String]],
+                                   errors: Option[List[AppliedOperationError]]
+                                   )
+
+  case class AppliedOperation(
+                             kind: String,
+                             balance_updates: Option[List[AppliedOperationBalanceUpdates]],
+                             operation_results: Option[List[AppliedOperationResult]],
+                             id: Option[String],
+                             contract: Option[String]
+                             )
 
   case class InjectedOperation(injectedOperation: String)
+
+  case class MichelsonExpression(prim: String, args: List[String])
 
 }

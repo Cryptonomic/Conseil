@@ -119,12 +119,7 @@ object Tezos extends LazyLogging {
           case Failure(e) => failWith(e)
         }
       } ~ gatherKeyInfo { keyStore =>
-        path("request_faucet") {
-          nodeOp.fundAccountWithFaucet(network, keyStore) match {
-            case Success(result) => complete(JsonUtil.toJson(result))
-            case Failure(e) => failWith(e)
-          }
-        } ~  path("originate_account") {
+        path("originate_account") {
           parameters("amount".as[Float], "spendable".as[Boolean], "delegatable".as[Boolean], "delegate".as[String], "fee".as[Float]) {
             (amount, spendable, delegatable, delegate, fee) =>
             nodeOp.sendOriginationOperation(network, keyStore, amount, delegate, delegatable, spendable, fee) match {

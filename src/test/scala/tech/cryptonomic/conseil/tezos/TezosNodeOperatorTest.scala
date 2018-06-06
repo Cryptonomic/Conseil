@@ -69,16 +69,10 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
   }
 
   val keyStore: KeyStore = KeyStore(
-    publicKey = "edpku8PouyaJa2GPyXNsqsFiqjc3PZ2bc2ujzNUJQJ87N1jwTckp7n",
-    privateKey = "edskRjp9WGL5QDFBcjHJGdxh6wfNtAYZY7CFmjSXbXSHWDydw8S9VVbaPJNFaDpHC2UscMTJWVryEQCUewQ8SNEChG2Vnb6GXA",
-    publicKeyHash = "tz1eyrhHFQ6McdKkTeZtBKoRYUsgRgARN7QE"
+    publicKey = "edpkv3azzeq9vL869TujYhdQY5FKiQH4CGwJEzqG7m6PoX7VEpdPc9",
+    privateKey = "edskS5owtVaAtWifnCNo8tUpAw2535AXEDY4RXBRV1NHbQ58RDdpaWz2KyrvFXE4SuCTbHU8exUecW33GRqkAfLeNLBS5sPyoi",
+    publicKeyHash = "tz1hcXqtiMYFhvuirD4guE7ts4yDuCAmtD95"
   )
-
-  /*val keyStore: KeyStore = KeyStore(
-    publicKey = "edpku5ViG6Pc3uYooHuWhLr3eb2x86xNettKRm5SXBg9AfoYqrWdZc",
-    privateKey = "edskRtLP6MGr3Y4taNfC19f4TjU3KYYHpfLQzxxovzX5aS4TztpbpajTVUzruNj53iLvymkwTKAnfE72dvPx7BPBan5tvdTrAg",
-    publicKeyHash = "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z"
-  )*/
 
   "getBlock" should "should correctly fetch the genesis block" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
@@ -154,69 +148,64 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val accounts = nodeOp.getAccounts("zeronet", "BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP")
     accounts.isFailure should be (true)
   }
-  /* write operations, moved till later
+
+  "signOperationGroup" should "correctly compute an operation signature" in {
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+    val result = nodeOp.signOperationGroup(
+      "8f90f8f1f79bd69ae7d261252c51a1f5e8910f4fa2712a026f2acadb960416d900020000f10a450269188ebd9d29c6402d186bc381770fae000000000000c3500000001900000026010000000005f5e1000000bad6e61eb7b96f08783a476508e3d83b2bb15e19ff00000002030bb8010000000000000000",
+      keyStore
+    )
+    result.get.signature should be ("edsigtu4NbVsyomvHbAtstQAMpXFSKkDxH1YoshhQQmJhVe2pyWRUYvQr7dDLetLvyL7Yi78Pe846mG6hBGLx2WJXkuqSCU6Ff2")
+  }
+
   "sendTransaction" should "correctly send a transaction" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.sendTransactionOperation(
       "zeronet",
       keyStore,
-      "tz1btz5Av9BdpoTPnS9zGyPvpgAovmaZ23iN",
-      100f,
-      1f
+      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
+      100000000f,
+      50000f
     )
     result.isSuccess should be (true)
-  }*/
+    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
+  }
 
-  //The following tests are commented out until a full mock can be implemented.
   /*
-  "sendFaucetRequest" should "correctly create a free account" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.sendFaucetOperation(
-      "alphanet",
-      keyStore
-    )
-    result.isSuccess should be (true)
-  }
-
-
-  "fundAccountWithFaucet" should "fund a given account using the faucet" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.fundAccountWithFaucet(
-      "alphanet",
-      keyStore
-    )
-    result.isSuccess should be (true)
-  }
+  This test is deliberately commented out as delegating to the same contract twice causes a Tezos error.
+  Once the Tezos protocol settles down, we can originate a fresh contract and then set its delegate.
 
   "sendDelegationOperation" should "correctly delegate to a given account" in {
-    val delegatedKeyStore = keyStore.copy(publicKeyHash = "TZ1eC3DHVJeWkodQjtDAPx4UobEXeHzmhJnA")
+    val delegatedKeyStore = keyStore.copy(publicKeyHash = "TZ1sso2qb5CZXT17rorjPe2yieBPTjz15MUg")
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.sendDelegationOperation(
-      "alphanet",
+      "zeronet",
       delegatedKeyStore,
-      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
       1f
     )
     result.isSuccess should be (true)
-  }
+    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
+  }*/
 
   "sendOriginationOperation" should "originate an account" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.sendOriginationOperation(
-      "alphanet",
+      "zeronet",
       keyStore,
       100f,
-      "tz1R7cAdCTtFAWmVkju1cVUceyrR1vHvhu2Z",
+      keyStore.publicKeyHash,
       spendable = true,
       delegatable = true,
       1f
     )
     result.isSuccess should be (true)
+    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
   }
 
-  "createAccount" should "generate a new Tezos key pair" in {
+  "createIdentity" should "generate a new Tezos key pair" in {
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
     val result = nodeOp.createIdentity()
     result.isSuccess should be (true)
-  }*/
+  }
 }
