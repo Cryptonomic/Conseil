@@ -44,6 +44,8 @@ object ApiOperations {
                      protocols: Option[Set[String]] = Some(Set[String]()),
                      operationIDs: Option[Set[String]] = Some(Set[String]()),
                      operationSources: Option[Set[String]] = Some(Set[String]()),
+                     operationDestinations: Option[Set[String]] = Some(Set[String]()),
+                     operationSourcesOrDestinations: Option[Set[String]] = Some(Set[String]()),
                      accountIDs: Option[Set[String]] = Some(Set[String]()),
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
@@ -52,6 +54,11 @@ object ApiOperations {
                      sortBy: Option[String] = None,
                      order: Option[String] = Some("DESC")
                    )
+
+  sealed trait OperationSourceOrDestination
+
+  case class OperationSource(source: Tables.OperationGroups) extends OperationSourceOrDestination
+  case class OperationDestination(dest: Tables.Operations) extends OperationSourceOrDestination
 
   /**
     * Represents queries for filtered tables for Accounts, Blocks, Operation Groups, and Operations.
@@ -187,10 +194,13 @@ object ApiOperations {
   private def isOperationGroupFilter(filter: Filter): Boolean =
     (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) ||
       (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) ||
-      (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
+      (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty) ||
+      (filter.operationSourcesOrDestinations.isDefined && filter.operationSourcesOrDestinations.get.nonEmpty)
 
   private def isOperationFilter(filter: Filter): Boolean =
-    filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty
+    (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty) ||
+      (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty) ||
+      (filter.operationSourcesOrDestinations.isDefined && filter.operationSourcesOrDestinations.get.nonEmpty)
 
   private def isAccountFilter(filter: Filter): Boolean =
     (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty) ||
@@ -219,6 +229,29 @@ object ApiOperations {
       op.source.getOrElse("").inSet(filter.operationSources.get)
     else true
 
+  private def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    if (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty)
+      o.destination.getOrElse("").inSet(filter.operationDestinations.get)
+    else true
+
+  private def filterOperationSourcesOrOperationDestinations(filter: Filter, sourceOrDest: OperationSourceOrDestination): Rep[Boolean] = {
+    def filterSourceOrDest(filter: Filter, sourceOrDest: Rep[Option[String]]): Rep[Boolean] = {
+      val source: Rep[Boolean] =
+        if ((filter.operationSources.isDefined && filter.operationSources.get.nonEmpty))
+          sourceOrDest.getOrElse("").inSet(filter.operationSources.get)
+        else true
+      val dest: Rep[Boolean] =
+        if ((filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty))
+          sourceOrDest.getOrElse("").inSet(filter.operationDestinations.get)
+        else true
+      source || dest
+    }
+    sourceOrDest match {
+      case OperationSource(op) => filterSourceOrDest(filter, op.source)
+      case OperationDestination(o) => filterSourceOrDest(filter, o.destination)
+    }
+  }
+
   private def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
     if (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) a.accountId.inSet(filter.accountIDs.get) else true
 
@@ -234,9 +267,9 @@ object ApiOperations {
     if (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
       op.kind.getOrElse("").inSet(filter.operationGroupKinds.get) else true
 
-  private def filterOperationKinds(filter: Filter, op: Tables.Operations): Rep[Boolean] =
+  private def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
     if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
-      op.opKind.inSet(filter.operationKinds.get) else true
+      o.opKind.inSet(filter.operationKinds.get) else true
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
@@ -252,18 +285,23 @@ object ApiOperations {
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
 
-        val filteredAccounts = Tables.Accounts.filter({ account =>
+        val filteredAccounts = Tables.Accounts.filter(account =>
             filterAccountIDs(filter, account) &&
             filterAccountDelegates(filter, account) &&
             filterAccountManagers(filter, account) &&
-            account.blockId === latestBlock.hash })
+            account.blockId === latestBlock.hash )
 
         val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
             filterOperationIDs(filter, opGroup) &&
             filterOperationSources(filter, opGroup) &&
             filterOperationGroupKinds(filter, opGroup) })
+/*&&
+            filterOperationSourcesOrOperationDestinations(filter, OperationSource(opGroup))})*/
 
-        val filteredOps = Tables.Operations.filter({ op => filterOperationKinds(filter, op) })
+        val filteredOps = Tables.Operations.filter({ op =>
+            filterOperationKinds(filter, op) &&
+            filterOperationDestinations(filter, op) &&
+            filterOperationSourcesOrOperationDestinations(filter, OperationDestination(op))})
 
         val filteredBlocks = Tables.Blocks.filter({ block =>
             filterBlockIDs(filter, block) &&
@@ -280,18 +318,20 @@ object ApiOperations {
     * Returns the join of some combination of the Blocks, Operation Groups, Operations, and Accounts
     * tables, given the flags of which tables are necessary. If a table shouldn't be created based
     * on domain specific knowledge of Tezos, return None.
-    * @param blockFlag
-    * @param operationGroupFlag
-    * @param operationFlag
-    * @param accountFlag
-    * @param tables
+    * @param blockFlag          Flag which affirms that blocks need to be included in the join.
+    * @param operationGroupFlag Flag which affirms that operationGroups need to be included in the join.
+    * @param operationFlag      Flag which affirms that operations need to be included in the join.
+    * @param accountFlag        Flag which affirms that accounts need to be included in the join.
+    * @param tables             Product which contains queries for all tables.
+    * @param filter             Used for filtering when
     * @return
     */
   private def getJoinedTables(blockFlag: Boolean,
                               operationGroupFlag: Boolean,
                               operationFlag: Boolean,
                               accountFlag: Boolean,
-                              tables: FilteredTables): Option[JoinedTables] = {
+                              tables: FilteredTables,
+                              filter: Filter): Option[JoinedTables] = {
 
     val blocks = tables.filteredBlocks
     val operationGroups = tables.filteredOperationGroups
@@ -330,7 +370,8 @@ object ApiOperations {
             .join(accounts).on(_._1.source === _.accountId)))
       case (false, true, true, false) =>
         Some(OperationGroupsOperations(
-          operationGroups.join(operations).on(_.hash === _.operationGroupHash)))
+          operationGroups
+            .join(operations).on(_.hash === _.operationGroupHash)))
       case (false, true, false, true) =>
         Some(OperationGroupsAccounts(
           operationGroups.join(accounts).on(_.source === _.accountId)))
@@ -353,9 +394,9 @@ object ApiOperations {
     * Return table query which is the sorted verion of action, based on database column name, sortBy, and the order.
     * This will be refactored out later, as this is just an initial solution to the user wanting to sort by columns
     * according to the current schema. This will break if the schema changes.
-    * @param order
-    * @param action
-    * @param sortBy
+    * @param order  Parameter to determine whether to sort in ascending or descending order.
+    * @param action The query for the table we want to sort.
+    * @param sortBy Parameter to say what column to sort by.
     * @return
     */
   private def fetchSortedAction(order: Option[String], action: Action, sortBy: Option[String]): Action = {
@@ -671,12 +712,12 @@ object ApiOperations {
 
       Try {
 
-        // Blocks need to be fetch, other tables needed if user asks for them via the filter
+        // Blocks need to be fetched, other tables needed if user asks for them via the filter
         val blockFlag = true
         val operationGroupFlag = isOperationGroupFilter(filter)
         val operationFlag = isOperationFilter(filter)
         val accountFlag = isAccountFilter(filter)
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables)
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
 
         val action = joinedTables match {
 
@@ -745,7 +786,7 @@ object ApiOperations {
         val operationGroupFlag = true
         val operationFlag = isOperationFilter(filter)
         val accountFlag = isAccountFilter(filter)
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables)
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
         val action = joinedTables match {
 
           case Some(OperationGroups(operationGroups)) =>
@@ -841,7 +882,7 @@ object ApiOperations {
         val operationGroupFlag = isOperationGroupFilter(filter)
         val operationFlag = isOperationFilter(filter)
         val accountFlag = true
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables)
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
 
         val action = joinedTables match {
 
