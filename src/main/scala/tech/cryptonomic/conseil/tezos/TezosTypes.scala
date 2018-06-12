@@ -27,23 +27,52 @@ object TezosTypes {
                             metadata: Any,
                   )
 
+  //fix this!!!
+  case class OperationMetadata(
+                              delegate: Option[String],
+                              slots: Option[List[Int]],
+                              balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
+                              operationResult: Option[AppliedOperationResult],
+                              internalOperationResult: Option[AppliedOperationResult]
+                              )
+
+  case class InlinedEndorsement(
+                               branch: String,
+                               operation: Operation,
+                               signature: Option[String]
+                               )
+
   case class Operation (
                        kind: String,
-                       level: Option[BigDecimal],
+                       block: Option[String],
+                       level: Option[Int],
+                       slots: Option[List[Int]],
+                       metadata: OperationMetadata,
                        nonce: Option[String],
-                       op1: Option[Operation],
-                       op2: Option[Operation],
-                       id: Option[String],
-                       public_key: Option[String],
-                       amount: Option[String],
+                       op1: Option[InlinedEndorsement],
+                       op2: Option[InlinedEndorsement],
+                       bh1: Option[BlockHeader],
+                       bh2: Option[BlockHeader],
+                       pkh: Option[String],
+                       secret: Option[String],
+                       proposals: Option[List[String]],
+                       period: Option[Int],
+                       source: Option[String],
+                       proposal: Option[String],
+                       ballot: Option[String], //ballot case class? nay, yay, pass
+                       fee: Option[Int], //mutez
+                       counter: Option[Int],
+                       gasLimit: Option[Int],
+                       storageLimit: Option[Int],
+                       publicKey: Option[String],
+                       amount: Option[Int], //mutez
                        destination: Option[String],
-                       parameters: Option[Any],
+                       parameters: Option[Any], //michExp
                        managerPubKey: Option[String],
-                       balance: Option[String],
+                       balance: Option[Int], // mutez
                        spendable: Option[Boolean],
                        delegatable: Option[Boolean],
-                       delegate: Option[String],
-                       script: Option[Any]
+                       delegate: Option[String]
                        )
 
   case class OperationGroup (
@@ -53,22 +82,6 @@ object TezosTypes {
                             branch: String,
                             operations: Option[List[Operation]],
                             signature: Option[String],
-
-
-                            kind: Option[String],
-                            block: Option[String],
-                            level: Option[Int],
-                            slots: Option[List[Int]],
-
-                            proposals: Option[String],
-                            period: Option[BigDecimal],
-                            source: Option[String],
-                            proposal: Option[String],
-                            ballot: Option[String],
-                            chain: Option[String],
-
-                            counter: Option[scala.math.BigDecimal],
-                            fee: Option[String]
                             )
 
   case class AccountDelegate(
