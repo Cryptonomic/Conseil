@@ -29,7 +29,6 @@ object Tezos extends LazyLogging {
     "operation_id".as[String].*,
     "operation_source".as[String].*,
     "operation_destination".as[String].*,
-    "operation_source_or_destination".as[String].*,
     "account_id".as[String].*,
     "account_manager".as[String].*,
     "account_delegate".as[String].*,
@@ -38,7 +37,7 @@ object Tezos extends LazyLogging {
     "sort_by".as[String].?,
     "order".as[String].?
   ).tflatMap{ tuple =>
-    val (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_dests, op_sources_or_dests, account_ids, account_managers, account_delegates, operation_kind, operation_group_kind, sort_by, order) = tuple
+    val (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_dests, account_ids, account_managers, account_delegates, operation_kind, operation_group_kind, sort_by, order) = tuple
     val filter: Filter = Filter(
       limit = limit, blockIDs = Some(block_ids.toSet),
       levels = Some(block_levels.toSet),
@@ -47,7 +46,6 @@ object Tezos extends LazyLogging {
       operationIDs = Some(op_ids.toSet),
       operationSources = Some(op_sources.toSet),
       operationDestinations = Some(op_sources.toSet),
-      operationSourcesOrDestinations = Some(op_sources_or_dests.toSet),
       accountIDs = Some(account_ids.toSet),
       accountManagers = Some(account_managers.toSet),
       accountDelegates = Some(account_delegates.toSet),
