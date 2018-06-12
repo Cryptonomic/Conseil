@@ -5,19 +5,26 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
+  case class BlockHeader(
+                        level: Int,
+                        proto: Int,
+                        predecessor: String,
+                        timestamp: java.sql.Timestamp,
+                        validation_pass: Int,
+                        operations_hash: String,
+                        fitness: Seq[String],
+                        context: String,
+                        priority: Int,
+                        proof_of_work_nonce: String,
+                        signature: String
+                        )
+
   case class BlockMetadata(
-                            hash: String,
-                            chain_id: String,
                             protocol: String,
-                            level: Int,
-                            proto: Int,
-                            predecessor: String,
-                            timestamp: java.sql.Timestamp,
-                            validation_pass: Int,
-                            operations_hash: String,
-                            fitness: Seq[String],
-                            context: String,
-                            protocol_data: String
+                            chain_id: String,
+                            hash: String,
+                            header: BlockHeader,
+                            metadata: Any,
                   )
 
   case class Operation (
@@ -40,20 +47,26 @@ object TezosTypes {
                        )
 
   case class OperationGroup (
+                            protocol: String,
+                            chain_id: String,
                             hash: String,
                             branch: String,
+                            operations: Option[List[Operation]],
+                            signature: Option[String],
+
+
                             kind: Option[String],
                             block: Option[String],
                             level: Option[Int],
                             slots: Option[List[Int]],
-                            signature: Option[String],
+
                             proposals: Option[String],
                             period: Option[BigDecimal],
                             source: Option[String],
                             proposal: Option[String],
                             ballot: Option[String],
                             chain: Option[String],
-                            operations: Option[List[Operation]],
+
                             counter: Option[scala.math.BigDecimal],
                             fee: Option[String]
                             )
