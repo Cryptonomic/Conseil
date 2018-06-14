@@ -42,7 +42,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return           The account
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
-    node.runQuery(network, s"blocks/$blockHash/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
+    node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
       Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
     }
 
@@ -54,7 +54,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return           The account
     */
   def getAccountManagerForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.ManagerKey] =
-    node.runQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID/manager_key").flatMap { json =>
+    node.runGetQuery(network, s"blocks/$blockHash/proto/context/contracts/$accountID/manager_key").flatMap { json =>
       Try(fromJson[TezosTypes.ManagerKey](json)).flatMap(managerKey => Try(managerKey))
     }
 
@@ -65,7 +65,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return           Accounts
     */
   def getAllAccountsForBlock(network: String, blockHash: String): Try[Map[String, TezosTypes.Account]] = Try {
-    node.runQuery(network, s"blocks/$blockHash/proto/context/contracts") match {
+    node.runGetQuery(network, s"blocks/$blockHash/proto/context/contracts") match {
       case Success(jsonEncodedAccounts) =>
         val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
         val listedAccounts: List[String] = accountIDs
@@ -90,7 +90,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return           Operation groups
     */
   def getAllOperationsForBlock(network: String, blockHash: String): Try[List[List[OperationGroup]]] =
-    node.runQuery(network, s"blocks/$blockHash/proto/operations").flatMap { jsonEncodedOperationsContainer =>
+    node.runGetQuery(network, s"blocks/$blockHash/operations").flatMap { jsonEncodedOperationsContainer =>
       Try(fromJson[List[List[OperationGroup]]](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
         Try(operationsContainer)
       }
@@ -103,7 +103,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return         Block
     */
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
-    node.runQuery(network, s"blocks/$hash").flatMap { jsonEncodedBlock =>
+    node.runGetQuery(network, s"blocks/$hash").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
         if(theBlock.header.level==0)
           Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -300,7 +300,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           "operations" -> operations
         )
     }
-    node.runQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
+    node.runGetQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .flatMap { json =>
         Try(JsonUtil.fromJson[TezosTypes.ForgedOperation](json)).flatMap{ forgedOperation =>
           Try(forgedOperation.operation)
@@ -360,7 +360,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "forged_operation" -> forgedOperationGroup,
       "signature" -> signedOpGroup.signature
     )
-    node.runQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+    node.runGetQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
       .flatMap { result =>
         logger.debug(s"Result of operation application: $result")
         Try(JsonUtil.fromJson[TezosTypes.AppliedOperation](result))
@@ -377,7 +377,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val payload: Map[String, Any] = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
     )
-    node.runQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload))).flatMap{result =>
+    node.runGetQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload))).flatMap{ result =>
       Try {
         val injectedOp = JsonUtil.fromJson[TezosTypes.InjectedOperation](result)
         injectedOp.injectedOperation

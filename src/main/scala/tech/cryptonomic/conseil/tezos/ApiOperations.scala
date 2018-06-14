@@ -162,16 +162,30 @@ object ApiOperations {
   sealed trait Action
 
   case class BlocksAction
-  (action: Query[(Rep[String], Rep[String], Rep[Int], Rep[Int], Rep[String], Rep[Int], Rep[String], Rep[String], Rep[String], Rep[Timestamp], Rep[String], Rep[Option[String]]),
+    (action: Query[(Rep[Int], Rep[Int], Rep[String], Rep[Timestamp], Rep[Int],
+                    Rep[String], Rep[String], Rep[Option[String]], Rep[Int],
+                    Rep[String], Rep[Option[String]], Rep[String], Rep[String],
+                    Rep[String], Rep[String]),
+                   (Int, Int, String, Timestamp, Int, String, String,
+                     Option[String], Int, String, Option[String], String,
+                     String, String, String),
+                   Seq]) extends Action
+  /*(action: Query[(Rep[String], Rep[String], Rep[Int], Rep[Int], Rep[String], Rep[Int], Rep[String], Rep[String], Rep[String], Rep[Timestamp], Rep[String], Rep[Option[String]]),
                  (String, String, Int, Int, String, Int, String, String, String, Timestamp, String, Option[String]),
-                 Seq]) extends Action
+                 Seq]) extends Action*/
 
   case class OperationGroupsAction
-  (action: Query [(Rep[String], Rep[String], Rep[Option[String]], Rep[Option[String]], Rep[Option[Int]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]],
+    (action: Query[(Rep[String], Rep[String], Rep[String], Rep[String],
+                    Rep[Option[String]], Rep[String]),
+                   (String, String, String, String, Option[String], String),
+                   Seq]) extends Action
+
+
+  /*(action: Query [(Rep[String], Rep[String], Rep[Option[String]], Rep[Option[String]], Rep[Option[Int]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]],
                     Rep[Option[BigDecimal]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]], Rep[Option[BigDecimal]], Rep[Option[String]], Rep[String]),
                   (String, String, Option[String], Option[String], Option[Int], Option[String], Option[String], Option[String], Option[BigDecimal], Option[String], Option[String],
                     Option[String], Option[String], Option[BigDecimal], Option[String], String),
-                  Seq]) extends Action
+                  Seq]) extends Action*/
 
   case class AccountsAction
   (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
@@ -381,188 +395,147 @@ object ApiOperations {
       action match {
         case BlocksAction(blockAction) =>
           sortBy.map(_.toLowerCase) match {
-            case Some(x) if x == "chain_id" =>
+            case Some(x) if x == "level" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._1.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._1.desc))
                 case None => BlocksAction(blockAction.sortBy(_._1.desc))
               }
-            case Some(x) if x == "protocol" =>
+            case Some(x) if x == "proto" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._2.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._2.desc))
                 case None => BlocksAction(blockAction.sortBy(_._2.desc))
               }
-            case Some(x) if x == "level" =>
+            case Some(x) if x == "predecessor" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._3.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._3.desc))
                 case None => BlocksAction(blockAction.sortBy(_._3.desc))
               }
-            case Some(x) if x == "proto" =>
+            case Some(x) if x == "timestamp" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._4.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._4.desc))
                 case None => BlocksAction(blockAction.sortBy(_._4.desc))
               }
-            case Some(x) if x == "predecessor" =>
+            case Some(x) if x == "validation_pass" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._5.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._5.desc))
                 case None => BlocksAction(blockAction.sortBy(_._5.desc))
               }
-            case Some(x) if x == "validation_pass" =>
+
+            case Some(x) if x == "fitness" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._6.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._6.desc))
                 case None => BlocksAction(blockAction.sortBy(_._6.desc))
               }
-            case Some(x) if x == "operations_hash" =>
+            case Some(x) if x == "context" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._7.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._7.desc))
                 case None => BlocksAction(blockAction.sortBy(_._7.desc))
               }
-            case Some(x) if x == "protocol_data" =>
+            case Some(x) if x == "priority" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._8.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._8.desc))
                 case None => BlocksAction(blockAction.sortBy(_._8.desc))
               }
-            case Some(x) if x == "hash" =>
+            case Some(x) if x == "proof_of_work_nonce" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._9.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._9.desc))
                 case None => BlocksAction(blockAction.sortBy(_._9.desc))
               }
-            case Some(x) if x == "timestamp" =>
+            case Some(x) if x == "seed_nonce_hash" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._10.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._10.desc))
                 case None => BlocksAction(blockAction.sortBy(_._10.desc))
               }
-            case Some(x) if x == "fitness" =>
+            case Some(x) if x == "signature" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._11.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._11.desc))
                 case None => BlocksAction(blockAction.sortBy(_._11.desc))
               }
-            case Some(x) if x == "context" =>
+            case Some(x) if x == "protocol" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._12.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._12.desc))
                 case None => BlocksAction(blockAction.sortBy(_._12.desc))
               }
+            case Some(x) if x == "chain_id" =>
+              order.map(_.toLowerCase) match {
+                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._13.asc))
+                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._13.desc))
+                case None => BlocksAction(blockAction.sortBy(_._13.desc))
+              }
+            case Some(x) if x == "hash" =>
+              order.map(_.toLowerCase) match {
+                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._14.asc))
+                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._14.desc))
+                case None => BlocksAction(blockAction.sortBy(_._14.desc))
+              }
+            case Some(x) if x == "operations_hash" =>
+              order.map(_.toLowerCase) match {
+                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._15.asc))
+                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._15.desc))
+                case None => BlocksAction(blockAction.sortBy(_._15.desc))
+              }
             case None =>
               order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._3.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._3.desc))
-                case None => BlocksAction(blockAction.sortBy(_._3.desc))
+                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._1.asc))
+                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._1.desc))
+                case None => BlocksAction(blockAction.sortBy(_._1.desc))
               }
           }
         case OperationGroupsAction(opGroupAction) =>
           sortBy.map(_.toLowerCase) match {
-            case Some(x) if x == "hash" =>
+            case Some(x) if x == "protocol" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._1.asc))
                 case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
               }
-            case Some(x) if x == "branch" =>
+            case Some(x) if x == "chain_id" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._2.asc))
                 case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
               }
-            case Some(x) if x == "kind" =>
+            case Some(x) if x == "hash" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
                 case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
               }
-            case Some(x) if x == "block" =>
+            case Some(x) if x == "branch" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._4.asc))
                 case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
               }
-            case Some(x) if x == "level" =>
+            case Some(x) if x == "signature" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._5.asc))
                 case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
               }
-            case Some(x) if x == "slots" =>
+            case Some(x) if x == "block_id" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._6.asc))
                 case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
               }
-            case Some(x) if x == "signature" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._7.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._7.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._7.desc))
-              }
-            case Some(x) if x == "proposals" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._8.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._8.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._8.desc))
-              }
-            case Some(x) if x == "period" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._9.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._9.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._9.desc))
-              }
-            case Some(x) if x == "source" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._10.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._10.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._10.desc))
-              }
-            case Some(x) if x == "proposal" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._11.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._11.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._11.desc))
-              }
-            case Some(x) if x == "ballot" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._12.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._12.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._12.desc))
-              }
-            case Some(x) if x == "chain" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._13.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._13.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._13.desc))
-              }
-            case Some(x) if x == "counter" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._14.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._14.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._14.desc))
-              }
-            case Some(x) if x == "fee" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._15.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._15.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._15.desc))
-              }
-            case Some(x) if x == "block_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._16.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._16.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._16.desc))
-              }
             case None =>
               order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._1.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
-                case None => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
+                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
+                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
+                case None => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
               }
           }
         case AccountsAction(accountAction) =>
@@ -757,6 +730,11 @@ object ApiOperations {
       }
     }
 
+  private def extractFromOperationGroup(opGroup: Tables.OperationGroups) = {
+    (opGroup.protocol, opGroup.chainId, opGroup.hash, opGroup.branch,
+      opGroup.signature, opGroup.blockId)
+  }
+
   /**
     * Fetches all operation groups.
     * @param filter Filters to apply
@@ -775,52 +753,38 @@ object ApiOperations {
 
           case Some(OperationGroups(operationGroups)) =>
             for {
-              opGroups <- operationGroups
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              opGroup <- operationGroups
+            } yield extractFromOperationGroup(opGroup)
 
           case Some(BlocksOperationGroups(blocksOperationGroups)) =>
             for {
-              (_, opGroups) <- blocksOperationGroups
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              (_, opGroup) <- blocksOperationGroups
+            } yield extractFromOperationGroup(opGroup)
 
           case Some(OperationGroupsOperations(operationGroupsOperations)) =>
             for {
-              (opGroups, _) <- operationGroupsOperations
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              (opGroup, _) <- operationGroupsOperations
+            } yield extractFromOperationGroup(opGroup)
 
           case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
             for {
-              (opGroups, _) <- operationGroupsAccounts
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              (opGroup, _) <- operationGroupsAccounts
+            } yield extractFromOperationGroup(opGroup)
 
           case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
             for {
-              ((opGroups, _), _) <- operationGroupsOperationsAccounts
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              ((opGroup, _), _) <- operationGroupsOperationsAccounts
+            } yield extractFromOperationGroup(opGroup)
 
           case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
             for {
-              ((_, opGroups), _) <- blocksOperationGroupsOperations
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              ((_, opGroup), _) <- blocksOperationGroupsOperations
+            } yield extractFromOperationGroup(opGroup)
 
           case Some(BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts)) =>
             for {
-              (((_, opGroups), _), _) <- blocksOperationGroupsOperationsAccounts
-            } yield (opGroups.hash, opGroups.branch, opGroups.kind, opGroups.block, opGroups.level,
-              opGroups.slots, opGroups.signature, opGroups.proposals, opGroups.period, opGroups.source,
-              opGroups.proposal, opGroups.ballot, opGroups.chain, opGroups.counter, opGroups.fee, opGroups.blockId)
+              (((_, opGroup), _), _) <- blocksOperationGroupsOperationsAccounts
+            } yield  extractFromOperationGroup(opGroup)
 
           case _ =>
             throw new Exception("This exception should never be reached, but is included for completeness.")
@@ -829,8 +793,7 @@ object ApiOperations {
         val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
-        results.map(x => Tables.OperationGroupsRow(
-          x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14, x._15, x._16))
+        results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5, x._6))
       }
     }
 
@@ -846,9 +809,9 @@ object ApiOperations {
           .filter(_.blockId === latestBlock.hash)
           .filter(_.accountId === account_id).take(1).result)
         val account = Await.result(op, Duration.Inf).head
-        val op2 = dbHandle.run(Tables.OperationGroups.filter(_.source === account_id).result)
-        val operationGroups = Await.result(op2, Duration.Inf)
-        Map("account" -> account, "operation_groups" -> operationGroups)
+        //val op2 = dbHandle.run(Tables.OperationGroups.filter(_.source === account_id).result)
+        //val operationGroups = Await.result(op2, Duration.Inf)
+        Map("account" -> account) //, "operation_groups" -> operationGroups)
       }
     }
 

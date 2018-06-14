@@ -73,7 +73,6 @@ trait Tables {
     *  @param predecessor Database column predecessor SqlType(varchar)
     *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param validationPass Database column validation_pass SqlType(int4)
-    *  @param operationHash Database column operation_hash SqlType(varchar)
     *  @param fitness Database column fitness SqlType(varchar)
     *  @param context Database column context SqlType(varchar), Default(None)
     *  @param priority Database column priority SqlType(int4)
@@ -82,18 +81,19 @@ trait Tables {
     *  @param signature Database column signature SqlType(varchar)
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param chainId Database column chain_id SqlType(varchar)
-    *  @param hash Database column hash SqlType(varchar) */
-  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, operationHash: String, fitness: String, context: Option[String] = None, priority: Int, proofOfWorkNonce: String, seedNonceHash: Option[String] = None, signature: String, protocol: String, chainId: String, hash: String)
+    *  @param hash Database column hash SqlType(varchar)
+    *  @param operationsHash Database column operations_hash SqlType(varchar) */
+  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, priority: Int, proofOfWorkNonce: String, seedNonceHash: Option[String] = None, signature: String, protocol: String, chainId: String, hash: String, operationsHash: String)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]]): GR[BlocksRow] = GR{
     prs => import prs._
-      BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<[String], <<?[String], <<[Int], <<[String], <<?[String], <<[String], <<[String], <<[String], <<[String]))
+      BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<[Int], <<[String], <<?[String], <<[String], <<[String], <<[String], <<[String], <<[String]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
-    def * = (level, proto, predecessor, timestamp, validationPass, operationHash, fitness, context, priority, proofOfWorkNonce, seedNonceHash, signature, protocol, chainId, hash) <> (BlocksRow.tupled, BlocksRow.unapply)
+    def * = (level, proto, predecessor, timestamp, validationPass, fitness, context, priority, proofOfWorkNonce, seedNonceHash, signature, protocol, chainId, hash, operationsHash) <> (BlocksRow.tupled, BlocksRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(operationHash), Rep.Some(fitness), context, Rep.Some(priority), Rep.Some(proofOfWorkNonce), seedNonceHash, Rep.Some(signature), Rep.Some(protocol), Rep.Some(chainId), Rep.Some(hash)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8, _9.get, _10.get, _11, _12.get, _13.get, _14.get, _15.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(fitness), context, Rep.Some(priority), Rep.Some(proofOfWorkNonce), seedNonceHash, Rep.Some(signature), Rep.Some(protocol), Rep.Some(chainId), Rep.Some(hash), Rep.Some(operationsHash)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12.get, _13.get, _14.get, _15.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -105,8 +105,6 @@ trait Tables {
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
     /** Database column validation_pass SqlType(int4) */
     val validationPass: Rep[Int] = column[Int]("validation_pass")
-    /** Database column operation_hash SqlType(varchar) */
-    val operationHash: Rep[String] = column[String]("operation_hash")
     /** Database column fitness SqlType(varchar) */
     val fitness: Rep[String] = column[String]("fitness")
     /** Database column context SqlType(varchar), Default(None) */
@@ -125,6 +123,8 @@ trait Tables {
     val chainId: Rep[String] = column[String]("chain_id")
     /** Database column hash SqlType(varchar) */
     val hash: Rep[String] = column[String]("hash")
+    /** Database column operations_hash SqlType(varchar) */
+    val operationsHash: Rep[String] = column[String]("operations_hash")
 
     /** Foreign key referencing Blocks (database name blocks_predecessor_fkey) */
     lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
