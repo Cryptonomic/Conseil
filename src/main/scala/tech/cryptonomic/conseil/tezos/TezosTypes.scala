@@ -33,7 +33,7 @@ object TezosTypes {
                               delegate: Option[String],
                               slots: Option[List[Int]], //max 255
                               balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
-                              operationResult: Option[AppliedOperationResult],
+                              operationResult: Option[AppliedOperationResultStatus],
                               internalOperationResult: Option[AppliedInternalOperationResult]
                               )
 
@@ -46,7 +46,7 @@ object TezosTypes {
                                              level: Option[Int]
                                            )
 
-  case class AppliedOperationResult(
+  case class AppliedOperationResultStatus(
                                    status: String,
                                    errors: Option[List[String]],
                                    storage: Option[Any],
@@ -61,7 +61,7 @@ object TezosTypes {
                                            source: String,
                                            nonce: Int, //65535
                                            publicKey: Option[String],
-                                           result: AppliedOperationResult,
+                                           result: AppliedOperationResultStatus,
                                            amount: Option[Int], //mutez
                                            destination: Option[String],
                                            parameters: Option[Any], //MichExp
@@ -173,7 +173,7 @@ object TezosTypes {
                                   hash: String
                                   )
 
-  /*/
+
   case class AppliedOperationResult(
                                    operation: String,
                                    status: String,
@@ -191,7 +191,7 @@ object TezosTypes {
                              contract: Option[String]
                              )
 
-                             */
+
 
   case class InjectedOperation(injectedOperation: String)
 

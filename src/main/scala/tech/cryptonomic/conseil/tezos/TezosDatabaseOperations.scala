@@ -19,9 +19,9 @@ object TezosDatabaseOperations {
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
-        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
+       // Tables.Blocks                 ++= blocks.map(blockToDatabaseRow) //,
+        //Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
+        //Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
       )
     )
 
@@ -47,7 +47,7 @@ object TezosDatabaseOperations {
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
         accountId = account._1,
-        blockId = accountsInfo.block_hash,
+        blockId = accountsInfo.blockHash,
         manager = account._2.manager,
         spendable = account._2.spendable,
         delegateSetable = account._2.delegate.setable,
@@ -57,7 +57,7 @@ object TezosDatabaseOperations {
         balance = account._2.balance
       )
     }.toList
-
+    /*
   /**
     * Generates database rows for blocks.
     * @param block  Block
@@ -65,17 +65,17 @@ object TezosDatabaseOperations {
     */
   def blockToDatabaseRow(block: Block): Tables.BlocksRow =
     Tables.BlocksRow(
-      chainId = block.metadata.chain_id,
+      chainId = block.metadata.chainId,
       protocol = block.metadata.protocol,
-      level = block.metadata.level,
-      proto = block.metadata.proto,
-      predecessor = block.metadata.predecessor,
-      validationPass = block.metadata.validation_pass,
-      operationsHash = block.metadata.operations_hash,
-      protocolData = block.metadata.protocol_data,
+      level = block.metadata.header.level,
+      proto = block.metadata.header.proto,
+      predecessor = block.metadata.header.predecessor,
+      validationPass = block.metadata.header.validationPass,
+      operationsHash = block.metadata.header.operationsHash,
+      protocolData = "", //block.metadata.header.protocol_data,
       hash = block.metadata.hash,
-      timestamp = block.metadata.timestamp,
-      fitness = block.metadata.fitness.mkString(",")
+      timestamp = block.metadata.header.timestamp,
+      fitness = block.metadata.header.fitness.mkString(",")
     )
 
   /**
@@ -138,7 +138,7 @@ object TezosDatabaseOperations {
       }
     }
 
-
+  */
   private def fixSlots(slots: Option[List[Int]]): Option[String] =
     slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}
 }

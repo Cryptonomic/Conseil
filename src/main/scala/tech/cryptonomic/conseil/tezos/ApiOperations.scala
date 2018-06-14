@@ -217,7 +217,7 @@ object ApiOperations {
   private def filterOperationIDs(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
     if (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) op.hash.inSet(filter.operationIDs.get) else true
 
-  private def filterOperationSources(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
+  private def filterOperationSources(filter: Filter, op: Tables.Operations): Rep[Boolean] =
     if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
       op.source.getOrElse("").inSet(filter.operationSources.get)
     else true
@@ -238,13 +238,14 @@ object ApiOperations {
       a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
     else true
 
+  /*
   private def filterOperationGroupKinds(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
     if (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
-      op.kind.getOrElse("").inSet(filter.operationGroupKinds.get) else true
+      op.kind.getOrElse("").inSet(filter.operationGroupKinds.get) else true*/
 
   private def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
     if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
-      o.opKind.inSet(filter.operationKinds.get) else true
+      o.kind.inSet(filter.operationKinds.get) else true
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
@@ -267,13 +268,13 @@ object ApiOperations {
             account.blockId === latestBlock.hash )
 
         val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-            filterOperationIDs(filter, opGroup) &&
-            filterOperationSources(filter, opGroup) &&
-            filterOperationGroupKinds(filter, opGroup) })
+            filterOperationIDs(filter, opGroup)})
+            //&&filterOperationGroupKinds(filter, opGroup) })
 
         val filteredOps = Tables.Operations.filter({ op =>
             filterOperationKinds(filter, op) &&
-            filterOperationDestinations(filter, op)})
+            filterOperationDestinations(filter, op) &&
+            filterOperationSources(filter, op)})
 
         val filteredBlocks = Tables.Blocks.filter({ block =>
             filterBlockIDs(filter, block) &&
@@ -316,7 +317,7 @@ object ApiOperations {
           blocks
             .join(operationGroups).on(_.hash === _.blockId)
             .join(operations).on(_._2.hash === _.operationGroupHash)
-            .join(accounts).on(_._1._2.source === _.accountId)))
+            .join(accounts).on(_._2.source === _.accountId)))
       case (true, true, true, false) =>
         Some(BlocksOperationGroupsOperations(
           blocks
@@ -339,20 +340,22 @@ object ApiOperations {
         Some(OperationGroupsOperationsAccounts(
           operationGroups
             .join(operations).on(_.hash === _.operationGroupHash)
-            .join(accounts).on(_._1.source === _.accountId)))
+            .join(accounts).on(_._2.source === _.accountId)))
       case (false, true, true, false) =>
         Some(OperationGroupsOperations(
           operationGroups
             .join(operations).on(_.hash === _.operationGroupHash)))
       case (false, true, false, true) =>
-        Some(OperationGroupsAccounts(
-          operationGroups.join(accounts).on(_.source === _.accountId)))
+          Some(OperationGroupsOperationsAccounts(
+            operationGroups
+              .join(operations).on(_.hash === _.operationGroupHash)
+              .join(accounts).on(_._2.source === _.accountId)))
       case (false, true, false, false) =>
         Some(OperationGroups(operationGroups))
       case (false, false, true, true) =>
         Some(OperationGroupsOperationsAccounts(operationGroups
           .join(operations).on(_.hash === _.operationGroupHash)
-          .join(accounts).on(_._1.source === _.accountId)))
+          .join(accounts).on(_._2.source === _.accountId)))
       case (false, false, true, false) =>
         None
       case (false, false, false, true) =>
@@ -672,6 +675,13 @@ object ApiOperations {
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
 
+
+  private def extractFromBlock(b: Tables.Blocks) = {
+    (b.level, b.proto, b.predecessor, b.timestamp, b.validationPass,
+      b.operationHash, b.fitness, b.context, b.priority, b.proofOfWorkNonce,
+      b.seedNonceHash, b.signature, b.protocol, b.chainId, b.hash)
+  }
+
   /**
     * Fetches all blocks from the db.
     *
@@ -679,6 +689,7 @@ object ApiOperations {
     * @return List of blocks
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
+
 
     getFilteredTables(filter).flatMap { filteredTables =>
 
@@ -696,17 +707,17 @@ object ApiOperations {
           case Some(Blocks(blocks)) =>
             for {
               b <- blocks
-            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness, b.context)
+            } yield extractFromBlock(b)
 
           case Some(BlocksOperationGroups(blocksOperationGroups)) =>
             for {
               (b, _) <- blocksOperationGroups
-            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness, b.context)
+            } yield extractFromBlock(b)
 
           case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
             for {
               ((b, _), _) <- blocksOperationGroupsOperations
-            } yield (b.chainId, b.protocol, b.level, b.proto, b.predecessor, b.validationPass, b.operationsHash, b.protocolData, b.hash, b.timestamp, b.fitness, b.context)
+            } yield extractFromBlock(b)
 
           case _ =>
             throw new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
@@ -716,7 +727,7 @@ object ApiOperations {
         val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
-        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
+        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14, x._15))
       }
     }
 
@@ -732,8 +743,9 @@ object ApiOperations {
         val opGroup = Await.result(op, Duration.Inf).head
         val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
         val operations = Await.result(op2, Duration.Inf)
+        //Await.result(op2, Duration.Inf).head.
         val op3 = dbHandle.run(Tables.Accounts.
-          filter(_.accountId === opGroup.source.getOrElse("")).
+          //filter(_.accountId === operations.source.getOrElse("")).
           filter(_.blockId === latestBlock.hash).
           result)
         val accounts = Await.result(op3, Duration.Inf)
