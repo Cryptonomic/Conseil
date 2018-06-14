@@ -96,11 +96,11 @@ object TezosTypes {
                        block: Option[String],
                        level: Option[Int],
                        slots: Option[List[Int]],
-                       metadata: OperationMetadata,
+                       metadata: OperationMetadata, //metadata parsing will be implemented later
                        nonce: Option[String],
-                       op1: Option[InlinedEndorsement],
+                       op1: Option[InlinedEndorsement], //will be implemented later
                        op2: Option[InlinedEndorsement],
-                       bh1: Option[BlockHeader],
+                       bh1: Option[BlockHeader], //will be implemented later
                        bh2: Option[BlockHeader],
                        pkh: Option[String],
                        secret: Option[String],
