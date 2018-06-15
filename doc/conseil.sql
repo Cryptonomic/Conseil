@@ -67,16 +67,13 @@ CREATE TABLE public.blocks (
     predecessor character varying NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     validation_pass integer NOT NULL,
-    operation_hash character varying NOT NULL,
     fitness character varying NOT NULL,
     context character varying,
-    priority integer NOT NULL,
-    proof_of_work_nonce character varying NOT NULL,
-    seed_nonce_hash character varying,
-    signature character varying NOT NULL,
+    signature character varying,
     protocol character varying NOT NULL,
-    chain_id character varying NOT NULL,
-    hash character varying NOT NULL
+    chain_id character varying,
+    hash character varying NOT NULL,
+    operations_hash character varying
 );
 
 
