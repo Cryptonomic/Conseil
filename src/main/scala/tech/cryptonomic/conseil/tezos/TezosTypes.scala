@@ -11,18 +11,18 @@ object TezosTypes {
                         predecessor: String,
                         timestamp: java.sql.Timestamp,
                         validationPass: Int,
-                        operationsHash: String,
+                        operationsHash: Option[String],
                         fitness: Seq[String],
                         context: String,
-                        priority: Int,
-                        proofOfWorkNonce: String,
-                        seedNonceHash: Option[String],
-                        signature: String
+                        //priority: Int, deleted from database, not grabbing for now
+                        //proofOfWorkNonce: String, deleted from database, not grabbing for now
+                        //seedNonceHash: Option[String], deleted from database, not grabbing for now
+                        signature: Option[String]
                         )
 
   case class BlockMetadata(
                             protocol: String,
-                            chainId: String,
+                            chainId: Option[String],
                             hash: String,
                             header: BlockHeader,
                             metadata: Any,
@@ -105,7 +105,7 @@ object TezosTypes {
                        pkh: Option[String],
                        secret: Option[String],
                        proposals: Option[List[String]],
-                       period: Option[Int],
+                       period: Option[String], //Int
                        source: Option[String],
                        proposal: Option[String],
                        ballot: Option[String], //ballot case class? nay, yay, pass
@@ -114,11 +114,11 @@ object TezosTypes {
                        gasLimit: Option[Int],
                        storageLimit: Option[Int],
                        publicKey: Option[String],
-                       amount: Option[Int], //mutez
+                       amount: Option[String], //mutez, should be Int
                        destination: Option[String],
                        parameters: Option[Any], //michExp
                        managerPubKey: Option[String],
-                       balance: Option[Int], // mutez
+                       balance: Option[String], // mutez, should be Int
                        spendable: Option[Boolean],
                        delegatable: Option[Boolean],
                        delegate: Option[String]

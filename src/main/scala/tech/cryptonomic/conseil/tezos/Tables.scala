@@ -75,25 +75,22 @@ trait Tables {
     *  @param validationPass Database column validation_pass SqlType(int4)
     *  @param fitness Database column fitness SqlType(varchar)
     *  @param context Database column context SqlType(varchar), Default(None)
-    *  @param priority Database column priority SqlType(int4)
-    *  @param proofOfWorkNonce Database column proof_of_work_nonce SqlType(varchar)
-    *  @param seedNonceHash Database column seed_nonce_hash SqlType(varchar), Default(None)
-    *  @param signature Database column signature SqlType(varchar)
+    *  @param signature Database column signature SqlType(varchar), Default(None)
     *  @param protocol Database column protocol SqlType(varchar)
-    *  @param chainId Database column chain_id SqlType(varchar)
+    *  @param chainId Database column chain_id SqlType(varchar), Default(None)
     *  @param hash Database column hash SqlType(varchar)
-    *  @param operationsHash Database column operations_hash SqlType(varchar) */
-  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, priority: Int, proofOfWorkNonce: String, seedNonceHash: Option[String] = None, signature: String, protocol: String, chainId: String, hash: String, operationsHash: String)
+    *  @param operationsHash Database column operations_hash SqlType(varchar), Default(None) */
+  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]]): GR[BlocksRow] = GR{
     prs => import prs._
-      BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<[Int], <<[String], <<?[String], <<[String], <<[String], <<[String], <<[String], <<[String]))
+      BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
-    def * = (level, proto, predecessor, timestamp, validationPass, fitness, context, priority, proofOfWorkNonce, seedNonceHash, signature, protocol, chainId, hash, operationsHash) <> (BlocksRow.tupled, BlocksRow.unapply)
+    def * = (level, proto, predecessor, timestamp, validationPass, fitness, context, signature, protocol, chainId, hash, operationsHash) <> (BlocksRow.tupled, BlocksRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(fitness), context, Rep.Some(priority), Rep.Some(proofOfWorkNonce), seedNonceHash, Rep.Some(signature), Rep.Some(protocol), Rep.Some(chainId), Rep.Some(hash), Rep.Some(operationsHash)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12.get, _13.get, _14.get, _15.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(fitness), context, signature, Rep.Some(protocol), chainId, Rep.Some(hash), operationsHash).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8, _9.get, _10, _11.get, _12)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -109,22 +106,16 @@ trait Tables {
     val fitness: Rep[String] = column[String]("fitness")
     /** Database column context SqlType(varchar), Default(None) */
     val context: Rep[Option[String]] = column[Option[String]]("context", O.Default(None))
-    /** Database column priority SqlType(int4) */
-    val priority: Rep[Int] = column[Int]("priority")
-    /** Database column proof_of_work_nonce SqlType(varchar) */
-    val proofOfWorkNonce: Rep[String] = column[String]("proof_of_work_nonce")
-    /** Database column seed_nonce_hash SqlType(varchar), Default(None) */
-    val seedNonceHash: Rep[Option[String]] = column[Option[String]]("seed_nonce_hash", O.Default(None))
-    /** Database column signature SqlType(varchar) */
-    val signature: Rep[String] = column[String]("signature")
+    /** Database column signature SqlType(varchar), Default(None) */
+    val signature: Rep[Option[String]] = column[Option[String]]("signature", O.Default(None))
     /** Database column protocol SqlType(varchar) */
     val protocol: Rep[String] = column[String]("protocol")
-    /** Database column chain_id SqlType(varchar) */
-    val chainId: Rep[String] = column[String]("chain_id")
+    /** Database column chain_id SqlType(varchar), Default(None) */
+    val chainId: Rep[Option[String]] = column[Option[String]]("chain_id", O.Default(None))
     /** Database column hash SqlType(varchar) */
     val hash: Rep[String] = column[String]("hash")
-    /** Database column operations_hash SqlType(varchar) */
-    val operationsHash: Rep[String] = column[String]("operations_hash")
+    /** Database column operations_hash SqlType(varchar), Default(None) */
+    val operationsHash: Rep[Option[String]] = column[Option[String]]("operations_hash", O.Default(None))
 
     /** Foreign key referencing Blocks (database name blocks_predecessor_fkey) */
     lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)

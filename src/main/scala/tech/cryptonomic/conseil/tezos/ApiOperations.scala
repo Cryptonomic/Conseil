@@ -163,12 +163,11 @@ object ApiOperations {
 
   case class BlocksAction
     (action: Query[(Rep[Int], Rep[Int], Rep[String], Rep[Timestamp], Rep[Int],
-                    Rep[String], Rep[String], Rep[Option[String]], Rep[Int],
-                    Rep[String], Rep[Option[String]], Rep[String], Rep[String],
-                    Rep[String], Rep[String]),
-                   (Int, Int, String, Timestamp, Int, String, String,
-                     Option[String], Int, String, Option[String], String,
-                     String, String, String),
+                    Rep[String], Rep[Option[String]], Rep[Option[String]], Rep[String],
+                    Rep[Option[String]], Rep[String], Rep[Option[String]]),
+                   (Int, Int, String, Timestamp, Int, String,
+                     Option[String], Option[String],
+                     String, Option[String], String, Option[String]),
                    Seq]) extends Action
   /*(action: Query[(Rep[String], Rep[String], Rep[Int], Rep[Int], Rep[String], Rep[Int], Rep[String], Rep[String], Rep[String], Rep[Timestamp], Rep[String], Rep[Option[String]]),
                  (String, String, Int, Int, String, Int, String, String, String, Timestamp, String, Option[String]),
@@ -223,7 +222,8 @@ object ApiOperations {
     if (filter.levels.isDefined && filter.levels.get.nonEmpty) b.level.inSet(filter.levels.get) else true
 
   private def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-    if (filter.chainIDs.isDefined && filter.chainIDs.get.nonEmpty) b.chainId.inSet(filter.chainIDs.get) else true
+    if (filter.chainIDs.isDefined && filter.chainIDs.get.nonEmpty)
+      b.chainId.getOrElse("").inSet(filter.chainIDs.get) else true
 
   private def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
     if (filter.protocols.isDefined && filter.protocols.get.nonEmpty) b.protocol.inSet(filter.protocols.get) else true
@@ -438,53 +438,35 @@ object ApiOperations {
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._7.desc))
                 case None => BlocksAction(blockAction.sortBy(_._7.desc))
               }
-            case Some(x) if x == "priority" =>
+            case Some(x) if x == "signature" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._8.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._8.desc))
                 case None => BlocksAction(blockAction.sortBy(_._8.desc))
               }
-            case Some(x) if x == "proof_of_work_nonce" =>
+            case Some(x) if x == "protocol" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._9.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._9.desc))
                 case None => BlocksAction(blockAction.sortBy(_._9.desc))
               }
-            case Some(x) if x == "seed_nonce_hash" =>
+            case Some(x) if x == "chain_id" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._10.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._10.desc))
                 case None => BlocksAction(blockAction.sortBy(_._10.desc))
               }
-            case Some(x) if x == "signature" =>
+            case Some(x) if x == "hash" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._11.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._11.desc))
                 case None => BlocksAction(blockAction.sortBy(_._11.desc))
               }
-            case Some(x) if x == "protocol" =>
+            case Some(x) if x == "operations_hash" =>
               order.map(_.toLowerCase) match {
                 case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._12.asc))
                 case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._12.desc))
                 case None => BlocksAction(blockAction.sortBy(_._12.desc))
-              }
-            case Some(x) if x == "chain_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._13.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._13.desc))
-                case None => BlocksAction(blockAction.sortBy(_._13.desc))
-              }
-            case Some(x) if x == "hash" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._14.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._14.desc))
-                case None => BlocksAction(blockAction.sortBy(_._14.desc))
-              }
-            case Some(x) if x == "operations_hash" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._15.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._15.desc))
-                case None => BlocksAction(blockAction.sortBy(_._15.desc))
               }
             case None =>
               order.map(_.toLowerCase) match {
@@ -651,8 +633,8 @@ object ApiOperations {
 
   private def extractFromBlock(b: Tables.Blocks) = {
     (b.level, b.proto, b.predecessor, b.timestamp, b.validationPass,
-      b.operationHash, b.fitness, b.context, b.priority, b.proofOfWorkNonce,
-      b.seedNonceHash, b.signature, b.protocol, b.chainId, b.hash)
+      b.fitness, b.context,
+      b.signature, b.protocol, b.chainId, b.hash, b.operationsHash)
   }
 
   /**
@@ -700,7 +682,7 @@ object ApiOperations {
         val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.Inf)
-        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14, x._15))
+        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
       }
     }
 

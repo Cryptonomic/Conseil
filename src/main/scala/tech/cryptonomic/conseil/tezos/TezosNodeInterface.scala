@@ -57,7 +57,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
           )
         )
       val response: HttpResponse = Await.result(responseFuture, Duration.Inf)
-      val responseBodyFuture = response.entity.toStrict(5.second).map(_.data).map(_.utf8String)
+      val responseBodyFuture = response.entity.toStrict(90.second).map(_.data).map(_.utf8String)
       val responseBody = Await.result(responseBodyFuture, Duration.Inf)
       logger.debug(s"Query result: ${responseBody}")
       responseBody

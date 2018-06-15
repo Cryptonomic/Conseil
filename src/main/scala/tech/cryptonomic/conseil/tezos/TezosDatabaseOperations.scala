@@ -19,9 +19,9 @@ object TezosDatabaseOperations {
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
-       // Tables.Blocks                 ++= blocks.map(blockToDatabaseRow) //,
-        //Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        //Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
+        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
+        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
+        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
       )
     )
 
@@ -57,13 +57,36 @@ object TezosDatabaseOperations {
         balance = account._2.balance
       )
     }.toList
-    /*
+
   /**
     * Generates database rows for blocks.
     * @param block  Block
     * @return       Database rows
+    * Note, context is currently None because of a mismatch between
+    * the database type and the tezos type, will be fixed. Also,
+    * priority is currently not a column in the database, will be
+    * added later.
     */
-  def blockToDatabaseRow(block: Block): Tables.BlocksRow =
+  def blockToDatabaseRow(block: Block): Tables.BlocksRow = {
+    val header = block.metadata.header
+    Tables.BlocksRow(
+      level = header.level,
+      proto = header.proto,
+      predecessor = header.predecessor,
+      timestamp = header.timestamp,
+      validationPass = header.validationPass,
+      fitness = header.fitness.mkString(","),
+      context = None, //put in later
+      signature = header.signature,
+      protocol = block.metadata.protocol,
+      chainId = block.metadata.chainId,
+      hash = block.metadata.hash,
+      operationsHash = header.operationsHash
+    )
+  }
+
+
+  /*
     Tables.BlocksRow(
       chainId = block.metadata.chainId,
       protocol = block.metadata.protocol,
@@ -76,7 +99,7 @@ object TezosDatabaseOperations {
       hash = block.metadata.hash,
       timestamp = block.metadata.header.timestamp,
       fitness = block.metadata.header.fitness.mkString(",")
-    )
+    )*/
 
   /**
     * Generates database rows for a block's operation groups.
@@ -85,6 +108,15 @@ object TezosDatabaseOperations {
     */
   def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
     block.operationGroups.map{ og =>
+      Tables.OperationGroupsRow(
+        protocol = og.protocol,
+        chainId = og.chainId,
+        hash = og.hash,
+        branch = og.branch,
+        signature = og.signature,
+        blockId = block.metadata.hash
+      )
+      /*
       Tables.OperationGroupsRow(
         hash = og.hash,
         branch = og.branch,
@@ -102,7 +134,7 @@ object TezosDatabaseOperations {
         counter = og.counter,
         fee = og.fee,
         blockId = block.metadata.hash
-      )
+      )*/
     }
 
   /**
@@ -116,6 +148,35 @@ object TezosDatabaseOperations {
         case None =>  List[Tables.OperationsRow]()
         case Some(operations) =>
           operations.map { operation =>
+            Tables.OperationsRow(
+              kind = operation.kind,
+              block = operation.block,
+              level = operation.level,
+              slots = fixSlots(operation.slots),
+              nonce = operation.nonce,
+              pkh = operation.pkh,
+              secret = operation.secret,
+              proposals = Some(operation.proposals.mkString(",")), //should not be an option?
+              period = operation.period,
+              source = operation.source,
+              proposal = operation.proposal,
+              ballot = operation.ballot,
+              fee = operation.fee,
+              counter = operation.counter,
+              gasLimit = operation.gasLimit,
+              storageLimit = operation.storageLimit,
+              publicKey = operation.publicKey,
+              amount = operation.amount,
+              destination = operation.destination,
+              managerPubKey = operation.managerPubKey,
+              balance = operation.balance,
+              spendable = operation.spendable,
+              delegatable = operation.delegatable,
+              delegate = operation.delegate,
+              operationGroupHash = og.hash,
+              operationId = 0
+            )
+            /*
             Tables.OperationsRow(
               operationId = 0, // what's the difference between operationId and Id fields?
               operationGroupHash = og.hash,
@@ -134,11 +195,12 @@ object TezosDatabaseOperations {
               delegate = operation.delegate,
               script = operation.script.flatMap(x => Some(x.toString))
             )
+            */
           }
       }
     }
 
-  */
+
   private def fixSlots(slots: Option[List[Int]]): Option[String] =
     slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}
 }
