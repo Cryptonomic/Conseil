@@ -5,29 +5,110 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
+  case class BlockHeader(
+                        level: Int,
+                        proto: Int,
+                        predecessor: String,
+                        timestamp: java.sql.Timestamp,
+                        validationPass: Int,
+                        operationsHash: Option[String],
+                        fitness: Seq[String],
+                        context: String,
+                        signature: Option[String]
+                        )
+
   case class BlockMetadata(
-                            hash: String,
-                            chain_id: String,
                             protocol: String,
-                            level: Int,
-                            proto: Int,
-                            predecessor: String,
-                            timestamp: java.sql.Timestamp,
-                            validation_pass: Int,
-                            operations_hash: String,
-                            fitness: Seq[String],
-                            context: String,
-                            protocol_data: String
+                            chainId: Option[String],
+                            hash: String,
+                            header: BlockHeader,
+                            metadata: Any,
                   )
 
-  case class Operation (
+  case class OperationMetadata(
+                              delegate: Option[String],
+                              slots: Option[List[Int]],
+                              balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
+                              operationResult: Option[AppliedOperationResultStatus],
+                              internalOperationResult: Option[AppliedInternalOperationResult]
+                              )
+
+  case class AppliedOperationBalanceUpdates(
+                                             kind: String,
+                                             contract: Option[String],
+                                             change: Int,
+                                             category: Option[String],
+                                             delegate: Option[String],
+                                             level: Option[Int]
+                                           )
+
+  case class AppliedOperationResultStatus(
+                                   status: String,
+                                   errors: Option[List[String]],
+                                   storage: Option[Any],
+                                   balanceUpdates: Option[AppliedOperationBalanceUpdates],
+                                   originatedContracts: Option[String],
+                                   consumedGas: Option[Int],
+                                   storageSizeDiff: Option[Int]
+                                   )
+
+  case class AppliedInternalOperationResult(
+                                           kind: String,
+                                           source: String,
+                                           nonce: Int,
+                                           publicKey: Option[String],
+                                           result: AppliedOperationResultStatus,
+                                           amount: Option[Int],
+                                           destination: Option[String],
+                                           parameters: Option[Any],
+                                           managerPubKey: Option[String],
+                                           balance: Option[Int],
+                                           spendable: Option[Boolean],
+                                           delegatable: Option[Boolean],
+                                           delegate: Option[String],
+                                           script: Option[ScriptedContracts],
+                                           )
+
+  case class ScriptedContracts(
+                              storage: Any,
+                              code: Any
+                              )
+
+  case class InlinedEndorsement(
+                               branch: String,
+                               operation: InlinedEndorsementContents,
+                               signature: Option[String]
+                               )
+
+  case class InlinedEndorsementContents(
+                                       kind: String,
+                                       block: String,
+                                       level: String,
+                                       slots: List[Int]
+                                       )
+
+  case class Operation(
                        kind: String,
-                       level: Option[BigDecimal],
+                       block: Option[String],
+                       level: Option[Int],
+                       slots: Option[List[Int]],
                        nonce: Option[String],
-                       op1: Option[Operation],
-                       op2: Option[Operation],
-                       id: Option[String],
-                       public_key: Option[String],
+                       op1: Option[InlinedEndorsement],
+                       op2: Option[InlinedEndorsement],
+                       bh1: Option[BlockHeader],
+                       bh2: Option[BlockHeader],
+                       pkh: Option[String],
+                       secret: Option[String],
+                       proposals: Option[List[String]],
+                       period: Option[String],
+                       source: Option[String],
+                       proposal: Option[String],
+                       ballot: Option[String],
+                       fee: Option[String],
+                       counter: Option[Int],
+                       gasLimit: Option[String],
+                       storageLimit: Option[String],
+                       publicKey: Option[String],
                        amount: Option[String],
                        destination: Option[String],
                        parameters: Option[Any],
@@ -35,27 +116,16 @@ object TezosTypes {
                        balance: Option[String],
                        spendable: Option[Boolean],
                        delegatable: Option[Boolean],
-                       delegate: Option[String],
-                       script: Option[Any]
+                       delegate: Option[String]
                        )
 
   case class OperationGroup (
-                            hash: String,
-                            branch: String,
-                            kind: Option[String],
-                            block: Option[String],
-                            level: Option[Int],
-                            slots: Option[List[Int]],
-                            signature: Option[String],
-                            proposals: Option[String],
-                            period: Option[BigDecimal],
-                            source: Option[String],
-                            proposal: Option[String],
-                            ballot: Option[String],
-                            chain: Option[String],
-                            operations: Option[List[Operation]],
-                            counter: Option[scala.math.BigDecimal],
-                            fee: Option[String]
+                              protocol: String,
+                              chainId: Option[String],
+                              hash: String,
+                              branch: String,
+                              contents: Option[List[Operation]],
+                              signature: Option[String],
                             )
 
   case class AccountDelegate(
@@ -73,7 +143,7 @@ object TezosTypes {
                     )
 
   case class AccountsWithBlockHash(
-                                    block_hash: String,
+                                    blockHash: String,
                                     accounts: Map[String, Account]
                                   )
 
@@ -89,13 +159,6 @@ object TezosTypes {
 
   case class ForgedOperation(operation: String)
 
-  case class AppliedOperationBalanceUpdates(
-                                           kind: String,
-                                           contract: String,
-                                           debited: Option[String],
-                                           credited: Option[String]
-                                           )
-
   case class AppliedOperationError(
                                   kind: String,
                                   id: String,
@@ -105,9 +168,9 @@ object TezosTypes {
   case class AppliedOperationResult(
                                    operation: String,
                                    status: String,
-                                   operation_kind: Option[String],
-                                   balance_updates: Option[List[AppliedOperationBalanceUpdates]],
-                                   originated_contracts: Option[List[String]],
+                                   operationKind: Option[String],
+                                   balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
+                                   originatedContracts: Option[List[String]],
                                    errors: Option[List[AppliedOperationError]]
                                    )
 

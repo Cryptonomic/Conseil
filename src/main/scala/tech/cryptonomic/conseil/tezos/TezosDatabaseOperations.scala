@@ -47,7 +47,7 @@ object TezosDatabaseOperations {
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
         accountId = account._1,
-        blockId = accountsInfo.block_hash,
+        blockId = accountsInfo.blockHash,
         manager = account._2.manager,
         spendable = account._2.spendable,
         delegateSetable = account._2.delegate.setable,
@@ -63,20 +63,23 @@ object TezosDatabaseOperations {
     * @param block  Block
     * @return       Database rows
     */
-  def blockToDatabaseRow(block: Block): Tables.BlocksRow =
+  def blockToDatabaseRow(block: Block): Tables.BlocksRow = {
+    val header = block.metadata.header
     Tables.BlocksRow(
-      chainId = block.metadata.chain_id,
+      level = header.level,
+      proto = header.proto,
+      predecessor = header.predecessor,
+      timestamp = header.timestamp,
+      validationPass = header.validationPass,
+      fitness = header.fitness.mkString(","),
+      context = None, //put in later
+      signature = header.signature,
       protocol = block.metadata.protocol,
-      level = block.metadata.level,
-      proto = block.metadata.proto,
-      predecessor = block.metadata.predecessor,
-      validationPass = block.metadata.validation_pass,
-      operationsHash = block.metadata.operations_hash,
-      protocolData = block.metadata.protocol_data,
+      chainId = block.metadata.chainId,
       hash = block.metadata.hash,
-      timestamp = block.metadata.timestamp,
-      fitness = block.metadata.fitness.mkString(",")
+      operationsHash = header.operationsHash
     )
+  }
 
   /**
     * Generates database rows for a block's operation groups.
@@ -86,21 +89,11 @@ object TezosDatabaseOperations {
   def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
     block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
+        protocol = og.protocol,
+        chainId = og.chainId,
         hash = og.hash,
         branch = og.branch,
-        kind = og.kind,
-        block = og.block,
-        level = og.level,
-        slots = fixSlots(og.slots),
         signature = og.signature,
-        proposals = og.proposals,
-        period = og.period,
-        source = og.source,
-        proposal = og.proposal,
-        ballot = og.ballot,
-        chain = og.chain,
-        counter = og.counter,
-        fee = og.fee,
         blockId = block.metadata.hash
       )
     }
@@ -112,27 +105,37 @@ object TezosDatabaseOperations {
     */
   def operationsToDatabaseRow(block: Block): List[Tables.OperationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations match {
+      og.contents match {
         case None =>  List[Tables.OperationsRow]()
         case Some(operations) =>
           operations.map { operation =>
             Tables.OperationsRow(
-              operationId = 0, // what's the difference between operationId and Id fields?
-              operationGroupHash = og.hash,
-              opKind = operation.kind,
+              kind = operation.kind,
+              block = operation.block,
               level = operation.level,
+              slots = fixSlots(operation.slots),
               nonce = operation.nonce,
-              id = operation.id,
-              publicKey = operation.public_key,
+              pkh = operation.pkh,
+              secret = operation.secret,
+              proposals = fixProposals(operation.proposals),
+              period = operation.period,
+              source = operation.source,
+              proposal = operation.proposal,
+              ballot = operation.ballot,
+              fee = operation.fee,
+              counter = operation.counter,
+              gasLimit = operation.gasLimit,
+              storageLimit = operation.storageLimit,
+              publicKey = operation.publicKey,
               amount = operation.amount,
               destination = operation.destination,
-              parameters = operation.parameters.flatMap(x => Some(x.toString)),
-              managerpubkey = operation.managerPubKey, //change to camel case?
+              managerPubKey = operation.managerPubKey,
               balance = operation.balance,
               spendable = operation.spendable,
               delegatable = operation.delegatable,
               delegate = operation.delegate,
-              script = operation.script.flatMap(x => Some(x.toString))
+              operationGroupHash = og.hash,
+              operationId = 0
             )
           }
       }
@@ -141,4 +144,7 @@ object TezosDatabaseOperations {
 
   private def fixSlots(slots: Option[List[Int]]): Option[String] =
     slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}
+
+  private def fixProposals(slots: Option[List[String]]): Option[String] =
+    slots.flatMap{s: Seq[String] => Some(s.mkString(","))}
 }
