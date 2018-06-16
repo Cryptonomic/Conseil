@@ -174,9 +174,9 @@ object ApiOperations {
                  Seq]) extends Action*/
 
   case class OperationGroupsAction
-    (action: Query[(Rep[String], Rep[String], Rep[String], Rep[String],
+    (action: Query[(Rep[String], Rep[Option[String]], Rep[String], Rep[String],
                     Rep[Option[String]], Rep[String]),
-                   (String, String, String, String, Option[String], String),
+                   (String, Option[String], String, String, Option[String], String),
                    Seq]) extends Action
 
 

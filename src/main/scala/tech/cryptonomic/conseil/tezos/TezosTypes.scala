@@ -96,7 +96,7 @@ object TezosTypes {
                        block: Option[String],
                        level: Option[Int],
                        slots: Option[List[Int]],
-                       metadata: OperationMetadata, //metadata parsing will be implemented later
+                       //metadata: OperationMetadata, //metadata parsing will be implemented later
                        nonce: Option[String],
                        op1: Option[InlinedEndorsement], //will be implemented later
                        op2: Option[InlinedEndorsement],
@@ -109,10 +109,10 @@ object TezosTypes {
                        source: Option[String],
                        proposal: Option[String],
                        ballot: Option[String], //ballot case class? nay, yay, pass
-                       fee: Option[Int], //mutez
+                       fee: Option[String], //mutez
                        counter: Option[Int],
-                       gasLimit: Option[Int],
-                       storageLimit: Option[Int],
+                       gasLimit: Option[String],
+                       storageLimit: Option[String],
                        publicKey: Option[String],
                        amount: Option[String], //mutez, should be Int
                        destination: Option[String],
@@ -125,12 +125,12 @@ object TezosTypes {
                        )
 
   case class OperationGroup (
-                            protocol: String,
-                            chainId: String,
-                            hash: String,
-                            branch: String,
-                            operations: Option[List[Operation]],
-                            signature: Option[String],
+                              protocol: String,
+                              chainId: Option[String],
+                              hash: String,
+                              branch: String,
+                              contents: Option[List[Operation]],
+                              signature: Option[String],
                             )
 
   case class AccountDelegate(

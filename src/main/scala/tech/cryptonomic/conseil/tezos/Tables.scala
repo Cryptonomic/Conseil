@@ -63,6 +63,9 @@ trait Tables {
 
     /** Primary key of Accounts (database name accounts_pkey) */
     val pk = primaryKey("accounts_pkey", (accountId, blockId))
+
+    /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
+    lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
@@ -128,27 +131,27 @@ trait Tables {
 
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)
-    *  @param chainId Database column chain_id SqlType(varchar)
+    *  @param chainId Database column chain_id SqlType(varchar), Default(None)
     *  @param hash Database column hash SqlType(varchar), PrimaryKey
     *  @param branch Database column branch SqlType(varchar)
     *  @param signature Database column signature SqlType(varchar), Default(None)
     *  @param blockId Database column block_id SqlType(varchar) */
-  case class OperationGroupsRow(protocol: String, chainId: String, hash: String, branch: String, signature: Option[String] = None, blockId: String)
+  case class OperationGroupsRow(protocol: String, chainId: Option[String] = None, hash: String, branch: String, signature: Option[String] = None, blockId: String)
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
   implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[OperationGroupsRow] = GR{
     prs => import prs._
-      OperationGroupsRow.tupled((<<[String], <<[String], <<[String], <<[String], <<?[String], <<[String]))
+      OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String]))
   }
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
     def * = (protocol, chainId, hash, branch, signature, blockId) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(protocol), Rep.Some(chainId), Rep.Some(hash), Rep.Some(branch), signature, Rep.Some(blockId)).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(protocol), chainId, Rep.Some(hash), Rep.Some(branch), signature, Rep.Some(blockId)).shaped.<>({r=>import r._; _1.map(_=> OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column protocol SqlType(varchar) */
     val protocol: Rep[String] = column[String]("protocol")
-    /** Database column chain_id SqlType(varchar) */
-    val chainId: Rep[String] = column[String]("chain_id")
+    /** Database column chain_id SqlType(varchar), Default(None) */
+    val chainId: Rep[Option[String]] = column[Option[String]]("chain_id", O.Default(None))
     /** Database column hash SqlType(varchar), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
     /** Database column branch SqlType(varchar) */
@@ -165,19 +168,19 @@ trait Tables {
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
   /** Row type of table Operations */
-  type OperationsRow = HCons[String,HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[Int],HCons[Option[Int],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Boolean],HCons[Option[Boolean],HCons[Option[String],HCons[String,HCons[Long,HNil]]]]]]]]]]]]]]]]]]]]]]]]]]
+  type OperationsRow = HCons[String,HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Boolean],HCons[Option[Boolean],HCons[Option[String],HCons[String,HCons[Int,HCons[Option[String],HCons[Option[String],HCons[Option[String],HNil]]]]]]]]]]]]]]]]]]]]]]]]]]
   /** Constructor for OperationsRow providing default values if available in the database schema. */
-  def OperationsRow(kind: String, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, proposals: Option[String] = None, period: Option[String] = None, source: Option[String] = None, proposal: Option[String] = None, ballot: Option[String] = None, fee: Option[Int] = None, counter: Option[Int] = None, gasLimit: Option[Int] = None, storageLimit: Option[Int] = None, publicKey: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, managerPubKey: Option[String] = None, balance: Option[String] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Long): OperationsRow = {
-    kind :: block :: level :: slots :: nonce :: pkh :: secret :: proposals :: period :: source :: proposal :: ballot :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: managerPubKey :: balance :: spendable :: delegatable :: delegate :: operationGroupHash :: operationId :: HNil
+  def OperationsRow(kind: String, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, proposals: Option[String] = None, period: Option[String] = None, source: Option[String] = None, proposal: Option[String] = None, ballot: Option[String] = None, counter: Option[Int] = None, publicKey: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, managerPubKey: Option[String] = None, balance: Option[String] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None): OperationsRow = {
+    kind :: block :: level :: slots :: nonce :: pkh :: secret :: proposals :: period :: source :: proposal :: ballot :: counter :: publicKey :: amount :: destination :: managerPubKey :: balance :: spendable :: delegatable :: delegate :: operationGroupHash :: operationId :: fee :: storageLimit :: gasLimit :: HNil
   }
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
-  implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[Int]], e3: GR[Option[Boolean]], e4: GR[Long]): GR[OperationsRow] = GR{
+  implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[Int]], e3: GR[Option[Boolean]], e4: GR[Int]): GR[OperationsRow] = GR{
     prs => import prs._
-      <<[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[Int] :: <<?[Int] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Boolean] :: <<?[Boolean] :: <<?[String] :: <<[String] :: <<[Long] :: HNil
+      <<[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Boolean] :: <<?[Boolean] :: <<?[String] :: <<[String] :: <<[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: HNil
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
-    def * = kind :: block :: level :: slots :: nonce :: pkh :: secret :: proposals :: period :: source :: proposal :: ballot :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: managerPubKey :: balance :: spendable :: delegatable :: delegate :: operationGroupHash :: operationId :: HNil
+    def * = kind :: block :: level :: slots :: nonce :: pkh :: secret :: proposals :: period :: source :: proposal :: ballot :: counter :: publicKey :: amount :: destination :: managerPubKey :: balance :: spendable :: delegatable :: delegate :: operationGroupHash :: operationId :: fee :: storageLimit :: gasLimit :: HNil
 
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
@@ -203,14 +206,8 @@ trait Tables {
     val proposal: Rep[Option[String]] = column[Option[String]]("proposal", O.Default(None))
     /** Database column ballot SqlType(varchar), Default(None) */
     val ballot: Rep[Option[String]] = column[Option[String]]("ballot", O.Default(None))
-    /** Database column fee SqlType(int4), Default(None) */
-    val fee: Rep[Option[Int]] = column[Option[Int]]("fee", O.Default(None))
     /** Database column counter SqlType(int4), Default(None) */
     val counter: Rep[Option[Int]] = column[Option[Int]]("counter", O.Default(None))
-    /** Database column gas_limit SqlType(int4), Default(None) */
-    val gasLimit: Rep[Option[Int]] = column[Option[Int]]("gas_limit", O.Default(None))
-    /** Database column storage_limit SqlType(int4), Default(None) */
-    val storageLimit: Rep[Option[Int]] = column[Option[Int]]("storage_limit", O.Default(None))
     /** Database column public_key SqlType(varchar), Default(None) */
     val publicKey: Rep[Option[String]] = column[Option[String]]("public_key", O.Default(None))
     /** Database column amount SqlType(varchar), Default(None) */
@@ -229,8 +226,14 @@ trait Tables {
     val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
     /** Database column operation_group_hash SqlType(varchar) */
     val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
-    /** Database column operation_id SqlType(int8), PrimaryKey */
-    val operationId: Rep[Long] = column[Long]("operation_id", O.PrimaryKey)
+    /** Database column operation_id SqlType(serial), AutoInc */
+    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc)
+    /** Database column fee SqlType(varchar), Default(None) */
+    val fee: Rep[Option[String]] = column[Option[String]]("fee", O.Default(None))
+    /** Database column storage_limit SqlType(varchar), Default(None) */
+    val storageLimit: Rep[Option[String]] = column[Option[String]]("storage_limit", O.Default(None))
+    /** Database column gas_limit SqlType(varchar), Default(None) */
+    val gasLimit: Rep[Option[String]] = column[Option[String]]("gas_limit", O.Default(None))
 
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
     lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash :: HNil, OperationGroups)(r => r.hash :: HNil, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)

@@ -43,7 +43,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       val port = conf.getInt(s"platforms.tezos.$network.node.port")
       val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
       val url = s"http://$hostname:$port/${pathPrefix}chains/main/$command"
-      logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
+      logger.info(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val postedData = payload match {
         case None => """{}"""
         case Some(str) => str

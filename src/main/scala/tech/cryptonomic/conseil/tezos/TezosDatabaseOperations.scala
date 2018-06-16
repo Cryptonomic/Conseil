@@ -144,7 +144,7 @@ object TezosDatabaseOperations {
     */
   def operationsToDatabaseRow(block: Block): List[Tables.OperationsRow] =
     block.operationGroups.flatMap{ og =>
-      og.operations match {
+      og.contents match {
         case None =>  List[Tables.OperationsRow]()
         case Some(operations) =>
           operations.map { operation =>
@@ -156,7 +156,7 @@ object TezosDatabaseOperations {
               nonce = operation.nonce,
               pkh = operation.pkh,
               secret = operation.secret,
-              proposals = Some(operation.proposals.mkString(",")), //should not be an option?
+              proposals = fixProposals(operation.proposals),
               period = operation.period,
               source = operation.source,
               proposal = operation.proposal,
@@ -203,4 +203,7 @@ object TezosDatabaseOperations {
 
   private def fixSlots(slots: Option[List[Int]]): Option[String] =
     slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}
+
+  private def fixProposals(slots: Option[List[String]]): Option[String] =
+    slots.flatMap{s: Seq[String] => Some(s.mkString(","))}
 }
