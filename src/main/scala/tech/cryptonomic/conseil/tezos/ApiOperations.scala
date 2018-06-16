@@ -169,9 +169,6 @@ object ApiOperations {
                      Option[String], Option[String],
                      String, Option[String], String, Option[String]),
                    Seq]) extends Action
-  /*(action: Query[(Rep[String], Rep[String], Rep[Int], Rep[Int], Rep[String], Rep[Int], Rep[String], Rep[String], Rep[String], Rep[Timestamp], Rep[String], Rep[Option[String]]),
-                 (String, String, Int, Int, String, Int, String, String, String, Timestamp, String, Option[String]),
-                 Seq]) extends Action*/
 
   case class OperationGroupsAction
     (action: Query[(Rep[String], Rep[Option[String]], Rep[String], Rep[String],
@@ -179,12 +176,6 @@ object ApiOperations {
                    (String, Option[String], String, String, Option[String], String),
                    Seq]) extends Action
 
-
-  /*(action: Query [(Rep[String], Rep[String], Rep[Option[String]], Rep[Option[String]], Rep[Option[Int]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]],
-                    Rep[Option[BigDecimal]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]], Rep[Option[String]], Rep[Option[BigDecimal]], Rep[Option[String]], Rep[String]),
-                  (String, String, Option[String], Option[String], Option[Int], Option[String], Option[String], Option[String], Option[BigDecimal], Option[String], Option[String],
-                    Option[String], Option[String], Option[BigDecimal], Option[String], String),
-                  Seq]) extends Action*/
 
   case class AccountsAction
   (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
@@ -252,11 +243,6 @@ object ApiOperations {
       a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
     else true
 
-  /*
-  private def filterOperationGroupKinds(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
-    if (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
-      op.kind.getOrElse("").inSet(filter.operationGroupKinds.get) else true*/
-
   private def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
     if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
       o.kind.inSet(filter.operationKinds.get) else true
@@ -283,7 +269,6 @@ object ApiOperations {
 
         val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
             filterOperationIDs(filter, opGroup)})
-            //&&filterOperationGroupKinds(filter, opGroup) })
 
         val filteredOps = Tables.Operations.filter({ op =>
             filterOperationKinds(filter, op) &&
@@ -698,9 +683,7 @@ object ApiOperations {
         val opGroup = Await.result(op, Duration.Inf).head
         val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
         val operations = Await.result(op2, Duration.Inf)
-        //Await.result(op2, Duration.Inf).head.
         val op3 = dbHandle.run(Tables.Accounts.
-          //filter(_.accountId === operations.source.getOrElse("")).
           filter(_.blockId === latestBlock.hash).
           result)
         val accounts = Await.result(op3, Duration.Inf)
@@ -791,9 +774,7 @@ object ApiOperations {
           .filter(_.blockId === latestBlock.hash)
           .filter(_.accountId === account_id).take(1).result)
         val account = Await.result(op, Duration.Inf).head
-        //val op2 = dbHandle.run(Tables.OperationGroups.filter(_.source === account_id).result)
-        //val operationGroups = Await.result(op2, Duration.Inf)
-        Map("account" -> account) //, "operation_groups" -> operationGroups)
+        Map("account" -> account)
       }
     }
 
