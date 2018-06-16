@@ -62,10 +62,6 @@ object TezosDatabaseOperations {
     * Generates database rows for blocks.
     * @param block  Block
     * @return       Database rows
-    * Note, context is currently None because of a mismatch between
-    * the database type and the tezos type, will be fixed. Also,
-    * priority is currently not a column in the database, will be
-    * added later.
     */
   def blockToDatabaseRow(block: Block): Tables.BlocksRow = {
     val header = block.metadata.header
@@ -85,22 +81,6 @@ object TezosDatabaseOperations {
     )
   }
 
-
-  /*
-    Tables.BlocksRow(
-      chainId = block.metadata.chainId,
-      protocol = block.metadata.protocol,
-      level = block.metadata.header.level,
-      proto = block.metadata.header.proto,
-      predecessor = block.metadata.header.predecessor,
-      validationPass = block.metadata.header.validationPass,
-      operationsHash = block.metadata.header.operationsHash,
-      protocolData = "", //block.metadata.header.protocol_data,
-      hash = block.metadata.hash,
-      timestamp = block.metadata.header.timestamp,
-      fitness = block.metadata.header.fitness.mkString(",")
-    )*/
-
   /**
     * Generates database rows for a block's operation groups.
     * @param block  Block
@@ -116,25 +96,6 @@ object TezosDatabaseOperations {
         signature = og.signature,
         blockId = block.metadata.hash
       )
-      /*
-      Tables.OperationGroupsRow(
-        hash = og.hash,
-        branch = og.branch,
-        kind = og.kind,
-        block = og.block,
-        level = og.level,
-        slots = fixSlots(og.slots),
-        signature = og.signature,
-        proposals = og.proposals,
-        period = og.period,
-        source = og.source,
-        proposal = og.proposal,
-        ballot = og.ballot,
-        chain = og.chain,
-        counter = og.counter,
-        fee = og.fee,
-        blockId = block.metadata.hash
-      )*/
     }
 
   /**
@@ -176,26 +137,6 @@ object TezosDatabaseOperations {
               operationGroupHash = og.hash,
               operationId = 0
             )
-            /*
-            Tables.OperationsRow(
-              operationId = 0, // what's the difference between operationId and Id fields?
-              operationGroupHash = og.hash,
-              opKind = operation.kind,
-              level = operation.level,
-              nonce = operation.nonce,
-              id = operation.id,
-              publicKey = operation.public_key,
-              amount = operation.amount,
-              destination = operation.destination,
-              parameters = operation.parameters.flatMap(x => Some(x.toString)),
-              managerpubkey = operation.managerPubKey, //change to camel case?
-              balance = operation.balance,
-              spendable = operation.spendable,
-              delegatable = operation.delegatable,
-              delegate = operation.delegate,
-              script = operation.script.flatMap(x => Some(x.toString))
-            )
-            */
           }
       }
     }

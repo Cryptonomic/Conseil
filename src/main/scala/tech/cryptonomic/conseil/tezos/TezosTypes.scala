@@ -14,9 +14,6 @@ object TezosTypes {
                         operationsHash: Option[String],
                         fitness: Seq[String],
                         context: String,
-                        //priority: Int, deleted from database, not grabbing for now
-                        //proofOfWorkNonce: String, deleted from database, not grabbing for now
-                        //seedNonceHash: Option[String], deleted from database, not grabbing for now
                         signature: Option[String]
                         )
 
@@ -96,29 +93,28 @@ object TezosTypes {
                        block: Option[String],
                        level: Option[Int],
                        slots: Option[List[Int]],
-                       //metadata: OperationMetadata, //metadata parsing will be implemented later
                        nonce: Option[String],
-                       op1: Option[InlinedEndorsement], //will be implemented later
+                       op1: Option[InlinedEndorsement],
                        op2: Option[InlinedEndorsement],
-                       bh1: Option[BlockHeader], //will be implemented later
+                       bh1: Option[BlockHeader],
                        bh2: Option[BlockHeader],
                        pkh: Option[String],
                        secret: Option[String],
                        proposals: Option[List[String]],
-                       period: Option[String], //Int
+                       period: Option[String],
                        source: Option[String],
                        proposal: Option[String],
-                       ballot: Option[String], //ballot case class? nay, yay, pass
-                       fee: Option[String], //mutez
+                       ballot: Option[String],
+                       fee: Option[String],
                        counter: Option[Int],
                        gasLimit: Option[String],
                        storageLimit: Option[String],
                        publicKey: Option[String],
-                       amount: Option[String], //mutez, should be Int
+                       amount: Option[String],
                        destination: Option[String],
-                       parameters: Option[Any], //michExp
+                       parameters: Option[Any],
                        managerPubKey: Option[String],
-                       balance: Option[String], // mutez, should be Int
+                       balance: Option[String],
                        spendable: Option[Boolean],
                        delegatable: Option[Boolean],
                        delegate: Option[String]
@@ -164,15 +160,11 @@ object TezosTypes {
 
   case class ForgedOperation(operation: String)
 
-
-
-  //where was this defined?
   case class AppliedOperationError(
                                   kind: String,
                                   id: String,
                                   hash: String
                                   )
-
 
   case class AppliedOperationResult(
                                    operation: String,
@@ -190,8 +182,6 @@ object TezosTypes {
                              id: Option[String],
                              contract: Option[String]
                              )
-
-
 
   case class InjectedOperation(injectedOperation: String)
 

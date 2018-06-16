@@ -8,7 +8,10 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import scala.util.Try
 
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
-/*
+  // THE FOLLOWING TESTS ARE COMMENTED OUT AS THIS FUNCTIONALITY IS NO LONGER COMPATIBLE WITH THE
+  // TEZOS RPC INTERFACE. THIS WILL BE RECTIFIED AS PART OF A FUTURE TICKET.
+  // FOR NOW, USE CONSEIL.JS FOR ALL TRANSACTION LOGIC.
+  /*
   object MockTezosNode extends TezosRPCInterface {
 
     def runGetQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try{
