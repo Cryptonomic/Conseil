@@ -25,10 +25,9 @@ object TezosTypes {
                             metadata: Any,
                   )
 
-  //fix this!!!
   case class OperationMetadata(
                               delegate: Option[String],
-                              slots: Option[List[Int]], //max 255
+                              slots: Option[List[Int]],
                               balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
                               operationResult: Option[AppliedOperationResultStatus],
                               internalOperationResult: Option[AppliedInternalOperationResult]
@@ -56,14 +55,14 @@ object TezosTypes {
   case class AppliedInternalOperationResult(
                                            kind: String,
                                            source: String,
-                                           nonce: Int, //65535
+                                           nonce: Int,
                                            publicKey: Option[String],
                                            result: AppliedOperationResultStatus,
-                                           amount: Option[Int], //mutez
+                                           amount: Option[Int],
                                            destination: Option[String],
-                                           parameters: Option[Any], //MichExp
+                                           parameters: Option[Any],
                                            managerPubKey: Option[String],
-                                           balance: Option[Int], //mutez
+                                           balance: Option[Int],
                                            spendable: Option[Boolean],
                                            delegatable: Option[Boolean],
                                            delegate: Option[String],
@@ -71,8 +70,8 @@ object TezosTypes {
                                            )
 
   case class ScriptedContracts(
-                              storage: Any, //MichExp
-                              code: Any //MichExp
+                              storage: Any,
+                              code: Any
                               )
 
   case class InlinedEndorsement(
