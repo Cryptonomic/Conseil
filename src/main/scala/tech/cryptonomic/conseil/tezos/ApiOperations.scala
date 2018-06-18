@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -781,8 +782,6 @@ object ApiOperations {
       filterOperationDestinations(filter, o) &&
       filterOperationKinds(filter, o)
     } yield (
-      // Some lines intentionally commented out as tuples can only have a maximum of 22 elements.
-      // This will be rectified by using a class instead of a tuple.
       o.kind,
       o.block,
       o.level,
@@ -790,11 +789,7 @@ object ApiOperations {
       o.nonce,
       o.pkh,
       o.secret,
-      //o.proposals,
-      //o.period,
       o.source,
-      //o.proposal,
-      //o.ballot,
       o.counter,
       o.publicKey,
       o.amount,
@@ -812,10 +807,11 @@ object ApiOperations {
       )
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
-    results.map(x => Tables.OperationsRow(
-      x._1, x._2, x._3, x._4, x._5, x._6, x._7, Some("N/A"), Some("N/A"), x._8, Some("N/A"), Some("N/A"), x._9, x._10,
-      x._11, x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
+    val foo: Seq[conseil.tezos.Tables.OperationsRow] = results.map(x => Tables.OperationsRow(
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11,
+      x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
     )
+    foo
   }
 
   /**

@@ -10,8 +10,6 @@ trait Tables {
   val profile: slick.jdbc.JdbcProfile
   import profile.api._
   import slick.model.ForeignKeyAction
-  import slick.collection.heterogeneous._
-  import slick.collection.heterogeneous.syntax._
   // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
   import slick.jdbc.{GetResult => GR}
 
@@ -167,20 +165,40 @@ trait Tables {
   /** Collection-like TableQuery object for table OperationGroups */
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
-  /** Row type of table Operations */
-  type OperationsRow = HCons[String,HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[Boolean],HCons[Option[Boolean],HCons[Option[String],HCons[String,HCons[Int,HCons[Option[String],HCons[Option[String],HCons[Option[String],HNil]]]]]]]]]]]]]]]]]]]]]]]]]]
-  /** Constructor for OperationsRow providing default values if available in the database schema. */
-  def OperationsRow(kind: String, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, proposals: Option[String] = None, period: Option[String] = None, source: Option[String] = None, proposal: Option[String] = None, ballot: Option[String] = None, counter: Option[Int] = None, publicKey: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, managerPubKey: Option[String] = None, balance: Option[String] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None): OperationsRow = {
-    kind :: block :: level :: slots :: nonce :: pkh :: secret :: proposals :: period :: source :: proposal :: ballot :: counter :: publicKey :: amount :: destination :: managerPubKey :: balance :: spendable :: delegatable :: delegate :: operationGroupHash :: operationId :: fee :: storageLimit :: gasLimit :: HNil
-  }
+  /** Entity class storing rows of table Operations
+    *  @param kind Database column kind SqlType(varchar)
+    *  @param block Database column block SqlType(varchar), Default(None)
+    *  @param level Database column level SqlType(int4), Default(None)
+    *  @param slots Database column slots SqlType(varchar), Default(None)
+    *  @param nonce Database column nonce SqlType(varchar), Default(None)
+    *  @param pkh Database column pkh SqlType(varchar), Default(None)
+    *  @param secret Database column secret SqlType(varchar), Default(None)
+    *  @param source Database column source SqlType(varchar), Default(None)
+    *  @param counter Database column counter SqlType(int4), Default(None)
+    *  @param publicKey Database column public_key SqlType(varchar), Default(None)
+    *  @param amount Database column amount SqlType(varchar), Default(None)
+    *  @param destination Database column destination SqlType(varchar), Default(None)
+    *  @param managerPubKey Database column manager_pub_key SqlType(varchar), Default(None)
+    *  @param balance Database column balance SqlType(varchar), Default(None)
+    *  @param spendable Database column spendable SqlType(bool), Default(None)
+    *  @param delegatable Database column delegatable SqlType(bool), Default(None)
+    *  @param delegate Database column delegate SqlType(varchar), Default(None)
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+    *  @param operationId Database column operation_id SqlType(serial), AutoInc
+    *  @param fee Database column fee SqlType(varchar), Default(None)
+    *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
+    *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None) */
+  case class OperationsRow(kind: String, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, source: Option[String] = None, counter: Option[Int] = None, publicKey: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, managerPubKey: Option[String] = None, balance: Option[String] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None)
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[Int]], e3: GR[Option[Boolean]], e4: GR[Int]): GR[OperationsRow] = GR{
     prs => import prs._
-      <<[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[Boolean] :: <<?[Boolean] :: <<?[String] :: <<[String] :: <<[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: HNil
+      OperationsRow.tupled((<<[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[Boolean], <<?[Boolean], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String]))
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
-    def * = kind :: block :: level :: slots :: nonce :: pkh :: secret :: proposals :: period :: source :: proposal :: ballot :: counter :: publicKey :: amount :: destination :: managerPubKey :: balance :: spendable :: delegatable :: delegate :: operationGroupHash :: operationId :: fee :: storageLimit :: gasLimit :: HNil
+    def * = (kind, block, level, slots, nonce, pkh, secret, source, counter, publicKey, amount, destination, managerPubKey, balance, spendable, delegatable, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit) <> (OperationsRow.tupled, OperationsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(kind), block, level, slots, nonce, pkh, secret, source, counter, publicKey, amount, destination, managerPubKey, balance, spendable, delegatable, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18.get, _19.get, _20, _21, _22)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
@@ -196,16 +214,8 @@ trait Tables {
     val pkh: Rep[Option[String]] = column[Option[String]]("pkh", O.Default(None))
     /** Database column secret SqlType(varchar), Default(None) */
     val secret: Rep[Option[String]] = column[Option[String]]("secret", O.Default(None))
-    /** Database column proposals SqlType(varchar), Default(None) */
-    val proposals: Rep[Option[String]] = column[Option[String]]("proposals", O.Default(None))
-    /** Database column period SqlType(varchar), Default(None) */
-    val period: Rep[Option[String]] = column[Option[String]]("period", O.Default(None))
     /** Database column source SqlType(varchar), Default(None) */
     val source: Rep[Option[String]] = column[Option[String]]("source", O.Default(None))
-    /** Database column proposal SqlType(varchar), Default(None) */
-    val proposal: Rep[Option[String]] = column[Option[String]]("proposal", O.Default(None))
-    /** Database column ballot SqlType(varchar), Default(None) */
-    val ballot: Rep[Option[String]] = column[Option[String]]("ballot", O.Default(None))
     /** Database column counter SqlType(int4), Default(None) */
     val counter: Rep[Option[Int]] = column[Option[Int]]("counter", O.Default(None))
     /** Database column public_key SqlType(varchar), Default(None) */
@@ -236,7 +246,7 @@ trait Tables {
     val gasLimit: Rep[Option[String]] = column[Option[String]]("gas_limit", O.Default(None))
 
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
-    lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash :: HNil, OperationGroups)(r => r.hash :: HNil, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table Operations */
   lazy val Operations = new TableQuery(tag => new Operations(tag))
