@@ -28,7 +28,6 @@ libraryDependencies  ++=  Seq(
   "ch.megard" %% "akka-http-cors" % "0.3.0"
 )
 
-
 excludeDependencies ++= Seq(
   "org.consensusresearch" %% "scrypto"
 )
