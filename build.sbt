@@ -24,9 +24,9 @@ libraryDependencies  ++=  Seq(
   "com.madgag.spongycastle" % "core" % "1.58.0.0",
   "org.scorexfoundation" %% "scrypto" % "2.0.0",
   "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
-  "com.github.alanverbner" %% "bip39" % "0.1"
+  "com.github.alanverbner" %% "bip39" % "0.1",
+  "ch.megard" %% "akka-http-cors" % "0.3.0"
 )
-
 
 excludeDependencies ++= Seq(
   "org.consensusresearch" %% "scrypto"
