@@ -777,10 +777,18 @@ object ApiOperations {
   def fetchOperations(filter: Filter): Try[Seq[Tables.OperationsRow]] = Try{
     val action = for {
       o <- Tables.Operations
-      if filterOperationIDs(filter, o) &&
+      og <- Tables.OperationGroups
+      b <- Tables.Blocks
+      if o.operationGroupHash === og.hash &&
+      og.blockId === b.hash &&
+      filterOperationIDs(filter, o) &&
       filterOperationSources(filter, o) &&
       filterOperationDestinations(filter, o) &&
-      filterOperationKinds(filter, o)
+      filterOperationKinds(filter, o) &&
+      filterBlockIDs(filter, b) &&
+      filterBlockLevels(filter, b) &&
+      filterChainIDs(filter, b) &&
+      filterProtocols(filter, b)
     } yield (
       o.kind,
       o.block,
@@ -807,11 +815,10 @@ object ApiOperations {
       )
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
-    val foo: Seq[conseil.tezos.Tables.OperationsRow] = results.map(x => Tables.OperationsRow(
+    results.map(x => Tables.OperationsRow(
       x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11,
       x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
     )
-    foo
   }
 
   /**
