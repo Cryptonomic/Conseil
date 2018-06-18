@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
@@ -8,7 +10,6 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import java.sql.Timestamp
 
 
 /**
@@ -21,20 +22,19 @@ object ApiOperations {
   /**
     * Repesents a query filter submitted to the Conseil API.
     *
-    * @param limit                How many records to return
-    * @param blockIDs             Block IDs
-    * @param levels               Block levels
-    * @param chainIDs             Chain IDs
-    * @param protocols            Protocols
-    * @param operationIDs         Operation IDs
-    * @param operationSources     Operation sources
-    * @param accountIDs           Account IDs
-    * @param accountManagers      Account managers
-    * @param accountDelegates     Account delegates
-    * @param operationKinds       Operation outer kind
-    * @param operationGroupKinds  Operation inner kind
-    * @param sortBy               Database column name to sort by
-    * @param order                Sort items ascending or descending
+    * @param limit               How many records to return
+    * @param blockIDs            Block IDs
+    * @param levels              Block levels
+    * @param chainIDs            Chain IDs
+    * @param protocols           Protocols
+    * @param operationGroupIDs         Operation IDs
+    * @param operationSources    Operation sources
+    * @param accountIDs          Account IDs
+    * @param accountManagers     Account managers
+    * @param accountDelegates    Account delegates
+    * @param operationKinds      Operation outer kind
+    * @param sortBy              Database column name to sort by
+    * @param order               Sort items ascending or descending
     */
   case class Filter(
                      limit: Option[Int] = Some(10),
@@ -42,14 +42,13 @@ object ApiOperations {
                      levels: Option[Set[Int]] = Some(Set[Int]()),
                      chainIDs: Option[Set[String]] = Some(Set[String]()),
                      protocols: Option[Set[String]] = Some(Set[String]()),
-                     operationIDs: Option[Set[String]] = Some(Set[String]()),
+                     operationGroupIDs: Option[Set[String]] = Some(Set[String]()),
                      operationSources: Option[Set[String]] = Some(Set[String]()),
                      operationDestinations: Option[Set[String]] = Some(Set[String]()),
+                     operationKinds: Option[Set[String]] = Some(Set[String]()),
                      accountIDs: Option[Set[String]] = Some(Set[String]()),
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
                      accountDelegates: Option[Set[String]] = Some(Set[String]()),
-                     operationKinds: Option[Set[String]] = Some(Set[String]()),
-                     operationGroupKinds: Option[Set[String]] = Some(Set[String]()),
                      sortBy: Option[String] = None,
                      order: Option[String] = Some("DESC")
                    )
@@ -191,13 +190,13 @@ object ApiOperations {
       (filter.protocols.isDefined && filter.protocols.get.nonEmpty)
 
   private def isOperationGroupFilter(filter: Filter): Boolean =
-    (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) ||
-      (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) ||
-      (filter.operationGroupKinds.isDefined && filter.operationGroupKinds.get.nonEmpty)
+    (filter.operationGroupIDs.isDefined && filter.operationGroupIDs.get.nonEmpty) ||
+      (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
 
   private def isOperationFilter(filter: Filter): Boolean =
     (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty) ||
-      (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty)
+      (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) ||
+        (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty)
 
   private def isAccountFilter(filter: Filter): Boolean =
     (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty) ||
@@ -219,12 +218,19 @@ object ApiOperations {
   private def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
     if (filter.protocols.isDefined && filter.protocols.get.nonEmpty) b.protocol.inSet(filter.protocols.get) else true
 
-  private def filterOperationIDs(filter: Filter, op: Tables.OperationGroups): Rep[Boolean] =
-    if (filter.operationIDs.isDefined && filter.operationIDs.get.nonEmpty) op.hash.inSet(filter.operationIDs.get) else true
+  private def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
+    if (filter.operationGroupIDs.isDefined && filter.operationGroupIDs.get.nonEmpty)
+      og.hash.inSet(filter.operationGroupIDs.get)
+    else true
 
-  private def filterOperationSources(filter: Filter, op: Tables.Operations): Rep[Boolean] =
+  private def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    if (filter.operationGroupIDs.isDefined && filter.operationGroupIDs.get.nonEmpty)
+      o.operationGroupHash.inSet(filter.operationGroupIDs.get)
+    else true
+
+  private def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
     if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
-      op.source.getOrElse("").inSet(filter.operationSources.get)
+      o.source.getOrElse("").inSet(filter.operationSources.get)
     else true
 
   private def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
@@ -761,6 +767,56 @@ object ApiOperations {
         results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5, x._6))
       }
     }
+
+  /**
+    * Fetches all operations.
+    * @param filter Filters to apply
+    * @return List of operations
+    */
+  def fetchOperations(filter: Filter): Try[Seq[Tables.OperationsRow]] = Try{
+    val action = for {
+      o <- Tables.Operations
+      if filterOperationIDs(filter, o) &&
+      filterOperationSources(filter, o) &&
+      filterOperationDestinations(filter, o) &&
+      filterOperationKinds(filter, o)
+    } yield (
+      // Some lines intentionally commented out as tuples can only have a maximum of 22 elements.
+      // This will be rectified by using a class instead of a tuple.
+      o.kind,
+      o.block,
+      o.level,
+      o.slots,
+      o.nonce,
+      o.pkh,
+      o.secret,
+      //o.proposals,
+      //o.period,
+      o.source,
+      //o.proposal,
+      //o.ballot,
+      o.counter,
+      o.publicKey,
+      o.amount,
+      o.destination,
+      o.managerPubKey,
+      o.balance,
+      o.spendable,
+      o.delegatable,
+      o.delegate,
+      o.operationGroupHash,
+      o.operationId,
+      o.fee,
+      o.storageLimit,
+      o.gasLimit
+      )
+    val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
+    val results = Await.result(op, Duration.Inf)
+    results.map(x => Tables.OperationsRow(
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, Some("N/A"), Some("N/A"), x._8, Some("N/A"), Some("N/A"), x._9, x._10,
+      x._11, x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
+    )
+  }
 
   /**
     * Fetches an account by account id from the db.
