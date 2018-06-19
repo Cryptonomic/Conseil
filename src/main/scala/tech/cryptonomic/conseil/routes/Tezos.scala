@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
@@ -18,6 +19,8 @@ object Tezos extends LazyLogging {
   val dbHandle = DatabaseUtil.db
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+
+  private val conf = ConfigFactory.load
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -53,91 +56,95 @@ object Tezos extends LazyLogging {
   }
 
   val route: Route = pathPrefix(Segment) { network =>
-    get {
-      gatherConseilFilter{ filter =>
-        pathPrefix("blocks") {
-          pathEnd {
-            ApiOperations.fetchBlocks(filter) match {
-              case Success(blocks) => complete(JsonUtil.toJson(blocks))
-              case Failure(e) => failWith(e)
+   // validate(conf.hasPath(s"platform.tezos.$network"), s"Network not supported, current options include: 'zeronet'") {
+      get {
+        validate(conf.hasPath(s"platforms.tezos.$network"), s"$network not supported, current options include: 'zeronet'") {
+        gatherConseilFilter { filter =>
+          pathPrefix("blocks") {
+            pathEnd {
+              ApiOperations.fetchBlocks(filter) match {
+                case Success(blocks) => complete(JsonUtil.toJson(blocks))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path("head") {
+              ApiOperations.fetchLatestBlock() match {
+                case Success(block) => complete(JsonUtil.toJson(block))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path(Segment) { blockId =>
+              ApiOperations.fetchBlock(blockId) match {
+                case Success(block) => complete(JsonUtil.toJson(block))
+                case Failure(e) => failWith(e)
+              }
             }
-          } ~ path("head") {
-            ApiOperations.fetchLatestBlock() match {
-              case Success(block) => complete(JsonUtil.toJson(block))
-              case Failure(e) => failWith(e)
+          } ~ pathPrefix("accounts") {
+            pathEnd {
+              ApiOperations.fetchAccounts(filter) match {
+                case Success(accounts) => complete(JsonUtil.toJson(accounts))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path(Segment) { accountId =>
+              ApiOperations.fetchAccount(accountId) match {
+                case Success(account) => complete(JsonUtil.toJson(account))
+                case Failure(e) => failWith(e)
+              }
             }
-          } ~ path(Segment) { blockId =>
-            ApiOperations.fetchBlock(blockId) match {
-              case Success(block) => complete(JsonUtil.toJson(block))
-              case Failure(e) => failWith(e)
+          } ~ pathPrefix("operation_groups") {
+            pathEnd {
+              ApiOperations.fetchOperationGroups(filter) match {
+                case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path(Segment) { operationGroupId =>
+              ApiOperations.fetchOperationGroup(operationGroupId) match {
+                case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
+                case Failure(e) => failWith(e)
+              }
             }
-          }
-        } ~ pathPrefix("accounts") {
-          pathEnd {
-            ApiOperations.fetchAccounts(filter) match {
-              case Success(accounts) => complete(JsonUtil.toJson(accounts))
-              case Failure(e) => failWith(e)
-            }
-          } ~ path(Segment) { accountId =>
-            ApiOperations.fetchAccount(accountId) match {
-              case Success(account) => complete(JsonUtil.toJson(account))
-              case Failure(e) => failWith(e)
-            }
-          }
-        } ~ pathPrefix("operation_groups") {
-          pathEnd {
-            ApiOperations.fetchOperationGroups(filter) match {
-              case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
-              case Failure(e) => failWith(e)
-            }
-          } ~ path(Segment) { operationGroupId =>
-            ApiOperations.fetchOperationGroup(operationGroupId) match {
-              case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
-              case Failure(e) => failWith(e)
-            }
-          }
-        } ~ pathPrefix("operations") {
-          pathEnd {
-            ApiOperations.fetchOperations(filter) match {
-              case Success(operations) => complete(JsonUtil.toJson(operations))
-              case Failure(e) => failWith(e)
+          } ~ pathPrefix("operations") {
+            pathEnd {
+              ApiOperations.fetchOperations(filter) match {
+                case Success(operations) => complete(JsonUtil.toJson(operations))
+                case Failure(e) => failWith(e)
+              }
             }
           }
         }
       }
-    } ~ post {
-      path("generate_identity") {
-        nodeOp.createIdentity() match {
-          case Success(identity) => complete(JsonUtil.toJson(identity))
-          case Failure(e) => failWith(e)
-        }
-      } ~ gatherKeyInfo { keyStore =>
-        path("originate_account") {
-          parameters("amount".as[Float], "spendable".as[Boolean], "delegatable".as[Boolean], "delegate".as[String], "fee".as[Float]) {
-            (amount, spendable, delegatable, delegate, fee) =>
-            nodeOp.sendOriginationOperation(network, keyStore, amount, delegate, delegatable, spendable, fee) match {
-              case Success(result) => complete(JsonUtil.toJson(result))
-              case Failure(e) => failWith(e)
+      } ~ post {
+        path("generate_identity") {
+          nodeOp.createIdentity() match {
+            case Success(identity) => complete(JsonUtil.toJson(identity))
+            case Failure(e) => failWith(e)
+          }
+        } ~ gatherKeyInfo { keyStore =>
+          path("originate_account") {
+            parameters("amount".as[Float], "spendable".as[Boolean], "delegatable".as[Boolean], "delegate".as[String], "fee".as[Float]) {
+              (amount, spendable, delegatable, delegate, fee) =>
+                nodeOp.sendOriginationOperation(network, keyStore, amount, delegate, delegatable, spendable, fee) match {
+                  case Success(result) => complete(JsonUtil.toJson(result))
+                  case Failure(e) => failWith(e)
+                }
             }
-          }
-        } ~  path("set_delegate") {
-          parameters("delegate".as[String], "fee".as[Float]) {
-            (delegate, fee) =>
-              nodeOp.sendDelegationOperation(network, keyStore, delegate, fee) match {
-                case Success(result) => complete(JsonUtil.toJson(result))
-                case Failure(e) => failWith(e)
-              }
-          }
-        }~  path("send_transaction") {
-          parameters("amount".as[Float], "to".as[String], "fee".as[Float]) {
-            (amount, to, fee) =>
-              nodeOp.sendTransactionOperation(network, keyStore, to, amount, fee) match {
-                case Success(result) => complete(JsonUtil.toJson(result))
-                case Failure(e) => failWith(e)
-              }
+          } ~  path("set_delegate") {
+            parameters("delegate".as[String], "fee".as[Float]) {
+              (delegate, fee) =>
+                nodeOp.sendDelegationOperation(network, keyStore, delegate, fee) match {
+                  case Success(result) => complete(JsonUtil.toJson(result))
+                  case Failure(e) => failWith(e)
+                }
+            }
+          }~  path("send_transaction") {
+            parameters("amount".as[Float], "to".as[String], "fee".as[Float]) {
+              (amount, to, fee) =>
+                nodeOp.sendTransactionOperation(network, keyStore, to, amount, fee) match {
+                  case Success(result) => complete(JsonUtil.toJson(result))
+                  case Failure(e) => failWith(e)
+                }
+            }
           }
         }
       }
-    }
+    //}
   }
 }
