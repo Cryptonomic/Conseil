@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive, Route}
+import akka.http.scaladsl.server.{Directive, Route, StandardRoute}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
@@ -9,6 +9,8 @@ import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 /**
@@ -55,6 +57,9 @@ object Tezos extends LazyLogging {
     provide(keyStore)
   }
 
+  def endRoute(jsonTarget: Future[Any]): StandardRoute =
+    complete(jsonTarget.map(tableRow => JsonUtil.toJson(tableRow)))
+
   val route: Route = pathPrefix(Segment) { network =>
    // validate(conf.hasPath(s"platform.tezos.$network"), s"Network not supported, current options include: 'zeronet'") {
       get {
@@ -62,51 +67,27 @@ object Tezos extends LazyLogging {
         gatherConseilFilter { filter =>
           pathPrefix("blocks") {
             pathEnd {
-              ApiOperations.fetchBlocks(filter) match {
-                case Success(blocks) => complete(JsonUtil.toJson(blocks))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
-              ApiOperations.fetchLatestBlock() match {
-                case Success(block) => complete(JsonUtil.toJson(block))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchLatestBlock())
             } ~ path(Segment) { blockId =>
-              ApiOperations.fetchBlock(blockId) match {
-                case Success(block) => complete(JsonUtil.toJson(block))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
-              ApiOperations.fetchAccounts(filter) match {
-                case Success(accounts) => complete(JsonUtil.toJson(accounts))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchAccounts(filter))
             } ~ path(Segment) { accountId =>
-              ApiOperations.fetchAccount(accountId) match {
-                case Success(account) => complete(JsonUtil.toJson(account))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {
             pathEnd {
-              ApiOperations.fetchOperationGroups(filter) match {
-                case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
-              ApiOperations.fetchOperationGroup(operationGroupId) match {
-                case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchOperationGroup(operationGroupId))
             }
           } ~ pathPrefix("operations") {
             pathEnd {
-              ApiOperations.fetchOperations(filter) match {
-                case Success(operations) => complete(JsonUtil.toJson(operations))
-                case Failure(e) => failWith(e)
-              }
+              endRoute(ApiOperations.fetchOperations(filter))
             }
           }
         }

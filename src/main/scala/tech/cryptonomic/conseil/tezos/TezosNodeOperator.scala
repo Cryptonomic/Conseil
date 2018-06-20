@@ -8,6 +8,8 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 
+
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
 
@@ -123,7 +125,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param network  Which Tezos network to go against
     * @return         Block head
     */
-  def getBlockHead(network: String): Try[TezosTypes.Block]= {
+  def getBlockHead(network: String): Future[TezosTypes.Block]= {
     getBlock(network, "head")
   }
 
@@ -133,7 +135,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return           Blocks
     */
-  def getBlocksNotInDatabase(network: String, followFork: Boolean): Try[List[Block]] =
+  def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[Block]] = {
     ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
@@ -145,6 +147,20 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           getBlocks(network, maxLevel+1, headLevel, Some(headHash), followFork)
       }
     }
+  }
+  /*
+    ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
+      if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+      getBlockHead(network).flatMap { blockHead =>
+        val headLevel =  blockHead.metadata.header.level
+        val headHash  =  blockHead.metadata.hash
+        if(headLevel <= maxLevel)
+          Try(List[Block]())
+        else
+          getBlocks(network, maxLevel+1, headLevel, Some(headHash), followFork)
+      }
+    }
+    */
 
   /**
     * Gets the latest blocks from the database using an offset.
