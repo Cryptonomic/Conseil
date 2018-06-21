@@ -167,71 +167,38 @@ trait Tables {
 
   /** Entity class storing rows of table Operations
     *  @param kind Database column kind SqlType(varchar)
-    *  @param block Database column block SqlType(varchar), Default(None)
-    *  @param level Database column level SqlType(int4), Default(None)
-    *  @param slots Database column slots SqlType(varchar), Default(None)
-    *  @param nonce Database column nonce SqlType(varchar), Default(None)
-    *  @param pkh Database column pkh SqlType(varchar), Default(None)
-    *  @param secret Database column secret SqlType(varchar), Default(None)
     *  @param source Database column source SqlType(varchar), Default(None)
-    *  @param counter Database column counter SqlType(int4), Default(None)
-    *  @param publicKey Database column public_key SqlType(varchar), Default(None)
     *  @param amount Database column amount SqlType(varchar), Default(None)
     *  @param destination Database column destination SqlType(varchar), Default(None)
-    *  @param managerPubKey Database column manager_pub_key SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(varchar), Default(None)
-    *  @param spendable Database column spendable SqlType(bool), Default(None)
-    *  @param delegatable Database column delegatable SqlType(bool), Default(None)
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
     *  @param operationId Database column operation_id SqlType(serial), AutoInc
     *  @param fee Database column fee SqlType(varchar), Default(None)
     *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
     *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None) */
-  case class OperationsRow(kind: String, block: Option[String] = None, level: Option[Int] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, source: Option[String] = None, counter: Option[Int] = None, publicKey: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, managerPubKey: Option[String] = None, balance: Option[String] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None)
+  case class OperationsRow(kind: String, source: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, balance: Option[String] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None)
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
-  implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Option[Int]], e3: GR[Option[Boolean]], e4: GR[Int]): GR[OperationsRow] = GR{
+  implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Int]): GR[OperationsRow] = GR{
     prs => import prs._
-      OperationsRow.tupled((<<[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[Boolean], <<?[Boolean], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String]))
+      OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String]))
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
-    def * = (kind, block, level, slots, nonce, pkh, secret, source, counter, publicKey, amount, destination, managerPubKey, balance, spendable, delegatable, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit) <> (OperationsRow.tupled, OperationsRow.unapply)
+    def * = (kind, source, amount, destination, balance, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit) <> (OperationsRow.tupled, OperationsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(kind), block, level, slots, nonce, pkh, secret, source, counter, publicKey, amount, destination, managerPubKey, balance, spendable, delegatable, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18.get, _19.get, _20, _21, _22)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(kind), source, amount, destination, balance, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
-    /** Database column block SqlType(varchar), Default(None) */
-    val block: Rep[Option[String]] = column[Option[String]]("block", O.Default(None))
-    /** Database column level SqlType(int4), Default(None) */
-    val level: Rep[Option[Int]] = column[Option[Int]]("level", O.Default(None))
-    /** Database column slots SqlType(varchar), Default(None) */
-    val slots: Rep[Option[String]] = column[Option[String]]("slots", O.Default(None))
-    /** Database column nonce SqlType(varchar), Default(None) */
-    val nonce: Rep[Option[String]] = column[Option[String]]("nonce", O.Default(None))
-    /** Database column pkh SqlType(varchar), Default(None) */
-    val pkh: Rep[Option[String]] = column[Option[String]]("pkh", O.Default(None))
-    /** Database column secret SqlType(varchar), Default(None) */
-    val secret: Rep[Option[String]] = column[Option[String]]("secret", O.Default(None))
     /** Database column source SqlType(varchar), Default(None) */
     val source: Rep[Option[String]] = column[Option[String]]("source", O.Default(None))
-    /** Database column counter SqlType(int4), Default(None) */
-    val counter: Rep[Option[Int]] = column[Option[Int]]("counter", O.Default(None))
-    /** Database column public_key SqlType(varchar), Default(None) */
-    val publicKey: Rep[Option[String]] = column[Option[String]]("public_key", O.Default(None))
     /** Database column amount SqlType(varchar), Default(None) */
     val amount: Rep[Option[String]] = column[Option[String]]("amount", O.Default(None))
     /** Database column destination SqlType(varchar), Default(None) */
     val destination: Rep[Option[String]] = column[Option[String]]("destination", O.Default(None))
-    /** Database column manager_pub_key SqlType(varchar), Default(None) */
-    val managerPubKey: Rep[Option[String]] = column[Option[String]]("manager_pub_key", O.Default(None))
     /** Database column balance SqlType(varchar), Default(None) */
     val balance: Rep[Option[String]] = column[Option[String]]("balance", O.Default(None))
-    /** Database column spendable SqlType(bool), Default(None) */
-    val spendable: Rep[Option[Boolean]] = column[Option[Boolean]]("spendable", O.Default(None))
-    /** Database column delegatable SqlType(bool), Default(None) */
-    val delegatable: Rep[Option[Boolean]] = column[Option[Boolean]]("delegatable", O.Default(None))
     /** Database column delegate SqlType(varchar), Default(None) */
     val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
     /** Database column operation_group_hash SqlType(varchar) */
