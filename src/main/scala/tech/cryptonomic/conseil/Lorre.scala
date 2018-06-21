@@ -21,6 +21,24 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
+  val usage =
+    """
+      Usage: runMain tech.cryptonomic.conseil.Lorre --platform <platform> --network <network> or\n
+             runMain tech.cryptonomic.conseil.Lorre --network <network> --platform <platform>
+    """.stripMargin
+
+  val argsList = args.toList
+  val (platform, network) = argsList match {
+    case "--platform" :: pl :: "--network"  :: nw :: Nil => (pl, nw)
+    case "--network"  :: nw :: "--platform" :: pl :: Nil => (pl, nw)
+    case _ => {
+      println(usage)
+      sys.exit(1)
+    }
+  }
+
+  conf.hasPath(s"platforms.$platform.$network")
+
   try {
     while(true) {
       logger.info("Fetching blocks")
