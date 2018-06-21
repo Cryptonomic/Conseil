@@ -791,21 +791,10 @@ object ApiOperations {
       filterProtocols(filter, b)
     } yield (
       o.kind,
-      o.block,
-      o.level,
-      o.slots,
-      o.nonce,
-      o.pkh,
-      o.secret,
       o.source,
-      o.counter,
-      o.publicKey,
       o.amount,
       o.destination,
-      o.managerPubKey,
       o.balance,
-      o.spendable,
-      o.delegatable,
       o.delegate,
       o.operationGroupHash,
       o.operationId,
@@ -816,8 +805,7 @@ object ApiOperations {
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.OperationsRow(
-      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11,
-      x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11)
     )
   }
 
