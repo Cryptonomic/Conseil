@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 
-
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -125,7 +125,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param network  Which Tezos network to go against
     * @return         Block head
     */
-  def getBlockHead(network: String): Future[TezosTypes.Block]= {
+  def getBlockHead(network: String): Try[TezosTypes.Block]= {
     getBlock(network, "head")
   }
 
@@ -135,8 +135,9 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return           Blocks
     */
-  def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[Block]] = {
-    ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
+  def getBlocksNotInDatabase(network: String, followFork: Boolean): Try[List[Block]] = {
+    val tryMaxLevel = Try { Await.result(ApiOperations.fetchMaxLevel(), Duration.Inf) }
+    tryMaxLevel.flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
         val headLevel =  blockHead.metadata.header.level
@@ -224,11 +225,16 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           block :: blockSoFar
         else if(block.metadata.header.level == minLevel && !followFork)
           block :: blockSoFar
-        else if(block.metadata.header.level <= minLevel && followFork)
-          ApiOperations.fetchBlock(block.metadata.header.predecessor) match {
-            case Success(_)     => block :: blockSoFar
-            case Failure(_)     => processBlocks(network, block.metadata.header.predecessor, minLevel, maxLevel, block :: blockSoFar, followFork)
+        else if(block.metadata.header.level <= minLevel && followFork) {
+          val blockFetched = Try {
+            Await.result(ApiOperations.fetchBlock(block.metadata.header.predecessor), Duration.Inf)
           }
+          //ApiOperations.fetchBlock(block.metadata.header.predecessor) match {
+          blockFetched match {
+            case Success(_) => block :: blockSoFar
+            case Failure(_) => processBlocks(network, block.metadata.header.predecessor, minLevel, maxLevel, block :: blockSoFar, followFork)
+          }
+        }
         else if(block.metadata.header.level > maxLevel)
           processBlocks(network, block.metadata.header.predecessor, minLevel, maxLevel, blockSoFar, followFork)
         else if(block.metadata.header.level > minLevel)
@@ -254,8 +260,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param network  Which Tezos network to go against
     * @return         Accounts with their corresponding block hash
     */
-  def getLatestAccounts(network: String): Try[AccountsWithBlockHash]=
-    ApiOperations.fetchLatestBlock().flatMap(dbBlockHead => getAccounts(network, dbBlockHead.hash))
+  def getLatestAccounts(network: String): Try[AccountsWithBlockHash] = {
+    val tryLatestBlock = Try { Await.result(ApiOperations.fetchLatestBlock(), Duration.Inf) }
+    tryLatestBlock.flatMap{blockHead => getAccounts(network, blockHead.hash)}
+    }
 
   /**
     * Appends a key reveal operation to an operation group if needed.
