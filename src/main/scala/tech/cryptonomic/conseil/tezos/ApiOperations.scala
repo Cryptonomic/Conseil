@@ -10,7 +10,6 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 
@@ -265,31 +264,7 @@ object ApiOperations {
     * @param filter
     * @return
     */
-  private def getFilteredTables(filter: Filter): Future[FilteredTables] = {
-    fetchLatestBlock().map{ latestBlock =>
-      val filteredAccounts = Tables.Accounts.filter(account =>
-        filterAccountIDs(filter, account) &&
-          filterAccountDelegates(filter, account) &&
-          filterAccountManagers(filter, account) &&
-          account.blockId === latestBlock.hash )
-
-      val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-        filterOperationIDs(filter, opGroup)})
-
-      val filteredOps = Tables.Operations.filter({ op =>
-        filterOperationKinds(filter, op) &&
-          filterOperationDestinations(filter, op) &&
-          filterOperationSources(filter, op)})
-
-      val filteredBlocks = Tables.Blocks.filter({ block =>
-        filterBlockIDs(filter, block) &&
-          filterBlockLevels(filter, block) &&
-          filterChainIDs(filter, block) &&
-          filterProtocols(filter, block)})
-
-      FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
-    }
-    /*Used to return Try[FilteredTables]
+  private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
 
@@ -315,7 +290,7 @@ object ApiOperations {
 
         FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
       }
-    }*/
+    }
   }
 
   /**
@@ -610,14 +585,13 @@ object ApiOperations {
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxLevel(): Future[Int] = {
-  //Try {, used to return Try[Int]
+  def fetchMaxLevel(): Try[Int] = Try {
     val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
-    //val maxLevelOpt = Await.result(op, Duration.Inf)
-    op.map(maxLevelOpt => maxLevelOpt match {
+    val maxLevelOpt = Await.result(op, Duration.Inf)
+    maxLevelOpt match {
       case Some(maxLevel) => maxLevel
       case None => -1
-    })
+    }
   }
 
   /**
@@ -625,18 +599,13 @@ object ApiOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock(): Future[Tables.BlocksRow] = {
-    fetchMaxLevel().flatMap{ maxLevel =>
-      val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
-      op.map(_.head)
-    }
-    //used to return Try[Tables.BlocksRow]
-    /*fetchMaxLevel().flatMap { maxLevel =>
+  def fetchLatestBlock(): Try[Tables.BlocksRow] = {
+    fetchMaxLevel().flatMap { maxLevel =>
       Try {
         val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
         Await.result(op, Duration.Inf).head
       }
-    }*/
+    }
   }
 
   /**
@@ -645,22 +614,12 @@ object ApiOperations {
     * @param hash The block's hash
     * @return The block along with its operations
     */
-  def fetchBlock(hash: String): Future[Map[String, Any]] = {
+  def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
+    val block = Await.result(op, Duration.Inf).head
     val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
-    for {
-      blocks <- op
-      operationGroups <- op2
-    } yield Map("block" -> blocks.head, "operation_groups" -> operationGroups)
-
-    /* Try[Map[String, Any]]
-    Try {
-      val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
-      val block = Await.result(op, Duration.Inf).head
-      val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
-      val operationGroups = Await.result(op2, Duration.Inf)
-      Map("block" -> block, "operation_groups" -> operationGroups)
-    }*/
+    val operationGroups = Await.result(op2, Duration.Inf)
+    Map("block" -> block, "operation_groups" -> operationGroups)
   }
 
 
@@ -676,51 +635,9 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter): Future[Seq[Tables.BlocksRow]] = {
-    getFilteredTables(filter).flatMap{ filteredTables =>
+  def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
 
-      // Blocks need to be fetched, other tables needed if user asks for them via the filter
-      val blockFlag = true
-      val operationGroupFlag = isOperationGroupFilter(filter)
-      val operationFlag = isOperationFilter(filter)
-      val accountFlag = isAccountFilter(filter)
-      val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
 
-      val action = joinedTables match {
-
-        case Some(Blocks(blocks)) =>
-          for {
-            b <- blocks
-          } yield extractFromBlock(b)
-
-        case Some(BlocksOperationGroups(blocksOperationGroups)) =>
-          for {
-            (b, _) <- blocksOperationGroups
-          } yield extractFromBlock(b)
-
-        case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
-          for {
-            ((b, _), _) <- blocksOperationGroupsOperations
-          } yield extractFromBlock(b)
-
-        case _ =>
-          throw new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
-
-      }
-
-      val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
-      val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-      op.map{ results =>
-        results.map{ x =>
-          Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12)
-        }
-      }
-      //val results = Await.result(op, Duration.Inf)
-      //results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
-
-    }
-
-    /* used to return Try[Seq[Tables.BlocksRow]]
     getFilteredTables(filter).flatMap { filteredTables =>
 
       Try {
@@ -759,7 +676,6 @@ object ApiOperations {
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
       }
-      */
     }
 
   /**
@@ -767,25 +683,7 @@ object ApiOperations {
     * @param operationGroupHash Operation group hash
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String): Future[Map[String, Any]] = {
-    fetchLatestBlock().flatMap{ latestBlock =>
-      val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
-      val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
-      val op3 = dbHandle.run(Tables.Accounts.
-        filter(_.blockId === latestBlock.hash).
-        result)
-      for {
-        og <- op
-        opGroup = og.head
-        operations <- op2
-        accounts <- op3
-      } yield Map(
-        "operation_group" -> opGroup,
-        "operations" -> operations,
-        "accounts" -> accounts
-      )
-    }
-    /* Used to be of type Try[Map[String, Any]]
+  def fetchOperationGroup(operationGroupHash: String): Try[Map[String, Any]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
@@ -802,7 +700,6 @@ object ApiOperations {
           "accounts" -> accounts
         )
       }
-      */
     }
 
   private def extractFromOperationGroup(opGroup: Tables.OperationGroups) = {
@@ -815,64 +712,7 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter): Future[Seq[Tables.OperationGroupsRow]] = {
-    getFilteredTables(filter).flatMap { filteredTables =>
-      val blockFlag = isBlockFilter(filter)
-      val operationGroupFlag = true
-      val operationFlag = isOperationFilter(filter)
-      val accountFlag = isAccountFilter(filter)
-      val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-      val action = joinedTables match {
-
-        case Some(OperationGroups(operationGroups)) =>
-          for {
-            opGroup <- operationGroups
-          } yield extractFromOperationGroup(opGroup)
-
-        case Some(BlocksOperationGroups(blocksOperationGroups)) =>
-          for {
-            (_, opGroup) <- blocksOperationGroups
-          } yield extractFromOperationGroup(opGroup)
-
-        case Some(OperationGroupsOperations(operationGroupsOperations)) =>
-          for {
-            (opGroup, _) <- operationGroupsOperations
-          } yield extractFromOperationGroup(opGroup)
-
-        case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
-          for {
-            (opGroup, _) <- operationGroupsAccounts
-          } yield extractFromOperationGroup(opGroup)
-
-        case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
-          for {
-            ((opGroup, _), _) <- operationGroupsOperationsAccounts
-          } yield extractFromOperationGroup(opGroup)
-
-        case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
-          for {
-            ((_, opGroup), _) <- blocksOperationGroupsOperations
-          } yield extractFromOperationGroup(opGroup)
-
-        case Some(BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts)) =>
-          for {
-            (((_, opGroup), _), _) <- blocksOperationGroupsOperationsAccounts
-          } yield  extractFromOperationGroup(opGroup)
-
-        case _ =>
-          throw new Exception("This exception should never be reached, but is included for completeness.")
-      }
-
-      val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
-      val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-      op.map { results =>
-        results.map { x =>
-          Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5, x._6)
-        }
-      }
-    }
-
-    /* used to return Try[Seq[Tables.OperationGroupsRow]
+  def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] =
 
     getFilteredTables(filter).flatMap { filteredTables =>
       Try {
@@ -927,7 +767,6 @@ object ApiOperations {
         val results = Await.result(op, Duration.Inf)
         results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5, x._6))
       }
-      */
     }
 
   /**
@@ -935,7 +774,7 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operations
     */
-  def fetchOperations(filter: Filter): Future[Seq[Tables.OperationsRow]] = {//Try{
+  def fetchOperations(filter: Filter): Try[Seq[Tables.OperationsRow]] = Try{
     val action = for {
       o <- Tables.Operations
       og <- Tables.OperationGroups
@@ -975,18 +814,11 @@ object ApiOperations {
       o.gasLimit
       )
     val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
-    //val results = Await.result(op, Duration.Inf)
-    op.map { results =>
-      results.map { x =>
-        Tables.OperationsRow(
-          x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11,
-          x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
-      }
-    }
-    //results.map(x => Tables.OperationsRow(
-    //  x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11,
-    //  x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
-    //)
+    val results = Await.result(op, Duration.Inf)
+    results.map(x => Tables.OperationsRow(
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11,
+      x._12, x._13, x._14, x._15, x._16, x._17, x._18, x._19, x._20, x._21, x._22)
+    )
   }
 
   /**
@@ -994,14 +826,7 @@ object ApiOperations {
     * @param account_id The account's id number
     * @return           The account with its associated operation groups
     */
-  def fetchAccount(account_id: String): Future[Map[String, Any]] = {
-    fetchLatestBlock().flatMap{ latestBlock =>
-      val op = dbHandle.run(Tables.Accounts
-        .filter(_.blockId === latestBlock.hash)
-        .filter(_.accountId === account_id).take(1).result)
-      for (accounts <- op) yield Map("account" -> accounts.head)
-    }
-    /* Try[Map[String, Any]]
+  def fetchAccount(account_id: String): Try[Map[String, Any]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op = dbHandle.run(Tables.Accounts
@@ -1010,52 +835,14 @@ object ApiOperations {
         val account = Await.result(op, Duration.Inf).head
         Map("account" -> account)
       }
-    }*/
-  }
+    }
 
   /**
     * Fetches a list of accounts from the db.
     * @param filter Filters to apply
     * @return       List of accounts
     */
-  def fetchAccounts(filter: Filter): Future[Seq[AccountsRow]] = {
-    getFilteredTables(filter).flatMap { filteredTables =>
-      val blockFlag = isBlockFilter(filter)
-      val operationGroupFlag = isOperationGroupFilter(filter)
-      val operationFlag = isOperationFilter(filter)
-      val accountFlag = true
-      val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-
-      val action = joinedTables match {
-
-        case Some(Accounts(accounts)) =>
-          for {
-            a <- accounts
-          } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
-
-        case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
-          for {
-            (_, a) <- operationGroupsAccounts
-          } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
-
-        case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
-          for {
-            ((_, _), a) <- operationGroupsOperationsAccounts
-          } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
-
-        case _ =>
-          throw new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
-      }
-
-      val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
-      val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-      op.map { results =>
-        results.map { x =>
-          Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9)
-        }
-      }
-    }
-    /* Try[Seq[AccountsRow]]
+  def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] = {
     getFilteredTables(filter).flatMap { filteredTables =>
 
       Try {
@@ -1094,7 +881,7 @@ object ApiOperations {
 
       }
 
-    }*/
+    }
 
   }
 

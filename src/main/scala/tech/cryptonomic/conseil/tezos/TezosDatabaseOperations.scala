@@ -111,36 +111,18 @@ object TezosDatabaseOperations {
           operations.map { operation =>
             Tables.OperationsRow(
               kind = operation.kind,
-              block = operation.block,
-              level = operation.level,
-              slots = fixSlots(operation.slots),
-              nonce = operation.nonce,
-              pkh = operation.pkh,
-              secret = operation.secret,
               source = operation.source,
               fee = operation.fee,
-              counter = operation.counter,
               gasLimit = operation.gasLimit,
               storageLimit = operation.storageLimit,
-              publicKey = operation.publicKey,
               amount = operation.amount,
               destination = operation.destination,
-              managerPubKey = operation.managerPubKey,
-              balance = operation.balance,
-              spendable = operation.spendable,
-              delegatable = operation.delegatable,
-              delegate = operation.delegate,
               operationGroupHash = og.hash,
-              operationId = 0
+              operationId = 0,
+              balance = operation.balance,
+              delegate = operation.delegate
             )
           }
       }
     }
-
-
-  private def fixSlots(slots: Option[List[Int]]): Option[String] =
-    slots.flatMap{s: Seq[Int] => Some(s.mkString(","))}
-
-  private def fixProposals(slots: Option[List[String]]): Option[String] =
-    slots.flatMap{s: Seq[String] => Some(s.mkString(","))}
 }
