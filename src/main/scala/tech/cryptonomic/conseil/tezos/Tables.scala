@@ -16,7 +16,7 @@ trait Tables {
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ OperationGroups.schema ++ Operations.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
-  def ddl = schema
+  def ddl: profile.DDL = schema
 
   /** Entity class storing rows of table Accounts
     *  @param accountId Database column account_id SqlType(varchar)
@@ -173,21 +173,24 @@ trait Tables {
     *  @param balance Database column balance SqlType(varchar), Default(None)
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
-    *  @param operationId Database column operation_id SqlType(serial), AutoInc
+    *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
     *  @param fee Database column fee SqlType(varchar), Default(None)
     *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
-    *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None) */
-  case class OperationsRow(kind: String, source: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, balance: Option[String] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None)
+    *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None)
+    *  @param blockHash Database column block_hash SqlType(varchar)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param blockLevel Database column block_level SqlType(int4) */
+  case class OperationsRow(kind: String, source: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, balance: Option[String] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None, blockHash: String, timestamp: java.sql.Timestamp, blockLevel: Int)
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
-  implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Int]): GR[OperationsRow] = GR{
+  implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Int], e3: GR[java.sql.Timestamp]): GR[OperationsRow] = GR{
     prs => import prs._
-      OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String]))
+      OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String], <<[String], <<[java.sql.Timestamp], <<[Int]))
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
-    def * = (kind, source, amount, destination, balance, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit) <> (OperationsRow.tupled, OperationsRow.unapply)
+    def * = (kind, source, amount, destination, balance, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit, blockHash, timestamp, blockLevel) <> (OperationsRow.tupled, OperationsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(kind), source, amount, destination, balance, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(kind), source, amount, destination, balance, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit, Rep.Some(blockHash), Rep.Some(timestamp), Rep.Some(blockLevel)).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11, _12.get, _13.get, _14.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
@@ -203,15 +206,23 @@ trait Tables {
     val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
     /** Database column operation_group_hash SqlType(varchar) */
     val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
-    /** Database column operation_id SqlType(serial), AutoInc */
-    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc)
+    /** Database column operation_id SqlType(serial), AutoInc, PrimaryKey */
+    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc, O.PrimaryKey)
     /** Database column fee SqlType(varchar), Default(None) */
     val fee: Rep[Option[String]] = column[Option[String]]("fee", O.Default(None))
     /** Database column storage_limit SqlType(varchar), Default(None) */
     val storageLimit: Rep[Option[String]] = column[Option[String]]("storage_limit", O.Default(None))
     /** Database column gas_limit SqlType(varchar), Default(None) */
     val gasLimit: Rep[Option[String]] = column[Option[String]]("gas_limit", O.Default(None))
+    /** Database column block_hash SqlType(varchar) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
 
+    /** Foreign key referencing Blocks (database name fk_blockhashes) */
+    lazy val blocksFk = foreignKey("fk_blockhashes", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
     lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }

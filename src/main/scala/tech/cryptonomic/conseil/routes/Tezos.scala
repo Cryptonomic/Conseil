@@ -29,6 +29,7 @@ object Tezos extends LazyLogging {
     "operation_id".as[String].*,
     "operation_source".as[String].*,
     "operation_destination".as[String].*,
+    "operation_participant".as[String].*,
     "account_id".as[String].*,
     "account_manager".as[String].*,
     "account_delegate".as[String].*,
@@ -36,8 +37,22 @@ object Tezos extends LazyLogging {
     "sort_by".as[String].?,
     "order".as[String].?
   ).tflatMap{ tuple =>
-    val (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) = tuple
-    val filter: Filter = Filter(limit = limit, blockIDs = Some(block_ids.toSet), levels = Some(block_levels.toSet), chainIDs = Some(block_chainIDs.toSet), protocols = Some(block_protocols.toSet), operationGroupIDs = Some(op_ids.toSet), operationSources = Some(op_sources.toSet), operationDestinations = Some(op_destinations.toSet), operationKinds = Some(operation_kind.toSet), accountIDs = Some(account_ids.toSet), accountManagers = Some(account_managers.toSet), accountDelegates = Some(account_delegates.toSet), sortBy = sort_by, order = order)
+    val (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) = tuple
+    val filter: Filter = Filter(
+      limit = limit,
+      blockIDs = Some(block_ids.toSet),
+      levels = Some(block_levels.toSet),
+      chainIDs = Some(block_chainIDs.toSet),
+      protocols = Some(block_protocols.toSet),
+      operationGroupIDs = Some(op_ids.toSet),
+      operationSources = Some(op_sources.toSet),
+      operationDestinations = Some(op_destinations.toSet),
+      operationParticipants = Some(op_participants.toSet),
+      operationKinds = Some(operation_kind.toSet),
+      accountIDs = Some(account_ids.toSet),
+      accountManagers = Some(account_managers.toSet),
+      accountDelegates = Some(account_delegates.toSet),
+      sortBy = sort_by, order = order)
     provide(filter)
   }
 
