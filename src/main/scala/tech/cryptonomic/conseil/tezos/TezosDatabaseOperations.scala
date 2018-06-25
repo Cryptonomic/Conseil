@@ -120,7 +120,10 @@ object TezosDatabaseOperations {
               operationGroupHash = og.hash,
               operationId = 0,
               balance = operation.balance,
-              delegate = operation.delegate
+              delegate = operation.delegate,
+              blockHash = block.metadata.hash,
+              blockLevel = block.metadata.header.level,
+              timestamp = block.metadata.header.timestamp
             )
           }
       }

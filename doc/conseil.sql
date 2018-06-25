@@ -98,7 +98,10 @@ CREATE TABLE public.operations (
     operation_id integer NOT NULL,
     fee character varying,
     storage_limit character varying,
-    gas_limit character varying
+    gas_limit character varying,
+    block_hash character varying NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    block_level integer NOT NULL
 );
 
 
@@ -165,6 +168,14 @@ ALTER TABLE ONLY public.blocks
 
 
 --
+-- Name: operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operations
+    ADD CONSTRAINT operations_pkey PRIMARY KEY (operation_id);
+
+
+--
 -- Name: fki_block; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -193,6 +204,14 @@ ALTER TABLE ONLY public.operation_groups
 
 ALTER TABLE ONLY public.blocks
     ADD CONSTRAINT blocks_predecessor_fkey FOREIGN KEY (predecessor) REFERENCES public.blocks(hash);
+
+
+--
+-- Name: fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operations
+    ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
 
 
 --

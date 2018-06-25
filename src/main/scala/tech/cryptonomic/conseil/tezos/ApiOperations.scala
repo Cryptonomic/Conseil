@@ -23,19 +23,21 @@ object ApiOperations {
   /**
     * Repesents a query filter submitted to the Conseil API.
     *
-    * @param limit               How many records to return
-    * @param blockIDs            Block IDs
-    * @param levels              Block levels
-    * @param chainIDs            Chain IDs
-    * @param protocols           Protocols
-    * @param operationGroupIDs         Operation IDs
-    * @param operationSources    Operation sources
-    * @param accountIDs          Account IDs
-    * @param accountManagers     Account managers
-    * @param accountDelegates    Account delegates
-    * @param operationKinds      Operation outer kind
-    * @param sortBy              Database column name to sort by
-    * @param order               Sort items ascending or descending
+    * @param limit                  How many records to return
+    * @param blockIDs               Block IDs
+    * @param levels                 Block levels
+    * @param chainIDs               Chain IDs
+    * @param protocols              Protocols
+    * @param operationGroupIDs      Operation IDs
+    * @param operationSources       Operation sources
+    * @param operationDestinations  Operation destinations
+    * @param operationParticipants  Operations sources or destinations
+    * @param accountIDs             Account IDs
+    * @param accountManagers        Account managers
+    * @param accountDelegates       Account delegates
+    * @param operationKinds         Operation outer kind
+    * @param sortBy                 Database column name to sort by
+    * @param order                  Sort items ascending or descending
     */
   case class Filter(
                      limit: Option[Int] = Some(10),
@@ -46,6 +48,7 @@ object ApiOperations {
                      operationGroupIDs: Option[Set[String]] = Some(Set[String]()),
                      operationSources: Option[Set[String]] = Some(Set[String]()),
                      operationDestinations: Option[Set[String]] = Some(Set[String]()),
+                     operationParticipants: Option[Set[String]] = Some(Set[String]()),
                      operationKinds: Option[Set[String]] = Some(Set[String]()),
                      accountIDs: Option[Set[String]] = Some(Set[String]()),
                      accountManagers: Option[Set[String]] = Some(Set[String]()),
@@ -237,6 +240,13 @@ object ApiOperations {
   private def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
     if (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty)
       o.destination.getOrElse("").inSet(filter.operationDestinations.get)
+    else true
+
+  private def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    if (filter.operationParticipants.isDefined && filter.operationParticipants.get.nonEmpty) {
+      o.destination.getOrElse("").inSet(filter.operationParticipants.get) ||
+        o.source.getOrElse("").inSet(filter.operationParticipants.get)
+    }
     else true
 
   private def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
@@ -784,6 +794,7 @@ object ApiOperations {
       filterOperationIDs(filter, o) &&
       filterOperationSources(filter, o) &&
       filterOperationDestinations(filter, o) &&
+      filterOperationParticipants(filter, o) &&
       filterOperationKinds(filter, o) &&
       filterBlockIDs(filter, b) &&
       filterBlockLevels(filter, b) &&
@@ -800,12 +811,21 @@ object ApiOperations {
       o.operationId,
       o.fee,
       o.storageLimit,
-      o.gasLimit
+      o.gasLimit,
+      o.blockHash,
+      o.timestamp,
+      o.blockLevel
       )
-    val op = dbHandle.run(action.distinct.take(getFilterLimit(filter)).result)
+    val op = dbHandle.run(
+      action.
+        distinct.
+        sortBy(_._14.desc).
+        take(getFilterLimit(filter)).
+        result
+    )
     val results = Await.result(op, Duration.Inf)
     results.map(x => Tables.OperationsRow(
-      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11)
+      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14)
     )
   }
 
