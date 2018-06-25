@@ -38,21 +38,31 @@ object Lorre extends App with LazyLogging {
 
   val supportedPlatformsAndNetworks =
     """
-      |
-    """.stripMargin
+      | The supported platforms are: tezos.\n
+      | The supported networks are: zeronet.
+    """
+    .stripMargin
 
-  //conf.hasPath(s"platforms.$platform.$network")
+  val networkPlatformValidation = conf.hasPath(s"platforms.$platform.$network")
 
-  try {
-    while(true) {
-      logger.info("Fetching blocks")
-      processTezosBlocks()
-      logger.info("Fetching accounts")
-      processTezosAccounts()
-      logger.info("Taking a nap")
-      Thread.sleep(sleepIntervalInSeconds * 1000)
-    }
-  } finally db.close()
+  networkPlatformValidation match {
+    case false =>
+      println(supportedPlatformsAndNetworks)
+      sys.exit(1)
+    case true =>
+      try {
+        while(true) {
+          logger.info("Fetching blocks")
+          processTezosBlocks()
+          logger.info("Fetching accounts")
+          processTezosAccounts()
+          logger.info("Taking a nap")
+          Thread.sleep(sleepIntervalInSeconds * 1000)
+        }
+      } finally db.close()
+  }
+
+
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
