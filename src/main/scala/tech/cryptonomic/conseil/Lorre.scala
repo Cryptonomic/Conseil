@@ -37,6 +37,11 @@ object Lorre extends App with LazyLogging {
     }
   }
 
+  val supportedPlatformsAndNetworks =
+    """
+      |
+    """.stripMargin
+
   conf.hasPath(s"platforms.$platform.$network")
 
   try {
