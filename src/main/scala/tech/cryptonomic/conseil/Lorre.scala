@@ -23,8 +23,7 @@ object Lorre extends App with LazyLogging {
 
   val usage =
     """
-      Usage: runMain tech.cryptonomic.conseil.Lorre --platform <platform> --network <network> or\n
-             runMain tech.cryptonomic.conseil.Lorre --network <network> --platform <platform>
+      Usage: runMain tech.cryptonomic.conseil.Lorre --platform <platform> --network <network>
     """.stripMargin
 
   val argsList = args.toList
@@ -42,7 +41,7 @@ object Lorre extends App with LazyLogging {
       |
     """.stripMargin
 
-  conf.hasPath(s"platforms.$platform.$network")
+  //conf.hasPath(s"platforms.$platform.$network")
 
   try {
     while(true) {
