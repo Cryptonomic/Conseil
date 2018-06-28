@@ -21,54 +21,27 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
-  val usage =
-    """
-      Usage: runMain tech.cryptonomic.conseil.Lorre --platform <platform> --network <network>
-    """.stripMargin
+  try {
+    while(true) {
+      logger.info("Fetching blocks")
 
-  val argsList = args.toList
-  val (platform, network) = argsList match {
-    case "--platform" :: pl :: "--network"  :: nw :: Nil => (pl, nw)
-    case "--network"  :: nw :: "--platform" :: pl :: Nil => (pl, nw)
-    case _ =>
-      println(usage)
-      sys.exit(1)
-  }
+      processTezosBlocks()
+      logger.info("Fetching accounts")
+      processTezosAccounts()
+      logger.info("Taking a nap")
+      Thread.sleep(sleepIntervalInSeconds * 1000)
+    }
+  } finally db.close()
 
-  val supportedPlatformsAndNetworks =
-    """
-      | The supported platforms are: tezos.
-      | The supported networks are: zeronet.
-    """
-    .stripMargin
-
-  val networkPlatformValidation = conf.hasPath(s"platforms.$platform.$network")
-
-  networkPlatformValidation match {
-    case false =>
-      println(supportedPlatformsAndNetworks)
-      sys.exit(1)
-    case true =>
-      try {
-        while(true) {
-          logger.info("Fetching blocks")
-          processTezosBlocks(network)
-          logger.info("Fetching accounts")
-          processTezosAccounts(network)
-          logger.info("Taking a nap")
-          Thread.sleep(sleepIntervalInSeconds * 1000)
-        }
-      } finally db.close()
-  }
 
 
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(network: String): Try[Unit] = {
+  def processTezosBlocks(): Try[Unit] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
+    tezosNodeOperator.getBlocksNotInDatabase("zeronet", followFork = true) match {
       case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
@@ -87,9 +60,9 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches and stores all accounts from the latest block stored in the database.
     */
-  def processTezosAccounts(network: String): Try[Unit] = {
+  def processTezosAccounts(): Try[Unit] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network) match {
+    tezosNodeOperator.getLatestAccounts("zeronet") match {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)
