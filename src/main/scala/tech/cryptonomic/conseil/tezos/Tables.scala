@@ -16,7 +16,7 @@ trait Tables {
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ OperationGroups.schema ++ Operations.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
-  def ddl: profile.DDL = schema
+  def ddl = schema
 
   /** Entity class storing rows of table Accounts
     *  @param accountId Database column account_id SqlType(varchar)
@@ -173,7 +173,7 @@ trait Tables {
     *  @param balance Database column balance SqlType(varchar), Default(None)
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
-    *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
+    *  @param operationId Database column operation_id SqlType(serial), AutoInc
     *  @param fee Database column fee SqlType(varchar), Default(None)
     *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
     *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None)
@@ -206,8 +206,8 @@ trait Tables {
     val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
     /** Database column operation_group_hash SqlType(varchar) */
     val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
-    /** Database column operation_id SqlType(serial), AutoInc, PrimaryKey */
-    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_id SqlType(serial), AutoInc */
+    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc)
     /** Database column fee SqlType(varchar), Default(None) */
     val fee: Rep[Option[String]] = column[Option[String]]("fee", O.Default(None))
     /** Database column storage_limit SqlType(varchar), Default(None) */
@@ -221,8 +221,6 @@ trait Tables {
     /** Database column block_level SqlType(int4) */
     val blockLevel: Rep[Int] = column[Int]("block_level")
 
-    /** Foreign key referencing Blocks (database name fk_blockhashes) */
-    lazy val blocksFk = foreignKey("fk_blockhashes", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
     lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }

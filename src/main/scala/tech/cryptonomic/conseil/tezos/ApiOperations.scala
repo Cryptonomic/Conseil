@@ -700,14 +700,14 @@ object ApiOperations {
         val opGroup = Await.result(op, Duration.Inf).head
         val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
         val operations = Await.result(op2, Duration.Inf)
-        val op3 = dbHandle.run(Tables.Accounts.
-          filter(_.blockId === latestBlock.hash).
-          result)
-        val accounts = Await.result(op3, Duration.Inf)
+        //val op3 = dbHandle.run(Tables.Accounts.
+          //filter(_.blockId === latestBlock.hash).
+          //result)
+        //val accounts = Await.result(op3, Duration.Inf)
         Map(
           "operation_group" -> opGroup,
-          "operations" -> operations,
-          "accounts" -> accounts
+          "operations" -> operations
+          //"accounts" -> accounts
         )
       }
     }
