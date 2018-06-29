@@ -11,7 +11,7 @@ object TezosTypes {
                         predecessor: String,
                         timestamp: java.sql.Timestamp,
                         validationPass: Int,
-                        operationsHash: Option[String],
+                        operationsHash: String,
                         fitness: Seq[String],
                         context: String,
                         signature: Option[String]
@@ -19,7 +19,7 @@ object TezosTypes {
 
   case class BlockMetadata(
                             protocol: String,
-                            chainId: Option[String],
+                            chainId: String,
                             hash: String,
                             header: BlockHeader,
                             metadata: Any,
