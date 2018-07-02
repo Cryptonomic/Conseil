@@ -160,9 +160,7 @@ trait Tables {
     val blockId: Rep[String] = column[String]("block_id")
 
     /** Foreign key referencing Blocks (database name block) */
-    lazy val blocksFk1 = foreignKey("block", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
-    /** Foreign key referencing Blocks (database name fk_blockhashes) */
-    lazy val blocksFk2 = foreignKey("fk_blockhashes", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    lazy val blocksFk = foreignKey("block", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table OperationGroups */
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
@@ -223,6 +221,8 @@ trait Tables {
     /** Database column block_level SqlType(int4) */
     val blockLevel: Rep[Int] = column[Int]("block_level")
 
+    /** Foreign key referencing Blocks (database name fk_blockhashes) */
+    lazy val blocksFk = foreignKey("fk_blockhashes", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
     lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
