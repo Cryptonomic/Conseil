@@ -160,7 +160,9 @@ trait Tables {
     val blockId: Rep[String] = column[String]("block_id")
 
     /** Foreign key referencing Blocks (database name block) */
-    lazy val blocksFk = foreignKey("block", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    lazy val blocksFk1 = foreignKey("block", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    /** Foreign key referencing Blocks (database name fk_blockhashes) */
+    lazy val blocksFk2 = foreignKey("fk_blockhashes", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table OperationGroups */
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
@@ -173,7 +175,7 @@ trait Tables {
     *  @param balance Database column balance SqlType(varchar), Default(None)
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
-    *  @param operationId Database column operation_id SqlType(serial), AutoInc
+    *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
     *  @param fee Database column fee SqlType(varchar), Default(None)
     *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
     *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None)
@@ -206,8 +208,8 @@ trait Tables {
     val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
     /** Database column operation_group_hash SqlType(varchar) */
     val operationGroupHash: Rep[String] = column[String]("operation_group_hash")
-    /** Database column operation_id SqlType(serial), AutoInc */
-    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc)
+    /** Database column operation_id SqlType(serial), AutoInc, PrimaryKey */
+    val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc, O.PrimaryKey)
     /** Database column fee SqlType(varchar), Default(None) */
     val fee: Rep[Option[String]] = column[Option[String]]("fee", O.Default(None))
     /** Database column storage_limit SqlType(varchar), Default(None) */

@@ -72,7 +72,7 @@ object TezosDatabaseOperations {
       timestamp = header.timestamp,
       validationPass = header.validationPass,
       fitness = header.fitness.mkString(","),
-      context = None, //put in later
+      context = header.context, //put in later
       signature = header.signature,
       protocol = block.metadata.protocol,
       chainId = block.metadata.chainId,

@@ -24,7 +24,6 @@ object Lorre extends App with LazyLogging {
   try {
     while(true) {
       logger.info("Fetching blocks")
-
       processTezosBlocks()
       logger.info("Fetching accounts")
       processTezosAccounts()
@@ -32,9 +31,6 @@ object Lorre extends App with LazyLogging {
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
-
-
-
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
