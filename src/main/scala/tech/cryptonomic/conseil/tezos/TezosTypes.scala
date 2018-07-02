@@ -21,8 +21,7 @@ object TezosTypes {
                             protocol: String,
                             chainId: Option[String],
                             hash: String,
-                            header: BlockHeader,
-                            metadata: Any,
+                            header: BlockHeader
                   )
 
   case class OperationMetadata(
