@@ -139,10 +139,6 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       getBlockHead(network).flatMap { blockHead =>
         val headLevel =  blockHead.metadata.header.level
         val headHash  =  blockHead.metadata.hash
-        //traverse the blockchain backwards from maxLevel
-        //figure out the last point at which both blockchains agreed
-        //if maxLevel == headLevel, same fork
-
         if(headLevel <= maxLevel)
           Try(List[Block]())
         else

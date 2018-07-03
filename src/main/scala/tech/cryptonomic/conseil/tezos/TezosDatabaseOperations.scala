@@ -72,12 +72,12 @@ object TezosDatabaseOperations {
       timestamp = header.timestamp,
       validationPass = header.validationPass,
       fitness = header.fitness.mkString(","),
-      context = Some(header.context), //put in later
+      context = None, //put in later
       signature = header.signature,
       protocol = block.metadata.protocol,
-      chainId = Some(block.metadata.chainId),
+      chainId = block.metadata.chainId,
       hash = block.metadata.hash,
-      operationsHash = Some(header.operationsHash)
+      operationsHash = header.operationsHash
     )
   }
 

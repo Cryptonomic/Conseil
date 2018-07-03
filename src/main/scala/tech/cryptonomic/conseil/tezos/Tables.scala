@@ -16,7 +16,7 @@ trait Tables {
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ OperationGroups.schema ++ Operations.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
-  def ddl: profile.DDL = schema
+  def ddl = schema
 
   /** Entity class storing rows of table Accounts
     *  @param accountId Database column account_id SqlType(varchar)
