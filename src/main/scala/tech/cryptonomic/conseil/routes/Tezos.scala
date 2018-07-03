@@ -117,6 +117,11 @@ object Tezos extends LazyLogging {
               case Success(operations) => complete(JsonUtil.toJson(operations))
               case Failure(e) => failWith(e)
             }
+          } ~ path("avgFees") {
+            ApiOperations.averageFee(filter) match {
+              case Success(fees) => complete(JsonUtil.toJson(fees))
+              case Failure(e) => failWith(e)
+            }
           }
         }
       }

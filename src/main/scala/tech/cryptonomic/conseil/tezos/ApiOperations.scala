@@ -11,6 +11,7 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
+import scala.math.sqrt
 
 
 /**
@@ -184,6 +185,51 @@ object ApiOperations {
   (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
                   (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal),
                   Seq]) extends Action
+
+  /**
+    * Trait which enumerates the types of operations that can be performed between parties.
+    */
+  sealed trait OperationKind
+
+  case class SeedNonceRevelation() extends OperationKind
+  case class Delegation() extends OperationKind
+  case class Transaction() extends OperationKind
+  case class ActivateAccount() extends OperationKind
+  case class Origination() extends OperationKind
+  case class Reveal() extends OperationKind
+  case class DoubleEndorsementEvidence() extends OperationKind
+  case class Endorsement() extends OperationKind
+
+  /**
+    * Transforms Operation Kind to column name representation in database.
+    * @param ok Operation Kind
+    * @return
+    */
+  def kindToColumn(ok: OperationKind): String = {
+    ok match {
+      case SeedNonceRevelation() => "seed_nonce_revelation"
+      case Delegation() => "delegation"
+      case Transaction() => "transaction"
+      case ActivateAccount() => "activate_account"
+      case Origination() => "origination"
+      case Reveal() => "reveal"
+      case DoubleEndorsementEvidence() => "double_endorsement_evidence"
+      case Endorsement() => "endorsement"
+    }
+  }
+
+
+  /**
+    * Case class representing a range of values for a possible fee of a transaction.
+    * @param lower mean - 1 standard deviation
+    * @param mean average of fee column in transactions table
+    * @param upper mean + 1 standard deviation
+    */
+  case class Fees(
+                 lower: Double,
+                 mean: Double,
+                 upper: Double
+                 )
 
   // Predicates to determine existence of specific type of filter
 
@@ -823,6 +869,37 @@ object ApiOperations {
       x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14)
     )
   }
+
+  def optionToInt(maybeInt: Option[String]) =
+    maybeInt match {
+      case None => 0
+      case Some(x) => x.toInt
+    }
+
+  def mean(l: Seq[Int]): Double =
+    l.sum / l.length
+
+  def stdev(l: Seq[Int]): Double = {
+    val m = mean(l)
+    val len = l.length
+    sqrt(l.map(x => (x - m)*(x - m)).sum / len)
+  }
+
+
+
+  def averageFee(filter: Filter): Try[Fees] = Try {
+    val action = for {
+      o <- Tables.Operations
+      if filterOperationKinds(filter, o)
+    } yield (o.fee, o.timestamp)
+    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(getFilterLimit(filter)).result)
+    val results = Await.result(op, Duration.Inf)
+    val resultNumbers = results.map(x => optionToInt(x._1))
+    val m: Double = mean(resultNumbers)
+    val s: Double = stdev(resultNumbers)
+    Fees(m - s, m, m + s)
+  }
+
 
   /**
     * Fetches an account by account id from the db.
