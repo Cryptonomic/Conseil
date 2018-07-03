@@ -72,12 +72,12 @@ object TezosDatabaseOperations {
       timestamp = header.timestamp,
       validationPass = header.validationPass,
       fitness = header.fitness.mkString(","),
-      context = header.context, //put in later
+      context = Some(header.context), //put in later
       signature = header.signature,
       protocol = block.metadata.protocol,
-      chainId = block.metadata.chainId,
+      chainId = block.metadata.chain_id,
       hash = block.metadata.hash,
-      operationsHash = header.operationsHash
+      operationsHash = header.operations_hash
     )
   }
 
@@ -90,7 +90,7 @@ object TezosDatabaseOperations {
     block.operationGroups.map{ og =>
       Tables.OperationGroupsRow(
         protocol = og.protocol,
-        chainId = og.chainId,
+        chainId = og.chain_id,
         hash = og.hash,
         branch = og.branch,
         signature = og.signature,
