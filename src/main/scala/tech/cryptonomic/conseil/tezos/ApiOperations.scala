@@ -847,7 +847,6 @@ object ApiOperations {
     */
   def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] = {
     getFilteredTables(filter).flatMap { filteredTables =>
-
       Try {
 
         val blockFlag = isBlockFilter(filter)
