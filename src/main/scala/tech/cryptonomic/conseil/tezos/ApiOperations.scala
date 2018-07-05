@@ -7,11 +7,12 @@ import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import scala.math.{sqrt, ceil, max}
+import scala.math.{max}
 
 
 /**
@@ -187,40 +188,7 @@ object ApiOperations {
                   Seq]) extends Action
 
   /**
-    * Trait which enumerates the types of operations that can be performed between parties.
-    */
-  sealed trait OperationKind
-
-  case class SeedNonceRevelation() extends OperationKind
-  case class Delegation() extends OperationKind
-  case class Transaction() extends OperationKind
-  case class ActivateAccount() extends OperationKind
-  case class Origination() extends OperationKind
-  case class Reveal() extends OperationKind
-  case class DoubleEndorsementEvidence() extends OperationKind
-  case class Endorsement() extends OperationKind
-
-  /**
-    * Transforms Operation Kind to column name representation in database.
-    * @param ok Operation Kind
-    * @return
-    */
-  def kindToColumn(ok: OperationKind): String = {
-    ok match {
-      case SeedNonceRevelation() => "seed_nonce_revelation"
-      case Delegation() => "delegation"
-      case Transaction() => "transaction"
-      case ActivateAccount() => "activate_account"
-      case Origination() => "origination"
-      case Reveal() => "reveal"
-      case DoubleEndorsementEvidence() => "double_endorsement_evidence"
-      case Endorsement() => "endorsement"
-    }
-  }
-
-
-  /**
-    * Case class representing a range of values for a possible fee of a transaction.
+    * Case class representing possible fees of an operation.
     * @param low mean - 1 standard deviation
     * @param medium average of fee column in transactions table
     * @param high mean + 1 standard deviation
@@ -868,25 +836,6 @@ object ApiOperations {
     results.map(x => Tables.OperationsRow(
       x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14)
     )
-  }
-
-  /**
-    * Average value of a sequence of integers.
-    * @param l Sequence of integers.
-    * @return
-    */
-  def mean(l: Seq[Int]): Double =
-    l.sum / l.length
-
-  /**
-    * Standard deviation of a sequence of integers.
-    * @param l Sequence of integers/
-    * @return
-    */
-  def stdev(l: Seq[Int]): Double = {
-    val m = mean(l)
-    val len = l.length
-    sqrt(l.map(x => (x - m)*(x - m)).sum / len)
   }
 
   /**
