@@ -7,10 +7,12 @@ import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
+import scala.math.{max}
 
 
 /**
@@ -184,6 +186,18 @@ object ApiOperations {
   (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
                   (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal),
                   Seq]) extends Action
+
+  /**
+    * Case class representing possible fees of an operation.
+    * @param low mean - 1 standard deviation
+    * @param medium average of fee column in transactions table
+    * @param high mean + 1 standard deviation
+    */
+  case class Fees(
+                 low: Double,
+                 medium: Double,
+                 high: Double
+                 )
 
   // Predicates to determine existence of specific type of filter
 
@@ -822,6 +836,26 @@ object ApiOperations {
     results.map(x => Tables.OperationsRow(
       x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14)
     )
+  }
+
+  /**
+    * Given the operation kind and the number of columns wanted,
+    * return the mean (along with +/- one standard deviation) of
+    * fees incurred in those operations.
+    * @param filter
+    * @return
+    */
+  def averageFee(filter: Filter): Try[Fees] = Try {
+    val action = for {
+      o <- Tables.Operations
+      if filterOperationKinds(filter, o)
+    } yield (o.fee, o.timestamp)
+    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(getFilterLimit(filter)).result)
+    val results = Await.result(op, Duration.Inf)
+    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
+    val m: Double = mean(resultNumbers)
+    val s: Double = stdev(resultNumbers)
+    Fees(max(m - s, 0), m, m + s)
   }
 
   /**
