@@ -10,7 +10,7 @@ object MathUtil {
     * @return
     */
   def mean(l: Seq[Int]): Double =
-    l.sum / l.length
+    l.sum*1.0 / l.length
 
   /**
     * Standard deviation of a sequence of integers.
@@ -19,7 +19,7 @@ object MathUtil {
     */
   def stdev(l: Seq[Int]): Double = {
     val m = mean(l)
-    val len = l.length
+    val len = l.length*1.0
     sqrt(l.map(x => (x - m)*(x - m)).sum / len)
   }
 
