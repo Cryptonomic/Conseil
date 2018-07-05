@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import scala.math.sqrt
+import scala.math.{sqrt, ceil, max}
 
 
 /**
@@ -221,14 +221,14 @@ object ApiOperations {
 
   /**
     * Case class representing a range of values for a possible fee of a transaction.
-    * @param lower mean - 1 standard deviation
-    * @param mean average of fee column in transactions table
-    * @param upper mean + 1 standard deviation
+    * @param low mean - 1 standard deviation
+    * @param medium average of fee column in transactions table
+    * @param high mean + 1 standard deviation
     */
   case class Fees(
-                 lower: Double,
-                 mean: Double,
-                 upper: Double
+                 low: Double,
+                 medium: Double,
+                 high: Double
                  )
 
   // Predicates to determine existence of specific type of filter
@@ -870,23 +870,32 @@ object ApiOperations {
     )
   }
 
-  def optionToInt(maybeInt: Option[String]) =
-    maybeInt match {
-      case None => 0
-      case Some(x) => x.toInt
-    }
-
+  /**
+    * Average value of a sequence of integers.
+    * @param l Sequence of integers.
+    * @return
+    */
   def mean(l: Seq[Int]): Double =
     l.sum / l.length
 
+  /**
+    * Standard deviation of a sequence of integers.
+    * @param l Sequence of integers/
+    * @return
+    */
   def stdev(l: Seq[Int]): Double = {
     val m = mean(l)
     val len = l.length
     sqrt(l.map(x => (x - m)*(x - m)).sum / len)
   }
 
-
-
+  /**
+    * Given the operation kind and the number of columns wanted,
+    * return the mean (along with +/- one standard deviation) of
+    * fees incurred in those operations.
+    * @param filter
+    * @return
+    */
   def averageFee(filter: Filter): Try[Fees] = Try {
     val action = for {
       o <- Tables.Operations
@@ -894,12 +903,11 @@ object ApiOperations {
     } yield (o.fee, o.timestamp)
     val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(getFilterLimit(filter)).result)
     val results = Await.result(op, Duration.Inf)
-    val resultNumbers = results.map(x => optionToInt(x._1))
+    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
     val m: Double = mean(resultNumbers)
     val s: Double = stdev(resultNumbers)
-    Fees(m - s, m, m + s)
+    Fees(max(m - s, 0), m, m + s)
   }
-
 
   /**
     * Fetches an account by account id from the db.
