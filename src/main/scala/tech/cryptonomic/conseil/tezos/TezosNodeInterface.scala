@@ -40,6 +40,7 @@ trait TezosRPCInterface {
 object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   private val conf = ConfigFactory.load
+  private val awaitTimeInSeconds = conf.getInt("dbawaitTimeInSecondsInSeconds")
 
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -60,9 +61,9 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
             url
           )
         )
-      val response: HttpResponse = Await.result(responseFuture, Duration.Inf)
+      val response: HttpResponse = Await.result(responseFuture, Duration.apply(awaitTimeInSeconds, SECONDS))
       val responseBodyFuture = response.entity.toStrict(90.second).map(_.data).map(_.utf8String)
-      val responseBody = Await.result(responseBodyFuture, Duration.Inf)
+      val responseBody = Await.result(responseBodyFuture, Duration.apply(awaitTimeInSeconds, SECONDS))
       logger.debug(s"Query result: $responseBody")
       responseBody
     }
@@ -88,9 +89,9 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
             entity = HttpEntity(ContentTypes.`application/json`, postedData.getBytes())
           )
         )
-      val response: HttpResponse = Await.result(responseFuture, Duration.Inf)
+      val response: HttpResponse = Await.result(responseFuture, Duration.apply(awaitTimeInSeconds, SECONDS))
       val responseBodyFuture = response.entity.toStrict(1.second).map(_.data).map(_.utf8String)
-      val responseBody = Await.result(responseBodyFuture, Duration.Inf)
+      val responseBody = Await.result(responseBodyFuture, Duration.apply(awaitTimeInSeconds, SECONDS))
       logger.debug(s"Query result: $responseBody")
       responseBody
     }
