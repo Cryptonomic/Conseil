@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -45,7 +45,7 @@ object Lorre extends App with LazyLogging {
             case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
             case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
           }
-          Await.result(dbFut, Duration.Inf)
+          Await.result(dbFut, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
         }
       case Failure(e) =>
         logger.error(s"Could not fetch blocks from client because $e")
@@ -66,7 +66,7 @@ object Lorre extends App with LazyLogging {
             case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
             case Failure(e) => logger.error(s"Could not write accounts to the database because $e")
           }
-          Await.result(dbFut, Duration.Inf)
+          Await.result(dbFut, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
         }
       case Failure(e) =>
         logger.error(s"Could not fetch accounts from client because $e")
