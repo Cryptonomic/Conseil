@@ -16,7 +16,7 @@ import scala.util.{Failure, Success, Try}
 object Lorre extends App with LazyLogging {
 
   private val conf = ConfigFactory.load
-  private val awaitTime = conf.getInt("dbAwaitTimeInSeconds")
+  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
 
   lazy val db = DatabaseUtil.db
@@ -46,7 +46,7 @@ object Lorre extends App with LazyLogging {
             case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
             case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
           }
-          Await.result(dbFut, Duration.apply(awaitTime, SECONDS))
+          Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
         }
       case Failure(e) =>
         logger.error(s"Could not fetch blocks from client because $e")
@@ -67,7 +67,7 @@ object Lorre extends App with LazyLogging {
             case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
             case Failure(e) => logger.error(s"Could not write accounts to the database because $e")
           }
-          Await.result(dbFut, Duration.apply(awaitTime, SECONDS))
+          Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
         }
       case Failure(e) =>
         logger.error(s"Could not fetch accounts from client because $e")
