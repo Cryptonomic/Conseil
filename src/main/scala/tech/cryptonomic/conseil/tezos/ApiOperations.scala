@@ -22,6 +22,7 @@ import scala.math.max
 object ApiOperations {
 
   private val conf = ConfigFactory.load
+  private val awaitTime = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
   /**
@@ -613,7 +614,7 @@ object ApiOperations {
     */
   def fetchMaxLevel(): Try[Int] = Try {
     val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
-    val maxLevelOpt = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+    val maxLevelOpt = Await.result(op, Duration.apply(awaitTime, SECONDS))
     maxLevelOpt match {
       case Some(maxLevel) => maxLevel
       case None => -1
@@ -629,7 +630,7 @@ object ApiOperations {
     fetchMaxLevel().flatMap { maxLevel =>
       Try {
         val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
-        Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS)).head
+        Await.result(op, Duration.apply(awaitTime, SECONDS)).head
       }
     }
   }
@@ -642,9 +643,9 @@ object ApiOperations {
     */
   def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
     val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
-    val block = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS)).head
+    val block = Await.result(op, Duration.apply(awaitTime, SECONDS)).head
     val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
-    val operationGroups = Await.result(op2, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+    val operationGroups = Await.result(op2, Duration.apply(awaitTime, SECONDS))
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
 
@@ -699,7 +700,7 @@ object ApiOperations {
 
         val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+        val results = Await.result(op, Duration.apply(awaitTime, SECONDS))
         results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
       }
     }
@@ -713,9 +714,9 @@ object ApiOperations {
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
         val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
-        val opGroup = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS)).head
+        val opGroup = Await.result(op, Duration.apply(awaitTime, SECONDS)).head
         val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
-        val operations = Await.result(op2, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+        val operations = Await.result(op2, Duration.apply(awaitTime, SECONDS))
         Map(
           "operation_group" -> opGroup,
           "operations" -> operations
@@ -785,7 +786,7 @@ object ApiOperations {
 
         val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+        val results = Await.result(op, Duration.apply(awaitTime, SECONDS))
         results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5, x._6))
       }
     }
@@ -834,7 +835,7 @@ object ApiOperations {
         take(getFilterLimit(filter)).
         result
     )
-    val results = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+    val results = Await.result(op, Duration.apply(awaitTime, SECONDS))
     results.map(x => Tables.OperationsRow(
       x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14)
     )
@@ -853,7 +854,7 @@ object ApiOperations {
       if filterOperationKinds(filter, o)
     } yield (o.fee, o.timestamp)
     val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(getFilterLimit(filter)).result)
-    val results = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+    val results = Await.result(op, Duration.apply(awaitTime, SECONDS))
     val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
     val m: Double = mean(resultNumbers)
     val s: Double = stdev(resultNumbers)
@@ -871,7 +872,7 @@ object ApiOperations {
         val op = dbHandle.run(Tables.Accounts
           .filter(_.blockId === latestBlock.hash)
           .filter(_.accountId === account_id).take(1).result)
-        val account = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS)).head
+        val account = Await.result(op, Duration.apply(awaitTime, SECONDS)).head
         Map("account" -> account)
       }
     }
@@ -915,7 +916,7 @@ object ApiOperations {
 
         val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.apply(conf.getInt("dbAwaitTimeInSeconds"), SECONDS))
+        val results = Await.result(op, Duration.apply(awaitTime, SECONDS))
         results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
 
       }
