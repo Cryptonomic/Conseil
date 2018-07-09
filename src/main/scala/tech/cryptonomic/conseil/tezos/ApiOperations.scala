@@ -22,7 +22,7 @@ import scala.math.max
 object ApiOperations {
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbawaitTimeInSecondsInSeconds")
+  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
   /**
