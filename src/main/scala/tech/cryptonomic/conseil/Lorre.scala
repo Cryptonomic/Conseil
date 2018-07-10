@@ -2,7 +2,8 @@ package tech.cryptonomic.conseil
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Fees}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
@@ -75,5 +76,32 @@ object Lorre extends App with LazyLogging {
     }
   }
 
+  /*
+  def processTezosAverageFees(): Try[Unit] = {
+    logger.info("Processing latest Tezos fee data...")
+    val operationKinds = Set{"seed_nonce_revelation", ﻿"delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement"}
+    val fees = operationKinds.map{ kind =>
+      ApiOperations.averageFee(kind)
+    }
+    for (avgFee <- fees) {
+      Try {
+        avgFee match {
+          case None =>
+            logger.info("No new fees to calculate")
+          case Some(fee) =>
+            val dbFut = TezosDatabaseOperations.writeFeesToDatabase(fee, db)
+            dbFut onComplete {
+              case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
+              case Failure(e) => logger.error(s"Could not write accounts to the database because $e")
+            }
+            Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
+          case Failure(e) =>
+            logger.error(s"Could not fetch accounts from client because $e")
+            throw e
+        }
+      }
+    }
+  }
+*/
 
 }

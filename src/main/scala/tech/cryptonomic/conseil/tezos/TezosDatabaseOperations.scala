@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block, Fees}
 
 import scala.concurrent.Future
 
@@ -38,6 +38,13 @@ object TezosDatabaseOperations {
       )
     )
 
+
+  def writeFeesToDatabase(fee: Fees, dbHandle: Database): Future[Unit] =
+    dbHandle.run(
+      DBIO.seq(
+        Tables.Fees                   ++= feesToDatabaseRows(fee)
+      )
+    )
   /**
     * Generates database rows for accounts.
     * @param accountsInfo Accounts
@@ -128,4 +135,14 @@ object TezosDatabaseOperations {
           }
       }
     }
+
+
+  def feesToDatabaseRows(fees: Fees): Tables.FeesRow =
+    Tables.FeesRow(
+      low = fees.low,
+      medium = fees.medium,
+      high = fees.high,
+      timestamp = fees.timestamp,
+      kind = fees.kind
+    )
 }

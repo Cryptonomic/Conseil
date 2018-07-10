@@ -32,6 +32,14 @@ object TezosTypes {
                               internalOperationResult: Option[AppliedInternalOperationResult]
                               )
 
+  case class Fees(
+                   low: Int,
+                   medium: Int,
+                   high: Int,
+                   timestamp: java.sql.Timestamp,
+                   kind: String
+                 )
+
   case class AppliedOperationBalanceUpdates(
                                              kind: String,
                                              contract: Option[String],

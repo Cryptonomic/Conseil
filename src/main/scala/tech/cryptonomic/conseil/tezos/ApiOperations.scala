@@ -7,6 +7,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Fees}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -189,18 +190,6 @@ object ApiOperations {
   (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
                   (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal),
                   Seq]) extends Action
-
-  /**
-    * Case class representing possible fees of an operation.
-    * @param low mean - 1 standard deviation
-    * @param medium average of fee column in transactions table
-    * @param high mean + 1 standard deviation
-    */
-  case class Fees(
-                 low: Double,
-                 medium: Double,
-                 high: Double
-                 )
 
   // Predicates to determine existence of specific type of filter
 
@@ -841,6 +830,7 @@ object ApiOperations {
     )
   }
 
+  /*
   /**
     * Given the operation kind and the number of columns wanted,
     * return the mean (along with +/- one standard deviation) of
@@ -859,6 +849,34 @@ object ApiOperations {
     val m: Double = mean(resultNumbers)
     val s: Double = stdev(resultNumbers)
     Fees(max(m - s, 0), m, m + s)
+  }
+  */
+
+  /**
+    * Given the operation kind and the number of columns wanted,
+    * return the mean (along with +/- one standard deviation) of
+    * fees incurred in those operations.
+    * @param kind
+    * @return
+    */
+  def averageFee(kind: String): Option[Fees] = {
+    // "seed_nonce_revelation", ﻿"delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement"
+    val operationKinds = Set[String]{kind}
+    val action = for {
+      o <- Tables.Operations
+      if o.kind.inSet(operationKinds)
+    } yield (o.fee, o.timestamp)
+    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(1000).result)
+    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
+    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
+    val m: Double = mean(resultNumbers)
+    val s: Double = stdev(resultNumbers)
+    results.length match {
+      case 0 => None
+      case _ =>
+        val timestamp = results.head._2
+        Some(Fees(max(m - s, 0), m, m + s, timestamp, kind))
+    }
   }
 
   /**
