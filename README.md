@@ -1,6 +1,8 @@
 # Conseil
 Query API for the Tezos blockchain
 
+[![Build Status](https://travis-ci.org/Cryptonomic/Conseil.svg?branch=master)](https://travis-ci.org/Cryptonomic/Conseil)
+
 ## Running Conseil
 
 Conseil has two entry points:
