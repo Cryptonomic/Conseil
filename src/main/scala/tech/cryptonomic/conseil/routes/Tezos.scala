@@ -128,39 +128,6 @@ object Tezos extends LazyLogging {
         }
 
       }
-    } ~ post {
-      path("generate_identity") {
-        nodeOp.createIdentity() match {
-          case Success(identity) => complete(JsonUtil.toJson(identity))
-          case Failure(e) => failWith(e)
-        }
-      } ~ gatherKeyInfo { keyStore =>
-        path("originate_account") {
-          parameters("amount".as[Float], "spendable".as[Boolean], "delegatable".as[Boolean], "delegate".as[String], "fee".as[Float]) {
-            (amount, spendable, delegatable, delegate, fee) =>
-              nodeOp.sendOriginationOperation(network, keyStore, amount, delegate, delegatable, spendable, fee) match {
-                case Success(result) => complete(JsonUtil.toJson(result))
-                case Failure(e) => failWith(e)
-              }
-          }
-        } ~  path("set_delegate") {
-          parameters("delegate".as[String], "fee".as[Float]) {
-            (delegate, fee) =>
-              nodeOp.sendDelegationOperation(network, keyStore, delegate, fee) match {
-                case Success(result) => complete(JsonUtil.toJson(result))
-                case Failure(e) => failWith(e)
-              }
-          }
-        }~  path("send_transaction") {
-          parameters("amount".as[Float], "to".as[String], "fee".as[Float]) {
-            (amount, to, fee) =>
-              nodeOp.sendTransactionOperation(network, keyStore, to, amount, fee) match {
-                case Success(result) => complete(JsonUtil.toJson(result))
-                case Failure(e) => failWith(e)
-              }
-          }
-        }
-      }
     }
   }
 }
