@@ -14,7 +14,7 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import scala.math.max
+import scala.math.{max, ceil}
 
 
 /**
@@ -269,6 +269,10 @@ object ApiOperations {
   private def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
     if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
       o.kind.inSet(filter.operationKinds.get) else true
+
+  private def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
+    if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
+      fee.kind.inSet(filter.operationKinds.get) else true
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
@@ -830,7 +834,7 @@ object ApiOperations {
     )
   }
 
-  /*
+
   /**
     * Given the operation kind and the number of columns wanted,
     * return the mean (along with +/- one standard deviation) of
@@ -840,22 +844,17 @@ object ApiOperations {
     */
   def averageFee(filter: Filter): Try[Fees] = Try {
     val action = for {
-      o <- Tables.Operations
-      if filterOperationKinds(filter, o)
-    } yield (o.fee, o.timestamp)
-    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(getFilterLimit(filter)).result)
-    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
-    val m: Double = mean(resultNumbers)
-    val s: Double = stdev(resultNumbers)
-    Fees(max(m - s, 0), m, m + s)
+      fee <- Tables.Fees
+      if filterOperationKindsForFees(filter, fee)
+    } yield (fee.low, fee.medium, fee.high, fee.timestamp, fee.kind)
+    val op = dbHandle.run(action.distinct.sortBy(_._4.desc).take(1).result)
+    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
+    Fees(results._1, results._2, results._3, results._4, results._5)
   }
-  */
+
 
   /**
-    * Given the operation kind and the number of columns wanted,
-    * return the mean (along with +/- one standard deviation) of
-    * fees incurred in those operations.
+    * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind
     * @return
     */
@@ -869,8 +868,8 @@ object ApiOperations {
     val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(1000).result)
     val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
     val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
-    val m: Double = mean(resultNumbers)
-    val s: Double = stdev(resultNumbers)
+    val m: Int = ceil(mean(resultNumbers)).toInt
+    val s: Int = ceil(stdev(resultNumbers)).toInt
     results.length match {
       case 0 => None
       case _ =>

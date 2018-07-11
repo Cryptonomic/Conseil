@@ -39,7 +39,7 @@ object TezosDatabaseOperations {
     )
 
 
-  def writeFeesToDatabase(fee: Fees, dbHandle: Database): Future[Unit] =
+  def writeFeesToDatabase(fee: List[Option[Fees]], dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
         Tables.Fees                   ++= feesToDatabaseRows(fee)
@@ -137,12 +137,18 @@ object TezosDatabaseOperations {
     }
 
 
-  def feesToDatabaseRows(fees: Fees): Tables.FeesRow =
-    Tables.FeesRow(
-      low = fees.low,
-      medium = fees.medium,
-      high = fees.high,
-      timestamp = fees.timestamp,
-      kind = fees.kind
-    )
+  def feesToDatabaseRows(maybeFees: List[Option[Fees]]): List[Tables.FeesRow] = {
+    maybeFees
+      .filter(fee => !fee.isEmpty)
+      .map{ someFee =>
+        val fee = someFee.get
+        Tables.FeesRow(
+          low = fee.low,
+          medium = fee.medium,
+          high = fee.high,
+          timestamp = fee.timestamp,
+          kind = fee.kind
+        )
+      }
+  }
 }

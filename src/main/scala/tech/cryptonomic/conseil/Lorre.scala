@@ -23,13 +23,22 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
+  var iterationsOfLorre = 0
+  val feeUpdateInterval = conf.getInt("feeUpdateInterval")
+  val feeCheck = iterationsOfLorre == 0 || iterationsOfLorre % feeUpdateInterval == 0
+
   try {
     while(true) {
       logger.info("Fetching blocks")
       processTezosBlocks()
       logger.info("Fetching accounts")
       processTezosAccounts()
+      if (feeCheck) {
+        logger.info("Fetching fees")
+        processTezosAverageFees()
+      }
       logger.info("Taking a nap")
+      iterationsOfLorre += 1
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
@@ -76,32 +85,23 @@ object Lorre extends App with LazyLogging {
     }
   }
 
-  /*
+
   def processTezosAverageFees(): Try[Unit] = {
     logger.info("Processing latest Tezos fee data...")
-    val operationKinds = Set{"seed_nonce_revelation", ﻿"delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement"}
+    val operationKinds = List("seed_nonce_revelation", "delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement")
     val fees = operationKinds.map{ kind =>
       ApiOperations.averageFee(kind)
     }
-    for (avgFee <- fees) {
-      Try {
-        avgFee match {
-          case None =>
-            logger.info("No new fees to calculate")
-          case Some(fee) =>
-            val dbFut = TezosDatabaseOperations.writeFeesToDatabase(fee, db)
-            dbFut onComplete {
-              case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
-              case Failure(e) => logger.error(s"Could not write accounts to the database because $e")
-            }
-            Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
-          case Failure(e) =>
-            logger.error(s"Could not fetch accounts from client because $e")
-            throw e
-        }
+    Try {
+      val dbFut = TezosDatabaseOperations.writeFeesToDatabase(fees, db)
+      dbFut onComplete {
+        case Success(_) => logger.info(s"Wrote average fees to the database.")
+        case Failure(e) => logger.error(s"Could not write average fees to the database because $e")
       }
+      Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
     }
+
   }
-*/
+
 
 }
