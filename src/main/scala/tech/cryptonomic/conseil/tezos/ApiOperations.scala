@@ -7,7 +7,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Fees}
+import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -657,7 +657,6 @@ object ApiOperations {
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
 
-
     getFilteredTables(filter).flatMap { filteredTables =>
 
       Try {
@@ -842,40 +841,14 @@ object ApiOperations {
     * @param filter
     * @return
     */
-  def averageFee(filter: Filter): Try[Fees] = Try {
+  def averageFee(filter: Filter): Try[AverageFees] = Try {
     val action = for {
       fee <- Tables.Fees
       if filterOperationKindsForFees(filter, fee)
     } yield (fee.low, fee.medium, fee.high, fee.timestamp, fee.kind)
     val op = dbHandle.run(action.distinct.sortBy(_._4.desc).take(1).result)
     val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
-    Fees(results._1, results._2, results._3, results._4, results._5)
-  }
-
-
-  /**
-    * Given the operation kind, return range of fees and timestamp for that operation.
-    * @param kind
-    * @return
-    */
-  def averageFee(kind: String): Option[Fees] = {
-    // "seed_nonce_revelation", ﻿"delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement"
-    val operationKinds = Set[String]{kind}
-    val action = for {
-      o <- Tables.Operations
-      if o.kind.inSet(operationKinds)
-    } yield (o.fee, o.timestamp)
-    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(1000).result)
-    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
-    val m: Int = ceil(mean(resultNumbers)).toInt
-    val s: Int = ceil(stdev(resultNumbers)).toInt
-    results.length match {
-      case 0 => None
-      case _ =>
-        val timestamp = results.head._2
-        Some(Fees(max(m - s, 0), m, m + s, timestamp, kind))
-    }
+    AverageFees(results._1, results._2, results._3, results._4, results._5)
   }
 
   /**

@@ -2,8 +2,7 @@ package tech.cryptonomic.conseil
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Fees}
-import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator, FeeOperations}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
@@ -18,14 +17,14 @@ object Lorre extends App with LazyLogging {
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
-  val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
+  private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
+  private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   var iterationsOfLorre = 0
-  val feeUpdateInterval = conf.getInt("feeUpdateInterval")
-  val feeCheck = iterationsOfLorre == 0 || iterationsOfLorre % feeUpdateInterval == 0
+  val shouldFeeBeCalculatedThisIteration = iterationsOfLorre == 0 || iterationsOfLorre % feeUpdateInterval == 0
 
   try {
     while(true) {
@@ -33,12 +32,13 @@ object Lorre extends App with LazyLogging {
       processTezosBlocks()
       logger.info("Fetching accounts")
       processTezosAccounts()
-      if (feeCheck) {
+      if (shouldFeeBeCalculatedThisIteration) {
         logger.info("Fetching fees")
-        processTezosAverageFees()
+        logger.info(iterationsOfLorre.toString)
+        FeeOperations.processTezosAverageFees()
       }
       logger.info("Taking a nap")
-      iterationsOfLorre += 1
+      iterationsOfLorre = iterationsOfLorre + 1
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
@@ -86,22 +86,7 @@ object Lorre extends App with LazyLogging {
   }
 
 
-  def processTezosAverageFees(): Try[Unit] = {
-    logger.info("Processing latest Tezos fee data...")
-    val operationKinds = List("seed_nonce_revelation", "delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement")
-    val fees = operationKinds.map{ kind =>
-      ApiOperations.averageFee(kind)
-    }
-    Try {
-      val dbFut = TezosDatabaseOperations.writeFeesToDatabase(fees, db)
-      dbFut onComplete {
-        case Success(_) => logger.info(s"Wrote average fees to the database.")
-        case Failure(e) => logger.error(s"Could not write average fees to the database because $e")
-      }
-      Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
-    }
 
-  }
 
 
 }
