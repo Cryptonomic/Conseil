@@ -838,8 +838,11 @@ object ApiOperations {
     * Given the operation kind and the number of columns wanted,
     * return the mean (along with +/- one standard deviation) of
     * fees incurred in those operations.
-    * @param filter
-    * @return
+    * @param filter Filters to apply, specifically operation kinds
+    * @return AverageFee class, getting low, medium, and high
+    *         estimates for average fees, timestamp the calculation
+    *         was performed at, and the kind of operation being
+    *         averaged over.
     */
   def averageFee(filter: Filter): Try[AverageFees] = Try {
     val action = for {

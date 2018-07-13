@@ -177,7 +177,7 @@ object TezosDatabaseOperations {
     * @param kind
     * @return
     */
-  def averageFee(kind: String): Option[AverageFees] = {
+  def calculateAverageFees(kind: String): Option[AverageFees] = {
     val operationKinds = Set[String]{kind}
     val action = for {
       o <- Tables.Operations

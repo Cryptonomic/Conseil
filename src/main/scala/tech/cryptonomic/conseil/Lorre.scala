@@ -24,7 +24,7 @@ object Lorre extends App with LazyLogging {
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   var iterationsOfLorre = 0
-  var shouldFeeBeCalculatedThisIteration = iterationsOfLorre == 0 || iterationsOfLorre % feeUpdateInterval == 0
+  var shouldFeeBeCalculatedThisIteration = true
 
   try {
     while(true) {
@@ -38,7 +38,7 @@ object Lorre extends App with LazyLogging {
       }
       logger.info("Taking a nap")
       iterationsOfLorre = iterationsOfLorre + 1
-      shouldFeeBeCalculatedThisIteration = iterationsOfLorre == 0 || iterationsOfLorre % feeUpdateInterval == 0
+      shouldFeeBeCalculatedThisIteration = iterationsOfLorre % feeUpdateInterval == 0
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
