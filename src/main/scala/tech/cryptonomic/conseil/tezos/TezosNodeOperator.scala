@@ -137,8 +137,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
-        val headLevel =  1100//blockHead.metadata.header.level
-        val headHash  =  "BMbvYz6o3se5RXkYqf5w1PLBW86c5XuPrBwSKWYrByzUMWPGFXg"//blockHead.metadata.hash
+        val headLevel =  blockHead.metadata.header.level
+        val headHash  =  blockHead.metadata.hash
         if(headLevel <= maxLevel)
           Try(List[Block]())
         else
