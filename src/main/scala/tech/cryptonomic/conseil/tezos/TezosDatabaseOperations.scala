@@ -50,14 +50,14 @@ object TezosDatabaseOperations {
 
   /**
     *
-    * @param fee
-    * @param dbHandle
-    * @return
+    * @param fees      List of possible average fees for different operation kinds.
+    * @param dbHandle  Handle to a database
+    * @return          Future on database inserts.
     */
-  def writeFeesToDatabase(fee: List[Option[AverageFees]], dbHandle: Database): Future[Unit] =
+  def writeFeesToDatabase(fees: List[Option[AverageFees]], dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
-        Tables.Fees                   ++= feesToDatabaseRows(fee)
+        Tables.Fees                   ++= feesToDatabaseRows(fees)
       )
     )
 
