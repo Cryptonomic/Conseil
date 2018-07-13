@@ -1,14 +1,24 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos.ApiOperations.{awaitTimeInSeconds, dbHandle}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
+import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.{Duration, SECONDS}
+import scala.math.{ceil, max}
 
 /**
   * Functions for writing Tezos data to a database.
   */
 object TezosDatabaseOperations {
+
+  private val conf = ConfigFactory.load
+  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
+  private val numberOfFeesAveraged = conf.getInt("lorre.numberOfFeesAveraged")
 
   /**
     * Writes blocks and operations to a database.
@@ -35,6 +45,19 @@ object TezosDatabaseOperations {
     dbHandle.run(
       DBIO.seq(
         Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
+      )
+    )
+
+  /**
+    *
+    * @param fees      List of possible average fees for different operation kinds.
+    * @param dbHandle  Handle to a database
+    * @return          Future on database inserts.
+    */
+  def writeFeesToDatabase(fees: List[Option[AverageFees]], dbHandle: Database): Future[Unit] =
+    dbHandle.run(
+      DBIO.seq(
+        Tables.Fees                   ++= feesToDatabaseRows(fees)
       )
     )
 
@@ -128,4 +151,50 @@ object TezosDatabaseOperations {
           }
       }
     }
+
+  /**
+    * Generates database rows from a list of averageFees calculated for some operation kinds.
+    * @param maybeFees  List of possible new fees that may have been calculated for different
+    *                   operation kinds.
+    * @return           Database rows
+    */
+  def feesToDatabaseRows(maybeFees: List[Option[AverageFees]]): List[Tables.FeesRow] = {
+    maybeFees
+      .filter(_.isDefined)
+      .map{ someFee =>
+        val fee = someFee.get
+        Tables.FeesRow(
+          low = fee.low,
+          medium = fee.medium,
+          high = fee.high,
+          timestamp = fee.timestamp,
+          kind = fee.kind
+        )
+      }
+  }
+
+  /**
+    * Given the operation kind, return range of fees and timestamp for that operation.
+    * @param kind  Operation kind
+    * @return      The average fees for a given operation kind, if it exists
+    */
+  def calculateAverageFees(kind: String): Option[AverageFees] = {
+    val operationKinds = Set[String]{kind}
+    val action = for {
+      o <- Tables.Operations
+      if o.kind.inSet(operationKinds)
+    } yield (o.fee, o.timestamp)
+    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(numberOfFeesAveraged).result)
+    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
+    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
+    val m: Int = ceil(mean(resultNumbers)).toInt
+    val s: Int = ceil(stdev(resultNumbers)).toInt
+    results.length match {
+      case 0 => None
+      case _ =>
+        val timestamp = results.head._2
+        Some(AverageFees(max(m - s, 0), m, m + s, timestamp, kind))
+    }
+  }
+
 }

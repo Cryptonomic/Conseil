@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator, FeeOperations}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
@@ -17,10 +17,14 @@ object Lorre extends App with LazyLogging {
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
-  val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
+  private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
+  private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+
+  var iterationsOfLorre = 0
+  var shouldFeeBeCalculatedThisIteration = true
 
   try {
     while(true) {
@@ -28,7 +32,13 @@ object Lorre extends App with LazyLogging {
       processTezosBlocks()
       logger.info("Fetching accounts")
       processTezosAccounts()
+      if (shouldFeeBeCalculatedThisIteration) {
+        logger.info("Fetching fees")
+        FeeOperations.processTezosAverageFees()
+      }
       logger.info("Taking a nap")
+      iterationsOfLorre = iterationsOfLorre + 1
+      shouldFeeBeCalculatedThisIteration = iterationsOfLorre % feeUpdateInterval == 0
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
@@ -74,6 +84,9 @@ object Lorre extends App with LazyLogging {
         throw e
     }
   }
+
+
+
 
 
 }

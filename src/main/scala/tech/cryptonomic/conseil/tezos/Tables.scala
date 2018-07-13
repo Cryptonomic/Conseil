@@ -14,7 +14,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ OperationGroups.schema ++ Operations.schema
+  lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ Fees.schema ++ OperationGroups.schema ++ Operations.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -126,6 +126,38 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
+
+  /** Entity class storing rows of table Fees
+    *  @param low Database column low SqlType(int4)
+    *  @param medium Database column medium SqlType(int4)
+    *  @param high Database column high SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param kind Database column kind SqlType(varchar) */
+  case class FeesRow(low: Int, medium: Int, high: Int, timestamp: java.sql.Timestamp, kind: String)
+  /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
+  implicit def GetResultFeesRow(implicit e0: GR[Int], e1: GR[java.sql.Timestamp], e2: GR[String]): GR[FeesRow] = GR{
+    prs => import prs._
+      FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String]))
+  }
+  /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
+  class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, "fees") {
+    def * = (low, medium, high, timestamp, kind) <> (FeesRow.tupled, FeesRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind)).shaped.<>({r=>import r._; _1.map(_=> FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column low SqlType(int4) */
+    val low: Rep[Int] = column[Int]("low")
+    /** Database column medium SqlType(int4) */
+    val medium: Rep[Int] = column[Int]("medium")
+    /** Database column high SqlType(int4) */
+    val high: Rep[Int] = column[Int]("high")
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+    /** Database column kind SqlType(varchar) */
+    val kind: Rep[String] = column[String]("kind")
+  }
+  /** Collection-like TableQuery object for table Fees */
+  lazy val Fees = new TableQuery(tag => new Fees(tag))
 
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)
