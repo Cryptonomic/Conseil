@@ -2,11 +2,12 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.5.13
--- Dumped by pg_dump version 9.5.13
+-- Dumped from database version 10.3
+-- Dumped by pg_dump version 10.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -26,6 +27,25 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
+
+--
+-- Name: truncate_tables(character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.truncate_tables(username character varying) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    statements CURSOR FOR
+        SELECT tablename FROM pg_tables
+        WHERE tableowner = username AND schemaname = 'public';
+BEGIN
+    FOR stmt IN statements LOOP
+        EXECUTE 'TRUNCATE TABLE ' || quote_ident(stmt.tablename) || ' CASCADE;';
+    END LOOP;
+END;
+$$;
 
 
 SET default_tablespace = '';
@@ -70,6 +90,19 @@ CREATE TABLE public.blocks (
 
 
 --
+-- Name: fees; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fees (
+    low integer NOT NULL,
+    medium integer NOT NULL,
+    high integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    kind character varying NOT NULL
+);
+
+
+--
 -- Name: operation_groups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -101,7 +134,8 @@ CREATE TABLE public.operations (
     gas_limit character varying,
     block_hash character varying NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    block_level integer NOT NULL
+    block_level integer NOT NULL,
+    pkh character varying
 );
 
 
@@ -137,14 +171,14 @@ ALTER SEQUENCE public.operations_operation_id_seq1 OWNED BY public.operations.op
 
 
 --
--- Name: operation_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq1'::regclass);
 
 
 --
--- Name: OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operation_groups
@@ -152,7 +186,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
--- Name: accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
@@ -160,7 +194,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.blocks
@@ -168,11 +202,11 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operations operationId; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
-    ADD CONSTRAINT operations_pkey PRIMARY KEY (operation_id);
+    ADD CONSTRAINT "operationId" PRIMARY KEY (operation_id);
 
 
 --
@@ -183,7 +217,14 @@ CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 
 
 --
--- Name: accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: fki_fk_blockhashes; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
+
+
+--
+-- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
@@ -191,7 +232,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: block; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operation_groups
@@ -199,7 +240,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
--- Name: blocks_predecessor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks blocks_predecessor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.blocks
@@ -207,7 +248,7 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: operations fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
@@ -215,7 +256,7 @@ ALTER TABLE ONLY public.operations
 
 
 --
--- Name: fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
