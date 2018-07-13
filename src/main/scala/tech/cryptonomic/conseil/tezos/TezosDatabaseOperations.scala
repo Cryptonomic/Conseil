@@ -146,7 +146,8 @@ object TezosDatabaseOperations {
               delegate = operation.delegate,
               blockHash = block.metadata.hash,
               blockLevel = block.metadata.header.level,
-              timestamp = block.metadata.header.timestamp
+              timestamp = block.metadata.header.timestamp,
+              pkh = operation.pkh
             )
           }
       }
