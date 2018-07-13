@@ -154,8 +154,9 @@ object TezosDatabaseOperations {
 
   /**
     * Generates database rows from a list of averageFees calculated for some operation kinds.
-    * @param maybeFees
-    * @return
+    * @param maybeFees  List of possible new fees that may have been calculated for different
+    *                   operation kinds.
+    * @return           Database rows
     */
   def feesToDatabaseRows(maybeFees: List[Option[AverageFees]]): List[Tables.FeesRow] = {
     maybeFees
@@ -174,8 +175,8 @@ object TezosDatabaseOperations {
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
-    * @param kind
-    * @return
+    * @param kind  Operation kind
+    * @return      The average fees for a given operation kind, if it exists
     */
   def calculateAverageFees(kind: String): Option[AverageFees] = {
     val operationKinds = Set[String]{kind}
