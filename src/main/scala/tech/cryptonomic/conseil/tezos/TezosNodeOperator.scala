@@ -8,6 +8,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 
+import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.{Failure, Success, Try}
 
 
@@ -69,15 +70,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       case Success(jsonEncodedAccounts) =>
         val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
         val listedAccounts: List[String] = accountIDs
-        val accounts = listedAccounts.par.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
-        //val parListedAccount = listedAccounts.par
-        //parListedAccount.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(48))
-        //val accounts = parListedAccount.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
+        //val accounts = listedAccounts.par.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
+        val parListedAccount = listedAccounts.par
+        parListedAccount.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
+        val accounts = parListedAccount.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
         accounts.count(_.isFailure) match {
           case 0 =>
             val justTheAccounts = accounts.map(_.get)
             (listedAccounts zip justTheAccounts).toMap
-          case _ => throw new Exception(s"Could not decode one of the accounts for block $blockHash")
+          case _ =>
+            accounts.filter(_.isFailure).foreach(println)
+            throw new Exception(s"Could not decode one of the accounts for block $blockHash")
         }
       case Failure(e) =>
         logger.error(s"Could not get a list of accounts for block $blockHash")
