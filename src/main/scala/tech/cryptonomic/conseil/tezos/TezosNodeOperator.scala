@@ -69,7 +69,10 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       case Success(jsonEncodedAccounts) =>
         val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
         val listedAccounts: List[String] = accountIDs
-        val accounts = listedAccounts.map(acctID => getAccountForBlock(network, blockHash, acctID))
+        val accounts = listedAccounts.par.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
+        //val parListedAccount = listedAccounts.par
+        //parListedAccount.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(48))
+        //val accounts = parListedAccount.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
         accounts.count(_.isFailure) match {
           case 0 =>
             val justTheAccounts = accounts.map(_.get)
