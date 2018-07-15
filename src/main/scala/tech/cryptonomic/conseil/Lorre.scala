@@ -28,12 +28,9 @@ object Lorre extends App with LazyLogging {
 
   try {
     while(true) {
-      logger.info("Fetching blocks")
       processTezosBlocks()
-      logger.info("Fetching accounts")
       processTezosAccounts()
       if (shouldFeeBeCalculatedThisIteration) {
-        logger.info("Fetching fees")
         FeeOperations.processTezosAverageFees()
       }
       logger.info("Taking a nap")
