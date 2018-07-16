@@ -184,8 +184,8 @@ object ApiOperations {
 
 
   case class AccountsAction
-  (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
-                  (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal),
+  (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal], Rep[BigDecimal]),
+                  (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal, BigDecimal),
                   Seq]) extends Action
 
   // Predicates to determine existence of specific type of filter
@@ -906,17 +906,17 @@ object ApiOperations {
           case Some(Accounts(accounts)) =>
             for {
               a <- accounts
-            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
           case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
             for {
               (_, a) <- operationGroupsAccounts
-            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
           case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
             for {
               ((_, _), a) <- operationGroupsOperationsAccounts
-            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
           case _ =>
             throw new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
@@ -925,7 +925,7 @@ object ApiOperations {
         val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
+        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10))
 
       }
 
