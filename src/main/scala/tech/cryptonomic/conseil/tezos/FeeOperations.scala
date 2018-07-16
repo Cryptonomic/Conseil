@@ -49,7 +49,7 @@ object FeeOperations extends LazyLogging {
         case Success(_) => logger.info(s"Wrote average fees to the database.")
         case Failure(e) => logger.error(s"Could not write average fees to the database because $e")
       }
-      Await.result(dbFut, Duration.apply(awaitTimeInSeconds, SECONDS))
+      Await.result(dbFut, Duration.Inf)
     }
   }
 

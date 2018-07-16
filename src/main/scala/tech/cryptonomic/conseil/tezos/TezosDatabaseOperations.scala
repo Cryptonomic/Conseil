@@ -2,13 +2,13 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.ApiOperations.{awaitTimeInSeconds, dbHandle}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHash, Block}
+import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.{Await, Future}
 import scala.math.{ceil, max}
 
 /**
@@ -41,7 +41,7 @@ object TezosDatabaseOperations {
     * @param dbHandle     Handle to a database.
     * @return             Future on database inserts.
     */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHash, dbHandle: Database): Future[Unit] =
+  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Unit] =
     dbHandle.run(
       DBIO.seq(
         Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
@@ -66,7 +66,7 @@ object TezosDatabaseOperations {
     * @param accountsInfo Accounts
     * @return             Database rows
     */
-  def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHash): List[Tables.AccountsRow] =
+  def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHashAndLevel): List[Tables.AccountsRow] =
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
         accountId = account._1,
@@ -77,7 +77,8 @@ object TezosDatabaseOperations {
         delegateValue = account._2.delegate.value,
         counter = account._2.counter,
         script = account._2.script.flatMap(x => Some(x.toString)),
-        balance = account._2.balance
+        balance = account._2.balance,
+        blockLevel = accountsInfo.blockLevel
       )
     }.toList
 

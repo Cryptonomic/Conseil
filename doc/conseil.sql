@@ -2,12 +2,11 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.3
--- Dumped by pg_dump version 10.3
+-- Dumped from database version 9.5.13
+-- Dumped by pg_dump version 9.5.13
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -65,7 +64,8 @@ CREATE TABLE public.accounts (
     delegate_value character varying,
     counter integer NOT NULL,
     script character varying,
-    balance numeric NOT NULL
+    balance numeric NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL
 );
 
 
@@ -171,14 +171,14 @@ ALTER SEQUENCE public.operations_operation_id_seq1 OWNED BY public.operations.op
 
 
 --
--- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: operation_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq1'::regclass);
 
 
 --
--- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operation_groups
@@ -186,7 +186,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
--- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
@@ -194,7 +194,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: blocks blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.blocks
@@ -202,7 +202,7 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: operations operationId; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operationId; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
@@ -224,7 +224,7 @@ CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
 
 --
--- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
@@ -232,7 +232,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: block; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operation_groups
@@ -240,7 +240,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
--- Name: blocks blocks_predecessor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks_predecessor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.blocks
@@ -248,7 +248,7 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: operations fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
@@ -256,7 +256,7 @@ ALTER TABLE ONLY public.operations
 
 
 --
--- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations

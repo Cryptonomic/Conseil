@@ -4,17 +4,14 @@ import java.sql.Timestamp
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
-import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import scala.math.{max, ceil}
 
 
 /**
@@ -286,29 +283,33 @@ object ApiOperations {
     */
   private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
     fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-
-        val filteredAccounts = Tables.Accounts.filter(account =>
+      fetchMaxBlockLevelForAccounts().flatMap { maxLevelForAccounts =>
+        Try {
+          val filteredAccounts = Tables.Accounts.filter(account =>
             filterAccountIDs(filter, account) &&
-            filterAccountDelegates(filter, account) &&
-            filterAccountManagers(filter, account) &&
-            account.blockId === latestBlock.hash )
+              filterAccountDelegates(filter, account) &&
+              filterAccountManagers(filter, account) &&
+              account.blockLevel === maxLevelForAccounts)
 
-        val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-            filterOperationIDs(filter, opGroup)})
+          val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
+            filterOperationIDs(filter, opGroup)
+          })
 
-        val filteredOps = Tables.Operations.filter({ op =>
+          val filteredOps = Tables.Operations.filter({ op =>
             filterOperationKinds(filter, op) &&
-            filterOperationDestinations(filter, op) &&
-            filterOperationSources(filter, op)})
+              filterOperationDestinations(filter, op) &&
+              filterOperationSources(filter, op)
+          })
 
-        val filteredBlocks = Tables.Blocks.filter({ block =>
+          val filteredBlocks = Tables.Blocks.filter({ block =>
             filterBlockIDs(filter, block) &&
-            filterBlockLevels(filter, block) &&
-            filterChainIDs(filter, block) &&
-            filterProtocols(filter, block)})
+              filterBlockLevels(filter, block) &&
+              filterChainIDs(filter, block) &&
+              filterProtocols(filter, block)
+          })
 
-        FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+          FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+        }
       }
     }
   }
@@ -855,15 +856,29 @@ object ApiOperations {
   }
 
   /**
+    * Fetches the level of the most recent block in the accounts table.
+    *
+    * @return Max level or -1 if no blocks were found in the database.
+    */
+  def fetchMaxBlockLevelForAccounts(): Try[BigDecimal] = Try {
+    val op = dbHandle.run(Tables.Accounts.map(_.blockLevel).max.result)
+    val maxLevelOpt = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
+    maxLevelOpt match {
+      case Some(maxLevel) => maxLevel
+      case None => -1
+    }
+  }
+
+  /**
     * Fetches an account by account id from the db.
     * @param account_id The account's id number
     * @return           The account with its associated operation groups
     */
   def fetchAccount(account_id: String): Try[Map[String, Any]] =
-    fetchLatestBlock().flatMap { latestBlock =>
+    fetchMaxBlockLevelForAccounts().flatMap { latestBlockLevel =>
       Try {
         val op = dbHandle.run(Tables.Accounts
-          .filter(_.blockId === latestBlock.hash)
+          .filter(_.blockLevel === latestBlockLevel)
           .filter(_.accountId === account_id).take(1).result)
         val account = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
         Map("account" -> account)
