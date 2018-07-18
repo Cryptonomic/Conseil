@@ -2,11 +2,12 @@ package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
+import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil, ConfigUtil}
 
 import scala.util.{Failure, Success}
 
@@ -15,9 +16,13 @@ import scala.util.{Failure, Success}
   */
 object Tezos extends LazyLogging {
 
+  private val conf = ConfigFactory.load
+
   val dbHandle = DatabaseUtil.db
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+
+  val supportedNetworks = ConfigUtil.parseNetworksForAGivenPlatform("tezos")
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -69,53 +74,55 @@ object Tezos extends LazyLogging {
 
   val route: Route = pathPrefix(Segment) { network =>
     get {
-      gatherConseilFilter{ filter =>
-        pathPrefix("blocks") {
-          pathEnd {
-            ApiOperations.fetchBlocks(filter) match {
-              case Success(blocks) => complete(JsonUtil.toJson(blocks))
-              case Failure(e) => failWith(e)
+      validate(conf.hasPath(s"platforms.tezos.$network"), s"$network not supported, current options include: " + supportedNetworks) {
+        gatherConseilFilter{ filter =>
+          pathPrefix("blocks") {
+            pathEnd {
+              ApiOperations.fetchBlocks(filter) match {
+                case Success(blocks) => complete(JsonUtil.toJson(blocks))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path("head") {
+              ApiOperations.fetchLatestBlock() match {
+                case Success(block) => complete(JsonUtil.toJson(block))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path(Segment) { blockId =>
+              ApiOperations.fetchBlock(blockId) match {
+                case Success(block) => complete(JsonUtil.toJson(block))
+                case Failure(e) => failWith(e)
+              }
             }
-          } ~ path("head") {
-            ApiOperations.fetchLatestBlock() match {
-              case Success(block) => complete(JsonUtil.toJson(block))
-              case Failure(e) => failWith(e)
+          } ~ pathPrefix("accounts") {
+            pathEnd {
+              ApiOperations.fetchAccounts(filter) match {
+                case Success(accounts) => complete(JsonUtil.toJson(accounts))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path(Segment) { accountId =>
+              ApiOperations.fetchAccount(accountId) match {
+                case Success(account) => complete(JsonUtil.toJson(account))
+                case Failure(e) => failWith(e)
+              }
             }
-          } ~ path(Segment) { blockId =>
-            ApiOperations.fetchBlock(blockId) match {
-              case Success(block) => complete(JsonUtil.toJson(block))
-              case Failure(e) => failWith(e)
+          } ~ pathPrefix("operation_groups") {
+            pathEnd {
+              ApiOperations.fetchOperationGroups(filter) match {
+                case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
+                case Failure(e) => failWith(e)
+              }
+            } ~ path(Segment) { operationGroupId =>
+              ApiOperations.fetchOperationGroup(operationGroupId) match {
+                case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
+                case Failure(e) => failWith(e)
+              }
             }
-          }
-        } ~ pathPrefix("accounts") {
-          pathEnd {
-            ApiOperations.fetchAccounts(filter) match {
-              case Success(accounts) => complete(JsonUtil.toJson(accounts))
-              case Failure(e) => failWith(e)
-            }
-          } ~ path(Segment) { accountId =>
-            ApiOperations.fetchAccount(accountId) match {
-              case Success(account) => complete(JsonUtil.toJson(account))
-              case Failure(e) => failWith(e)
-            }
-          }
-        } ~ pathPrefix("operation_groups") {
-          pathEnd {
-            ApiOperations.fetchOperationGroups(filter) match {
-              case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
-              case Failure(e) => failWith(e)
-            }
-          } ~ path(Segment) { operationGroupId =>
-            ApiOperations.fetchOperationGroup(operationGroupId) match {
-              case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
-              case Failure(e) => failWith(e)
-            }
-          }
-        } ~ pathPrefix("operations") {
-          pathEnd {
-            ApiOperations.fetchOperations(filter) match {
-              case Success(operations) => complete(JsonUtil.toJson(operations))
-              case Failure(e) => failWith(e)
+          } ~ pathPrefix("operations") {
+            pathEnd {
+              ApiOperations.fetchOperations(filter) match {
+                case Success(operations) => complete(JsonUtil.toJson(operations))
+                case Failure(e) => failWith(e)
+              }
             }
           }
         }

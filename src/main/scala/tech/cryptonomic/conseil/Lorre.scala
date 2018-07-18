@@ -9,6 +9,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, _}
 import scala.util.{Failure, Success, Try}
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -36,12 +37,14 @@ object Lorre extends App with LazyLogging {
       sys.exit(1)
   }
 
+  val platformsAndNetworks = ConfigUtil.parsePlatformsAndNetworks()
+
   val supportedPlatformsAndNetworks =
     """
-      | The supported platforms are: tezos.
-      | The supported networks are: zeronet.
+      | The supported platforms and their associated networks are as follows:
+      | (Format: <platform>: <network_one>, <network_two>...)
     """
-    .stripMargin
+    .stripMargin + ConfigUtil.outputPlatformsAndNetworks.stripMargin
 
   val networkPlatformValidation = conf.hasPath(s"platforms.$platform.$network")
 
@@ -61,8 +64,6 @@ object Lorre extends App with LazyLogging {
         }
       } finally db.close()
   }
-
-
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
