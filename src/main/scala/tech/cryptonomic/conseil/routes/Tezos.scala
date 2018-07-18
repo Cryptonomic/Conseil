@@ -2,11 +2,12 @@ package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
+import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil, ConfigUtil}
 
 import scala.util.{Failure, Success}
 
@@ -15,9 +16,13 @@ import scala.util.{Failure, Success}
   */
 object Tezos extends LazyLogging {
 
+  private val conf = ConfigFactory.load
+
   val dbHandle = DatabaseUtil.db
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+
+  val supportedNetworks = ConfigUtil.parseNetworksForAGivenPlatform("tezos")
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -69,8 +74,8 @@ object Tezos extends LazyLogging {
 
   val route: Route = pathPrefix(Segment) { network =>
     get {
-      gatherConseilFilter{ filter =>
-        validate(!filter.limit.isDefined || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
+      validate(conf.hasPath(s"platforms.tezos.$network"), s"$network not supported, current options include: " + supportedNetworks) {
+        gatherConseilFilter{ filter =>
           pathPrefix("blocks") {
             pathEnd {
               ApiOperations.fetchBlocks(filter) match {
@@ -113,12 +118,7 @@ object Tezos extends LazyLogging {
               }
             }
           } ~ pathPrefix("operations") {
-            path("avgFees") {
-              ApiOperations.averageFee(filter) match {
-                case Success(fees) => complete(JsonUtil.toJson(fees))
-                case Failure(e) => failWith(e)
-              }
-            } ~ pathEnd {
+            pathEnd {
               ApiOperations.fetchOperations(filter) match {
                 case Success(operations) => complete(JsonUtil.toJson(operations))
                 case Failure(e) => failWith(e)
@@ -126,7 +126,6 @@ object Tezos extends LazyLogging {
             }
           }
         }
-
       }
     }
   }
