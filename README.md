@@ -1,9 +1,17 @@
 # Conseil
 Query API for the Tezos blockchain
 
-This is still a work in progress and the code should be considered pre-alpha.
+[![Build Status](https://travis-ci.org/Cryptonomic/Conseil.svg?branch=master)](https://travis-ci.org/Cryptonomic/Conseil)
 
 ## Running Conseil
+
+Conseil has two entry points:
+- `src/main/Conseil.scala` runs a server exposing a RESTful API.
+- `src/main/Lorre.scala` is a background process that runs on loop and writes Tezos blockchain data to database.
+
+### Warning 
+
+The Conseil server should be run behind a proxy such as Nginx with TLS enabled through something like LetsEncrypt. Futhermore, [HTTP Strict Transport Security](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and [Certification Authority Authorization](https://en.wikipedia.org/wiki/DNS_Certification_Authority_Authorization) are highly recommended!
 
 ### Prerequisites
 - JDK

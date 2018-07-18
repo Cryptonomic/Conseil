@@ -28,6 +28,25 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
+--
+-- Name: truncate_tables(character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.truncate_tables(username character varying) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    statements CURSOR FOR
+        SELECT tablename FROM pg_tables
+        WHERE tableowner = username AND schemaname = 'public';
+BEGIN
+    FOR stmt IN statements LOOP
+        EXECUTE 'TRUNCATE TABLE ' || quote_ident(stmt.tablename) || ' CASCADE;';
+    END LOOP;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -45,7 +64,8 @@ CREATE TABLE public.accounts (
     delegate_value character varying,
     counter integer NOT NULL,
     script character varying,
-    balance numeric NOT NULL
+    balance numeric NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL
 );
 
 
@@ -66,6 +86,19 @@ CREATE TABLE public.blocks (
     chain_id character varying,
     hash character varying NOT NULL,
     operations_hash character varying
+);
+
+
+--
+-- Name: fees; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fees (
+    low integer NOT NULL,
+    medium integer NOT NULL,
+    high integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    kind character varying NOT NULL
 );
 
 
@@ -101,7 +134,8 @@ CREATE TABLE public.operations (
     gas_limit character varying,
     block_hash character varying NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    block_level integer NOT NULL
+    block_level integer NOT NULL,
+    pkh character varying
 );
 
 
@@ -168,11 +202,11 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operationId; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
-    ADD CONSTRAINT operations_pkey PRIMARY KEY (operation_id);
+    ADD CONSTRAINT "operationId" PRIMARY KEY (operation_id);
 
 
 --
@@ -180,6 +214,13 @@ ALTER TABLE ONLY public.operations
 --
 
 CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
+
+
+--
+-- Name: fki_fk_blockhashes; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
 
 --

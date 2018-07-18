@@ -40,7 +40,7 @@ trait TezosRPCInterface {
 object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbawaitTimeInSecondsInSeconds")
+  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
 
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -49,11 +49,12 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   @Override
   def runGetQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
     Try{
+      val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
       val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
       val port = conf.getInt(s"platforms.tezos.$network.node.port")
       val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
-      val url = s"http://$hostname:$port/${pathPrefix}chains/main/$command"
-      logger.info(s"Querying URL $url for platform Tezos and network $network with payload $payload")
+      val url = s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
+      logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
@@ -72,11 +73,12 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   @Override
   def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
     Try{
+      val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
       val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
       val port = conf.getInt(s"platforms.tezos.$network.node.port")
       val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
-      val url = s"http://$hostname:$port/${pathPrefix}chains/main/$command"
-      logger.info(s"Querying URL $url for platform Tezos and network $network with payload $payload")
+      val url = s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
+      logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val postedData = payload match {
         case None => """{}"""
         case Some(str) => str

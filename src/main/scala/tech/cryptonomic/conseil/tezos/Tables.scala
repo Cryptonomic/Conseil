@@ -14,7 +14,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ OperationGroups.schema ++ Operations.schema
+  lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ Fees.schema ++ OperationGroups.schema ++ Operations.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -27,18 +27,19 @@ trait Tables {
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param counter Database column counter SqlType(int4)
     *  @param script Database column script SqlType(varchar), Default(None)
-    *  @param balance Database column balance SqlType(numeric) */
-  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, balance: scala.math.BigDecimal)
+    *  @param balance Database column balance SqlType(numeric)
+    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
+  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
   implicit def GetResultAccountsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal]): GR[AccountsRow] = GR{
     prs => import prs._
-      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<[scala.math.BigDecimal]))
+      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
   }
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
   class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
-    def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter, script, balance) <> (AccountsRow.tupled, AccountsRow.unapply)
+    def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter, script, balance, blockLevel) <> (AccountsRow.tupled, AccountsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, Rep.Some(balance)).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, Rep.Some(balance), Rep.Some(blockLevel)).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9.get, _10.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
@@ -58,6 +59,8 @@ trait Tables {
     val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
     /** Database column balance SqlType(numeric) */
     val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
+    /** Database column block_level SqlType(numeric), Default(-1) */
+    val blockLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
 
     /** Primary key of Accounts (database name accounts_pkey) */
     val pk = primaryKey("accounts_pkey", (accountId, blockId))
@@ -127,6 +130,38 @@ trait Tables {
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
+  /** Entity class storing rows of table Fees
+    *  @param low Database column low SqlType(int4)
+    *  @param medium Database column medium SqlType(int4)
+    *  @param high Database column high SqlType(int4)
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param kind Database column kind SqlType(varchar) */
+  case class FeesRow(low: Int, medium: Int, high: Int, timestamp: java.sql.Timestamp, kind: String)
+  /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
+  implicit def GetResultFeesRow(implicit e0: GR[Int], e1: GR[java.sql.Timestamp], e2: GR[String]): GR[FeesRow] = GR{
+    prs => import prs._
+      FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String]))
+  }
+  /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
+  class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, "fees") {
+    def * = (low, medium, high, timestamp, kind) <> (FeesRow.tupled, FeesRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind)).shaped.<>({r=>import r._; _1.map(_=> FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column low SqlType(int4) */
+    val low: Rep[Int] = column[Int]("low")
+    /** Database column medium SqlType(int4) */
+    val medium: Rep[Int] = column[Int]("medium")
+    /** Database column high SqlType(int4) */
+    val high: Rep[Int] = column[Int]("high")
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+    /** Database column kind SqlType(varchar) */
+    val kind: Rep[String] = column[String]("kind")
+  }
+  /** Collection-like TableQuery object for table Fees */
+  lazy val Fees = new TableQuery(tag => new Fees(tag))
+
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param chainId Database column chain_id SqlType(varchar), Default(None)
@@ -179,18 +214,19 @@ trait Tables {
     *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None)
     *  @param blockHash Database column block_hash SqlType(varchar)
     *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param blockLevel Database column block_level SqlType(int4) */
-  case class OperationsRow(kind: String, source: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, balance: Option[String] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None, blockHash: String, timestamp: java.sql.Timestamp, blockLevel: Int)
+    *  @param blockLevel Database column block_level SqlType(int4)
+    *  @param pkh Database column pkh SqlType(varchar), Default(None) */
+  case class OperationsRow(kind: String, source: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, balance: Option[String] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None, blockHash: String, timestamp: java.sql.Timestamp, blockLevel: Int, pkh: Option[String] = None)
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Int], e3: GR[java.sql.Timestamp]): GR[OperationsRow] = GR{
     prs => import prs._
-      OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String], <<[String], <<[java.sql.Timestamp], <<[Int]))
+      OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String], <<[String], <<[java.sql.Timestamp], <<[Int], <<?[String]))
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
-    def * = (kind, source, amount, destination, balance, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit, blockHash, timestamp, blockLevel) <> (OperationsRow.tupled, OperationsRow.unapply)
+    def * = (kind, source, amount, destination, balance, delegate, operationGroupHash, operationId, fee, storageLimit, gasLimit, blockHash, timestamp, blockLevel, pkh) <> (OperationsRow.tupled, OperationsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(kind), source, amount, destination, balance, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit, Rep.Some(blockHash), Rep.Some(timestamp), Rep.Some(blockLevel)).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11, _12.get, _13.get, _14.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(kind), source, amount, destination, balance, delegate, Rep.Some(operationGroupHash), Rep.Some(operationId), fee, storageLimit, gasLimit, Rep.Some(blockHash), Rep.Some(timestamp), Rep.Some(blockLevel), pkh).shaped.<>({r=>import r._; _1.map(_=> OperationsRow.tupled((_1.get, _2, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11, _12.get, _13.get, _14.get, _15)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
@@ -220,6 +256,8 @@ trait Tables {
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
     /** Database column block_level SqlType(int4) */
     val blockLevel: Rep[Int] = column[Int]("block_level")
+    /** Database column pkh SqlType(varchar), Default(None) */
+    val pkh: Rep[Option[String]] = column[Option[String]]("pkh", O.Default(None))
 
     /** Foreign key referencing Blocks (database name fk_blockhashes) */
     lazy val blocksFk = foreignKey("fk_blockhashes", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)

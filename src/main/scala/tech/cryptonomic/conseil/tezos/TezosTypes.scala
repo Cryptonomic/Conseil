@@ -141,8 +141,9 @@ object TezosTypes {
                     counter: Int
                     )
 
-  case class AccountsWithBlockHash(
+  case class AccountsWithBlockHashAndLevel(
                                     blockHash: String,
+                                    blockLevel: Int,
                                     accounts: Map[String, Account]
                                   )
 

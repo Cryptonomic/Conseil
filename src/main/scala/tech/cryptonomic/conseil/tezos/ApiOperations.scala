@@ -4,16 +4,14 @@ import java.sql.Timestamp
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, Future}
 import scala.util.Try
-import scala.math.max
 
 
 /**
@@ -22,7 +20,7 @@ import scala.math.max
 object ApiOperations {
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbawaitTimeInSecondsInSeconds")
+  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
   /**
@@ -186,21 +184,9 @@ object ApiOperations {
 
 
   case class AccountsAction
-  (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal]),
-                  (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal),
+  (action: Query [(Rep[String], Rep[String], Rep[String], Rep[Boolean], Rep[Boolean], Rep[Option[String]], Rep[Int], Rep[Option[String]], Rep[BigDecimal], Rep[BigDecimal]),
+                  (String, String, String, Boolean, Boolean, Option[String], Int, Option[String], BigDecimal, BigDecimal),
                   Seq]) extends Action
-
-  /**
-    * Case class representing possible fees of an operation.
-    * @param low mean - 1 standard deviation
-    * @param medium average of fee column in transactions table
-    * @param high mean + 1 standard deviation
-    */
-  case class Fees(
-                 low: Double,
-                 medium: Double,
-                 high: Double
-                 )
 
   // Predicates to determine existence of specific type of filter
 
@@ -281,6 +267,10 @@ object ApiOperations {
     if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
       o.kind.inSet(filter.operationKinds.get) else true
 
+  private def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
+    if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
+      fee.kind.inSet(filter.operationKinds.get) else true
+
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
   // End helper functions for constructing Slick queries
@@ -293,29 +283,33 @@ object ApiOperations {
     */
   private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
     fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-
-        val filteredAccounts = Tables.Accounts.filter(account =>
+      fetchMaxBlockLevelForAccounts().flatMap { maxLevelForAccounts =>
+        Try {
+          val filteredAccounts = Tables.Accounts.filter(account =>
             filterAccountIDs(filter, account) &&
-            filterAccountDelegates(filter, account) &&
-            filterAccountManagers(filter, account) &&
-            account.blockId === latestBlock.hash )
+              filterAccountDelegates(filter, account) &&
+              filterAccountManagers(filter, account) &&
+              account.blockLevel === maxLevelForAccounts)
 
-        val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-            filterOperationIDs(filter, opGroup)})
+          val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
+            filterOperationIDs(filter, opGroup)
+          })
 
-        val filteredOps = Tables.Operations.filter({ op =>
+          val filteredOps = Tables.Operations.filter({ op =>
             filterOperationKinds(filter, op) &&
-            filterOperationDestinations(filter, op) &&
-            filterOperationSources(filter, op)})
+              filterOperationDestinations(filter, op) &&
+              filterOperationSources(filter, op)
+          })
 
-        val filteredBlocks = Tables.Blocks.filter({ block =>
+          val filteredBlocks = Tables.Blocks.filter({ block =>
             filterBlockIDs(filter, block) &&
-            filterBlockLevels(filter, block) &&
-            filterChainIDs(filter, block) &&
-            filterProtocols(filter, block)})
+              filterBlockLevels(filter, block) &&
+              filterChainIDs(filter, block) &&
+              filterProtocols(filter, block)
+          })
 
-        FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+          FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+        }
       }
     }
   }
@@ -664,7 +658,6 @@ object ApiOperations {
     */
   def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
 
-
     getFilteredTables(filter).flatMap { filteredTables =>
 
       Try {
@@ -841,24 +834,39 @@ object ApiOperations {
     )
   }
 
+
   /**
     * Given the operation kind and the number of columns wanted,
     * return the mean (along with +/- one standard deviation) of
     * fees incurred in those operations.
-    * @param filter
-    * @return
+    * @param filter Filters to apply, specifically operation kinds
+    * @return AverageFee class, getting low, medium, and high
+    *         estimates for average fees, timestamp the calculation
+    *         was performed at, and the kind of operation being
+    *         averaged over.
     */
-  def averageFee(filter: Filter): Try[Fees] = Try {
+  def averageFee(filter: Filter): Try[AverageFees] = Try {
     val action = for {
-      o <- Tables.Operations
-      if filterOperationKinds(filter, o)
-    } yield (o.fee, o.timestamp)
-    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(getFilterLimit(filter)).result)
-    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
-    val m: Double = mean(resultNumbers)
-    val s: Double = stdev(resultNumbers)
-    Fees(max(m - s, 0), m, m + s)
+      fee <- Tables.Fees
+      if filterOperationKindsForFees(filter, fee)
+    } yield (fee.low, fee.medium, fee.high, fee.timestamp, fee.kind)
+    val op = dbHandle.run(action.distinct.sortBy(_._4.desc).take(1).result)
+    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
+    AverageFees(results._1, results._2, results._3, results._4, results._5)
+  }
+
+  /**
+    * Fetches the level of the most recent block in the accounts table.
+    *
+    * @return Max level or -1 if no blocks were found in the database.
+    */
+  def fetchMaxBlockLevelForAccounts(): Try[BigDecimal] = Try {
+    val op = dbHandle.run(Tables.Accounts.map(_.blockLevel).max.result)
+    val maxLevelOpt = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
+    maxLevelOpt match {
+      case Some(maxLevel) => maxLevel
+      case None => -1
+    }
   }
 
   /**
@@ -867,10 +875,10 @@ object ApiOperations {
     * @return           The account with its associated operation groups
     */
   def fetchAccount(account_id: String): Try[Map[String, Any]] =
-    fetchLatestBlock().flatMap { latestBlock =>
+    fetchMaxBlockLevelForAccounts().flatMap { latestBlockLevel =>
       Try {
         val op = dbHandle.run(Tables.Accounts
-          .filter(_.blockId === latestBlock.hash)
+          .filter(_.blockLevel === latestBlockLevel)
           .filter(_.accountId === account_id).take(1).result)
         val account = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
         Map("account" -> account)
@@ -898,17 +906,17 @@ object ApiOperations {
           case Some(Accounts(accounts)) =>
             for {
               a <- accounts
-            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
           case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
             for {
               (_, a) <- operationGroupsAccounts
-            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
           case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
             for {
               ((_, _), a) <- operationGroupsOperationsAccounts
-            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance)
+            } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
           case _ =>
             throw new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
@@ -917,7 +925,7 @@ object ApiOperations {
         val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
         val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
         val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9))
+        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10))
 
       }
 
