@@ -200,6 +200,11 @@ object TezosDatabaseOperations {
     }
   }
 
+
+  /**
+    * Delete all accounts in database not associated with block at maxLevel.
+    * @return No value, database update
+    */
   def purgeOldAccounts(): Try[Int] = {
     ApiOperations.fetchMaxBlockLevelForAccounts().flatMap{ blockLevel =>
       Try {

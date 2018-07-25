@@ -25,23 +25,19 @@ object Lorre extends App with LazyLogging {
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   var iterationsOfLorre = 0
-  var shouldFeeBeCalculatedThisIteration = true
-  var shouldAccountsBePurgedThisIteration = true
 
   try {
     while(true) {
       processTezosBlocks()
       processTezosAccounts()
-      if (shouldFeeBeCalculatedThisIteration) {
+      if (iterationsOfLorre % feeUpdateInterval == 0) {
         FeeOperations.processTezosAverageFees()
       }
-      if (shouldAccountsBePurgedThisIteration) {
+      if (iterationsOfLorre % purgeAccountsInterval == 0) {
         TezosDatabaseOperations.purgeOldAccounts()
       }
       logger.info("Taking a nap")
       iterationsOfLorre = iterationsOfLorre + 1
-      shouldFeeBeCalculatedThisIteration = iterationsOfLorre % feeUpdateInterval == 0
-      shouldAccountsBePurgedThisIteration = iterationsOfLorre % purgeAccountsInterval == 0
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
