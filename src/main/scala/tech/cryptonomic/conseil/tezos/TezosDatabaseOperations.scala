@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
+import tech.cryptonomic.conseil.tezos.ApiOperations.{awaitTimeInSeconds, dbHandle}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
@@ -10,6 +10,7 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{Await, Future}
 import scala.math.{ceil, max}
+import scala.util.Try
 
 /**
   * Functions for writing Tezos data to a database.
@@ -196,6 +197,22 @@ object TezosDatabaseOperations {
       case _ =>
         val timestamp = results.head._2
         Some(AverageFees(max(m - s, 0), m, m + s, timestamp, kind))
+    }
+  }
+
+
+  /**
+    * Delete all accounts in database not associated with block at maxLevel.
+    * @return No value, database update
+    */
+  def purgeOldAccounts(): Try[Int] = {
+    ApiOperations.fetchMaxBlockLevelForAccounts().flatMap{ blockLevel =>
+      Try {
+        val query = Tables.Accounts.filter(row => !(row.blockLevel === blockLevel))
+        val action = query.delete
+        val op = dbHandle.run(action)
+        Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
+      }
     }
   }
 

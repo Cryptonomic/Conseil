@@ -19,23 +19,25 @@ object Lorre extends App with LazyLogging {
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
+  private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   var iterationsOfLorre = 0
-  var shouldFeeBeCalculatedThisIteration = true
 
   try {
     while(true) {
       processTezosBlocks()
       processTezosAccounts()
-      if (shouldFeeBeCalculatedThisIteration) {
+      if (iterationsOfLorre % feeUpdateInterval == 0) {
         FeeOperations.processTezosAverageFees()
+      }
+      if (iterationsOfLorre % purgeAccountsInterval == 0) {
+        TezosDatabaseOperations.purgeOldAccounts()
       }
       logger.info("Taking a nap")
       iterationsOfLorre = iterationsOfLorre + 1
-      shouldFeeBeCalculatedThisIteration = iterationsOfLorre % feeUpdateInterval == 0
       Thread.sleep(sleepIntervalInSeconds * 1000)
     }
   } finally db.close()
