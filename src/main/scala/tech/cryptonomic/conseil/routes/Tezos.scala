@@ -1,14 +1,14 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller}
+import akka.http.scaladsl.model.MediaTypes
 import akka.http.scaladsl.server.{Directive, Route}
+import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
-import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
-
-import scala.util.{Failure, Success}
+import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 
 /**
   * Tezos-specific routes.
@@ -67,62 +67,42 @@ object Tezos extends LazyLogging {
     provide(keyStore)
   }
 
+  //this automatically accepts any type `T` as content for calling [[RequestContext.complete]]
+  //converts to json string via JsonUtil adding the correct content-type to the response entity
+  implicit def jsonStringMarshaller[T]: ToEntityMarshaller[T] =
+    PredefinedToEntityMarshallers.StringMarshaller
+      .compose(JsonUtil.toJson[T])
+      .wrap(MediaTypes.`application/json`)(identity)
+
   val route: Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
         validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
-              ApiOperations.fetchBlocks(filter) match {
-                case Success(blocks) => complete(JsonUtil.toJson(blocks))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
-              ApiOperations.fetchLatestBlock() match {
-                case Success(block) => complete(JsonUtil.toJson(block))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchLatestBlock())
             } ~ path(Segment) { blockId =>
-              ApiOperations.fetchBlock(blockId) match {
-                case Success(block) => complete(JsonUtil.toJson(block))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
-              ApiOperations.fetchAccounts(filter) match {
-                case Success(accounts) => complete(JsonUtil.toJson(accounts))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchAccounts(filter))
             } ~ path(Segment) { accountId =>
-              ApiOperations.fetchAccount(accountId) match {
-                case Success(account) => complete(JsonUtil.toJson(account))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {
             pathEnd {
-              ApiOperations.fetchOperationGroups(filter) match {
-                case Success(operationGroups) => complete(JsonUtil.toJson(operationGroups))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
-              ApiOperations.fetchOperationGroup(operationGroupId) match {
-                case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchOperationGroup(operationGroupId))
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {
-              ApiOperations.fetchAverageFees(filter) match {
-                case Success(fees) => complete(JsonUtil.toJson(fees))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchAverageFees(filter))
             } ~ pathEnd {
-              ApiOperations.fetchOperations(filter) match {
-                case Success(operations) => complete(JsonUtil.toJson(operations))
-                case Failure(e) => failWith(e)
-              }
+                complete(ApiOperations.fetchOperations(filter))
             }
           }
         }
