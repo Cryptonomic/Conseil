@@ -189,7 +189,7 @@ object TezosDatabaseOperations {
     } yield (o.fee, o.timestamp)
     val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(numberOfFeesAveraged).result)
     val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-    val resultNumbers = results.map(x => x._1.getOrElse("0").toInt)
+    val resultNumbers = results.map(x => x._1.getOrElse("0").toDouble)
     val m: Int = ceil(mean(resultNumbers)).toInt
     val s: Int = ceil(stdev(resultNumbers)).toInt
     results.length match {

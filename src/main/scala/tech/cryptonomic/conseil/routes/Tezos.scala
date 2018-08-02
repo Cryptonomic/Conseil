@@ -70,7 +70,7 @@ object Tezos extends LazyLogging {
   val route: Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
-        validate(!filter.limit.isDefined || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
+        validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
               ApiOperations.fetchBlocks(filter) match {
@@ -114,7 +114,7 @@ object Tezos extends LazyLogging {
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {
-              ApiOperations.averageFee(filter) match {
+              ApiOperations.fetchAverageFees(filter) match {
                 case Success(fees) => complete(JsonUtil.toJson(fees))
                 case Failure(e) => failWith(e)
               }

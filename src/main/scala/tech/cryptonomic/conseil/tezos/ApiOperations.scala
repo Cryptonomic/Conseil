@@ -278,7 +278,7 @@ object ApiOperations {
 
   /**
     * Filters Accounts, Operation Groups, Operations, and Blocks tables based on users input to the filter.
-    * @param filter
+    * @param filter Filter parameters.
     * @return
     */
   private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
@@ -845,7 +845,7 @@ object ApiOperations {
     *         was performed at, and the kind of operation being
     *         averaged over.
     */
-  def averageFee(filter: Filter): Try[AverageFees] = Try {
+  def fetchAverageFees(filter: Filter): Try[AverageFees] = Try {
     val action = for {
       fee <- Tables.Fees
       if filterOperationKindsForFees(filter, fee)

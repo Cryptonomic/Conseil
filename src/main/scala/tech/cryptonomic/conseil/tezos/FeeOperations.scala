@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.Lorre.{db}
+import tech.cryptonomic.conseil.Lorre.db
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.concurrent.Await
@@ -40,9 +40,7 @@ object FeeOperations extends LazyLogging {
   def processTezosAverageFees(): Try[Unit] = {
     logger.info("Processing latest Tezos fee data...")
     val operationKinds = List("seed_nonce_revelation", "delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement")
-    val fees = operationKinds.map{ kind =>
-      TezosDatabaseOperations.calculateAverageFees(kind)
-    }
+    val fees = operationKinds.map(TezosDatabaseOperations.calculateAverageFees)
     Try {
       val dbFut = TezosDatabaseOperations.writeFeesToDatabase(fees, db)
       dbFut onComplete {
