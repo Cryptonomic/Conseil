@@ -315,7 +315,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           "operations" -> operations
         )
     }
-    node.runGetQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
+    node.runPostQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .flatMap { json =>
         Try(JsonUtil.fromJson[TezosTypes.ForgedOperation](json)).flatMap{ forgedOperation =>
           Try(forgedOperation.operation)
@@ -375,7 +375,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
       "forged_operation" -> forgedOperationGroup,
       "signature" -> signedOpGroup.signature
     )
-    node.runGetQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+    node.runPostQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
       .flatMap { result =>
         logger.debug(s"Result of operation application: $result")
         Try(JsonUtil.fromJson[TezosTypes.AppliedOperation](result))
@@ -392,7 +392,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val payload: Map[String, Any] = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
     )
-    node.runGetQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload))).flatMap{ result =>
+    node.runPostQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload))).flatMap{ result =>
       Try {
         val injectedOp = JsonUtil.fromJson[TezosTypes.InjectedOperation](result)
         injectedOp.injectedOperation
