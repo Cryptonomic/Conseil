@@ -19,10 +19,9 @@ trait TezosRPCInterface {
     * Runs an RPC call against the configured Tezos node using HTTP GET.
     * @param network  Which Tezos network to go against
     * @param command  RPC command to invoke
-    * @param payload  Optional JSON pyaload to post
     * @return         Result of the RPC call
     */
-  def runGetQuery(network: String, command: String, payload: Option[String] = None): Try[String]
+  def runGetQuery(network: String, command: String): Try[String]
 
   /**
     * Runs an RPC call against the configured Tezos node using HTTP POST.
@@ -47,14 +46,14 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   @Override
-  def runGetQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
+  def runGetQuery(network: String, command: String): Try[String] = {
     Try{
       val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
       val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
       val port = conf.getInt(s"platforms.tezos.$network.node.port")
       val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
       val url = s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
-      logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
+      logger.debug(s"Querying URL $url for platform Tezos and network $network")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
