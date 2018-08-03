@@ -9,6 +9,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
+import scala.annotation.tailrec
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -20,14 +21,15 @@ object Lorre extends App with LazyLogging {
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
+  private val network = conf.getString("lorre.tezos-network")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   var iterationsOfLorre = 0
 
-  try {
-    while(true) {
+  @tailrec
+  def mainLoop(): Unit = {
       processTezosBlocks()
       processTezosAccounts()
       if (iterationsOfLorre % feeUpdateInterval == 0) {
@@ -39,15 +41,17 @@ object Lorre extends App with LazyLogging {
       logger.info("Taking a nap")
       iterationsOfLorre = iterationsOfLorre + 1
       Thread.sleep(sleepIntervalInSeconds * 1000)
-    }
-  } finally db.close()
+      mainLoop()
+  }
+
+  try {mainLoop()} finally db.close()
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
   def processTezosBlocks(): Try[Unit] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase("zeronet", followFork = true) match {
+    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
       case Success(blocks) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
@@ -58,7 +62,7 @@ object Lorre extends App with LazyLogging {
           Await.result(dbFut, Duration.Inf)
         }
       case Failure(e) =>
-        logger.error(s"Could not fetch blocks from client because $e")
+        logger.error("Could not fetch blocks from client", e)
         throw e
     }
   }
@@ -68,7 +72,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosAccounts(): Try[Unit] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts("zeronet") match {
+    tezosNodeOperator.getLatestAccounts(network) match {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)
@@ -79,7 +83,7 @@ object Lorre extends App with LazyLogging {
           Await.result(dbFut, Duration.Inf)
         }
       case Failure(e) =>
-        logger.error(s"Could not fetch accounts from client because $e")
+        logger.error("Could not fetch accounts from client", e)
         throw e
     }
   }
