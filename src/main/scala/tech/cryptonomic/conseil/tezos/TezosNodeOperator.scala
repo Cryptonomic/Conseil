@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
-import tech.cryptonomic.conseil.util.FPUtil.{sequence}
+import tech.cryptonomic.conseil.util.FPUtil.sequence
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.{Failure, Success, Try}
@@ -115,7 +115,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
           Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else {
           getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
-              Try(Block(theBlock, itsOperations.flatten))
+            Try(Block(theBlock, itsOperations.flatten))
           }
         }
       }
@@ -140,8 +140,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     ApiOperations.fetchMaxLevel().flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       getBlockHead(network).flatMap { blockHead =>
-        val headLevel =  blockHead.metadata.header.level
-        val headHash  =  blockHead.metadata.hash
+        val headLevel = 500//blockHead.metadata.header.level
+        val headHash  = "BL3VRigGjvYTNXNKM6yDp3dQzCiCaQkP41rkwGUZMSM1uVkD3AL" //blockHead.metadata.hash
         if(headLevel <= maxLevel)
           Try(List[Block]())
         else
@@ -201,10 +201,17 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
                              maxLevel: Int
                            ): Try[List[Block]] = {
     val maxOffset: Int = maxLevel - minLevel
-    val offsets: List[Int] = (0 to maxOffset).toList
-    //offsets.map{ offset => getBlock(network, hash, offset.toString)
-    Try{List[Block]()}
-    }
+    val offsets = (0 to maxOffset).toList.par
+    offsets.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
+    sequence(offsets.map{ offset =>
+      getBlock(network, hash, offset.toString) match {
+        case Success(block) => {
+          logger.info(s"Current block height: ${block.metadata.header.level}")
+          Success(block)
+        }
+        case Failure(e) => Failure(e)
+      }}.toList)
+  }
 
   /**
     * Get all accounts for a given block
@@ -224,7 +231,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param network  Which Tezos network to go against
     * @return         Accounts with their corresponding block hash
     */
-  def getLatestAccounts(network: String): Try[AccountsWithBlockHashAndLevel]=
+  def getLatestAccounts(network: String): Try[AccountsWithBlockHashAndLevel] =
     ApiOperations.fetchLatestBlock().flatMap { dbBlockHead =>
       ApiOperations.fetchMaxBlockLevelForAccounts().flatMap { maxLevelForAccounts =>
         if(maxLevelForAccounts.toInt < dbBlockHead.level)
