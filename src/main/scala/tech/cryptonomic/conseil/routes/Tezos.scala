@@ -61,8 +61,8 @@ object Tezos extends LazyLogging {
     "publicKey".as[String],
     "privateKey".as[String],
     "publicKeyHash".as[String]
-  ).tflatMap{ tuple =>
-    val (publicKey, privateKey, publicKeyHash) = tuple
+  ).tflatMap{
+    case (publicKey, privateKey, publicKeyHash) =>
     val keyStore = KeyStore(publicKey = publicKey, privateKey = privateKey, publicKeyHash = publicKeyHash)
     provide(keyStore)
   }
