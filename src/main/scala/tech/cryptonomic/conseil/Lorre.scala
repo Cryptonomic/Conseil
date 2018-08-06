@@ -6,7 +6,6 @@ import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, T
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
@@ -14,6 +13,9 @@ import scala.util.{Failure, Success, Try}
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
 object Lorre extends App with LazyLogging {
+
+  //keep this import here to make it evident where we spawn our async code
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
