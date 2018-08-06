@@ -36,8 +36,8 @@ object Tezos extends LazyLogging {
     "operation_kind".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).tflatMap{ tuple =>
-    val (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) = tuple
+  ).tflatMap{ 
+    case (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) =>
     val filter: Filter = Filter(
       limit = limit,
       blockIDs = Some(block_ids.toSet),
