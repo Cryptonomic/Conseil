@@ -16,35 +16,37 @@ import scala.annotation.tailrec
   */
 object Lorre extends App with LazyLogging {
 
+  private final val DefaultNetwork = "zeronet"
+
+  private val network = if (args.length > 0) args(0) else DefaultNetwork
+  
+
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
-  private val network = conf.getString("lorre.tezos-network")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
-  var iterationsOfLorre = 0
-
   @tailrec
-  def mainLoop(): Unit = {
+  def mainLoop(iteration: Int): Unit = {
       processTezosBlocks()
       processTezosAccounts()
-      if (iterationsOfLorre % feeUpdateInterval == 0) {
+      if (iteration % feeUpdateInterval == 0) {
         FeeOperations.processTezosAverageFees()
       }
-      if (iterationsOfLorre % purgeAccountsInterval == 0) {
+      if (iteration % purgeAccountsInterval == 0) {
         TezosDatabaseOperations.purgeOldAccounts()
       }
       logger.info("Taking a nap")
-      iterationsOfLorre = iterationsOfLorre + 1
       Thread.sleep(sleepIntervalInSeconds * 1000)
-      mainLoop()
+      mainLoop(iteration + 1)
   }
 
-  try {mainLoop()} finally db.close()
+  logger.info("About to start processing on the {} network", network)
+  try {mainLoop(0)} finally db.close()
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
