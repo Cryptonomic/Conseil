@@ -177,8 +177,8 @@ object TezosDatabaseOperations extends LazyLogging {
     opQuery.map { 
       timestampedFees =>
         timestampedFees.headOption.map {
-          case (_, earliest) =>
-            computeAverage(earliest, timestampedFees)
+          case (_, latest) =>
+            computeAverage(latest, timestampedFees)
         }
     }
   }
