@@ -16,9 +16,14 @@ import scala.annotation.tailrec
   */
 object Lorre extends App with LazyLogging {
 
-  private final val DefaultNetwork = "zeronet"
-
-  private val network = if (args.length > 0) args(0) else DefaultNetwork
+  private val network =
+    if (args.length > 0) args(0)
+    else {
+      Console.err.println("""
+      | No tezos network was provided to connect to
+      | Please provide a valid network as an argument to the command line""".stripMargin)
+      sys.exit(1)
+    }
   
 
   private val conf = ConfigFactory.load
