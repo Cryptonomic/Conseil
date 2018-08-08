@@ -149,7 +149,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
-  
+
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind  Operation kind
@@ -174,7 +174,7 @@ object TezosDatabaseOperations extends LazyLogging {
         .take(numberOfFeesAveraged)
         .result
 
-    opQuery.map { 
+    opQuery.map {
       timestampedFees =>
         timestampedFees.headOption.map {
           case (_, latest) =>
@@ -189,8 +189,9 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
     val purged = dbHandle.run {
-      val maxLevel = SupportQueries.accountsMaxBlockLevel
-      Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
+      accountsMaxBlockLevel.flatMap( maxLevel =>
+        Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
+      ).transactionally
     }
     purged.andThen {
       case Success(howMany) => logger.info("{} accounts where purged from old block levels.", howMany)
@@ -212,25 +213,17 @@ object TezosDatabaseOperations extends LazyLogging {
 
   }
 
-  object SupportQueries {
+  /* use as max block level when none exists */
+  private[tezos] val defaultBlockLevel: BigDecimal = -1
 
-    /* use as max block level when none exists */
-    private[TezosDatabaseOperations] val defaultBlockLevel: BigDecimal = -1
-
-     /*
-      * Computes the level of the most recent block in the accounts table
-      * or [[defaultBlockLevel]] if no block exists.
-      * The result is meant to be chained into other Query-like operations and not evaluated immediately.
-      *
-      * @return a [[Rep]] of the level
-      */
-    private[TezosDatabaseOperations] def accountsMaxBlockLevel: Rep[BigDecimal] = 
-      Tables.Accounts
-        .map(_.blockLevel)
-        .max
-        .ifNull(defaultBlockLevel)
-
-  }
-
+  /**
+    * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
+    */
+  private[tezos] def accountsMaxBlockLevel: DBIO[BigDecimal] =
+    Tables.Accounts
+      .map(_.blockLevel)
+      .max
+      .getOrElse(defaultBlockLevel)
+      .result
 
 }
