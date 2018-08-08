@@ -198,7 +198,7 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
-  /** convertions from domain objects to database row format */
+  /** conversions from domain objects to database row format */
   object RowConversion {
 
     private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
