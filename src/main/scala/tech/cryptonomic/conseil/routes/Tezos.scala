@@ -19,6 +19,8 @@ object Tezos extends LazyLogging {
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
+  implicit val dispatcher = TezosNodeInterface.system.dispatchers.lookup("tezos-dispatcher")
+
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
     "limit".as[Int].?,
@@ -73,15 +75,13 @@ object Tezos extends LazyLogging {
         validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
-              ApiOperations.fetchBlocks(filter) match {
-                case Success(blocks) => complete(JsonUtil.toJson(blocks))
-                case Failure(e) => failWith(e)
-              }
+              complete(ApiOperations.fetchBlocks(filter) map {
+                blocks => JsonUtil.toJson(blocks)
+              })
             } ~ path("head") {
-              ApiOperations.fetchLatestBlock() match {
-                case Success(block) => complete(JsonUtil.toJson(block))
-                case Failure(e) => failWith(e)
-              }
+              complete(ApiOperations.fetchLatestBlock() map {
+                block => JsonUtil.toJson(block)
+              })
             } ~ path(Segment) { blockId =>
               ApiOperations.fetchBlock(blockId) match {
                 case Success(block) => complete(JsonUtil.toJson(block))
@@ -107,10 +107,9 @@ object Tezos extends LazyLogging {
                 case Failure(e) => failWith(e)
               }
             } ~ path(Segment) { operationGroupId =>
-              ApiOperations.fetchOperationGroup(operationGroupId) match {
-                case Success(operationGroup) => complete(JsonUtil.toJson(operationGroup))
-                case Failure(e) => failWith(e)
-              }
+              complete(ApiOperations.fetchOperationGroup(operationGroupId) map {
+                operationGroup => JsonUtil.toJson(operationGroup)
+              })
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {

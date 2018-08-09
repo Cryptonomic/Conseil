@@ -3,12 +3,15 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+
+import scala.concurrent.Future
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 
 import scala.collection.parallel.ForkJoinTaskSupport
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 
@@ -44,7 +47,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
     node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
-      Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
+      Try(fromJson[TezosTypes.Account](jsonEncodedAccount))
     }
 
   /**
@@ -56,7 +59,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAccountManagerForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.ManagerKey] =
     node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID/manager_key").flatMap { json =>
-      Try(fromJson[TezosTypes.ManagerKey](json)).flatMap(managerKey => Try(managerKey))
+      Try(fromJson[TezosTypes.ManagerKey](json))
     }
 
   /**
@@ -97,9 +100,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def getAllOperationsForBlock(network: String, blockHash: String): Try[List[List[OperationGroup]]] =
     node.runGetQuery(network, s"blocks/$blockHash/operations").flatMap { jsonEncodedOperationsContainer =>
-      Try(fromJson[List[List[OperationGroup]]](jsonEncodedOperationsContainer)).flatMap{ operationsContainer =>
-        Try(operationsContainer)
-      }
+      Try(fromJson[List[List[OperationGroup]]](jsonEncodedOperationsContainer))
     }
 
   /**
@@ -109,20 +110,14 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return         Block
     */
   def getBlock(network: String, hash: String): Try[TezosTypes.Block] =
-    node.runGetQuery(network, s"blocks/$hash").flatMap { jsonEncodedBlock =>
-      Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
-        if(theBlock.header.level==0)
-          Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
-        else {
-          getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
-            itsOperations.length match {
-              case 0 => Try(Block(theBlock, List[OperationGroup]()))
-              case _ => Try(Block(theBlock, itsOperations.flatten))
-            }
-          }
-        }
-      }
-    }
+    for {
+      json  <- node.runGetQuery(network, s"blocks/$hash")
+      block <- Try(fromJson[TezosTypes.BlockMetadata](json))
+      ops   <- if (block.header.level == 0)
+        Success(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+      else
+        getAllOperationsForBlock(network, hash).map(_.flatten)
+    } yield Block(block, ops)
 
   /**
     * Gets the block head.
@@ -235,25 +230,24 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return           Accounts with their corresponding block hash
     */
   def getAccounts(network: String, blockHash: String): Try[AccountsWithBlockHashAndLevel] =
-    getBlock(network, blockHash).flatMap { block =>
-      getAllAccountsForBlock(network, blockHash).flatMap { accounts =>
-        Try(AccountsWithBlockHashAndLevel(block.metadata.hash, block.metadata.header.level, accounts))
-      }
-    }
+    for {
+      block <- getBlock(network, blockHash)
+      accounts <- getAllAccountsForBlock(network, blockHash)
+    } yield AccountsWithBlockHashAndLevel(block.metadata.hash, block.metadata.header.level, accounts)
 
   /**
     * Get accounts for the latest block in the database.
     * @param network  Which Tezos network to go against
-    * @return         Accounts with their corresponding block hash
+    * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
     */
-  def getLatestAccounts(network: String): Try[AccountsWithBlockHashAndLevel]=
-    ApiOperations.fetchLatestBlock().flatMap { dbBlockHead =>
-      ApiOperations.fetchMaxBlockLevelForAccounts().flatMap { maxLevelForAccounts =>
-        if(maxLevelForAccounts.toInt < dbBlockHead.level)
-          getAccounts(network, dbBlockHead.hash)
-        else
-          Try(AccountsWithBlockHashAndLevel(dbBlockHead.hash, dbBlockHead.level, Map[String, Account]()))
-      }
+  def getLatestAccounts(network: String)(implicit ec: ExecutionContext): Future[Option[AccountsWithBlockHashAndLevel]] =
+    ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.accountsMaxBlockLevel)).flatMap {
+      case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
+        Future.fromTry(getAccounts(network, latestBlock.hash).map(Some(_)))
+      case (Some(latestBlock), _) =>
+        Future.successful(Some(AccountsWithBlockHashAndLevel(latestBlock.hash, latestBlock.level)))
+      case _ =>
+        Future.successful(None)
     }
 
   /**

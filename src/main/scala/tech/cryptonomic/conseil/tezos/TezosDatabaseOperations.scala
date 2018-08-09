@@ -5,12 +5,14 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
+import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
+import tech.cryptonomic.conseil.util.CollectionOps._
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -18,7 +20,6 @@ import scala.util.{Try, Success, Failure}
 object TezosDatabaseOperations extends LazyLogging {
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val numberOfFeesAveraged = conf.getInt("lorre.numberOfFeesAveraged")
 
   /**
@@ -33,19 +34,6 @@ object TezosDatabaseOperations extends LazyLogging {
         Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
         Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
         Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
-      )
-    )
-
-  /**
-    * Writes accounts from a specific blocks to a database.
-    * @param accountsInfo Accounts with their corresponding block hash.
-    * @param dbHandle     Handle to a database.
-    * @return             Future on database inserts.
-    */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
       )
     )
 
@@ -143,12 +131,22 @@ object TezosDatabaseOperations extends LazyLogging {
     }
 
   /**
+    * Writes computed fees averages to a database.
     *
-    * @param fees      List of average fees for different operation kinds.
-    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
+    * @param fees List of average fees for different operation kinds.
+    * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
+
+  /**
+    * Writes accounts from a specific block to a database.
+    *
+    * @param accountsInfo Accounts with their corresponding block hash.
+    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
+    */
+  def writeAccountsIO(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
+    Tables.Accounts ++= RowConversion.ofAccounts(accountsInfo)
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -199,19 +197,23 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
-  /** conversions from domain objects to database row format */
-  object RowConversion {
-
-    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
-      Tables.FeesRow(
-        low = in.low,
-        medium = in.medium,
-        high = in.high,
-        timestamp = in.timestamp,
-        kind = in.kind
-      )
-
-  }
+  def operationsForGroupIO(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
+    (for {
+      operation <- Tables.operationsByGroupHash(groupHash).extract
+      group <- operation.operationGroupsFk
+    } yield (group, operation)
+    ).result
+    .map {
+      pairs =>
+        /*
+         * we first collect all de-normalized pairs under the common group and then extract the
+         * only key-value from the resulting map
+         */
+        val keyed = pairs.byKey()
+        keyed.keys
+          .headOption
+          .map( k => (k, keyed(k)))
+    }
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BigDecimal = -1
@@ -225,5 +227,47 @@ object TezosDatabaseOperations extends LazyLogging {
       .max
       .getOrElse(defaultBlockLevel)
       .result
+
+  /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
+  private[tezos] def maxBlockLevel: DBIO[Int] =
+  Tables.Blocks
+      .map(_.level)
+      .max
+      .getOrElse(defaultBlockLevel.toInt)
+      .result
+
+  /** conversions from domain objects to database row format */
+  object RowConversion {
+
+    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
+      Tables.FeesRow(
+        low = in.low,
+        medium = in.medium,
+        high = in.high,
+        timestamp = in.timestamp,
+        kind = in.kind
+    )
+
+    private[TezosDatabaseOperations] def ofAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
+      val AccountsWithBlockHashAndLevel(hash, level, accounts) = blockAccounts
+      accounts.map {
+        case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
+          Tables.AccountsRow(
+            accountId = id,
+            blockId = hash,
+            manager = manager,
+            spendable = spendable,
+            delegateSetable = delegate.setable,
+            delegateValue = delegate.value,
+            counter = counter,
+            script = script.map(_.toString),
+            balance = balance,
+            blockLevel = level
+          )
+      }.toList
+    }
+
+
+  }
 
 }
