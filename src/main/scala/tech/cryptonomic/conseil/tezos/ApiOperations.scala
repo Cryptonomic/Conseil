@@ -913,50 +913,51 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return       List of accounts
     */
-  def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] = {
-    getFilteredTables(filter).flatMap { filteredTables =>
-
-      Try {
+  def fetchAccounts(filter: Filter)(implicit ec: ExecutionContext) = {
+    val filteringIO = filteredTablesIO(filter).flatMap {
+      filtered =>
 
         val blockFlag = isBlockFilter(filter)
         val operationGroupFlag = isOperationGroupFilter(filter)
         val operationFlag = isOperationFilter(filter)
         val accountFlag = true
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filtered, filter)
 
-        val action = joinedTables match {
+        //there will be some action only if the joined tables have the expected shape
+        val validAction = joinedTables.collect {
 
-          case Some(Accounts(accounts)) =>
+          case Accounts(accounts) =>
             for {
               a <- accounts
             } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
-          case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
+          case OperationGroupsAccounts(operationGroupsAccounts) =>
             for {
               (_, a) <- operationGroupsAccounts
             } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
-          case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
+          case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
             for {
               ((_, _), a) <- operationGroupsOperationsAccounts
             } yield (a.accountId, a.blockId, a.manager, a.spendable, a.delegateSetable, a.delegateValue, a.counter, a.script, a.balance, a.blockLevel)
 
-          case _ =>
-            throw new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
         }
 
-        val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
-        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-        results.map(x => Tables.AccountsRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10))
+        validAction.map {
+          action =>
+            val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
 
-      }
-
+            sortedAction.distinct
+              .take(getFilterLimit(filter))
+              .result
+              .map(actions => actions.map(Tables.AccountsRow.tupled))
+        }.getOrElse(
+          DBIO.failed(new Exception("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind."))
+        )
     }
 
+    dbHandle.run(filteringIO)
   }
-
-  //********************** Async rewrite ********************************/
 
   /**
     * @return the most recent block, if one exists in the database.
