@@ -90,10 +90,9 @@ object Tezos extends LazyLogging {
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
-              ApiOperations.fetchAccounts(filter) match {
-                case Success(accounts) => complete(JsonUtil.toJson(accounts))
-                case Failure(e) => failWith(e)
-              }
+              complete(ApiOperations.fetchAccounts(filter) map {
+                accounts => JsonUtil.toJson(accounts)
+              })
             } ~ path(Segment) { accountId =>
               ApiOperations.fetchAccount(accountId) match {
                 case Success(account) => complete(JsonUtil.toJson(account))
