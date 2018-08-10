@@ -314,41 +314,6 @@ object ApiOperations {
         }
     }.flatten
 
-/*
-  private def getFilteredTables(filter: Filter)(implicit ec: ExecutionContext) = {
-    fetchLatestBlock().flatMap { _ =>
-      fetchMaxBlockLevelForAccounts().flatMap { maxLevelForAccounts =>
-        Try {
-          val filteredAccounts = Tables.Accounts.filter(account =>
-            filterAccountIDs(filter, account) &&
-              filterAccountDelegates(filter, account) &&
-              filterAccountManagers(filter, account) &&
-              account.blockLevel === maxLevelForAccounts)
-
-          val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-            filterOperationIDs(filter, opGroup)
-          })
-
-          val filteredOps = Tables.Operations.filter({ op =>
-            filterOperationKinds(filter, op) &&
-              filterOperationDestinations(filter, op) &&
-              filterOperationSources(filter, op)
-          })
-
-          val filteredBlocks = Tables.Blocks.filter({ block =>
-            filterBlockIDs(filter, block) &&
-              filterBlockLevels(filter, block) &&
-              filterChainIDs(filter, block) &&
-              filterProtocols(filter, block)
-          })
-
-          FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
-        }
-      }
-    }
-  }
-*/
-
   /**
     * Returns the join of some combination of the Blocks, Operation Groups, Operations, and Accounts
     * tables, given the flags of which tables are necessary. If a table shouldn't be created based
@@ -740,45 +705,6 @@ object ApiOperations {
     dbHandle.run(filteringIO)
   }
 
-//  def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
-//
-//      Try {
-//
-//        // Blocks need to be fetched, other tables needed if user asks for them via the filter
-//        val blockFlag = true
-//        val operationGroupFlag = isOperationGroupFilter(filter)
-//        val operationFlag = isOperationFilter(filter)
-//        val accountFlag = isAccountFilter(filter)
-//        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-//
-//        val action = joinedTables match {
-//
-//          case Some(Blocks(blocks)) =>
-//            for {
-//              b <- blocks
-//            } yield extractFromBlock(b)
-//
-//          case Some(BlocksOperationGroups(blocksOperationGroups)) =>
-//            for {
-//              (b, _) <- blocksOperationGroups
-//            } yield extractFromBlock(b)
-//
-//          case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
-//            for {
-//              ((b, _), _) <- blocksOperationGroupsOperations
-//            } yield extractFromBlock(b)
-//
-//          case _ =>
-//            throw new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
-//
-//        }
-//
-//        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
-//        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-//        val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-//        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
-//      }
-
   /**
     * Fetch a given operation group
     *
@@ -804,41 +730,6 @@ object ApiOperations {
         )
     }
   }
-
-/*
-      Try {
-        val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
-        val opGroup = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
-        val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
-        val operations = Await.result(op2, Duration.apply(awaitTimeInSeconds, SECONDS))
-        Map(
-          "operation_group" -> opGroup,
-          "operations" -> operations
-        )
-      }
-    }
-*/
-
-  /**
-    * Fetch a given operation group
-    * @param operationGroupHash Operation group hash
-    * @return Operation group along with associated operations and accounts
-    */
-/*
-  def fetchOperationGroup(operationGroupHash: String): Try[Map[String, Any]] =
-    fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-        val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
-        val opGroup = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
-        val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
-        val operations = Await.result(op2, Duration.apply(awaitTimeInSeconds, SECONDS))
-        Map(
-          "operation_group" -> opGroup,
-          "operations" -> operations
-        )
-      }
-    }
-*/
 
   private def extractFromOperationGroup(opGroup: Tables.OperationGroups) = {
     (opGroup.protocol, opGroup.chainId, opGroup.hash, opGroup.branch,
@@ -1081,5 +972,4 @@ object ApiOperations {
     )
 
 }
-
 
