@@ -17,7 +17,7 @@ object JsonUtil {
     toJson(value map { case (k,v) => k.name -> v})
   }
 
-  def toJson(value: Any): String = {
+  def toJson[T](value: T): String = {
     mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value)
   }
 

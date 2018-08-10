@@ -52,10 +52,12 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
   }
 
   val bindingFuture = Http().bindAndHandle(route, conseil_hostname, conseil_port)
-  logger.info(s"Bonjour..")
-  while(true){}
-  bindingFuture
-    .flatMap(_.unbind())
-    .onComplete(_ => system.terminate())
+  logger.info("Bonjour...")
 
+  sys.addShutdownHook {
+    bindingFuture
+    .flatMap(_.unbind().andThen{ case _ => logger.info("Server stopped...")} )
+    .flatMap( _ => system.terminate())
+    .onComplete(_ => logger.info("We're done here, nothing else to see"))
+  }
 }
