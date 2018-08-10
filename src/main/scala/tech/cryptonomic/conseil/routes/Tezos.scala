@@ -86,17 +86,17 @@ object Tezos extends LazyLogging {
             } ~ path("head") {
               complete(ApiOperations.fetchLatestBlock())
             } ~ path(Segment) { blockId =>
-                complete(ApiOperations.fetchBlock(blockId))
+              complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
-                complete(ApiOperations.fetchAccounts(filter))
+              complete(ApiOperations.fetchAccounts(filter))
             } ~ path(Segment) { accountId =>
-                complete(ApiOperations.fetchAccount(accountId))
+              complete(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {
             pathEnd {
-                complete(ApiOperations.fetchOperationGroups(filter))
+              complete(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
               complete(ApiOperations.fetchOperationGroup(operationGroupId))
             }

@@ -694,7 +694,7 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter)(implicit ec: ExecutionContext): Future[Seq[BlocksRow]] = {
+  def fetchBlocks(filter: Filter)(implicit ec: ExecutionContext): Future[Seq[Tables.BlocksRow]] = {
     val filteringIO = filteredTablesIO(filter).flatMap {
       filtered =>
 
@@ -850,62 +850,70 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] =
-
-    getFilteredTables(filter).flatMap { filteredTables =>
-      Try {
+  def fetchOperationGroups(filter: Filter)(implicit ec: ExecutionContext): Future[Seq[Tables.OperationGroupsRow]] = {
+    val filteringIO = filteredTablesIO(filter).flatMap {
+      filtered =>
         val blockFlag = isBlockFilter(filter)
         val operationGroupFlag = true
         val operationFlag = isOperationFilter(filter)
         val accountFlag = isAccountFilter(filter)
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-        val action = joinedTables match {
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filtered, filter)
 
-          case Some(OperationGroups(operationGroups)) =>
+        //there will be some action only if the joined tables have the expected shape
+        val validAction = joinedTables.collect {
+
+          case OperationGroups(operationGroups) =>
             for {
               opGroup <- operationGroups
             } yield extractFromOperationGroup(opGroup)
 
-          case Some(BlocksOperationGroups(blocksOperationGroups)) =>
+          case BlocksOperationGroups(blocksOperationGroups) =>
             for {
               (_, opGroup) <- blocksOperationGroups
             } yield extractFromOperationGroup(opGroup)
 
-          case Some(OperationGroupsOperations(operationGroupsOperations)) =>
+          case OperationGroupsOperations(operationGroupsOperations) =>
             for {
               (opGroup, _) <- operationGroupsOperations
             } yield extractFromOperationGroup(opGroup)
 
-          case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
+          case OperationGroupsAccounts(operationGroupsAccounts) =>
             for {
               (opGroup, _) <- operationGroupsAccounts
             } yield extractFromOperationGroup(opGroup)
 
-          case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
+          case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
             for {
               ((opGroup, _), _) <- operationGroupsOperationsAccounts
             } yield extractFromOperationGroup(opGroup)
 
-          case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
+          case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
             for {
               ((_, opGroup), _) <- blocksOperationGroupsOperations
             } yield extractFromOperationGroup(opGroup)
 
-          case Some(BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts)) =>
+          case BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts) =>
             for {
               (((_, opGroup), _), _) <- blocksOperationGroupsOperationsAccounts
             } yield  extractFromOperationGroup(opGroup)
 
-          case _ =>
-            throw new Exception("This exception should never be reached, but is included for completeness.")
         }
 
-        val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
-        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-        results.map(x => Tables.OperationGroupsRow(x._1, x._2, x._3, x._4, x._5, x._6))
+        validAction.map {
+          action =>
+            val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
+
+            sortedAction.distinct
+              .take(getFilterLimit(filter))
+              .result
+              .map(actions => actions.map(Tables.OperationGroupsRow.tupled))
+        }.getOrElse(
+          DBIO.failed(new Exception("This exception should never be reached, but is included for completeness."))
+        )
       }
-    }
+
+    dbHandle.run(filteringIO)
+  }
 
   /**
     * Fetches all operations.
