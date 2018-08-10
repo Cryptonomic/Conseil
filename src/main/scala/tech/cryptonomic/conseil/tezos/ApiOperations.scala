@@ -744,6 +744,7 @@ object ApiOperations {
   def fetchOperationGroups(filter: Filter)(implicit ec: ExecutionContext): Future[Seq[Tables.OperationGroupsRow]] = {
     val filteringIO = filteredTablesIO(filter).flatMap {
       filtered =>
+
         val blockFlag = isBlockFilter(filter)
         val operationGroupFlag = true
         val operationFlag = isOperationFilter(filter)
@@ -962,7 +963,7 @@ object ApiOperations {
   /**
     * @return the most recent block, if one exists in the database.
     */
-  private def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
+  private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
     TezosDb.maxBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks
