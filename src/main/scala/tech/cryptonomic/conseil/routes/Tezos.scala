@@ -19,7 +19,7 @@ object Tezos extends LazyLogging {
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
-  implicit val dispatcher = TezosNodeInterface.system.dispatchers.lookup("tezos-dispatcher")
+  implicit val dispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.actor.tezos-dispatcher")
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
