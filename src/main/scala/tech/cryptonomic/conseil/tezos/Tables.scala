@@ -200,6 +200,9 @@ trait Tables {
   /** Collection-like TableQuery object for table OperationGroups */
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
+  val operationGroupsByHash =
+    OperationGroups.findBy(_.hash).map(_.andThen(_.take(1)))
+
   /** Entity class storing rows of table Operations
     *  @param kind Database column kind SqlType(varchar)
     *  @param source Database column source SqlType(varchar), Default(None)
@@ -266,4 +269,9 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Operations */
   lazy val Operations = new TableQuery(tag => new Operations(tag))
+
+  /** Precompiled fetch for Operations by Group */
+  val operationsByGroupHash =
+    Operations.findBy(_.operationGroupHash)
+
 }

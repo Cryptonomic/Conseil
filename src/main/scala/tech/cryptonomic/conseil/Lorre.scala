@@ -1,14 +1,15 @@
 package tech.cryptonomic.conseil
 
+import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import scala.concurrent.Await
+import scala.annotation.tailrec
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
-import scala.annotation.tailrec
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -43,7 +44,7 @@ object Lorre extends App with LazyLogging {
         FeeOperations.processTezosAverageFees()
       }
       if (iteration % purgeAccountsInterval == 0) {
-        TezosDatabaseOperations.purgeOldAccounts()
+        TezosDb.purgeOldAccounts()
       }
       logger.info("Taking a nap")
       Thread.sleep(sleepIntervalInSeconds * 1000)
@@ -61,7 +62,7 @@ object Lorre extends App with LazyLogging {
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
       case Success(blocks) =>
         Try {
-          val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
+          val dbFut = TezosDb.writeBlocksToDatabase(blocks, db)
           dbFut onComplete {
             case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
             case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
@@ -76,27 +77,25 @@ object Lorre extends App with LazyLogging {
 
   /**
     * Fetches and stores all accounts from the latest block stored in the database.
+    *
+    * NOTE: as the call is now async, it won't stop the application on error as before, so
+    * we should evaluate how to handle failed processing
     */
-  def processTezosAccounts(): Try[Unit] = {
+  def processTezosAccounts(): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network) match {
-      case Success(accountsInfo) =>
-        Try {
-          val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)
-          dbFut onComplete {
-            case Success(_) => logger.info(s"Wrote ${accountsInfo.accounts.size} accounts to the database.")
-            case Failure(e) => logger.error(s"Could not write accounts to the database because $e")
-          }
-          Await.result(dbFut, Duration.Inf)
-        }
+    tezosNodeOperator.getLatestAccounts(network).flatMap {
+      case Some(accountsInfo) =>
+        db.run(TezosDb.writeAccountsIO(accountsInfo)).andThen {
+          case Success(_) => logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
+          case Failure(e) => logger.error("Could not write accounts to the database", e)
+        }.map(_ => Done)
+      case None =>
+        logger.info("No latest block to update, no accounts will be added to the database")
+        Future.successful(Done)
+    }.andThen {
       case Failure(e) =>
         logger.error("Could not fetch accounts from client", e)
-        throw e
     }
   }
-
-
-
-
 
 }

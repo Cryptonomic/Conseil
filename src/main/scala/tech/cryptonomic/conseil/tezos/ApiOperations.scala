@@ -4,13 +4,13 @@ import java.sql.Timestamp
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.{Duration, _}
-import scala.concurrent.{Await, Future}
 import scala.util.Try
 
 
@@ -281,8 +281,42 @@ object ApiOperations {
     * @param filter Filter parameters.
     * @return
     */
-  private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
-    fetchLatestBlock().flatMap { latestBlock =>
+  private def filteredTablesIO(filter: Filter)(implicit ec: ExecutionContext): DBIO[FilteredTables] =
+    latestBlockIO().collect { // we fail the operation if no block is there
+      case Some(_) =>
+        TezosDatabaseOperations.accountsMaxBlockLevel.map {
+          maxLevelForAccounts =>
+
+            val filteredAccounts = Tables.Accounts.filter(account =>
+              filterAccountIDs(filter, account) &&
+                filterAccountDelegates(filter, account) &&
+                filterAccountManagers(filter, account) &&
+                account.blockLevel === maxLevelForAccounts)
+
+            val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
+              filterOperationIDs(filter, opGroup)
+            })
+
+            val filteredOps = Tables.Operations.filter({ op =>
+              filterOperationKinds(filter, op) &&
+                filterOperationDestinations(filter, op) &&
+                filterOperationSources(filter, op)
+            })
+
+            val filteredBlocks = Tables.Blocks.filter({ block =>
+              filterBlockIDs(filter, block) &&
+                filterBlockLevels(filter, block) &&
+                filterChainIDs(filter, block) &&
+                filterProtocols(filter, block)
+            })
+
+            FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
+        }
+    }.flatten
+
+/*
+  private def getFilteredTables(filter: Filter)(implicit ec: ExecutionContext) = {
+    fetchLatestBlock().flatMap { _ =>
       fetchMaxBlockLevelForAccounts().flatMap { maxLevelForAccounts =>
         Try {
           val filteredAccounts = Tables.Accounts.filter(account =>
@@ -313,6 +347,7 @@ object ApiOperations {
       }
     }
   }
+*/
 
   /**
     * Returns the join of some combination of the Blocks, Operation Groups, Operations, and Accounts
@@ -620,14 +655,8 @@ object ApiOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock(): Try[Tables.BlocksRow] = {
-    fetchMaxLevel().flatMap { maxLevel =>
-      Try {
-        val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
-        Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
-      }
-    }
-  }
+  def fetchLatestBlock()(implicit ec: ExecutionContext) =
+    dbHandle.run(latestBlockIO())
 
   /**
     * Fetches a block by block hash from the db.
@@ -644,11 +673,20 @@ object ApiOperations {
   }
 
 
-  private def extractFromBlock(b: Tables.Blocks) = {
-    (b.level, b.proto, b.predecessor, b.timestamp, b.validationPass,
-      b.fitness, b.context,
-      b.signature, b.protocol, b.chainId, b.hash, b.operationsHash)
-  }
+  private def extractFromBlock(b: Tables.Blocks) =
+    (b.level,
+      b.proto,
+      b.predecessor,
+      b.timestamp,
+      b.validationPass,
+      b.fitness,
+      b.context,
+      b.signature,
+      b.protocol,
+      b.chainId,
+      b.hash,
+      b.operationsHash
+    )
 
   /**
     * Fetches all blocks from the db.
@@ -656,53 +694,137 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
-
-    getFilteredTables(filter).flatMap { filteredTables =>
-
-      Try {
+  def fetchBlocks(filter: Filter)(implicit ec: ExecutionContext): Future[Seq[BlocksRow]] = {
+    val filteringIO = filteredTablesIO(filter).flatMap {
+      filtered =>
 
         // Blocks need to be fetched, other tables needed if user asks for them via the filter
         val blockFlag = true
         val operationGroupFlag = isOperationGroupFilter(filter)
         val operationFlag = isOperationFilter(filter)
         val accountFlag = isAccountFilter(filter)
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
+        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filtered, filter)
 
-        val action = joinedTables match {
+        //there will be some action only if the joined tables have the expected shape
+        val validAction = joinedTables.collect {
 
-          case Some(Blocks(blocks)) =>
+          case Blocks(blocks) =>
             for {
               b <- blocks
             } yield extractFromBlock(b)
 
-          case Some(BlocksOperationGroups(blocksOperationGroups)) =>
+          case BlocksOperationGroups(blocksOperationGroups) =>
             for {
               (b, _) <- blocksOperationGroups
             } yield extractFromBlock(b)
 
-          case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
+          case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
             for {
               ((b, _), _) <- blocksOperationGroupsOperations
             } yield extractFromBlock(b)
-
-          case _ =>
-            throw new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
-
         }
 
-        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
-        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
+        validAction.map {
+          action =>
+            val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
+
+            sortedAction.distinct
+              .take(getFilterLimit(filter))
+              .result
+              .map(actions => actions.map(Tables.BlocksRow.tupled))
+        }.getOrElse(
+          DBIO.failed(new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind."))
+        )
+    }
+
+    dbHandle.run(filteringIO)
+  }
+
+//  def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
+//
+//      Try {
+//
+//        // Blocks need to be fetched, other tables needed if user asks for them via the filter
+//        val blockFlag = true
+//        val operationGroupFlag = isOperationGroupFilter(filter)
+//        val operationFlag = isOperationFilter(filter)
+//        val accountFlag = isAccountFilter(filter)
+//        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
+//
+//        val action = joinedTables match {
+//
+//          case Some(Blocks(blocks)) =>
+//            for {
+//              b <- blocks
+//            } yield extractFromBlock(b)
+//
+//          case Some(BlocksOperationGroups(blocksOperationGroups)) =>
+//            for {
+//              (b, _) <- blocksOperationGroups
+//            } yield extractFromBlock(b)
+//
+//          case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
+//            for {
+//              ((b, _), _) <- blocksOperationGroupsOperations
+//            } yield extractFromBlock(b)
+//
+//          case _ =>
+//            throw new Exception("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
+//
+//        }
+//
+//        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
+//        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
+//        val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
+//        results.map(x => Tables.BlocksRow(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12))
+//      }
+
+  /**
+    * Fetch a given operation group
+    *
+    * Runing the returned operation will fail with [[NoSuchElementException]] if
+    *  - no block is found on the db
+    *  - no group corresponds to the given hash
+    *
+    * @param operationGroupHash Operation group hash
+    * @return Operation group along with associated operations and accounts
+    */
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+    val groupedOpsIO = latestBlockIO().collect { // we fail the operation if no block is there
+      case Some(_) =>
+        TezosDatabaseOperations.operationsForGroupIO(operationGroupHash).map(_.get) // we want to fail here too
+    }.flatten
+
+    //convert to a valid object for the caller
+    dbHandle.run(groupedOpsIO).map {
+      case (opGroup, operations) =>
+        Map(
+          "operation_group" -> opGroup,
+          "operations" -> operations
+        )
+    }
+  }
+
+/*
+      Try {
+        val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
+        val opGroup = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
+        val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
+        val operations = Await.result(op2, Duration.apply(awaitTimeInSeconds, SECONDS))
+        Map(
+          "operation_group" -> opGroup,
+          "operations" -> operations
+        )
       }
     }
+*/
 
   /**
     * Fetch a given operation group
     * @param operationGroupHash Operation group hash
     * @return Operation group along with associated operations and accounts
     */
+/*
   def fetchOperationGroup(operationGroupHash: String): Try[Map[String, Any]] =
     fetchLatestBlock().flatMap { latestBlock =>
       Try {
@@ -716,6 +838,7 @@ object ApiOperations {
         )
       }
     }
+*/
 
   private def extractFromOperationGroup(opGroup: Tables.OperationGroups) = {
     (opGroup.protocol, opGroup.chainId, opGroup.hash, opGroup.branch,
@@ -835,6 +958,7 @@ object ApiOperations {
   }
 
 
+
   /**
     * Given the operation kind and the number of columns wanted,
     * return the mean (along with +/- one standard deviation) of
@@ -932,6 +1056,21 @@ object ApiOperations {
     }
 
   }
+
+  //********************** Async rewrite ********************************/
+
+  /**
+    * @return the most recent block, if one exists in the database.
+    */
+  private def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
+    TezosDb.maxBlockLevel.flatMap(
+      maxLevel =>
+        Tables.Blocks
+          .filter(_.level === maxLevel)
+          .take(1)
+          .result
+          .headOption
+    )
 
 }
 
