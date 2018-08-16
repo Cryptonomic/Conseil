@@ -2,12 +2,11 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.3
--- Dumped by pg_dump version 10.3
+-- Dumped from database version 9.5.13
+-- Dumped by pg_dump version 9.5.13
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -172,14 +171,14 @@ ALTER SEQUENCE public.operations_operation_id_seq1 OWNED BY public.operations.op
 
 
 --
--- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: operation_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq1'::regclass);
 
 
 --
--- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operation_groups
@@ -187,7 +186,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
--- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
@@ -195,7 +194,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: blocks blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.blocks
@@ -203,7 +202,7 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: operations operationId; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operationId; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
@@ -225,42 +224,7 @@ CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
 
 --
--- Name: ix_accounts_block_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_accounts_block_level ON public.accounts USING btree (block_level);
-
-
---
--- Name: ix_accounts_manager; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_accounts_manager ON public.accounts USING btree (manager);
-
-
---
--- Name: ix_blocks_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_blocks_level ON public.blocks USING btree (level);
-
-
---
--- Name: ix_operations_destination; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_destination ON public.operations USING btree (destination);
-
-
---
--- Name: ix_operations_source; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_source ON public.operations USING btree (source);
-
-
---
--- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
@@ -268,7 +232,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: block; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operation_groups
@@ -276,7 +240,15 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
--- Name: operations fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks_predecessor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blocks
+    ADD CONSTRAINT blocks_predecessor_fkey FOREIGN KEY (predecessor) REFERENCES public.blocks(hash);
+
+
+--
+-- Name: fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
@@ -284,7 +256,7 @@ ALTER TABLE ONLY public.operations
 
 
 --
--- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
