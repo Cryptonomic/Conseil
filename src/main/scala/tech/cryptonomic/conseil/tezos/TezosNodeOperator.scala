@@ -108,19 +108,25 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param hash     Hash of the given block
     * @return         Block
     */
-  def getBlock(network: String, hash: String, offset: Int): Try[TezosTypes.Block] =
-    node.runGetQuery(network, s"blocks/$hash~${offset.toString}").flatMap { jsonEncodedBlock =>
+  def getBlock(network: String, hash: String, offset: Option[Int] = None): Try[TezosTypes.Block] = {
+    val offsetString = offset.map(_.toString).getOrElse("")
+    val offsetStringWithTilde = offsetString match {
+      case "" => ""
+      case offset => "~" + offset
+    }
+    node.runGetQuery(network, s"blocks/$hash${offsetStringWithTilde}").flatMap { jsonEncodedBlock =>
       Try(fromJson[TezosTypes.BlockMetadata](jsonEncodedBlock)).flatMap { theBlock =>
         logger.info(s"Processed block at height: ${theBlock.header.level}")
-        if(theBlock.header.level==0)
-          Try(Block(theBlock, List[OperationGroup]()))    //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+        if (theBlock.header.level == 0)
+          Try(Block(theBlock, List[OperationGroup]())) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else {
-          getAllOperationsForBlock(network, hash).flatMap{ itsOperations =>
+          getAllOperationsForBlock(network, hash).flatMap { itsOperations =>
             Try(Block(theBlock, itsOperations.flatten))
           }
         }
       }
     }
+  }
 
   /**
     * Gets the block head.
@@ -128,7 +134,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return         Block head
     */
   def getBlockHead(network: String): Try[TezosTypes.Block]= {
-    getBlock(network, "head", 0)
+    getBlock(network, "head")
   }
 
   /**
@@ -146,7 +152,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         if(headLevel <= maxLevel)
           Try(List[Block]())
         else
-          getBlocks(network, maxLevel+1, headLevel, headHash, followFork)
+          getBlocks(network, maxLevel+1, headLevel, Some(headHash), followFork)
       }
     }
 
@@ -154,33 +160,35 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * Gets the latest blocks from the database using an offset.
     * @param network        Which Tezos network to go against
     * @param offset         How many previous blocks to get from the start
-    * @param hash           The block from which to offset, using the hash provided or the head if none is provided.
+    * @param startBlockHash The block from which to offset, using the hash provided or the head if none is provided.
     * @param followFork     If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return               Blocks
     */
-  def getBlocks(network: String, offset: Int, hash: String, followFork: Boolean): Try[List[Block]] =
-    getBlock(network, hash, 0).flatMap(block =>
+  def getBlocks(network: String, offset: Int, startBlockHash: Option[String], followFork: Boolean): Try[List[Block]] = {
+    val hash = startBlockHash.getOrElse("head")
+    getBlock(network, hash).flatMap(block =>
       getBlocks(
         network,
         block.metadata.header.level - offset + 1,
         block.metadata.header.level,
-        hash,
+        startBlockHash,
         followFork)
     )
+  }
 
   /**
     * Gets the blocks using a specified rage
     * @param network        Which Tezos network to go against
     * @param minLevel       Minimum block level
     * @param maxLevel       Maximum block level
-    * @param hash           If specified, start from the supplied block hash.
+    * @param startBlockHash If specified, start from the supplied block hash.
     * @param followFork     If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return               Blocks
     */
-  def getBlocks(network: String, minLevel: Int, maxLevel: Int, hash: String, followFork: Boolean): Try[List[Block]] = {
-    val blocksInRange = getBlock(network, hash, 0)
+  def getBlocks(network: String, minLevel: Int, maxLevel: Int, startBlockHash: Option[String], followFork: Boolean): Try[List[Block]] = {
+    val hash = startBlockHash.getOrElse("head")
+    val blocksInRange = getBlock(network, hash)
       .flatMap(block => processBlocks(network, block.metadata.hash, minLevel, maxLevel))
-    // If followFork is true, create logic for that
     val blocksFromFork = followFork match {
       case false => Try{List[Block]()}
       case true => Try{List[Block]()}
@@ -211,7 +219,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     val offsets = (0 to maxOffset).toList.par
     offsets.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
     sequence(
-      offsets.map{ offset => getBlock(network, hash, offset)}.toList
+      offsets.map{ offset => getBlock(network, hash, Some(offset))}.toList
     )
   }
 
@@ -222,7 +230,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @return           Accounts with their corresponding block hash
     */
   def getAccounts(network: String, blockHash: String): Try[AccountsWithBlockHashAndLevel] =
-    getBlock(network, blockHash, 0).flatMap { block =>
+    getBlock(network, blockHash).flatMap { block =>
       getAllAccountsForBlock(network, blockHash).flatMap { accounts =>
         Try(AccountsWithBlockHashAndLevel(block.metadata.hash, block.metadata.header.level, accounts))
       }
