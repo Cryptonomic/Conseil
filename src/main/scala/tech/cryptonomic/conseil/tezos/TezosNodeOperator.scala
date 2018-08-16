@@ -3,22 +3,20 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-
-import scala.concurrent.Future
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
-import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 
 import scala.collection.parallel.ForkJoinTaskSupport
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
-class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
+class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: ExecutionContext) extends LazyLogging {
 
   private val conf = ConfigFactory.load
 
@@ -51,6 +49,18 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     }
 
   /**
+    * Fetches a specific account for a given block wrapped in a [[Future]].
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of given block
+    * @param accountID  Account ID
+    * @return           The account
+    */
+  def asyncGetAccountForBlock(network: String, blockHash: String, accountID: String): Future[TezosTypes.Account] =
+    node
+      .runAsyncGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID")
+      .map(fromJson[TezosTypes.Account])
+
+  /**
     * Fetches the manager of a specific account for a given block.
     * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block
@@ -68,28 +78,31 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param blockHash  Hash of given block.
     * @return           Accounts
     */
-  def getAllAccountsForBlock(network: String, blockHash: String): Try[Map[String, TezosTypes.Account]] = Try {
-    node.runGetQuery(network, s"blocks/$blockHash/context/contracts") match {
-      case Success(jsonEncodedAccounts) =>
+  def getAllAccountsForBlock(network: String, blockHash: String): Future[Map[String, Account]] =
+    node.runAsyncGetQuery(network, s"blocks/$blockHash/context/contracts") flatMap {
+      case jsonEncodedAccounts =>
+
         val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
-        val listedAccounts: List[String] = accountIDs
-        val parListedAccount = listedAccounts.par
-        parListedAccount.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
-        val accounts = parListedAccount.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
-        //val accounts = listedAccounts.par.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
-        accounts.count(_.isFailure) match {
-          case 0 =>
-            val justTheAccounts = accounts.map(_.get)
-            (listedAccounts zip justTheAccounts).toMap
-          case _ =>
-            accounts.filter(_.isFailure).foreach(println)
-            throw new Exception(s"Could not decode one of the accounts for block $blockHash")
+
+        val parListedAccount = accountIDs.par
+        parListedAccount.tasksupport =
+          new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
+
+        val accountsF =
+          Future.sequence(
+            parListedAccount.map(
+              acctID => asyncGetAccountForBlock(network, blockHash, acctID)
+            ).seq
+          )
+
+        accountsF.map {
+          accounts =>
+            accountIDs.zip(accounts).toMap
+        }.andThen {
+          case Failure(e) =>
+            logger.error(s"Failed to load accounts for ${accountIDs.size} ids $accountIDs", e)
         }
-      case Failure(e) =>
-        logger.error(s"Could not get a list of accounts for block $blockHash")
-        throw e
     }
-  }
 
   /**
     * Returns all operation groups for a given block.
@@ -141,7 +154,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         val headLevel =  blockHead.metadata.header.level
         val headHash  =  blockHead.metadata.hash
         if(headLevel <= maxLevel)
-          Try(List[Block]())
+          Try(List.empty[Block])
         else
           getBlocks(network, maxLevel+1, headLevel, Some(headHash), followFork)
       }
@@ -225,25 +238,33 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
 
   /**
     * Get all accounts for a given block
-    * @param network    Which Tezos network to go against
-    * @param blockHash  Hash of given block
-    * @return           Accounts with their corresponding block hash
+    * @param network     Which Tezos network to go against
+    * @param blockHash   Hash of given block
+    * @param headerLevel level of given block
+    * @return            Accounts with their corresponding block hash
     */
-  def getAccounts(network: String, blockHash: String): Try[AccountsWithBlockHashAndLevel] =
-    for {
-      block <- getBlock(network, blockHash)
-      accounts <- getAllAccountsForBlock(network, blockHash)
-    } yield AccountsWithBlockHashAndLevel(block.metadata.hash, block.metadata.header.level, accounts)
+  def getAccounts(network: String, blockHash: String, headerLevel: Int): Future[AccountsWithBlockHashAndLevel] = {
+    val results =
+      getAllAccountsForBlock(network, blockHash).map(
+        accounts =>
+          AccountsWithBlockHashAndLevel(blockHash, headerLevel, accounts)
+      )
+    results.failed.foreach(
+      e => logger.error(s"Could not get a list of accounts for block $blockHash", e)
+    )
+    results
+  }
+
 
   /**
     * Get accounts for the latest block in the database.
     * @param network  Which Tezos network to go against
     * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
     */
-  def getLatestAccounts(network: String)(implicit ec: ExecutionContext): Future[Option[AccountsWithBlockHashAndLevel]] =
+  def getLatestAccounts(network: String): Future[Option[AccountsWithBlockHashAndLevel]] =
     ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.accountsMaxBlockLevel)).flatMap {
       case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
-        Future.fromTry(getAccounts(network, latestBlock.hash).map(Some(_)))
+        getAccounts(network, latestBlock.hash, latestBlock.level).map(Some(_))
       case (Some(latestBlock), _) =>
         Future.successful(Some(AccountsWithBlockHashAndLevel(latestBlock.hash, latestBlock.level)))
       case _ =>

@@ -7,14 +7,18 @@ import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
+import scala.concurrent.duration._
 import scala.util.Try
+
+trait ShutdownComplete
+object ShutdownComplete extends ShutdownComplete
 
 /**
   * Interface into the Tezos blockchain.
   */
 trait TezosRPCInterface {
+
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
     * @param network  Which Tezos network to go against
@@ -24,6 +28,15 @@ trait TezosRPCInterface {
   def runGetQuery(network: String, command: String): Try[String]
 
   /**
+    * Runs an async RPC call against the configured Tezos node using HTTP GET.
+    * @param network  Which Tezos network to go against
+    * @param command  RPC command to invoke
+    * @return         Result of the RPC call in a [[Future]]
+    */
+  def runAsyncGetQuery(network: String, command: String): Future[String]
+
+
+  /**
     * Runs an RPC call against the configured Tezos node using HTTP POST.
     * @param network  Which Tezos network to go against
     * @param command  RPC command to invoke
@@ -31,6 +44,9 @@ trait TezosRPCInterface {
     * @return         Result of the RPC call
     */
   def runPostQuery(network: String, command: String, payload: Option[String] = None): Try[String]
+
+  /** Frees any resource that was eventually reserved */
+  def shutdown(): Future[ShutdownComplete]= Future.successful(ShutdownComplete)
 }
 
 /**
@@ -47,14 +63,23 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  @Override
-  def runGetQuery(network: String, command: String): Try[String] = {
+  override def shutdown(): Future[ShutdownComplete] = {
+    Http().shutdownAllConnectionPools()
+      .flatMap (_ => system.terminate())
+      .map(_ => ShutdownComplete)(executor = scala.concurrent.ExecutionContext.Implicits.global)
+  }
+
+  private[this] def commandUrl(network: String, command: String): String = {
+    val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
+    val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
+    val port = conf.getInt(s"platforms.tezos.$network.node.port")
+    val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
+    s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
+  }
+
+  override def runGetQuery(network: String, command: String): Try[String] = {
     Try{
-      val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
-      val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
-      val port = conf.getInt(s"platforms.tezos.$network.node.port")
-      val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
-      val url = s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
+      val url = commandUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
@@ -71,14 +96,21 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
     }
   }
 
-  @Override
-  def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
+  override def runAsyncGetQuery(network: String, command: String): Future[String] = {
+    val url = commandUrl(network, command)
+    val request = HttpRequest(HttpMethods.GET, url)
+    logger.debug("Async querying URL {} for platform Tezos and network {}", url, network)
+
+    for {
+      response <- Http(system).singleRequest(request)
+      strict <- response.entity.toStrict(entityGetTimeout)
+    } yield strict.data.utf8String
+
+  }
+
+  override def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
     Try{
-      val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
-      val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
-      val port = conf.getInt(s"platforms.tezos.$network.node.port")
-      val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
-      val url = s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
+      val url = commandUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val postedData = payload match {
         case None => """{}"""

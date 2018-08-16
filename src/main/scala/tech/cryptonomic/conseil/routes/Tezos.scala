@@ -15,11 +15,11 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
   */
 object Tezos extends LazyLogging {
 
+  implicit val dispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.tezos-dispatcher")
+
   val dbHandle = DatabaseUtil.db
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-
-  implicit val dispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.actor.tezos-dispatcher")
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(

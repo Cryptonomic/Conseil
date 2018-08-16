@@ -16,8 +16,9 @@ import scala.util.{Failure, Success, Try}
   */
 object Lorre extends App with LazyLogging {
 
-  //keep this import here to make it evident where we spawn our async code
-  import scala.concurrent.ExecutionContext.Implicits.global
+  //re-use the dispatcher pool from the node interface
+  implicit val dispatcher = TezosNodeInterface.system.dispatcher
+
   private val network =
     if (args.length > 0) args(0)
     else {
@@ -34,6 +35,7 @@ object Lorre extends App with LazyLogging {
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
   lazy val db = DatabaseUtil.db
+
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   @tailrec
@@ -51,8 +53,14 @@ object Lorre extends App with LazyLogging {
       mainLoop(iteration + 1)
   }
 
+  sys.addShutdownHook{
+    logger.info("Handling system shutdown")
+    tezosNodeOperator.node.shutdown()
+    db.close()
+  }
   logger.info("About to start processing on the {} network", network)
-  try {mainLoop(0)} finally db.close()
+  try {mainLoop(0)} finally {sys.exit()}
+
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
