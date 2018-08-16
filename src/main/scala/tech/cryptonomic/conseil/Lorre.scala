@@ -35,10 +35,17 @@ object Lorre extends App with LazyLogging {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
+  val numberOfRetries = conf.getInt("lorre.numberOfRetries")
+  @tailrec
+  def retry[A](attempts: Int)(fn: => Try[A]): Try[A] = fn match {
+    case Failure(_) if attempts > 1 => retry(attempts-1)(fn)
+    case noMoreAttempts => noMoreAttempts
+  }
+
   @tailrec
   def mainLoop(iteration: Int): Unit = {
-      processTezosBlocks()
-      processTezosAccounts()
+      retry(numberOfRetries)(processTezosBlocks())
+      retry(numberOfRetries)(processTezosAccounts())
       if (iteration % feeUpdateInterval == 0) {
         FeeOperations.processTezosAverageFees()
       }
