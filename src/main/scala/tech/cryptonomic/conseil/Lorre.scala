@@ -5,8 +5,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.annotation.tailrec
@@ -24,13 +23,16 @@ object Lorre extends App with LazyLogging {
       | Please provide a valid network as an argument to the command line""".stripMargin)
       sys.exit(1)
     }
-  
+
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
+
+  //re-use the dispatcher pool from the node interface
+  implicit val dispatcher = TezosNodeInterface.system.dispatcher
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
@@ -77,9 +79,9 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches and stores all accounts from the latest block stored in the database.
     */
-  def processTezosAccounts(): Try[Unit] = {
+  def processTezosAccounts(): Future[Unit] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network) match {
+    tezosNodeOperator.getLatestAccounts(network) transform {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)
