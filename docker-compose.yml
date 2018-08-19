@@ -11,4 +11,4 @@ services:
       POSTGRES_DB: "conseil-local"
     volumes:
     - "./pgdata:/var/lib/postgresql/data"
-    
+    - "./doc/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
