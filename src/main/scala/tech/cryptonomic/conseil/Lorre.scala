@@ -92,7 +92,7 @@ object Lorre extends App with LazyLogging {
           TezosDatabaseOperations.writeBlocksToDatabase(blocks, db).andThen {
               case Success(_) =>
                 val done = System.nanoTime()
-                logger.info("Wrote {} blocks to the database in {} seconds.", blocks.size, (done - start).toDouble/1e6)
+                logger.info("Wrote {} blocks to the database in {} seconds.", blocks.size, (done - start).toDouble/1e9)
               case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
             }
       }
