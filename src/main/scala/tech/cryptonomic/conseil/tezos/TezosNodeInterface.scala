@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -8,8 +9,9 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.tezos.TezosTypes.Block
 
-import scala.concurrent.{Await, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContextExecutor, Future, SyncVar}
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -58,9 +60,9 @@ trait TezosRPCInterface {
 object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   private val conf = ConfigFactory.load
-  private val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
-  private val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
-  private val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
+  private[tezos] val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
+  private[tezos] val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
+  private[tezos] val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
 
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -155,6 +157,8 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       )
   }
 
+
+
   override def runBatchedGetQuery(network: String, commands: List[String]): Future[List[String]] = {
     val connections = hostPool(network)
     val uris = Source(commands.map(commandUrl(network, _)))
@@ -172,5 +176,4 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       .run()
 
   }
-
 }

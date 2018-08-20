@@ -1,14 +1,18 @@
 package tech.cryptonomic.conseil
 
+import java.sql.Timestamp
+
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos._
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHeader, BlockMetadata}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.annotation.tailrec
+import scala.compat.Platform
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -39,17 +43,21 @@ object Lorre extends App with LazyLogging {
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
-      processTezosBlocks()
-      processTezosAccounts()
-      if (iteration % feeUpdateInterval == 0) {
-        FeeOperations.processTezosAverageFees()
-      }
-      if (iteration % purgeAccountsInterval == 0) {
-        TezosDatabaseOperations.purgeOldAccounts()
-      }
-      logger.info("Taking a nap")
-      Thread.sleep(sleepIntervalInSeconds * 1000)
-      mainLoop(iteration + 1)
+    Await.ready(
+      processTezosBlocks().flatMap(
+        _ =>
+          processTezosAccounts()
+      )
+    , atMost = Duration.Inf)
+    if (iteration % feeUpdateInterval == 0) {
+      FeeOperations.processTezosAverageFees()
+    }
+    if (iteration % purgeAccountsInterval == 0) {
+      TezosDatabaseOperations.purgeOldAccounts()
+    }
+    logger.info("Taking a nap")
+    Thread.sleep(sleepIntervalInSeconds * 1000)
+    mainLoop(iteration + 1)
   }
 
   logger.info("About to start processing on the {} network", network)
@@ -58,22 +66,40 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(): Try[Unit] = {
-    logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
-      case Success(blocks) =>
-        Try {
-          val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
-          dbFut onComplete {
-            case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
-            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
-          }
-          Await.result(dbFut, Duration.Inf)
-        }
-      case Failure(e) =>
-        logger.error("Could not fetch blocks from client", e)
-        throw e
-    }
+  def processTezosBlocks(): Future[Unit] = {
+    logger.info("Processing Tezos Blocks...")
+/* TODO REMOVE this is only here temporarily for testing purposes
+    val top = BlockMetadata(
+      protocol = "1",
+      chain_id = Some("NetXJwMHeUZC57y"),
+      hash = "BLWcWwuvFdzFJXzRQxbwTCFqBnd5E3rCTCaDiUTqaeeboHWgb1i",
+      header = TezosTypes.BlockHeader(
+        level = 1000,
+        proto = 1,
+        predecessor = "BLvTH2QaTe2y96wk9ebwAy7aky2hx9p3G9yryDsLZgCJ97GPPnn",
+        timestamp = new Timestamp(1532163107000L),
+        validationPass = 0,
+        operations_hash = Some("LLoa4XzL8hpxwLuxexkEySVNcygp9ysidh3TyGAwSbzGtxzZ3gr9D"),
+        fitness = Seq("00,000000000000601f"),
+        context = "CoVoUWxsZqHabGeXdBVfBgP8nzuxXqHgiq5GCnHeuAUL5ynWYgtd",
+        signature = Some("sigoPBvUD2qGxC2ytyv4omRKkRm6DtN2zcaHYbvdnAhaiVR7RZqd3ZDJXG7toy63zhyqq31fjiqaUyqcWTS5tAxonEPjiSxa")
+      )
+    )
+*/
+    val start = System.nanoTime()
+    val stored = tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+        blocks =>
+          TezosDatabaseOperations.writeBlocksToDatabase(blocks, db).andThen {
+              case Success(_) =>
+                val done = System.nanoTime()
+                logger.info("Wrote {} blocks to the database in {} seconds.", blocks.size, (done - start).toDouble/1e6)
+              case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
+            }
+      }
+
+    stored.failed.foreach( e => logger.error("Could not fetch blocks from client", e))
+
+    stored
   }
 
   /**
