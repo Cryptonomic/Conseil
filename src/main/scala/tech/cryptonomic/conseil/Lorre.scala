@@ -68,24 +68,6 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Future[Unit] = {
     logger.info("Processing Tezos Blocks...")
-/* TODO REMOVE this is only here temporarily for testing purposes
-    val top = BlockMetadata(
-      protocol = "1",
-      chain_id = Some("NetXJwMHeUZC57y"),
-      hash = "BLWcWwuvFdzFJXzRQxbwTCFqBnd5E3rCTCaDiUTqaeeboHWgb1i",
-      header = TezosTypes.BlockHeader(
-        level = 1000,
-        proto = 1,
-        predecessor = "BLvTH2QaTe2y96wk9ebwAy7aky2hx9p3G9yryDsLZgCJ97GPPnn",
-        timestamp = new Timestamp(1532163107000L),
-        validationPass = 0,
-        operations_hash = Some("LLoa4XzL8hpxwLuxexkEySVNcygp9ysidh3TyGAwSbzGtxzZ3gr9D"),
-        fitness = Seq("00,000000000000601f"),
-        context = "CoVoUWxsZqHabGeXdBVfBgP8nzuxXqHgiq5GCnHeuAUL5ynWYgtd",
-        signature = Some("sigoPBvUD2qGxC2ytyv4omRKkRm6DtN2zcaHYbvdnAhaiVR7RZqd3ZDJXG7toy63zhyqq31fjiqaUyqcWTS5tAxonEPjiSxa")
-      )
-    )
-*/
     val start = System.nanoTime()
     val stored = tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
         blocks =>

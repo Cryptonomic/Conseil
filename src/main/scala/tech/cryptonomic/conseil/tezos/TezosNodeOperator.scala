@@ -158,25 +158,6 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     }
 
   /**
-    * Gets all blocks from the one passed as argument down to the oldest block not already in the database.
-    *
-    * This method is here for testing purposes and must be removed before the PR merge
-    *
-    * @param top        To starting block metadata
-    * @param network    Which Tezos network to go against
-    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @return           Blocks
-    */
-  def getBlocksNotInDatabaseUpTo(meta: BlockMetadata)(network: String, followFork: Boolean): Future[List[Block]] =
-    Future.fromTry(ApiOperations.fetchMaxLevel()).flatMap{ maxLevel =>
-      if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-      if (meta.header.level <= maxLevel)
-        Future.successful(List.empty)
-      else
-        recursiveBlockFetch(network, Block(meta, List.empty), maxLevel+1, meta.header.level, followFork)
-    }
-
-  /**
     * Fetches metadata for a block only, without waiting for the answer
     * @param network   Which Tezos network to go against
     * @param hash      Hash of the block
