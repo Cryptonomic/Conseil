@@ -6,7 +6,6 @@ import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, T
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.annotation.tailrec
@@ -16,6 +15,8 @@ import scala.annotation.tailrec
   */
 object Lorre extends App with LazyLogging {
 
+  //keep this import here to make it evident where we spawn our async code
+  import scala.concurrent.ExecutionContext.Implicits.global
   private val network =
     if (args.length > 0) args(0)
     else {
@@ -24,7 +25,6 @@ object Lorre extends App with LazyLogging {
       | Please provide a valid network as an argument to the command line""".stripMargin)
       sys.exit(1)
     }
-  
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
