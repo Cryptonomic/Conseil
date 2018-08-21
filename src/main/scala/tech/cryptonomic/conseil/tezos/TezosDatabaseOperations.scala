@@ -28,13 +28,11 @@ object TezosDatabaseOperations {
     * @return         Future on database inserts.
     */
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
-      )
-    )
+    dbHandle.run(DBIO.seq(
+      Tables.Blocks           ++= blocks.map(blockToDatabaseRow),
+      Tables.OperationGroups  ++= blocks.flatMap(operationGroupToDatabaseRow),
+      Tables.Operations       ++= blocks.flatMap(operationsToDatabaseRow)
+    ))
 
   /**
     * Writes accounts from a specific blocks to a database.
@@ -42,12 +40,9 @@ object TezosDatabaseOperations {
     * @param dbHandle     Handle to a database.
     * @return             Future on database inserts.
     */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
-      )
-    )
+  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Option[Int]] =
+    dbHandle.run(Tables.Accounts ++= accountsToDatabaseRows(accountsInfo))
+
 
   /**
     *
@@ -55,12 +50,8 @@ object TezosDatabaseOperations {
     * @param dbHandle  Handle to a database
     * @return          Future on database inserts.
     */
-  def writeFeesToDatabase(fees: List[Option[AverageFees]], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Fees                   ++= feesToDatabaseRows(fees)
-      )
-    )
+  def writeFeesToDatabase(fees: List[Option[AverageFees]], dbHandle: Database): Future[Option[Int]] =
+    dbHandle.run(Tables.Fees ++= feesToDatabaseRows(fees))
 
   /**
     * Generates database rows for accounts.
