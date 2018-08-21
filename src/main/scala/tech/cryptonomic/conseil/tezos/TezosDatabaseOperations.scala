@@ -8,9 +8,9 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -28,13 +28,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return         Future on database inserts.
     */
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
-      )
-    )
+    dbHandle.run(DBIO.seq(
+      Tables.Blocks           ++= blocks.map(blockToDatabaseRow),
+      Tables.OperationGroups  ++= blocks.flatMap(operationGroupToDatabaseRow),
+      Tables.Operations       ++= blocks.flatMap(operationsToDatabaseRow)
+    ))
 
   /**
     * Writes accounts from a specific blocks to a database.
@@ -42,12 +40,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param dbHandle     Handle to a database.
     * @return             Future on database inserts.
     */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
-      )
-    )
+  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Option[Int]] =
+    dbHandle.run(Tables.Accounts ++= accountsToDatabaseRows(accountsInfo))
+
 
   /**
     * Generates database rows for accounts.
