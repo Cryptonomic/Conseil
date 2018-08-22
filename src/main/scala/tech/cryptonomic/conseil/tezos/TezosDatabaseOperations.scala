@@ -43,7 +43,6 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Option[Int]] =
     dbHandle.run(Tables.Accounts ++= accountsToDatabaseRows(accountsInfo))
 
-
   /**
     * Generates database rows for accounts.
     * @param accountsInfo Accounts
