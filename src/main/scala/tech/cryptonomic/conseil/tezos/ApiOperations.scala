@@ -43,7 +43,7 @@ object ApiOperations {
     * @param order                  Sort items ascending or descending
     */
   case class Filter(
-                     limit: Option[Int] = Some(Filter.defaultLimit),
+                     limit: Option[Int] = Some(defaultLimit),
                      blockIDs: Option[Set[String]] = emptyOptions,
                      levels: Option[Set[Int]] = emptyOptions,
                      chainIDs: Option[Set[String]] = emptyOptions,
