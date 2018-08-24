@@ -22,11 +22,12 @@ trait TezosRPCInterface {
 
   /**
     * Runs all needed RPC calls against the configured Tezos node using HTTP GET
-    * @param network  Which Tezos network to go against
-    * @param commands RPC commands to invoke
+    * @param network          Which Tezos network to go against
+    * @param commands         RPC commands to invoke
+    * @param concurrencyLevel How many request will be executed concurrently against the node
     * @return         Result of the RPC calls
     */
-  def runBatchedGetQuery(network: String, commands: List[String]): Future[List[String]]
+  def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]]
 
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
@@ -68,7 +69,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  private[this] def commandUrl(network: String, command: String): String = {
+  private[this] def createCommandUrl(network: String, command: String): String = {
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
@@ -78,7 +79,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   override def runGetQuery(network: String, command: String): Try[String] = {
     Try{
-      val url = commandUrl(network, command)
+      val url = createCommandUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
@@ -96,7 +97,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   }
 
   override def runAsyncGetQuery(network: String, command: String): Future[String] = {
-    val url = commandUrl(network, command)
+    val url = createCommandUrl(network, command)
     val request = HttpRequest(HttpMethods.GET, url)
     logger.debug("Async querying URL {} for platform Tezos and network {}", url, network)
 
@@ -109,7 +110,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   override def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
     Try{
-      val url = commandUrl(network, command)
+      val url = createCommandUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val postedData = payload match {
         case None => """{}"""
@@ -159,14 +160,14 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
 
 
-  override def runBatchedGetQuery(network: String, commands: List[String]): Future[List[String]] = {
+  override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = {
     val connections = hostPool(network)
-    val uris = Source(commands.map(commandUrl(network, _)))
+    val uris = Source(commands.map(createCommandUrl(network, _)))
     val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
 
     uris.map(toRequest)
       .via(connections)
-      .mapAsync(5) {
+      .mapAsync(concurrencyLevel) {
         case (tried, _) =>
           Future.fromTry(tried)
       }

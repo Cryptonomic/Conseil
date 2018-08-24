@@ -3,14 +3,13 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosNodeInterface.conf
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 
 /**
@@ -21,6 +20,8 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
   private val conf = ConfigFactory.load
 
   val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
+  val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
+  val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
 
   /**
     * Output of operation signing.
@@ -44,7 +45,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @return           The account
     */
   def getAccountForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.Account] =
-    node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
+  node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
       Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
     }
 
@@ -56,12 +57,14 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @return           The account
     */
   def getAccountManagerForBlock(network: String, blockHash: String, accountID: String): Try[TezosTypes.ManagerKey] =
-    node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID/manager_key").flatMap { json =>
+  node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID/manager_key").flatMap { json =>
       Try(fromJson[TezosTypes.ManagerKey](json)).flatMap(managerKey => Try(managerKey))
     }
 
+
   /**
     * Fetches the accounts identified by id
+    *
     * @param network    Which Tezos network to go against
     * @param blockHash  the block storing the accounts
     * @param accountIDs the ids
@@ -70,7 +73,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     */
   def getAccountsForBlock(network: String, blockHash: String, accountIDs: List[String])(implicit  ec: ExecutionContext): Future[List[TezosTypes.Account]] =
     node
-      .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/$blockHash/context/contracts/$id"))
+      .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/$blockHash/context/contracts/$id"), accountsFetchConcurrency)
       .map(_.map(fromJson[TezosTypes.Account]))
 
   /**
@@ -153,7 +156,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
         if(headLevel <= maxLevel)
           Future.successful(List.empty)
         else
-          recursiveBlockFetch(network, blockHead, maxLevel+1, headLevel, followFork)
+          fetchBoundedBlockChain(network, blockHead, maxLevel+1, headLevel, followFork)
       }
     }
 
@@ -178,7 +181,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param collected  The currently accumulated metadata so far
     * @return           The metadata list, wrapped in a [[Future]]
     */
-  def recursiveMetadataFetch(
+  def fetchChainedMetadata(
     network: String,
     current: BlockMetadata,
     minLevel: Int,
@@ -202,17 +205,17 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
         Future.successful(current :: collected) //pred on db, we're done here
       else
         getMetadata(network, current.header.predecessor) flatMap { pred =>
-          recursiveMetadataFetch(network, pred, minLevel, maxLevel, followFork, current :: collected)
+          fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, current :: collected)
         }
       }
     else if (aboveMax)
       //skip this
       getMetadata(network, current.header.predecessor) flatMap { pred =>
-        recursiveMetadataFetch(network, pred, minLevel, maxLevel, followFork, collected)
+        fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, collected)
       }
     else if (aboveMin)
       getMetadata(network, current.header.predecessor) flatMap { pred =>
-        recursiveMetadataFetch(network, pred, minLevel, maxLevel, followFork, current :: collected)
+        fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, current :: collected)
       }
     else
       Future.successful(List.empty)
@@ -229,7 +232,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param followFork    If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return              All collected blocks, wrapped in a [[Future]]
     */
-  private def recursiveBlockFetch(
+  private def fetchBoundedBlockChain(
     network: String,
     startingBlock: Block,
     minLevel: Int,
@@ -240,9 +243,9 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
       json => fromJson[List[List[OperationGroup]]](json).flatten
 
     for {
-      metadataChain <- recursiveMetadataFetch(network, startingBlock.metadata, minLevel, maxLevel, followFork)
+      metadataChain <- fetchChainedMetadata(network, startingBlock.metadata, minLevel, maxLevel, followFork)
       operationsUrls = metadataChain.map(d => s"blocks/${d.hash}/operations")
-      operations <- node.runBatchedGetQuery(network, operationsUrls) map (all => all.map(jsonToOperationGroups))
+      operations <- node.runBatchedGetQuery(network, operationsUrls, blockOperationsFetchConcurrency) map (all => all.map(jsonToOperationGroups))
     } yield metadataChain.zip(operations).map(Block.tupled)
   }
 
