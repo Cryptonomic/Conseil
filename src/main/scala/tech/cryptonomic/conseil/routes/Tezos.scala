@@ -36,7 +36,7 @@ object Tezos extends LazyLogging {
     "operation_kind".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).tflatMap{ 
+  ).tflatMap{
     case (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) =>
     val filter: Filter = Filter(
       limit = limit,
@@ -77,7 +77,7 @@ object Tezos extends LazyLogging {
   val route: Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
-        validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
+        validate(filter.limit.forall(_ <= 10000), s"Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
                 complete(ApiOperations.fetchBlocks(filter))
