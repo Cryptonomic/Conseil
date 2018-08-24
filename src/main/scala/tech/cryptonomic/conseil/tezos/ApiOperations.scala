@@ -5,7 +5,7 @@ import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{ColumnOrdered, Rep}
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, FeesRow}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{Await, Future}
@@ -635,10 +635,11 @@ object ApiOperations {
   def fetchOperations(filter: Filter): Try[Seq[Tables.OperationsRow]] = Try{
     val action = for {
       o <- Tables.Operations
-      og <- Tables.OperationGroups
-      b <- Tables.Blocks
-      if o.operationGroupHash === og.hash &&
-      og.blockId === b.hash &&
+      og <- o.operationGroupsFk
+      b <- o.blocksFk
+    } yield (o, b)
+
+    val filtered = action.filter { case (o, b) =>
       filterOperationIDs(filter, o) &&
       filterOperationSources(filter, o) &&
       filterOperationDestinations(filter, o) &&
@@ -648,35 +649,16 @@ object ApiOperations {
       filterBlockLevels(filter, b) &&
       filterChainIDs(filter, b) &&
       filterProtocols(filter, b)
-    } yield (
-      o.kind,
-      o.source,
-      o.amount,
-      o.destination,
-      o.balance,
-      o.delegate,
-      o.operationGroupHash,
-      o.operationId,
-      o.fee,
-      o.storageLimit,
-      o.gasLimit,
-      o.blockHash,
-      o.timestamp,
-      o.blockLevel
-      )
-    val op = dbHandle.run(
-      action.
-        distinct.
-        sortBy(_._14.desc).
-        take(getFilterLimit(filter)).
-        result
-    )
-    val results = Await.result(op, awaitTimeInSeconds.seconds)
-    results.map(x => Tables.OperationsRow(
-      x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9, x._10, x._11, x._12, x._13, x._14)
-    )
-  }
+    }.map(_._1)
 
+    val op = dbHandle.run(
+      filtered.distinct
+        .sortBy(_.blockLevel.desc)
+        .take(getFilterLimit(filter))
+        .result
+    )
+    Await.result(op, awaitTimeInSeconds.seconds)
+  }
 
   /**
     * Given the operation kind and the number of columns wanted,
@@ -690,13 +672,23 @@ object ApiOperations {
     *         averaged over.
     */
   def fetchAverageFees(filter: Filter): Try[AverageFees] = Try {
-    val action = for {
-      fee <- Tables.Fees
-      if filterOperationKindsForFees(filter, fee)
-    } yield (fee.low, fee.medium, fee.high, fee.timestamp, fee.kind)
-    val op = dbHandle.run(action.distinct.sortBy(_._4.desc).take(1).result)
-    val results = Await.result(op, awaitTimeInSeconds.seconds).head
-    AverageFees(results._1, results._2, results._3, results._4, results._5)
+    val action =
+      Tables.Fees
+        .filter (
+          fee => filterOperationKindsForFees(filter, fee)
+        )
+        .distinct
+        .sortBy(_.timestamp.desc)
+        .take(1)
+        .result
+        .head
+
+    val row = Await.result(dbHandle.run(action), awaitTimeInSeconds.seconds)
+    row match {
+      case FeesRow(low, medium, high, timestamp, kind) =>
+       AverageFees(low, medium, high, timestamp, kind)
+    }
+
   }
 
   /**
@@ -707,10 +699,7 @@ object ApiOperations {
   def fetchMaxBlockLevelForAccounts(): Try[BigDecimal] = Try {
     val op = dbHandle.run(Tables.Accounts.map(_.blockLevel).max.result)
     val maxLevelOpt = Await.result(op, awaitTimeInSeconds.seconds)
-    maxLevelOpt match {
-      case Some(maxLevel) => maxLevel
-      case None => -1
-    }
+    maxLevelOpt.getOrElse(-1)
   }
 
   /**
