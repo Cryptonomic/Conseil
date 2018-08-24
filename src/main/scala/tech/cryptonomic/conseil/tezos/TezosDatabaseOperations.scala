@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel,
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.duration.{Duration, SECONDS}
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.math.{ceil, max}
 import scala.util.Try
 
@@ -215,5 +215,19 @@ object TezosDatabaseOperations {
       }
     }
   }
+
+  /**
+    * Checks if a block for this hash and related operations are stored on db
+    * @param hash Identifies the block
+    * @param ec   Needed to compose the operations
+    * @return     true if block and operations exists
+    */
+  def blockExists(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
+    dbHandle.run(for {
+      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash).exists.result
+      opsThere <- Tables.OperationGroups.filter(_.blockId === hash).exists.result
+    } yield blockThere && opsThere)
+
+
 
 }

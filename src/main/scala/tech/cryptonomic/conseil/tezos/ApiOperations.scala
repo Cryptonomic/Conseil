@@ -9,8 +9,8 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.{Duration, _}
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
 
 
@@ -642,13 +642,6 @@ object ApiOperations {
     val operationGroups = Await.result(op2, Duration.apply(awaitTimeInSeconds, SECONDS))
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
-
-  def blockExists(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
-    dbHandle.run(for {
-      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash).exists.result
-      opsThere <- Tables.OperationGroups.filter(_.blockId === hash).exists.result
-    } yield blockThere && opsThere)
-
 
   private def extractFromBlock(b: Tables.Blocks) = {
     (b.level, b.proto, b.predecessor, b.timestamp, b.validationPass,

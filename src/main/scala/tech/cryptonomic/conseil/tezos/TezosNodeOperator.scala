@@ -200,7 +200,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     if(reachedBottom || reachedMinNoForkin)
       Future.successful(current :: collected)
     else if (belowMinWithForking)
-      ApiOperations.blockExists(current.header.predecessor) flatMap { predecessorStored =>
+      TezosDatabaseOperations.blockExists(current.header.predecessor) flatMap { predecessorStored =>
         if (predecessorStored)
         Future.successful(current :: collected) //pred on db, we're done here
       else
