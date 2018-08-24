@@ -1,24 +1,21 @@
 package tech.cryptonomic.conseil
 
-import java.sql.Timestamp
-
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHeader, BlockMetadata}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
+import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
-import scala.annotation.tailrec
-import scala.compat.Platform
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
 object Lorre extends App with LazyLogging {
 
+  //keep this import here to make it evident where we spawn our async code
   private val network =
     if (args.length > 0) args(0)
     else {
@@ -27,7 +24,6 @@ object Lorre extends App with LazyLogging {
       | Please provide a valid network as an argument to the command line""".stripMargin)
       sys.exit(1)
     }
-
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
