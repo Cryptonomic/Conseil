@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{ColumnOrdered, Rep}
+import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, FeesRow}
@@ -18,7 +19,7 @@ import scala.util.Try
 object ApiOperations {
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
+  val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
   import Filter._
@@ -286,6 +287,8 @@ object ApiOperations {
   case class Accounts(
     join: Query[Tables.Accounts, Tables.AccountsRow, Seq]
   ) extends JoinedTables
+
+  case object EmptyJoin extends JoinedTables
 
   /**
     * This represents a database query that returns all of the columns of the table in a scala tuple.
@@ -614,46 +617,8 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter): Try[Seq[Tables.OperationGroupsRow]] =
-
-    getFilteredTables(filter).flatMap { filteredTables =>
-      Try {
-        val blockFlag = isBlockFilter(filter)
-        val operationGroupFlag = true
-        val operationFlag = isOperationFilter(filter)
-        val accountFlag = isAccountFilter(filter)
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-        val action = joinedTables match {
-
-          case Some(OperationGroups(operationGroups)) => operationGroups
-
-          case Some(BlocksOperationGroups(blocksOperationGroups)) =>
-            blocksOperationGroups.map(_._2)
-
-          case Some(OperationGroupsOperations(operationGroupsOperations)) =>
-            operationGroupsOperations.map(_._1)
-
-          case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
-            operationGroupsAccounts.map(_._1)
-
-          case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
-            operationGroupsOperationsAccounts.map(_._1)
-
-          case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
-            blocksOperationGroupsOperations.map(_._2)
-
-          case Some(BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts)) =>
-            blocksOperationGroupsOperationsAccounts.map(_._2)
-
-          case _ =>
-            throw new IllegalStateException("This exception should never be reached, but is included for completeness.")
-        }
-
-        val OperationGroupsAction(sortedAction) = fetchSortedAction(filter.order, OperationGroupsAction(action), filter.sortBy)
-        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        Await.result(op, awaitTimeInSeconds.seconds)
-      }
-    }
+  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.OperationGroupsRow]): Try[Seq[conseil.tezos.Tables.OperationGroupsRow]] =
+    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
   /**
     * Fetches all operations.
@@ -682,7 +647,7 @@ object ApiOperations {
     val op = dbHandle.run(
       filtered.distinct
         .sortBy(_.blockLevel.desc)
-        .take(getFilterLimit(filter))
+        .take(ApiFiltering.getFilterLimit(filter))
         .result
     )
     Await.result(op, awaitTimeInSeconds.seconds)
