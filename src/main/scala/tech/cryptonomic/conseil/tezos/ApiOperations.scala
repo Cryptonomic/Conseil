@@ -559,39 +559,8 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter): Try[Seq[Tables.BlocksRow]] =
-
-    getFilteredTables(filter).flatMap { filteredTables =>
-
-      Try {
-
-        // Blocks need to be fetched, other tables needed if user asks for them via the filter
-        val blockFlag = true
-        val operationGroupFlag = isOperationGroupFilter(filter)
-        val operationFlag = isOperationFilter(filter)
-        val accountFlag = isAccountFilter(filter)
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-
-        val action = joinedTables match {
-
-          case Some(Blocks(blocks)) => blocks
-
-          case Some(BlocksOperationGroups(blocksOperationGroups)) =>
-            blocksOperationGroups.map { case (b, _) => b }
-
-          case Some(BlocksOperationGroupsOperations(blocksOperationGroupsOperations)) =>
-            blocksOperationGroupsOperations.map { case (b, _, _) => b }
-
-          case _ =>
-            throw new IllegalArgumentException("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
-
-        }
-
-        val BlocksAction(sortedAction) = fetchSortedAction(filter.order, BlocksAction(action), filter.sortBy)
-        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        Await.result(op, awaitTimeInSeconds.seconds)
-      }
-    }
+  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.BlocksRow]): Try[Seq[Tables.BlocksRow]] =
+    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
   /**
     * Fetch a given operation group

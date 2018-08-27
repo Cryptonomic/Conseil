@@ -321,6 +321,74 @@ trait ActionSorting[A <: Action] {
 
 trait ApiFilters {
 
+  implicit object BlocksFiltering extends ApiFiltering[Try, Tables.BlocksRow] with ActionSorting[BlocksAction] {
+
+    import ApiFiltering._
+
+    override protected def select(filter: Filter): TableSelection =
+      TableSelection(
+        blocks = true,
+        operationGroups = isOperationGroupFilter(filter),
+        operations = isOperationFilter(filter),
+        accounts = isAccountFilter(filter)
+      )
+
+    override protected def executeQuery(
+      limit: Int,
+      sortBy: Option[String],
+      sortOrder: Option[String]
+    ): JoinedTables => Try[Seq[tezos.Tables.BlocksRow]] =
+      joinedTables =>
+        Try {
+          val action = joinedTables match {
+
+            case Blocks(blocks) => blocks
+
+            case BlocksOperationGroups(blocksOperationGroups) =>
+              blocksOperationGroups.map { case (b, _) => b }
+
+            case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
+              blocksOperationGroupsOperations.map { case (b, _, _) => b }
+
+            case _ =>
+              throw new IllegalArgumentException("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
+
+          }
+
+          val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(action))
+          val op = dbHandle.run(sortedAction.distinct.take(limit).result)
+          Await.result(op, awaitTimeInSeconds.seconds)
+        }
+
+    override def fetchSortedAction(
+      sortBy: Option[String],
+      order: Option[String],
+      action: BlocksAction): BlocksAction = {
+
+        val column = sortBy.map(_.toLowerCase).map {
+          case "level" => t: Tables.Blocks => sortingOn(t.level, order)
+          case "proto" => t: Tables.Blocks => sortingOn(t.proto, order)
+          case "predecessor" => t: Tables.Blocks => sortingOn(t.predecessor, order)
+          case "timestamp" => t: Tables.Blocks => sortingOn(t.timestamp, order)
+          case "validation_pass" => t: Tables.Blocks => sortingOn(t.validationPass, order)
+          case "fitness" => t: Tables.Blocks => sortingOn(t.fitness, order)
+          case "context" => t: Tables.Blocks => sortingOn(t.context, order)
+          case "signature" => t: Tables.Blocks => sortingOn(t.signature, order)
+          case "protocol" => t: Tables.Blocks => sortingOn(t.protocol, order)
+          case "chain_id" => t: Tables.Blocks => sortingOn(t.chainId, order)
+          case "hash" => t: Tables.Blocks => sortingOn(t.hash, order)
+          case "operations_hash" => t: Tables.Blocks => sortingOn(t.operationsHash, order)
+        } getOrElse {
+          t: Tables.Blocks => sortingOn(t.level, order)
+        }
+
+        action.copy(
+          action = action.action.sortBy(column)
+        )
+
+    }
+
+  }
   implicit object AccountsFiltering extends ApiFiltering[Try, Tables.AccountsRow] with ActionSorting[AccountsAction] {
 
     import ApiFiltering._
