@@ -18,9 +18,6 @@ object ApiFiltering {
     accounts: Boolean
   )
 
-  // default limit on output results, if not available as call input
-  private val defaultLimit = 10
-
   private[this] def nonEmpty(subFilter: Option[Set[_]]) = subFilter.exists(_.nonEmpty)
 
   // Predicates to determine existence of specific type of filter
@@ -50,7 +47,7 @@ object ApiFiltering {
       nonEmpty(filter.accountManagers)
 
   /* always get a limit to results */
-  def getFilterLimit(filter: Filter): Int = filter.limit.getOrElse(defaultLimit)
+  def getFilterLimit(filter: Filter): Int = filter.limit.getOrElse(Filter.defaultLimit)
 
   /** A collection of functions to get pre-filtered queries */
   object Queries {
@@ -58,72 +55,72 @@ object ApiFiltering {
 
     //building blocks
 
-    private[this] def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    private[tezos] def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
       filter.blockIDs.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || b.hash.inSet(set)
       )
 
-    private[this] def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    private[tezos] def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
       filter.levels.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || b.level.inSet(set)
       )
 
-    private[this] def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    private[tezos] def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
       filter.chainIDs.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || b.chainId.getOrElse("").inSet(set)
       )
 
-    private[this] def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
+    private[tezos] def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
       filter.protocols.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || b.protocol.inSet(set)
       )
 
-    private[this] def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
+    private[tezos] def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
       filter.operationGroupIDs.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || og.hash.inSet(set)
       )
 
-    private[this] def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    private[tezos] def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
       filter.operationGroupIDs.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || o.operationGroupHash.inSet(set)
       )
 
-    private[this] def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    private[tezos] def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
       filter.operationSources.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || o.source.getOrElse("").inSet(set)
       )
 
-    private[this] def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    private[tezos] def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
       filter.operationDestinations.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || o.destination.getOrElse("").inSet(set)
       )
 
-    private[this] def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    private[tezos] def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
       filter.operationParticipants.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || o.destination.getOrElse(o.source.getOrElse("")).inSet(set)
       )
 
-    private[this] def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
+    private[tezos] def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
       filter.accountIDs.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || a.accountId.inSet(set)
       )
 
-    private[this] def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
+    private[tezos] def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
       filter.accountManagers.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || a.manager.inSet(set)
       )
 
-    private[this] def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
+    private[tezos] def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
       filter.accountDelegates.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || a.delegateValue.getOrElse("").inSet(set)
       )
 
-    private[this] def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
+    private[tezos] def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
       filter.operationKinds.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || o.kind.inSet(set)
       )
 
-    private[this] def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
+    private[tezos] def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
       filter.operationKinds.fold(ifEmpty = true.bind)(
         set => set.isEmpty.bind || fee.kind.inSet(set)
       )

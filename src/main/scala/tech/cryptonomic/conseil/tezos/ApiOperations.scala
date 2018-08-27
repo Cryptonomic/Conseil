@@ -2,11 +2,9 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import slick.lifted.{ColumnOrdered, Rep}
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, FeesRow}
+import tech.cryptonomic.conseil.tezos.Tables.FeesRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{Await, Future}
@@ -19,7 +17,7 @@ import scala.util.Try
 object ApiOperations {
 
   private val conf = ConfigFactory.load
-  val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
+  val awaitTimeInSeconds: Int = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
   import Filter._
@@ -65,106 +63,10 @@ object ApiOperations {
 
     // Common values
 
+    // default limit on output results, if not available as call input
     val defaultLimit = 10
 
     private def emptyOptions[A] = Some(Set.empty[A])
-    private[this] def nonEmpty(subFilter: Option[Set[_]]) = subFilter.exists(_.nonEmpty)
-
-    // Predicates to determine existence of specific type of filter
-
-    def isBlockFilter(filter: Filter): Boolean =
-      nonEmpty(filter.blockIDs) ||
-      nonEmpty(filter.levels) ||
-      nonEmpty(filter.chainIDs) ||
-      nonEmpty(filter.protocols)
-
-    def isOperationGroupFilter(filter: Filter): Boolean =
-      nonEmpty(filter.operationGroupIDs) ||
-      nonEmpty(filter.operationSources)
-
-    def isOperationFilter(filter: Filter): Boolean =
-      nonEmpty(filter.operationKinds) ||
-      nonEmpty(filter.operationSources) ||
-      nonEmpty(filter.operationDestinations)
-
-    def isAccountFilter(filter: Filter): Boolean =
-      nonEmpty(filter.accountDelegates) ||
-      nonEmpty(filter.accountIDs) ||
-      nonEmpty(filter.accountManagers)
-
-    // Start helper functions for constructing Slick queries
-
-    def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.blockIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.hash.inSet(set)
-      )
-
-    def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.levels.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.level.inSet(set)
-      )
-
-    def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.chainIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.chainId.getOrElse("").inSet(set)
-      )
-
-    def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.protocols.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.protocol.inSet(set)
-      )
-
-    def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
-      filter.operationGroupIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || og.hash.inSet(set)
-      )
-
-    def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationGroupIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.operationGroupHash.inSet(set)
-      )
-
-    def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationSources.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.source.getOrElse("").inSet(set)
-      )
-
-    def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationDestinations.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.destination.getOrElse("").inSet(set)
-      )
-
-    def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationParticipants.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.destination.getOrElse(o.source.getOrElse("")).inSet(set)
-      )
-
-    def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || a.accountId.inSet(set)
-      )
-
-    def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountManagers.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || a.manager.inSet(set)
-      )
-
-    def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountDelegates.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || a.delegateValue.getOrElse("").inSet(set)
-      )
-
-    def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationKinds.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.kind.inSet(set)
-      )
-
-    def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
-      filter.operationKinds.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || fee.kind.inSet(set)
-      )
-
-    def getFilterLimit(filter: Filter): Int = filter.limit.getOrElse(Filter.defaultLimit)
 
   }
 
@@ -307,211 +209,6 @@ object ApiOperations {
   case class AccountsAction(action: Query[Tables.Accounts, Tables.AccountsRow, Seq]) extends Action
 
   /**
-    * Filters Accounts, Operation Groups, Operations, and Blocks tables based on users input to the filter.
-    * @param filter Filter parameters.
-    * @return
-    */
-  private def getFilteredTables(filter: Filter): Try[FilteredTables] = {
-
-    def filterOn(maxLevel: BigDecimal): FilteredTables = {
-      val filteredAccounts = Tables.Accounts.filter(account =>
-        filterAccountIDs(filter, account) &&
-          filterAccountDelegates(filter, account) &&
-          filterAccountManagers(filter, account) &&
-          account.blockLevel === maxLevel)
-
-      val filteredOpGroups = Tables.OperationGroups.filter({ opGroup =>
-        filterOperationIDs(filter, opGroup)
-      })
-
-      val filteredOps = Tables.Operations.filter({ op =>
-        filterOperationKinds(filter, op) &&
-          filterOperationDestinations(filter, op) &&
-          filterOperationSources(filter, op)
-      })
-
-      val filteredBlocks = Tables.Blocks.filter({ block =>
-        filterBlockIDs(filter, block) &&
-          filterBlockLevels(filter, block) &&
-          filterChainIDs(filter, block) &&
-          filterProtocols(filter, block)
-      })
-
-      FilteredTables(filteredAccounts, filteredBlocks, filteredOpGroups, filteredOps)
-    }
-
-    for {
-      _ <- fetchLatestBlock() // is this needed?
-      maxLevelForAccounts <- fetchMaxBlockLevelForAccounts()
-    } yield filterOn(maxLevelForAccounts)
-  }
-
-  /**
-    * Returns the join of some combination of the Blocks, Operation Groups, Operations, and Accounts
-    * tables, given the flags of which tables are necessary. If a table shouldn't be created based
-    * on domain specific knowledge of Tezos, return None.
-    * @param blockFlag          Flag which affirms that blocks need to be included in the join.
-    * @param operationGroupFlag Flag which affirms that operationGroups need to be included in the join.
-    * @param operationFlag      Flag which affirms that operations need to be included in the join.
-    * @param accountFlag        Flag which affirms that accounts need to be included in the join.
-    * @param tables             Product which contains queries for all tables.
-    * @param filter             Used for filtering when
-    * @return
-    */
-  private def getJoinedTables(blockFlag: Boolean,
-                              operationGroupFlag: Boolean,
-                              operationFlag: Boolean,
-                              accountFlag: Boolean,
-                              tables: FilteredTables,
-                              filter: Filter): Option[JoinedTables] = {
-
-    val FilteredTables(accounts, blocks, operationGroups, operations)= tables
-
-    def unwrapQuadJoin[A,B,C,D](nest: (((A,B),C),D)): (A,B,C,D) = nest match {
-      case (((a,b),c),d) => (a,b,c,d)
-    }
-
-    def unwrapTripleJoin[A,B,C](nest: ((A,B),C)): (A,B,C) = nest match {
-      case ((a,b),c) => (a,b,c)
-    }
-
-    (blockFlag, operationGroupFlag, operationFlag, accountFlag) match {
-      case (true, true, true, true) =>
-        Some(BlocksOperationGroupsOperationsAccounts(
-          blocks
-            .join(operationGroups).on(_.hash === _.blockId)
-            .join(operations).on(_._2.hash === _.operationGroupHash)
-            .join(accounts).on(_._2.source === _.accountId)
-            .map(unwrapQuadJoin)
-        ))
-      case (true, true, true, false) =>
-        Some(BlocksOperationGroupsOperations(
-          blocks
-            .join(operationGroups).on(_.hash === _.blockId)
-            .join(operations).on(_._2.hash === _.operationGroupHash)
-            .map(unwrapTripleJoin)
-        ))
-      case (true, true, false, true) =>
-        None
-      case (true, true, false, false) =>
-        Some(BlocksOperationGroups(
-          blocks.join(operationGroups).on(_.hash === _.blockId)))
-      case (true, false, true, true)
-           | (true, false, true, false)
-           | (true, false, false, true) => None
-      case (true, false, false, false) =>
-        Some(Blocks(blocks))
-      case (false, true, true, true) =>
-        Some(OperationGroupsOperationsAccounts(
-          operationGroups
-            .join(operations).on(_.hash === _.operationGroupHash)
-            .join(accounts).on(_._2.source === _.accountId)
-            .map(unwrapTripleJoin)
-        ))
-      case (false, true, true, false) =>
-        Some(OperationGroupsOperations(
-          operationGroups
-            .join(operations).on(_.hash === _.operationGroupHash)))
-      case (false, true, false, true) =>
-          Some(OperationGroupsOperationsAccounts(
-            operationGroups
-              .join(operations).on(_.hash === _.operationGroupHash)
-              .join(accounts).on(_._2.source === _.accountId)
-              .map(unwrapTripleJoin)
-          ))
-      case (false, true, false, false) =>
-        Some(OperationGroups(operationGroups))
-      case (false, false, true, true) =>
-        Some(OperationGroupsOperationsAccounts(operationGroups
-          .join(operations).on(_.hash === _.operationGroupHash)
-          .join(accounts).on(_._2.source === _.accountId)
-          .map(unwrapTripleJoin)
-        ))
-      case (false, false, true, false) =>
-        None
-      case (false, false, false, true) =>
-        Some(Accounts(accounts))
-      case (false, false, false, false) =>
-        None
-    }
-  }
-
-  /**
-    * Return table query which is the sorted verion of action, based on database column name, sortBy, and the order.
-    * This will be refactored out later, as this is just an initial solution to the user wanting to sort by columns
-    * according to the current schema. This will break if the schema changes.
-    * @param order  Parameter to determine whether to sort in ascending or descending order.
-    * @param action The query for the table we want to sort.
-    * @param sortBy Parameter to say what column to sort by.
-    * @return
-    */
-  private def fetchSortedAction(order: Option[String], action: Action, sortBy: Option[String]): Action = {
-
-    val sortingField: Option[String] = sortBy.map(_.toLowerCase)
-
-    def sortingOrder[A](col: ColumnOrdered[A]): ColumnOrdered[A] =
-      order.map(_.toLowerCase) match {
-        case Some("asc") => col.asc
-        case _ => col.desc
-      }
-
-    //default is sorting descending by block level, operation group hash, and account ID, otherwise order and sorting column chosen by user
-    val sortedAction =
-      action match {
-        case blocks: BlocksAction =>
-          val columnToSort = sortingField.map {
-            case "level" => t: Tables.Blocks => sortingOrder(t.level)
-            case "proto" => t: Tables.Blocks => sortingOrder(t.proto)
-            case "predecessor" => t: Tables.Blocks => sortingOrder(t.predecessor)
-            case "timestamp" => t: Tables.Blocks => sortingOrder(t.timestamp)
-            case "validation_pass" => t: Tables.Blocks => sortingOrder(t.validationPass)
-            case "fitness" => t: Tables.Blocks => sortingOrder(t.fitness)
-            case "context" => t: Tables.Blocks => sortingOrder(t.context)
-            case "signature" => t: Tables.Blocks => sortingOrder(t.signature)
-            case "protocol" => t: Tables.Blocks => sortingOrder(t.protocol)
-            case "chain_id" => t: Tables.Blocks => sortingOrder(t.chainId)
-            case "hash" => t: Tables.Blocks => sortingOrder(t.hash)
-            case "operations_hash" => t: Tables.Blocks => sortingOrder(t.operationsHash)
-          } getOrElse {
-            t: Tables.Blocks => sortingOrder(t.level)
-          }
-          blocks.copy(action = blocks.action.sortBy(columnToSort))
-
-        case groups: OperationGroupsAction =>
-          val columnToSort = sortingField.map {
-            case "protocol" => t: Tables.OperationGroups => sortingOrder(t.protocol)
-            case "chain_id" => t: Tables.OperationGroups => sortingOrder(t.chainId)
-            case "hash" => t: Tables.OperationGroups => sortingOrder(t.hash)
-            case "branch" => t: Tables.OperationGroups => sortingOrder(t.branch)
-            case "signature" => t: Tables.OperationGroups => sortingOrder(t.signature)
-            case "block_id" => t: Tables.OperationGroups => sortingOrder(t.blockId)
-          } getOrElse {
-            t: Tables.OperationGroups => sortingOrder(t.hash)
-          }
-          groups.copy(action = groups.action.sortBy(columnToSort))
-
-        case accounts: AccountsAction =>
-          val columnToSort = sortingField.map {
-            case "account_id" => t: Tables.Accounts => sortingOrder(t.accountId)
-            case "block_id" => t: Tables.Accounts => sortingOrder(t.blockId)
-            case "manager" => t: Tables.Accounts => sortingOrder(t.manager)
-            case "spendable" => t: Tables.Accounts => sortingOrder(t.spendable)
-            case "delegate_setable" => t: Tables.Accounts => sortingOrder(t.delegateSetable)
-            case "delegate_value" => t: Tables.Accounts => sortingOrder(t.delegateValue)
-            case "counter" => t: Tables.Accounts => sortingOrder(t.counter)
-            case "script" => t: Tables.Accounts => sortingOrder(t.script)
-            case "balance" => t: Tables.Accounts => sortingOrder(t.balance)
-          } getOrElse {
-            t: Tables.Accounts => sortingOrder(t.accountId)
-          }
-          accounts.copy(action = accounts.action.sortBy(columnToSort))
-
-      }
-
-    sortedAction
-  }
-
-  /**
     * Fetches the level of the most recent block stored in the database.
     *
     * @return Max level or -1 if no blocks were found in the database.
@@ -601,6 +298,8 @@ object ApiOperations {
       b <- o.blocksFk
     } yield (o, b)
 
+    import ApiFiltering.Queries._
+
     val filtered = action.filter { case (o, b) =>
       filterOperationIDs(filter, o) &&
       filterOperationSources(filter, o) &&
@@ -637,7 +336,7 @@ object ApiOperations {
     val action =
       Tables.Fees
         .filter (
-          fee => filterOperationKindsForFees(filter, fee)
+          fee => ApiFiltering.Queries.filterOperationKindsForFees(filter, fee)
         )
         .distinct
         .sortBy(_.timestamp.desc)
