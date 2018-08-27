@@ -617,7 +617,7 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.OperationGroupsRow]): Try[Seq[conseil.tezos.Tables.OperationGroupsRow]] =
+  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.OperationGroupsRow]): Try[Seq[Tables.OperationGroupsRow]] =
     fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
   /**
@@ -716,40 +716,8 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return       List of accounts
     */
-  def fetchAccounts(filter: Filter): Try[Seq[AccountsRow]] = {
-    getFilteredTables(filter).flatMap { filteredTables =>
-
-      Try {
-
-        val blockFlag = isBlockFilter(filter)
-        val operationGroupFlag = isOperationGroupFilter(filter)
-        val operationFlag = isOperationFilter(filter)
-        val accountFlag = true
-        val joinedTables = getJoinedTables(blockFlag, operationGroupFlag, operationFlag, accountFlag, filteredTables, filter)
-
-        val action = joinedTables match {
-
-          case Some(Accounts(accounts)) => accounts
-
-          case Some(OperationGroupsAccounts(operationGroupsAccounts)) =>
-            operationGroupsAccounts.map(_._2)
-
-          case Some(OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts)) =>
-            operationGroupsOperationsAccounts.map(_._3)
-
-          case _ =>
-            throw new IllegalArgumentException("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
-        }
-
-        val AccountsAction(sortedAction) = fetchSortedAction(filter.order, AccountsAction(action), filter.sortBy)
-        val op = dbHandle.run(sortedAction.distinct.take(getFilterLimit(filter)).result)
-        Await.result(op, awaitTimeInSeconds.seconds)
-
-      }
-
-    }
-
-  }
+  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.AccountsRow]): Try[Seq[Tables.AccountsRow]] =
+    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
 }
 

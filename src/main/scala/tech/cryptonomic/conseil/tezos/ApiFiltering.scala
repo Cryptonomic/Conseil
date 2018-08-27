@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.ApiOperations._
 
 import scala.concurrent.Await
@@ -181,7 +182,7 @@ trait ApiFiltering[F[_], OUT] {
     */
   def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): F[Seq[OUT]] = {
     val joinTables: TableSelection => JoinedTables = prepareJoins(filter, maxLevelForAccounts)
-    val execute: JoinedTables => F[Seq[OUT]] = executeQuery(getFilterLimit(filter), filter.order, filter.sortBy)
+    val execute: JoinedTables => F[Seq[OUT]] = executeQuery(getFilterLimit(filter), filter.sortBy, filter.order)
     (execute compose joinTables compose select)(filter)
   }
 
@@ -203,15 +204,15 @@ trait ApiFiltering[F[_], OUT] {
 
   /**
     * Defines a function of [[JoinedTables]] that will actually execute all the queries
-    * @param limit       Cap on the result sequence
-    * @param fieldToSort Possibly picks a sorting field
-    * @param sortBy      The sorting order as a String
-    * @return            The actual results
+    * @param limit     Cap on the result sequence
+    * @param sortBy    The sorting column as a String
+    * @param sortOrder A sorting order
+    * @return          The actual results
     */
   protected def executeQuery(
     limit: Int,
-    fieldToSort: Option[String],
-    sortBy: Option[String]
+    sortBy: Option[String],
+    sortOrder: Option[String]
   ): JoinedTables => F[Seq[OUT]]
 
   /**
@@ -306,18 +307,87 @@ trait ActionSorting[A <: Action] {
     }
 
   /**
-    * @param fieldToSort Picks a field to sort on
-    * @param sortBy      The sorting order
-    * @param action      The input [[Action]]
-    * @return            A copy of the input with sorting applied
+    * Return table query which is the sorted verion of action, based on database column name, sortBy, and the order.
+    * This will be refactored out later, as this is just an initial solution to the user wanting to sort by columns
+    * according to the current schema. This will break if the schema changes.
+    *
+    * @param sortBy Parameter to say what column to sort by.
+    * @param order  Parameter to determine whether to sort in ascending or descending order.
+    * @param action The query for the table we want to sort.
     */
-  def fetchSortedAction(fieldToSort: Option[String], sortBy: Option[String], action: A): A
+  def fetchSortedAction(sortBy: Option[String], order: Option[String], action: A): A
 
 }
 
 trait ApiFilters {
 
-  implicit object OperationGroupsFiltering$ extends ApiFiltering[Try, Tables.OperationGroupsRow] with ActionSorting[OperationGroupsAction] {
+  implicit object AccountsFiltering extends ApiFiltering[Try, Tables.AccountsRow] with ActionSorting[AccountsAction] {
+
+    import ApiFiltering._
+
+    override protected def select(filter: Filter): TableSelection =
+      TableSelection(
+        blocks = isBlockFilter(filter),
+        operationGroups = isOperationGroupFilter(filter),
+        operations = isOperationFilter(filter),
+        accounts = true
+      )
+
+    override protected def executeQuery(
+      limit: Int,
+      sortBy: Option[String],
+      sortOrder: Option[String]
+    ): JoinedTables => Try[Seq[tezos.Tables.AccountsRow]] =
+      joinedTables =>
+        Try {
+          val action = joinedTables match {
+
+            case Accounts(accounts) => accounts
+
+            case OperationGroupsAccounts(operationGroupsAccounts) =>
+              operationGroupsAccounts.map(_._2)
+
+            case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
+              operationGroupsOperationsAccounts.map(_._3)
+
+            case _ =>
+              throw new IllegalArgumentException("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
+          }
+
+          val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(action))
+          val op = dbHandle.run(sortedAction.distinct.take(limit).result)
+          Await.result(op, awaitTimeInSeconds.seconds)
+        }
+
+    override def fetchSortedAction(
+      sortBy: Option[String],
+      order: Option[String],
+      action: AccountsAction): AccountsAction = {
+
+        val column = sortBy.map(_.toLowerCase).map {
+          case "account_id" => t: Tables.Accounts => sortingOn(t.accountId, order)
+          case "block_id" => t: Tables.Accounts => sortingOn(t.blockId, order)
+          case "manager" => t: Tables.Accounts => sortingOn(t.manager, order)
+          case "spendable" => t: Tables.Accounts => sortingOn(t.spendable, order)
+          case "delegate_setable" => t: Tables.Accounts => sortingOn(t.delegateSetable, order)
+          case "delegate_value" => t: Tables.Accounts => sortingOn(t.delegateValue, order)
+          case "counter" => t: Tables.Accounts => sortingOn(t.counter, order)
+          case "script" => t: Tables.Accounts => sortingOn(t.script, order)
+          case "balance" => t: Tables.Accounts => sortingOn(t.balance, order)
+        } getOrElse {
+          t: Tables.Accounts => sortingOn(t.accountId, order)
+        }
+
+        action.copy(
+          action = action.action.sortBy(column)
+        )
+
+    }
+
+  }
+
+
+  implicit object OperationGroupsFiltering extends ApiFiltering[Try, Tables.OperationGroupsRow] with ActionSorting[OperationGroupsAction] {
 
     import ApiFiltering._
 
@@ -331,8 +401,8 @@ trait ApiFilters {
 
     override protected def executeQuery(
       limit: Int,
-      fieldToSort: Option[String],
-      sortBy: Option[String]
+      sortBy: Option[String],
+      sortOrder: Option[String]
     ): JoinedTables => Try[Seq[Tables.OperationGroupsRow]] =
       joinedTables =>
         Try {
@@ -362,29 +432,26 @@ trait ApiFilters {
               throw new IllegalStateException("This exception should never be reached, but is included for completeness.")
           }
 
-          val sortingField: Option[String] = fieldToSort.map(_.toLowerCase)
-
-          val OperationGroupsAction(sortedAction) = fetchSortedAction(sortingField, sortBy, OperationGroupsAction(action))
+          val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(action))
           val op = dbHandle.run(sortedAction.distinct.take(limit).result)
           Await.result(op, awaitTimeInSeconds.seconds)
 
         }
 
     override def fetchSortedAction(
-      fieldToSort: Option[String],
       sortBy: Option[String],
-      action: OperationGroupsAction): OperationGroupsAction =
-    {
+      order: Option[String],
+      action: OperationGroupsAction): OperationGroupsAction = {
 
-      val column = fieldToSort.map(_.toLowerCase).map {
-        case "protocol" => t: Tables.OperationGroups => sortingOn(t.protocol, sortBy)
-        case "chain_id" => t: Tables.OperationGroups => sortingOn(t.chainId, sortBy)
-        case "hash" => t: Tables.OperationGroups => sortingOn(t.hash, sortBy)
-        case "branch" => t: Tables.OperationGroups => sortingOn(t.branch, sortBy)
-        case "signature" => t: Tables.OperationGroups => sortingOn(t.signature, sortBy)
-        case "block_id" => t: Tables.OperationGroups => sortingOn(t.blockId, sortBy)
+      val column = sortBy.map(_.toLowerCase).map {
+        case "protocol" => t: Tables.OperationGroups => sortingOn(t.protocol, order)
+        case "chain_id" => t: Tables.OperationGroups => sortingOn(t.chainId, order)
+        case "hash" => t: Tables.OperationGroups => sortingOn(t.hash, order)
+        case "branch" => t: Tables.OperationGroups => sortingOn(t.branch, order)
+        case "signature" => t: Tables.OperationGroups => sortingOn(t.signature, order)
+        case "block_id" => t: Tables.OperationGroups => sortingOn(t.blockId, order)
       } getOrElse {
-        t: Tables.OperationGroups => sortingOn(t.hash, sortBy)
+        t: Tables.OperationGroups => sortingOn(t.hash, order)
       }
 
       action.copy(
