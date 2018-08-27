@@ -94,46 +94,74 @@ object ApiOperations {
     // Start helper functions for constructing Slick queries
 
     def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.blockIDs.fold(ifEmpty = true.bind)(set => b.hash.inSet(set))
+      filter.blockIDs.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || b.hash.inSet(set)
+      )
 
     def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.levels.fold(ifEmpty = true.bind)(set => b.level.inSet(set))
+      filter.levels.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || b.level.inSet(set)
+      )
 
     def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.chainIDs.fold(ifEmpty = true.bind)(set => b.chainId.getOrElse("").inSet(set))
+      filter.chainIDs.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || b.chainId.getOrElse("").inSet(set)
+      )
 
     def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.protocols.fold(ifEmpty = true.bind)(set => b.protocol.inSet(set))
+      filter.protocols.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || b.protocol.inSet(set)
+      )
 
     def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
-      filter.operationGroupIDs.fold(ifEmpty = true.bind)(set => og.hash.inSet(set))
+      filter.operationGroupIDs.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || og.hash.inSet(set)
+      )
 
     def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationGroupIDs.fold(ifEmpty = true.bind)(set => o.operationGroupHash.inSet(set))
+      filter.operationGroupIDs.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || o.operationGroupHash.inSet(set)
+      )
 
     def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationSources.fold(ifEmpty = true.bind)(set => o.source.getOrElse("").inSet(set))
+      filter.operationSources.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || o.source.getOrElse("").inSet(set)
+      )
 
     def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationDestinations.fold(ifEmpty = true.bind)(set => o.destination.getOrElse("").inSet(set))
+      filter.operationDestinations.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || o.destination.getOrElse("").inSet(set)
+      )
 
     def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationParticipants.fold(ifEmpty = true.bind)(set => o.destination.getOrElse(o.source.getOrElse("")).inSet(set))
+      filter.operationParticipants.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || o.destination.getOrElse(o.source.getOrElse("")).inSet(set)
+      )
 
     def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountIDs.fold(ifEmpty = true.bind)(set => a.accountId.inSet(set))
+      filter.accountIDs.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || a.accountId.inSet(set)
+      )
 
     def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountManagers.fold(ifEmpty = true.bind)(set => a.manager.inSet(set))
+      filter.accountManagers.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || a.manager.inSet(set)
+      )
 
     def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountDelegates.fold(ifEmpty = true.bind)(set => a.delegateValue.getOrElse("").inSet(set))
+      filter.accountDelegates.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || a.delegateValue.getOrElse("").inSet(set)
+      )
 
     def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationKinds.fold(ifEmpty = true.bind)(set => o.kind.inSet(set))
+      filter.operationKinds.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || o.kind.inSet(set)
+      )
 
     def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
-      filter.operationKinds.fold(ifEmpty = true.bind)(set => fee.kind.inSet(set))
+      filter.operationKinds.fold(ifEmpty = true.bind)(
+        set => set.isEmpty.bind || fee.kind.inSet(set)
+      )
 
     def getFilterLimit(filter: Filter): Int = filter.limit.getOrElse(Filter.defaultLimit)
 
