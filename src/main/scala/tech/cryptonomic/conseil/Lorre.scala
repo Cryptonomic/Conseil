@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
-import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.{DatabaseUtil, RetryUtil}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -36,16 +36,11 @@ object Lorre extends App with LazyLogging {
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   val numberOfRetries = conf.getInt("lorre.numberOfRetries")
-  @tailrec
-  def retry[A](attempts: Int)(fn: => Try[A]): Try[A] = fn match {
-    case Failure(_) if attempts > 1 => retry(attempts-1)(fn)
-    case noMoreAttempts => noMoreAttempts
-  }
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
-      retry(numberOfRetries)(processTezosBlocks())
-      retry(numberOfRetries)(processTezosAccounts())
+      RetryUtil.retry(numberOfRetries)(processTezosBlocks())
+      RetryUtil.retry(numberOfRetries)(processTezosAccounts())
       if (iteration % feeUpdateInterval == 0) {
         FeeOperations.processTezosAverageFees()
       }
