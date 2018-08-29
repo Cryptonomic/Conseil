@@ -1,21 +1,21 @@
 package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
+import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.ApiOperations.{awaitTimeInSeconds, dbHandle}
+import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.duration.{Duration, SECONDS}
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
-import scala.util.Try
+import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
   */
-object TezosDatabaseOperations {
+object TezosDatabaseOperations extends LazyLogging {
 
   private val conf = ConfigFactory.load
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
@@ -28,13 +28,11 @@ object TezosDatabaseOperations {
     * @return         Future on database inserts.
     */
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
-      )
-    )
+    dbHandle.run(DBIO.seq(
+      Tables.Blocks           ++= blocks.map(blockToDatabaseRow),
+      Tables.OperationGroups  ++= blocks.flatMap(operationGroupToDatabaseRow),
+      Tables.Operations       ++= blocks.flatMap(operationsToDatabaseRow)
+    ))
 
   /**
     * Writes accounts from a specific blocks to a database.
@@ -42,25 +40,8 @@ object TezosDatabaseOperations {
     * @param dbHandle     Handle to a database.
     * @return             Future on database inserts.
     */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
-      )
-    )
-
-  /**
-    *
-    * @param fees      List of possible average fees for different operation kinds.
-    * @param dbHandle  Handle to a database
-    * @return          Future on database inserts.
-    */
-  def writeFeesToDatabase(fees: List[Option[AverageFees]], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Fees                   ++= feesToDatabaseRows(fees)
-      )
-    )
+  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Option[Int]] =
+    dbHandle.run(Tables.Accounts ++= accountsToDatabaseRows(accountsInfo))
 
   /**
     * Generates database rows for accounts.
@@ -156,64 +137,87 @@ object TezosDatabaseOperations {
     }
 
   /**
-    * Generates database rows from a list of averageFees calculated for some operation kinds.
-    * @param maybeFees  List of possible new fees that may have been calculated for different
-    *                   operation kinds.
-    * @return           Database rows
+    *
+    * @param fees      List of average fees for different operation kinds.
+    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-  def feesToDatabaseRows(maybeFees: List[Option[AverageFees]]): List[Tables.FeesRow] = {
-    maybeFees
-      .filter(_.isDefined)
-      .map{ someFee =>
-        val fee = someFee.get
-        Tables.FeesRow(
-          low = fee.low,
-          medium = fee.medium,
-          high = fee.high,
-          timestamp = fee.timestamp,
-          kind = fee.kind
-        )
-      }
-  }
+  def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
+    Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind  Operation kind
     * @return      The average fees for a given operation kind, if it exists
     */
-  def calculateAverageFees(kind: String): Option[AverageFees] = {
-    val operationKinds = Set[String]{kind}
-    val action = for {
-      o <- Tables.Operations
-      if o.kind.inSet(operationKinds)
-    } yield (o.fee, o.timestamp)
-    val op = dbHandle.run(action.distinct.sortBy(_._2.desc).take(numberOfFeesAveraged).result)
-    val results = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-    val resultNumbers = results.map(x => x._1.getOrElse("0").toDouble)
-    val m: Int = ceil(mean(resultNumbers)).toInt
-    val s: Int = ceil(stdev(resultNumbers)).toInt
-    results.length match {
-      case 0 => None
-      case _ =>
-        val timestamp = results.head._2
-        Some(AverageFees(max(m - s, 0), m, m + s, timestamp, kind))
+  def calculateAverageFeesIO(kind: String)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
+    def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[String], java.sql.Timestamp)]): AverageFees = {
+      val values = fees.map {
+        case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
+      }
+      val m: Int = ceil(mean(values)).toInt
+      val s: Int = ceil(stdev(values)).toInt
+      AverageFees(max(m - s, 0), m, m + s, ts, kind)
+    }
+
+    val opQuery =
+      Tables.Operations
+        .filter(_.kind === kind)
+        .map(o => (o.fee, o.timestamp))
+        .distinct
+        .sortBy { case (_, ts) => ts.desc }
+        .take(numberOfFeesAveraged)
+        .result
+
+    opQuery.map {
+      timestampedFees =>
+        timestampedFees.headOption.map {
+          case (_, latest) =>
+            computeAverage(latest, timestampedFees)
+        }
     }
   }
-
 
   /**
     * Delete all accounts in database not associated with block at maxLevel.
-    * @return No value, database update
+    * @return the number of rows removed
     */
-  def purgeOldAccounts(): Try[Int] = {
-    ApiOperations.fetchMaxBlockLevelForAccounts().flatMap{ blockLevel =>
-      Try {
-        val query = Tables.Accounts.filter(row => !(row.blockLevel === blockLevel))
-        val action = query.delete
-        val op = dbHandle.run(action)
-        Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-      }
+  def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
+    val purged = dbHandle.run {
+      accountsMaxBlockLevel.flatMap( maxLevel =>
+        Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
+      ).transactionally
+    }
+    purged.andThen {
+      case Success(howMany) => logger.info("{} accounts where purged from old block levels.", howMany)
+      case Failure(e) => logger.error("Could not purge old block-levels accounts", e)
     }
   }
+
+  /** conversions from domain objects to database row format */
+  object RowConversion {
+
+    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
+      Tables.FeesRow(
+        low = in.low,
+        medium = in.medium,
+        high = in.high,
+        timestamp = in.timestamp,
+        kind = in.kind
+      )
+
+  }
+
+  /* use as max block level when none exists */
+  private[tezos] val defaultBlockLevel: BigDecimal = -1
+
+  /**
+    * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
+    */
+  private[tezos] def accountsMaxBlockLevel: DBIO[BigDecimal] =
+    Tables.Accounts
+      .map(_.blockLevel)
+      .max
+      .getOrElse(defaultBlockLevel)
+      .result
 
 }
