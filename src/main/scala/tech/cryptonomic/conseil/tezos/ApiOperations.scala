@@ -6,7 +6,7 @@ import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
+import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -606,13 +606,9 @@ object ApiOperations {
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxLevel(): Try[Int] = Try {
-    val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
-    val maxLevelOpt = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS))
-    maxLevelOpt match {
-      case Some(maxLevel) => maxLevel
-      case None => -1
-    }
+  def fetchMaxLevel(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
   }
 
   /**
@@ -620,7 +616,7 @@ object ApiOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock()(implicit ec: ExecutionContext) =
+  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
     dbHandle.run(latestBlockIO())
 
   /**

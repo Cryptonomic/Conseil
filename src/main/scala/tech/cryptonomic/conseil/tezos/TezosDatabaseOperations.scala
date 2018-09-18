@@ -7,8 +7,8 @@ import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block}
-import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import tech.cryptonomic.conseil.util.CollectionOps._
+import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
@@ -149,6 +149,18 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Accounts ++= RowConversion.ofAccounts(accountsInfo)
 
   /**
+    * Writes blocks and related operations to a database.
+    * @param blocks   Block with operations.
+    * @return         Future on database inserts.
+    */
+  def writeBlocksIO(blocks: List[Block]): DBIO[Unit] =
+      DBIO.seq(
+        Tables.Blocks          ++= blocks.map(RowConversion.ofBlock),
+        Tables.OperationGroups ++= blocks.flatMap(RowConversion.ofBlocksOperationGroups),
+        Tables.Operations      ++= blocks.flatMap(RowConversion.ofBlockOperations)
+      )
+
+  /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind  Operation kind
     * @return      The average fees for a given operation kind, if it exists
@@ -266,6 +278,62 @@ object TezosDatabaseOperations extends LazyLogging {
           )
       }.toList
     }
+
+    private[TezosDatabaseOperations] def ofBlock(block: Block) = {
+      val header = block.metadata.header
+      Tables.BlocksRow(
+        level = header.level,
+        proto = header.proto,
+        predecessor = header.predecessor,
+        timestamp = header.timestamp,
+        validationPass = header.validationPass,
+        fitness = header.fitness.mkString(","),
+        context = Some(header.context), //put in later
+        signature = header.signature,
+        protocol = block.metadata.protocol,
+        chainId = block.metadata.chain_id,
+        hash = block.metadata.hash,
+        operationsHash = header.operations_hash
+      )
+    }
+
+    private[TezosDatabaseOperations] def ofBlocksOperationGroups(block: Block): List[Tables.OperationGroupsRow] =
+      block.operationGroups.map{ og =>
+        Tables.OperationGroupsRow(
+          protocol = og.protocol,
+          chainId = og.chain_id,
+          hash = og.hash,
+          branch = og.branch,
+          signature = og.signature,
+          blockId = block.metadata.hash
+        )
+      }
+
+    private[TezosDatabaseOperations] def ofBlockOperations(block: Block): List[Tables.OperationsRow] =
+      block.operationGroups.flatMap{ og =>
+        og.contents.fold(List.empty[Tables.OperationsRow]){
+          operations =>
+            operations.map { operation =>
+              Tables.OperationsRow(
+                kind = operation.kind,
+                source = operation.source,
+                fee = operation.fee,
+                gasLimit = operation.gasLimit,
+                storageLimit = operation.storageLimit,
+                amount = operation.amount,
+                destination = operation.destination,
+                operationGroupHash = og.hash,
+                operationId = 0,
+                balance = operation.balance,
+                delegate = operation.delegate,
+                blockHash = block.metadata.hash,
+                blockLevel = block.metadata.header.level,
+                timestamp = block.metadata.header.timestamp,
+                pkh = operation.pkh
+              )
+            }
+        }
+      }
 
 
   }

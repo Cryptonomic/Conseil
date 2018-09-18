@@ -40,10 +40,19 @@ trait TezosRPCInterface {
     * Runs an RPC call against the configured Tezos node using HTTP POST.
     * @param network  Which Tezos network to go against
     * @param command  RPC command to invoke
-    * @param payload  Optional JSON pyaload to post
+    * @param payload  Optional JSON payload to post
     * @return         Result of the RPC call
     */
   def runPostQuery(network: String, command: String, payload: Option[String] = None): Try[String]
+
+  /**
+    * Runs an async RPC call against the configured Tezos node using HTTP POST.
+    * @param network  Which Tezos network to go against
+    * @param command  RPC command to invoke
+    * @param payload  Optional JSON payload to post
+    * @return         Result of the RPC call
+    */
+  def runAsyncPostQuery(network: String, command: String, payload: Option[String] = None): Future[String]
 
   /** Frees any resource that was eventually reserved */
   def shutdown(): Future[ShutdownComplete]= Future.successful(ShutdownComplete)
@@ -69,7 +78,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       .map(_ => ShutdownComplete)(executor = scala.concurrent.ExecutionContext.Implicits.global)
   }
 
-  private[this] def commandUrl(network: String, command: String): String = {
+  private[this] def translateCommandToUrl(network: String, command: String): String = {
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
@@ -79,7 +88,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   override def runGetQuery(network: String, command: String): Try[String] = {
     Try{
-      val url = commandUrl(network, command)
+      val url = translateCommandToUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network")
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
@@ -97,7 +106,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   }
 
   override def runAsyncGetQuery(network: String, command: String): Future[String] = {
-    val url = commandUrl(network, command)
+    val url = translateCommandToUrl(network, command)
     val request = HttpRequest(HttpMethods.GET, url)
     logger.debug("Async querying URL {} for platform Tezos and network {}", url, network)
 
@@ -110,7 +119,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   override def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
     Try{
-      val url = commandUrl(network, command)
+      val url = translateCommandToUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val postedData = payload match {
         case None => """{}"""
@@ -128,6 +137,25 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       val responseBodyFuture = response.entity.toStrict(entityPostTimeout).map(_.data).map(_.utf8String)
       val responseBody = Await.result(responseBodyFuture, awaitTime)
       logger.debug(s"Query result: $responseBody")
+      responseBody
+    }
+  }
+
+  override def runAsyncPostQuery(network: String, command: String, payload: Option[String]= None): Future[String] = {
+    val url = translateCommandToUrl(network, command)
+    logger.debug(s"Async querying URL $url for platform Tezos and network $network with payload $payload")
+    val postedData = payload.getOrElse("{}")
+    val request = HttpRequest(
+      HttpMethods.POST,
+      url,
+      entity = HttpEntity(ContentTypes.`application/json`, postedData.getBytes())
+    )
+    for {
+      response <- Http(system).singleRequest(request)
+      strict <- response.entity.toStrict(entityPostTimeout)
+    } yield {
+      val responseBody = strict.data.utf8String
+      logger.debug("Query results: {}", responseBody)
       responseBody
     }
   }

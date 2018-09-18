@@ -40,17 +40,24 @@ object Lorre extends App with LazyLogging {
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
-      processTezosBlocks()
-      processTezosAccounts()
-      if (iteration % feeUpdateInterval == 0) {
-        FeeOperations.processTezosAverageFees()
-      }
-      if (iteration % purgeAccountsInterval == 0) {
-        TezosDb.purgeOldAccounts()
-      }
-      logger.info("Taking a nap")
-      Thread.sleep(sleepIntervalInSeconds * 1000)
-      mainLoop(iteration + 1)
+    val processing = for {
+      _ <- processTezosBlocks()
+      _ <- processTezosAccounts()
+      _ <-
+        if (iteration % feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees()
+        else
+          Future.successful(())
+      _ <-
+        if (iteration % purgeAccountsInterval == 0)
+          TezosDb.purgeOldAccounts()
+        else
+          Future.successful(())
+    } yield Done
+    Await.ready(processing, atMost = Duration.Inf)
+    logger.info("Taking a nap")
+    Thread.sleep(sleepIntervalInSeconds * 1000)
+    mainLoop(iteration + 1)
   }
 
   sys.addShutdownHook{
@@ -65,21 +72,17 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(): Try[Unit] = {
+  def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
-      case Success(blocks) =>
-        Try {
-          val dbFut = TezosDb.writeBlocksToDatabase(blocks, db)
-          dbFut onComplete {
-            case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
-            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
-          }
-          Await.result(dbFut, Duration.Inf)
-        }
+    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+      blocks =>
+        db.run(TezosDb.writeBlocksIO(blocks)).andThen {
+          case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
+          case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
+        }.map(_ => Done)
+    }.andThen {
       case Failure(e) =>
         logger.error("Could not fetch blocks from client", e)
-        throw e
     }
   }
 
