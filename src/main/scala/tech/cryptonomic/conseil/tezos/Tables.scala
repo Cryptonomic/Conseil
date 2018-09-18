@@ -67,6 +67,11 @@ trait Tables {
 
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Index over (blockLevel) (database name ix_accounts_block_level) */
+    val index1 = index("ix_accounts_block_level", blockLevel)
+    /** Index over (manager) (database name ix_accounts_manager) */
+    val index2 = index("ix_accounts_manager", manager)
   }
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
@@ -121,11 +126,10 @@ trait Tables {
     /** Database column operations_hash SqlType(varchar), Default(None) */
     val operationsHash: Rep[Option[String]] = column[Option[String]]("operations_hash", O.Default(None))
 
-    /** Foreign key referencing Blocks (database name blocks_predecessor_fkey) */
-    lazy val blocksFk = foreignKey("blocks_predecessor_fkey", predecessor, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
-
     /** Uniqueness Index over (hash) (database name blocks_hash_key) */
     val index1 = index("blocks_hash_key", hash, unique=true)
+    /** Index over (level) (database name ix_blocks_level) */
+    val index2 = index("ix_blocks_level", level)
   }
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
@@ -266,6 +270,11 @@ trait Tables {
     lazy val blocksFk = foreignKey("fk_blockhashes", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
     lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash, OperationGroups)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Index over (destination) (database name ix_operations_destination) */
+    val index1 = index("ix_operations_destination", destination)
+    /** Index over (source) (database name ix_operations_source) */
+    val index2 = index("ix_operations_source", source)
   }
   /** Collection-like TableQuery object for table Operations */
   lazy val Operations = new TableQuery(tag => new Operations(tag))

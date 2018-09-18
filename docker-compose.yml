@@ -2,7 +2,7 @@ version: "3.1"
 
 services:
   conseil-postgres:
-    image: postgres:9.5.13
+    image: postgres:10.3-alpine
     ports:
     - 5432:5432
     environment:
@@ -11,3 +11,4 @@ services:
       POSTGRES_DB: "conseil-local"
     volumes:
     - "./pgdata:/var/lib/postgresql/data"
+    - "./doc/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"

@@ -29,13 +29,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return         Future on database inserts.
     */
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
-      )
-    )
+    dbHandle.run(DBIO.seq(
+      Tables.Blocks           ++= blocks.map(blockToDatabaseRow),
+      Tables.OperationGroups  ++= blocks.flatMap(operationGroupToDatabaseRow),
+      Tables.Operations       ++= blocks.flatMap(operationsToDatabaseRow)
+    ))
 
   /**
     * Generates database rows for accounts.
