@@ -140,7 +140,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
   )
 
   /** creates a connections pool based on the host network */
-  private[this] def hostPool(network: String) = {
+  private[this] def createHostPoolFlow(network: String) = {
     val host = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
@@ -158,10 +158,8 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       )
   }
 
-
-
   override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = {
-    val connections = hostPool(network)
+    val connections = createHostPoolFlow(network)
     val uris = Source(commands.map(createCommandUrl(network, _)))
     val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
 

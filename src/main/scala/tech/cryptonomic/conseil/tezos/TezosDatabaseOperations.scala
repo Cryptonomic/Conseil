@@ -142,7 +142,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
-    Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
+    Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -183,7 +183,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
     val purged = dbHandle.run {
-      accountsMaxBlockLevel.flatMap( maxLevel =>
+      fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
         Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
       ).transactionally
     }
@@ -208,7 +208,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /** conversions from domain objects to database row format */
   object RowConversion {
 
-    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
+    private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
       Tables.FeesRow(
         low = in.low,
         medium = in.medium,
@@ -225,7 +225,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
     */
-  private[tezos] def accountsMaxBlockLevel: DBIO[BigDecimal] =
+  private[tezos] def fetchAccountsMaxBlockLevel: DBIO[BigDecimal] =
     Tables.Accounts
       .map(_.blockLevel)
       .max

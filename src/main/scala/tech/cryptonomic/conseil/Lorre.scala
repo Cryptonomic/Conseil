@@ -1,3 +1,4 @@
+
 package tech.cryptonomic.conseil
 
 import com.typesafe.config.ConfigFactory
@@ -39,18 +40,22 @@ object Lorre extends App with LazyLogging {
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
-    Await.ready(
-      processTezosBlocks().flatMap(
-        _ =>
-          processTezosAccounts()
-      )
-    , atMost = Duration.Inf)
-    if (iteration % feeUpdateInterval == 0) {
-      FeeOperations.processTezosAverageFees()
-    }
-    if (iteration % purgeAccountsInterval == 0) {
-      TezosDatabaseOperations.purgeOldAccounts()
-    }
+    val noOp = Future.successful(())
+    val processing = for {
+      _ <- processTezosBlocks()
+      _ <- processTezosAccounts()
+      _ <-
+        if (iteration % feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees()
+        else
+          noOp
+        _ <-
+        if (iteration % purgeAccountsInterval == 0)
+          TezosDatabaseOperations.purgeOldAccounts()
+        else
+          noOp
+    } yield ()
+    Await.ready(processing, atMost = Duration.Inf)
     logger.info("Taking a nap")
     Thread.sleep(sleepIntervalInSeconds * 1000)
     mainLoop(iteration + 1)
@@ -64,13 +69,11 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Future[Unit] = {
     logger.info("Processing Tezos Blocks...")
-    val start = System.nanoTime()
     val stored = tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
         blocks =>
           TezosDatabaseOperations.writeBlocksToDatabase(blocks, db).andThen {
               case Success(_) =>
-                val done = System.nanoTime()
-                logger.info("Wrote {} blocks to the database in {} seconds.", blocks.size, (done - start).toDouble/1e9)
+                logger.info("Wrote {} blocks to the database", blocks.size)
               case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
             }
       }
