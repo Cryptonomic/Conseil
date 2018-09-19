@@ -5,19 +5,15 @@ import akka.http.scaladsl.model.MediaTypes
 import akka.http.scaladsl.server.{Directive, Route}
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
-import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.util.JsonUtil
 
 /**
   * Tezos-specific routes.
   */
 object Tezos extends LazyLogging {
-
-  val dbHandle = DatabaseUtil.db
-
-  val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -36,7 +32,7 @@ object Tezos extends LazyLogging {
     "operation_kind".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).tflatMap{ 
+  ).tflatMap{
     case (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) =>
     val filter: Filter = Filter(
       limit = limit,

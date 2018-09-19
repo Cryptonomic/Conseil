@@ -36,14 +36,13 @@ trait TezosRPCInterface {
 /**
   * Concrete implementation of the above.
   */
-object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
+case class TezosNodeInterface()(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
 
   private val conf = ConfigFactory.load
   private val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
   private val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
   private val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
 
-  implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
