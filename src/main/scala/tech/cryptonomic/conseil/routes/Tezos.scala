@@ -30,31 +30,13 @@ object Tezos extends LazyLogging {
     "operation_source".as[String].*,
     "operation_destination".as[String].*,
     "operation_participant".as[String].*,
+    "operation_kind".as[String].*,
     "account_id".as[String].*,
     "account_manager".as[String].*,
     "account_delegate".as[String].*,
-    "operation_kind".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).tflatMap{ 
-    case (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) =>
-    val filter: Filter = Filter(
-      limit = limit,
-      blockIDs = Some(block_ids.toSet),
-      levels = Some(block_levels.toSet),
-      chainIDs = Some(block_chainIDs.toSet),
-      protocols = Some(block_protocols.toSet),
-      operationGroupIDs = Some(op_ids.toSet),
-      operationSources = Some(op_sources.toSet),
-      operationDestinations = Some(op_destinations.toSet),
-      operationParticipants = Some(op_participants.toSet),
-      operationKinds = Some(operation_kind.toSet),
-      accountIDs = Some(account_ids.toSet),
-      accountManagers = Some(account_managers.toSet),
-      accountDelegates = Some(account_delegates.toSet),
-      sortBy = sort_by, order = order)
-    provide(filter)
-  }
+  ).as(Filter.readParams)
 
   // Directive for gathering account information for most POST operations.
   val gatherKeyInfo: Directive[Tuple1[KeyStore]] = parameters(

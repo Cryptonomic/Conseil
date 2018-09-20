@@ -44,22 +44,58 @@ object ApiOperations {
     */
   case class Filter(
                      limit: Option[Int] = Some(10),
-                     blockIDs: Option[Set[String]] = Some(Set[String]()),
-                     levels: Option[Set[Int]] = Some(Set[Int]()),
-                     chainIDs: Option[Set[String]] = Some(Set[String]()),
-                     protocols: Option[Set[String]] = Some(Set[String]()),
-                     operationGroupIDs: Option[Set[String]] = Some(Set[String]()),
-                     operationSources: Option[Set[String]] = Some(Set[String]()),
-                     operationDestinations: Option[Set[String]] = Some(Set[String]()),
-                     operationParticipants: Option[Set[String]] = Some(Set[String]()),
-                     operationKinds: Option[Set[String]] = Some(Set[String]()),
-                     accountIDs: Option[Set[String]] = Some(Set[String]()),
-                     accountManagers: Option[Set[String]] = Some(Set[String]()),
-                     accountDelegates: Option[Set[String]] = Some(Set[String]()),
+                     blockIDs: Set[String] = Set.empty,
+                     levels: Set[Int] = Set.empty,
+                     chainIDs: Set[String] = Set.empty,
+                     protocols: Set[String] = Set.empty,
+                     operationGroupIDs: Set[String] = Set.empty,
+                     operationSources: Set[String] = Set.empty,
+                     operationDestinations: Set[String] = Set.empty,
+                     operationParticipants: Set[String] = Set.empty,
+                     operationKinds: Set[String] = Set.empty,
+                     accountIDs: Set[String] = Set.empty,
+                     accountManagers: Set[String] = Set.empty,
+                     accountDelegates: Set[String] = Set.empty,
                      sortBy: Option[String] = None,
-                     order: Option[String] = Some("DESC")
+                     order: Option[String] = Some("desc")
                    )
 
+  object Filter {
+    def readParams(
+      limit: Option[Int],
+      blockIDs: Iterable[String],
+      levels: Iterable[Int],
+      chainIDs: Iterable[String],
+      protocols: Iterable[String],
+      operationGroupIDs: Iterable[String],
+      operationSources: Iterable[String],
+      operationDestinations: Iterable[String],
+      operationParticipants: Iterable[String],
+      operationKinds: Iterable[String],
+      accountIDs: Iterable[String],
+      accountManagers: Iterable[String],
+      accountDelegates: Iterable[String],
+      sortBy: Option[String],
+      order: Option[String]
+    ): Filter =
+      Filter(
+        limit,
+        blockIDs.toSet,
+        levels.toSet,
+        chainIDs.toSet,
+        protocols.toSet,
+        operationGroupIDs.toSet,
+        operationSources.toSet,
+        operationDestinations.toSet,
+        operationParticipants.toSet,
+        operationKinds.toSet,
+        accountIDs.toSet,
+        accountManagers.toSet,
+        accountDelegates.toSet,
+        sortBy,
+        order
+      )
+  }
 
   /**
     * Represents queries for filtered tables for Accounts, Blocks, Operation Groups, and Operations.
@@ -191,85 +227,85 @@ object ApiOperations {
   // Predicates to determine existence of specific type of filter
 
   private def isBlockFilter(filter: Filter): Boolean =
-    (filter.blockIDs.isDefined && filter.blockIDs.get.nonEmpty) ||
-      (filter.levels.isDefined && filter.levels.get.nonEmpty) ||
-      (filter.chainIDs.isDefined && filter.chainIDs.get.nonEmpty) ||
-      (filter.protocols.isDefined && filter.protocols.get.nonEmpty)
+    filter.blockIDs.nonEmpty ||
+      filter.levels.nonEmpty ||
+      filter.chainIDs.nonEmpty ||
+      filter.protocols.nonEmpty
 
   private def isOperationGroupFilter(filter: Filter): Boolean =
-    (filter.operationGroupIDs.isDefined && filter.operationGroupIDs.get.nonEmpty) ||
-      (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
+    filter.operationGroupIDs.nonEmpty ||
+      filter.operationSources.nonEmpty
 
   private def isOperationFilter(filter: Filter): Boolean =
-    (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty) ||
-      (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty) ||
-        (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty)
+    filter.operationKinds.nonEmpty ||
+      filter.operationSources.nonEmpty ||
+        filter.operationDestinations.nonEmpty
 
   private def isAccountFilter(filter: Filter): Boolean =
-    (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty) ||
-      (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) ||
-      (filter.accountManagers.isDefined && filter.accountManagers.get.nonEmpty)
+    filter.accountDelegates.nonEmpty ||
+      filter.accountIDs.nonEmpty ||
+      filter.accountManagers.nonEmpty
 
   // Start helper functions for constructing Slick queries
 
   private def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-    if (filter.blockIDs.isDefined && filter.blockIDs.get.nonEmpty) b.hash.inSet(filter.blockIDs.get) else true
+    filter.blockIDs.isEmpty.bind ||
+      b.hash.inSet(filter.blockIDs)
 
   private def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-    if (filter.levels.isDefined && filter.levels.get.nonEmpty) b.level.inSet(filter.levels.get) else true
+    filter.levels.isEmpty.bind ||
+      b.level.inSet(filter.levels)
 
   private def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-    if (filter.chainIDs.isDefined && filter.chainIDs.get.nonEmpty)
-      b.chainId.getOrElse("").inSet(filter.chainIDs.get) else true
+    filter.chainIDs.isEmpty.bind ||
+      b.chainId.getOrElse("").inSet(filter.chainIDs)
 
   private def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-    if (filter.protocols.isDefined && filter.protocols.get.nonEmpty) b.protocol.inSet(filter.protocols.get) else true
+    filter.protocols.isEmpty.bind ||
+      b.protocol.inSet(filter.protocols)
 
   private def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
-    if (filter.operationGroupIDs.isDefined && filter.operationGroupIDs.get.nonEmpty)
-      og.hash.inSet(filter.operationGroupIDs.get)
-    else true
+    filter.operationGroupIDs.isEmpty.bind ||
+      og.hash.inSet(filter.operationGroupIDs)
 
   private def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-    if (filter.operationGroupIDs.isDefined && filter.operationGroupIDs.get.nonEmpty)
-      o.operationGroupHash.inSet(filter.operationGroupIDs.get)
-    else true
+    filter.operationGroupIDs.isEmpty.bind ||
+      o.operationGroupHash.inSet(filter.operationGroupIDs)
 
   private def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-    if (filter.operationSources.isDefined && filter.operationSources.get.nonEmpty)
-      o.source.getOrElse("").inSet(filter.operationSources.get)
-    else true
+    filter.operationSources.isEmpty.bind ||
+      o.source.getOrElse("").inSet(filter.operationSources)
 
   private def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-    if (filter.operationDestinations.isDefined && filter.operationDestinations.get.nonEmpty)
-      o.destination.getOrElse("").inSet(filter.operationDestinations.get)
-    else true
+    filter.operationDestinations.isEmpty.bind ||
+      o.destination.getOrElse("").inSet(filter.operationDestinations)
 
   private def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-    if (filter.operationParticipants.isDefined && filter.operationParticipants.get.nonEmpty) {
-      o.destination.getOrElse("").inSet(filter.operationParticipants.get) ||
-        o.source.getOrElse("").inSet(filter.operationParticipants.get)
-    }
-    else true
+    filter.operationParticipants.isEmpty.bind ||
+      o.destination.getOrElse("").inSet(filter.operationParticipants) ||
+      o.source.getOrElse("").inSet(filter.operationParticipants)
+
 
   private def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-    if (filter.accountIDs.isDefined && filter.accountIDs.get.nonEmpty) a.accountId.inSet(filter.accountIDs.get) else true
+    filter.accountIDs.isEmpty.bind ||
+      a.accountId.inSet(filter.accountIDs)
 
   private def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-    if (filter.accountManagers.isDefined && filter.accountManagers.get.nonEmpty) a.manager.inSet(filter.accountManagers.get) else true
+    filter.accountManagers.isEmpty.bind ||
+      a.manager.inSet(filter.accountManagers)
 
   private def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-    if (filter.accountDelegates.isDefined && filter.accountDelegates.get.nonEmpty)
-      a.delegateValue.getOrElse("").inSet(filter.accountDelegates.get)
-    else true
+    filter.accountDelegates.isEmpty.bind ||
+      a.delegateValue.getOrElse("").inSet(filter.accountDelegates)
+
 
   private def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-    if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
-      o.kind.inSet(filter.operationKinds.get) else true
+    filter.operationKinds.isEmpty.bind ||
+      o.kind.inSet(filter.operationKinds)
 
   private def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
-    if (filter.operationKinds.isDefined && filter.operationKinds.get.nonEmpty)
-      fee.kind.inSet(filter.operationKinds.get) else true
+    filter.operationKinds.isEmpty.bind ||
+      fee.kind.inSet(filter.operationKinds)
 
   private def getFilterLimit(filter: Filter): Int = if (filter.limit.isDefined) filter.limit.get else 10
 
