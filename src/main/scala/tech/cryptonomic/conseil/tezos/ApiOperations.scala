@@ -34,7 +34,7 @@ object ApiOperations {
     def fromString(s: String): Option[Sorting] = s.toLowerCase match {
       case "asc" => Some(AscendingSort)
       case "desc" => Some(DescendingSort)
-      case _ => None
+      case _ => throw new IllegalArgumentException("""Please provide a valid value for the ordering parameter ['asc', 'desc'] """)
     }
   }
 
