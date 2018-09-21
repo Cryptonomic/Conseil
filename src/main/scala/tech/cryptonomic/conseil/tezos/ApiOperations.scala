@@ -9,8 +9,8 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.{Duration, _}
 import scala.util.Try
 
 
@@ -23,8 +23,23 @@ object ApiOperations {
   private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
+  /** Define sorting order for api queries */
+  sealed trait Sorting extends Product with Serializable
+  case object AscendingSort extends Sorting
+  case object DescendingSort extends Sorting
+  object Sorting {
+    /** Read an input string (`asc` or `desc`) to return a
+      * (possible) [[tech.cryptonomic.conseil.tezos.ApiOperations.Sorting]] value
+      */
+    def fromString(s: String): Option[Sorting] = s.toLowerCase match {
+      case "asc" => Some(AscendingSort)
+      case "desc" => Some(DescendingSort)
+      case _ => None
+    }
+  }
+
   /**
-    * Repesents a query filter submitted to the Conseil API.
+    * Represents a query filter submitted to the Conseil API.
     *
     * @param limit                  How many records to return
     * @param blockIDs               Block IDs
@@ -57,7 +72,7 @@ object ApiOperations {
                      accountManagers: Set[String] = Set.empty,
                      accountDelegates: Set[String] = Set.empty,
                      sortBy: Option[String] = None,
-                     order: Option[String] = Some("desc")
+                     order: Option[Sorting] = Some(DescendingSort)
                    )
 
   object Filter {
@@ -93,7 +108,7 @@ object ApiOperations {
         accountManagers.toSet,
         accountDelegates.toSet,
         sortBy,
-        order
+        order.flatMap(Sorting.fromString)
       )
   }
 
@@ -437,7 +452,7 @@ object ApiOperations {
     * @param sortBy Parameter to say what column to sort by.
     * @return
     */
-  private def fetchSortedAction(order: Option[String], action: Action, sortBy: Option[String]): Action = {
+  private def fetchSortedAction(order: Option[Sorting], action: Action, sortBy: Option[String]): Action = {
 
     //default is sorting descending by block level, operation group hash, and account ID, otherwise order and sorting column chosen by user
     val sortedAction =
@@ -445,190 +460,190 @@ object ApiOperations {
         case BlocksAction(blockAction) =>
           sortBy.map(_.toLowerCase) match {
             case Some(x) if x == "level" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._1.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._1.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._1.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._1.desc))
                 case None => BlocksAction(blockAction.sortBy(_._1.desc))
               }
             case Some(x) if x == "proto" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._2.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._2.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._2.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._2.desc))
                 case None => BlocksAction(blockAction.sortBy(_._2.desc))
               }
             case Some(x) if x == "predecessor" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._3.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._3.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._3.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._3.desc))
                 case None => BlocksAction(blockAction.sortBy(_._3.desc))
               }
             case Some(x) if x == "timestamp" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._4.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._4.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._4.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._4.desc))
                 case None => BlocksAction(blockAction.sortBy(_._4.desc))
               }
             case Some(x) if x == "validation_pass" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._5.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._5.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._5.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._5.desc))
                 case None => BlocksAction(blockAction.sortBy(_._5.desc))
               }
 
             case Some(x) if x == "fitness" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._6.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._6.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._6.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._6.desc))
                 case None => BlocksAction(blockAction.sortBy(_._6.desc))
               }
             case Some(x) if x == "context" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._7.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._7.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._7.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._7.desc))
                 case None => BlocksAction(blockAction.sortBy(_._7.desc))
               }
             case Some(x) if x == "signature" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._8.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._8.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._8.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._8.desc))
                 case None => BlocksAction(blockAction.sortBy(_._8.desc))
               }
             case Some(x) if x == "protocol" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._9.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._9.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._9.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._9.desc))
                 case None => BlocksAction(blockAction.sortBy(_._9.desc))
               }
             case Some(x) if x == "chain_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._10.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._10.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._10.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._10.desc))
                 case None => BlocksAction(blockAction.sortBy(_._10.desc))
               }
             case Some(x) if x == "hash" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._11.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._11.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._11.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._11.desc))
                 case None => BlocksAction(blockAction.sortBy(_._11.desc))
               }
             case Some(x) if x == "operations_hash" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._12.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._12.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._12.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._12.desc))
                 case None => BlocksAction(blockAction.sortBy(_._12.desc))
               }
             case None =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => BlocksAction(blockAction.sortBy(_._1.asc))
-                case Some(x) if x == "desc" => BlocksAction(blockAction.sortBy(_._1.desc))
+              order match {
+                case Some(AscendingSort) => BlocksAction(blockAction.sortBy(_._1.asc))
+                case Some(DescendingSort) => BlocksAction(blockAction.sortBy(_._1.desc))
                 case None => BlocksAction(blockAction.sortBy(_._1.desc))
               }
           }
         case OperationGroupsAction(opGroupAction) =>
           sortBy.map(_.toLowerCase) match {
             case Some(x) if x == "protocol" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._1.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._1.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._1.desc))
               }
             case Some(x) if x == "chain_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._2.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._2.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._2.desc))
               }
             case Some(x) if x == "hash" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
               }
             case Some(x) if x == "branch" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._4.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._4.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._4.desc))
               }
             case Some(x) if x == "signature" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._5.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._5.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._5.desc))
               }
             case Some(x) if x == "block_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._6.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._6.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._6.desc))
               }
             case None =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
-                case Some(x) if x == "desc" => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
+              order match {
+                case Some(AscendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._3.asc))
+                case Some(DescendingSort) => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
                 case None => OperationGroupsAction(opGroupAction.sortBy(_._3.desc))
               }
           }
         case AccountsAction(accountAction) =>
           sortBy.map(_.toLowerCase) match {
             case Some(x) if x == "account_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._1.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._1.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._1.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._1.desc))
                 case None => AccountsAction(accountAction.sortBy(_._1.desc))
               }
             case Some(x) if x == "block_id" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._2.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._2.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._2.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._2.desc))
                 case None => AccountsAction(accountAction.sortBy(_._2.desc))
               }
             case Some(x) if x == "manager" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._3.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._3.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._3.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._3.desc))
                 case None => AccountsAction(accountAction.sortBy(_._3.desc))
               }
             case Some(x) if x == "spendable" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._4.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._4.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._4.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._4.desc))
                 case None => AccountsAction(accountAction.sortBy(_._4.desc))
               }
             case Some(x) if x == "delegate_setable" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._5.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._5.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._5.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._5.desc))
                 case None => AccountsAction(accountAction.sortBy(_._5.desc))
               }
             case Some(x) if x == "delegate_value" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._6.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._6.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._6.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._6.desc))
                 case None => AccountsAction(accountAction.sortBy(_._6.desc))
               }
             case Some(x) if x == "counter" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._7.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._7.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._7.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._7.desc))
                 case None => AccountsAction(accountAction.sortBy(_._7.desc))
               }
             case Some(x) if x == "script" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._8.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._8.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._8.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._8.desc))
                 case None => AccountsAction(accountAction.sortBy(_._8.desc))
               }
             case Some(x) if x == "balance" =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._9.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._9.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._9.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._9.desc))
                 case None => AccountsAction(accountAction.sortBy(_._9.desc))
               }
             case None =>
-              order.map(_.toLowerCase) match {
-                case Some(x) if x == "asc" => AccountsAction(accountAction.sortBy(_._1.asc))
-                case Some(x) if x == "desc" => AccountsAction(accountAction.sortBy(_._1.desc))
+              order match {
+                case Some(AscendingSort) => AccountsAction(accountAction.sortBy(_._1.asc))
+                case Some(DescendingSort) => AccountsAction(accountAction.sortBy(_._1.desc))
                 case None => AccountsAction(accountAction.sortBy(_._1.desc))
               }
           }
