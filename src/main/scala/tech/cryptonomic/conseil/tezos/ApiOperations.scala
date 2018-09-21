@@ -7,6 +7,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{Await, Future}
@@ -686,10 +687,10 @@ object ApiOperations {
     * @param hash The block's hash
     * @return The block along with its operations
     */
-  def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
-    val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
+  def fetchBlock(hash: BlockHash): Try[Map[String, Any]] = Try {
+    val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash.value).take(1).result)
     val block = Await.result(op, Duration.apply(awaitTimeInSeconds, SECONDS)).head
-    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
+    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash.value).result)
     val operationGroups = Await.result(op2, Duration.apply(awaitTimeInSeconds, SECONDS))
     Map("block" -> block, "operation_groups" -> operationGroups)
   }

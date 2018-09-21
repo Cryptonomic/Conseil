@@ -52,7 +52,7 @@ object TezosDatabaseOperations extends LazyLogging {
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
         accountId = account._1,
-        blockId = accountsInfo.blockHash,
+        blockId = accountsInfo.blockHash.value,
         manager = account._2.manager,
         spendable = account._2.spendable,
         delegateSetable = account._2.delegate.setable,
@@ -74,7 +74,7 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.BlocksRow(
       level = header.level,
       proto = header.proto,
-      predecessor = header.predecessor,
+      predecessor = header.predecessor.value,
       timestamp = header.timestamp,
       validationPass = header.validationPass,
       fitness = header.fitness.mkString(","),
@@ -82,7 +82,7 @@ object TezosDatabaseOperations extends LazyLogging {
       signature = header.signature,
       protocol = block.metadata.protocol,
       chainId = block.metadata.chain_id,
-      hash = block.metadata.hash,
+      hash = block.metadata.hash.value,
       operationsHash = header.operations_hash
     )
   }
@@ -100,7 +100,7 @@ object TezosDatabaseOperations extends LazyLogging {
         hash = og.hash,
         branch = og.branch,
         signature = og.signature,
-        blockId = block.metadata.hash
+        blockId = block.metadata.hash.value
       )
     }
 
@@ -127,7 +127,7 @@ object TezosDatabaseOperations extends LazyLogging {
               operationId = 0,
               balance = operation.balance,
               delegate = operation.delegate,
-              blockHash = block.metadata.hash,
+              blockHash = block.metadata.hash.value,
               blockLevel = block.metadata.header.level,
               timestamp = block.metadata.header.timestamp,
               pkh = operation.pkh

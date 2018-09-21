@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 
@@ -65,7 +66,7 @@ object Tezos extends LazyLogging {
                 complete(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
                 complete(ApiOperations.fetchLatestBlock())
-            } ~ path(Segment) { blockId =>
+            } ~ path(Segment).as(BlockHash.apply) { blockId =>
                 complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
