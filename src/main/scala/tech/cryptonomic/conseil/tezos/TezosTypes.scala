@@ -5,11 +5,7 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
-  class BlockHash(val value: String) extends AnyVal
-
-  object BlockHash {
-    def apply(value: String): BlockHash = new BlockHash(value)
-  }
+  case class BlockHash(value: String) extends AnyVal
 
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
