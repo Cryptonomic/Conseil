@@ -7,6 +7,8 @@ object TezosTypes {
 
   case class BlockHash(value: String) extends AnyVal
 
+  case class AccountId(id: String) extends AnyVal
+
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
@@ -149,7 +151,7 @@ object TezosTypes {
   case class AccountsWithBlockHashAndLevel(
                                     blockHash: BlockHash,
                                     blockLevel: Int,
-                                    accounts: Map[String, Account]
+                                    accounts: Map[AccountId, Account]
                                   )
 
   case class Block(

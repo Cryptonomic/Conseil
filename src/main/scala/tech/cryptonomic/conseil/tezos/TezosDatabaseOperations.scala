@@ -51,7 +51,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHashAndLevel): List[Tables.AccountsRow] =
     accountsInfo.accounts.map { account =>
       Tables.AccountsRow(
-        accountId = account._1,
+        accountId = account._1.id,
         blockId = accountsInfo.blockHash.value,
         manager = account._2.manager,
         spendable = account._2.spendable,

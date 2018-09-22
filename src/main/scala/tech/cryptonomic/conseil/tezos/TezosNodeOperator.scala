@@ -42,8 +42,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param accountID  Account ID
     * @return           The account
     */
-  def getAccountForBlock(network: String, blockHash: BlockHash, accountID: String): Try[TezosTypes.Account] =
-    node.runGetQuery(network, s"blocks/${blockHash.value}/context/contracts/$accountID").flatMap { jsonEncodedAccount =>
+  def getAccountForBlock(network: String, blockHash: BlockHash, accountID: AccountId): Try[TezosTypes.Account] =
+    node.runGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountID.id}").flatMap { jsonEncodedAccount =>
       Try(fromJson[TezosTypes.Account](jsonEncodedAccount)).flatMap(account => Try(account))
     }
 
@@ -54,8 +54,8 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param accountID  Account ID
     * @return           The account
     */
-  def getAccountManagerForBlock(network: String, blockHash: BlockHash, accountID: String): Try[TezosTypes.ManagerKey] =
-    node.runGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID/manager_key").flatMap { json =>
+  def getAccountManagerForBlock(network: String, blockHash: BlockHash, accountID: AccountId): Try[TezosTypes.ManagerKey] =
+    node.runGetQuery(network, s"blocks/$blockHash/context/contracts/${accountID.id}/manager_key").flatMap { json =>
       Try(fromJson[TezosTypes.ManagerKey](json)).flatMap(managerKey => Try(managerKey))
     }
 
@@ -65,11 +65,11 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     * @param blockHash  Hash of given block.
     * @return           Accounts
     */
-  def getAllAccountsForBlock(network: String, blockHash: BlockHash): Try[Map[String, TezosTypes.Account]] = Try {
+  def getAllAccountsForBlock(network: String, blockHash: BlockHash): Try[Map[AccountId, TezosTypes.Account]] = Try {
     node.runGetQuery(network, s"blocks/${blockHash.value}/context/contracts") match {
       case Success(jsonEncodedAccounts) =>
-        val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
-        val listedAccounts: List[String] = accountIDs
+        val accountIDs = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
+        val listedAccounts: List[AccountId] = accountIDs
         val parListedAccount = listedAccounts.par
         parListedAccount.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
         val accounts = parListedAccount.map(acctID => getAccountForBlock(network, blockHash, acctID)).seq
@@ -254,7 +254,7 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
         if(maxLevelForAccounts.toInt < headLevel)
           getAccounts(network, headHash)
         else
-          Try(AccountsWithBlockHashAndLevel(headHash, headLevel, Map[String, Account]()))
+          Try(AccountsWithBlockHashAndLevel(headHash, headLevel, Map.empty))
       }
     }
 
@@ -412,8 +412,9 @@ class TezosNodeOperator(node: TezosRPCInterface) extends LazyLogging {
     */
   def sendOperation(network: String, operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = for {
     blockHead <- getBlockHead(network)
-    account <- getAccountForBlock(network, blockHeadHash, keyStore.publicKeyHash)
-    accountManager <- getAccountManagerForBlock(network, blockHeadHash, keyStore.publicKeyHash)
+    accountId = AccountId(keyStore.publicKeyHash)
+    account <- getAccountForBlock(network, blockHeadHash, accountId)
+    accountManager <- getAccountManagerForBlock(network, blockHeadHash, accountId)
     operationsWithKeyReveal <- handleKeyRevealForOperations(operations, accountManager, keyStore)
     forgedOperationGroup <- forgeOperations(network, blockHead, account, operationsWithKeyReveal, keyStore, fee)
     signedOpGroup <- signOperationGroup(forgedOperationGroup, keyStore)
