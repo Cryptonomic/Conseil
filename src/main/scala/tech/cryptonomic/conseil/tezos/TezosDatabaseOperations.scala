@@ -97,7 +97,7 @@ object TezosDatabaseOperations extends LazyLogging {
       Tables.OperationGroupsRow(
         protocol = og.protocol,
         chainId = og.chain_id,
-        hash = og.hash,
+        hash = og.hash.value,
         branch = og.branch,
         signature = og.signature,
         blockId = block.metadata.hash.value
@@ -123,7 +123,7 @@ object TezosDatabaseOperations extends LazyLogging {
               storageLimit = operation.storageLimit,
               amount = operation.amount,
               destination = operation.destination,
-              operationGroupHash = og.hash,
+              operationGroupHash = og.hash.value,
               operationId = 0,
               balance = operation.balance,
               delegate = operation.delegate,

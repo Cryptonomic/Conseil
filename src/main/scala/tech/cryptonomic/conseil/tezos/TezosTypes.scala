@@ -7,6 +7,8 @@ object TezosTypes {
 
   case class BlockHash(value: String) extends AnyVal
 
+  case class OperationHash(value: String) extends AnyVal
+
   case class AccountId(id: String) extends AnyVal
 
   /** a conventional value to get the latest block in the chain */
@@ -128,7 +130,7 @@ object TezosTypes {
   case class OperationGroup (
                               protocol: String,
                               chain_id: Option[String],
-                              hash: String,
+                              hash: OperationHash,
                               branch: String,
                               contents: Option[List[Operation]],
                               signature: Option[String],
