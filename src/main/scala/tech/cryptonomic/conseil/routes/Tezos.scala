@@ -17,6 +17,8 @@ object Tezos extends LazyLogging {
 
   val dbHandle = DatabaseUtil.db
 
+  implicit val tezosDispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.tezos-dispatcher")
+
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   // Directive for extracting out filter parameters for most GET operations.

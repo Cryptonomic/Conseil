@@ -8,9 +8,9 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -28,13 +28,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return         Future on database inserts.
     */
   def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Blocks                 ++= blocks.map(blockToDatabaseRow),
-        Tables.OperationGroups        ++= blocks.flatMap(operationGroupToDatabaseRow),
-        Tables.Operations             ++= blocks.flatMap(operationsToDatabaseRow)
-      )
-    )
+    dbHandle.run(DBIO.seq(
+      Tables.Blocks           ++= blocks.map(blockToDatabaseRow),
+      Tables.OperationGroups  ++= blocks.flatMap(operationGroupToDatabaseRow),
+      Tables.Operations       ++= blocks.flatMap(operationsToDatabaseRow)
+    ))
 
   /**
     * Writes accounts from a specific blocks to a database.
@@ -42,12 +40,8 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param dbHandle     Handle to a database.
     * @return             Future on database inserts.
     */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Unit] =
-    dbHandle.run(
-      DBIO.seq(
-        Tables.Accounts               ++= accountsToDatabaseRows(accountsInfo)
-      )
-    )
+  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Option[Int]] =
+    dbHandle.run(Tables.Accounts ++= accountsToDatabaseRows(accountsInfo))
 
   /**
     * Generates database rows for accounts.
@@ -148,7 +142,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
-    Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
+    Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -189,7 +183,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
     val purged = dbHandle.run {
-      accountsMaxBlockLevel.flatMap( maxLevel =>
+      fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
         Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
       ).transactionally
     }
@@ -199,10 +193,22 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
+  /**
+    * Checks if a block for this hash and related operations are stored on db
+    * @param hash Identifies the block
+    * @param ec   Needed to compose the operations
+    * @return     true if block and operations exists
+    */
+  def blockExists(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
+    dbHandle.run(for {
+      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash).exists.result
+      opsThere <- Tables.OperationGroups.filter(_.blockId === hash).exists.result
+    } yield blockThere && opsThere)
+
   /** conversions from domain objects to database row format */
   object RowConversion {
 
-    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
+    private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
       Tables.FeesRow(
         low = in.low,
         medium = in.medium,
@@ -219,7 +225,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
     */
-  private[tezos] def accountsMaxBlockLevel: DBIO[BigDecimal] =
+  private[tezos] def fetchAccountsMaxBlockLevel: DBIO[BigDecimal] =
     Tables.Accounts
       .map(_.blockLevel)
       .max
