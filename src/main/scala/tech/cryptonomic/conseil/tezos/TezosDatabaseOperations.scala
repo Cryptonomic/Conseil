@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -142,7 +142,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
-    Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
+    Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -183,7 +183,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
     val purged = dbHandle.run {
-      accountsMaxBlockLevel.flatMap( maxLevel =>
+      fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
         Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
       ).transactionally
     }
@@ -193,10 +193,22 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
+  /**
+    * Checks if a block for this hash and related operations are stored on db
+    * @param hash Identifies the block
+    * @param ec   Needed to compose the operations
+    * @return     true if block and operations exists
+    */
+  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): Future[Boolean] =
+    dbHandle.run(for {
+      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
+      opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
+    } yield blockThere && opsThere)
+
   /** conversions from domain objects to database row format */
   object RowConversion {
 
-    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
+    private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
       Tables.FeesRow(
         low = in.low,
         medium = in.medium,
@@ -213,7 +225,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
     */
-  private[tezos] def accountsMaxBlockLevel: DBIO[BigDecimal] =
+  private[tezos] def fetchAccountsMaxBlockLevel: DBIO[BigDecimal] =
     Tables.Accounts
       .map(_.blockLevel)
       .max

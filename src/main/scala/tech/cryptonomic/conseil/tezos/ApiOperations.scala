@@ -695,7 +695,6 @@ object ApiOperations {
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
 
-
   private def extractFromBlock(b: Tables.Blocks) = {
     (b.level, b.proto, b.predecessor, b.timestamp, b.validationPass,
       b.fitness, b.context,
