@@ -2,13 +2,26 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{FlatSpec, Matchers}
-import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations._
-import tech.cryptonomic.conseil.tezos.Tables._
-import java.sql.Timestamp
+import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.concurrent.ScalaFutures
+import slick.jdbc.H2Profile.api._
+import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
-class TezosDatabaseOperationsTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
+class TezosDatabaseOperationsTest
+  extends WordSpec
+    with MockFactory
+    with InMemoryDatabase
+    with Matchers
+    with ScalaFutures
+    with LazyLogging {
+
+  "The database api" should {
+    "run a query with no error" in {
+      val blocks: Seq[BlocksRow] = dbHandler.run(Tables.Blocks.take(1).result).futureValue
+      blocks shouldBe empty
+    }
+  }
+
   /*
   //CHANGE TESTS TO ACCOMOMODATE ZERONET TABLE CHANGES!!!
 
