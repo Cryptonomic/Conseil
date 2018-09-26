@@ -1,15 +1,17 @@
+
 package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosDatabaseOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
 import scala.annotation.tailrec
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -50,17 +52,25 @@ object Lorre extends App with LazyLogging {
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
-      processTezosBlocks()
-      processTezosAccounts()
-      if (iteration % feeUpdateInterval == 0) {
-        FeeOperations.processTezosAverageFees()
-      }
-      if (iteration % purgeAccountsInterval == 0) {
-        TezosDatabaseOperations.purgeOldAccounts()
-      }
-      logger.info("Taking a nap")
-      Thread.sleep(sleepIntervalInSeconds * 1000)
-      mainLoop(iteration + 1)
+    val noOp = Future.successful(())
+    val processing = for {
+      _ <- processTezosBlocks()
+      _ <- processTezosAccounts()
+      _ <-
+        if (iteration % feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees()
+        else
+          noOp
+        _ <-
+        if (iteration % purgeAccountsInterval == 0)
+          TezosDatabaseOperations.purgeOldAccounts()
+        else
+          noOp
+    } yield ()
+    Await.ready(processing, atMost = Duration.Inf)
+    logger.info("Taking a nap")
+    Thread.sleep(sleepIntervalInSeconds * 1000)
+    mainLoop(iteration + 1)
   }
 
   logger.info("About to start processing on the {} network", network)
@@ -70,30 +80,28 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(): Try[Unit] = {
-    logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true) match {
-      case Success(blocks) =>
-        Try {
-          val dbFut = TezosDatabaseOperations.writeBlocksToDatabase(blocks, db)
-          dbFut onComplete {
-            case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
-            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
-          }
-          Await.result(dbFut, Duration.Inf)
-        }
-      case Failure(e) =>
-        logger.error("Could not fetch blocks from client", e)
-        throw e
-    }
+  def processTezosBlocks(): Future[Unit] = {
+    logger.info("Processing Tezos Blocks...")
+    val stored = tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+        blocks =>
+          TezosDatabaseOperations.writeBlocksToDatabase(blocks, db).andThen {
+              case Success(_) =>
+                logger.info("Wrote {} blocks to the database", blocks.size)
+              case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
+            }
+      }
+
+    stored.failed.foreach( e => logger.error("Could not fetch blocks from client", e))
+
+    stored
   }
 
   /**
     * Fetches and stores all accounts from the latest block stored in the database.
     */
-  def processTezosAccounts(): Try[Unit] = {
+  def processTezosAccounts(): Future[Unit] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network) match {
+    tezosNodeOperator.getLatestAccounts(network) transform {
       case Success(accountsInfo) =>
         Try {
           val dbFut = TezosDatabaseOperations.writeAccountsToDatabase(accountsInfo, db)
