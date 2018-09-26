@@ -68,10 +68,9 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param network    Which Tezos network to go against
     * @param blockHash  the block storing the accounts
     * @param accountIDs the ids
-    * @param ec         an implicit context to chain async operations
     * @return           the list of accounts wrapped in a [[Future]]
     */
-  def getAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId])(implicit  ec: ExecutionContext): Future[List[TezosTypes.Account]] =
+  def getAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[TezosTypes.Account]] =
     node
       .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/${blockHash.value}/context/contracts/${id.id}"), accountsFetchConcurrency)
       .map(_.map(fromJson[TezosTypes.Account]))
@@ -255,7 +254,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param blockHash  Hash of given block
     * @return           Accounts with their corresponding block hash
     */
-  def getAccounts(network: String, blockHash: BlockHash, headerLevel: Int)(implicit  ec: ExecutionContext): Future[AccountsWithBlockHashAndLevel] =
+  def getAccounts(network: String, blockHash: BlockHash, headerLevel: Int): Future[AccountsWithBlockHashAndLevel] =
       getAllAccountsForBlock(network, blockHash).map { accounts =>
         AccountsWithBlockHashAndLevel(blockHash, headerLevel, accounts)
       }
@@ -265,7 +264,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param network  Which Tezos network to go against
     * @return         Accounts with their corresponding block hash
     */
-  def getLatestAccounts(network: String)(implicit  ec: ExecutionContext): Future[AccountsWithBlockHashAndLevel]=
+  def getLatestAccounts(network: String): Future[AccountsWithBlockHashAndLevel]=
     for {
       dbBlockHead <- Future fromTry ApiOperations.fetchLatestBlock()
       maxLevelForAccounts <- Future fromTry ApiOperations.fetchMaxBlockLevelForAccounts()
