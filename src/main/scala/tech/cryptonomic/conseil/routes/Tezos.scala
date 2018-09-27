@@ -15,9 +15,9 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
   */
 object Tezos extends LazyLogging {
 
-  implicit val dispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.tezos-dispatcher")
-
   val dbHandle = DatabaseUtil.db
+
+  implicit val tezosDispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.tezos-dispatcher")
 
   val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 

@@ -1,23 +1,21 @@
+
 package tech.cryptonomic.conseil
 
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb, _}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
 object Lorre extends App with LazyLogging {
-
-  //re-use the dispatcher pool from the node interface
-  implicit val dispatcher = TezosNodeInterface.system.dispatcher
 
   private val network =
     if (args.length > 0) args(0)
@@ -34,12 +32,16 @@ object Lorre extends App with LazyLogging {
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
+  //re-use the dispatcher pool from the node interface
+  implicit val dispatcher = TezosNodeInterface.system.dispatcher
+
   lazy val db = DatabaseUtil.db
 
   val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
+    val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
       _ <- processTezosAccounts()
@@ -47,13 +49,14 @@ object Lorre extends App with LazyLogging {
         if (iteration % feeUpdateInterval == 0)
           FeeOperations.processTezosAverageFees()
         else
-          Future.successful(())
-      _ <-
+          noOp
+        _ <-
         if (iteration % purgeAccountsInterval == 0)
           TezosDb.purgeOldAccounts()
         else
-          Future.successful(())
-    } yield Done
+          noOp
+    } yield ()
+
     Await.ready(processing, atMost = Duration.Inf)
     logger.info("Taking a nap")
     Thread.sleep(sleepIntervalInSeconds * 1000)
@@ -77,7 +80,7 @@ object Lorre extends App with LazyLogging {
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
       blocks =>
         db.run(TezosDb.writeBlocksIO(blocks)).andThen {
-          case Success(_) => logger.info(s"Wrote ${blocks.size} blocks to the database.")
+          case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
           case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
         }.map(_ => Done)
     }.andThen {

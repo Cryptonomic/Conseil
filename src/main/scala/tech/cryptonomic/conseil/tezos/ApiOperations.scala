@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration.{Duration, _}
+import scala.concurrent.duration._
 import scala.util.Try
 
 
@@ -284,7 +284,7 @@ object ApiOperations {
   private def filteredTablesIO(filter: Filter)(implicit ec: ExecutionContext): DBIO[FilteredTables] =
     latestBlockIO().collect { // we fail the operation if no block is there
       case Some(_) =>
-        TezosDatabaseOperations.accountsMaxBlockLevel.map {
+        TezosDatabaseOperations.fetchAccountsMaxBlockLevel.map {
           maxLevelForAccounts =>
 
             val filteredAccounts = Tables.Accounts.filter(account =>
@@ -633,7 +633,6 @@ object ApiOperations {
     Map("block" -> block, "operation_groups" -> operationGroups)
   }
 
-
   private def extractFromBlock(b: Tables.Blocks) =
     (b.level,
       b.proto,
@@ -960,7 +959,7 @@ object ApiOperations {
     * @return the most recent block, if one exists in the database.
     */
   private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
-    TezosDb.maxBlockLevel.flatMap(
+    TezosDb.fetchMaxBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks
           .filter(_.level === maxLevel)

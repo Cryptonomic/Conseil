@@ -8,10 +8,8 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
-import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
-
+import scala.util.{Failure, Try}
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
@@ -21,6 +19,8 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   private val conf = ConfigFactory.load
 
   val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
+  val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
+  val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
 
   /**
     * Output of operation signing.
@@ -71,53 +71,47 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       .map(fromJson[TezosTypes.ManagerKey])
 
   /**
+    * Fetches the accounts identified by id
+    *
+    * @param network    Which Tezos network to go against
+    * @param blockHash  the block storing the accounts
+    * @param accountIDs the ids
+    * @param ec         an implicit context to chain async operations
+    * @return           the list of accounts wrapped in a [[Future]]
+    */
+  def getAccountsForBlock(network: String, blockHash: String, accountIDs: List[String]): Future[List[TezosTypes.Account]] =
+    node
+      .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/$blockHash/context/contracts/$id"), accountsFetchConcurrency)
+      .map(_.map(fromJson[TezosTypes.Account]))
+
+  /**
     * Fetches all accounts for a given block.
     * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block.
     * @return           Accounts
     */
   def getAllAccountsForBlock(network: String, blockHash: String): Future[Map[String, Account]] =
-    node.runAsyncGetQuery(network, s"blocks/$blockHash/context/contracts") flatMap {
-      case jsonEncodedAccounts =>
-
-        val accountIDs = fromJson[List[String]](jsonEncodedAccounts)
-
-        val parListedAccount = accountIDs.par
-        parListedAccount.tasksupport =
-          new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(32))
-
-        val accountsF =
-          Future.sequence(
-            parListedAccount.map(
-              acctID => asyncGetAccountForBlock(network, blockHash, acctID)
-            ).seq
-          )
-
-        accountsF.map {
-          accounts =>
-            accountIDs.zip(accounts).toMap
-        }.andThen {
-          case Failure(e) =>
-            logger.error(s"Failed to load accounts for ${accountIDs.size} ids $accountIDs", e)
-        }
-    }
+    for {
+      jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/$blockHash/context/contracts")
+      accountIDs = fromJson[List[String]](jsonEncodedAccounts)
+      accounts <- getAccountsForBlock(network, blockHash, accountIDs)
+    } yield accountIDs.zip(accounts).toMap
 
   /**
-    * Returns all operation groups for a given block.
-    * The list of lists return type is intentional as it corresponds to the return value of the Tezos client.
-    * @param network    Which Tezos network to go against
-    * @param blockHash  Hash of the given block
-    * @return           Operation groups
+    * Fetches operations for a block, without waiting for the result
+    * @param network   Which Tezos network to go against
+    * @param blockHash Hash of the block
+    * @return          The [[Future]] list of operations
     */
-  def getAllOperationsForBlock(network: String, blockHash: String): Future[List[List[OperationGroup]]] =
+  def getAllOperationsForBlock(network: String, blockHash: String): Future[List[OperationGroup]] =
     node.runAsyncGetQuery(network, s"blocks/$blockHash/operations")
-      .map(fromJson[List[List[OperationGroup]]])
+      .map(ll => fromJson[List[List[OperationGroup]]](ll).flatten)
 
   /**
-    * Gets a given block.
-    * @param network  Which Tezos network to go against
-    * @param hash     Hash of the given block
-    * @return         Block
+    * Fetches a single block from the chain, without waiting for the result
+    * @param network   Which Tezos network to go against
+    * @param hash      Hash of the block
+    * @return          the block data wrapped in a [[Future]]
     */
   def getBlock(network: String, hash: String): Future[TezosTypes.Block] =
     for {
@@ -126,7 +120,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         if (block.header.level == 0)
           Future.successful(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else
-          getAllOperationsForBlock(network, hash).map(_.flatten)
+          getAllOperationsForBlock(network, hash)
     } yield Block(block, ops)
 
   /**
@@ -154,95 +148,98 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
       blocks <-
-       if (headLevel <= maxLevel) Future.successful(List.empty)
-       else getBlocks(network, maxLevel + 1, headLevel, Some(headHash), followFork)
+        if (headLevel <= maxLevel) Future.successful(List.empty)
+        else fetchBoundedBlockChain(network, blockHead, maxLevel + 1, headLevel, followFork)
     } yield blocks
 
   /**
-    * Gets the latest blocks from the database using an offset.
-    * @param network        Which Tezos network to go against
-    * @param offset         How many previous blocks to get from the start
-    * @param startBlockHash The block from which to offset, using the hash provided or the head if none is provided.
-    * @param followFork     If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @return               Blocks
+    * Fetches metadata for a block only, without waiting for the answer
+    * @param network   Which Tezos network to go against
+    * @param hash      Hash of the block
+    * @return          the metadata wrapped in a [[Future]]
     */
-  def getBlocks(
-    network: String,
-    offset: Int,
-    startBlockHash: Option[String],
-    followFork: Boolean
-  ): Future[List[Block]] =
-    startBlockHash match {
-      case None =>
-        getBlockHead(network).flatMap(head => getBlocks(network, head.metadata.header.level - offset + 1, head.metadata.header.level, startBlockHash, followFork))
-      case Some(hash) =>
-        getBlock(network, hash).flatMap(block => getBlocks(network, block.metadata.header.level - offset + 1, block.metadata.header.level, startBlockHash, followFork))
-    }
+  private def getMetadata(network: String, hash: String): Future[BlockMetadata] =
+    node.runAsyncGetQuery(network, s"blocks/$hash") map fromJson[BlockMetadata]
 
   /**
-    * Gets the blocks using a specified rage
-    * @param network        Which Tezos network to go against
-    * @param minLevel       Minimum block level
-    * @param maxLevel       Maximum block level
-    * @param startBlockHash If specified, start from the supplied block hash.
-    * @param followFork     If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @return               Blocks
+    * Asynchronously fetches a whole chain of metadata for blocks, using the parameters to
+    * decide when to stop the recursive descent on predecessors
+    *
+    * @param network    which Tezos network to go against
+    * @param current    The current metadata object to start descending
+    * @param minLevel   The lowest level for which to include results, unless a fork should be followed
+    * @param maxLevel   The highest level for which to include results
+    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
+    * @param collected  The currently accumulated metadata so far
+    * @return           The metadata list, wrapped in a [[Future]]
     */
-  def getBlocks(
+  def fetchChainedMetadata(
     network: String,
+    current: BlockMetadata,
     minLevel: Int,
     maxLevel: Int,
-    startBlockHash: Option[String],
-    followFork: Boolean
-  ): Future[List[Block]] =
-    startBlockHash match {
-      case None =>
-        getBlockHead(network).flatMap(head =>
-          processBlocks(network, head.metadata.hash, minLevel, maxLevel, followFork = followFork)
-        )
-      case Some(hash) =>
-        getBlock(network, hash).flatMap(block =>
-          processBlocks(network, block.metadata.hash, minLevel, maxLevel, followFork = followFork)
-        )
-    }
+    followFork: Boolean,
+    collected: List[BlockMetadata] = List.empty
+  ) : Future[List[BlockMetadata]] = {
+    val currentLevel = current.header.level
+    logger.info("Current metadata level is {}", currentLevel)
+    val reachedBottom = currentLevel == 0 && minLevel <= 0 //can we get further on? Why checking min?
+    val reachedMinNoForkin = currentLevel == minLevel && !followFork
+    val belowMinWithForking = currentLevel <= minLevel && followFork
+    val aboveMax = currentLevel > maxLevel
+    val aboveMin = currentLevel > minLevel
+
+    if(reachedBottom || reachedMinNoForkin)
+      Future.successful(current :: collected)
+    else if (belowMinWithForking)
+      TezosDatabaseOperations.blockExists(current.header.predecessor) flatMap { predecessorStored =>
+        if (predecessorStored)
+        Future.successful(current :: collected) //pred on db, we're done here
+      else
+        getMetadata(network, current.header.predecessor) flatMap { pred =>
+          fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, current :: collected)
+        }
+      }
+    else if (aboveMax)
+      //skip this
+      getMetadata(network, current.header.predecessor) flatMap { pred =>
+        fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, collected)
+      }
+    else if (aboveMin)
+      getMetadata(network, current.header.predecessor) flatMap { pred =>
+        fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, current :: collected)
+      }
+    else
+      Future.successful(List.empty)
+
+  }
 
   /**
-    * Traverses Tezos blockchain as parameterized.
-    * @param network    Which Tezos network to go against
-    * @param hash       Current block to fetch
-    * @param minLevel   Minimum level at which to stop
-    * @param maxLevel   Level at which to start collecting blocks
-    * @param blockSoFar Blocks collected so far
-    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @return           All collected blocks
+    * Traverses Tezos blockchain as parameterized, without waiting for the answer
+    *
+    * @param network       Which Tezos network to go against
+    * @param startingBlock Current block to start from
+    * @param minLevel      Minimum level at which to stop
+    * @param maxLevel      Level at which to start collecting blocks
+    * @param followFork    If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
+    * @return              All collected blocks, wrapped in a [[Future]]
     */
-  private def processBlocks(
-                             network: String,
-                             hash: String,
-                             minLevel: Int,
-                             maxLevel: Int,
-                             blockSoFar: List[Block] = List[Block](),
-                             followFork: Boolean
-                           ): Future[List[Block]] =
-    getBlock(network, hash).flatMap {
-      block =>
-        logger.info(s"Current block height: ${block.metadata.header.level}")
-        if(block.metadata.header.level == 0 && minLevel <= 0)
-          Future.successful(block :: blockSoFar)
-        else if(block.metadata.header.level == minLevel && !followFork)
-          Future.successful(block :: blockSoFar)
-        else if(block.metadata.header.level <= minLevel && followFork)
-          ApiOperations.fetchBlock(block.metadata.header.predecessor) match {
-            case Success(_)     => Future.successful(block :: blockSoFar)
-            case Failure(_)     => processBlocks(network, block.metadata.header.predecessor, minLevel, maxLevel, block :: blockSoFar, followFork)
-          }
-        else if(block.metadata.header.level > maxLevel)
-          processBlocks(network, block.metadata.header.predecessor, minLevel, maxLevel, blockSoFar, followFork)
-        else if(block.metadata.header.level > minLevel)
-          processBlocks(network, block.metadata.header.predecessor, minLevel, maxLevel, block :: blockSoFar, followFork)
-        else
-          Future.successful(List.empty)
-    }
+  private def fetchBoundedBlockChain(
+    network: String,
+    startingBlock: Block,
+    minLevel: Int,
+    maxLevel: Int,
+    followFork: Boolean
+  ): Future[List[Block]] = {
+    val jsonToOperationGroups: String => List[OperationGroup] =
+      json => fromJson[List[List[OperationGroup]]](json).flatten
+
+    for {
+      metadataChain <- fetchChainedMetadata(network, startingBlock.metadata, minLevel, maxLevel, followFork)
+      operationsUrls = metadataChain.map(d => s"blocks/${d.hash}/operations")
+      operations <- node.runBatchedGetQuery(network, operationsUrls, blockOperationsFetchConcurrency) map (all => all.map(jsonToOperationGroups))
+    } yield metadataChain.zip(operations).map(Block.tupled)
+  }
 
   /**
     * Get all accounts for a given block
@@ -263,14 +260,13 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     results
   }
 
-
   /**
     * Get accounts for the latest block in the database.
     * @param network  Which Tezos network to go against
     * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
     */
   def getLatestAccounts(network: String): Future[Option[AccountsWithBlockHashAndLevel]] =
-    ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.accountsMaxBlockLevel)).flatMap {
+    ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).flatMap {
       case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
         getAccounts(network, latestBlock.hash, latestBlock.level).map(Some(_))
       case (Some(latestBlock), _) =>

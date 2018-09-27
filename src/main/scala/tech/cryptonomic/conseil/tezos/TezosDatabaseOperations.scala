@@ -29,7 +29,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
-    Tables.Fees ++= fees.map(RowConversion.ofAverageFees)
+    Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
   /**
     * Writes accounts from a specific block to a database.
@@ -38,7 +38,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeAccountsIO(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
-    Tables.Accounts ++= RowConversion.ofAccounts(accountsInfo)
+    Tables.Accounts ++= RowConversion.convertAccounts(accountsInfo)
 
   /**
     * Writes blocks and related operations to a database.
@@ -47,9 +47,9 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeBlocksIO(blocks: List[Block]): DBIO[Unit] =
       DBIO.seq(
-        Tables.Blocks          ++= blocks.map(RowConversion.ofBlock),
-        Tables.OperationGroups ++= blocks.flatMap(RowConversion.ofBlocksOperationGroups),
-        Tables.Operations      ++= blocks.flatMap(RowConversion.ofBlockOperations)
+        Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
+        Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
+        Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
       )
 
   /**
@@ -91,7 +91,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
     val purged = dbHandle.run {
-      accountsMaxBlockLevel.flatMap( maxLevel =>
+      fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
         Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
       ).transactionally
     }
@@ -119,31 +119,22 @@ object TezosDatabaseOperations extends LazyLogging {
           .map( k => (k, keyed(k)))
     }
 
-  /* use as max block level when none exists */
-  private[tezos] val defaultBlockLevel: BigDecimal = -1
-
   /**
-    * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
+    * Checks if a block for this hash and related operations are stored on db
+    * @param hash Identifies the block
+    * @param ec   Needed to compose the operations
+    * @return     true if block and operations exists
     */
-  private[tezos] def accountsMaxBlockLevel: DBIO[BigDecimal] =
-    Tables.Accounts
-      .map(_.blockLevel)
-      .max
-      .getOrElse(defaultBlockLevel)
-      .result
-
-  /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
-  private[tezos] def maxBlockLevel: DBIO[Int] =
-  Tables.Blocks
-      .map(_.level)
-      .max
-      .getOrElse(defaultBlockLevel.toInt)
-      .result
+  def blockExists(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
+    dbHandle.run(for {
+      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash).exists.result
+      opsThere <- Tables.OperationGroups.filter(_.blockId === hash).exists.result
+    } yield blockThere && opsThere)
 
   /** conversions from domain objects to database row format */
   object RowConversion {
 
-    private[TezosDatabaseOperations] def ofAverageFees(in: AverageFees) =
+    private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
       Tables.FeesRow(
         low = in.low,
         medium = in.medium,
@@ -152,7 +143,7 @@ object TezosDatabaseOperations extends LazyLogging {
         kind = in.kind
     )
 
-    private[TezosDatabaseOperations] def ofAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
+    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
       val AccountsWithBlockHashAndLevel(hash, level, accounts) = blockAccounts
       accounts.map {
         case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
@@ -171,7 +162,7 @@ object TezosDatabaseOperations extends LazyLogging {
       }.toList
     }
 
-    private[TezosDatabaseOperations] def ofBlock(block: Block) = {
+    private[TezosDatabaseOperations] def convertBlock(block: Block) = {
       val header = block.metadata.header
       Tables.BlocksRow(
         level = header.level,
@@ -189,7 +180,7 @@ object TezosDatabaseOperations extends LazyLogging {
       )
     }
 
-    private[TezosDatabaseOperations] def ofBlocksOperationGroups(block: Block): List[Tables.OperationGroupsRow] =
+    private[TezosDatabaseOperations] def convertBlocksOperationGroups(block: Block): List[Tables.OperationGroupsRow] =
       block.operationGroups.map{ og =>
         Tables.OperationGroupsRow(
           protocol = og.protocol,
@@ -201,7 +192,7 @@ object TezosDatabaseOperations extends LazyLogging {
         )
       }
 
-    private[TezosDatabaseOperations] def ofBlockOperations(block: Block): List[Tables.OperationsRow] =
+    private[TezosDatabaseOperations] def convertBlockOperations(block: Block): List[Tables.OperationsRow] =
       block.operationGroups.flatMap{ og =>
         og.contents.fold(List.empty[Tables.OperationsRow]){
           operations =>
@@ -227,7 +218,26 @@ object TezosDatabaseOperations extends LazyLogging {
         }
       }
 
-
   }
 
+  /* use as max block level when none exists */
+  private[tezos] val defaultBlockLevel: BigDecimal = -1
+
+  /**
+    * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
+    */
+  private[tezos] def fetchAccountsMaxBlockLevel: DBIO[BigDecimal] =
+    Tables.Accounts
+      .map(_.blockLevel)
+      .max
+      .getOrElse(defaultBlockLevel)
+      .result
+
+  /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
+  private[tezos] def fetchMaxBlockLevel: DBIO[Int] =
+    Tables.Blocks
+      .map(_.level)
+      .max
+      .getOrElse(defaultBlockLevel.toInt)
+      .result
 }
