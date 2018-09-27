@@ -37,6 +37,27 @@ Run locally using SBT:
 
 ` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Conseil"`
 
+### Locally test with database [`Docker installation needed]
+The application expects to access a postgres database instance to run.
+
+A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.  
+You need to customize the credentials in the YAML file or in your custom configuration [see the following section]
+
+To run the database, from the project root
+```bash
+docker-compose up -d
+```
+This will launch the db container and setup the schema as described by the file under `doc/conseil.sql`
+
+To stop the database
+```bash
+docker-compose down
+```
+This will stop and remove the container, but will keep the db data in the `pgdata` project folder, 
+so you can restart the container without losing any information stored.
+
+To clean and restart the db from scratch, simply remove all `pgdata` content while the container is _not running_.
+
 ### Custom configurations
 
 It is advisable to run with a custom config file which inherits from the main or the “developer” conf file. Here is an example:

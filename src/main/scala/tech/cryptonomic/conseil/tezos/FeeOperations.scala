@@ -3,19 +3,27 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.Lorre.db
-import scala.concurrent.ExecutionContext.Implicits.global
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => Tdb}
 
-import scala.concurrent.Await
-import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.{Future, ExecutionContext}
 import scala.util.{Failure, Success, Try}
+import slick.dbio.DBIOAction
 
 /**
   * Helper classes and functions used for average fee calculations.
   */
 object FeeOperations extends LazyLogging {
 
-  private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
+  private val operationKinds = List(
+    "seed_nonce_revelation",
+    "delegation",
+    "transaction",
+    "activate_account",
+    "origination",
+    "reveal",
+    "double_endorsement_evidence",
+    "endorsement"
+  )
 
   /**
     * Representation of estimation of average fees for a given operation kind.
@@ -37,18 +45,20 @@ object FeeOperations extends LazyLogging {
     * Calculates average fees for each operation kind and stores them into a fees table.
     * @return
     */
-  def processTezosAverageFees(): Try[Unit] = {
+  def processTezosAverageFees()(implicit ex: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
-    val operationKinds = List("seed_nonce_revelation", "delegation", "transaction", "activate_account", "origination", "reveal", "double_endorsement_evidence", "endorsement")
-    val fees = operationKinds.map(TezosDatabaseOperations.calculateAverageFees)
-    Try {
-      val dbFut = TezosDatabaseOperations.writeFeesToDatabase(fees, db)
-      dbFut onComplete {
-        case Success(_) => logger.info(s"Wrote average fees to the database.")
-        case Failure(e) => logger.error(s"Could not write average fees to the database because $e")
+    val computeAndStore = for {
+      fees <- DBIOAction.sequence(operationKinds.map(Tdb.calculateAverageFeesIO))
+      dbWrites <- Tdb.writeFeesIO(fees.collect{ case Some(fee) => fee })
+    } yield dbWrites
+
+    db.run(computeAndStore)
+      .andThen{
+        case Success(Some(written)) => logger.info("Wrote {} average fees to the database.", written)
+        case Success(None) => logger.info("Wrote average fees to the database.")
+        case Failure(e) => logger.error("Could not write average fees to the database because", e)
       }
-      Await.result(dbFut, Duration.Inf)
-    }
+
   }
 
 }
