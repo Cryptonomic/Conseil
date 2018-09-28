@@ -1,25 +1,113 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+import java.time.{Instant, LocalDate, ZoneOffset}
+
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 class TezosDatabaseOperationsTest
   extends WordSpec
     with MockFactory
+    with BeforeAndAfter
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
-    with LazyLogging {
+    with LazyLogging
+{
+
+  before {
+    Await.ready(dbHandler.run(cleanAllTablesIO), 10.millis)
+  }
 
   "The database api" should {
-    "run a query with no error" in {
-      val blocks: Seq[BlocksRow] = dbHandler.run(Tables.Blocks.take(1).result).futureValue
-      blocks shouldBe empty
+
+    //needed for most tezos-db operations
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val sut = TezosDatabaseOperations
+
+    "return the default when fetching the latest block level and there's no block" in {
+      val expected = -1
+      val maxLevel = dbHandler.run(
+        sut.fetchMaxBlockLevel
+      ).futureValue
+
+      maxLevel should equal(expected)
     }
+
+    "fetch the latest block level when blocks are available" in {
+      val expected = 5
+      val populateAndFetch = for {
+        inserts <- Tables.Blocks ++= generateRandomBlocks(expected, testReferenceTime)
+        result <- sut.fetchMaxBlockLevel
+      } yield result
+
+      val maxLevel = dbHandler.run(populateAndFetch.transactionally).futureValue
+
+      maxLevel should equal(expected)
+    }
+  }
+
+  //a stable timestamp reference if needed
+  private lazy val testReferenceTime =
+    new Timestamp(
+      LocalDate.of(2018, 1, 1)
+        .atStartOfDay
+        .toEpochSecond(ZoneOffset.UTC)
+    )
+
+  /* randomly populate a number of blocks based on a level range */
+  private def generateRandomBlocks(toLevel: Int, startAt: Timestamp) = {
+    require(toLevel > 0, "the test generate blocks up to a positive chain level, you asked for a non positive value")
+
+    //use a predictable random seed
+    val random = new scala.util.Random(startAt.getTime)
+    //custom hash generator
+    val generateHash = random.alphanumeric.take(_: Int).mkString
+
+    //same for all blocks
+    val chainHash = generateHash(5)
+
+    //use a fold to pass the predecessor hash, to keep a plausibility of sort
+    val genesis = BlocksRow(
+      level = 0,
+      proto = 1,
+      predecessor = "genesis",
+      timestamp = new Timestamp(startAt.getTime),
+      validationPass = 0,
+      fitness = "fitness",
+      protocol = "protocol",
+      context = Some("genesis"),
+      signature = Some(s"sig${generateHash(10)}"),
+      chainId = Some(chainHash),
+      hash = generateHash(10)
+    )
+    (1 to toLevel).foldLeft(List(genesis)) {
+      case (chain, lvl) => {
+        val currentBlock = BlocksRow(
+          level = lvl,
+          proto = 1,
+          predecessor = chain.head.hash,
+          timestamp = new Timestamp(startAt.getTime + lvl),
+          validationPass = 0,
+          fitness = "fitness",
+          protocol = "protocol",
+          context = Some(s"context$lvl"),
+          signature = Some(s"sig${generateHash(10)}"),
+          chainId = Some(chainHash),
+          hash = generateHash(10)
+        )
+        currentBlock :: chain
+      }
+    }.reverse
   }
 
   /*
