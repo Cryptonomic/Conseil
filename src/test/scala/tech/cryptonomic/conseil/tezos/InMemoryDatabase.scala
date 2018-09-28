@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, TestSuite}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
 import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.Await
@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 /**
   * Provides access to a test in-memory database initialized with conseil schema
   */
-trait InMemoryDatabase extends BeforeAndAfterAll {
+trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
 
   /** defines configuration for a randomly named h2 in-memory instance */
@@ -25,16 +25,17 @@ trait InMemoryDatabase extends BeforeAndAfterAll {
 
   val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
-  protected def createSchemaIO =
+  protected lazy val createDatabaseSchema =
     DBIO.sequence(
       allTables.map(_.schema.create)
     ).transactionally
 
-  protected def cleanAllTablesIO =
+  protected lazy val cleanAllData =
     DBIO.sequence(
-      allTables.map(_.delete)
+      allTables.map(_.delete).reverse //watch out for foreign key integrity
     ).transactionally
 
+  //keep in mind that this is sorted to preserve key consistency
   protected val allTables = Seq(
     Tables.Blocks,
     Tables.Accounts,
@@ -45,11 +46,17 @@ trait InMemoryDatabase extends BeforeAndAfterAll {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    Await.result(dbHandler.run(createSchemaIO), 1 second)
+    Await.result(dbHandler.run(createDatabaseSchema), 1 second)
   }
 
-  override def afterAll(): Unit = {
+  override protected def afterAll(): Unit = {
     dbHandler.close()
     super.afterAll()
   }
+
+  override protected def beforeEach(): Unit = {
+    Await.ready(dbHandler.run(cleanAllData), 10.millis)
+    super.beforeEach()
+  }
+
 }
