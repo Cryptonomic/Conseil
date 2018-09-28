@@ -26,14 +26,22 @@ trait InMemoryDatabase extends BeforeAndAfterAll {
   val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
   protected def createSchemaIO =
-    DBIO.seq(
-      Tables.Blocks.schema.create,
-      Tables.Accounts.schema.create,
-      Tables.Fees.schema.create,
-      Tables.OperationGroups.schema.create,
-      Tables.Operations.schema.create
+    DBIO.sequence(
+      allTables.map(_.schema.create)
     ).transactionally
 
+  protected def cleanAllTablesIO =
+    DBIO.sequence(
+      allTables.map(_.delete)
+    ).transactionally
+
+  protected val allTables = Seq(
+    Tables.Blocks,
+    Tables.Accounts,
+    Tables.Fees,
+    Tables.OperationGroups,
+    Tables.Operations
+  )
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
