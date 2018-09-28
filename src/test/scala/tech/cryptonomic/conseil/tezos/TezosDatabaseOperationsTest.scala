@@ -1,31 +1,23 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.{Instant, LocalDate, ZoneOffset}
+import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
+import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
-import scala.concurrent.Await
-import scala.concurrent.duration._
-
 class TezosDatabaseOperationsTest
   extends WordSpec
     with MockFactory
-    with BeforeAndAfter
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
     with LazyLogging
 {
-
-  before {
-    Await.ready(dbHandler.run(cleanAllTablesIO), 10.millis)
-  }
 
   "The database api" should {
 
@@ -46,13 +38,50 @@ class TezosDatabaseOperationsTest
     "fetch the latest block level when blocks are available" in {
       val expected = 5
       val populateAndFetch = for {
-        inserts <- Tables.Blocks ++= generateRandomBlocks(expected, testReferenceTime)
+        _ <- Tables.Blocks ++= generateRandomBlocks(expected, testReferenceTime)
         result <- sut.fetchMaxBlockLevel
       } yield result
 
       val maxLevel = dbHandler.run(populateAndFetch.transactionally).futureValue
 
       maxLevel should equal(expected)
+    }
+
+    "correctly verify when a block exists" in {
+      dbHandler.run(Tables.Blocks.size.result).futureValue shouldBe 0
+
+      val blocks = generateRandomBlocks(1, testReferenceTime)
+      val opGroups = generateOperationGroups(blocks: _*)
+      val testHash = blocks.last.hash
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.OperationGroups ++= opGroups
+        existing <- sut.blockExists(testHash)
+        nonExisting <- sut.blockExists("bogus-hash")
+      } yield (existing, nonExisting)
+
+      val (hit, miss) = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      hit shouldBe true
+      miss shouldBe false
+
+    }
+
+    "say a block doesn't exist if it has no associated operation group" in {
+      dbHandler.run(Tables.Blocks.size.result).futureValue shouldBe 0
+
+      val blocks = generateRandomBlocks(1, testReferenceTime)
+      val testHash = blocks.last.hash
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        found <- sut.blockExists(testHash)
+      } yield found
+
+      val exists = dbHandler.run(populateAndTest.transactionally).futureValue
+      exists shouldBe false
+
     }
   }
 
@@ -65,7 +94,7 @@ class TezosDatabaseOperationsTest
     )
 
   /* randomly populate a number of blocks based on a level range */
-  private def generateRandomBlocks(toLevel: Int, startAt: Timestamp) = {
+  private def generateRandomBlocks(toLevel: Int, startAt: Timestamp): List[Tables.BlocksRow] = {
     require(toLevel > 0, "the test generate blocks up to a positive chain level, you asked for a non positive value")
 
     //use a predictable random seed
@@ -76,7 +105,8 @@ class TezosDatabaseOperationsTest
     //same for all blocks
     val chainHash = generateHash(5)
 
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
+
+    //we need somewhere to start with
     val genesis = BlocksRow(
       level = 0,
       proto = 1,
@@ -90,6 +120,8 @@ class TezosDatabaseOperationsTest
       chainId = Some(chainHash),
       hash = generateHash(10)
     )
+
+    //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
       case (chain, lvl) => {
         val currentBlock = BlocksRow(
@@ -108,6 +140,27 @@ class TezosDatabaseOperationsTest
         currentBlock :: chain
       }
     }.reverse
+  }
+
+  /* create an empty operation group for each block passed in, using random values */
+  private def generateOperationGroups(blocks: BlocksRow*): List[Tables.OperationGroupsRow] = {
+    require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
+    //use a predictable random seed
+    val random = new scala.util.Random(blocks.head.timestamp.getTime)
+    //custom hash generator
+    val generateHash = random.alphanumeric.take(_: Int).mkString
+
+    blocks.map(
+      block =>
+        Tables.OperationGroupsRow(
+          protocol = "protocol",
+          chainId = block.chainId,
+          hash = generateHash(10),
+          branch = generateHash(10),
+          signature = Some(s"sig${generateHash(10)}"),
+          blockId = block.hash
+        )
+    ).toList
   }
 
   /*
