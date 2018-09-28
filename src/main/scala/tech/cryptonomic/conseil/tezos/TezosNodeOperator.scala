@@ -7,6 +7,11 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
+//import tech.cryptonomic.conseil.util.FPUtil.sequence
+import cats._
+import cats.data._
+import cats.implicits._
+
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Try}
@@ -125,14 +130,16 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param hash      Hash of the block
     * @return          the block data wrapped in a [[Future]]
     */
-  def asyncGetBlock(network: String, hash: String): Future[TezosTypes.Block] =
+  def asyncGetBlock(network: String, hash: String, offset: Option[Int]): Future[TezosTypes.Block] = {
+    val offsetString = offset.fold("")(off => s"~$off")
     for {
-      block <- node.runAsyncGetQuery(network, s"blocks/$hash") map fromJson[BlockMetadata]
-      ops   <- if (block.header.level == 0)
+      block <- node.runAsyncGetQuery(network, s"blocks/$hash$offsetString") map fromJson[BlockMetadata]
+      ops <- if (block.header.level == 0)
         Future.successful(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
       else
         asyncGetAllOperationsForBlock(network, hash)
     } yield Block(block, ops)
+  }
 
   /**
     * Gets the block head.
@@ -140,7 +147,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @return         Block head
     */
   def getBlockHead(network: String): Try[TezosTypes.Block]=
-    Try(Await.result(asyncGetBlock(network, "head"), TezosNodeInterface.entityGetTimeout))
+    Try(Await.result(asyncGetBlock(network, "head", None), TezosNodeInterface.entityGetTimeout))
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
@@ -151,7 +158,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
   def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[Block]] =
     Future.fromTry(ApiOperations.fetchMaxLevel()).flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-      asyncGetBlock(network, "head").flatMap { blockHead =>
+      asyncGetBlock(network, "head", None).flatMap { blockHead =>
         val headLevel =  blockHead.metadata.header.level
         if(headLevel <= maxLevel)
           Future.successful(List.empty)
@@ -222,6 +229,17 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
 
   }
 
+  private def processBlocks(
+                           network : String,
+                           hash: String,
+                           minLevel: Int,
+                           maxLevel: Int
+                           ): Future[List[Block]] = {
+    val maxOffset: Int = maxLevel - minLevel
+    val offsets = (0 to maxOffset).toList
+    offsets.map{ offset => asyncGetBlock(network, hash, Some(offset))}.sequence
+  }
+
   /**
     * Traverses Tezos blockchain as parameterized, without waiting for the answer
     *
@@ -247,6 +265,26 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
       operationsUrls = metadataChain.map(d => s"blocks/${d.hash}/operations")
       operations <- node.runBatchedGetQuery(network, operationsUrls, blockOperationsFetchConcurrency) map (all => all.map(jsonToOperationGroups))
     } yield metadataChain.zip(operations).map(Block.tupled)
+  }
+
+
+  def getBlocks(network: String, minLevel: Int, maxLevel: Int,
+                startBlockHash: Option[String], followFork: Boolean): Future[List[Block]] = {
+    val hash = startBlockHash.getOrElse("head")
+    val blocksInRange = asyncGetBlock(network, hash, None)
+        .flatMap(block => processBlocks(network, block.metadata.hash, minLevel, maxLevel))
+    val blocksFromFork = followFork match {
+      case false => Future.successful(List.empty : List[Block])
+      case true => Future.successful(List.empty : List[Block])
+    }
+    blocksInRange
+    /*
+    for {
+      range <- blocksFromRange
+      fork <- blocksFromFork
+    }
+    */
+
   }
 
   /**

@@ -5,6 +5,8 @@ scalaVersion := "2.12.4"
 val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
 
+scalacOptions ++= Seq("-Ypartial-unification", "-feature")
+
 libraryDependencies  ++=  Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
@@ -25,7 +27,8 @@ libraryDependencies  ++=  Seq(
   "org.scorexfoundation" %% "scrypto" % "2.0.0",
   "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
   "com.github.alanverbner" %% "bip39" % "0.1",
-  "ch.megard" %% "akka-http-cors" % "0.3.0"
+  "ch.megard" %% "akka-http-cors" % "0.3.0",
+  "org.typelevel" %% "cats-core" % "1.4.0"
 )
 
 excludeDependencies ++= Seq(
