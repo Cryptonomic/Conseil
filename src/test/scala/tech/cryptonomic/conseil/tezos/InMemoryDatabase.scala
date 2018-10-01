@@ -25,37 +25,39 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
 
   val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
-  protected lazy val createDatabaseSchema =
-    DBIO.sequence(
-      allTables.map(_.schema.create)
-    ).transactionally
-
-  protected lazy val cleanAllData =
-    DBIO.sequence(
-      allTables.map(_.delete).reverse //watch out for foreign key integrity
-    ).transactionally
-
   //keep in mind that this is sorted to preserve key consistency
-  protected val allTables = Seq(
+  protected val allTables= Seq(
     Tables.Blocks,
-    Tables.Accounts,
-    Tables.Fees,
     Tables.OperationGroups,
-    Tables.Operations
+    Tables.Operations,
+    Tables.Accounts,
+    Tables.Fees
   )
+
+  /**
+    * calling deletes manually is needed to obviate the fact
+    * that TRUNCATE TABLE won't work on H2 when there are table constraints
+    */
+  protected val truncateAll = DBIO.sequence(
+    allTables.reverse.map(_.delete)
+  )
+
+  protected val dbSchema =
+    allTables.map(_.schema).reduce(_ ++ _)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    Await.result(dbHandler.run(createDatabaseSchema), 1 second)
+    Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
 
   override protected def afterAll(): Unit = {
+    Await.ready(dbHandler.run(dbSchema.drop), 1.second)
     dbHandler.close()
     super.afterAll()
   }
 
   override protected def beforeEach(): Unit = {
-    Await.ready(dbHandler.run(cleanAllData), 10.millis)
+    Await.ready(dbHandler.run(truncateAll), 10.millis)
     super.beforeEach()
   }
 
