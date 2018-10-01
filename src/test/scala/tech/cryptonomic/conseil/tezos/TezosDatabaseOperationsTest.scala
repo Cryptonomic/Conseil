@@ -8,7 +8,12 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
+import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationGroupsRow}
+
+import scala.util.Random
+
+/* use this to make random generation implicit but consistent */
+case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable
 
 class TezosDatabaseOperationsTest
   extends WordSpec
@@ -16,8 +21,8 @@ class TezosDatabaseOperationsTest
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
-    with LazyLogging
-{
+    with LazyLogging {
+
 
   "The database api" should {
 
@@ -25,6 +30,32 @@ class TezosDatabaseOperationsTest
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val sut = TezosDatabaseOperations
+
+    "fetch nothing if looking up a non-existent operation group by hash" in {
+      dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
+    }
+
+    "fetch existing operations with their group on a existing hash" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val block = generateRandomBlocks(1, testReferenceTime).head
+      val group = generateOperationGroups(block).head
+      val ops = generateOperationsForGroup(block, group)
+
+      val populateAndFetch = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.OperationGroups += group
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        result <- sut.operationsForGroup(group.hash)
+      } yield (result, ids)
+
+      val (Some((groupRow, operationRows)), operationIds) = dbHandler.run(populateAndFetch).futureValue
+
+      groupRow.hash shouldEqual group.hash
+      operationRows should have size ops.size
+      operationRows.map(_.operationId).toList should contain theSameElementsAs operationIds
+
+    }
 
     "return the default when fetching the latest block level and there's no block" in {
       val expected = -1
@@ -36,6 +67,8 @@ class TezosDatabaseOperationsTest
     }
 
     "fetch the latest block level when blocks are available" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
       val expected = 5
       val populateAndFetch = for {
         _ <- Tables.Blocks ++= generateRandomBlocks(expected, testReferenceTime)
@@ -48,7 +81,7 @@ class TezosDatabaseOperationsTest
     }
 
     "correctly verify when a block exists" in {
-      dbHandler.run(Tables.Blocks.size.result).futureValue shouldBe 0
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val blocks = generateRandomBlocks(1, testReferenceTime)
       val opGroups = generateOperationGroups(blocks: _*)
@@ -69,7 +102,7 @@ class TezosDatabaseOperationsTest
     }
 
     "say a block doesn't exist if it has no associated operation group" in {
-      dbHandler.run(Tables.Blocks.size.result).futureValue shouldBe 0
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val blocks = generateRandomBlocks(1, testReferenceTime)
       val testHash = blocks.last.hash
@@ -94,17 +127,14 @@ class TezosDatabaseOperationsTest
     )
 
   /* randomly populate a number of blocks based on a level range */
-  private def generateRandomBlocks(toLevel: Int, startAt: Timestamp): List[Tables.BlocksRow] = {
+  private def generateRandomBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
     require(toLevel > 0, "the test generate blocks up to a positive chain level, you asked for a non positive value")
 
-    //use a predictable random seed
-    val random = new scala.util.Random(startAt.getTime)
-    //custom hash generator
-    val generateHash = random.alphanumeric.take(_: Int).mkString
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
     //same for all blocks
     val chainHash = generateHash(5)
-
 
     //we need somewhere to start with
     val genesis = BlocksRow(
@@ -123,7 +153,7 @@ class TezosDatabaseOperationsTest
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) => {
+      case (chain, lvl) =>
         val currentBlock = BlocksRow(
           level = lvl,
           proto = 1,
@@ -138,17 +168,15 @@ class TezosDatabaseOperationsTest
           hash = generateHash(10)
         )
         currentBlock :: chain
-      }
     }.reverse
   }
 
   /* create an empty operation group for each block passed in, using random values */
-  private def generateOperationGroups(blocks: BlocksRow*): List[Tables.OperationGroupsRow] = {
+  private def generateOperationGroups(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
     require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
-    //use a predictable random seed
-    val random = new scala.util.Random(blocks.head.timestamp.getTime)
-    //custom hash generator
-    val generateHash = random.alphanumeric.take(_: Int).mkString
+
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
     blocks.map(
       block =>
@@ -162,6 +190,26 @@ class TezosDatabaseOperationsTest
         )
     ).toList
   }
+
+  /* create operations related to a specific group, with random data */
+  private def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
+   if (howMany > 0) {
+
+     (1 to howMany).map {
+       counting =>
+         Tables.OperationsRow(
+           kind = "operation-kind",
+           operationGroupHash = group.hash,
+           operationId = -1,
+           blockHash = block.hash,
+           timestamp = block.timestamp,
+           blockLevel = block.level
+         )
+     }.toList
+   } else List.empty
+
+  private val alphaNumericGenerator =
+    (random: Random) => random.alphanumeric.take(_: Int).mkString
 
   /*
   //CHANGE TESTS TO ACCOMOMODATE ZERONET TABLE CHANGES!!!
