@@ -5,14 +5,15 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 
 import scala.util.Random
 
-/* use this to make random generation implicit but consistent */
+/* use this to make random generation implicit but deterministic */
 case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable
 
 class TezosDatabaseOperationsTest
@@ -21,8 +22,8 @@ class TezosDatabaseOperationsTest
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
+    with OptionValues
     with LazyLogging {
-
 
   "The database api" should {
 
@@ -30,6 +31,28 @@ class TezosDatabaseOperationsTest
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val sut = TezosDatabaseOperations
+
+    "persist fees" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val expected = 5
+      val generatedFees = generateRandomFees(expected, testReferenceTime)
+
+      dbHandler.run(sut.writeFees(generatedFees)).futureValue.value shouldBe expected
+
+      //read and check what's on db
+      val dbFees = dbHandler.run(Tables.Fees.result).futureValue
+
+      import org.scalatest.Inspectors._
+
+      forAll(dbFees zip generatedFees) { case (row, fee) => 
+        row.low shouldEqual fee.low
+        row.medium shouldEqual fee.medium
+        row.high shouldEqual fee.high
+        row.timestamp shouldEqual fee.timestamp
+        row.kind shouldEqual fee.kind
+      }
+    }
 
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
@@ -126,9 +149,29 @@ class TezosDatabaseOperationsTest
         .toEpochSecond(ZoneOffset.UTC)
     )
 
+  private def generateRandomFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
+    require(howMany > 0, "the test can generates a positive number of fees, you asked for a non positive value")
+
+    val rnd = new Random(randomSeed.seed)
+
+    (1 to howMany).map {
+      current =>
+        val low = rnd.nextInt(10)
+        val medium = rnd.nextInt(10) + 10
+        val high = rnd.nextInt(10) + 20
+        AverageFees(
+          low = low,
+          medium = medium,
+          high = high,
+          timestamp = new Timestamp(startAt.getTime + current),
+          kind = "kind"
+        )
+    }.toList
+  }
+
   /* randomly populate a number of blocks based on a level range */
   private def generateRandomBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
-    require(toLevel > 0, "the test generate blocks up to a positive chain level, you asked for a non positive value")
+    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
