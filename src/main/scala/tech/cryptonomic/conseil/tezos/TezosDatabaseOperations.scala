@@ -3,16 +3,14 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
-import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -131,7 +129,7 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield blockThere && opsThere
 
   /** conversions from domain objects to database row format */
-  object RowConversion {
+  private object RowConversion {
 
     private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
       Tables.FeesRow(
