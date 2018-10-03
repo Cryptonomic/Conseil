@@ -80,7 +80,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "compute average fees from stored operations" in {
+    "compute correct average fees from stored operations" in {
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateRandomBlocks(1, testReferenceTime).head
@@ -127,7 +127,7 @@ class TezosDatabaseOperationsTest
       val block = generateRandomBlocks(1, testReferenceTime).head
       val group = generateOperationGroups(block).head
 
-      val fees = Seq(Some("1.0"), Some("1.0"))
+      val fees = Seq.fill(3)(Some("1.0"))
       val ops = wrapFeesWithOperationRows(fees, block, group)
 
       val populate = for {
@@ -142,6 +142,50 @@ class TezosDatabaseOperationsTest
       val feesCalculation = sut.calculateAverageFees("undefined")
 
       dbHandler.run(feesCalculation).futureValue shouldBe None
+
+    }
+
+    "compute average fees only using the selected operation kinds" in {
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      val block = generateRandomBlocks(1, testReferenceTime).head
+      val group = generateOperationGroups(block).head
+
+      val (selectedFee, ignoredFee) = (Some("1.0"), Some("1000.0"))
+
+      val fees = Seq(selectedFee, selectedFee, ignoredFee, ignoredFee)
+
+      //change kind for fees we want to ignore
+      val ops = wrapFeesWithOperationRows(fees, block, group).map {
+        case op if op.fee == ignoredFee => op.copy(kind = op.kind + "ignore")
+        case op => op
+      }
+
+      val selection = ops.filter(_.fee == selectedFee)
+
+      val populate = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.OperationGroups += group
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+      } yield ids
+
+      dbHandler.run(populate).futureValue should have size (fees.size)
+
+      //expectations
+      val mu = 1
+      val latest = new Timestamp(selection.map(_.timestamp.getTime).max)
+
+      val expected = AverageFees(
+        low = mu,
+        medium = mu,
+        high = mu,
+        timestamp = latest,
+        kind = ops.head.kind
+      )
+      //check
+      val feesCalculation = sut.calculateAverageFees(selection.head.kind)
+
+      dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
     }
 
