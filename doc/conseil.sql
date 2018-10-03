@@ -294,4 +294,3 @@ ALTER TABLE ONLY public.operations
 --
 -- PostgreSQL database dump complete
 --
-

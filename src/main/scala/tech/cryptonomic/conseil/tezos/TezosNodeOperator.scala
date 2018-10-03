@@ -7,9 +7,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
-//import tech.cryptonomic.conseil.util.FPUtil.sequence
-import cats._
-import cats.data._
 import cats.implicits._
 
 
@@ -138,7 +135,11 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
         Future.successful(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
       else
         asyncGetAllOperationsForBlock(network, hash)
-    } yield Block(block, ops)
+    } yield {
+      logger.info("Current metadata level is {}", block.header.level)
+      Block(block, ops)
+    }
+
   }
 
   /**
@@ -160,10 +161,12 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
       asyncGetBlock(network, "head", None).flatMap { blockHead =>
         val headLevel =  blockHead.metadata.header.level
+        val headHash = blockHead.metadata.hash
         if(headLevel <= maxLevel)
           Future.successful(List.empty)
         else
-          fetchBoundedBlockChain(network, blockHead, maxLevel+1, headLevel, followFork)
+          //fetchBoundedBlockChain(network, blockHead, maxLevel+1, headLevel, followFork)
+          getBlocks(network, maxLevel + 1, headLevel, Some(headHash), followFork)
       }
     }
 
@@ -277,14 +280,10 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
       case false => Future.successful(List.empty : List[Block])
       case true => Future.successful(List.empty : List[Block])
     }
-    blocksInRange
-    /*
     for {
-      range <- blocksFromRange
-      fork <- blocksFromFork
-    }
-    */
-
+      forkBlocks <- blocksFromFork
+      rangeBlocks <- blocksInRange
+    } yield forkBlocks ++ rangeBlocks
   }
 
   /**
