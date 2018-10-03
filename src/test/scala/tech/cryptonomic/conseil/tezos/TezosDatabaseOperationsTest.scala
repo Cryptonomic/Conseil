@@ -32,7 +32,7 @@ class TezosDatabaseOperationsTest
 
     val sut = TezosDatabaseOperations
 
-    "persist fees" in {
+    "write fees" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val expected = 5
@@ -77,6 +77,71 @@ class TezosDatabaseOperationsTest
       groupRow.hash shouldEqual group.hash
       operationRows should have size ops.size
       operationRows.map(_.operationId).toList should contain theSameElementsAs operationIds
+
+    }
+
+    "compute average fees from stored operations" in {
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      val block = generateRandomBlocks(1, testReferenceTime).head
+      val group = generateOperationGroups(block).head
+
+      // mu = 152.59625
+      // std-dev = 331.4
+      // the sample std-dev should be 354.3, using correction formula
+      val fees = Seq(
+        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), None, Some("1020.30"), Some("1.00"), None
+      )
+      val ops = wrapFeesWithOperationRows(fees, block, group)
+
+      val populate = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.OperationGroups += group
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+      } yield ids
+
+      dbHandler.run(populate).futureValue should have size (fees.size)
+
+      //expectations
+      val (mu, sigma) = (153, 332)
+      val latest = new Timestamp(ops.map(_.timestamp.getTime).max)
+
+      val expected = AverageFees(
+        low = 0,
+        medium = mu,
+        high = mu + sigma,
+        timestamp = latest,
+        kind = ops.head.kind
+      )
+
+      //check
+      val feesCalculation = sut.calculateAverageFees(ops.head.kind)
+
+      dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
+
+    }
+
+    "return None when computing average fees for a kind with no data" in {
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      val block = generateRandomBlocks(1, testReferenceTime).head
+      val group = generateOperationGroups(block).head
+
+      val fees = Seq(Some("1.0"), Some("1.0"))
+      val ops = wrapFeesWithOperationRows(fees, block, group)
+
+      val populate = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.OperationGroups += group
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+      } yield ids
+
+      dbHandler.run(populate).futureValue should have size (fees.size)
+
+      //check
+      val feesCalculation = sut.calculateAverageFees("undefined")
+
+      dbHandler.run(feesCalculation).futureValue shouldBe None
 
     }
 
@@ -250,6 +315,29 @@ class TezosDatabaseOperationsTest
          )
      }.toList
    } else List.empty
+
+  /* create operation rows to hold the given fees */
+  private def wrapFeesWithOperationRows(
+    fees: Seq[Option[String]],
+    block: BlocksRow,
+    group: OperationGroupsRow)(implicit randomSeed: RandomSeed) = {
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+    fees.zipWithIndex.map {
+      case (fee, index) =>
+        OperationsRow(
+          kind = "kind",
+          operationGroupHash = group.hash,
+          operationId = -1,
+          fee = fee,
+          blockHash = block.hash,
+          timestamp = new Timestamp(block.timestamp.getTime + index),
+          blockLevel = block.level
+        )
+    }
+
+  }
 
   private val alphaNumericGenerator =
     (random: Random) => random.alphanumeric.take(_: Int).mkString
