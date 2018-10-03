@@ -9,12 +9,15 @@ import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
 import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 
 import scala.util.Random
 
 /* use this to make random generation implicit but deterministic */
-case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable
+case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable {
+  def +(extra: Long): RandomSeed = RandomSeed(seed + extra)
+}
 
 class TezosDatabaseOperationsTest
   extends WordSpec
@@ -36,12 +39,14 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val expected = 5
-      val generatedFees = generateRandomFees(expected, testReferenceTime)
+      val generatedFees = generateFees(expected, testReferenceTime)
 
       dbHandler.run(sut.writeFees(generatedFees)).futureValue.value shouldBe expected
 
       //read and check what's on db
       val dbFees = dbHandler.run(Tables.Fees.result).futureValue
+
+      dbFees should have size expected
 
       import org.scalatest.Inspectors._
 
@@ -54,6 +59,104 @@ class TezosDatabaseOperationsTest
       }
     }
 
+    "write blocks" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val basicBlocks = generateBlocks(5, testReferenceTime)
+      val generatedBlocks = basicBlocks.zipWithIndex map {
+        case (block, idx) =>
+          //need to use different seeds to generate unique hashes for groups
+          val group = generateOperationGroup(block, operations = 1)(randomSeed + idx)
+          block.copy(operationGroups = List(group))
+      }
+
+      whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
+        _ =>
+          //read and check what's on db
+          val dbBlocks = dbHandler.run(Tables.Blocks.result).futureValue
+
+          dbBlocks should have size (generatedBlocks.size)
+
+          import org.scalatest.Inspectors._
+
+          forAll(dbBlocks zip generatedBlocks) {
+            case (row, block) =>
+              row.level shouldEqual block.metadata.header.level
+              row.proto shouldEqual block.metadata.header.proto
+              row.predecessor shouldEqual block.metadata.header.predecessor
+              row.timestamp shouldEqual block.metadata.header.timestamp
+              row.validationPass shouldEqual block.metadata.header.validationPass
+              row.fitness shouldEqual block.metadata.header.fitness.mkString(",")
+              row.context.value shouldEqual block.metadata.header.context
+              row.signature shouldEqual block.metadata.header.signature
+              row.protocol shouldEqual block.metadata.protocol
+              row.chainId shouldEqual block.metadata.chain_id
+              row.hash shouldEqual block.metadata.hash
+              row.operationsHash shouldEqual block.metadata.header.operations_hash
+          }
+
+          val dbBlocksAndGroups = 
+            dbHandler.run {
+              val query = for {
+                g <- Tables.OperationGroups
+                b <- g.blocksFk
+              } yield (b, g)
+              query.result
+            }.futureValue
+
+          dbBlocksAndGroups should have size (generatedBlocks.size)
+
+          forAll(dbBlocksAndGroups) {
+            case (blockRow, groupRow) =>
+              val blockForGroup = generatedBlocks.find(_.metadata.hash == blockRow.hash).value
+              val group = blockForGroup.operationGroups.head
+              groupRow.hash shouldEqual group.hash
+              groupRow.blockId shouldEqual blockForGroup.metadata.hash
+              groupRow.chainId shouldEqual group.chain_id
+              groupRow.branch shouldEqual group.branch
+              groupRow.signature shouldEqual group.signature
+          }
+
+          val dbOperations =
+           dbHandler.run {
+             val query = for {
+              o <- Tables.Operations
+              g <- o.operationGroupsFk
+            } yield (g, o)
+            query.result
+           }.futureValue
+
+          val generatedGroups = generatedBlocks.map(_.operationGroups.head)
+
+          dbOperations should have size (generatedGroups.map(_.contents.map(_.size).getOrElse(0)).sum)
+
+          forAll(dbOperations) {
+            case (groupRow, opRow) =>
+              val operationBlock = generatedBlocks.find(_.operationGroups.head.hash == groupRow.hash).value
+              val operationGroup = generatedGroups.find(_.hash == groupRow.hash).value
+              val operation = operationGroup.contents.value.head
+              opRow.kind shouldEqual operation.kind
+              opRow.source shouldEqual operation.source
+              opRow.fee shouldEqual operation.fee
+              opRow.storageLimit shouldEqual operation.storageLimit
+              opRow.gasLimit shouldEqual operation.gasLimit
+              opRow.amount shouldEqual operation.amount
+              opRow.destination shouldEqual operation.destination
+              opRow.pkh shouldEqual operation.pkh
+              opRow.delegate shouldEqual operation.delegate
+              opRow.balance shouldEqual operation.balance
+              opRow.operationGroupHash shouldEqual operationGroup.hash
+              opRow.blockHash shouldEqual operationBlock.metadata.hash
+              opRow.blockLevel shouldEqual operationBlock.metadata.header.level
+              opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
+          }
+      }
+      
+
+    }
+
+    "write accounts" in pending
+
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
     }
@@ -61,9 +164,9 @@ class TezosDatabaseOperationsTest
     "fetch existing operations with their group on a existing hash" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val block = generateRandomBlocks(1, testReferenceTime).head
-      val group = generateOperationGroups(block).head
-      val ops = generateOperationsForGroup(block, group)
+      val block = generateBlockRows(1, testReferenceTime).head
+      val group = generateOperationGroupRows(block).head
+      val ops = generateOperationRowsForGroup(block, group)
 
       val populateAndFetch = for {
         _ <- Tables.Blocks += block
@@ -83,8 +186,8 @@ class TezosDatabaseOperationsTest
     "compute correct average fees from stored operations" in {
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateRandomBlocks(1, testReferenceTime).head
-      val group = generateOperationGroups(block).head
+      val block = generateBlockRows(1, testReferenceTime).head
+      val group = generateOperationGroupRows(block).head
 
       // mu = 152.59625
       // std-dev = 331.4
@@ -124,8 +227,8 @@ class TezosDatabaseOperationsTest
     "return None when computing average fees for a kind with no data" in {
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateRandomBlocks(1, testReferenceTime).head
-      val group = generateOperationGroups(block).head
+      val block = generateBlockRows(1, testReferenceTime).head
+      val group = generateOperationGroupRows(block).head
 
       val fees = Seq.fill(3)(Some("1.0"))
       val ops = wrapFeesWithOperationRows(fees, block, group)
@@ -148,8 +251,8 @@ class TezosDatabaseOperationsTest
     "compute average fees only using the selected operation kinds" in {
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateRandomBlocks(1, testReferenceTime).head
-      val group = generateOperationGroups(block).head
+      val block = generateBlockRows(1, testReferenceTime).head
+      val group = generateOperationGroupRows(block).head
 
       val (selectedFee, ignoredFee) = (Some("1.0"), Some("1000.0"))
 
@@ -203,7 +306,7 @@ class TezosDatabaseOperationsTest
 
       val expected = 5
       val populateAndFetch = for {
-        _ <- Tables.Blocks ++= generateRandomBlocks(expected, testReferenceTime)
+        _ <- Tables.Blocks ++= generateBlockRows(expected, testReferenceTime)
         result <- sut.fetchMaxBlockLevel
       } yield result
 
@@ -212,11 +315,15 @@ class TezosDatabaseOperationsTest
       maxLevel should equal(expected)
     }
 
+    "test accounts max block level" in pending
+
+    "test old accounts purging" in pending
+
     "correctly verify when a block exists" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val blocks = generateRandomBlocks(1, testReferenceTime)
-      val opGroups = generateOperationGroups(blocks: _*)
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val opGroups = generateOperationGroupRows(blocks: _*)
       val testHash = blocks.last.hash
 
       val populateAndTest = for {
@@ -236,7 +343,7 @@ class TezosDatabaseOperationsTest
     "say a block doesn't exist if it has no associated operation group" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val blocks = generateRandomBlocks(1, testReferenceTime)
+      val blocks = generateBlockRows(1, testReferenceTime)
       val testHash = blocks.last.hash
 
       val populateAndTest = for {
@@ -258,7 +365,7 @@ class TezosDatabaseOperationsTest
         .toEpochSecond(ZoneOffset.UTC)
     )
 
-  private def generateRandomFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
+  private def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
     require(howMany > 0, "the test can generates a positive number of fees, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -279,7 +386,7 @@ class TezosDatabaseOperationsTest
   }
 
   /* randomly populate a number of blocks based on a level range */
-  private def generateRandomBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
+  private def generateBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Block] = {
     require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
 
     //custom hash generator with predictable seed
@@ -288,43 +395,138 @@ class TezosDatabaseOperationsTest
     //same for all blocks
     val chainHash = generateHash(5)
 
-    //we need somewhere to start with
-    val genesis = BlocksRow(
-      level = 0,
+    val startMillis = startAt.getTime
+
+    def generateOne(level: Int, predecessorHash: String): Block =
+      Block(
+        BlockMetadata(
+          "protocol",
+          Some(chainHash),
+          generateHash(10),
+          BlockHeader(
+            level = level, 
+            proto = 1,
+            predecessor = predecessorHash,
+            timestamp = new Timestamp(startMillis + level),
+            validationPass = 0,
+            operations_hash = None,
+            fitness = Seq.empty,
+            context = s"context$level",
+            signature = Some(s"sig${generateHash(10)}")
+          )),
+        operationGroups = List.empty
+      )
+
+    //we need a block to start
+    val genesis = generateOne(0, "genesis")
+
+    //use a fold to pass the predecessor hash, to keep a plausibility of sort
+    (1 to toLevel).foldLeft(List(genesis)) {
+      case (chain, lvl) => 
+        val currentBlock = generateOne(lvl, chain.head.metadata.hash)
+        currentBlock :: chain
+    }.reverse
+    
+  }
+
+
+  /* randomly populate a number of blocks based on a level range */
+  private def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
+    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
+
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+    //same for all blocks
+    val chainHash = generateHash(5)
+
+    val startMillis = startAt.getTime
+
+    def generateOne(level: Int, predecessorHash: String): BlocksRow =
+      BlocksRow(
+      level = level,
       proto = 1,
-      predecessor = "genesis",
-      timestamp = new Timestamp(startAt.getTime),
+      predecessor = predecessorHash,
+      timestamp = new Timestamp(startMillis + level),
       validationPass = 0,
       fitness = "fitness",
       protocol = "protocol",
-      context = Some("genesis"),
+      context = Some(s"context$level"),
       signature = Some(s"sig${generateHash(10)}"),
       chainId = Some(chainHash),
       hash = generateHash(10)
     )
 
+    //we need somewhere to start with
+    val genesis = generateOne(0, "genesis")
+  
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
       case (chain, lvl) =>
-        val currentBlock = BlocksRow(
-          level = lvl,
-          proto = 1,
-          predecessor = chain.head.hash,
-          timestamp = new Timestamp(startAt.getTime + lvl),
-          validationPass = 0,
-          fitness = "fitness",
-          protocol = "protocol",
-          context = Some(s"context$lvl"),
-          signature = Some(s"sig${generateHash(10)}"),
-          chainId = Some(chainHash),
-          hash = generateHash(10)
-        )
+        val currentBlock = generateOne(lvl, chain.head.hash)
         currentBlock :: chain
     }.reverse
+
   }
 
+  /* create an operation group for each block passed in, using random values, with the requested copies of operations */
+  private def generateOperationGroup(block: Block, operations: Int)(implicit randomSeed: RandomSeed): OperationGroup = {
+    require(operations >= 0, "the test won't generate a negative number of operations")
+
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+    def fillOperations(): Option[List[Operation]] = {
+      val ops = List.fill(operations) {
+        Operation(
+          kind = "kind",
+          block = Some(block.metadata.hash),
+          level = Some(block.metadata.header.level),
+          slots = Some(List(0)),
+          nonce = Some(generateHash(10)),
+          op1 = None,
+          op2 = None,
+          bh1 = None,
+          bh2 = None,
+          pkh = Some("pkh"),
+          secret = Some("secret"),
+          proposals = Some(List("proposal")),
+          period = Some("period"),
+          source = Some("source"),
+          proposal = Some("proposal"),
+          ballot = Some("ballot"),
+          fee = Some("fee"),
+          counter = Some(0),
+          gasLimit = Some("gasLimit"),
+          storageLimit = Some("storageLimit"),
+          publicKey = Some("publicKey"),
+          amount = Some("amount"),
+          destination = Some("destination"),
+          parameters = Some("parameters"),
+          managerPubKey = Some("managerPubKey"),
+          balance = Some("balance"),
+          spendable = Some(true),
+          delegatable = Some(true),
+          delegate = Some("delegate")
+        )
+      }
+      if (ops.isEmpty) None else Some(ops)
+    }
+
+
+    OperationGroup(
+      protocol = "protocol",
+      chain_id = block.metadata.chain_id,
+      hash = generateHash(10),
+      branch = generateHash(10),
+      signature = Some(s"sig${generateHash(10)}"),
+      contents = fillOperations()
+    )
+  }
+
+
   /* create an empty operation group for each block passed in, using random values */
-  private def generateOperationGroups(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
+  private def generateOperationGroupRows(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
     require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
 
     //custom hash generator with predictable seed
@@ -344,7 +546,7 @@ class TezosDatabaseOperationsTest
   }
 
   /* create operations related to a specific group, with random data */
-  private def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
+  private def generateOperationRowsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
    if (howMany > 0) {
 
      (1 to howMany).map {
