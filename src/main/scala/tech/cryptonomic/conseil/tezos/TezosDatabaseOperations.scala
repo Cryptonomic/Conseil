@@ -103,7 +103,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   def operationsForGroupIO(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
     (for {
-      operation <- Tables.operationsByGroupHash(groupHash).extract
+      operation <- operationsByGroupHash(groupHash).extract
       group <- operation.operationGroupsFk
     } yield (group, operation)
     ).result
@@ -222,6 +222,14 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BigDecimal = -1
+
+  /** Precompiled fetch for Operations by Group */
+  val operationsByGroupHash =
+    Tables.Operations.findBy(_.operationGroupHash)
+
+  /** Precompiled fetch for groups of operations */
+  val operationGroupsByHash =
+    Tables.OperationGroups.findBy(_.hash).map(_.andThen(_.take(1)))
 
   /**
     * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
