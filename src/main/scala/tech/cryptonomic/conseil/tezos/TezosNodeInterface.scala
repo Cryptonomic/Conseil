@@ -55,6 +55,9 @@ trait TezosRPCInterface {
   def runPostQuery(network: String, command: String, payload: Option[String] = None): Try[String]
 }
 
+/**
+  * Shared configurations related to node operation
+  */
 object TezosNodeConfig {
   private[tezos] val conf = ConfigFactory.load
   private[tezos] val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
