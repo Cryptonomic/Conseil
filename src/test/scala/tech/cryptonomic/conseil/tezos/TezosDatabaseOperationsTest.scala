@@ -8,7 +8,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow, AccountsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 
@@ -209,7 +209,6 @@ class TezosDatabaseOperationsTest
       }
     }
 
-
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
     }
@@ -345,7 +344,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "return the default when fetching the latest block level and there's no block" in {
+    "return the default when fetching the latest block level and there's no block stored" in {
       val expected = -1
       val maxLevel = dbHandler.run(
         sut.fetchMaxBlockLevel
@@ -368,7 +367,37 @@ class TezosDatabaseOperationsTest
       maxLevel should equal(expected)
     }
 
-    "test accounts max block level" in pending
+    "return the default when fetching the max account level and there's no account stored" in {
+      val expected = -1
+      val maxLevel = dbHandler.run(
+        sut.fetchAccountsMaxBlockLevel
+      ).futureValue
+
+      maxLevel shouldEqual expected
+    }
+
+    "fetch accounts max block level based only on stored accounts" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(5, testReferenceTime)
+      val blocksWithAccounts = blocks.take(2)
+      val accounts = blocksWithAccounts flatMap {
+        block => generateAccountRows(1, block)
+      }
+
+      val expected = blocksWithAccounts.map(_.level).max
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.Accounts ++= accounts
+        result <- sut.fetchAccountsMaxBlockLevel
+      } yield result
+
+      val maxLevel = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      maxLevel shouldEqual expected
+
+    }
 
     "test old accounts purging" in pending
 
@@ -665,5 +694,28 @@ class TezosDatabaseOperationsTest
     }
 
   }
+
+  /* randomly generates a number of account rows for some block */
+  private def generateAccountRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[AccountsRow] = {
+    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
+
+    (1 to howMany).map {
+      currentId =>
+        AccountsRow(
+          accountId = String valueOf currentId,
+          blockId = block.hash,
+          blockLevel = block.level,
+          manager = "manager",
+          spendable = true,
+          delegateSetable = false,
+          delegateValue = None,
+          counter = 0,
+          script = None,
+          balance = 0
+        )
+    }.toList
+
+  }
+
 
 }
