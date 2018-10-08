@@ -126,8 +126,8 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param hash      Hash of the block
     * @return          the block data wrapped in a [[Future]]
     */
-  def asyncGetBlock(network: String, hash: String, offset: Option[Int]): Future[TezosTypes.Block] = {
-    val offsetString = offset.fold("")(off => s"~$off")
+  def asyncGetBlock(network: String, hash: String, offset: Option[Int] = None): Future[TezosTypes.Block] = {
+    val offsetString = offset.getOrElse("")
     for {
       block <- node.runAsyncGetQuery(network, s"blocks/$hash$offsetString") map fromJson[BlockMetadata]
       ops <- if (block.header.level == 0)
@@ -135,7 +135,6 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
       else
         asyncGetAllOperationsForBlock(network, hash)
     } yield {
-      logger.info("Current metadata level is {}", block.header.level)
       Block(block, ops)
     }
 
@@ -146,8 +145,8 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @param network  Which Tezos network to go against
     * @return         Block head
     */
-  def getBlockHead(network: String): Try[TezosTypes.Block]=
-    Try(Await.result(asyncGetBlock(network, "head", None), TezosNodeInterface.entityGetTimeout))
+  def getBlockHead(network: String): Future[TezosTypes.Block]=
+    asyncGetBlock(network, "head")
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
@@ -158,7 +157,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
   def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[Block]] =
     Future.fromTry(ApiOperations.fetchMaxLevel()).flatMap{ maxLevel =>
       if(maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-      asyncGetBlock(network, "head", None).flatMap { blockHead =>
+      asyncGetBlock(network, "head").flatMap { blockHead =>
         val headLevel = blockHead.metadata.header.level
         val headHash = blockHead.metadata.hash
         if(headLevel <= maxLevel)
@@ -182,8 +181,8 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     val hash = startBlockHash.getOrElse("head")
     val blocksInRange = processBlocks(network, hash, minLevel, maxLevel)
     val blocksFromFork = followFork match {
-      case false => Future.successful(List.empty : List[Block])
-      case true => Future.successful(List.empty : List[Block])
+      case false => Future.successful(List.empty)
+      case true => Future.successful(List.empty)
     }
     for {
       forkBlocks <- blocksFromFork
@@ -207,7 +206,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
                            ): Future[List[Block]] = {
     val maxOffset: Int = maxLevel - minLevel
     val offsets = (0 to maxOffset).toList.map(_.toString)
-    val blockMetadataUrls = offsets.map{off => s"blocks/$hash~$off"}
+    val blockMetadataUrls = offsets.map{offset => s"blocks/$hash~$offset"}
 
     val jsonToBlockMetadata: String => BlockMetadata =
       json => fromJson[BlockMetadata](json)
@@ -216,10 +215,10 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
       json => fromJson[List[List[OperationGroup]]](json).flatten
 
     for {
-      blockMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (all => all.map(jsonToBlockMetadata))
-      blockOperationUrls = blockMetadata.map(metadata => s"blocks/${metadata.hash}/operations")
-      blockOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (all => all.map(jsonToOperationGroups))
-    } yield blockMetadata.zip(blockOperations).map(Block.tupled)
+      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
+      blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash}/operations")
+      fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
+    } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
   }
 
   /**
@@ -401,7 +400,7 @@ class TezosNodeOperator(node: TezosRPCInterface)(implicit ec: ExecutionContext) 
     * @return           The ID of the created operation group
     */
   def sendOperation(network: String, operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Try[OperationResult] = for {
-    blockHead <- getBlockHead(network)
+    blockHead <- Try(Await.result(asyncGetBlock(network, "head"), TezosNodeInterface.entityGetTimeout))
     account <- getAccountForBlock(network, "head", keyStore.publicKeyHash)
     accountManager <- getAccountManagerForBlock(network, "head", keyStore.publicKeyHash)
     operationsWithKeyReveal <- handleKeyRevealForOperations(operations, accountManager, keyStore)
