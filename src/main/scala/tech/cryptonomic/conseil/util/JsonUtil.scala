@@ -24,6 +24,6 @@ object JsonUtil {
   def toMap[V](json:String)(implicit m: Manifest[V]): Map[String, V] = fromJson[Map[String,V]](json)
 
   def fromJson[T](json: String)(implicit m : Manifest[T]): T = {
-    mapper.readValue[T](json)
+    mapper.readValue[T](json.filterNot(Character.isISOControl))
   }
 }
