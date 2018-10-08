@@ -144,7 +144,7 @@ object TezosTypes {
   case class AccountsWithBlockHashAndLevel(
                                     blockHash: String,
                                     blockLevel: Int,
-                                    accounts: Map[String, Account]
+                                    accounts: Map[String, Account] = Map.empty
                                   )
 
   case class Block(
