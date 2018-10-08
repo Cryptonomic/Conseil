@@ -10,6 +10,8 @@ import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil
 
+import scala.concurrent.ExecutionContext
+
 /**
   * Tezos-specific routes.
   */
@@ -70,29 +72,34 @@ object Tezos extends LazyLogging {
       .compose(JsonUtil.toJson[T])
       .wrap(MediaTypes.`application/json`)(identity)
 
-  val route: Route = pathPrefix(Segment) { network =>
+  /**
+    * expose filtered results through rest endpoints
+    * @param ec an [[ExectutionContext]] is required to compose async operations 
+    *           on the  underlying Api implementation
+    */
+  def route(implicit ec: ExecutionContext): Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
         validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
-                complete(ApiOperations.fetchBlocks(filter))
+              complete(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
-                complete(ApiOperations.fetchLatestBlock())
+              complete(ApiOperations.fetchLatestBlock())
             } ~ path(Segment) { blockId =>
-                complete(ApiOperations.fetchBlock(blockId))
+              complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
-                complete(ApiOperations.fetchAccounts(filter))
+              complete(ApiOperations.fetchAccounts(filter))
             } ~ path(Segment) { accountId =>
-                complete(ApiOperations.fetchAccount(accountId))
+              complete(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {
             pathEnd {
-                complete(ApiOperations.fetchOperationGroups(filter))
+              complete(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
-                complete(ApiOperations.fetchOperationGroup(operationGroupId))
+              complete(ApiOperations.fetchOperationGroup(operationGroupId))
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {
