@@ -150,26 +150,27 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       headHash = blockHead.metadata.hash
       blocks <-
         if (headLevel <= maxLevel) Future.successful(List.empty)
-        else getBlocks(network, headLevel - 1000, headLevel, Some(headHash), followFork)
+        else getBlocks(network, maxLevel + 1, headLevel, headHash, followFork)
     } yield blocks
 
   /**
     * Get the blocks in a specified range.
     * @param network Which tezos network to go against
-    * @param minLevel Minimum Block Level
-    * @param maxLevel MaximumBlockLevel
+    * @param minLevel Minimum block level
+    * @param maxLevel Maximum block level
     * @param startBlockHash If specified, start from the supplied block hash, otherwise, head of the chain.
     * @param followFork If predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return Blocks
     */
-  def getBlocks(network: String, minLevel: Int, maxLevel: Int,
-                startBlockHash: Option[String], followFork: Boolean): Future[List[Block]] = {
-    val hash = startBlockHash.getOrElse("head")
-    val blocksInRange = processBlocks(network, hash, minLevel, maxLevel)
-    val blocksFromFork = followFork match {
-      case false => Future.successful(List.empty)
-      case true => Future.successful(List.empty)
-    }
+  def getBlocks(network: String,
+                minLevel: Int,
+                maxLevel: Int,
+                startBlockHash: String = "head",
+                followFork: Boolean): Future[List[Block]] = {
+    val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
+    val blocksFromFork =
+      if (followFork) Future.successful(List.empty)
+      else Future.successful(List.empty)
     for {
       forkBlocks <- blocksFromFork
       rangeBlocks <- blocksInRange
@@ -200,6 +201,10 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     val jsonToOperationGroups: String => List[OperationGroup] =
       json => fromJson[List[List[OperationGroup]]](json).flatten
 
+    /*
+    Note that this functionality is dependent on the implementation of runBatchedGetQuery, which currently
+    doesn't reorder stream elements, thus ensuring the correctness of Block creation with zip.
+     */
     for {
       fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash}/operations")
