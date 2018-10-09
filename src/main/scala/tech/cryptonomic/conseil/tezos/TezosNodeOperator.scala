@@ -115,7 +115,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def getBlock(network: String, hash: String, offset: Option[Int] = None): Future[TezosTypes.Block] = {
     val offsetString = offset.map(_.toString).getOrElse("")
     for {
-      block <- node.runAsyncGetQuery(network, s"blocks/$hash$offsetString").map(fromJson[TezosTypes.BlockMetadata])
+      block <- node.runAsyncGetQuery(network, s"blocks/$hash~$offsetString").map(fromJson[TezosTypes.BlockMetadata])
       ops <-
         if (block.header.level == 0)
           Future.successful(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
