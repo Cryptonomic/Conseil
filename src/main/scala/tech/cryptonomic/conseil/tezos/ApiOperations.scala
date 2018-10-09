@@ -2,12 +2,12 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.FeesRow
+import tech.cryptonomic.conseil.tezos.Tables.{FeesRow, BlocksRow}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -202,9 +202,7 @@ object ApiOperations {
 
   case class BlocksAction(action: Query[Tables.Blocks, Tables.BlocksRow, Seq]) extends Action
 
-  case class OperationGroupsAction
-    (action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]) extends Action
-
+  case class OperationGroupsAction(action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]) extends Action
 
   case class AccountsAction(action: Query[Tables.Accounts, Tables.AccountsRow, Seq]) extends Action
 
@@ -213,13 +211,9 @@ object ApiOperations {
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxLevel(): Try[Int] = Try {
-    val op: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
-    val maxLevelOpt = Await.result(op, awaitTimeInSeconds.seconds)
-    maxLevelOpt match {
-      case Some(maxLevel) => maxLevel
-      case None => -1
-    }
+  def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
   }
 
   /**
@@ -227,14 +221,8 @@ object ApiOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock(): Try[Tables.BlocksRow] = {
-    fetchMaxLevel().flatMap { maxLevel =>
-      Try {
-        val op: Future[Seq[tezos.Tables.BlocksRow]] = dbHandle.run(Tables.Blocks.filter(_.level === maxLevel).take(1).result)
-        Await.result(op, awaitTimeInSeconds.seconds).head
-      }
-    }
-  }
+  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
+    dbHandle.run(latestBlockIO())
 
   /**
     * Fetches a block by block hash from the db.
@@ -256,34 +244,41 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.BlocksRow]): Try[Seq[Tables.BlocksRow]] =
+  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow], ec: ExecutionContext): Future[Seq[Tables.BlocksRow]] =
     fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
   /**
     * Fetch a given operation group
+    *
+    * Running the returned operation will fail with [[NoSuchElementException]] if
+    *  - no block is found on the db
+    *  - no group corresponds to the given hash
+    *
     * @param operationGroupHash Operation group hash
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String): Try[Map[String, Any]] =
-    fetchLatestBlock().flatMap { latestBlock =>
-      Try {
-        val op = dbHandle.run(Tables.OperationGroups.filter(_.hash === operationGroupHash).take(1).result)
-        val opGroup = Await.result(op, awaitTimeInSeconds.seconds).head
-        val op2 = dbHandle.run(Tables.Operations.filter(_.operationGroupHash === operationGroupHash).result)
-        val operations = Await.result(op2, awaitTimeInSeconds.seconds)
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+    val groupedOpsIO = latestBlockIO().collect { // we fail the operation if no block is there
+      case Some(_) =>
+        TezosDatabaseOperations.operationsForGroupIO(operationGroupHash).map(_.get) // we want to fail here too
+    }.flatten
+
+    //convert to a valid object for the caller
+    dbHandle.run(groupedOpsIO).map {
+      case (opGroup, operations) =>
         Map(
           "operation_group" -> opGroup,
           "operations" -> operations
         )
-      }
     }
+  }
 
   /**
     * Fetches all operation groups.
     * @param filter Filters to apply
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.OperationGroupsRow]): Try[Seq[Tables.OperationGroupsRow]] =
+  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow], ec: ExecutionContext): Future[Seq[Tables.OperationGroupsRow]] =
     fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
   /**
@@ -357,36 +352,49 @@ object ApiOperations {
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxBlockLevelForAccounts(): Try[BigDecimal] = Try {
-    val op = dbHandle.run(Tables.Accounts.map(_.blockLevel).max.result)
-    val maxLevelOpt = Await.result(op, awaitTimeInSeconds.seconds)
-    maxLevelOpt.getOrElse(-1)
-  }
+  def fetchMaxBlockLevelForAccounts(): Future[BigDecimal] =
+    dbHandle.run(TezosDb.fetchAccountsMaxBlockLevel)
 
   /**
     * Fetches an account by account id from the db.
     * @param account_id The account's id number
     * @return           The account with its associated operation groups
     */
-  def fetchAccount(account_id: String): Try[Map[String, Any]] =
-    fetchMaxBlockLevelForAccounts().flatMap { latestBlockLevel =>
-      Try {
-        val op = dbHandle.run(Tables.Accounts
-          .filter(_.blockLevel === latestBlockLevel)
-          .filter(_.accountId === account_id).take(1).result)
-        val account = Await.result(op, awaitTimeInSeconds.seconds).head
-        Map("account" -> account)
-      }
+  def fetchAccount(account_id: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+    val fetchOperation = TezosDb.fetchAccountsMaxBlockLevel.flatMap {
+      latestBlockLevel =>
+        Tables.Accounts
+          .filter(row =>
+            row.blockLevel === latestBlockLevel && row.accountId === account_id
+          ).take(1)
+          .result
     }
+    dbHandle.run(fetchOperation).map{
+      account =>
+        Map("account" -> account)
+    }
+  }
 
   /**
     * Fetches a list of accounts from the db.
     * @param filter Filters to apply
     * @return       List of accounts
     */
-  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Try, Tables.AccountsRow]): Try[Seq[Tables.AccountsRow]] =
+  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow], ec: ExecutionContext): Future[Seq[Tables.AccountsRow]] =
     fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
-}
+  /**
+    * @return the most recent block, if one exists in the database.
+    */
+  private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
+    TezosDb.fetchMaxBlockLevel.flatMap(
+      maxLevel =>
+        Tables.Blocks
+          .filter(_.level === maxLevel)
+          .take(1)
+          .result
+          .headOption
+    )
 
+}
 

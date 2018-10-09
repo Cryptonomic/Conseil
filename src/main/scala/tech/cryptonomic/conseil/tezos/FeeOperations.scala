@@ -1,13 +1,12 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.Lorre.db
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => Tdb}
-
-import scala.concurrent.{Future, ExecutionContext}
-import scala.util.{Failure, Success, Try}
 import slick.dbio.DBIOAction
+import tech.cryptonomic.conseil.Lorre.db
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 /**
   * Helper classes and functions used for average fee calculations.
@@ -48,8 +47,8 @@ object FeeOperations extends LazyLogging {
   def processTezosAverageFees()(implicit ex: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
     val computeAndStore = for {
-      fees <- DBIOAction.sequence(operationKinds.map(Tdb.calculateAverageFeesIO))
-      dbWrites <- Tdb.writeFeesIO(fees.collect{ case Some(fee) => fee })
+      fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFeesIO))
+      dbWrites <- TezosDb.writeFeesIO(fees.collect { case Some(fee) => fee })
     } yield dbWrites
 
     db.run(computeAndStore)

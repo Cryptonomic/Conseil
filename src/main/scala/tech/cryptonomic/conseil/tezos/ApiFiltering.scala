@@ -4,10 +4,8 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.ApiOperations._
 
-import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.language.higherKinds
-import scala.util.Try
 
 object ApiFiltering {
 
@@ -318,10 +316,18 @@ trait ActionSorting[A <: Action] {
 
 trait ApiFilters {
 
-  implicit object BlocksFiltering extends ApiFiltering[Try, Tables.BlocksRow] with ActionSorting[BlocksAction] {
+  /**
+    * an implementation is required to make the async [[ApiFiltering]] instances available in the context work correctly
+    * consider using the appropriate instance to compose database operations
+    */
+  def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext
+
+  /** an instance to execute filtering and sorting for blocks, asynchronously */
+  implicit object BlocksFiltering extends ApiFiltering[Future, Tables.BlocksRow] with ActionSorting[BlocksAction] {
 
     import ApiFiltering._
 
+    // Blocks need to be fetched, other tables needed if user asks for them via the filter
     override protected def select(filter: Filter): TableSelection =
       TableSelection(
         blocks = true,
@@ -330,32 +336,46 @@ trait ApiFilters {
         accounts = isAccountFilter(filter)
       )
 
+    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[String]
-    ): JoinedTables => Try[Seq[tezos.Tables.BlocksRow]] =
-      joinedTables =>
-        Try {
-          val action = joinedTables match {
+    ): JoinedTables => Future[Seq[Tables.BlocksRow]] =
+      joinedTables => {
+        //there will be some action only if the joined tables have the expected shape
+        val validAction = PartialFunction.condOpt(joinedTables) {
+          case Blocks(blocks) => blocks
 
-            case Blocks(blocks) => blocks
+          case BlocksOperationGroups(blocksOperationGroups) =>
+            blocksOperationGroups.map { case (b, _) => b }
 
-            case BlocksOperationGroups(blocksOperationGroups) =>
-              blocksOperationGroups.map { case (b, _) => b }
+          case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
+            blocksOperationGroupsOperations.map { case (b, _, _) => b }
 
-            case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
-              blocksOperationGroupsOperations.map { case (b, _, _) => b }
-
-            case _ =>
-              throw new IllegalArgumentException("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind.")
-
-          }
-
-          val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(action))
-          val op = dbHandle.run(sortedAction.distinct.take(limit).result)
-          Await.result(op, awaitTimeInSeconds.seconds)
         }
+
+        val filteringOperations = validAction.map {
+          action =>
+
+            //making sure that we have some block on db
+            TezosDatabaseOperations.doBlocksExist().flatMap {
+              blocksStored =>
+                if(blocksStored) {
+                  val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(action))
+                  sortedAction.distinct
+                    .take(limit)
+                    .result
+                } else DBIO.failed(new NoSuchElementException("No block data is currently available"))
+            }(asyncApiFiltersExecutionContext)
+
+        } getOrElse {
+          //when the joins didn't have the expected shape
+          DBIO.failed(new IllegalArgumentException("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind."))
+        }
+
+        dbHandle.run(filteringOperations)
+      }
 
     override def fetchSortedAction(
       sortBy: Option[String],
@@ -386,7 +406,9 @@ trait ApiFilters {
     }
 
   }
-  implicit object AccountsFiltering extends ApiFiltering[Try, Tables.AccountsRow] with ActionSorting[AccountsAction] {
+
+  /** an instance to execute filtering and sorting for accounts, asynchronously */
+  implicit object AccountsFiltering extends ApiFiltering[Future, Tables.AccountsRow] with ActionSorting[AccountsAction] {
 
     import ApiFiltering._
 
@@ -398,15 +420,15 @@ trait ApiFilters {
         accounts = true
       )
 
+    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[String]
-    ): JoinedTables => Try[Seq[tezos.Tables.AccountsRow]] =
-      joinedTables =>
-        Try {
-          val action = joinedTables match {
-
+    ): JoinedTables => Future[Seq[tezos.Tables.AccountsRow]] =
+      joinedTables => {
+        //there will be some action only if the joined tables have the expected shape
+        val validAction = PartialFunction.condOpt(joinedTables) {
             case Accounts(accounts) => accounts
 
             case OperationGroupsAccounts(operationGroupsAccounts) =>
@@ -414,15 +436,29 @@ trait ApiFilters {
 
             case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
               operationGroupsOperationsAccounts.map(_._3)
-
-            case _ =>
-              throw new IllegalArgumentException("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind.")
-          }
-
-          val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(action))
-          val op = dbHandle.run(sortedAction.distinct.take(limit).result)
-          Await.result(op, awaitTimeInSeconds.seconds)
         }
+
+        val filteringOperations = validAction.map {
+          action =>
+
+            //making sure that we have some block on db
+            TezosDatabaseOperations.doBlocksExist().flatMap {
+              blocksStored =>
+                if(blocksStored) {
+                  val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(action))
+                  sortedAction.distinct
+                    .take(limit)
+                    .result
+                } else DBIO.failed(new NoSuchElementException("No block data is currently available"))
+            }(asyncApiFiltersExecutionContext)
+
+        } getOrElse {
+          //when the joins didn't have the expected shape
+          DBIO.failed(new IllegalArgumentException("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind."))
+        }
+
+        dbHandle.run(filteringOperations)
+    }
 
     override def fetchSortedAction(
       sortBy: Option[String],
@@ -451,8 +487,8 @@ trait ApiFilters {
 
   }
 
-
-  implicit object OperationGroupsFiltering extends ApiFiltering[Try, Tables.OperationGroupsRow] with ActionSorting[OperationGroupsAction] {
+  /** an instance to execute filtering and sorting for operation groups, asynchronously */
+  implicit object OperationGroupsFiltering extends ApiFiltering[Future, Tables.OperationGroupsRow] with ActionSorting[OperationGroupsAction] {
 
     import ApiFiltering._
 
@@ -464,44 +500,58 @@ trait ApiFilters {
         accounts = isAccountFilter(f)
       )
 
+    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[String]
-    ): JoinedTables => Try[Seq[Tables.OperationGroupsRow]] =
-      joinedTables =>
-        Try {
-          val action = joinedTables match {
-            case OperationGroups(operationGroups) =>
-              operationGroups
+    ): JoinedTables => Future[Seq[Tables.OperationGroupsRow]] =
+      joinedTables => {
+        //there will be some action only if the joined tables have the expected shape
+        val validAction = PartialFunction.condOpt(joinedTables) {
+          case OperationGroups(operationGroups) =>
+            operationGroups
 
-            case BlocksOperationGroups(blocksOperationGroups) =>
-              blocksOperationGroups.map(_._2)
+          case BlocksOperationGroups(blocksOperationGroups) =>
+            blocksOperationGroups.map(_._2)
 
-            case OperationGroupsOperations(operationGroupsOperations) =>
-              operationGroupsOperations.map(_._1)
+          case OperationGroupsOperations(operationGroupsOperations) =>
+            operationGroupsOperations.map(_._1)
 
-            case OperationGroupsAccounts(operationGroupsAccounts) =>
-              operationGroupsAccounts.map(_._1)
+          case OperationGroupsAccounts(operationGroupsAccounts) =>
+            operationGroupsAccounts.map(_._1)
 
-            case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
-              operationGroupsOperationsAccounts.map(_._1)
+          case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
+            operationGroupsOperationsAccounts.map(_._1)
 
-            case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
-              blocksOperationGroupsOperations.map(_._2)
+          case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
+            blocksOperationGroupsOperations.map(_._2)
 
-            case BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts) =>
-              blocksOperationGroupsOperationsAccounts.map(_._2)
-
-            case _ =>
-              throw new IllegalStateException("This exception should never be reached, but is included for completeness.")
-          }
-
-          val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(action))
-          val op = dbHandle.run(sortedAction.distinct.take(limit).result)
-          Await.result(op, awaitTimeInSeconds.seconds)
-
+          case BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts) =>
+            blocksOperationGroupsOperationsAccounts.map(_._2)
         }
+
+        val validatedOperation = validAction.map {
+          action =>
+
+            //making sure that we have some block on db
+            TezosDatabaseOperations.doBlocksExist().flatMap {
+              blocksStored =>
+                if(blocksStored) {
+                  val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(action))
+                  sortedAction.distinct
+                    .take(limit)
+                    .result
+                } else DBIO.failed(new NoSuchElementException("No block data is currently available"))
+            }(asyncApiFiltersExecutionContext)
+
+        } getOrElse {
+          //when the joins didn't have the expected shape
+          DBIO.failed(new IllegalStateException("This exception should never be reached, but is included for completeness."))
+        }
+
+        dbHandle.run(validatedOperation)
+      }
 
     override def fetchSortedAction(
       sortBy: Option[String],
@@ -526,5 +576,3 @@ trait ApiFilters {
 
   }
 }
-
-object ApiFilters extends ApiFilters
