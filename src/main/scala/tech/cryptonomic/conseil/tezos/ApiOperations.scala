@@ -291,7 +291,7 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operations
     */
-  def fetchOperations(filter: Filter): Try[Seq[Tables.OperationsRow]] = Try{
+  def fetchOperations(filter: Filter): Future[Seq[Tables.OperationsRow]] = {
     val action = for {
       o <- Tables.Operations
       og <- o.operationGroupsFk
@@ -312,13 +312,12 @@ object ApiOperations {
       filterProtocols(filter, b)
     }.map(_._1)
 
-    val op = dbHandle.run(
+    dbHandle.run(
       filtered.distinct
         .sortBy(_.blockLevel.desc)
         .take(ApiFiltering.getFilterLimit(filter))
         .result
     )
-    Await.result(op, awaitTimeInSeconds.seconds)
   }
 
   /**
