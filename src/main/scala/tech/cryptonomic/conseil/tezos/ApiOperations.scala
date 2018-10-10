@@ -7,9 +7,7 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{FeesRow, BlocksRow}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration._
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Functionality for fetching data from the Conseil database.
@@ -17,7 +15,6 @@ import scala.util.Try
 object ApiOperations {
 
   private val conf = ConfigFactory.load
-  val awaitTimeInSeconds: Int = conf.getInt("dbAwaitTimeInSeconds")
   lazy val dbHandle: Database = DatabaseUtil.db
 
   import Filter._
@@ -331,7 +328,7 @@ object ApiOperations {
     *         was performed at, and the kind of operation being
     *         averaged over.
     */
-  def fetchAverageFees(filter: Filter): Try[AverageFees] = Try {
+  def fetchAverageFees(filter: Filter)(implicit ec: ExecutionContext): Future[AverageFees] = {
     val action =
       Tables.Fees
         .filter (
@@ -343,12 +340,9 @@ object ApiOperations {
         .result
         .head
 
-    val row = Await.result(dbHandle.run(action), awaitTimeInSeconds.seconds)
-    row match {
-      case FeesRow(low, medium, high, timestamp, kind) =>
-       AverageFees(low, medium, high, timestamp, kind)
+    dbHandle.run(action).map {
+      case FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
     }
-
   }
 
   /**
