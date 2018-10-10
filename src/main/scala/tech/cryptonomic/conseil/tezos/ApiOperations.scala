@@ -230,12 +230,17 @@ object ApiOperations {
     * @param hash The block's hash
     * @return The block along with its operations
     */
-  def fetchBlock(hash: String): Try[Map[String, Any]] = Try {
-    val op = dbHandle.run(Tables.Blocks.filter(_.hash === hash).take(1).result)
-    val block = Await.result(op, awaitTimeInSeconds.seconds).head
-    val op2 = dbHandle.run(Tables.OperationGroups.filter(_.blockId === hash).result)
-    val operationGroups = Await.result(op2, awaitTimeInSeconds.seconds)
-    Map("block" -> block, "operation_groups" -> operationGroups)
+  @throws[NoSuchElementException]("when the hash doesn't match any block")
+  def fetchBlock(hash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+    val joins = for {
+      groups <- Tables.OperationGroups if groups.blockId === hash
+      block <- groups.blocksFk
+    } yield (block, groups)
+
+    dbHandle.run(joins.result).map { paired =>
+      val (blocks, groups) = paired.unzip
+      Map("block" -> blocks.head, "operation_groups" -> groups)
+    }
   }
 
   /**
