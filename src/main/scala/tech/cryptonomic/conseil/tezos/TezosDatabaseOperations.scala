@@ -250,7 +250,7 @@ object TezosDatabaseOperations extends LazyLogging {
       .result
 
   /** is there any block stored? */
-  private[tezos] def doBlocksExist(): DBIO[Boolean] =
+  def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
 }

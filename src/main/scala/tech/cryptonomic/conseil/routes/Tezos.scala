@@ -7,13 +7,14 @@ import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 
 /**
   * Tezos-specific routes.
   */
-object Tezos extends LazyLogging with ApiFilters {
+object Tezos extends LazyLogging with DatabaseApiFiltering {
 
   val dbHandle = DatabaseUtil.db
 

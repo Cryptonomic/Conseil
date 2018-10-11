@@ -5,6 +5,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{FeesRow, BlocksRow}
+import tech.cryptonomic.conseil.db.DatabaseQueryExecution
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -288,34 +289,8 @@ object ApiOperations {
     * @param filter Filters to apply
     * @return List of operations
     */
-  def fetchOperations(filter: Filter): Future[Seq[Tables.OperationsRow]] = {
-    val action = for {
-      o <- Tables.Operations
-      og <- o.operationGroupsFk
-      b <- o.blocksFk
-    } yield (o, b)
-
-    import ApiFiltering.Queries._
-
-    val filtered = action.filter { case (o, b) =>
-      filterOperationIDs(filter, o) &&
-      filterOperationSources(filter, o) &&
-      filterOperationDestinations(filter, o) &&
-      filterOperationParticipants(filter, o) &&
-      filterOperationKinds(filter, o) &&
-      filterBlockIDs(filter, b) &&
-      filterBlockLevels(filter, b) &&
-      filterChainIDs(filter, b) &&
-      filterProtocols(filter, b)
-    }.map(_._1)
-
-    dbHandle.run(
-      filtered.distinct
-        .sortBy(_.blockLevel.desc)
-        .take(ApiFiltering.getFilterLimit(filter))
-        .result
-    )
-  }
+  def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow], ec: ExecutionContext): Future[Seq[Tables.OperationsRow]] =
+    apiFilters(filter)(0)
 
   /**
     * Given the operation kind and the number of columns wanted,
@@ -328,22 +303,13 @@ object ApiOperations {
     *         was performed at, and the kind of operation being
     *         averaged over.
     */
-  def fetchAverageFees(filter: Filter)(implicit ec: ExecutionContext): Future[AverageFees] = {
-    val action =
-      Tables.Fees
-        .filter (
-          fee => ApiFiltering.Queries.filterOperationKindsForFees(filter, fee)
-        )
-        .distinct
-        .sortBy(_.timestamp.desc)
-        .take(1)
-        .result
-        .head
-
-    dbHandle.run(action).map {
-      case FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
-    }
-  }
+  def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[AverageFees] =
+    apiFilters(filter)(0)
+      .map( rows =>
+        rows.head match {
+          case FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
+        }
+      )
 
   /**
     * Fetches the level of the most recent block in the accounts table.

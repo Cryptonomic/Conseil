@@ -74,9 +74,9 @@ trait TezosRPCInterface {
 object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   private val conf = ConfigFactory.load
-  private[tezos] val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
-  private[tezos] val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
-  private[tezos] val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
+  private val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
+  private val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
+  private val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
 
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
