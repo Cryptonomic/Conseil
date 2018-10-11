@@ -311,42 +311,36 @@ trait DatabaseApiFiltering {
         accounts = isAccountFilter(filter)
       )
 
+    private[this] val extractActionFromJoins = (joinedTables: JoinedTables) =>
+        //there will be some action only if the joined tables have the expected shape
+      PartialFunction.condOpt(joinedTables) {
+        case Blocks(blocks) => blocks
+
+        case BlocksOperationGroups(blocksOperationGroups) =>
+          blocksOperationGroups.map { case (b, _) => b }
+
+        case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
+          blocksOperationGroupsOperations.map { case (b, _, _) => b }
+      }
+
     /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[String]
     ): JoinedTables => Future[Seq[Tables.BlocksRow]] =
-      joinedTables => {
-        //there will be some action only if the joined tables have the expected shape
-        val validAction = PartialFunction.condOpt(joinedTables) {
-          case Blocks(blocks) => blocks
-
-          case BlocksOperationGroups(blocksOperationGroups) =>
-            blocksOperationGroups.map { case (b, _) => b }
-
-          case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
-            blocksOperationGroupsOperations.map { case (b, _, _) => b }
-
-        }
-
-        val filteringOperations = validAction.map {
-          action =>
-
-            ensuringBlocksExist {
-              val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(action))
-              sortedAction.distinct
-                .take(limit)
-                .result
-            }
-
-        } getOrElse {
+      extractActionFromJoins andThen {
+        case Some(validAction) =>
+          ensuringBlocksExist {
+            val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(validAction))
+            sortedAction.distinct
+              .take(limit)
+              .result
+          }
+        case _ =>
           //when the joins didn't have the expected shape
           DBIO.failed(new IllegalArgumentException("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind."))
-        }
-
-        dbHandle.run(filteringOperations)
-      }
+      } andThen (dbHandle.run)
 
     override def fetchSortedAction(
       sortBy: Option[String],
@@ -392,41 +386,36 @@ trait DatabaseApiFiltering {
         accounts = true
       )
 
+    private[this] val extractActionFromJoins = (joinedTables: JoinedTables) =>
+      //there will be some action only if the joined tables have the expected shape
+      PartialFunction.condOpt(joinedTables) {
+        case Accounts(accounts) => accounts
+
+        case OperationGroupsAccounts(operationGroupsAccounts) =>
+          operationGroupsAccounts.map(_._2)
+
+        case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
+          operationGroupsOperationsAccounts.map(_._3)
+      }
+
     /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[String]
     ): JoinedTables => Future[Seq[Tables.AccountsRow]] =
-      joinedTables => {
-        //there will be some action only if the joined tables have the expected shape
-        val validAction = PartialFunction.condOpt(joinedTables) {
-            case Accounts(accounts) => accounts
-
-            case OperationGroupsAccounts(operationGroupsAccounts) =>
-              operationGroupsAccounts.map(_._2)
-
-            case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
-              operationGroupsOperationsAccounts.map(_._3)
-        }
-
-        val filteringOperations = validAction.map {
-          action =>
-
-            ensuringBlocksExist {
-              val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(action))
-              sortedAction.distinct
-                .take(limit)
-                .result
-            }
-
-        } getOrElse {
+      extractActionFromJoins andThen {
+        case Some(validAction) =>
+          ensuringBlocksExist {
+            val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(validAction))
+            sortedAction.distinct
+              .take(limit)
+              .result
+          }
+        case _ =>
           //when the joins didn't have the expected shape
           DBIO.failed(new IllegalArgumentException("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind."))
-        }
-
-        dbHandle.run(filteringOperations)
-    }
+      } andThen (dbHandle.run)
 
     override def fetchSortedAction(
       sortBy: Option[String],
@@ -469,54 +458,49 @@ trait DatabaseApiFiltering {
         accounts = isAccountFilter(f)
       )
 
+    private[this] val extractActionFromJoins = (joinedTables: JoinedTables) =>
+      //there will be some action only if the joined tables have the expected shape
+      PartialFunction.condOpt(joinedTables) {
+        case OperationGroups(operationGroups) =>
+          operationGroups
+
+        case BlocksOperationGroups(blocksOperationGroups) =>
+          blocksOperationGroups.map(_._2)
+
+        case OperationGroupsOperations(operationGroupsOperations) =>
+          operationGroupsOperations.map(_._1)
+
+        case OperationGroupsAccounts(operationGroupsAccounts) =>
+          operationGroupsAccounts.map(_._1)
+
+        case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
+          operationGroupsOperationsAccounts.map(_._1)
+
+        case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
+          blocksOperationGroupsOperations.map(_._2)
+
+        case BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts) =>
+          blocksOperationGroupsOperationsAccounts.map(_._2)
+      }
+
     /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[String]
     ): JoinedTables => Future[Seq[Tables.OperationGroupsRow]] =
-      joinedTables => {
-        //there will be some action only if the joined tables have the expected shape
-        val validAction = PartialFunction.condOpt(joinedTables) {
-          case OperationGroups(operationGroups) =>
-            operationGroups
-
-          case BlocksOperationGroups(blocksOperationGroups) =>
-            blocksOperationGroups.map(_._2)
-
-          case OperationGroupsOperations(operationGroupsOperations) =>
-            operationGroupsOperations.map(_._1)
-
-          case OperationGroupsAccounts(operationGroupsAccounts) =>
-            operationGroupsAccounts.map(_._1)
-
-          case OperationGroupsOperationsAccounts(operationGroupsOperationsAccounts) =>
-            operationGroupsOperationsAccounts.map(_._1)
-
-          case BlocksOperationGroupsOperations(blocksOperationGroupsOperations) =>
-            blocksOperationGroupsOperations.map(_._2)
-
-          case BlocksOperationGroupsOperationsAccounts(blocksOperationGroupsOperationsAccounts) =>
-            blocksOperationGroupsOperationsAccounts.map(_._2)
-        }
-
-        val validatedOperation = validAction.map {
-          action =>
-
-            ensuringBlocksExist {
-              val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(action))
-              sortedAction.distinct
-                .take(limit)
-                .result
-            }
-
-        } getOrElse {
+      extractActionFromJoins andThen {
+        case Some(validAction) =>
+          ensuringBlocksExist {
+            val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(validAction))
+            sortedAction.distinct
+              .take(limit)
+              .result
+          }
+        case _ =>
           //when the joins didn't have the expected shape
           DBIO.failed(new IllegalStateException("This exception should never be reached, but is included for completeness."))
-        }
-
-        dbHandle.run(validatedOperation)
-      }
+      } andThen(dbHandle.run)
 
     override def fetchSortedAction(
       sortBy: Option[String],
