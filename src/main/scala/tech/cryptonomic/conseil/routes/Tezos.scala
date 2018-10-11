@@ -8,23 +8,16 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
-import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
+import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.util.JsonUtil
 
-/**
-  * Tezos-specific routes.
-  * The mixed-in [[DatabaseApiFiltering]] trait provides the
-  * instances of filtering execution implkicitly needed by
-  * several Api Operations, based on database querying
-  */
-object Tezos extends LazyLogging with DatabaseApiFiltering {
+import scala.concurrent.ExecutionContext
 
-  val dbHandle = DatabaseUtil.db
+/** Provides useful route and directive definitions */
+object Tezos {
 
-  implicit val tezosDispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.tezos-dispatcher")
-  override val asyncApiFiltersExecutionContext = tezosDispatcher
-
-  val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+  def apply(implicit apiExecutionContext: ExecutionContext) = new Tezos
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -74,6 +67,24 @@ object Tezos extends LazyLogging with DatabaseApiFiltering {
     provide(keyStore)
   }
 
+}
+
+/**
+  * Tezos-specific routes.
+  * The mixed-in [[DatabaseApiFiltering]] trait provides the
+  * instances of filtering execution implicitly needed by
+  * several Api Operations, based on database querying
+  * @param apiExecutionContext is used to call the async operations exposed by the api service
+  */
+class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering {
+
+  import Tezos._
+
+  /* reuse the same context as the one for ApiOperations calls
+   * as long as it doesn't create issues or performance degradation
+   */
+  override val asyncApiFiltersExecutionContext = apiExecutionContext
+
   //this automatically accepts any type `T` as content for calling [[RequestContext.complete]]
   //converts to json string via JsonUtil adding the correct content-type to the response entity
   implicit def jsonStringMarshaller[T]: ToEntityMarshaller[T] =
@@ -81,6 +92,7 @@ object Tezos extends LazyLogging with DatabaseApiFiltering {
       .compose(JsonUtil.toJson[T])
       .wrap(MediaTypes.`application/json`)(identity)
 
+  /** expose filtered results through rest endpoints */
   val route: Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
