@@ -13,6 +13,9 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 
 /**
   * Tezos-specific routes.
+  * The mixed-in [[DatabaseApiFiltering]] trait provides the
+  * instances of filtering execution implkicitly needed by
+  * several Api Operations, based on database querying
   */
 object Tezos extends LazyLogging with DatabaseApiFiltering {
 

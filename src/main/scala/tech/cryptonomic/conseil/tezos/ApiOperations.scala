@@ -245,6 +245,8 @@ object ApiOperations {
     * Fetches all blocks from the db.
     *
     * @param filter Filters to apply
+    * @param apiFilters an instance in scope that actually executes filtered data-fetching
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of blocks
     */
   def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow], ec: ExecutionContext): Future[Seq[Tables.BlocksRow]] =
@@ -258,6 +260,7 @@ object ApiOperations {
     *  - no group corresponds to the given hash
     *
     * @param operationGroupHash Operation group hash
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
   def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
@@ -279,6 +282,8 @@ object ApiOperations {
   /**
     * Fetches all operation groups.
     * @param filter Filters to apply
+    * @param apiFilters an instance in scope that actually executes filtered data-fetching
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of operation groups
     */
   def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow], ec: ExecutionContext): Future[Seq[Tables.OperationGroupsRow]] =
@@ -287,6 +292,8 @@ object ApiOperations {
   /**
     * Fetches all operations.
     * @param filter Filters to apply
+    * @param apiFilters an instance in scope that actually executes filtered data-fetching
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of operations
     */
   def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow], ec: ExecutionContext): Future[Seq[Tables.OperationsRow]] =
@@ -298,10 +305,12 @@ object ApiOperations {
     * return the mean (along with +/- one standard deviation) of
     * fees incurred in those operations.
     * @param filter Filters to apply, specifically operation kinds
+    * @param apiFilters an instance in scope that actually executes filtered data-fetching
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return AverageFee class, getting low, medium, and high
-    *         estimates for average fees, timestamp the calculation
-    *         was performed at, and the kind of operation being
-    *         averaged over.
+    *           estimates for average fees, timestamp the calculation
+    *           was performed at, and the kind of operation being
+    *           averaged over.
     */
   def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[AverageFees] =
     apiFilters(filter)(0)
@@ -322,7 +331,8 @@ object ApiOperations {
   /**
     * Fetches an account by account id from the db.
     * @param account_id The account's id number
-    * @return           The account with its associated operation groups
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
+    * @return The account with its associated operation groups
     */
   def fetchAccount(account_id: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
     val fetchOperation = TezosDb.fetchAccountsMaxBlockLevel.flatMap {
@@ -342,12 +352,15 @@ object ApiOperations {
   /**
     * Fetches a list of accounts from the db.
     * @param filter Filters to apply
-    * @return       List of accounts
+    * @param apiFilters an instance in scope that actually executes filtered data-fetching
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
+    * @return List of accounts
     */
   def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow], ec: ExecutionContext): Future[Seq[Tables.AccountsRow]] =
     fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
 
   /**
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return the most recent block, if one exists in the database.
     */
   private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
