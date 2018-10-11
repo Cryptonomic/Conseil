@@ -131,6 +131,17 @@ object TezosDatabaseOperations extends LazyLogging {
       opsThere <- Tables.OperationGroups.filter(_.blockId === hash).exists.result
     } yield blockThere && opsThere)
 
+  /**
+    * Checks if a block for this hash has ever been invalidated
+    * @param hash Identifies the block
+    * @param ec   Needed to compose the operations
+    * @return     true if block and operations exists
+    */
+  def blockExistsInInvalidatedBlocks(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
+    dbHandle.run(for {
+      blockThere <- Tables.InvalidatedBlocks.findBy(_.hash).applied(hash).exists.result
+    } yield blockThere)
+
   /** conversions from domain objects to database row format */
   object RowConversion {
 

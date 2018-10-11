@@ -104,6 +104,17 @@ CREATE TABLE public.fees (
 
 
 --
+-- Name: invalidated_blocks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.invalidated_blocks (
+    hash character varying NOT NULL,
+    level integer NOT NULL,
+    is_invalidated boolean NOT NULL
+);
+
+
+--
 -- Name: operation_groups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -203,6 +214,14 @@ ALTER TABLE ONLY public.blocks
 
 
 --
+-- Name: invalidated_blocks invalidated_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invalidated_blocks
+    ADD CONSTRAINT invalidated_blocks_pkey PRIMARY KEY (hash);
+
+
+--
 -- Name: operations operationId; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -222,41 +241,6 @@ CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 --
 
 CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
-
-
---
--- Name: ix_accounts_block_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_accounts_block_level ON public.accounts USING btree (block_level);
-
-
---
--- Name: ix_accounts_manager; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_accounts_manager ON public.accounts USING btree (manager);
-
-
---
--- Name: ix_blocks_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_blocks_level ON public.blocks USING btree (level);
-
-
---
--- Name: ix_operations_destination; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_destination ON public.operations USING btree (destination);
-
-
---
--- Name: ix_operations_source; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 
 
 --
