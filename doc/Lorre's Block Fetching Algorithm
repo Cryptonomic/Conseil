@@ -1,0 +1,76 @@
+Lorre's Block Fetching Algorithm:
+
+The following logic is implemented via the processBlocks function, which is a private helper of the
+more general getBlocks function.
+
+Initially, when Lorre is first run with an empty database, it connects to the head block on the chain
+at level n, and will add blocks at levels 0..n to the chain. If there is no fork at all,
+the next iteration of Lorre will run. If there are no new blocks, nothing is added to the database.
+If there are new blocks, let the head block's level be n_2. Then, blocks n+1, n+2...n_2 will be
+added to the database. Inductively, if there are never any forks, then at iteration i of Lorre,
+Lorre will add blocks n_{i-1} + 1, n_{i-1} + 2...n_i to the database.
+
+ASSUMPTION: In a non-forked chain, there can only be one block at each level. [i]
+
+------------------------------------------------------------------------------------------------------
+
+Lorre's algorithm for fetching blocks that occur as a result of a fork:
+
+The following logic is implemented via the followFork function, which is a private helper of the
+more general getBlocks function.
+
+In the normal case, we place blocks into a blocks table, with the fields being all of the associated
+metadata. In the forked case, we will have an invalidated blocks table to invalidate blocks that are
+not internally consistent with the new chain being recognized by Lorre. Here, the necessary fields are
+block_id (the block's hash), level, and an is_invalidated boolean flag.
+
+ASSUMPTION: Internal consistency with our database is all we can hope for, as there is no notion of a
+globally correct chain. [ii]
+
+Suppose a fork happens, and an iteration of Lorre collects a batch of blocks with levels m, m+1...n.
+Blocks at levels m to n are added to the blocks table. we will then consider m's predecessors, as those
+are the blocks that may conflict with our internal view of what the current chain looks like.
+
+For the block at level m-1, we perform two database checks: Is this block currently in the Blocks Table,
+and is this block currently in the Invalidated Blocks Table?
+
+Case 1: Block at level m-1 is in the blocks table, but is not in the invalidated blocks table.
+
+In this situation, the block at level m-1 is internally accounted for by our databases, and has not been
+invalidated. As our algorithm works correctly on a non-forked chain, there is no need to invalidate, so
+we end our fork checking here. This is the base or neutral case.
+
+Case 2: Block at level m-1 is not in the blocks table, and is not in the invalidated blocks table.
+
+We've found a block that is not accounted for. If there are any blocks in the blocks table that have
+the same level as this block, we should make sure those blocks are written to the invalidated blocks
+table with the is_invalidated flag set to true. Then, this block will be collected to be written
+to the Blocks table.
+
+Case 3: Block at level m-1 is in the blocks table, and is also in the invalidated blocks table.
+
+We've found a block we've seen before that has already been invalidated at least once. We'll
+simply perform make sure that this particular block in the invalidated blocks table is has
+its is_invalidated flag set to false, and every other block at the same level will be set
+to true. Since it's already in the blocks table, no block writing is necessary.
+
+INVARIANT: at any given point in time, there will only be at most one block at a given level
+with is_invalidated set to false in the invalidated blocks table. [iii]
+
+Case 4: Block at level m-1 is not in the blocks table, but is in the invalidated blocks table.
+
+IMPOSSIBLE. This function is the only function that writes to the invalidated blocks table, and will only
+write a block to the table if the block is already in the table and passes the criteria to be invalidated.
+
+---------------------------------------------------------------------------------------------------------
+
+As long as assumptions are valid and the invariant is maintained, this algorithm will work as intended:
+
+[i] In a non-forked chain, there can only be one block at each level.
+
+[ii] Internal consistency with our database is all we can hope for, as there is no notion of a
+     globally correct chain.
+
+[iii] At any given point in time, there will only be at most one block at a given level
+      with is_invalidated set to false in the invalidated blocks table
+
