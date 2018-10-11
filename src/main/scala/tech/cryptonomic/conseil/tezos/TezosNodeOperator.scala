@@ -200,6 +200,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
   }
 
+
   /**
     * Get all accounts for a given block
     * @param network     Which Tezos network to go against

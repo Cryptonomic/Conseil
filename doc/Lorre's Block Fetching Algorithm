@@ -50,7 +50,7 @@ to the Blocks table.
 Case 3: Block at level m-1 is in the blocks table, and is also in the invalidated blocks table.
 
 We've found a block we've seen before that has already been invalidated at least once. We'll
-simply perform make sure that this particular block in the invalidated blocks table is has
+simply make sure that this particular block in the invalidated blocks table is has
 its is_invalidated flag set to false, and every other block at the same level will be set
 to true. Since it's already in the blocks table, no block writing is necessary.
 
@@ -76,4 +76,21 @@ As long as assumptions are valid and the invariant is maintained, this algorithm
 
 [iii] At any given point in time, there will only be at most one block at a given level
       with is_invalidated set to false in the invalidated blocks table
+
+-----------------------------------------------------------------------------------------------------------
+
+Spec-ing Unit Tests for the Forking Algorithm:
+
+GetBlocks should correctly process the following chains:
+
+i) A regular, unforked chain
+
+ii) A chain with one fork, or two branches
+
+iii) A chain with one fork, and Lorre's iterations happen to go back and forth on either one of these chains.
+
+iv) A chain with two forks, or three branches, ending on the second fork/third branch
+
+v) A chain with two forks, or three branches, and Lorre's iterations go back and forth between all three of
+these chains, until it's decided that the second branch is the true internal chain for an extended period of time.
 
