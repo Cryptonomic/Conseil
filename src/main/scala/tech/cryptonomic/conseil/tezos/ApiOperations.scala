@@ -5,7 +5,6 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{FeesRow, BlocksRow}
-import tech.cryptonomic.conseil.db.DatabaseQueryExecution
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -67,142 +66,6 @@ object ApiOperations {
     private def emptyOptions[A] = Some(Set.empty[A])
 
   }
-
-  /**
-    * Represents queries for filtered tables for Accounts, Blocks, Operation Groups, and Operations.
-    *
-    * @param filteredAccounts         Filtered Accounts table
-    * @param filteredBlocks           Filtered Blocks table
-    * @param filteredOperationGroups  Filtered OperationGroups table
-    * @param filteredOperations       Filtered Operations table
-   */
-  case class FilteredTables(
-                             filteredAccounts: Query[Tables.Accounts, Tables.AccountsRow, Seq],
-                             filteredBlocks: Query[Tables.Blocks, Tables.BlocksRow, Seq],
-                             filteredOperationGroups: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq],
-                             filteredOperations: Query[Tables.Operations, Tables.OperationsRow, Seq]
-                           )
-
-  /**
-    * Represents all possible joins of tables that can be made from Accounts, Blocks, Operation Groups, and Operations.
-    *
-    * Example: BlocksOperationGroupsOperationsAccounts corresponds to the four way inner join between the Blocks,
-    * Operation Groups, Operations, and Accounts tables.
-    *
-    * Example: OperationGroupsOperationsAccounts corresponds to the three way join between the Operation Groups,
-    * Operations, and Accounts Tables.
-    */
-
-  sealed trait JoinedTables
-
-  case class BlocksOperationGroupsOperationsAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups, Tables.Operations, Tables.Accounts),
-      (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class BlocksOperationGroupsOperations(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups, Tables.Operations),
-      (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class BlocksOperationGroupsAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups, Tables.Accounts),
-      (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class BlocksOperationGroups(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups),
-      (Tables.BlocksRow, Tables.OperationGroupsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class BlocksOperationsAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.Operations, Tables.Accounts),
-      (Tables.BlocksRow, Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class BlocksOperations(
-    join: Query[
-      (Tables.Blocks, Tables.Operations),
-      (Tables.BlocksRow, Tables.OperationsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class BlocksAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.Accounts),
-      (Tables.BlocksRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class Blocks(
-    join: Query[Tables.Blocks, Tables.BlocksRow, Seq]
-  ) extends JoinedTables
-
-  case class OperationGroupsOperationsAccounts(
-    join: Query[
-      (Tables.OperationGroups, Tables.Operations, Tables.Accounts),
-      (Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class OperationGroupsOperations(
-    join: Query[
-      (Tables.OperationGroups, Tables.Operations),
-      (Tables.OperationGroupsRow, Tables.OperationsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class OperationGroupsAccounts(
-    join: Query[
-      (Tables.OperationGroups, Tables.Accounts),
-      (Tables.OperationGroupsRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class OperationGroups(
-    join: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]
-  ) extends JoinedTables
-
-  case class OperationsAccounts(
-    join: Query[
-      (Tables.Operations, Tables.Accounts),
-      (Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
-  ) extends JoinedTables
-
-  case class Operations(
-    join: Query[Tables.Operations, Tables.OperationsRow, Seq]
-  ) extends JoinedTables
-
-  case class Accounts(
-    join: Query[Tables.Accounts, Tables.AccountsRow, Seq]
-  ) extends JoinedTables
-
-  case object EmptyJoin extends JoinedTables
-
-  /**
-    * This represents a database query that returns all of the columns of the table in a scala tuple.
-    * The only options available are for the Blocks, Operation Groups, and Operations Table,
-    * corresponding to the functions fetchBlocks, fetchOperationGroups, and fetchOperations, and these
-    * types are used for convenience in fetchSortedTables.
-    */
-  sealed trait Action
-
-  case class BlocksAction(action: Query[Tables.Blocks, Tables.BlocksRow, Seq]) extends Action
-
-  case class OperationGroupsAction(action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]) extends Action
-
-  case class AccountsAction(action: Query[Tables.Accounts, Tables.AccountsRow, Seq]) extends Action
 
   /**
     * Fetches the level of the most recent block stored in the database.
@@ -293,10 +156,9 @@ object ApiOperations {
     * Fetches all operations.
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of operations
     */
-  def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow], ec: ExecutionContext): Future[Seq[Tables.OperationsRow]] =
+  def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow]): Future[Seq[Tables.OperationsRow]] =
     apiFilters(filter)(0)
 
   /**

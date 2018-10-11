@@ -4,7 +4,7 @@ package tech.cryptonomic.conseil
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb, _}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.annotation.tailrec
@@ -27,7 +27,6 @@ object Lorre extends App with LazyLogging {
     }
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
