@@ -284,6 +284,18 @@ trait DatabaseApiFiltering {
     */
   def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext
 
+  /* common wrapper check for many implementations
+   * verify that there are blocks in the database before running a [[DBIO]]
+   * If none exists the call returns a failed DBIO
+   */
+  private[this] def ensuringBlocksExist[R](dbOperation: => DBIO[R]): DBIO[R] =
+      TezosDatabaseOperations.doBlocksExist().flatMap {
+        blocksStored =>
+          if(blocksStored) dbOperation
+          else DBIO.failed(new NoSuchElementException("No block data is currently available"))
+      }(asyncApiFiltersExecutionContext)
+
+
   /** an instance to execute filtering and sorting for blocks, asynchronously */
   implicit object BlocksFiltering extends DatabaseQueryExecution[Future, Tables.BlocksRow] with ActionSorting[BlocksAction] {
 
@@ -321,16 +333,12 @@ trait DatabaseApiFiltering {
         val filteringOperations = validAction.map {
           action =>
 
-            //making sure that we have some block on db
-            TezosDatabaseOperations.doBlocksExist().flatMap {
-              blocksStored =>
-                if(blocksStored) {
-                  val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(action))
-                  sortedAction.distinct
-                    .take(limit)
-                    .result
-                } else DBIO.failed(new NoSuchElementException("No block data is currently available"))
-            }(asyncApiFiltersExecutionContext)
+            ensuringBlocksExist {
+              val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(action))
+              sortedAction.distinct
+                .take(limit)
+                .result
+            }
 
         } getOrElse {
           //when the joins didn't have the expected shape
@@ -405,16 +413,12 @@ trait DatabaseApiFiltering {
         val filteringOperations = validAction.map {
           action =>
 
-            //making sure that we have some block on db
-            TezosDatabaseOperations.doBlocksExist().flatMap {
-              blocksStored =>
-                if(blocksStored) {
-                  val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(action))
-                  sortedAction.distinct
-                    .take(limit)
-                    .result
-                } else DBIO.failed(new NoSuchElementException("No block data is currently available"))
-            }(asyncApiFiltersExecutionContext)
+            ensuringBlocksExist {
+              val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(action))
+              sortedAction.distinct
+                .take(limit)
+                .result
+            }
 
         } getOrElse {
           //when the joins didn't have the expected shape
@@ -499,16 +503,12 @@ trait DatabaseApiFiltering {
         val validatedOperation = validAction.map {
           action =>
 
-            //making sure that we have some block on db
-            TezosDatabaseOperations.doBlocksExist().flatMap {
-              blocksStored =>
-                if(blocksStored) {
-                  val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(action))
-                  sortedAction.distinct
-                    .take(limit)
-                    .result
-                } else DBIO.failed(new NoSuchElementException("No block data is currently available"))
-            }(asyncApiFiltersExecutionContext)
+            ensuringBlocksExist {
+              val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(action))
+              sortedAction.distinct
+                .take(limit)
+                .result
+            }
 
         } getOrElse {
           //when the joins didn't have the expected shape
