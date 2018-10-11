@@ -48,18 +48,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       .map(fromJson[TezosTypes.Account])
 
   /**
-    * Fetches a specific account for a given block wrapped in a [[Future]].
-    * @param network    Which Tezos network to go against
-    * @param blockHash  Hash of given block
-    * @param accountID  Account ID
-    * @return           The account
-    */
-  def asyncGetAccountForBlock(network: String, blockHash: String, accountID: String): Future[TezosTypes.Account] =
-    node
-      .runAsyncGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID")
-      .map(fromJson[TezosTypes.Account])
-
-  /**
     * Fetches the manager of a specific account for a given block.
     * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block
