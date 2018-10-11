@@ -62,6 +62,9 @@ Case 4: Block at level m-1 is not in the blocks table, but is in the invalidated
 IMPOSSIBLE. This function is the only function that writes to the invalidated blocks table, and will only
 write a block to the table if the block is already in the table and passes the criteria to be invalidated.
 
+We then continue the same checks for blocks m-2, m-3...until Case 1, our base case, has been reached. Then,
+we are done collecting forked blocks for writing, as well as keeping our invalidated blocks table up to speed.
+
 ---------------------------------------------------------------------------------------------------------
 
 As long as assumptions are valid and the invariant is maintained, this algorithm will work as intended:
