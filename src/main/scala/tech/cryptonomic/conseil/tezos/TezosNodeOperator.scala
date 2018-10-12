@@ -3,13 +3,18 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.tezos.ApiOperations.{awaitTimeInSeconds, conf}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
+import tech.cryptonomic.conseil.util.{CryptoUtil, DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
+
+import tech.cryptonomic.conseil.util.DatabaseUtil
+import slick.jdbc.PostgresProfile.api._
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
@@ -18,9 +23,12 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
   private val conf = ConfigFactory.load
 
+  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
   val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
   val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
+
+  lazy val dbHandle = DatabaseUtil.db
 
   /**
     * Output of operation signing.
@@ -198,6 +206,60 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash}/operations")
       fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
     } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
+  }
+
+  /**
+    *
+    * @param network
+    * @param hash
+    * @return Future of List of Blocks that were missed during the Fork, in reverse order
+    */
+  def followFork(
+                  network: String,
+                  hash: String
+                  )(implicit ec: ExecutionContext): Future[List[Block]] = {
+    lazy val offsets: Stream[Int] = Stream.from(1)
+
+    val blockExists: Block => Boolean =
+      block => Await(TezosDatabaseOperations.blockExists(block.metadata.hash))
+    val blockInInvalidatedBlocks: Block => Boolean =
+      block => Await(TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash))
+
+    val predicate: Future[Block] => (Boolean, Boolean) =
+      futureBlock => {
+        val block = Await.result[Block](futureBlock, Duration.apply(awaitTimeInSeconds, SECONDS))
+        (blockExists(block), blockInInvalidatedBlocks(block))
+      }
+
+    val foldFunction : (Future[List[Block]], Future[Block]) => Future[List[Block]] =
+      (acc, futureBlock) => {
+        val p = predicate(futureBlock)
+        p match {
+          case (false, false) =>
+            futureBlock.flatMap{ block =>
+              val action = Tables.Blocks.filter(_.level === block.metadata.header.level)
+              //val blocks = dbHandle.run(action)
+              //TezosDatabaseOperations.writeInvalidatedBlocksIO(blocks)
+              for {
+                a <- acc
+              } yield  block :: a
+            }
+          case (true, true) => {
+            futureBlock.flatMap { block =>
+              //val (action1, action2) = TezosDatabaseOperations.updateInvalidatedBlockIO(block)
+              //db.run(action1)
+              //db.run(action2)
+              acc
+            }
+          }
+        }
+      }
+
+    offsets
+      .map{ offset => {getBlock(network, hash, Some(offset))}}
+      .takeWhile{ block => predicate(block) != (true, false)}
+      .foldLeft(Future.successful(List.empty[Block]))(foldFunction)
+
   }
 
 

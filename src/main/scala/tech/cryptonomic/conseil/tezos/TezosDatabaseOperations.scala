@@ -53,6 +53,28 @@ object TezosDatabaseOperations extends LazyLogging {
       )
 
   /**
+    * Writes a single block into the invalidated blocks table.
+    * @param blocks Blocks which are being invalidated
+    * @return
+    */
+  def writeInvalidatedBlocksIO(blocks: List[Block]) = {
+    Tables.InvalidatedBlocks ++= blocks.map(block => RowConversion.convertInvalidatedBlock(block))
+  }
+
+  /**
+    * Updated invalidated blocks table so that current block is revalidated, and all other blocks
+    * at same level are invalidated.
+    * @param block Block to be revalidated
+    * @return
+    */
+  def updateInvalidatedBlockIO(block: Block) = {
+    val hash = block.metadata.hash
+    val invalidatedAction = Tables.InvalidatedBlocks.filter(_.hash != hash).map(block => block.isInvalidated).update(true)
+    val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash).map(block => block.isInvalidated).update(false)
+    (invalidatedAction, revalidatedAction)
+  }
+
+  /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind  Operation kind
     * @return      The average fees for a given operation kind, if it exists
@@ -228,6 +250,13 @@ object TezosDatabaseOperations extends LazyLogging {
             }
         }
       }
+
+    private[TezosDatabaseOperations] def convertInvalidatedBlock(block: Block) =
+      Tables.InvalidatedBlocksRow(
+        hash = block.metadata.hash,
+        level = block.metadata.header.level,
+        isInvalidated = false
+      )
 
   }
 
