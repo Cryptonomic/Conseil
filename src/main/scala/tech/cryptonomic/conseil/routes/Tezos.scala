@@ -5,21 +5,17 @@ import akka.http.scaladsl.model.MediaTypes
 import akka.http.scaladsl.server.{Directive, Route}
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosNodeInterface, TezosNodeOperator}
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
-import tech.cryptonomic.conseil.util.{DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.util.JsonUtil
+
+import scala.concurrent.ExecutionContext
 
 /**
   * Tezos-specific routes.
   */
 object Tezos extends LazyLogging {
-
-  val dbHandle = DatabaseUtil.db
-
-  implicit val tezosDispatcher = TezosNodeInterface.system.dispatchers.lookup("akka.tezos-dispatcher")
-
-  val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -76,7 +72,12 @@ object Tezos extends LazyLogging {
       .compose(JsonUtil.toJson[T])
       .wrap(MediaTypes.`application/json`)(identity)
 
-  val route: Route = pathPrefix(Segment) { network =>
+  /**
+    * expose filtered results through rest endpoints
+    * @param ec an [[ExectutionContext]] is required to compose async operations 
+    *           on the  underlying Api implementation
+    */
+  def route(implicit ec: ExecutionContext): Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
         validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {

@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Try}
+import scala.util.Try
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
@@ -48,18 +48,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       .map(fromJson[TezosTypes.Account])
 
   /**
-    * Fetches a specific account for a given block wrapped in a [[Future]].
-    * @param network    Which Tezos network to go against
-    * @param blockHash  Hash of given block
-    * @param accountID  Account ID
-    * @return           The account
-    */
-  def asyncGetAccountForBlock(network: String, blockHash: String, accountID: String): Future[TezosTypes.Account] =
-    node
-      .runAsyncGetQuery(network, s"blocks/$blockHash/context/contracts/$accountID")
-      .map(fromJson[TezosTypes.Account])
-
-  /**
     * Fetches the manager of a specific account for a given block.
     * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block
@@ -76,7 +64,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param network    Which Tezos network to go against
     * @param blockHash  the block storing the accounts
     * @param accountIDs the ids
-    * @param ec         an implicit context to chain async operations
     * @return           the list of accounts wrapped in a [[Future]]
     */
   def getAccountsForBlock(network: String, blockHash: String, accountIDs: List[String]): Future[List[TezosTypes.Account]] =
@@ -113,15 +100,17 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param hash      Hash of the block
     * @return          the block data wrapped in a [[Future]]
     */
-  def getBlock(network: String, hash: String): Future[TezosTypes.Block] =
+  def getBlock(network: String, hash: String, offset: Option[Int] = None): Future[TezosTypes.Block] = {
+    val offsetString = offset.map(_.toString).getOrElse("")
     for {
-      block <- node.runAsyncGetQuery(network, s"blocks/$hash").map(fromJson[TezosTypes.BlockMetadata])
-      ops   <-
+      block <- node.runAsyncGetQuery(network, s"blocks/$hash~$offsetString").map(fromJson[TezosTypes.BlockMetadata])
+      ops <-
         if (block.header.level == 0)
           Future.successful(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else
           getAllOperationsForBlock(network, hash)
     } yield Block(block, ops)
+  }
 
   /**
     * Gets the block head.
@@ -149,96 +138,66 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       headHash = blockHead.metadata.hash
       blocks <-
         if (headLevel <= maxLevel) Future.successful(List.empty)
-        else fetchBoundedBlockChain(network, blockHead, maxLevel + 1, headLevel, followFork)
+        else getBlocks(network, maxLevel + 1, headLevel, headHash, followFork)
     } yield blocks
 
   /**
-    * Fetches metadata for a block only, without waiting for the answer
-    * @param network   Which Tezos network to go against
-    * @param hash      Hash of the block
-    * @return          the metadata wrapped in a [[Future]]
+    * Get the blocks in a specified range.
+    * @param network Which tezos network to go against
+    * @param minLevel Minimum block level
+    * @param maxLevel Maximum block level
+    * @param startBlockHash If specified, start from the supplied block hash, otherwise, head of the chain.
+    * @param followFork If predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
+    * @return Blocks
     */
-  private def getMetadata(network: String, hash: String): Future[BlockMetadata] =
-    node.runAsyncGetQuery(network, s"blocks/$hash") map fromJson[BlockMetadata]
-
-  /**
-    * Asynchronously fetches a whole chain of metadata for blocks, using the parameters to
-    * decide when to stop the recursive descent on predecessors
-    *
-    * @param network    which Tezos network to go against
-    * @param current    The current metadata object to start descending
-    * @param minLevel   The lowest level for which to include results, unless a fork should be followed
-    * @param maxLevel   The highest level for which to include results
-    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @param collected  The currently accumulated metadata so far
-    * @return           The metadata list, wrapped in a [[Future]]
-    */
-  def fetchChainedMetadata(
-    network: String,
-    current: BlockMetadata,
-    minLevel: Int,
-    maxLevel: Int,
-    followFork: Boolean,
-    collected: List[BlockMetadata] = List.empty
-  ) : Future[List[BlockMetadata]] = {
-    val currentLevel = current.header.level
-    logger.info("Current metadata level is {}", currentLevel)
-    val reachedBottom = currentLevel == 0 && minLevel <= 0 //can we get further on? Why checking min?
-    val reachedMinNoForkin = currentLevel == minLevel && !followFork
-    val belowMinWithForking = currentLevel <= minLevel && followFork
-    val aboveMax = currentLevel > maxLevel
-    val aboveMin = currentLevel > minLevel
-
-    if(reachedBottom || reachedMinNoForkin)
-      Future.successful(current :: collected)
-    else if (belowMinWithForking)
-      ApiOperations.dbHandle.run(TezosDatabaseOperations.blockExists(current.header.predecessor)) flatMap { predecessorStored =>
-        if (predecessorStored)
-        Future.successful(current :: collected) //pred on db, we're done here
-      else
-        getMetadata(network, current.header.predecessor) flatMap { pred =>
-          fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, current :: collected)
-        }
-      }
-    else if (aboveMax)
-      //skip this
-      getMetadata(network, current.header.predecessor) flatMap { pred =>
-        fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, collected)
-      }
-    else if (aboveMin)
-      getMetadata(network, current.header.predecessor) flatMap { pred =>
-        fetchChainedMetadata(network, pred, minLevel, maxLevel, followFork, current :: collected)
-      }
-    else
-      Future.successful(List.empty)
-
+  def getBlocks(network: String,
+                minLevel: Int,
+                maxLevel: Int,
+                startBlockHash: String = "head",
+                followFork: Boolean): Future[List[Block]] = {
+    val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
+    val blocksFromFork =
+      if (followFork) Future.successful(List.empty)
+      else Future.successful(List.empty)
+    for {
+      forkBlocks <- blocksFromFork
+      rangeBlocks <- blocksInRange
+    } yield forkBlocks ++ rangeBlocks
   }
 
   /**
-    * Traverses Tezos blockchain as parameterized, without waiting for the answer
-    *
-    * @param network       Which Tezos network to go against
-    * @param startingBlock Current block to start from
-    * @param minLevel      Minimum level at which to stop
-    * @param maxLevel      Level at which to start collecting blocks
-    * @param followFork    If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @return              All collected blocks, wrapped in a [[Future]]
+    * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
+    * @param network Which Tezos network to go against
+    * @param hash Hash of block at max level.
+    * @param minLevel Minimum level, at which we stop.
+    * @param maxLevel Level at which to stop collecting blocks.
+    * @return
     */
-  private def fetchBoundedBlockChain(
-    network: String,
-    startingBlock: Block,
-    minLevel: Int,
-    maxLevel: Int,
-    followFork: Boolean
-  ): Future[List[Block]] = {
+  private def processBlocks(
+                             network : String,
+                             hash: String,
+                             minLevel: Int,
+                             maxLevel: Int
+                           ): Future[List[Block]] = {
+    val maxOffset: Int = maxLevel - minLevel
+    val offsets = (0 to maxOffset).toList.map(_.toString)
+    val blockMetadataUrls = offsets.map{offset => s"blocks/$hash~$offset"}
+
+    val jsonToBlockMetadata: String => BlockMetadata =
+      json => fromJson[BlockMetadata](json)
+
     val jsonToOperationGroups: String => List[OperationGroup] =
       json => fromJson[List[List[OperationGroup]]](json).flatten
 
+    /*
+    Note that this functionality is dependent on the implementation of runBatchedGetQuery, which currently
+    doesn't reorder stream elements, thus ensuring the correctness of Block creation with zip.
+     */
     for {
-      metadataChain <- fetchChainedMetadata(network, startingBlock.metadata, minLevel, maxLevel, followFork)
-      operationsUrls = metadataChain.map(d => s"blocks/${d.hash}/operations")
-      operations <- node.runBatchedGetQuery(network, operationsUrls, blockOperationsFetchConcurrency) map (all => all.map(jsonToOperationGroups))
-    } yield metadataChain.zip(operations).map(Block.tupled)
+      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
+      blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash}/operations")
+      fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
+    } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
   }
 
   /**
@@ -286,7 +245,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                                     operations: List[Map[String, Any]],
                                     managerKey: TezosTypes.ManagerKey,
                                     keyStore: KeyStore)
-                                    : List[Map[String, Any]] =
+  : List[Map[String, Any]] =
     managerKey.key match {
       case Some(_) => operations
       case None =>
@@ -439,12 +398,12 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return           The ID of the created operation group
     */
   def sendTransactionOperation(
-                       network: String,
-                       keyStore: KeyStore,
-                       to: String,
-                       amount: Float,
-                       fee: Float
-                     ): Future[OperationResult] = {
+                                network: String,
+                                keyStore: KeyStore,
+                                to: String,
+                                amount: Float,
+                                fee: Float
+                              ): Future[OperationResult] = {
     val transactionMap: Map[String,Any] = Map(
       "kind"        -> "transaction",
       "amount"      -> amount,
@@ -489,14 +448,14 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return
     */
   def sendOriginationOperation(
-                               network: String,
-                               keyStore: KeyStore,
-                               amount: Float,
-                               delegate: String,
-                               spendable: Boolean,
-                               delegatable: Boolean,
-                               fee: Float
-                             ): Future[OperationResult] = {
+                                network: String,
+                                keyStore: KeyStore,
+                                amount: Float,
+                                delegate: String,
+                                spendable: Boolean,
+                                delegatable: Boolean,
+                                fee: Float
+                              ): Future[OperationResult] = {
     val transactionMap: Map[String,Any] = Map(
       "kind"          -> "origination",
       "balance"       -> amount,

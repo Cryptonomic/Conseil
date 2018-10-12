@@ -11,7 +11,8 @@ import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Try, Failure}
+import scala.util.control.NoStackTrace
 
 trait ShutdownComplete
 object ShutdownComplete extends ShutdownComplete
@@ -69,24 +70,38 @@ trait TezosRPCInterface {
 }
 
 /**
-  * Concrete implementation of the above.
+  * Shared configurations related to node operation
   */
-object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
-
-  private val conf = ConfigFactory.load
+object TezosNodeConfig {
+  private[tezos] val conf = ConfigFactory.load
   private[tezos] val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
   private[tezos] val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
   private[tezos] val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
 
-  implicit val system: ActorSystem = ActorSystem("lorre-system")
+}
+
+
+/**
+  * Concrete implementation of the above.
+  */
+case class TezosNodeInterface()(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
+  import TezosNodeConfig._
+
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+  private[this] val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
+  private[this] lazy val rejected = new Failure(new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace)
 
   override def shutdown(): Future[ShutdownComplete] = {
-    Http().shutdownAllConnectionPools()
-      .flatMap (_ => system.terminate())
-      .map(_ => ShutdownComplete)(executor = scala.concurrent.ExecutionContext.Implicits.global)
+    rejectingCalls.compareAndSet(false, true)
+    Http(system).shutdownAllConnectionPools().map(_ => ShutdownComplete)
   }
+
+  def withRejectionControl[T](call: => Try[T]): Try[T] =
+    if (rejectingCalls.get) rejected else call
+
+  def withRejectionControl[T](call: => Future[T]): Future[T] =
+    if (rejectingCalls.get) Future.fromTry(rejected) else call
 
   private[this] def translateCommandToUrl(network: String, command: String): String = {
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
@@ -96,7 +111,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
     s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
   }
 
-  override def runGetQuery(network: String, command: String): Try[String] = {
+  override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try{
       val url = translateCommandToUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network")
@@ -115,7 +130,7 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
     }
   }
 
-  override def runAsyncGetQuery(network: String, command: String): Future[String] = {
+  override def runAsyncGetQuery(network: String, command: String): Future[String] = withRejectionControl {
     val url = translateCommandToUrl(network, command)
     val request = HttpRequest(HttpMethods.GET, url)
     logger.debug("Async querying URL {} for platform Tezos and network {}", url, network)
@@ -127,8 +142,8 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
 
   }
 
-  override def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = {
-    Try{
+  override def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = withRejectionControl {
+    Try {
       val url = translateCommandToUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
       val postedData = payload match {
@@ -148,10 +163,11 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
       val responseBody = Await.result(responseBodyFuture, awaitTime)
       logger.debug(s"Query result: $responseBody")
       responseBody
+    
     }
   }
 
-  override def runAsyncPostQuery(network: String, command: String, payload: Option[String]= None): Future[String] = {
+  override def runAsyncPostQuery(network: String, command: String, payload: Option[String]= None): Future[String] = withRejectionControl {
     val url = translateCommandToUrl(network, command)
     logger.debug(s"Async querying URL $url for platform Tezos and network $network with payload $payload")
     val postedData = payload.getOrElse("{}")
@@ -183,20 +199,20 @@ object TezosNodeInterface extends TezosRPCInterface with LazyLogging {
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     if (protocol == "https")
-      Http().cachedHostConnectionPoolHttps[String](
+      Http(system).cachedHostConnectionPoolHttps[String](
         host = host,
         port = port,
         settings = streamingRequestsConnectionPooling
       )
     else
-      Http().cachedHostConnectionPool[String](
+      Http(system).cachedHostConnectionPool[String](
         host = host,
         port = port,
         settings = streamingRequestsConnectionPooling
       )
   }
 
-  override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = {
+  override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = withRejectionControl {
     val connections = createHostPoolFlow(network)
     val uris = Source(commands.map(translateCommandToUrl(network, _)))
     val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)

@@ -1,12 +1,14 @@
 
 package tech.cryptonomic.conseil
 
+import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb, _}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb, ShutdownComplete}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
+import scala.concurrent.duration._
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
@@ -16,6 +18,13 @@ import scala.util.{Failure, Success}
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
 object Lorre extends App with LazyLogging {
+
+  //keep this import here to make it evident where we spawn our async code
+  implicit val system: ActorSystem = ActorSystem("lorre-system")
+  implicit val dispatcher = system.dispatcher
+
+  //how long to wait for graceful shutdown of system components
+  private[this] val shutdownWait = 10 seconds
 
   private val network =
     if (args.length > 0) args(0)
@@ -32,12 +41,22 @@ object Lorre extends App with LazyLogging {
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
-  //re-use the dispatcher pool from the node interface
-  implicit val dispatcher = TezosNodeInterface.system.dispatcher
-
   lazy val db = DatabaseUtil.db
+  val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface())
 
-  val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
+  //whatever happens we try to clean up
+  sys.addShutdownHook(shutdown)
+
+  private[this] def shutdown(): Unit = {
+    logger.info("Doing clean-up")
+    db.close()
+    val nodeShutdown =
+      tezosNodeOperator.node
+        .shutdown()
+        .flatMap(ShutdownComplete => system.terminate())
+    Await.result(nodeShutdown, shutdownWait)
+    logger.info("All things closed")
+  }
 
   @tailrec
   def mainLoop(iteration: Int): Unit = {
@@ -63,14 +82,11 @@ object Lorre extends App with LazyLogging {
     mainLoop(iteration + 1)
   }
 
-  sys.addShutdownHook{
-    logger.info("Handling system shutdown")
-    tezosNodeOperator.node.shutdown()
-    db.close()
-  }
   logger.info("About to start processing on the {} network", network)
-  try {mainLoop(0)} finally {sys.exit()}
 
+  try {mainLoop(0)} finally {shutdown()}
+
+  /** purges old accounts */
   def purge(): Future[Done] = {
     val purged = db.run(TezosDb.purgeOldAccounts())
 
