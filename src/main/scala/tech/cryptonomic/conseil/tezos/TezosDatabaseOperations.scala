@@ -5,7 +5,9 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountsWithBlockHashAndLevel, Block, BlockHash}
+import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
+import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,131 +20,37 @@ import scala.util.{Failure, Success}
 object TezosDatabaseOperations extends LazyLogging {
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val numberOfFeesAveraged = conf.getInt("lorre.numberOfFeesAveraged")
 
   /**
-    * Writes blocks and operations to a database.
-    * @param blocks   Block with operations.
-    * @param dbHandle Handle to database.
-    * @return         Future on database inserts.
-    */
-  def writeBlocksToDatabase(blocks: List[Block], dbHandle: Database): Future[Unit] =
-    dbHandle.run(DBIO.seq(
-      Tables.Blocks           ++= blocks.map(blockToDatabaseRow),
-      Tables.OperationGroups  ++= blocks.flatMap(operationGroupToDatabaseRow),
-      Tables.Operations       ++= blocks.flatMap(operationsToDatabaseRow)
-    ))
-
-  /**
-    * Writes accounts from a specific blocks to a database.
-    * @param accountsInfo Accounts with their corresponding block hash.
-    * @param dbHandle     Handle to a database.
-    * @return             Future on database inserts.
-    */
-  def writeAccountsToDatabase(accountsInfo: AccountsWithBlockHashAndLevel, dbHandle: Database): Future[Option[Int]] =
-    dbHandle.run(Tables.Accounts ++= accountsToDatabaseRows(accountsInfo))
-
-  /**
-    * Generates database rows for accounts.
-    * @param accountsInfo Accounts
-    * @return             Database rows
-    */
-  def accountsToDatabaseRows(accountsInfo: AccountsWithBlockHashAndLevel): List[Tables.AccountsRow] =
-    accountsInfo.accounts.map { account =>
-      Tables.AccountsRow(
-        accountId = account._1.id,
-        blockId = accountsInfo.blockHash.value,
-        manager = account._2.manager,
-        spendable = account._2.spendable,
-        delegateSetable = account._2.delegate.setable,
-        delegateValue = account._2.delegate.value,
-        counter = account._2.counter,
-        script = account._2.script.flatMap(x => Some(x.toString)),
-        balance = account._2.balance,
-        blockLevel = accountsInfo.blockLevel
-      )
-    }.toList
-
-  /**
-    * Generates database rows for blocks.
-    * @param block  Block
-    * @return       Database rows
-    */
-  def blockToDatabaseRow(block: Block): Tables.BlocksRow = {
-    val header = block.metadata.header
-    Tables.BlocksRow(
-      level = header.level,
-      proto = header.proto,
-      predecessor = header.predecessor.value,
-      timestamp = header.timestamp,
-      validationPass = header.validationPass,
-      fitness = header.fitness.mkString(","),
-      context = Some(header.context), //put in later
-      signature = header.signature,
-      protocol = block.metadata.protocol,
-      chainId = block.metadata.chain_id,
-      hash = block.metadata.hash.value,
-      operationsHash = header.operations_hash
-    )
-  }
-
-  /**
-    * Generates database rows for a block's operation groups.
-    * @param block  Block
-    * @return       Database rows
-    */
-  def operationGroupToDatabaseRow(block: Block): List[Tables.OperationGroupsRow] =
-    block.operationGroups.map{ og =>
-      Tables.OperationGroupsRow(
-        protocol = og.protocol,
-        chainId = og.chain_id,
-        hash = og.hash.value,
-        branch = og.branch,
-        signature = og.signature,
-        blockId = block.metadata.hash.value
-      )
-    }
-
-  /**
-    * Generates database rows for a block's operations.
-    * @param block  Block
-    * @return       Database rows
-    */
-  def operationsToDatabaseRow(block: Block): List[Tables.OperationsRow] =
-    block.operationGroups.flatMap{ og =>
-      og.contents match {
-        case None =>  List[Tables.OperationsRow]()
-        case Some(operations) =>
-          operations.map { operation =>
-            Tables.OperationsRow(
-              kind = operation.kind,
-              source = operation.source,
-              fee = operation.fee,
-              gasLimit = operation.gasLimit,
-              storageLimit = operation.storageLimit,
-              amount = operation.amount,
-              destination = operation.destination,
-              operationGroupHash = og.hash.value,
-              operationId = 0,
-              balance = operation.balance,
-              delegate = operation.delegate,
-              blockHash = block.metadata.hash.value,
-              blockLevel = block.metadata.header.level,
-              timestamp = block.metadata.header.timestamp,
-              pkh = operation.pkh
-            )
-          }
-      }
-    }
-
-  /**
+    * Writes computed fees averages to a database.
     *
-    * @param fees      List of average fees for different operation kinds.
-    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
+    * @param fees List of average fees for different operation kinds.
+    * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
+
+  /**
+    * Writes accounts from a specific block to a database.
+    *
+    * @param accountsInfo Accounts with their corresponding block hash.
+    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
+    */
+  def writeAccountsIO(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
+    Tables.Accounts ++= RowConversion.convertAccounts(accountsInfo)
+
+  /**
+    * Writes blocks and related operations to a database.
+    * @param blocks   Block with operations.
+    * @return         Future on database inserts.
+    */
+  def writeBlocksIO(blocks: List[Block]): DBIO[Unit] =
+      DBIO.seq(
+        Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
+        Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
+        Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
+      )
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -193,6 +101,24 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
+  def operationsForGroupIO(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
+    (for {
+      operation <- operationsByGroupHash(groupHash).extract
+      group <- operation.operationGroupsFk
+    } yield (group, operation)
+    ).result
+    .map {
+      pairs =>
+        /*
+         * we first collect all de-normalized pairs under the common group and then extract the
+         * only key-value from the resulting map
+         */
+        val keyed = pairs.byKey()
+        keyed.keys
+          .headOption
+          .map( k => (k, keyed(k)))
+    }
+
   /**
     * Checks if a block for this hash and related operations are stored on db
     * @param hash Identifies the block
@@ -215,12 +141,95 @@ object TezosDatabaseOperations extends LazyLogging {
         high = in.high,
         timestamp = in.timestamp,
         kind = in.kind
+    )
+
+    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
+      val AccountsWithBlockHashAndLevel(hash, level, accounts) = blockAccounts
+      accounts.map {
+        case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
+          Tables.AccountsRow(
+            accountId = id.id,
+            blockId = hash.value,
+            manager = manager,
+            spendable = spendable,
+            delegateSetable = delegate.setable,
+            delegateValue = delegate.value,
+            counter = counter,
+            script = script.map(_.toString),
+            balance = balance,
+            blockLevel = level
+          )
+      }.toList
+    }
+
+    private[TezosDatabaseOperations] def convertBlock(block: Block) = {
+      val header = block.metadata.header
+      Tables.BlocksRow(
+        level = header.level,
+        proto = header.proto,
+        predecessor = header.predecessor.value,
+        timestamp = header.timestamp,
+        validationPass = header.validationPass,
+        fitness = header.fitness.mkString(","),
+        context = Some(header.context), //put in later
+        signature = header.signature,
+        protocol = block.metadata.protocol,
+        chainId = block.metadata.chain_id,
+        hash = block.metadata.hash.value,
+        operationsHash = header.operations_hash
       )
+    }
+
+    private[TezosDatabaseOperations] def convertBlocksOperationGroups(block: Block): List[Tables.OperationGroupsRow] =
+      block.operationGroups.map{ og =>
+        Tables.OperationGroupsRow(
+          protocol = og.protocol,
+          chainId = og.chain_id,
+          hash = og.hash.value,
+          branch = og.branch,
+          signature = og.signature,
+          blockId = block.metadata.hash.value
+        )
+      }
+
+    private[TezosDatabaseOperations] def convertBlockOperations(block: Block): List[Tables.OperationsRow] =
+      block.operationGroups.flatMap{ og =>
+        og.contents.fold(List.empty[Tables.OperationsRow]){
+          operations =>
+            operations.map { operation =>
+              Tables.OperationsRow(
+                kind = operation.kind,
+                source = operation.source,
+                fee = operation.fee,
+                gasLimit = operation.gasLimit,
+                storageLimit = operation.storageLimit,
+                amount = operation.amount,
+                destination = operation.destination,
+                operationGroupHash = og.hash.value,
+                operationId = 0,
+                balance = operation.balance,
+                delegate = operation.delegate,
+                blockHash = block.metadata.hash.value,
+                blockLevel = block.metadata.header.level,
+                timestamp = block.metadata.header.timestamp,
+                pkh = operation.pkh
+              )
+            }
+        }
+      }
 
   }
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BigDecimal = -1
+
+  /** Precompiled fetch for Operations by Group */
+  val operationsByGroupHash =
+    Tables.Operations.findBy(_.operationGroupHash)
+
+  /** Precompiled fetch for groups of operations */
+  val operationGroupsByHash =
+    Tables.OperationGroups.findBy(_.hash).map(_.andThen(_.take(1)))
 
   /**
     * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
@@ -232,4 +241,11 @@ object TezosDatabaseOperations extends LazyLogging {
       .getOrElse(defaultBlockLevel)
       .result
 
+  /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
+  private[tezos] def fetchMaxBlockLevel: DBIO[Int] =
+    Tables.Blocks
+      .map(_.level)
+      .max
+      .getOrElse(defaultBlockLevel.toInt)
+      .result
 }
