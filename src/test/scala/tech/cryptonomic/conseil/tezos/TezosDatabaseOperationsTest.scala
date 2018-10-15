@@ -54,7 +54,7 @@ class TezosDatabaseOperationsTest
 
       import org.scalatest.Inspectors._
 
-      forAll(dbFees zip generatedFees) { case (row, fee) => 
+      forAll(dbFees zip generatedFees) { case (row, fee) =>
         row.low shouldEqual fee.low
         row.medium shouldEqual fee.medium
         row.high shouldEqual fee.high
@@ -87,7 +87,7 @@ class TezosDatabaseOperationsTest
             case (row, block) =>
               row.level shouldEqual block.metadata.header.level
               row.proto shouldEqual block.metadata.header.proto
-              row.predecessor shouldEqual block.metadata.header.predecessor
+              row.predecessor shouldEqual block.metadata.header.predecessor.value
               row.timestamp shouldEqual block.metadata.header.timestamp
               row.validationPass shouldEqual block.metadata.header.validationPass
               row.fitness shouldEqual block.metadata.header.fitness.mkString(",")
@@ -95,11 +95,11 @@ class TezosDatabaseOperationsTest
               row.signature shouldEqual block.metadata.header.signature
               row.protocol shouldEqual block.metadata.protocol
               row.chainId shouldEqual block.metadata.chain_id
-              row.hash shouldEqual block.metadata.hash
+              row.hash shouldEqual block.metadata.hash.value
               row.operationsHash shouldEqual block.metadata.header.operations_hash
           }
 
-          val dbBlocksAndGroups = 
+          val dbBlocksAndGroups =
             dbHandler.run {
               val query = for {
                 g <- Tables.OperationGroups
@@ -112,10 +112,10 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocksAndGroups) {
             case (blockRow, groupRow) =>
-              val blockForGroup = generatedBlocks.find(_.metadata.hash == blockRow.hash).value
+              val blockForGroup = generatedBlocks.find(_.metadata.hash.value == blockRow.hash).value
               val group = blockForGroup.operationGroups.head
-              groupRow.hash shouldEqual group.hash
-              groupRow.blockId shouldEqual blockForGroup.metadata.hash
+              groupRow.hash shouldEqual group.hash.value
+              groupRow.blockId shouldEqual blockForGroup.metadata.hash.value
               groupRow.chainId shouldEqual group.chain_id
               groupRow.branch shouldEqual group.branch
               groupRow.signature shouldEqual group.signature
@@ -136,8 +136,8 @@ class TezosDatabaseOperationsTest
 
           forAll(dbOperations) {
             case (groupRow, opRow) =>
-              val operationBlock = generatedBlocks.find(_.operationGroups.head.hash == groupRow.hash).value
-              val operationGroup = generatedGroups.find(_.hash == groupRow.hash).value
+              val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
+              val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
               val operation = operationGroup.contents.value.head
               opRow.kind shouldEqual operation.kind
               opRow.source shouldEqual operation.source
@@ -149,13 +149,13 @@ class TezosDatabaseOperationsTest
               opRow.pkh shouldEqual operation.pkh
               opRow.delegate shouldEqual operation.delegate
               opRow.balance shouldEqual operation.balance
-              opRow.operationGroupHash shouldEqual operationGroup.hash
-              opRow.blockHash shouldEqual operationBlock.metadata.hash
+              opRow.operationGroupHash shouldEqual operationGroup.hash.value
+              opRow.blockHash shouldEqual operationBlock.metadata.hash.value
               opRow.blockLevel shouldEqual operationBlock.metadata.header.level
               opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
           }
       }
-      
+
 
     }
 
@@ -165,7 +165,7 @@ class TezosDatabaseOperationsTest
       val expectedCount = 3
 
       val block = generateBlockRows(1, testReferenceTime).head
-      val accountsInfo = generateAccounts(expectedCount, block.hash, block.level)
+      val accountsInfo = generateAccounts(expectedCount, BlockHash(block.hash), block.level)
 
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block
@@ -183,7 +183,7 @@ class TezosDatabaseOperationsTest
 
       forAll(dbAccounts zip accountsInfo.accounts) {
         case (row, (id, account)) =>
-          row.accountId shouldEqual id
+          row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
           row.blockLevel shouldEqual block.level
           row.manager shouldEqual account.manager
@@ -200,7 +200,7 @@ class TezosDatabaseOperationsTest
     "fail to write accounts if the reference block is not stored" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val accountsInfo = generateAccounts(howMany = 1, blockHash = "no-block-hash", blockLevel = 1)
+      val accountsInfo = generateAccounts(howMany = 1, blockHash = BlockHash("no-block-hash"), blockLevel = 1)
 
       val resultFuture = dbHandler.run(sut.writeAccounts(accountsInfo))
 
@@ -432,7 +432,7 @@ class TezosDatabaseOperationsTest
         different <- Tables.Accounts.filterNot(_.blockLevel === BigDecimal(levels)).length.result
         same <- Tables.Accounts.filter(_.blockLevel === BigDecimal(levels)).length.result
       } yield (different, same)
-      
+
       dbHandler.run(counts).futureValue shouldBe (0, 1)
 
     }
@@ -442,13 +442,13 @@ class TezosDatabaseOperationsTest
 
       val blocks = generateBlockRows(1, testReferenceTime)
       val opGroups = generateOperationGroupRows(blocks: _*)
-      val testHash = blocks.last.hash
+      val testHash = BlockHash(blocks.last.hash)
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocks
         _ <- Tables.OperationGroups ++= opGroups
         existing <- sut.blockExists(testHash)
-        nonExisting <- sut.blockExists("bogus-hash")
+        nonExisting <- sut.blockExists(BlockHash("bogus-hash"))
       } yield (existing, nonExisting)
 
       val (hit, miss) = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -462,7 +462,7 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val blocks = generateBlockRows(1, testReferenceTime)
-      val testHash = blocks.last.hash
+      val testHash = BlockHash(blocks.last.hash)
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocks
@@ -509,14 +509,14 @@ class TezosDatabaseOperationsTest
   }
 
   /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: String, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsWithBlockHashAndLevel = {
+  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsWithBlockHashAndLevel = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
 
     val accounts = (1 to howMany).map {
       currentId =>
-        (String valueOf currentId, 
+        (AccountId(String valueOf currentId),
           Account(
             manager = "manager",
             balance = rnd.nextInt,
@@ -543,14 +543,14 @@ class TezosDatabaseOperationsTest
 
     val startMillis = startAt.getTime
 
-    def generateOne(level: Int, predecessorHash: String): Block =
+    def generateOne(level: Int, predecessorHash: BlockHash): Block =
       Block(
         BlockMetadata(
           "protocol",
           Some(chainHash),
-          generateHash(10),
+          BlockHash(generateHash(10)),
           BlockHeader(
-            level = level, 
+            level = level,
             proto = 1,
             predecessor = predecessorHash,
             timestamp = new Timestamp(startMillis + level),
@@ -564,15 +564,15 @@ class TezosDatabaseOperationsTest
       )
 
     //we need a block to start
-    val genesis = generateOne(0, "genesis")
+    val genesis = generateOne(0, BlockHash("genesis"))
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) => 
+      case (chain, lvl) =>
         val currentBlock = generateOne(lvl, chain.head.metadata.hash)
         currentBlock :: chain
     }.reverse
-    
+
   }
 
 
@@ -605,7 +605,7 @@ class TezosDatabaseOperationsTest
 
     //we need somewhere to start with
     val genesis = generateOne(0, "genesis")
-  
+
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
       case (chain, lvl) =>
@@ -626,7 +626,7 @@ class TezosDatabaseOperationsTest
       val ops = List.fill(operations) {
         Operation(
           kind = "kind",
-          block = Some(block.metadata.hash),
+          block = Some(block.metadata.hash.value),
           level = Some(block.metadata.header.level),
           slots = Some(List(0)),
           nonce = Some(generateHash(10)),
@@ -663,7 +663,7 @@ class TezosDatabaseOperationsTest
     OperationGroup(
       protocol = "protocol",
       chain_id = block.metadata.chain_id,
-      hash = generateHash(10),
+      hash = OperationHash(generateHash(10)),
       branch = generateHash(10),
       signature = Some(s"sig${generateHash(10)}"),
       contents = fillOperations()
