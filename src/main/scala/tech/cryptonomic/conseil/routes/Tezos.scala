@@ -85,13 +85,13 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
               complete(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
                 complete(ApiOperations.fetchLatestBlock())
-            } ~ path(Segment).as(BlockHash.apply) { blockId =>
+            } ~ path(Segment).as(BlockHash) { blockId =>
                 complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
               complete(ApiOperations.fetchAccounts(filter))
-            } ~ path(Segment).as(AccountId.apply) { accountId =>
+            } ~ path(Segment).as(AccountId) { accountId =>
               complete(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {
