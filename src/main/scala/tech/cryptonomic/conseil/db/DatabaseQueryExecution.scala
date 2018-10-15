@@ -144,74 +144,46 @@ object DatabaseQueryExecution {
     //building blocks
 
     def filterBlockIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.blockIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.hash.inSet(set)
-      )
+      filter.blockIDs.isEmpty.bind || b.hash.inSet(filter.blockIDs)
 
     def filterBlockLevels(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.levels.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.level.inSet(set)
-      )
+      filter.levels.isEmpty.bind || b.level.inSet(filter.levels)
 
     def filterChainIDs(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.chainIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.chainId.getOrElse("").inSet(set)
-      )
+      filter.chainIDs.isEmpty.bind || b.chainId.getOrElse("").inSet(filter.chainIDs)
 
     def filterProtocols(filter: Filter, b: Tables.Blocks): Rep[Boolean] =
-      filter.protocols.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || b.protocol.inSet(set)
-      )
+      filter.protocols.isEmpty.bind || b.protocol.inSet(filter.protocols)
 
     def filterOperationIDs(filter: Filter, og: Tables.OperationGroups): Rep[Boolean] =
-      filter.operationGroupIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || og.hash.inSet(set)
-      )
+      filter.operationGroupIDs.isEmpty.bind || og.hash.inSet(filter.operationGroupIDs)
 
     def filterOperationIDs(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationGroupIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.operationGroupHash.inSet(set)
-      )
+      filter.operationGroupIDs.isEmpty.bind || o.operationGroupHash.inSet(filter.operationGroupIDs)
 
     def filterOperationSources(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationSources.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.source.getOrElse("").inSet(set)
-      )
+      filter.operationSources.isEmpty.bind || o.source.getOrElse("").inSet(filter.operationSources)
 
     def filterOperationDestinations(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationDestinations.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.destination.getOrElse("").inSet(set)
-      )
+      filter.operationDestinations.isEmpty.bind || o.destination.getOrElse("").inSet(filter.operationDestinations)
 
     def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationParticipants.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.destination.getOrElse(o.source.getOrElse("")).inSet(set)
-      )
+      filter.operationParticipants.isEmpty.bind || o.destination.getOrElse(o.source.getOrElse("")).inSet(filter.operationParticipants)
 
     def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountIDs.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || a.accountId.inSet(set)
-      )
+      filter.accountIDs.isEmpty.bind || a.accountId.inSet(filter.accountIDs)
 
     def filterAccountManagers(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountManagers.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || a.manager.inSet(set)
-      )
+      filter.accountManagers.isEmpty.bind || a.manager.inSet(filter.accountManagers)
 
     def filterAccountDelegates(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
-      filter.accountDelegates.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || a.delegateValue.getOrElse("").inSet(set)
-      )
+      filter.accountDelegates.isEmpty.bind || a.delegateValue.getOrElse("").inSet(filter.accountDelegates)
 
     def filterOperationKinds(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationKinds.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || o.kind.inSet(set)
-      )
+      filter.operationKinds.isEmpty.bind || o.kind.inSet(filter.operationKinds)
 
     def filterOperationKindsForFees(filter: Filter, fee: Tables.Fees): Rep[Boolean] =
-      filter.operationKinds.fold(ifEmpty = true.bind)(
-        set => set.isEmpty.bind || fee.kind.inSet(set)
-      )
+      filter.operationKinds.isEmpty.bind || fee.kind.inSet(filter.operationKinds)
 
     /** gets filtered accounts */
     val filteredAccounts = (appliedFilters: Filter, maxLevel: Rep[BigDecimal]) =>
@@ -289,7 +261,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
   protected def executeQuery(
     limit: Int,
     sortBy: Option[String],
-    sortOrder: Option[String]
+    sortOrder: Option[Sorting]
   ): JoinedTables => F[Seq[OUT]]
 
   /**
@@ -373,18 +345,18 @@ trait ActionSorting[A <: DatabaseQueryExecution.Action] {
   /**
     * Read a sorting order to create an ordering on columns
     * @param col   Identifies a specific column that can be sorted
-    * @param order "asc" or "desc"
+    * @param order the specific [[Sorting]]
     * @tparam T    The column type
     * @return      The column with sorting order applied
     */
-  protected def sortingOn[T](col: ColumnOrdered[T], order: Option[String]): ColumnOrdered[T] =
-    order.map(_.toLowerCase) match {
-      case Some("asc") => col.asc
+  protected def sortingOn[T](col: ColumnOrdered[T], order: Option[Sorting]): ColumnOrdered[T] =
+    order match {
+      case Some(AscendingSort) => col.asc
       case _ => col.desc
     }
 
   /**
-    * Return table query which is the sorted verion of action, based on database column name, sortBy, and the order.
+    * Return table query which is the sorted version of action, based on database column name, sortBy, and the order.
     * This will be refactored out later, as this is just an initial solution to the user wanting to sort by columns
     * according to the current schema. This will break if the schema changes.
     *
@@ -392,7 +364,7 @@ trait ActionSorting[A <: DatabaseQueryExecution.Action] {
     * @param order  Parameter to determine whether to sort in ascending or descending order.
     * @param action The query for the table we want to sort.
     */
-  def fetchSortedAction(sortBy: Option[String], order: Option[String], action: A): A
+  def fetchSortedAction(sortBy: Option[String], order: Option[Sorting], action: A): A
 
 }
 
@@ -447,7 +419,7 @@ trait DatabaseApiFiltering {
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
-      sortOrder: Option[String]
+      sortOrder: Option[Sorting],
     ): JoinedTables => Future[Seq[Tables.BlocksRow]] =
       extractActionFromJoins andThen {
         case Some(validAction) =>
@@ -464,7 +436,7 @@ trait DatabaseApiFiltering {
 
     override def fetchSortedAction(
       sortBy: Option[String],
-      order: Option[String],
+      order: Option[Sorting],
       action: BlocksAction): BlocksAction = {
 
         val column = sortBy.map(_.toLowerCase).map {
@@ -519,7 +491,7 @@ trait DatabaseApiFiltering {
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
-      sortOrder: Option[String]
+      sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.AccountsRow]] =
       extractActionFromJoins andThen {
         case Some(validAction) =>
@@ -536,7 +508,7 @@ trait DatabaseApiFiltering {
 
     override def fetchSortedAction(
       sortBy: Option[String],
-      order: Option[String],
+      order: Option[Sorting],
       action: AccountsAction): AccountsAction = {
 
         val column = sortBy.map(_.toLowerCase).map {
@@ -601,7 +573,7 @@ trait DatabaseApiFiltering {
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
-      sortOrder: Option[String]
+      sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.OperationGroupsRow]] =
       extractActionFromJoins andThen {
         case Some(validAction) =>
@@ -618,7 +590,7 @@ trait DatabaseApiFiltering {
 
     override def fetchSortedAction(
       sortBy: Option[String],
-      order: Option[String],
+      order: Option[Sorting],
       action: OperationGroupsAction): OperationGroupsAction = {
 
       val column = sortBy.map(_.toLowerCase).map {
@@ -661,7 +633,7 @@ trait DatabaseApiFiltering {
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
-      sortOrder: Option[String]
+      sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.OperationsRow]] =
       extractActionFromJoins andThen {
         case Some(validAction) =>

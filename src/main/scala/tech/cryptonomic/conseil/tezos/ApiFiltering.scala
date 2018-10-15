@@ -5,14 +5,9 @@ import scala.language.higherKinds
 
 object ApiFiltering {
 
-
-  //common check on a single sub-set
-  private def nonEmpty(subFilter: Option[Set[_]]) =
-    subFilter.exists(_.nonEmpty)
-
   //check on any of the sub-sets
-  private def isAnyOfFilter(subFilters: Option[Set[_]]*): Boolean =
-    subFilters.map(nonEmpty).reduce(_ || _)
+  private def isAnyOfFilter(subFilters: Set[_]*): Boolean =
+    subFilters.exists(_.nonEmpty)
 
   // Predicates to determine existence of specific type of filter
 

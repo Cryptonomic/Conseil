@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{FeesRow, BlocksRow}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,10 +17,24 @@ object ApiOperations {
   private val conf = ConfigFactory.load
   lazy val dbHandle: Database = DatabaseUtil.db
 
+  /** Define sorting order for api queries */
+  sealed trait Sorting extends Product with Serializable
+  case object AscendingSort extends Sorting
+  case object DescendingSort extends Sorting
+  object Sorting {
+    /** Read an input string (`asc` or `desc`) to return a
+      * (possible) [[tech.cryptonomic.conseil.tezos.ApiOperations.Sorting]] value
+      */
+    def fromString(s: String): Option[Sorting] = s.toLowerCase match {
+      case "asc" => Some(AscendingSort)
+      case "desc" => Some(DescendingSort)
+      case _ => throw new IllegalArgumentException("""Please provide a valid value for the ordering parameter ['asc', 'desc'] """)
+    }
+  }
   import Filter._
 
   /**
-    * Repesents a query filter submitted to the Conseil API.
+    * Represents a query filter submitted to the Conseil API.
     *
     * @param limit                  How many records to return
     * @param blockIDs               Block IDs
@@ -40,30 +54,64 @@ object ApiOperations {
     */
   case class Filter(
                      limit: Option[Int] = Some(defaultLimit),
-                     blockIDs: Option[Set[String]] = emptyOptions,
-                     levels: Option[Set[Int]] = emptyOptions,
-                     chainIDs: Option[Set[String]] = emptyOptions,
-                     protocols: Option[Set[String]] = emptyOptions,
-                     operationGroupIDs: Option[Set[String]] = emptyOptions,
-                     operationSources: Option[Set[String]] = emptyOptions,
-                     operationDestinations: Option[Set[String]] = emptyOptions,
-                     operationParticipants: Option[Set[String]] = emptyOptions,
-                     operationKinds: Option[Set[String]] = emptyOptions,
-                     accountIDs: Option[Set[String]] = emptyOptions,
-                     accountManagers: Option[Set[String]] = emptyOptions,
-                     accountDelegates: Option[Set[String]] = emptyOptions,
+                     blockIDs: Set[String] = Set.empty,
+                     levels: Set[Int] = Set.empty,
+                     chainIDs: Set[String] = Set.empty,
+                     protocols: Set[String] = Set.empty,
+                     operationGroupIDs: Set[String] = Set.empty,
+                     operationSources: Set[String] = Set.empty,
+                     operationDestinations: Set[String] = Set.empty,
+                     operationParticipants: Set[String] = Set.empty,
+                     operationKinds: Set[String] = Set.empty,
+                     accountIDs: Set[String] = Set.empty,
+                     accountManagers: Set[String] = Set.empty,
+                     accountDelegates: Set[String] = Set.empty,
                      sortBy: Option[String] = None,
-                     order: Option[String] = Some("DESC")
+                     order: Option[Sorting] = Some(DescendingSort)
                    )
 
   object Filter {
+
+    /** builds a filter from incoming string-based parameters */
+    def readParams(
+      limit: Option[Int],
+      blockIDs: Iterable[String],
+      levels: Iterable[Int],
+      chainIDs: Iterable[String],
+      protocols: Iterable[String],
+      operationGroupIDs: Iterable[String],
+      operationSources: Iterable[String],
+      operationDestinations: Iterable[String],
+      operationParticipants: Iterable[String],
+      operationKinds: Iterable[String],
+      accountIDs: Iterable[String],
+      accountManagers: Iterable[String],
+      accountDelegates: Iterable[String],
+      sortBy: Option[String],
+      order: Option[String]
+    ): Filter =
+      Filter(
+        limit,
+        blockIDs.toSet,
+        levels.toSet,
+        chainIDs.toSet,
+        protocols.toSet,
+        operationGroupIDs.toSet,
+        operationSources.toSet,
+        operationDestinations.toSet,
+        operationParticipants.toSet,
+        operationKinds.toSet,
+        accountIDs.toSet,
+        accountManagers.toSet,
+        accountDelegates.toSet,
+        sortBy,
+        order.flatMap(Sorting.fromString)
+      )
 
     // Common values
 
     // default limit on output results, if not available as call input
     val defaultLimit = 10
-
-    private def emptyOptions[A] = Some(Set.empty[A])
 
   }
 
@@ -92,9 +140,9 @@ object ApiOperations {
     * @return The block along with its operations
     */
   @throws[NoSuchElementException]("when the hash doesn't match any block")
-  def fetchBlock(hash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
     val joins = for {
-      groups <- Tables.OperationGroups if groups.blockId === hash
+      groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
     } yield (block, groups)
 
@@ -178,7 +226,7 @@ object ApiOperations {
     apiFilters(filter)(0)
       .map( rows =>
         rows.head match {
-          case FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
+          case Tables.FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
         }
       )
 
@@ -196,12 +244,12 @@ object ApiOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return The account with its associated operation groups
     */
-  def fetchAccount(account_id: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
     val fetchOperation = TezosDb.fetchAccountsMaxBlockLevel.flatMap {
       latestBlockLevel =>
         Tables.Accounts
           .filter(row =>
-            row.blockLevel === latestBlockLevel && row.accountId === account_id
+            row.blockLevel === latestBlockLevel && row.accountId === account_id.id
           ).take(1)
           .result
     }
@@ -225,7 +273,7 @@ object ApiOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return the most recent block, if one exists in the database.
     */
-  private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[BlocksRow]] =
+  private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[Tables.BlocksRow]] =
     TezosDb.fetchMaxBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks

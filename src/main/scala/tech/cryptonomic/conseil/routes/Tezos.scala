@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
@@ -30,31 +31,13 @@ object Tezos {
     "operation_source".as[String].*,
     "operation_destination".as[String].*,
     "operation_participant".as[String].*,
+    "operation_kind".as[String].*,
     "account_id".as[String].*,
     "account_manager".as[String].*,
     "account_delegate".as[String].*,
-    "operation_kind".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).tflatMap{
-    case (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) =>
-    val filter: Filter = Filter(
-      limit = limit,
-      blockIDs = Some(block_ids.toSet),
-      levels = Some(block_levels.toSet),
-      chainIDs = Some(block_chainIDs.toSet),
-      protocols = Some(block_protocols.toSet),
-      operationGroupIDs = Some(op_ids.toSet),
-      operationSources = Some(op_sources.toSet),
-      operationDestinations = Some(op_destinations.toSet),
-      operationParticipants = Some(op_participants.toSet),
-      operationKinds = Some(operation_kind.toSet),
-      accountIDs = Some(account_ids.toSet),
-      accountManagers = Some(account_managers.toSet),
-      accountDelegates = Some(account_delegates.toSet),
-      sortBy = sort_by, order = order)
-    provide(filter)
-  }
+  ).as(Filter.readParams)
 
   // Directive for gathering account information for most POST operations.
   val gatherKeyInfo: Directive[Tuple1[KeyStore]] = parameters(
@@ -101,14 +84,14 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
             pathEnd {
               complete(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
-              complete(ApiOperations.fetchLatestBlock())
-            } ~ path(Segment) { blockId =>
-              complete(ApiOperations.fetchBlock(blockId))
+                complete(ApiOperations.fetchLatestBlock())
+            } ~ path(Segment).as(BlockHash.apply) { blockId =>
+                complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
               complete(ApiOperations.fetchAccounts(filter))
-            } ~ path(Segment) { accountId =>
+            } ~ path(Segment).as(AccountId.apply) { accountId =>
               complete(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {

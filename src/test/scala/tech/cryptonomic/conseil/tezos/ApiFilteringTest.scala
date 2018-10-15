@@ -11,10 +11,10 @@ class ApiFilteringSpec extends WordSpec with Matchers with LazyLogging {
 
     "identify a Filter that affects blocks" in {
       val nonBlocksFilter = allIncludingFilter.copy(
-        blockIDs = None,
-        levels = None,
-        chainIDs = None,
-        protocols = None
+        blockIDs = Set.empty,
+        levels = Set.empty,
+        chainIDs = Set.empty,
+        protocols = Set.empty
       )
 
       ApiFiltering.isBlockFilter(nonBlocksFilter) shouldBe false
@@ -29,8 +29,8 @@ class ApiFilteringSpec extends WordSpec with Matchers with LazyLogging {
 
     "identify a Filter that affects operation groups" in {
       val nonGroupsFilter = allIncludingFilter.copy(
-        operationGroupIDs = None,
-        operationSources = None
+        operationGroupIDs = Set.empty,
+        operationSources = Set.empty
       )
 
       ApiFiltering.isOperationGroupFilter(nonGroupsFilter) shouldBe false
@@ -43,9 +43,9 @@ class ApiFilteringSpec extends WordSpec with Matchers with LazyLogging {
 
     "identify a Filter that affects operations" in {
       val nonOperationsFilter = allIncludingFilter.copy(
-        operationSources = None,
-        operationDestinations = None,
-        operationKinds = None
+        operationSources = Set.empty,
+        operationDestinations = Set.empty,
+        operationKinds = Set.empty
       )
 
       ApiFiltering.isOperationFilter(nonOperationsFilter) shouldBe false
@@ -59,9 +59,9 @@ class ApiFilteringSpec extends WordSpec with Matchers with LazyLogging {
 
     "identify a Filter that affects accounts" in {
       val nonOperationsFilter = allIncludingFilter.copy(
-        accountDelegates = None,
-        accountIDs = None,
-        accountManagers = None
+        accountDelegates = Set.empty,
+        accountIDs = Set.empty,
+        accountManagers = Set.empty
       )
 
       ApiFiltering.isAccountFilter(nonOperationsFilter) shouldBe false
@@ -84,8 +84,8 @@ class ApiFilteringSpec extends WordSpec with Matchers with LazyLogging {
 
   }
 
-  val stringFilter = Some(Set("filter"))
-  val intFilter = Some(Set(1))
+  val stringFilter = Set("filter")
+  val intFilter = Set(1)
   val emptyFilter = Filter()
   val allIncludingFilter = Filter(
     blockIDs = stringFilter,
