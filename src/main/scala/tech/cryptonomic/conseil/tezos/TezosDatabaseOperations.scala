@@ -248,4 +248,9 @@ object TezosDatabaseOperations extends LazyLogging {
       .max
       .getOrElse(defaultBlockLevel.toInt)
       .result
+
+  /** is there any block stored? */
+  def doBlocksExist(): DBIO[Boolean] =
+    Tables.Blocks.exists.result
+
 }

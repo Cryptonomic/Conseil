@@ -77,9 +77,7 @@ object TezosNodeConfig {
   private[tezos] val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
   private[tezos] val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
   private[tezos] val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
-
 }
-
 
 /**
   * Concrete implementation of the above.
@@ -163,7 +161,7 @@ case class TezosNodeInterface()(implicit system: ActorSystem) extends TezosRPCIn
       val responseBody = Await.result(responseBodyFuture, awaitTime)
       logger.debug(s"Query result: $responseBody")
       responseBody
-    
+
     }
   }
 
