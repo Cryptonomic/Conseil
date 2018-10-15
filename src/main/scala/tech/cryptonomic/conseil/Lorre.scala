@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb, ShutdownComplete}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.duration._
@@ -24,7 +24,7 @@ object Lorre extends App with LazyLogging {
   implicit val dispatcher = system.dispatcher
 
   //how long to wait for graceful shutdown of system components
-  private[this] val shutdownWait = 10 seconds
+  private[this] val shutdownWait = 10.seconds
 
   private val network =
     if (args.length > 0) args(0)
@@ -36,7 +36,6 @@ object Lorre extends App with LazyLogging {
     }
 
   private val conf = ConfigFactory.load
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
