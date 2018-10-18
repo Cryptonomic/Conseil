@@ -11,10 +11,27 @@ import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
+object TezosNodeOperator {
+  /**
+    * Output of operation signing.
+    * @param bytes      Signed bytes of the transaction
+    * @param signature  The actual signature
+    */
+  final case class SignedOperationGroup(bytes: Array[Byte], signature: String)
+
+  /**
+    * Result of a successfully sent operation
+    * @param results          Results of operation application
+    * @param operationGroupID Operation group ID
+    */
+  final case class OperationResult(results: TezosTypes.AppliedOperation, operationGroupID: String)
+}
+
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
 class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: ExecutionContext) extends LazyLogging {
+  import TezosNodeOperator._
 
   private val conf = ConfigFactory.load
 
@@ -22,19 +39,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
   val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
 
-  /**
-    * Output of operation signing.
-    * @param bytes      Signed bytes of the transaction
-    * @param signature  The actual signature
-    */
-  case class SignedOperationGroup(bytes: Array[Byte], signature: String)
-
-  /**
-    * Result of a successfully sent operation
-    * @param results          Results of operation application
-    * @param operationGroupID Operation group ID
-    */
-  case class OperationResult(results: TezosTypes.AppliedOperation, operationGroupID: String)
+  SodiumLibrary.setLibraryPath(sodiumLibraryPath)
 
   /**
     * Fetches a specific account for a given block.
@@ -301,17 +306,16 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param keyStore         Key pair along with public key hash
     * @return                 Bytes of the signed operation along with the actual signature
     */
-  def signOperationGroup(forgedOperation: String, keyStore: KeyStore): Try[SignedOperationGroup] = Try{
-    SodiumLibrary.setLibraryPath(sodiumLibraryPath)
-    val privateKeyBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
-    val watermark = "03"  // In the future, we must support "0x02" for endorsements and "0x01" for block signing.
-    val watermarkedForgedOperationBytes = SodiumUtils.hex2Binary(watermark + forgedOperation)
-    val hashedWatermarkedOpBytes = SodiumLibrary.cryptoGenerichash(watermarkedForgedOperationBytes, 32)
-    val opSignature: Array[Byte] = SodiumLibrary.cryptoSignDetached(hashedWatermarkedOpBytes, privateKeyBytes.toArray)
-    val hexSignature: String = CryptoUtil.base58CheckEncode(opSignature.toList, "edsig").get
-    val signedOpBytes = SodiumUtils.hex2Binary(forgedOperation) ++ opSignature
-    SignedOperationGroup(signedOpBytes, hexSignature)
-  }
+  def signOperationGroup(forgedOperation: String, keyStore: KeyStore): Try[SignedOperationGroup] =
+    for {
+      privateKeyBytes <- CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk")
+      watermark = "03"  // In the future, we must support "0x02" for endorsements and "0x01" for block signing.
+      watermarkedForgedOperationBytes = SodiumUtils.hex2Binary(watermark + forgedOperation)
+      hashedWatermarkedOpBytes = SodiumLibrary.cryptoGenerichash(watermarkedForgedOperationBytes, 32)
+      opSignature: Array[Byte] = SodiumLibrary.cryptoSignDetached(hashedWatermarkedOpBytes, privateKeyBytes.toArray)
+      hexSignature <- CryptoUtil.base58CheckEncode(opSignature.toList, "edsig")
+      signedOpBytes = SodiumUtils.hex2Binary(forgedOperation) ++ opSignature
+  } yield SignedOperationGroup(signedOpBytes, hexSignature)
 
   /**
     * Computes the ID of an operation group using Base58Check.
@@ -319,12 +323,10 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return               Base58Check hash of signed operation
     */
   def computeOperationHash(signedOpGroup: SignedOperationGroup): Try[String] =
-    Try{
-      SodiumLibrary.setLibraryPath(sodiumLibraryPath)
-      SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32)
-    }.flatMap { hash =>
-      CryptoUtil.base58CheckEncode(hash.toList, "op")
-    }
+    Try(SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32))
+      .flatMap { hash =>
+        CryptoUtil.base58CheckEncode(hash.toList, "op")
+      }
 
   /**
     * Applies an operation using the Tezos RPC client.
@@ -474,8 +476,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return A new key pair along with a public key hash
     */
   def createIdentity(): Try[KeyStore] = {
-    SodiumLibrary.setLibraryPath(sodiumLibraryPath)
-
     //The Java bindings for libSodium don't support generating a key pair from a seed.
     //We will revisit this later in order to support mnemomics and passphrases
     //val mnemonic = bip39.generate(Entropy128, WordList.load(EnglishWordList).get, new SecureRandom())

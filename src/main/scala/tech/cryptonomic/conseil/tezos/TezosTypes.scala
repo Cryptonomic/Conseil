@@ -5,16 +5,16 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
-  case class BlockHash(value: String) extends AnyVal
+  final case class BlockHash(value: String) extends AnyVal
 
-  case class OperationHash(value: String) extends AnyVal
+  final case class OperationHash(value: String) extends AnyVal
 
-  case class AccountId(id: String) extends AnyVal
+  final case class AccountId(id: String) extends AnyVal
 
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
-  case class BlockHeader(
+  final case class BlockHeader(
                         level: Int,
                         proto: Int,
                         predecessor: BlockHash,
@@ -26,14 +26,14 @@ object TezosTypes {
                         signature: Option[String]
                         )
 
-  case class BlockMetadata(
+  final case class BlockMetadata(
                             protocol: String,
                             chain_id: Option[String],
                             hash: BlockHash,
                             header: BlockHeader
                   )
 
-  case class OperationMetadata(
+  final case class OperationMetadata(
                               delegate: Option[String],
                               slots: Option[List[Int]],
                               balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
@@ -41,7 +41,7 @@ object TezosTypes {
                               internalOperationResult: Option[AppliedInternalOperationResult]
                               )
 
-  case class AppliedOperationBalanceUpdates(
+  final case class AppliedOperationBalanceUpdates(
                                              kind: String,
                                              contract: Option[String],
                                              change: Int,
@@ -50,7 +50,7 @@ object TezosTypes {
                                              level: Option[Int]
                                            )
 
-  case class AppliedOperationResultStatus(
+  final case class AppliedOperationResultStatus(
                                    status: String,
                                    errors: Option[List[String]],
                                    storage: Option[Any],
@@ -60,7 +60,7 @@ object TezosTypes {
                                    storageSizeDiff: Option[Int]
                                    )
 
-  case class AppliedInternalOperationResult(
+  final case class AppliedInternalOperationResult(
                                            kind: String,
                                            source: String,
                                            nonce: Int,
@@ -77,25 +77,25 @@ object TezosTypes {
                                            script: Option[ScriptedContracts],
                                            )
 
-  case class ScriptedContracts(
+  final case class ScriptedContracts(
                               storage: Any,
                               code: Any
                               )
 
-  case class InlinedEndorsement(
+  final case class InlinedEndorsement(
                                branch: String,
                                operation: InlinedEndorsementContents,
                                signature: Option[String]
                                )
 
-  case class InlinedEndorsementContents(
+  final case class InlinedEndorsementContents(
                                        kind: String,
                                        block: String,
                                        level: String,
                                        slots: List[Int]
                                        )
 
-  case class Operation(
+  final case class Operation(
                        kind: String,
                        block: Option[String],
                        level: Option[Int],
@@ -127,7 +127,7 @@ object TezosTypes {
                        delegate: Option[String]
                        )
 
-  case class OperationGroup (
+  final case class OperationGroup (
                               protocol: String,
                               chain_id: Option[String],
                               hash: OperationHash,
@@ -136,12 +136,12 @@ object TezosTypes {
                               signature: Option[String],
                             )
 
-  case class AccountDelegate(
+  final case class AccountDelegate(
                             setable: Boolean,
                             value: Option[String]
                             )
 
-  case class Account(
+  final case class Account(
                     manager: String,
                     balance: scala.math.BigDecimal,
                     spendable: Boolean,
@@ -150,31 +150,31 @@ object TezosTypes {
                     counter: Int
                     )
 
-  case class AccountsWithBlockHashAndLevel(
+  final case class AccountsWithBlockHashAndLevel(
                                     blockHash: BlockHash,
                                     blockLevel: Int,
                                     accounts: Map[AccountId, Account] = Map.empty
                                   )
 
-  case class Block(
+  final case class Block(
                     metadata: BlockMetadata,
                     operationGroups: List[OperationGroup]
                   )
 
-  case class ManagerKey(
+  final case class ManagerKey(
                        manager: String,
                        key: Option[String]
                        )
 
-  case class ForgedOperation(operation: String)
+  final case class ForgedOperation(operation: String)
 
-  case class AppliedOperationError(
+  final case class AppliedOperationError(
                                   kind: String,
                                   id: String,
                                   hash: String
                                   )
 
-  case class AppliedOperationResult(
+  final case class AppliedOperationResult(
                                    operation: String,
                                    status: String,
                                    operationKind: Option[String],
@@ -183,7 +183,7 @@ object TezosTypes {
                                    errors: Option[List[AppliedOperationError]]
                                    )
 
-  case class AppliedOperation(
+  final case class AppliedOperation(
                              kind: String,
                              balance_updates: Option[List[AppliedOperationBalanceUpdates]],
                              operation_results: Option[List[AppliedOperationResult]],
@@ -191,8 +191,8 @@ object TezosTypes {
                              contract: Option[String]
                              )
 
-  case class InjectedOperation(injectedOperation: String)
+  final case class InjectedOperation(injectedOperation: String)
 
-  case class MichelsonExpression(prim: String, args: List[String])
+  final case class MichelsonExpression(prim: String, args: List[String])
 
 }

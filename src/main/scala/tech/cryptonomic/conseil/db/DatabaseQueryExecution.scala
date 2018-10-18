@@ -21,100 +21,100 @@ object DatabaseQueryExecution {
 
   sealed trait JoinedTables
 
-  case class BlocksOperationGroupsOperationsAccounts(
+  final case class BlocksOperationGroupsOperationsAccounts(
     join: Query[
       (Tables.Blocks, Tables.OperationGroups, Tables.Operations, Tables.Accounts),
       (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class BlocksOperationGroupsOperations(
+  final case class BlocksOperationGroupsOperations(
     join: Query[
       (Tables.Blocks, Tables.OperationGroups, Tables.Operations),
       (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow),
       Seq]
   ) extends JoinedTables
 
-  case class BlocksOperationGroupsAccounts(
+  final case class BlocksOperationGroupsAccounts(
     join: Query[
       (Tables.Blocks, Tables.OperationGroups, Tables.Accounts),
       (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class BlocksOperationGroups(
+  final case class BlocksOperationGroups(
     join: Query[
       (Tables.Blocks, Tables.OperationGroups),
       (Tables.BlocksRow, Tables.OperationGroupsRow),
       Seq]
   ) extends JoinedTables
 
-  case class BlocksOperationsAccounts(
+  final case class BlocksOperationsAccounts(
     join: Query[
       (Tables.Blocks, Tables.Operations, Tables.Accounts),
       (Tables.BlocksRow, Tables.OperationsRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class BlocksOperations(
+  final case class BlocksOperations(
     join: Query[
       (Tables.Blocks, Tables.Operations),
       (Tables.BlocksRow, Tables.OperationsRow),
       Seq]
   ) extends JoinedTables
 
-  case class BlocksAccounts(
+  final case class BlocksAccounts(
     join: Query[
       (Tables.Blocks, Tables.Accounts),
       (Tables.BlocksRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class Blocks(
+  final case class Blocks(
     join: Query[Tables.Blocks, Tables.BlocksRow, Seq]
   ) extends JoinedTables
 
-  case class OperationGroupsOperationsAccounts(
+  final case class OperationGroupsOperationsAccounts(
     join: Query[
       (Tables.OperationGroups, Tables.Operations, Tables.Accounts),
       (Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class OperationGroupsOperations(
+  final case class OperationGroupsOperations(
     join: Query[
       (Tables.OperationGroups, Tables.Operations),
       (Tables.OperationGroupsRow, Tables.OperationsRow),
       Seq]
   ) extends JoinedTables
 
-  case class OperationGroupsAccounts(
+  final case class OperationGroupsAccounts(
     join: Query[
       (Tables.OperationGroups, Tables.Accounts),
       (Tables.OperationGroupsRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class OperationGroups(
+  final case class OperationGroups(
     join: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]
   ) extends JoinedTables
 
-  case class OperationsAccounts(
+  final case class OperationsAccounts(
     join: Query[
       (Tables.Operations, Tables.Accounts),
       (Tables.OperationsRow, Tables.AccountsRow),
       Seq]
   ) extends JoinedTables
 
-  case class Operations(
+  final case class Operations(
     join: Query[Tables.Operations, Tables.OperationsRow, Seq]
   ) extends JoinedTables
 
-  case class Accounts(
+  final case class Accounts(
     join: Query[Tables.Accounts, Tables.AccountsRow, Seq]
   ) extends JoinedTables
 
-  case object EmptyJoin extends JoinedTables
+  final case object EmptyJoin extends JoinedTables
 
   /**
     * This represents a database query that returns all of the columns of the table in a scala tuple.
@@ -124,13 +124,13 @@ object DatabaseQueryExecution {
     */
   sealed trait Action
 
-  case class BlocksAction(action: Query[Tables.Blocks, Tables.BlocksRow, Seq]) extends Action
+  final case class BlocksAction(action: Query[Tables.Blocks, Tables.BlocksRow, Seq]) extends Action
 
-  case class OperationGroupsAction(action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]) extends Action
+  final case class OperationGroupsAction(action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]) extends Action
 
-  case class AccountsAction(action: Query[Tables.Accounts, Tables.AccountsRow, Seq]) extends Action
+  final case class AccountsAction(action: Query[Tables.Accounts, Tables.AccountsRow, Seq]) extends Action
 
-  case class TableSelection(
+  final case class TableSelection(
     blocks: Boolean,
     operationGroups: Boolean,
     operations: Boolean,

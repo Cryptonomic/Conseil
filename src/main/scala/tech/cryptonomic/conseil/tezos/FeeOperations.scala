@@ -32,7 +32,7 @@ object FeeOperations extends LazyLogging {
     * @param timestamp The timestamp when the calculation took place
     * @param kind      The kind of operation being averaged over
     */
-  case class AverageFees(
+  final case class AverageFees(
                  low: Int,
                  medium: Int,
                  high: Int,

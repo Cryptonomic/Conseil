@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
@@ -14,7 +13,6 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 object ApiOperations {
 
-  private val conf = ConfigFactory.load
   lazy val dbHandle: Database = DatabaseUtil.db
 
   /** Define sorting order for api queries */
@@ -52,7 +50,7 @@ object ApiOperations {
     * @param sortBy                 Database column name to sort by
     * @param order                  Sort items ascending or descending
     */
-  case class Filter(
+  final case class Filter(
                      limit: Option[Int] = Some(defaultLimit),
                      blockIDs: Set[String] = Set.empty,
                      levels: Set[Int] = Set.empty,

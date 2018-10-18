@@ -82,7 +82,7 @@ object TezosNodeConfig {
 /**
   * Concrete implementation of the above.
   */
-case class TezosNodeInterface()(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
+class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
   import TezosNodeConfig._
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
