@@ -135,10 +135,9 @@ object ApiOperations {
     * Fetches a block by block hash from the db.
     *
     * @param hash The block's hash
-    * @return The block along with its operations
+    * @return The block along with its operations, if the hash matches anything
     */
-  @throws[NoSuchElementException]("when the hash doesn't match any block")
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -146,7 +145,9 @@ object ApiOperations {
 
     dbHandle.run(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
-      Map("block" -> blocks.head, "operation_groups" -> groups)
+      blocks.headOption.map {
+        block => Map('block -> block, 'operation_groups -> groups)
+      }
     }
   }
 

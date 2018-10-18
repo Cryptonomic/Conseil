@@ -8,6 +8,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
@@ -54,7 +55,7 @@ trait TezosRPCInterface {
     * @param payload  Optional JSON payload to post
     * @return         Result of the RPC call
     */
-  def runPostQuery(network: String, command: String, payload: Option[String] = None): Try[String]
+  def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String]
 
   /**
     * Runs an async RPC call against the configured Tezos node using HTTP POST.
@@ -63,7 +64,7 @@ trait TezosRPCInterface {
     * @param payload  Optional JSON payload to post
     * @return         Result of the RPC call
     */
-  def runAsyncPostQuery(network: String, command: String, payload: Option[String] = None): Future[String]
+  def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String]
 
   /** Frees any resource that was eventually reserved */
   def shutdown(): Future[ShutdownComplete]= Future.successful(ShutdownComplete)
@@ -140,20 +141,17 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
 
   }
 
-  override def runPostQuery(network: String, command: String, payload: Option[String]= None): Try[String] = withRejectionControl {
+  override def runPostQuery(network: String, command: String, payload: Option[JsonString]= None): Try[String] = withRejectionControl {
     Try {
       val url = translateCommandToUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
-      val postedData = payload match {
-        case None => """{}"""
-        case Some(str) => str
-      }
+      val postedData = payload.getOrElse(JsonString("{}"))
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
             HttpMethods.POST,
             url,
-            entity = HttpEntity(ContentTypes.`application/json`, postedData.getBytes())
+            entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
           )
         )
       val response: HttpResponse = Await.result(responseFuture, awaitTime)
@@ -165,14 +163,14 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
     }
   }
 
-  override def runAsyncPostQuery(network: String, command: String, payload: Option[String]= None): Future[String] = withRejectionControl {
+  override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString]= None): Future[String] = withRejectionControl {
     val url = translateCommandToUrl(network, command)
     logger.debug(s"Async querying URL $url for platform Tezos and network $network with payload $payload")
-    val postedData = payload.getOrElse("{}")
+    val postedData = payload.getOrElse(JsonString("{}"))
     val request = HttpRequest(
       HttpMethods.POST,
       url,
-      entity = HttpEntity(ContentTypes.`application/json`, postedData.getBytes())
+      entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
     )
     for {
       response <- Http(system).singleRequest(request)
