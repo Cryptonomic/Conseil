@@ -170,9 +170,7 @@ object ApiOperations {
   /**
     * Fetch a given operation group
     *
-    * Running the returned operation will fail with [[NoSuchElementException]] if
-    *  - no block is found on the db
-    *  - no group corresponds to the given hash
+    * Running the returned operation will fail with [[NoSuchElementException]] if no block is found on the db
     *
     * @param operationGroupHash Operation group hash
     * @param ec ExecutionContext needed to invoke the data fetching using async results
