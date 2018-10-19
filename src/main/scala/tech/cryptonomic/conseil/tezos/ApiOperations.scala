@@ -211,10 +211,8 @@ object ApiOperations {
     apiFilters(filter)(0)
 
   /**
-    * Given the operation kind and the number of columns wanted,
-    *
-    * return the mean (along with +/- one standard deviation) of
-    * fees incurred in those operations.
+    * Given the operation kind return the mean (along with +/- one standard deviation)
+    * of fees incurred in those operations.
     * @param filter Filters to apply, specifically operation kinds
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
     * @param ec ExecutionContext needed to invoke the data fetching using async results
@@ -223,10 +221,10 @@ object ApiOperations {
     *           was performed at, and the kind of operation being
     *           averaged over.
     */
-  def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[AverageFees] =
+  def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[Option[AverageFees]] =
     apiFilters(filter)(0)
       .map( rows =>
-        rows.head match {
+        rows.headOption map {
           case Tables.FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
         }
       )

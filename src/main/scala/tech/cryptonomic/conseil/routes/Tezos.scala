@@ -74,7 +74,16 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
       .compose((_: JsonString).json)
       .wrap(MediaTypes.`application/json`)(identity _)
 
-  private[this] def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]])(converter: T => R = identity _): Future[ToResponseMarshallable] =
+  /* allow generic handling of optional results, embedded in async computations
+   * in addition to converting any missing result to a NotFound http code, it allows to convert the existing content
+   * to something which is marshallable as a response
+   * @param operation is the computation that will provide, as soon as available, an optional result
+   * @param converter a final conversion function to turn the original T, when available to a marshallable result,
+   *        by default the function converts to a [[JsonString]]
+   * @param T the type of the possible result of the async computation
+   * @param R the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
+   */
+  private[this] def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _): Future[ToResponseMarshallable] =
     operation.map {
       case Some(content) => converter(content)
       case None => StatusCodes.NotFound
@@ -96,7 +105,7 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
                 completeWithJson(ApiOperations.fetchLatestBlock())
             } ~ path(Segment).as(BlockHash) { blockId =>
                 complete(
-                  handleNoneAsNotFound(ApiOperations.fetchBlock(blockId))(converter = toJson)
+                  handleNoneAsNotFound(ApiOperations.fetchBlock(blockId))
                 )
             }
           } ~ pathPrefix("accounts") {
@@ -110,12 +119,14 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
               completeWithJson(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
               complete(
-                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))(converter = toJson)
+                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
               )
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {
-                completeWithJson(ApiOperations.fetchAverageFees(filter))
+                complete(
+                  handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
+                )
             } ~ pathEnd {
                 completeWithJson(ApiOperations.fetchOperations(filter))
             }
