@@ -9,7 +9,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
   */
 object JsonUtil {
 
-  case class JsonString(json: String) extends AnyVal with Product with Serializable
+  final case class JsonString(json: String) extends AnyVal with Product with Serializable
 
   val mapper = new ObjectMapper() with ScalaObjectMapper
   mapper.registerModule(DefaultScalaModule)
