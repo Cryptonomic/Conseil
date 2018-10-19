@@ -146,7 +146,10 @@ object ApiOperations {
     dbHandle.run(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
       blocks.headOption.map {
-        block => Map('block -> block, 'operation_groups -> groups)
+        block => Map(
+          'block -> block,
+          'operation_groups -> groups
+        )
       }
     }
   }
@@ -173,20 +176,19 @@ object ApiOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
-    val groupedOpsIO = latestBlockIO().collect { // we fail the operation if no block is there
-      case Some(_) =>
-        TezosDatabaseOperations.operationsForGroupIO(operationGroupHash).map(_.get) // we want to fail here too
-    }.flatten
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+    val groupsMapIO = for {
+      latest <- latestBlockIO if latest.nonEmpty
+      operations <- TezosDatabaseOperations.operationsForGroupIO(operationGroupHash)
+    } yield operations.map {
+        case (opGroup, ops) =>
+          Map(
+            'operation_group -> opGroup,
+            'operations -> ops
+          )
+        }
 
-    //convert to a valid object for the caller
-    dbHandle.run(groupedOpsIO).map {
-      case (opGroup, operations) =>
-        Map(
-          "operation_group" -> opGroup,
-          "operations" -> operations
-        )
-    }
+    dbHandle.run(groupsMapIO)
   }
 
   /**

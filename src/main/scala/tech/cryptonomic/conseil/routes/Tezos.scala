@@ -109,7 +109,9 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
             pathEnd {
               completeWithJson(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
-              completeWithJson(ApiOperations.fetchOperationGroup(operationGroupId))
+              complete(
+                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))(converter = toJson)
+              )
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {
