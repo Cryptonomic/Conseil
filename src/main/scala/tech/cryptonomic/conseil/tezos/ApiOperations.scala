@@ -20,15 +20,17 @@ object ApiOperations {
   case object AscendingSort extends Sorting
   case object DescendingSort extends Sorting
   object Sorting {
+
     /** Read an input string (`asc` or `desc`) to return a
       * (possible) [[tech.cryptonomic.conseil.tezos.ApiOperations.Sorting]] value
       */
     def fromString(s: String): Option[Sorting] = s.toLowerCase match {
       case "asc" => Some(AscendingSort)
       case "desc" => Some(DescendingSort)
-      case _ => throw new IllegalArgumentException("""Please provide a valid value for the ordering parameter ['asc', 'desc'] """)
+      case _ => None
     }
   }
+
   import Filter._
 
   /**
