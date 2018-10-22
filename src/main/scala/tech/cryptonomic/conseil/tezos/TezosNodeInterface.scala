@@ -145,7 +145,7 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
     Try {
       val url = translateCommandToUrl(network, command)
       logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
-      val postedData = payload.getOrElse(JsonString("{}"))
+      val postedData = payload.getOrElse(JsonString.emptyObject)
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
@@ -166,7 +166,7 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString]= None): Future[String] = withRejectionControl {
     val url = translateCommandToUrl(network, command)
     logger.debug(s"Async querying URL $url for platform Tezos and network $network with payload $payload")
-    val postedData = payload.getOrElse(JsonString("{}"))
+    val postedData = payload.getOrElse(JsonString.emptyObject)
     val request = HttpRequest(
       HttpMethods.POST,
       url,

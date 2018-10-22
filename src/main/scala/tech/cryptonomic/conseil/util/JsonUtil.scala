@@ -9,7 +9,23 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
   */
 object JsonUtil {
 
-  final case class JsonString(json: String) extends AnyVal with Product with Serializable
+  /*
+   * We're reducing visibility of the JsonString constuction (both class and object)
+   * to allow instantiation only from JsonUtil's methods
+   * The goal is to guarantee that only valid json will be contained within the value class wrapper
+   */
+  final case class JsonString private (json: String) extends AnyVal with Product with Serializable
+
+  object JsonString {
+
+    // Note: instead of making it private, it might make sense to verify the input
+    // and return the [[JsonString]] within a wrapping effect (e.g. Option, Try, Either)
+    private[JsonUtil] def apply(json: String): JsonString = new JsonString(json)
+
+    /** A [[JsonString]] representing a json object with no attributes */
+    lazy val emptyObject = JsonString("{}")
+
+  }
 
   val mapper = new ObjectMapper() with ScalaObjectMapper
   mapper.registerModule(DefaultScalaModule)
