@@ -177,7 +177,7 @@ object ApiOperations {
   def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
     val groupedOpsIO = latestBlockIO().collect { // we fail the operation if no block is there
       case Some(_) =>
-        TezosDatabaseOperations.operationsForGroupIO(operationGroupHash).map(_.get) // we want to fail here too
+        TezosDatabaseOperations.operationsForGroup(operationGroupHash).map(_.get) // we want to fail here too
     }.flatten
 
     //convert to a valid object for the caller
