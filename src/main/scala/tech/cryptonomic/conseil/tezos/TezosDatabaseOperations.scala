@@ -69,8 +69,8 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def updateInvalidatedBlockIO(block: Block) = {
     val hash = block.metadata.hash
-    val invalidatedAction = Tables.InvalidatedBlocks.filter(_.hash != hash).map(block => block.isInvalidated).update(true)
-    val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash).map(block => block.isInvalidated).update(false)
+    val invalidatedAction = Tables.InvalidatedBlocks.filter(_.hash =!= hash.value).map(block => block.isInvalidated).update(true)
+    val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash.value).map(block => block.isInvalidated).update(false)
     (invalidatedAction, revalidatedAction)
   }
 
@@ -159,9 +159,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ec   Needed to compose the operations
     * @return     true if block and operations exists
     */
-  def blockExistsInInvalidatedBlocks(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
+  def blockExistsInInvalidatedBlocks(hash: BlockHash)(implicit ec: ExecutionContext): Future[Boolean] =
     dbHandle.run(for {
-      blockThere <- Tables.InvalidatedBlocks.findBy(_.hash).applied(hash).exists.result
+      blockThere <- Tables.InvalidatedBlocks.findBy(_.hash).applied(hash.value).exists.result
     } yield blockThere)
 
   /** conversions from domain objects to database row format */
@@ -253,7 +253,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
     private[TezosDatabaseOperations] def convertInvalidatedBlock(block: Block) =
       Tables.InvalidatedBlocksRow(
-        hash = block.metadata.hash,
+        hash = block.metadata.hash.value,
         level = block.metadata.header.level,
         isInvalidated = false
       )

@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.ApiOperations.{awaitTimeInSeconds, conf}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
@@ -15,6 +14,12 @@ import scala.util.Try
 
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import slick.jdbc.PostgresProfile.api._
+
+import cats._
+import cats.instances.future._
+import cats.syntax.applicative._
+import cats.effect.IO
+import fs2.Stream
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
@@ -29,6 +34,24 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
 
   lazy val dbHandle = DatabaseUtil.db
+
+  /**
+    * A sum type representing the two types of actions that can happen with a block that is
+    * detected during a fork.
+    */
+  sealed trait ForkedBlockAction
+  case object UpdatedInvalidatedBlocks extends ForkedBlockAction
+  case object WriteToInvalidatedBlocksAndCollectForkedBlocks extends ForkedBlockAction
+
+  /**
+    * A block detected during a fork and it's associated action required for the followFork algorithm.
+    * @param block block detected during a fork
+    * @param action what action to perform with said block
+    */
+  case class ForkedBlockWithAction (
+                                   block: Block,
+                                   action: ForkedBlockAction
+                                   )
 
   /**
     * Output of operation signing.
@@ -209,6 +232,85 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   }
 
   /**
+    * Given the blockchain network and the hash of the block where the fork was detected,
+    * collect the list of blocks missed during the fork in reverse order.
+    *
+    * Note: We switch from future to IO to utilize the fs2 Stream library effectively,
+    * for concision and efficiency purposes. We may want to consider using IO instead
+    * of Future in general.
+    *
+    * @param network Current Blockchain network we're getting blocks from
+    * @param hash Hash of the block where the fork was detected
+    * @return Future of List of Blocks that were missed during the Fork, in reverse order
+    */
+  def followFork(
+                  network: String,
+                  hash: BlockHash
+                )(implicit ec: ExecutionContext): Future[List[Block]] = {
+
+    def futureToIO[A](f: Future[A]): IO[A] = IO.fromFuture(IO(f))
+
+    def getBlockIO: (String, BlockHash, Option[Int]) => IO[Block] =
+      (network, hash, maybeOffset) => futureToIO(getBlock(network, hash, maybeOffset))
+
+    def blockExists: Block => IO[Boolean] =
+      block => {
+        val exists = TezosDatabaseOperations.blockExists(block.metadata.hash)
+        futureToIO(exists)
+      }
+
+    def blockHasBeenInvalidated: Block => IO[Boolean] =
+      block => {
+        val invalidated = TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash)
+        futureToIO(invalidated)
+      }
+
+    def predicate: Block => IO[(Boolean, Boolean)] =
+      block => Applicative[IO].product(blockExists(block), blockHasBeenInvalidated(block))
+
+    /*
+    Given an offset from the block where the hash was detected, figure out if we need to collect that
+    block or perform a write action to our database.
+     */
+    def unfoldingFunction(offset: Int)(implicit ec: ExecutionContext): IO[Option[(ForkedBlockWithAction, Int)]] = {
+
+      def f(exists: Boolean,
+            invalidated: Boolean,
+            block: Block,
+            offset: Int): Option[(ForkedBlockWithAction, Int)] = {
+        if (exists && !invalidated) None
+        else if (!exists && invalidated) None
+        else if (exists && invalidated) {
+          val blockWithAction = ForkedBlockWithAction(block, UpdatedInvalidatedBlocks)
+          Some(blockWithAction, offset + 1)
+        }
+        else {
+          val blockWithAction = ForkedBlockWithAction(block, WriteToInvalidatedBlocksAndCollectForkedBlocks)
+          Some(blockWithAction, offset + 1)
+        }
+      }
+
+      for {
+        block <- getBlockIO(network, hash, Some(offset))
+        (exists, invalidated) <- predicate(block)
+      } yield { f(exists, invalidated, block, offset)}
+
+    }
+
+    /*
+    Create IO Stream of the Forked Blocks, as well as the action to perform with said blocks
+    Given a block, you can either update the invalidatedBlocks table, or write a new block
+    to the InvalidatedBlocks table database and collect said block to be returned by the function.
+    */
+    val blockStream: Stream[IO, ForkedBlockWithAction] = Stream.unfoldEval(1)(unfoldingFunction)
+    ???
+
+
+
+  }
+
+  /*
+  /**
     *
     * @param network
     * @param hash
@@ -216,7 +318,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     */
   def followFork(
                   network: String,
-                  hash: String
+                  hash: BlockHash
                   )(implicit ec: ExecutionContext): Future[List[Block]] = {
     lazy val offsets: Stream[Int] = Stream.from(1)
 
@@ -256,11 +358,12 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       }
 
     offsets
-      .map{ offset => {getBlock(network, hash, Some(offset))}}
+      .map{ offset => getBlock(network, hash, Some(offset))}
       .takeWhile{ block => predicate(block) != (true, false)}
       .foldLeft(Future.successful(List.empty[Block]))(foldFunction)
 
   }
+  */
 
 
   /**
