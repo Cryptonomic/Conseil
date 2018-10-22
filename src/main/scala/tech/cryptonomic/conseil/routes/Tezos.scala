@@ -5,17 +5,20 @@ import akka.http.scaladsl.model.MediaTypes
 import akka.http.scaladsl.server.{Directive, Route}
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
+import tech.cryptonomic.conseil.db.DatabaseApiFiltering
+import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil
 
 import scala.concurrent.ExecutionContext
 
-/**
-  * Tezos-specific routes.
-  */
-object Tezos extends LazyLogging {
+/** Provides useful route and directive definitions */
+object Tezos {
+
+  def apply(implicit apiExecutionContext: ExecutionContext) = new Tezos
 
   // Directive for extracting out filter parameters for most GET operations.
   val gatherConseilFilter: Directive[Tuple1[Filter]] = parameters(
@@ -28,31 +31,13 @@ object Tezos extends LazyLogging {
     "operation_source".as[String].*,
     "operation_destination".as[String].*,
     "operation_participant".as[String].*,
+    "operation_kind".as[String].*,
     "account_id".as[String].*,
     "account_manager".as[String].*,
     "account_delegate".as[String].*,
-    "operation_kind".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).tflatMap{
-    case (limit, block_ids, block_levels, block_chainIDs, block_protocols, op_ids, op_sources, op_destinations, op_participants, account_ids, account_managers, account_delegates, operation_kind, sort_by, order) =>
-    val filter: Filter = Filter(
-      limit = limit,
-      blockIDs = Some(block_ids.toSet),
-      levels = Some(block_levels.toSet),
-      chainIDs = Some(block_chainIDs.toSet),
-      protocols = Some(block_protocols.toSet),
-      operationGroupIDs = Some(op_ids.toSet),
-      operationSources = Some(op_sources.toSet),
-      operationDestinations = Some(op_destinations.toSet),
-      operationParticipants = Some(op_participants.toSet),
-      operationKinds = Some(operation_kind.toSet),
-      accountIDs = Some(account_ids.toSet),
-      accountManagers = Some(account_managers.toSet),
-      accountDelegates = Some(account_delegates.toSet),
-      sortBy = sort_by, order = order)
-    provide(filter)
-  }
+  ).as(Filter.readParams)
 
   // Directive for gathering account information for most POST operations.
   val gatherKeyInfo: Directive[Tuple1[KeyStore]] = parameters(
@@ -65,6 +50,24 @@ object Tezos extends LazyLogging {
     provide(keyStore)
   }
 
+}
+
+/**
+  * Tezos-specific routes.
+  * The mixed-in [[DatabaseApiFiltering]] trait provides the
+  * instances of filtering execution implicitly needed by
+  * several Api Operations, based on database querying
+  * @param apiExecutionContext is used to call the async operations exposed by the api service
+  */
+class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering {
+
+  import Tezos._
+
+  /* reuse the same context as the one for ApiOperations calls
+   * as long as it doesn't create issues or performance degradation
+   */
+  override val asyncApiFiltersExecutionContext = apiExecutionContext
+
   //this automatically accepts any type `T` as content for calling [[RequestContext.complete]]
   //converts to json string via JsonUtil adding the correct content-type to the response entity
   implicit def jsonStringMarshaller[T]: ToEntityMarshaller[T] =
@@ -72,27 +75,23 @@ object Tezos extends LazyLogging {
       .compose(JsonUtil.toJson[T])
       .wrap(MediaTypes.`application/json`)(identity)
 
-  /**
-    * expose filtered results through rest endpoints
-    * @param ec an [[ExectutionContext]] is required to compose async operations 
-    *           on the  underlying Api implementation
-    */
-  def route(implicit ec: ExecutionContext): Route = pathPrefix(Segment) { network =>
+  /** expose filtered results through rest endpoints */
+  val route: Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
-        validate(filter.limit.isEmpty || (filter.limit.isDefined && (filter.limit.get <= 10000)), s"Cannot ask for more than 10000 entries") {
+        validate(filter.limit.forall(_ <= 10000), s"Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
               complete(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
-              complete(ApiOperations.fetchLatestBlock())
-            } ~ path(Segment) { blockId =>
-              complete(ApiOperations.fetchBlock(blockId))
+                complete(ApiOperations.fetchLatestBlock())
+            } ~ path(Segment).as(BlockHash.apply) { blockId =>
+                complete(ApiOperations.fetchBlock(blockId))
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
               complete(ApiOperations.fetchAccounts(filter))
-            } ~ path(Segment) { accountId =>
+            } ~ path(Segment).as(AccountId.apply) { accountId =>
               complete(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {

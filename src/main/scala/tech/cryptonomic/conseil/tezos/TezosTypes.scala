@@ -5,10 +5,19 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
+  case class BlockHash(value: String) extends AnyVal
+
+  case class OperationHash(value: String) extends AnyVal
+
+  case class AccountId(id: String) extends AnyVal
+
+  /** a conventional value to get the latest block in the chain */
+  final lazy val blockHeadHash = BlockHash("head")
+
   case class BlockHeader(
                         level: Int,
                         proto: Int,
-                        predecessor: String,
+                        predecessor: BlockHash,
                         timestamp: java.sql.Timestamp,
                         validationPass: Int,
                         operations_hash: Option[String],
@@ -20,7 +29,7 @@ object TezosTypes {
   case class BlockMetadata(
                             protocol: String,
                             chain_id: Option[String],
-                            hash: String,
+                            hash: BlockHash,
                             header: BlockHeader
                   )
 
@@ -121,7 +130,7 @@ object TezosTypes {
   case class OperationGroup (
                               protocol: String,
                               chain_id: Option[String],
-                              hash: String,
+                              hash: OperationHash,
                               branch: String,
                               contents: Option[List[Operation]],
                               signature: Option[String],
@@ -142,9 +151,9 @@ object TezosTypes {
                     )
 
   case class AccountsWithBlockHashAndLevel(
-                                    blockHash: String,
+                                    blockHash: BlockHash,
                                     blockLevel: Int,
-                                    accounts: Map[String, Account] = Map.empty
+                                    accounts: Map[AccountId, Account] = Map.empty
                                   )
 
   case class Block(

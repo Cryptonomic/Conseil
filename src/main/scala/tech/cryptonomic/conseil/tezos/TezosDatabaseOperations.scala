@@ -6,7 +6,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -147,10 +147,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ec   Needed to compose the operations
     * @return     true if block and operations exists
     */
-  def blockExists(hash: String)(implicit ec: ExecutionContext): Future[Boolean] =
+  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): Future[Boolean] =
     dbHandle.run(for {
-      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash).exists.result
-      opsThere <- Tables.OperationGroups.filter(_.blockId === hash).exists.result
+      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
+      opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
     } yield blockThere && opsThere)
 
   /**
@@ -181,8 +181,8 @@ object TezosDatabaseOperations extends LazyLogging {
       accounts.map {
         case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
           Tables.AccountsRow(
-            accountId = id,
-            blockId = hash,
+            accountId = id.id,
+            blockId = hash.value,
             manager = manager,
             spendable = spendable,
             delegateSetable = delegate.setable,
@@ -200,7 +200,7 @@ object TezosDatabaseOperations extends LazyLogging {
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
-        predecessor = header.predecessor,
+        predecessor = header.predecessor.value,
         timestamp = header.timestamp,
         validationPass = header.validationPass,
         fitness = header.fitness.mkString(","),
@@ -208,7 +208,7 @@ object TezosDatabaseOperations extends LazyLogging {
         signature = header.signature,
         protocol = block.metadata.protocol,
         chainId = block.metadata.chain_id,
-        hash = block.metadata.hash,
+        hash = block.metadata.hash.value,
         operationsHash = header.operations_hash
       )
     }
@@ -218,10 +218,10 @@ object TezosDatabaseOperations extends LazyLogging {
         Tables.OperationGroupsRow(
           protocol = og.protocol,
           chainId = og.chain_id,
-          hash = og.hash,
+          hash = og.hash.value,
           branch = og.branch,
           signature = og.signature,
-          blockId = block.metadata.hash
+          blockId = block.metadata.hash.value
         )
       }
 
@@ -238,11 +238,11 @@ object TezosDatabaseOperations extends LazyLogging {
                 storageLimit = operation.storageLimit,
                 amount = operation.amount,
                 destination = operation.destination,
-                operationGroupHash = og.hash,
+                operationGroupHash = og.hash.value,
                 operationId = 0,
                 balance = operation.balance,
                 delegate = operation.delegate,
-                blockHash = block.metadata.hash,
+                blockHash = block.metadata.hash.value,
                 blockLevel = block.metadata.header.level,
                 timestamp = block.metadata.header.timestamp,
                 pkh = operation.pkh
@@ -288,4 +288,9 @@ object TezosDatabaseOperations extends LazyLogging {
       .max
       .getOrElse(defaultBlockLevel.toInt)
       .result
+
+  /** is there any block stored? */
+  def doBlocksExist(): DBIO[Boolean] =
+    Tables.Blocks.exists.result
+
 }
