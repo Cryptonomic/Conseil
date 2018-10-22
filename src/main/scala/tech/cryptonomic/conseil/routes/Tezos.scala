@@ -63,19 +63,21 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
   import Tezos._
   import JsonUtil.{toJson, JsonString}
 
-  /* reuse the same context as the one for ApiOperations calls
+  /*
+   * reuse the same context as the one for ApiOperations calls
    * as long as it doesn't create issues or performance degradation
    */
   override val asyncApiFiltersExecutionContext = apiExecutionContext
 
   //add the correct content-type for [[JsonUtil]]-converted values
-  implicit val jsonMarshaller: ToEntityMarshaller[JsonString] =
+  implicit private val jsonMarshaller: ToEntityMarshaller[JsonString] =
     PredefinedToEntityMarshallers.StringMarshaller
       .compose((_: JsonString).json)
       .wrap(MediaTypes.`application/json`)(identity _)
 
-  /* allow generic handling of optional results, embedded in async computations
-   * in addition to converting any missing result to a NotFound http code, it allows to convert the existing content
+  /*
+   * Allow generic handling of optional results, embedded in async computations.
+   * In addition to converting any missing result to a NotFound http code, it allows to convert the existing content
    * to something which is marshallable as a response
    * @param operation is the computation that will provide, as soon as available, an optional result
    * @param converter a final conversion function to turn the original T, when available to a marshallable result,
@@ -83,14 +85,14 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
    * @param T the type of the possible result of the async computation
    * @param R the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
    */
-  private[this] def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _): Future[ToResponseMarshallable] =
+  private def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _): Future[ToResponseMarshallable] =
     operation.map {
       case Some(content) => converter(content)
       case None => StatusCodes.NotFound
     }
 
   /* converts the future value to [[JsonString]] and completes the call */
-  private[this] def completeWithJson[T](futureValue: Future[T]): StandardRoute =
+  private def completeWithJson[T](futureValue: Future[T]): StandardRoute =
     complete(futureValue.map(toJson[T]))
 
   /** expose filtered results through rest endpoints */
