@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller}
-import akka.http.scaladsl.model.MediaTypes
-import akka.http.scaladsl.server.{Directive, Route}
+import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller, ToResponseMarshaller, ToResponseMarshallable}
+import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
+import akka.http.scaladsl.server.{Directive, Route, StandardRoute}
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos._
@@ -11,9 +11,8 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.JsonUtil
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /** Provides useful route and directive definitions */
 object Tezos {
@@ -37,7 +36,7 @@ object Tezos {
     "account_delegate".as[String].*,
     "sort_by".as[String].?,
     "order".as[String].?
-  ).as(Filter.readParams)
+  ).as(Filter.readParams _)
 
   // Directive for gathering account information for most POST operations.
   val gatherKeyInfo: Directive[Tuple1[KeyStore]] = parameters(
@@ -62,49 +61,76 @@ object Tezos {
 class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering {
 
   import Tezos._
+  import JsonUtil.{toJson, JsonString}
 
-  /* reuse the same context as the one for ApiOperations calls
+  /*
+   * reuse the same context as the one for ApiOperations calls
    * as long as it doesn't create issues or performance degradation
    */
   override val asyncApiFiltersExecutionContext = apiExecutionContext
 
-  //this automatically accepts any type `T` as content for calling [[RequestContext.complete]]
-  //converts to json string via JsonUtil adding the correct content-type to the response entity
-  implicit def jsonStringMarshaller[T]: ToEntityMarshaller[T] =
+  //add the correct content-type for [[JsonUtil]]-converted values
+  implicit private val jsonMarshaller: ToEntityMarshaller[JsonString] =
     PredefinedToEntityMarshallers.StringMarshaller
-      .compose(JsonUtil.toJson[T])
-      .wrap(MediaTypes.`application/json`)(identity)
+      .compose((_: JsonString).json)
+      .wrap(MediaTypes.`application/json`)(identity _)
+
+  /*
+   * Allow generic handling of optional results, embedded in async computations.
+   * In addition to converting any missing result to a NotFound http code, it allows to convert the existing content
+   * to something which is marshallable as a response
+   * @param operation is the computation that will provide, as soon as available, an optional result
+   * @param converter a final conversion function to turn the original T, when available to a marshallable result,
+   *        by default the function converts to a [[JsonString]]
+   * @param T the type of the possible result of the async computation
+   * @param R the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
+   */
+  private def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _): Future[ToResponseMarshallable] =
+    operation.map {
+      case Some(content) => converter(content)
+      case None => StatusCodes.NotFound
+    }
+
+  /* converts the future value to [[JsonString]] and completes the call */
+  private def completeWithJson[T](futureValue: Future[T]): StandardRoute =
+    complete(futureValue.map(toJson[T]))
 
   /** expose filtered results through rest endpoints */
   val route: Route = pathPrefix(Segment) { network =>
     get {
       gatherConseilFilter{ filter =>
-        validate(filter.limit.forall(_ <= 10000), s"Cannot ask for more than 10000 entries") {
+        validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
           pathPrefix("blocks") {
             pathEnd {
-              complete(ApiOperations.fetchBlocks(filter))
+              completeWithJson(ApiOperations.fetchBlocks(filter))
             } ~ path("head") {
-                complete(ApiOperations.fetchLatestBlock())
-            } ~ path(Segment).as(BlockHash.apply) { blockId =>
-                complete(ApiOperations.fetchBlock(blockId))
+                completeWithJson(ApiOperations.fetchLatestBlock())
+            } ~ path(Segment).as(BlockHash) { blockId =>
+                complete(
+                  handleNoneAsNotFound(ApiOperations.fetchBlock(blockId))
+                )
             }
           } ~ pathPrefix("accounts") {
             pathEnd {
-              complete(ApiOperations.fetchAccounts(filter))
-            } ~ path(Segment).as(AccountId.apply) { accountId =>
-              complete(ApiOperations.fetchAccount(accountId))
+              completeWithJson(ApiOperations.fetchAccounts(filter))
+            } ~ path(Segment).as(AccountId) { accountId =>
+              completeWithJson(ApiOperations.fetchAccount(accountId))
             }
           } ~ pathPrefix("operation_groups") {
             pathEnd {
-              complete(ApiOperations.fetchOperationGroups(filter))
+              completeWithJson(ApiOperations.fetchOperationGroups(filter))
             } ~ path(Segment) { operationGroupId =>
-              complete(ApiOperations.fetchOperationGroup(operationGroupId))
+              complete(
+                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
+              )
             }
           } ~ pathPrefix("operations") {
             path("avgFees") {
-                complete(ApiOperations.fetchAverageFees(filter))
+                complete(
+                  handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
+                )
             } ~ pathEnd {
-                complete(ApiOperations.fetchOperations(filter))
+                completeWithJson(ApiOperations.fetchOperations(filter))
             }
           }
         }

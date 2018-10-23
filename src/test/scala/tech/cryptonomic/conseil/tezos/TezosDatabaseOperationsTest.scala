@@ -712,9 +712,7 @@ class TezosDatabaseOperationsTest
   private def wrapFeesWithOperationRows(
     fees: Seq[Option[String]],
     block: BlocksRow,
-    group: OperationGroupsRow)(implicit randomSeed: RandomSeed) = {
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+    group: OperationGroupsRow) = {
 
     fees.zipWithIndex.map {
       case (fee, index) =>
@@ -732,7 +730,7 @@ class TezosDatabaseOperationsTest
   }
 
   /* randomly generates a number of account rows for some block */
-  private def generateAccountRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[AccountsRow] = {
+  private def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     (1 to howMany).map {

@@ -41,7 +41,7 @@ object Lorre extends App with LazyLogging {
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
   lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface())
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
