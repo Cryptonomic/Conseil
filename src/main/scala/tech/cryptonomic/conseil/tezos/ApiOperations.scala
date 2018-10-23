@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.ConfigFactory
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
@@ -14,7 +13,6 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 object ApiOperations {
 
-  private val conf = ConfigFactory.load
   lazy val dbHandle: Database = DatabaseUtil.db
 
   /** Define sorting order for api queries */
@@ -22,15 +20,17 @@ object ApiOperations {
   case object AscendingSort extends Sorting
   case object DescendingSort extends Sorting
   object Sorting {
+
     /** Read an input string (`asc` or `desc`) to return a
       * (possible) [[tech.cryptonomic.conseil.tezos.ApiOperations.Sorting]] value
       */
     def fromString(s: String): Option[Sorting] = s.toLowerCase match {
       case "asc" => Some(AscendingSort)
       case "desc" => Some(DescendingSort)
-      case _ => throw new IllegalArgumentException("""Please provide a valid value for the ordering parameter ['asc', 'desc'] """)
+      case _ => None
     }
   }
+
   import Filter._
 
   /**
@@ -52,7 +52,7 @@ object ApiOperations {
     * @param sortBy                 Database column name to sort by
     * @param order                  Sort items ascending or descending
     */
-  case class Filter(
+  final case class Filter(
                      limit: Option[Int] = Some(defaultLimit),
                      blockIDs: Set[String] = Set.empty,
                      levels: Set[Int] = Set.empty,
@@ -137,10 +137,9 @@ object ApiOperations {
     * Fetches a block by block hash from the db.
     *
     * @param hash The block's hash
-    * @return The block along with its operations
+    * @return The block along with its operations, if the hash matches anything
     */
-  @throws[NoSuchElementException]("when the hash doesn't match any block")
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -148,7 +147,12 @@ object ApiOperations {
 
     dbHandle.run(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
-      Map("block" -> blocks.head, "operation_groups" -> groups)
+      blocks.headOption.map {
+        block => Map(
+          'block -> block,
+          'operation_groups -> groups
+        )
+      }
     }
   }
 
@@ -166,28 +170,25 @@ object ApiOperations {
   /**
     * Fetch a given operation group
     *
-    * Running the returned operation will fail with [[NoSuchElementException]] if
-    *  - no block is found on the db
-    *  - no group corresponds to the given hash
+    * Running the returned operation will fail with [[NoSuchElementException]] if no block is found on the db
     *
     * @param operationGroupHash Operation group hash
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
-    val groupedOpsIO = latestBlockIO().collect { // we fail the operation if no block is there
-      case Some(_) =>
-        TezosDatabaseOperations.operationsForGroupIO(operationGroupHash).map(_.get) // we want to fail here too
-    }.flatten
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+    val groupsMapIO = for {
+      latest <- latestBlockIO if latest.nonEmpty
+      operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
+    } yield operations.map {
+        case (opGroup, ops) =>
+          Map(
+            'operation_group -> opGroup,
+            'operations -> ops
+          )
+        }
 
-    //convert to a valid object for the caller
-    dbHandle.run(groupedOpsIO).map {
-      case (opGroup, operations) =>
-        Map(
-          "operation_group" -> opGroup,
-          "operations" -> operations
-        )
-    }
+    dbHandle.run(groupsMapIO)
   }
 
   /**
@@ -210,10 +211,8 @@ object ApiOperations {
     apiFilters(filter)(0)
 
   /**
-    * Given the operation kind and the number of columns wanted,
-    *
-    * return the mean (along with +/- one standard deviation) of
-    * fees incurred in those operations.
+    * Given the operation kind return the mean (along with +/- one standard deviation)
+    * of fees incurred in those operations.
     * @param filter Filters to apply, specifically operation kinds
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
     * @param ec ExecutionContext needed to invoke the data fetching using async results
@@ -222,10 +221,10 @@ object ApiOperations {
     *           was performed at, and the kind of operation being
     *           averaged over.
     */
-  def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[AverageFees] =
+  def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[Option[AverageFees]] =
     apiFilters(filter)(0)
       .map( rows =>
-        rows.head match {
+        rows.headOption map {
           case Tables.FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
         }
       )

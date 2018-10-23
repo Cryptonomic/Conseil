@@ -9,7 +9,7 @@ import scala.util.Try
   */
 object CryptoUtil {
 
-  case class KeyStore(publicKey: String, privateKey: String, publicKeyHash: String)
+  final case class KeyStore(publicKey: String, privateKey: String, publicKeyHash: String)
 
   /**
     * Get byte prefix for Base58Check encoding and decoding of a given type of data.

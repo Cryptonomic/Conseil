@@ -15,7 +15,7 @@ object CollectionOps {
       }
     }
 
-  implicit class keyedSeq[K, V](seq: Seq[(K, V)]) {
+  implicit class KeyedSeq[K, V](seq: Seq[(K, V)]) {
     def byKey(): Map[K, Seq[V]] = groupByKey(seq)
   }
 

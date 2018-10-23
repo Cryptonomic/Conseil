@@ -41,7 +41,7 @@ object Lorre extends App with LazyLogging {
   private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
   lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(TezosNodeInterface())
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
@@ -70,7 +70,7 @@ object Lorre extends App with LazyLogging {
           noOp
         _ <-
         if (iteration % purgeAccountsInterval == 0)
-          TezosDb.purgeOldAccounts()
+          purge()
         else
           noOp
     } yield ()
@@ -85,6 +85,16 @@ object Lorre extends App with LazyLogging {
 
   try {mainLoop(0)} finally {shutdown()}
 
+  /** purges old accounts */
+  def purge(): Future[Done] = {
+    val purged = db.run(TezosDb.purgeOldAccounts())
+
+    purged.andThen {
+      case Success(howMany) => logger.info("{} accounts where purged from old block levels.", howMany)
+      case Failure(e) => logger.error("Could not purge old block-levels accounts", e)
+    }.map(_ => Done)
+  }
+
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
@@ -92,7 +102,7 @@ object Lorre extends App with LazyLogging {
     logger.info("Processing Tezos Blocks..")
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
       blocks =>
-        db.run(TezosDb.writeBlocksIO(blocks)).andThen {
+        db.run(TezosDb.writeBlocks(blocks)).andThen {
           case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
           case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
         }.map(_ => Done)
@@ -112,7 +122,7 @@ object Lorre extends App with LazyLogging {
     logger.info("Processing latest Tezos accounts data..")
     tezosNodeOperator.getLatestAccounts(network).flatMap {
       case Some(accountsInfo) =>
-        db.run(TezosDb.writeAccountsIO(accountsInfo)).andThen {
+        db.run(TezosDb.writeAccounts(accountsInfo)).andThen {
           case Success(_) => logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
           case Failure(e) => logger.error("Could not write accounts to the database", e)
         }.map(_ => Done)
