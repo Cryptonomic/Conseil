@@ -179,7 +179,7 @@ object ApiOperations {
   def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
-      operations <- TezosDatabaseOperations.operationsForGroupIO(operationGroupHash)
+      operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
     } yield operations.map {
         case (opGroup, ops) =>
           Map(
