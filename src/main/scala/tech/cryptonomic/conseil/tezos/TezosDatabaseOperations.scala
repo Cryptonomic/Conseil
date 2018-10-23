@@ -3,16 +3,14 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.ApiOperations.dbHandle
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
-import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -28,7 +26,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param fees List of average fees for different operation kinds.
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-  def writeFeesIO(fees: List[AverageFees]): DBIO[Option[Int]] =
+  def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
   /**
@@ -37,7 +35,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountsInfo Accounts with their corresponding block hash.
     * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-  def writeAccountsIO(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
+  def writeAccounts(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
     Tables.Accounts ++= RowConversion.convertAccounts(accountsInfo)
 
   /**
@@ -45,7 +43,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks   Block with operations.
     * @return         Future on database inserts.
     */
-  def writeBlocksIO(blocks: List[Block]): DBIO[Unit] =
+  def writeBlocks(blocks: List[Block]): DBIO[Unit] =
       DBIO.seq(
         Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
         Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
@@ -57,7 +55,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param kind  Operation kind
     * @return      The average fees for a given operation kind, if it exists
     */
-  def calculateAverageFeesIO(kind: String)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
+  def calculateAverageFees(kind: String)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
     def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[String], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
         case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
@@ -89,19 +87,18 @@ object TezosDatabaseOperations extends LazyLogging {
     * Delete all accounts in database not associated with block at maxLevel.
     * @return the number of rows removed
     */
-  def purgeOldAccounts()(implicit ex: ExecutionContext): Future[Int] = {
-    val purged = dbHandle.run {
-      fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
-        Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
-      ).transactionally
-    }
-    purged.andThen {
-      case Success(howMany) => logger.info("{} accounts where purged from old block levels.", howMany)
-      case Failure(e) => logger.error("Could not purge old block-levels accounts", e)
-    }
-  }
+  def purgeOldAccounts()(implicit ex: ExecutionContext): DBIO[Int] =
+    fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
+      Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
+    ).transactionally
 
-  def operationsForGroupIO(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
+  /**
+    * Reads in all operations referring to the group
+    * @param groupHash is the group identifier
+    * @param ec the [[ExecutionContext]] needed to compose db operations
+    * @return the operations and the collecting group, if there's one for the given hash, else [[None]]
+    */
+  def operationsForGroup(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
     (for {
       operation <- operationsByGroupHash(groupHash).extract
       group <- operation.operationGroupsFk
@@ -125,14 +122,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ec   Needed to compose the operations
     * @return     true if block and operations exists
     */
-  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): Future[Boolean] =
-    dbHandle.run(for {
+  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
+    for {
       blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
       opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
-    } yield blockThere && opsThere)
+    } yield blockThere && opsThere
 
   /** conversions from domain objects to database row format */
-  object RowConversion {
+  private object RowConversion {
 
     private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
       Tables.FeesRow(
