@@ -57,9 +57,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks Blocks which are being invalidated
     * @return
     */
-  def writeInvalidatedBlocksIO(blocks: List[Block]) = {
-    Tables.InvalidatedBlocks ++= blocks.map(block => RowConversion.convertInvalidatedBlock(block))
-  }
+  def writeAndInvalidateBlockIO(blocks: List[Block]): DBIO[Unit] =
+    DBIO.seq(
+      Tables.Blocks            ++= blocks.map(RowConversion.convertBlock),
+      Tables.InvalidatedBlocks ++= blocks.map(block => RowConversion.convertInvalidatedBlock(block))
+    ).transactionally
 
   /**
     * Updated invalidated blocks table so that current block is revalidated, and all other blocks
@@ -67,12 +69,13 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param block Block to be revalidated
     * @return
     */
-  def updateInvalidatedBlockIO(block: Block) = {
+  def revalidateBlockIO(block: Block): DBIO[(Int, Int)] = {
     val hash = block.metadata.hash
-    val invalidatedAction = Tables.InvalidatedBlocks.filter(_.hash =!= hash.value).map(block => block.isInvalidated).update(true)
+    val level = block.metadata.header.level
+    val invalidatedAction = Tables.InvalidatedBlocks.filter(block => block.level === level && block.hash =!= hash.value).map(block => block.isInvalidated).update(true)
     val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash.value).map(block => block.isInvalidated).update(false)
-    (invalidatedAction, revalidatedAction)
-  }
+    invalidatedAction zip revalidatedAction
+  }.transactionally
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.

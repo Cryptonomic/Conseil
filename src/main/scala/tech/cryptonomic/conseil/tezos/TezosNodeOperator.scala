@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import akka.Done
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
@@ -40,8 +41,8 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * detected during a fork.
     */
   sealed trait ForkedBlockAction
-  case object UpdatedInvalidatedBlocks extends ForkedBlockAction
-  case object WriteToInvalidatedBlocksAndCollectForkedBlocks extends ForkedBlockAction
+  case object RevalidateBlock extends ForkedBlockAction
+  case object WriteAndInvalidateBlock extends ForkedBlockAction
 
   /**
     * A block detected during a fork and it's associated action required for the followFork algorithm.
@@ -246,9 +247,11 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def followFork(
                   network: String,
                   hash: BlockHash
-                )(implicit ec: ExecutionContext): Future[List[Block]] = {
+                ): IO[Unit] = {
 
     def futureToIO[A](f: Future[A]): IO[A] = IO.fromFuture(IO(f))
+
+    def runDBIO[A](action: DBIO[A]) = futureToIO(dbHandle.run(action))
 
     def getBlockIO: (String, BlockHash, Option[Int]) => IO[Block] =
       (network, hash, maybeOffset) => futureToIO(getBlock(network, hash, maybeOffset))
@@ -272,28 +275,32 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     Given an offset from the block where the hash was detected, figure out if we need to collect that
     block or perform a write action to our database.
      */
-    def unfoldingFunction(offset: Int)(implicit ec: ExecutionContext): IO[Option[(ForkedBlockWithAction, Int)]] = {
+    def unfoldingFunction(offset: Int): IO[Option[(ForkedBlockWithAction, Int)]] = {
 
       def f(exists: Boolean,
             invalidated: Boolean,
             block: Block,
             offset: Int): Option[(ForkedBlockWithAction, Int)] = {
         if (exists && !invalidated) None
+          //add logging, because second case should be impossible, you should not have a block that does not exists
+          //being invalidated
         else if (!exists && invalidated) None
         else if (exists && invalidated) {
-          val blockWithAction = ForkedBlockWithAction(block, UpdatedInvalidatedBlocks)
+          val blockWithAction = ForkedBlockWithAction(block, RevalidateBlock)
           Some(blockWithAction, offset + 1)
         }
         else {
-          val blockWithAction = ForkedBlockWithAction(block, WriteToInvalidatedBlocksAndCollectForkedBlocks)
+          val blockWithAction = ForkedBlockWithAction(block, WriteAndInvalidateBlock)
           Some(blockWithAction, offset + 1)
         }
       }
 
       for {
         block <- getBlockIO(network, hash, Some(offset))
-        (exists, invalidated) <- predicate(block)
-      } yield { f(exists, invalidated, block, offset)}
+        tuple <- predicate(block)
+        //scala compiler complained about tuples not having a withFilter instance with IO
+        (exists, invalidated) = tuple
+      } yield f(exists, invalidated, block, offset)
 
     }
 
@@ -303,10 +310,10 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     to the InvalidatedBlocks table database and collect said block to be returned by the function.
     */
     val blockStream: Stream[IO, ForkedBlockWithAction] = Stream.unfoldEval(1)(unfoldingFunction)
-    ???
-
-
-
+    blockStream.evalMap[IO, Unit]{
+      case ForkedBlockWithAction(block, WriteAndInvalidateBlock) => runDBIO(TezosDatabaseOperations.writeAndInvalidateBlockIO(List(block)))
+      case ForkedBlockWithAction(block, RevalidateBlock) => runDBIO(TezosDatabaseOperations.revalidateBlockIO(block)).map(_ => Unit)
+    }.compile.drain
   }
 
   /**
