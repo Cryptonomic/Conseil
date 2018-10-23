@@ -309,63 +309,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
   }
 
-  /*
-  /**
-    *
-    * @param network
-    * @param hash
-    * @return Future of List of Blocks that were missed during the Fork, in reverse order
-    */
-  def followFork(
-                  network: String,
-                  hash: BlockHash
-                  )(implicit ec: ExecutionContext): Future[List[Block]] = {
-    lazy val offsets: Stream[Int] = Stream.from(1)
-
-    val blockExists: Block => Boolean =
-      block => Await(TezosDatabaseOperations.blockExists(block.metadata.hash))
-    val blockInInvalidatedBlocks: Block => Boolean =
-      block => Await(TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash))
-
-    val predicate: Future[Block] => (Boolean, Boolean) =
-      futureBlock => {
-        val block = Await.result[Block](futureBlock, Duration.apply(awaitTimeInSeconds, SECONDS))
-        (blockExists(block), blockInInvalidatedBlocks(block))
-      }
-
-    val foldFunction : (Future[List[Block]], Future[Block]) => Future[List[Block]] =
-      (acc, futureBlock) => {
-        val p = predicate(futureBlock)
-        p match {
-          case (false, false) =>
-            futureBlock.flatMap{ block =>
-              val action = Tables.Blocks.filter(_.level === block.metadata.header.level)
-              //val blocks = dbHandle.run(action)
-              //TezosDatabaseOperations.writeInvalidatedBlocksIO(blocks)
-              for {
-                a <- acc
-              } yield  block :: a
-            }
-          case (true, true) => {
-            futureBlock.flatMap { block =>
-              //val (action1, action2) = TezosDatabaseOperations.updateInvalidatedBlockIO(block)
-              //db.run(action1)
-              //db.run(action2)
-              acc
-            }
-          }
-        }
-      }
-
-    offsets
-      .map{ offset => getBlock(network, hash, Some(offset))}
-      .takeWhile{ block => predicate(block) != (true, false)}
-      .foldLeft(Future.successful(List.empty[Block]))(foldFunction)
-
-  }
-  */
-
-
   /**
     * Get all accounts for a given block
     * @param network     Which Tezos network to go against
