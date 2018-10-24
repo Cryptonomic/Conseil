@@ -49,15 +49,29 @@ Run the fat JAR with the JRE:
 
 `java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.cryptonomic.conseil.Conseil`
 
+And..
+
+`java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.cryptonomic.conseil.Lorre`
+
 Run locally using SBT:
 
 ` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Conseil"`
 
+And..
+
+` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Lorre"`
+
 See 'Custom Configurations' section for information about custom config files.
 
-### Locally test with a database container [`Docker installation needed`]
+### Database set up
 
-The application expects to access a Postgres database instance to run. One can either run against a database installed on the local system or, as described here, against a containerized database instance.
+The application expects to read and write from a database compatible with [Typesafe Slick](http://slick.lightbend.com/). One can either run against a database installed on the local system or, as described below, against a containerized database instance. In any case, the instructions in the 'Custom configurations' section below should be used to provide the correct database parameters to Conseil.
+
+#### Using a database instance
+
+Cryptonomic uses Postgres for all its Conseil deployments. Once a Postgres database is set up, `doc/conseil.sql` can be used to set up the latest schema. For non-Postgres databases, the schema file might have to be updated to reflect the idiosyncrasies of the particular SQL dialect being used.
+
+#### Using a Docker image for Postgres
 
 A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.  
 You need to customize the credentials in the YAML file or in your custom configuration [see the following section]
@@ -81,9 +95,13 @@ To clean and restart the db from scratch, simply remove all `pgdata` content whi
 
 Build Conseil as a fat JAR file using the 'Package' step above.
 
-Run this command using a script or as part of a service definition:
+Run this command using a script or as part of a service definition for Conseil:
 
 `java -Dconfig.file={path to custom config file} -cp {path to fat JAR file} tech.cryptonomic.conseil.Conseil`
+
+Then, run this command using a script or as part of a service definition for Lorre:
+
+`java -Dconfig.file={path to custom config file} -cp {path to fat JAR file} tech.cryptonomic.conseil.Lorre`
 
 See 'Custom Configurations' section for information about custom config files.
 
