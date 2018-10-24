@@ -6,28 +6,44 @@ Query API for the Tezos blockchain
 ## Running Conseil
 
 Conseil has two entry points:
-- `src/main/Conseil.scala` runs a server exposing a RESTful API.
-- `src/main/Lorre.scala` is a background process that runs on loop and writes Tezos blockchain data to database.
+- `src/main/tech/cryptonomic/Conseil/Conseil.scala` runs a server exposing a RESTful API.
+- `src/main/tech/cryptonomic/Conseil/Lorre.scala` is a background process that runs on loop and writes Tezos blockchain data to database.
 
 ### Warning 
 
 The Conseil server should be run behind a proxy such as Nginx with TLS enabled through something like LetsEncrypt. Futhermore, [HTTP Strict Transport Security](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and [Certification Authority Authorization](https://en.wikipedia.org/wiki/DNS_Certification_Authority_Authorization) are highly recommended!
 
 ### Prerequisites
-- JDK
-- Scala
-- SBT
+
+Development
+- JDK (>7.x)
+- Scala (>2.11.x)
+- SBT (>1.2.6)
 - A database supported by Typesafe Slick, e.g. Postgres
 
-### Compile
+Deployment
+- JRE (>7.x)
+- A database supported by Typesafe Slick, e.g. Postgres
+
+### Building, packing and deploying Conseil
+
+#### Compile
+
+Run the following command from the root directory of the repository:
 
 `sbt compile`
   
-### Package
+#### Package
+
+Run the following command from the root directory of the repository:
  
 `sbt assembly`
+
+#### Deploy
+
+After the package step, check the SBT output for the path of the generated fat JAR file. Copy this file to the desired deployment area.
   
-### Run
+### Running Locally
 
 Run the fat JAR with the JRE:
 
@@ -37,8 +53,11 @@ Run locally using SBT:
 
 ` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Conseil"`
 
-### Locally test with database [`Docker installation needed]
-The application expects to access a postgres database instance to run.
+See 'Custom Configurations' section for information about custom config files.
+
+### Locally test with a database container [`Docker installation needed`]
+
+The application expects to access a Postgres database instance to run. One can either run against a database installed on the local system or, as described here, against a containerized database instance.
 
 A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.  
 You need to customize the credentials in the YAML file or in your custom configuration [see the following section]
@@ -58,9 +77,21 @@ so you can restart the container without losing any information stored.
 
 To clean and restart the db from scratch, simply remove all `pgdata` content while the container is _not running_.
 
+### Running in production
+
+Build Conseil as a fat JAR file using the 'Package' step above.
+
+Run this command using a script or as part of a service definition:
+
+`java -Dconfig.file={path to custom config file} -cp {path to fat JAR file} tech.cryptonomic.conseil.Conseil`
+
+See 'Custom Configurations' section for information about custom config files.
+
 ### Custom configurations
 
-It is advisable to run with a custom config file which inherits from the main or the “developer” conf file. Here is an example:
+Conseil uses [Typesafe Config](https://github.com/lightbend/config) and [Slick](http://slick.lightbend.com/doc/3.2.0/database.html) for managing its configurations. Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which inherits from `src/main/resources/application.conf` for production or `src/main/resources/developer.conf` for local development. 
+
+Here is an example showing a default configuration used with custom database and Tezos node settings:
 
 ```json
 include "developer"
@@ -87,3 +118,5 @@ platforms: {
   }
 }
 ```
+
+There are no strict requirements for the location in which confiuration files are saved.
