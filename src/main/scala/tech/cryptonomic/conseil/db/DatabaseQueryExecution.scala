@@ -415,7 +415,10 @@ trait DatabaseApiFiltering {
           blocksOperationGroupsOperations.map { case (b, _, _) => b }
       }
 
-    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
+    /**
+      * Will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain
+      * or with [[IllegalArgumentException]] if the filter parameters where not correctly defined
+      */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
@@ -487,7 +490,10 @@ trait DatabaseApiFiltering {
           operationGroupsOperationsAccounts.map(_._3)
       }
 
-    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
+    /**
+      * will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain
+      * or with [[IllegalArgumentException]] if the filter parameters where not correctly defined
+      */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
