@@ -34,6 +34,7 @@ class TezosDatabaseOperationsTest
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val sut = TezosDatabaseOperations
+    val feesToConsider = 1000
 
     "write fees" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
@@ -270,7 +271,7 @@ class TezosDatabaseOperationsTest
       )
 
       //check
-      val feesCalculation = sut.calculateAverageFees(ops.head.kind)
+      val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
@@ -294,7 +295,7 @@ class TezosDatabaseOperationsTest
       dbHandler.run(populate).futureValue should have size (fees.size)
 
       //check
-      val feesCalculation = sut.calculateAverageFees("undefined")
+      val feesCalculation = sut.calculateAverageFees("undefined", feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue shouldBe None
 
@@ -338,7 +339,7 @@ class TezosDatabaseOperationsTest
         kind = ops.head.kind
       )
       //check
-      val feesCalculation = sut.calculateAverageFees(selection.head.kind)
+      val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 

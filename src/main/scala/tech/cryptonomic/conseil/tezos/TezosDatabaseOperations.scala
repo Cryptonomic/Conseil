@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
@@ -16,9 +15,6 @@ import scala.math.{ceil, max}
   * Functions for writing Tezos data to a database.
   */
 object TezosDatabaseOperations extends LazyLogging {
-
-  private val conf = ConfigFactory.load
-  private val numberOfFeesAveraged = conf.getInt("lorre.numberOfFeesAveraged")
 
   /**
     * Writes computed fees averages to a database.
@@ -52,10 +48,11 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
-    * @param kind  Operation kind
-    * @return      The average fees for a given operation kind, if it exists
+    * @param kind                 Operation kind
+    * @param numberOfFeesAveraged How many values to use for statistics computations
+    * @return                     The average fees for a given operation kind, if it exists
     */
-  def calculateAverageFees(kind: String)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
+  def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
     def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[String], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
         case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)

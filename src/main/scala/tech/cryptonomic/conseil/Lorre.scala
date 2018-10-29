@@ -3,10 +3,11 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
-import com.typesafe.config.ConfigFactory
+import pureconfig.{ProductHint, ConfigFieldMapping, CamelCase, loadConfig}
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.config.ConseilConfig._
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -19,13 +20,14 @@ import scala.util.{Failure, Success}
   */
 object Lorre extends App with LazyLogging {
 
-  //keep this import here to make it evident where we spawn our async code
-  implicit val system: ActorSystem = ActorSystem("lorre-system")
-  implicit val dispatcher = system.dispatcher
+  final case class CombinedConfiguration(
+    lorre: LorreConfiguration,
+    tezos: TezosConfiguration,
+    sodium: SodiumConfiguration,
+    batching: BatchFetchConfiguration
+  )
 
-  //how long to wait for graceful shutdown of system components
-  private[this] val shutdownWait = 10.seconds
-
+  //TODO should be able to remove this
   private val network =
     if (args.length > 0) args(0)
     else {
@@ -35,16 +37,45 @@ object Lorre extends App with LazyLogging {
       sys.exit(1)
     }
 
-  private val conf = ConfigFactory.load
-  private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
-  private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
-  private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
+  //reads all configuration upstart, will only complete if all values are found
+  val CombinedConfiguration(lorreConf, tezosConf, sodiumConf, batchingConf) = {
+    //applies convention to uses CamelCase when reading config fields
+    implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
-  lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
+    //read pieces from conf files and puts them together in configuration objects
+    val loadedConf =
+      for {
+        lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
+        nodeRequests <- loadConfig[TezosRequestsConfiguration]("")
+        node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
+        sodium <- loadConfig[SodiumConfiguration](namespace = "sodium.libraryPath")
+        fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
+      } yield CombinedConfiguration(lorre, TezosConfiguration(network, node, nodeRequests), sodium, fetching)
+
+    //something went wrong
+    loadedConf.left.foreach {
+      failures =>
+        printConfigurationError(context = "Lorre application", failures.toList.mkString("\n\n"))
+        sys.exit(1)
+    }
+    //unsafe call, but shouldn't be reached if loadedConf is a Left
+    loadedConf.right.get
+  }
+
+  //the dispatcher is visible for all async operations in the following code
+  implicit val system: ActorSystem = ActorSystem("lorre-system")
+  implicit val dispatcher = system.dispatcher
+
+  implicit val sodium = sodiumConf
+
+  //how long to wait for graceful shutdown of system components
+  private[this] val shutdownWait = 10.seconds
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
+
+  lazy val db = DatabaseUtil.db
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf), batchingConf)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
@@ -64,12 +95,12 @@ object Lorre extends App with LazyLogging {
       _ <- processTezosBlocks()
       _ <- processTezosAccounts()
       _ <-
-        if (iteration % feeUpdateInterval == 0)
-          FeeOperations.processTezosAverageFees()
+        if (iteration % lorreConf.feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
         else
           noOp
         _ <-
-        if (iteration % purgeAccountsInterval == 0)
+        if (iteration % lorreConf.purgeAccountsInterval == 0)
           purge()
         else
           noOp
@@ -77,7 +108,7 @@ object Lorre extends App with LazyLogging {
 
     Await.ready(processing, atMost = Duration.Inf)
     logger.info("Taking a nap")
-    Thread.sleep(sleepIntervalInSeconds * 1000)
+    Thread.sleep(lorreConf.sleepInterval.toMillis)
     mainLoop(iteration + 1)
   }
 

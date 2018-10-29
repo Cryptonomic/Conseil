@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.tezos
 
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
+import tech.cryptonomic.conseil.config.ConseilConfig.{SodiumConfiguration, BatchFetchConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -30,16 +30,11 @@ object TezosNodeOperator {
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
-class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: ExecutionContext) extends LazyLogging {
+class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext, sodium: SodiumConfiguration) extends LazyLogging {
   import TezosNodeOperator._
+  import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel}
 
-  private val conf = ConfigFactory.load
-
-  val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
-  val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
-  val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
-
-  SodiumLibrary.setLibraryPath(sodiumLibraryPath)
+  SodiumLibrary.setLibraryPath(sodium.libraryPath)
 
   /**
     * Fetches a specific account for a given block.
@@ -73,7 +68,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     */
   def getAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[TezosTypes.Account]] =
     node
-      .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/${blockHash.value}/context/contracts/${id.id}"), accountsFetchConcurrency)
+      .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/${blockHash.value}/context/contracts/${id.id}"), accountConcurrencyLevel)
       .map(_.map(fromJson[TezosTypes.Account]))
 
   /**
@@ -199,9 +194,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     doesn't reorder stream elements, thus ensuring the correctness of Block creation with zip.
      */
     for {
-      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
+      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsConcurrencyLevel) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash.value}/operations")
-      fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
+      fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsConcurrencyLevel) map (operations => operations.map(jsonToOperationGroups))
     } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
   }
 

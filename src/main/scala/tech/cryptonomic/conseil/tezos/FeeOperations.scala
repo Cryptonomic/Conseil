@@ -44,10 +44,10 @@ object FeeOperations extends LazyLogging {
     * Calculates average fees for each operation kind and stores them into a fees table.
     * @return
     */
-  def processTezosAverageFees()(implicit ex: ExecutionContext): Future[Option[Int]] = {
+  def processTezosAverageFees(numberOfFeesAveraged: Int)(implicit ex: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
     val computeAndStore = for {
-      fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFees))
+      fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFees(_, numberOfFeesAveraged)))
       dbWrites <- TezosDb.writeFees(fees.collect { case Some(fee) => fee })
     } yield dbWrites
 
