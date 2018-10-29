@@ -22,8 +22,8 @@ object ConseilConfig extends LazyLogging {
   /** configurations related to tezos-node network node calls */
   final case class TezosRequestsConfiguration(
     requestAwaitTime: FiniteDuration,
-    getResponseEntityTimeout: FiniteDuration,
-    postResponseEntityTimeout: FiniteDuration
+    GETResponseEntityTimeout: FiniteDuration,
+    POSTResponseEntityTimeout: FiniteDuration
   )
 
   /** configurations to identify the tezos node */

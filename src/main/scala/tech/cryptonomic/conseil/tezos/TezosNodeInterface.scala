@@ -107,7 +107,7 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
           )
         )
       val response: HttpResponse = Await.result(responseFuture, requestConfig.requestAwaitTime)
-      val responseBodyFuture = response.entity.toStrict(requestConfig.getResponseEntityTimeout).map(_.data.utf8String)
+      val responseBodyFuture = response.entity.toStrict(requestConfig.GETResponseEntityTimeout).map(_.data.utf8String)
       val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
       logger.debug(s"Query result: $responseBody")
       responseBody
@@ -121,7 +121,7 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
 
     for {
       response <- Http(system).singleRequest(request)
-      strict <- response.entity.toStrict(requestConfig.getResponseEntityTimeout)
+      strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
     } yield strict.data.utf8String
 
   }
@@ -140,7 +140,7 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
           )
         )
       val response: HttpResponse = Await.result(responseFuture, requestConfig.requestAwaitTime)
-      val responseBodyFuture = response.entity.toStrict(requestConfig.postResponseEntityTimeout).map(_.data).map(_.utf8String)
+      val responseBodyFuture = response.entity.toStrict(requestConfig.POSTResponseEntityTimeout).map(_.data).map(_.utf8String)
       val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
       logger.debug(s"Query result: $responseBody")
       responseBody
@@ -159,7 +159,7 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
     )
     for {
       response <- Http(system).singleRequest(request)
-      strict <- response.entity.toStrict(requestConfig.postResponseEntityTimeout)
+      strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
     } yield {
       val responseBody = strict.data.utf8String
       logger.debug("Query results: {}", responseBody)
@@ -204,7 +204,7 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
         case (tried, _) =>
           Future.fromTry(tried)
       }
-      .mapAsync(1)(_.entity.toStrict(requestConfig.getResponseEntityTimeout))
+      .mapAsync(1)(_.entity.toStrict(requestConfig.GETResponseEntityTimeout))
       .map(_.data.utf8String)
       .toMat(Sink.collection[String, List[String]])(Keep.right)
       .run()
