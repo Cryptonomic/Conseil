@@ -9,7 +9,7 @@ Conseil has two entry points:
 - `src/main/Conseil.scala` runs a server exposing a RESTful API.
 - `src/main/Lorre.scala` is a background process that runs on loop and writes Tezos blockchain data to database.
 
-### Warning 
+### Warning
 
 The Conseil server should be run behind a proxy such as Nginx with TLS enabled through something like LetsEncrypt. Futhermore, [HTTP Strict Transport Security](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and [Certification Authority Authorization](https://en.wikipedia.org/wiki/DNS_Certification_Authority_Authorization) are highly recommended!
 
@@ -22,11 +22,11 @@ The Conseil server should be run behind a proxy such as Nginx with TLS enabled t
 ### Compile
 
 `sbt compile`
-  
+
 ### Package
- 
+
 `sbt assembly`
-  
+
 ### Run
 
 Run the fat JAR with the JRE:
@@ -40,7 +40,7 @@ Run locally using SBT:
 ### Locally test with database [`Docker installation needed]
 The application expects to access a postgres database instance to run.
 
-A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.  
+A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.
 You need to customize the credentials in the YAML file or in your custom configuration [see the following section]
 
 To run the database, from the project root
@@ -53,7 +53,7 @@ To stop the database
 ```bash
 docker-compose down
 ```
-This will stop and remove the container, but will keep the db data in the `pgdata` project folder, 
+This will stop and remove the container, but will keep the db data in the `pgdata` project folder,
 so you can restart the container without losing any information stored.
 
 To clean and restart the db from scratch, simply remove all `pgdata` content while the container is _not running_.
@@ -87,3 +87,6 @@ platforms: {
   }
 }
 ```
+
+## Publishing the artifacts
+If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)
