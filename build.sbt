@@ -68,19 +68,19 @@ fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
 useGpg := true
 
 //sonatype publishing keys
-ThisBuild / sonatypeProfileName := "tech.cryptonomic"
+sonatypeProfileName := "tech.cryptonomic"
 
-ThisBuild / organization := "tech.cryptonomic"
-ThisBuild / organizationName := "Cryptomonic"
-ThisBuild / organizationHomepage := Some(url("https://cryptonomic.tech/"))
+organization := "tech.cryptonomic"
+organizationName := "Cryptomonic"
+organizationHomepage := Some(url("https://cryptonomic.tech/"))
 
-ThisBuild / scmInfo := Some(
+scmInfo := Some(
   ScmInfo(
     url("https://github.com/Cryptonomic/Conseil"),
     "scm:git@github.com:Cryptonomic/Conseil.git"
   )
 )
-ThisBuild / developers := List(
+developers := List(
   Developer(
     id    = "ivanopagano",
     name  = "Ivano Pagano",
@@ -89,12 +89,12 @@ ThisBuild / developers := List(
   )
 )
 
-ThisBuild / description := "Query API for the Tezos blockchain."
-ThisBuild / licenses := List("gpl-3.0" -> new URL("https://www.gnu.org/licenses/gpl-3.0.txt"))
-ThisBuild / homepage := Some(url("https://cryptonomic.tech/"))
+description := "Query API for the Tezos blockchain."
+licenses := List("gpl-3.0" -> new URL("https://www.gnu.org/licenses/gpl-3.0.txt"))
+homepage := Some(url("https://cryptonomic.tech/"))
 
 // Remove all additional repository other than Maven Central from POM
-ThisBuild / pomIncludeRepository := { _ => false }
-ThisBuild / publishMavenStyle := true
-ThisBuild / publishTo := sonatypePublishTo.value
+pomIncludeRepository := { _ => false }
+publishMavenStyle := true
+publishTo := sonatypePublishTo.value
 
