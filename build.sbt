@@ -64,3 +64,37 @@ runLorre := Def.inputTaskDyn {
 
 lazy val genSchema = taskKey[Unit]("A schema generating task.")
 fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
+
+useGpg := true
+
+//sonatype publishing keys
+ThisBuild / sonatypeProfileName := "tech.cryptonomic"
+
+ThisBuild / organization := "tech.cryptonomic"
+ThisBuild / organizationName := "Cryptomonic"
+ThisBuild / organizationHomepage := Some(url("https://cryptonomic.tech/"))
+
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/Cryptonomic/Conseil"),
+    "scm:git@github.com:Cryptonomic/Conseil.git"
+  )
+)
+ThisBuild / developers := List(
+  Developer(
+    id    = "ivanopagano",
+    name  = "Ivano Pagano",
+    email = "ivano.pagano@scalac.io",
+    url   = url("https://github.com/ivanopagano")
+  )
+)
+
+ThisBuild / description := "Query API for the Tezos blockchain."
+ThisBuild / licenses := List("gpl-3.0" -> new URL("https://www.gnu.org/licenses/gpl-3.0.txt"))
+ThisBuild / homepage := Some(url("https://cryptonomic.tech/"))
+
+// Remove all additional repository other than Maven Central from POM
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishMavenStyle := true
+ThisBuild / publishTo := sonatypePublishTo.value
+
