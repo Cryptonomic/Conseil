@@ -259,13 +259,13 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     def blockExists: Block => IO[Boolean] =
       block => {
         val exists = TezosDatabaseOperations.blockExists(block.metadata.hash)
-        futureToIO(exists)
+        futureToIO(dbHandle.run(exists))
       }
 
     def blockHasBeenInvalidated: Block => IO[Boolean] =
       block => {
         val invalidated = TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash)
-        futureToIO(invalidated)
+        futureToIO(dbHandle.run(invalidated))
       }
 
     def predicate: Block => IO[(Boolean, Boolean)] =
