@@ -69,7 +69,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param network    Which Tezos network to go against
     * @param blockHash  the block storing the accounts
     * @param accountIDs the ids
-    * @return           the list of accounts wrapped in a [[Future]]
+    * @return           the list of accounts wrapped in a `Future`
     */
   def getAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[TezosTypes.Account]] =
     node
@@ -93,7 +93,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * Fetches operations for a block, without waiting for the result
     * @param network   Which Tezos network to go against
     * @param blockHash Hash of the block
-    * @return          The [[Future]] list of operations
+    * @return          The Future]] list of `Future`
     */
   def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[OperationGroup]] =
     node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/operations")
@@ -103,7 +103,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * Fetches a single block from the chain, without waiting for the result
     * @param network   Which Tezos network to go against
     * @param hash      Hash of the block
-    * @return          the block data wrapped in a [[Future]]
+    * @return          the block data wrapped in a `Future`
     */
   def getBlock(network: String, hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
     val offsetString = offset.map(_.toString).getOrElse("")
@@ -227,7 +227,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   /**
     * Get accounts for the latest block in the database.
     * @param network  Which Tezos network to go against
-    * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
+    * @return         Accounts with their corresponding block hash, or `None` if no latest block was found
     */
   def getLatestAccounts(network: String): Future[Option[AccountsWithBlockHashAndLevel]] =
     ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).flatMap {

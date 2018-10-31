@@ -53,7 +53,7 @@ object Tezos {
 
 /**
   * Tezos-specific routes.
-  * The mixed-in [[DatabaseApiFiltering]] trait provides the
+  * The mixed-in `DatabaseApiFiltering` trait provides the
   * instances of filtering execution implicitly needed by
   * several Api Operations, based on database querying
   * @param apiExecutionContext is used to call the async operations exposed by the api service
