@@ -51,7 +51,7 @@ trait TezosRPCInterface {
     * Runs an async RPC call against the configured Tezos node using HTTP GET.
     * @param network  Which Tezos network to go against
     * @param command  RPC command to invoke
-    * @return         Result of the RPC call in a [[Future]]
+    * @return         Result of the RPC call in a `Future`
     */
   def runAsyncGetQuery(network: String, command: String): Future[String]
 

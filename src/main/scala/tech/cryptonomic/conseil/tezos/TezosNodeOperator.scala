@@ -125,7 +125,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * Fetches operations for a block, without waiting for the result
     * @param network   Which Tezos network to go against
     * @param blockHash Hash of the block
-    * @return          The [[Future]] list of operations
+    * @return          The `Future` list of operations
     */
   def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[OperationGroup]] =
     node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/operations")
@@ -135,7 +135,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * Fetches a single block from the chain, without waiting for the result
     * @param network   Which Tezos network to go against
     * @param hash      Hash of the block
-    * @return          the block data wrapped in a [[Future]]
+    * @return          the block data wrapped in a `Future`
     */
   def getBlock(network: String, hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
     val offsetString = offset.map(_.toString).getOrElse("")
