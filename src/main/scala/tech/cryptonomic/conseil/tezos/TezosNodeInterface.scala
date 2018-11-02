@@ -32,6 +32,8 @@ trait TezosRPCInterface {
     */
   def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]]
 
+  def createGetQuerySource(network: String, commands: List[String], concurrencyLevel: Int): Source[String, akka.NotUsed]
+
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
     * @param network  Which Tezos network to go against
@@ -223,6 +225,22 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
       .map(_.data.utf8String)
       .toMat(Sink.collection[String, List[String]])(Keep.right)
       .run()
+
+  }
+
+  override def createGetQuerySource(network: String, commands: List[String], concurrencyLevel: Int): Source[String, akka.NotUsed] = {//withRejectionControl {
+    val connections = createHostPoolFlow(network)
+    val uris = Source(commands.map(translateCommandToUrl(network, _)))
+    val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
+
+    uris.map(toRequest)
+      .via(connections)
+      .mapAsync(concurrencyLevel) {
+        case (tried, _) =>
+          Future.fromTry(tried)
+      }
+      .mapAsync(1)(_.entity.toStrict(entityGetTimeout))
+      .map(_.data.utf8String)
 
   }
 }

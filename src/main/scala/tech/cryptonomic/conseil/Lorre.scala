@@ -3,10 +3,13 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
+import akka.stream.scaladsl._
+import akka.stream._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -22,6 +25,7 @@ object Lorre extends App with LazyLogging {
   //keep this import here to make it evident where we spawn our async code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
+  implicit val materializer = ActorMaterializer()
 
   //how long to wait for graceful shutdown of system components
   private[this] val shutdownWait = 10.seconds
@@ -61,7 +65,7 @@ object Lorre extends App with LazyLogging {
   def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      _ <- processTezosBlocks()
+      _ <- streamTezosBlocks()
       _ <- processTezosAccounts()
       _ <-
         if (iteration % feeUpdateInterval == 0)
@@ -93,6 +97,35 @@ object Lorre extends App with LazyLogging {
       case Success(howMany) => logger.info("{} accounts where purged from old block levels.", howMany)
       case Failure(e) => logger.error("Could not purge old block-levels accounts", e)
     }.map(_ => Done)
+  }
+
+  /**
+    * Fetches all blocks not in the database from the Tezos network and adds them to the database.
+    */
+  def streamTezosBlocks(): Future[Done] = {
+    logger.info("Processing Tezos Blocks..")
+
+    val dbWriteSink: Sink[Seq[Block], Future[Done]] = Flow[Seq[Block]].mapAsync(parallelism = 3) {
+      blocks =>
+        db.run(TezosDb.writeBlocks(blocks.toList))
+          .andThen {
+            case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
+            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
+          }
+    }.toMat(Sink.ignore)(Keep.right)
+
+    tezosNodeOperator.streamBlocksNotInDatabase(network)
+      .log(
+        name = "blocks-reading",
+        extract = block => s"received block at level ${block.metadata.header.level}")
+      .withAttributes(
+        Attributes.logLevels(
+          onElement = akka.event.Logging.InfoLevel,
+          onFinish = akka.event.Logging.InfoLevel
+        )
+      ).groupedWithin(100, 10.seconds)
+      .runWith(dbWriteSink)
+
   }
 
   /**

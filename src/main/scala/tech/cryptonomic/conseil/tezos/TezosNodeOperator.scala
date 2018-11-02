@@ -10,6 +10,8 @@ import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import akka.stream.scaladsl._
+
 
 object TezosNodeOperator {
   /**
@@ -203,6 +205,58 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash.value}/operations")
       fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
     } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
+  }
+
+  def streamBlocksNotInDatabase(network: String): Source[Block, Future[akka.NotUsed]] = Source.fromFutureSource(
+      for {
+        topStoredLevel <- ApiOperations.fetchMaxLevel
+        blockHead <- {
+          if (topStoredLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+          getBlockHead(network)
+        }
+        headLevel = blockHead.metadata.header.level
+        headHash = blockHead.metadata.hash
+      } yield {
+        if (headLevel > topStoredLevel)
+          processBlocksStreamed(network, headHash, minLevel = topStoredLevel + 1, maxLevel = headLevel)
+        else
+         Source.empty
+      }
+    )
+
+  /**
+    * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
+    * @param network Which Tezos network to go against
+    * @param hash Hash of block at max level.
+    * @param minLevel Minimum level, at which we stop.
+    * @param maxLevel Level at which to stop collecting blocks.
+    * @return
+    */
+  private def processBlocksStreamed(
+                             network : String,
+                             hash: BlockHash,
+                             minLevel: Int,
+                             maxLevel: Int
+                           ): Source[Block, akka.NotUsed] = {
+    val maxOffset: Int = maxLevel - minLevel
+    val offsets = (0 to maxOffset).toList.map(_.toString)
+    val blockMetadataUrls = offsets.map{offset => s"blocks/${hash.value}~$offset"}
+
+    val jsonToBlockMetadata: String => BlockMetadata =
+      json => fromJson[BlockMetadata](json)
+
+    val jsonToOperationGroups: String => List[OperationGroup] =
+      json => fromJson[List[List[OperationGroup]]](json).flatten
+
+    node.createGetQuerySource(network, blockMetadataUrls, blockOperationsFetchConcurrency)
+      .mapAsync(10) {
+        metadataJson =>
+          val metadata = jsonToBlockMetadata(metadataJson)
+          node.runAsyncGetQuery(network, s"blocks/${metadata.hash.value}/operations").map(
+            operationsJson =>
+              Block(metadata, jsonToOperationGroups(operationsJson))
+          )
+      }
   }
 
   /**
