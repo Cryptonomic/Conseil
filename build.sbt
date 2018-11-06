@@ -48,7 +48,7 @@ fullRunInputTask(conseil, Runtime, "tech.cryptonomic.conseil.Conseil")
 fork in lorre := true
 lazy val lorre = inputKey[Unit]("A lorre run task.")
 javaOptions in lorre ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
-fullRunInputTask(lorre, Runtime, "tech.cryptonomic.conseil.Lorre -Xmx512M -Xss1M -XX:+CMSClassUnloadingEnabled")
+fullRunInputTask(lorre, Runtime, "tech.cryptonomic.conseil.Lorre")
 
 lazy val genSchema = taskKey[Unit]("A schema generating task.")
 fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
