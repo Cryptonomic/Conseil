@@ -37,6 +37,15 @@ Run locally using SBT:
 
 ` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Conseil"`
 
+Or you can use the predefined tasks:
+- for Conseil:
+`sbt -Dconfig.file="{path to custom config file}" runConseil`
+- for Lorre 
+`sbt -Dconfig.file="{path to custom config file}" "runLorre alphanet"`
+- for schema generation
+`sbt -Dconfig.file="{path to custom config file}" genSchema`
+
+
 ### Locally test with database [`Docker installation needed]
 The application expects to access a postgres database instance to run.
 
