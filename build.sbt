@@ -39,3 +39,16 @@ excludeDependencies ++= Seq(
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
 scalacOptions ++= ScalacOptions.common
+
+fork in conseil := true
+lazy val conseil = inputKey[Unit]("A conseil run task.")
+javaOptions in conseil ++= Seq("-Xms512M", "-Xmx4096M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
+fullRunInputTask(conseil, Runtime, "tech.cryptonomic.conseil.Conseil")
+
+fork in lorre := true
+lazy val lorre = inputKey[Unit]("A lorre run task.")
+javaOptions in lorre ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
+fullRunInputTask(lorre, Runtime, "tech.cryptonomic.conseil.Lorre -Xmx512M -Xss1M -XX:+CMSClassUnloadingEnabled")
+
+lazy val genSchema = taskKey[Unit]("A schema generating task.")
+fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
