@@ -48,7 +48,7 @@ object TezosDatabaseOperations extends LazyLogging {
         Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
         Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
         Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
-      )
+      ).transactionally
 
   /**
     * Writes a single block into the invalidated blocks table.

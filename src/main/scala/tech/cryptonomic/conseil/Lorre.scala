@@ -102,6 +102,18 @@ object Lorre extends App with LazyLogging {
     logger.info("Processing Tezos Blocks..")
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
       blocks =>
+        //Future[List[BlockWithAction]] comes in
+        //writing to Blocks and InvalidatedBlocks is transactional?
+        //remove db.run
+        //compose TezosDb.writeBlocks with an additional operation
+        //TezosDb.writeF
+        //blocks.partition (mainChainBlocks, forkedBlocks)
+        //forkedBlocks.partition (revalidated, invalidated)
+        //writeBlocks for mainChain
+        //revalidateBlocks for revalidated
+        //invalidatedBlocks for invalidated
+        //each of the three gives back a DBIO operation, compose using DBIO.seq and transactionally
+        //
         db.run(TezosDb.writeBlocks(blocks)).andThen {
           case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
           case Failure(e) => logger.error(s"Could not write blocks to the database because $e")

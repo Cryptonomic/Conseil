@@ -40,18 +40,20 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * A sum type representing the two types of actions that can happen with a block that is
     * detected during a fork.
     */
-  sealed trait ForkedBlockAction
-  case object RevalidateBlock extends ForkedBlockAction
-  case object WriteAndInvalidateBlock extends ForkedBlockAction
+  sealed trait BlockAction
+  case object RevalidateBlock extends BlockAction
+  case object WriteAndInvalidateBlock extends BlockAction
+  case object WriteBlock extends BlockAction
+
 
   /**
     * A block detected during a fork and it's associated action required for the followFork algorithm.
     * @param block block detected during a fork
     * @param action what action to perform with said block
     */
-  case class ForkedBlockWithAction (
+  case class BlockWithAction (
                                    block: Block,
-                                   action: ForkedBlockAction
+                                   action: BlockAction
                                    )
 
   /**
@@ -186,7 +188,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                 minLevel: Int,
                 maxLevel: Int,
                 startBlockHash: BlockHash = blockHeadHash,
-                followFork: Boolean): Future[List[Block]] = {
+                followFork: Boolean): Future[List[Block]] = { //BlockWithAction
     val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
     val blocksFromFork =
       if (followFork) Future.successful(List.empty)
@@ -210,7 +212,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                              hash: BlockHash,
                              minLevel: Int,
                              maxLevel: Int
-                           ): Future[List[Block]] = {
+                           ): Future[List[Block]] = {//BlockWithAction
     val maxOffset: Int = maxLevel - minLevel
     val offsets = (0 to maxOffset).toList.map(_.toString)
     val blockMetadataUrls = offsets.map{offset => s"blocks/${hash.value}~$offset"}
@@ -247,8 +249,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def followFork(
                   network: String,
                   hash: BlockHash
-                ): IO[Unit] = {
+                ): Future[List[BlockWithAction]] = {
 
+    //Move some function to utils
     def futureToIO[A](f: Future[A]): IO[A] = IO.fromFuture(IO(f))
 
     def runDBIO[A](action: DBIO[A]) = futureToIO(dbHandle.run(action))
@@ -275,22 +278,23 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     Given an offset from the block where the hash was detected, figure out if we need to collect that
     block or perform a write action to our database.
      */
-    def unfoldingFunction(offset: Int): IO[Option[(ForkedBlockWithAction, Int)]] = {
+    def unfoldingFunction(offset: Int): IO[Option[(BlockWithAction, Int)]] = {
 
+      //rename to make more clear
       def f(exists: Boolean,
             invalidated: Boolean,
             block: Block,
-            offset: Int): Option[(ForkedBlockWithAction, Int)] = {
+            offset: Int): Option[(BlockWithAction, Int)] = {
         if (exists && !invalidated) None
           //add logging, because second case should be impossible, you should not have a block that does not exists
           //being invalidated
         else if (!exists && invalidated) None
         else if (exists && invalidated) {
-          val blockWithAction = ForkedBlockWithAction(block, RevalidateBlock)
+          val blockWithAction = BlockWithAction(block, RevalidateBlock)
           Some(blockWithAction, offset + 1)
         }
         else {
-          val blockWithAction = ForkedBlockWithAction(block, WriteAndInvalidateBlock)
+          val blockWithAction = BlockWithAction(block, WriteAndInvalidateBlock)
           Some(blockWithAction, offset + 1)
         }
       }
@@ -309,11 +313,13 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     Given a block, you can either update the invalidatedBlocks table, or write a new block
     to the InvalidatedBlocks table database and collect said block to be returned by the function.
     */
-    val blockStream: Stream[IO, ForkedBlockWithAction] = Stream.unfoldEval(1)(unfoldingFunction)
-    blockStream.evalMap[IO, Unit]{
-      case ForkedBlockWithAction(block, WriteAndInvalidateBlock) => runDBIO(TezosDatabaseOperations.writeAndInvalidateBlockIO(List(block)))
-      case ForkedBlockWithAction(block, RevalidateBlock) => runDBIO(TezosDatabaseOperations.revalidateBlockIO(block)).map(_ => Unit)
-    }.compile.drain
+    val blockStream: Stream[IO, BlockWithAction] = Stream.unfoldEval(1)(unfoldingFunction)
+    // turn blockStream to Future[List[BlockWithAction]]
+    blockStream.compile.toList.unsafeToFuture()
+    /*blockStream.evalMap[IO, Unit]{
+      case BlockWithAction(block, WriteAndInvalidateBlock) => runDBIO(TezosDatabaseOperations.writeAndInvalidateBlockIO(List(block)))
+      case BlockWithAction(block, RevalidateBlock) => runDBIO(TezosDatabaseOperations.revalidateBlockIO(block)).map(_ => Unit)
+    }.compile.drain*/
   }
 
   /**
