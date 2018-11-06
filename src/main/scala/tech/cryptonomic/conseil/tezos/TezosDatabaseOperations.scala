@@ -10,6 +10,7 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
+import scala.util.Try
 
 /**
   * Functions for writing Tezos data to a database.
@@ -53,9 +54,18 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return                     The average fees for a given operation kind, if it exists
     */
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
+    def parseFee(fee: String): Option[Double] =
+      Try(fee.toDouble).fold(
+        error => {
+          logger.error(s"I encountered an invalid fee value during average computation: $fee", error)
+          None
+        },
+        Some(_)
+      )
+
     def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[String], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
-        case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
+        case (fee, _) => fee.flatMap(parseFee).getOrElse(0.0)
       }
       val m: Int = ceil(mean(values)).toInt
       val s: Int = ceil(stdev(values)).toInt
