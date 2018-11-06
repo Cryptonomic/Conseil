@@ -10,6 +10,7 @@ import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import akka.NotUsed
 import akka.stream.scaladsl._
 
 
@@ -266,11 +267,11 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param headerLevel level of given block
     * @return            Accounts with their corresponding block hash
     */
-  def getAccounts(network: String, blockHash: BlockHash, headerLevel: Int): Future[AccountsWithBlockHashAndLevel] = {
+  def getAccounts(network: String, blockHash: BlockHash, headerLevel: Int): Future[AccountsForBlock] = {
     val results =
       getAllAccountsForBlock(network, blockHash).map(
         accounts =>
-          AccountsWithBlockHashAndLevel(blockHash, headerLevel, accounts)
+          AccountsForBlock(blockHash, headerLevel, accounts)
       )
     results.failed.foreach(
       e => logger.error(s"Could not get a list of accounts for block $blockHash", e)
@@ -283,15 +284,42 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param network  Which Tezos network to go against
     * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
     */
-  def getLatestAccounts(network: String): Future[Option[AccountsWithBlockHashAndLevel]] =
+  def getLatestAccounts(network: String): Future[Option[AccountsForBlock]] =
     ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).flatMap {
       case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
         getAccounts(network, BlockHash(latestBlock.hash), latestBlock.level).map(Some(_))
       case (Some(latestBlock), _) =>
-        Future.successful(Some(AccountsWithBlockHashAndLevel(BlockHash(latestBlock.hash), latestBlock.level)))
+        Future.successful(Some(AccountsForBlock(BlockHash(latestBlock.hash), latestBlock.level)))
       case _ =>
         Future.successful(None)
     }
+
+  def streamLatestAccounts(network: String): Future[Option[Source[AccountAtBlock, NotUsed]]] =
+    ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).map {
+      case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
+        Some(getAccountStream(network, BlockHash(latestBlock.hash), latestBlock.level))
+      case (Some(latestBlock), _) =>
+        Some(Source.empty[AccountAtBlock])
+      case _ =>
+        None
+    }
+
+  def getAccountStream(network: String, hash: BlockHash, level: Int): Source[AccountAtBlock, NotUsed] = {
+    val blockContractsUrl = s"blocks/${hash.value}/context/contracts"
+
+    val futureJsonStream = for {
+      jsonEncodedAccounts <- node.runAsyncGetQuery(network, blockContractsUrl)
+      (accountIDs, accountUrls) = fromJson[List[String]](jsonEncodedAccounts)
+                                    .map(id => (AccountId(id), s"$blockContractsUrl/$id"))
+                                    .unzip
+    } yield Source(accountIDs).zip(node.createGetQuerySource(network, accountUrls, accountsFetchConcurrency))
+
+    Source.fromFutureSource(futureJsonStream)
+      .map {
+        case (id, json) =>
+          AccountAtBlock(id, hash, level, fromJson[TezosTypes.Account](json))
+      }.mapMaterializedValue(_ => NotUsed)
+  }
 
   /**
     * Appends a key reveal operation to an operation group if needed.

@@ -509,7 +509,7 @@ class TezosDatabaseOperationsTest
   }
 
   /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsWithBlockHashAndLevel = {
+  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsForBlock = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -528,7 +528,7 @@ class TezosDatabaseOperationsTest
         )
     }.toMap
 
-    AccountsWithBlockHashAndLevel(blockHash, blockLevel, accounts)
+    AccountsForBlock(blockHash, blockLevel, accounts)
   }
 
   /* randomly populate a number of blocks based on a level range */

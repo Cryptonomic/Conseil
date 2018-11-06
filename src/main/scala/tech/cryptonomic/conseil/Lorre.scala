@@ -66,7 +66,7 @@ object Lorre extends App with LazyLogging {
     val noOp = Future.successful(())
     val processing = for {
       _ <- streamTezosBlocks()
-      _ <- processTezosAccounts()
+      _ <- streamTezosAccounts()
       _ <-
         if (iteration % feeUpdateInterval == 0)
           FeeOperations.processTezosAverageFees()
@@ -159,6 +159,41 @@ object Lorre extends App with LazyLogging {
           case Success(_) => logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
           case Failure(e) => logger.error("Could not write accounts to the database", e)
         }.map(_ => Done)
+      case None =>
+        logger.info("No latest block to update, no accounts will be added to the database")
+        Future.successful(Done)
+    }.andThen {
+      case Failure(e) =>
+        logger.error("Could not fetch accounts from client", e)
+    }
+  }
+
+  def streamTezosAccounts(): Future[Done] = {
+    logger.info("Processing latest Tezos accounts data..")
+    tezosNodeOperator.streamLatestAccounts(network).flatMap {
+      case Some(accountsSource) =>
+
+        val dbWriteSink: Sink[Seq[AccountAtBlock], Future[Done]] = Flow[Seq[AccountAtBlock]].mapAsync(parallelism = 3) {
+          accounts =>
+            db.run(TezosDb.writeAccounts(accounts.toList))
+              .andThen {
+                case Success(_) => logger.info("Wrote {} accounts to the database", accounts.size)
+                case Failure(e) => logger.error("Could not write accounts to the database because", e)
+              }
+        }.toMat(Sink.ignore)(Keep.right)
+
+        accountsSource.log(
+          name = "accounts-reading",
+          extract = account => s"received account id ${account.id}"
+        )
+        .withAttributes(
+          Attributes.logLevels(
+            onElement = akka.event.Logging.InfoLevel,
+            onFinish = akka.event.Logging.InfoLevel
+          )
+        ).groupedWithin(100, 30.seconds)
+        .runWith(dbWriteSink)
+
       case None =>
         logger.info("No latest block to update, no accounts will be added to the database")
         Future.successful(Done)
