@@ -57,7 +57,7 @@ object TezosDatabaseOperations extends LazyLogging {
     def parseFee(fee: String): Option[Double] =
       Try(fee.toDouble).fold(
         error => {
-          logger.error(s"I encountered an invalid fee value during average computation: $fee", error)
+          logger.error("I encountered an invalid fee value during average computation: '{}'", fee)
           None
         },
         Some(_)
