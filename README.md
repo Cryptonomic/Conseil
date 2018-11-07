@@ -37,7 +37,7 @@ Run locally using SBT:
 
 ` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Conseil"`
 
-Or you can use the predefined tasks:
+Or you can use the predefined tasks which are custom-tailored with VM launch configuration that's best suited for the actual task:
 - for Conseil:
 `sbt -Dconfig.file="{path to custom config file}" runConseil`
 - for Lorre 
