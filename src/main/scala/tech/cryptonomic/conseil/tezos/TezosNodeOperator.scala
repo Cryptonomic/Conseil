@@ -17,8 +17,6 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 import slick.jdbc.PostgresProfile.api._
 
 import cats._
-import cats.instances.future._
-import cats.syntax.applicative._
 import cats.effect.IO
 import fs2.Stream
 
@@ -161,7 +159,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return           Blocks
     */
-  def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[Block]] =
+  def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[BlockWithAction]] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
       blockHead <- {
@@ -188,7 +186,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                 minLevel: Int,
                 maxLevel: Int,
                 startBlockHash: BlockHash = blockHeadHash,
-                followFork: Boolean): Future[List[Block]] = { //BlockWithAction
+                followFork: Boolean): Future[List[BlockWithAction]] = { //BlockWithAction
     val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
     val blocksFromFork =
       if (followFork) Future.successful(List.empty)
@@ -212,7 +210,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                              hash: BlockHash,
                              minLevel: Int,
                              maxLevel: Int
-                           ): Future[List[Block]] = {//BlockWithAction
+                           ): Future[List[BlockWithAction]] = {//BlockWithAction
     val maxOffset: Int = maxLevel - minLevel
     val offsets = (0 to maxOffset).toList.map(_.toString)
     val blockMetadataUrls = offsets.map{offset => s"blocks/${hash.value}~$offset"}
@@ -231,7 +229,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash.value}/operations")
       fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
-    } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled)
+    } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled).map(block => BlockWithAction(block, WriteBlock))
   }
 
   /**

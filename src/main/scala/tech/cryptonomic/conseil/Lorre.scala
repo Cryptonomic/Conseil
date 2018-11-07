@@ -7,6 +7,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -102,19 +103,16 @@ object Lorre extends App with LazyLogging {
     logger.info("Processing Tezos Blocks..")
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
       blocks =>
-        //Future[List[BlockWithAction]] comes in
-        //writing to Blocks and InvalidatedBlocks is transactional?
-        //remove db.run
-        //compose TezosDb.writeBlocks with an additional operation
-        //TezosDb.writeF
-        //blocks.partition (mainChainBlocks, forkedBlocks)
-        //forkedBlocks.partition (revalidated, invalidated)
-        //writeBlocks for mainChain
-        //revalidateBlocks for revalidated
-        //invalidatedBlocks for invalidated
-        //each of the three gives back a DBIO operation, compose using DBIO.seq and transactionally
-        //
-        db.run(TezosDb.writeBlocks(blocks)).andThen {
+        val (mainChainBlocksWithAction, forkedBlocksWithAction) = blocks.partition(b => b.action == tezosNodeOperator.WriteBlock)
+        val (invalidatedBlocksWithAction, revalidatedBlocksWithAction) = forkedBlocksWithAction.partition(b => b.action == tezosNodeOperator.WriteAndInvalidateBlock)
+        val mainChainBlocks = mainChainBlocksWithAction.map(_.block)
+        val invalidatedBlocks = invalidatedBlocksWithAction.map(_.block)
+        val revalidatedBlocks = revalidatedBlocksWithAction.map(_.block)
+        val dbAction = DBIO.seq(
+          TezosDb.writeBlocks(mainChainBlocks),
+          TezosDb.writeAndInvalidateBlockIO(invalidatedBlocks),
+          TezosDb.revalidateBlocksIO(revalidatedBlocks)).transactionally
+        db.run(dbAction).andThen {
           case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
           case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
         }.map(_ => Done)

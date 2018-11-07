@@ -9,6 +9,9 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
+import cats._
+import cats.data._
+import cats.implicits._
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 
@@ -74,6 +77,10 @@ object TezosDatabaseOperations extends LazyLogging {
     val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash.value).map(block => block.isInvalidated).update(false)
     invalidatedAction zip revalidatedAction
   }.transactionally
+
+  def revalidateBlocksIO(blocks: List[Block]): DBIO[List[(Int, Int)]] = {
+    blocks.traverse(revalidateBlockIO)
+  }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
