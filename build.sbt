@@ -52,7 +52,6 @@ lazy val runLorre = inputKey[Unit]("A lorre run task.")
 javaOptions ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runLorre := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed
-  javaOptions.in(runLorre).value.foreach(println)
   runInputTask(Runtime, "tech.cryptonomic.conseil.Lorre", args:_*).toTask("")
 }.evaluated
 
