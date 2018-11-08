@@ -8,6 +8,8 @@ import scala.collection.JavaConverters._
 
 object ServiceOperations {
 
+  final case class Counts(blocks: Int, accounts: Int, operationGroups: Int, operations: Int, fees: Int)
+
   final case class Network(name: String, displayName: String, platform: String, network: String)
 
   final case class Entity(name: String, displayName: String, count: Int, network: String)
@@ -23,50 +25,39 @@ object ServiceOperations {
   }
 
   def getEntities(network: String)(implicit ec: ExecutionContext): Future[List[Entity]] = {
-    val blocksCountFut = ApiOperations.countBlocks
-    val accountsCountFut = ApiOperations.countAccounts
-    val operationGroupsCountFut = ApiOperations.countBlocks
-    val operationsCountFut = ApiOperations.countAccounts
-    val feesCountFut = ApiOperations.countFees
-
-    for {
-      blocksCount <- blocksCountFut
-      accountsCount <- accountsCountFut
-      operationGroupsCount <- operationGroupsCountFut
-      operationsCount <- operationsCountFut
-      feesCount <- feesCountFut
-    } yield
+    ApiOperations.countAll.map { counts =>
       List(
         Entity(
           name = "blocks",
           displayName = "Blocks",
-          count = blocksCount,
+          count = counts.blocks,
           network = network
         ),
         Entity(
           name = "accounts",
           displayName = "Accounts",
-          count = accountsCount,
+          count = counts.accounts,
           network = network
         ),
         Entity(
           name = "operation_groups",
           displayName = "Operation Groups",
-          count = operationGroupsCount,
+          count = counts.operationGroups,
           network = network
         ),
         Entity(
           name = "operations",
           displayName = "Operations",
-          count = operationsCount,
+          count = counts.operations,
           network = network
         ),
         Entity(
           name = "avgFees",
           displayName = "Fees",
-          count = feesCount,
+          count = counts.fees,
           network = network
         )
       )
+    }
   }
 }

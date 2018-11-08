@@ -1,18 +1,16 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller, ToResponseMarshaller, ToResponseMarshallable}
-import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
-import akka.http.scaladsl.server.{Directive, Route, StandardRoute}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{Directive, Route}
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos._
-import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
-import tech.cryptonomic.conseil.util.JsonUtil
+import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.util.RoutesUtil
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /** Provides useful route and directive definitions */
 object Tezos {
@@ -58,42 +56,15 @@ object Tezos {
   * several Api Operations, based on database querying
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering {
+class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with RoutesUtil {
 
   import Tezos._
-  import JsonUtil.{toJson, JsonString}
 
   /*
    * reuse the same context as the one for ApiOperations calls
    * as long as it doesn't create issues or performance degradation
    */
   override val asyncApiFiltersExecutionContext = apiExecutionContext
-
-  //add the correct content-type for [[JsonUtil]]-converted values
-  implicit private val jsonMarshaller: ToEntityMarshaller[JsonString] =
-    PredefinedToEntityMarshallers.StringMarshaller
-      .compose((_: JsonString).json)
-      .wrap(MediaTypes.`application/json`)(identity _)
-
-  /*
-   * Allow generic handling of optional results, embedded in async computations.
-   * In addition to converting any missing result to a NotFound http code, it allows to convert the existing content
-   * to something which is marshallable as a response
-   * @param operation is the computation that will provide, as soon as available, an optional result
-   * @param converter a final conversion function to turn the original T, when available to a marshallable result,
-   *        by default the function converts to a [[JsonString]]
-   * @param T the type of the possible result of the async computation
-   * @param R the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
-   */
-  private def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _): Future[ToResponseMarshallable] =
-    operation.map {
-      case Some(content) => converter(content)
-      case None => StatusCodes.NotFound
-    }
-
-  /* converts the future value to [[JsonString]] and completes the call */
-  private def completeWithJson[T](futureValue: Future[T]): StandardRoute =
-    complete(futureValue.map(toJson[T]))
 
   /** expose filtered results through rest endpoints */
   val route: Route = pathPrefix(Segment) { network =>

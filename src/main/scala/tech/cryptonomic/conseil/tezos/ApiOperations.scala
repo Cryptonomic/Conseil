@@ -3,7 +3,8 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
+import tech.cryptonomic.conseil.tezos.ServiceOperations.Counts
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -282,24 +283,23 @@ object ApiOperations {
           .headOption
     )
 
-  /**Counts accounts in the db**/
-  def countAccounts: Future[Int] =
-    dbHandle.run(TezosDb.countAcounts)
 
-  /**Counts accounts in the db**/
-  def countBlocks: Future[Int] =
-    dbHandle.run(TezosDb.countBlocks)
+  /**
+    * Counts all entities in the db
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
+    * @return Count with all amounts
+    */
+  def countAll(implicit ec: ExecutionContext): Future[Counts] = {
+    dbHandle.run {
+      for {
+        blocks <- TezosDb.count(Tables.Blocks)
+        accounts <- TezosDb.count(Tables.Accounts)
+        operationGroups <- TezosDb.count(Tables.OperationGroups)
+        operations <- TezosDb.count(Tables.Operations)
+        fees <- TezosDb.count(Tables.Fees)
+      } yield (blocks, accounts, operationGroups, operations, fees)
+    }.map(Counts.tupled)
+  }
 
-  /**Counts accounts in the db**/
-  def countOperations: Future[Int] =
-    dbHandle.run(TezosDb.countOperations)
-
-  /**Counts accounts in the db**/
-  def countOperationGroups: Future[Int] =
-    dbHandle.run(TezosDb.countOperationGroups)
-
-  /**Counts accounts in the db**/
-  def countFees: Future[Int] =
-    dbHandle.run(TezosDb.countFees)
 }
 
