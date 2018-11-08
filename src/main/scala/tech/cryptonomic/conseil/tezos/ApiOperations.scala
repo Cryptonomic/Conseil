@@ -282,5 +282,24 @@ object ApiOperations {
           .headOption
     )
 
+  /**Counts accounts in the db**/
+  def countAccounts: Future[Int] =
+    dbHandle.run(TezosDb.countAcounts)
+
+  /**Counts accounts in the db**/
+  def countBlocks: Future[Int] =
+    dbHandle.run(TezosDb.countBlocks)
+
+  /**Counts accounts in the db**/
+  def countOperations: Future[Int] =
+    dbHandle.run(TezosDb.countOperations)
+
+  /**Counts accounts in the db**/
+  def countOperationGroups: Future[Int] =
+    dbHandle.run(TezosDb.countOperationGroups)
+
+  /**Counts accounts in the db**/
+  def countFees: Future[Int] =
+    dbHandle.run(TezosDb.countFees)
 }
 

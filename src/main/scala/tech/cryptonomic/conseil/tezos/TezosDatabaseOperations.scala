@@ -250,4 +250,23 @@ object TezosDatabaseOperations extends LazyLogging {
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
+  /**Counts amount of blocks in the db**/
+  private[tezos] def countBlocks: DBIO[Int] =
+    Tables.Blocks.length.result
+
+  /**Counts amount of accounts in the db**/
+  private[tezos] def countAcounts: DBIO[Int] =
+    Tables.Accounts.length.result
+
+  /**Counts amount of operations in the db**/
+  private[tezos] def countOperations: DBIO[Int] =
+    Tables.Operations.length.result
+
+  /**Counts amount of operation groups in the db**/
+  private[tezos] def countOperationGroups: DBIO[Int] =
+    Tables.OperationGroups.length.result
+
+  /**Counts amount of fees in the db**/
+  private[tezos] def countFees: DBIO[Int] =
+    Tables.Fees.length.result
 }

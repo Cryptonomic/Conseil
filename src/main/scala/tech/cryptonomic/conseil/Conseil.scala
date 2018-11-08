@@ -45,7 +45,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
           }
         } ~ logRequest("Service route", Logging.DebugLevel) {
           pathPrefix("service") {
-            new Service(conf).route
+            Service(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
           }
         }
       } ~ options {
