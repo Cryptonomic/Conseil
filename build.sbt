@@ -42,10 +42,13 @@ scalacOptions ++= ScalacOptions.common
 
 import complete.DefaultParsers._
 
-lazy val runConseil = taskKey[Unit]("A conseil run task.")
+lazy val runConseil = inputKey[Unit]("A conseil run task.")
 fork in runConseil := true
 javaOptions in runConseil ++= Seq("-Xms512M", "-Xmx4096M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
-fullRunTask(runConseil, Runtime, "tech.cryptonomic.conseil.Conseil")
+runConseil := Def.inputTaskDyn {
+  val args = spaceDelimited("").parsed
+  runInputTask(Runtime, "tech.cryptonomic.conseil.Conseil", args:_*).toTask("")
+}.evaluated
 
 lazy val runLorre = inputKey[Unit]("A lorre run task.")
 fork in runLorre := true
