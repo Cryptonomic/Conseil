@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.Config
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.JavaConverters._
 
 
@@ -22,7 +22,7 @@ object ServiceOperations {
     }.toList
   }
 
-  def getEntities(network: String): Future[List[Entity]] = {
+  def getEntities(network: String)(implicit ec: ExecutionContext): Future[List[Entity]] = {
     val blocksCountFut = ApiOperations.countBlocks
     val accountsCountFut = ApiOperations.countAccounts
     val operationGroupsCountFut = ApiOperations.countBlocks
