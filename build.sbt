@@ -1,5 +1,4 @@
 name := "Conseil"
-version := "0.0.1"
 scalaVersion := "2.12.4"
 
 val akkaHttpVersion = "10.1.0"
@@ -40,6 +39,27 @@ assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
 scalacOptions ++= ScalacOptions.common
 
+//uses git tags to generate the project version
+//see https://github.com/sbt/sbt-git#versioning-with-git
+enablePlugins(GitVersioning)
+
+/* The versioning scheme is
+ *  - use a major number as the platform version
+ *  - add a date in form of yymm
+ *  - use the latest git tag formatted as "rel-xyz" and take the numbers from xyz
+ * Compose the three separated by "dots" to have the version that will be released
+ * The Git plugin will add a trailing "-SNAPSHOT" if there are locally uncommitted changes
+ */
+val majorVersion = 1
+
+//defines how to extract the version from git tagging
+git.gitTagToVersionNumber := { tag: String =>
+  if(tag matches "^rel-.+")
+    Some(Versioning.generate(major = majorVersion, date = java.time.LocalDate.now, tag = tag))
+  else
+    None
+}
+
 useGpg := true
 
 //sonatype publishing keys
@@ -55,6 +75,7 @@ scmInfo := Some(
     "scm:git@github.com:Cryptonomic/Conseil.git"
   )
 )
+//should fill this up with whoever needs to appear there
 developers := List(
   Developer(
     id    = "ivanopagano",
