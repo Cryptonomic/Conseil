@@ -18,6 +18,9 @@ import scala.concurrent.ExecutionContext
 //Network: network-specific subtype, in the case of Tezos, one of mainnet, zeronet, alphanet
 
 class Service(config: Config)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging {
+
+  case class Network(name: String, platform: String, network: String)
+
   implicit private val jsonMarshaller: ToEntityMarshaller[JsonString] =
     PredefinedToEntityMarshallers.StringMarshaller
       .compose((_: JsonString).json)
@@ -28,16 +31,19 @@ class Service(config: Config)(implicit apiExecutionContext: ExecutionContext) ex
     get {
       pathPrefix("networks") {
         pathEnd {
-          getNetworks
-          complete(toJson(""))
+          complete(toJson(getNetworks))
         }
       }
     }
 
 
-  def getNetworks = {
-    config.getConfig("platforms").entrySet().asScala.map(_.getKey).foreach {
-      case k  => println(k)
-    }
+  private def getNetworks = {
+    config.getObject("platforms").asScala.flatMap {
+      case (platform, v) =>
+        v.atKey(platform).getObject(platform).asScala.map {
+          case (network, _) =>
+            Network(network, platform, network)
+        }.toList
+    }.toList
   }
 }
