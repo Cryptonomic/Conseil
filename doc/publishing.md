@@ -93,3 +93,4 @@ You can find detailed information here:
  - [sbt-pgp instructions](https://www.scala-sbt.org/sbt-pgp/usage.html)
  - [sbt docs on sonatype publishing](https://www.scala-sbt.org/release/docs/Using-Sonatype.html)
  - [sbt docs on publishing artifacts](https://www.scala-sbt.org/1.x/docs/Publishing.html)
+ - [sbt-git repository](https://github.com/sbt/sbt-git)
