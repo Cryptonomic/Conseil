@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait RoutesUtil {
 
-  implicit val jsonMarshaller: ToEntityMarshaller[JsonString] =
+  implicit protected val jsonMarshaller: ToEntityMarshaller[JsonString] =
     PredefinedToEntityMarshallers.StringMarshaller
       .compose((_: JsonString).json)
       .wrap(MediaTypes.`application/json`)(identity _)
@@ -25,7 +25,7 @@ trait RoutesUtil {
    * @param T the type of the possible result of the async computation
    * @param R the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
    */
-  def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _)
+  protected def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _)
     (implicit ec: ExecutionContext): Future[ToResponseMarshallable] =
     operation.map {
       case Some(content) => converter(content)
@@ -33,7 +33,7 @@ trait RoutesUtil {
     }
 
   /* converts the future value to [[JsonString]] and completes the call */
-  def completeWithJson[T](futureValue: Future[T])(implicit ec: ExecutionContext): StandardRoute =
+  protected def completeWithJson[T](futureValue: Future[T])(implicit ec: ExecutionContext): StandardRoute =
     complete(futureValue.map(toJson[T]))
 
 }

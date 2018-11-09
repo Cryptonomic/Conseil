@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.ServiceOperations.Counts
+import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations.Counts
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
@@ -291,6 +291,7 @@ object ApiOperations {
     */
   def countAll(implicit ec: ExecutionContext): Future[Counts] = {
     dbHandle.run {
+      //Tables.schema
       for {
         blocks <- TezosDb.count(Tables.Blocks)
         accounts <- TezosDb.count(Tables.Accounts)

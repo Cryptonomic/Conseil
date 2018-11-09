@@ -6,7 +6,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.JavaConverters._
 
 
-object ServiceOperations {
+object PlatformDiscoveryOperations {
 
   final case class Counts(blocks: Int, accounts: Int, operationGroups: Int, operations: Int, fees: Int)
 
