@@ -62,7 +62,31 @@ Note: If your project version has `SNAPSHOT` suffix, your project will be publis
 
 Additional [commands](https://github.com/xerial/sbt-sonatype#available-commands) are available
 
-## Further references
+## Releasing with the Integration Environment (CI)
+The project is using the `sbt-git` plugin, which allows to use Git directly from the build tool, and to derive the current project version based on the source git repo attributes (tags, commits, ...)
+
+The versioning scheme is
+ * use a major number as the platform version (e.g. `1`, `2`, ...)
+ * add a date reference in form of `YYWW` (year + week in year)
+ * use the latest git tag formatted as `ci-release-<xyz>` and take the numbers from `xyz`, increasing it
+ * Compose the three separated by "dots" to have the version that will be released (e.g. `1.1845.0002`)
+ * The Git plugin will add a trailing `-SNAPSHOT` if there are locally uncommitted changes
+
+Everything should be semi-automated through some CI environment command
+
+The environment would need sbt, Git and gnupg installed (with proper credentials for sonatype)
+A script should sign, publish and release the new artifact
+```bash
+git clone <conseil-git-repo-master-branch> && \
+sbt clean test publishSigned sonatypeRelease && \
+sbt tagRelease
+```
+The `sonatypeRelease` step might be postponed to check if the sonatype staging artifact is correct and all that.
+
+The `tagRelase` task would read the current version to tag and commit the next `ci-release-<n+1>` on the repo.
+
+---
+## Additional references
 You can find detailed information here:
 
  - [sbt-sonatype instructions](https://github.com/xerial/sbt-sonatype)
