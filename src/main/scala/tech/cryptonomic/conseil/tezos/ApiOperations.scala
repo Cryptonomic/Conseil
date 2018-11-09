@@ -291,7 +291,6 @@ object ApiOperations {
     */
   def countAll(implicit ec: ExecutionContext): Future[Counts] = {
     dbHandle.run {
-      //Tables.schema
       for {
         blocks <- TezosDb.count(Tables.Blocks)
         accounts <- TezosDb.count(Tables.Accounts)
