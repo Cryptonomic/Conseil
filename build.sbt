@@ -52,13 +52,40 @@ enablePlugins(GitVersioning)
  */
 val majorVersion = 0
 
+/* This allows to extract versions from past tags, not directly applied to
+ * the current commit
+ */
+git.useGitDescribe := true
+
 //defines how to extract the version from git tagging
 git.gitTagToVersionNumber := { tag: String =>
-  if(tag matches "^ci-release-.+")
+  if(Versioning.releasePattern.findAllIn(tag).nonEmpty)
     Some(Versioning.generate(major = majorVersion, date = java.time.LocalDate.now, tag = tag))
   else
     None
 }
+
+//custom task to create a new release tag
+lazy val prepareReleaseTag = taskKey[String]("Use the current version to define a git-tag for a new release")
+prepareReleaseTag := Versioning.prepareReleaseTagDef.value
+
+/* A command to call the "git tag" commands (from sbt-git) with custom args.
+ * Allows any automated environment (e.g. jenkins, travis) to call
+ * "sbt gitTag" when a new release has been just published, thus bumping the versioning
+ * tag and pushing to git
+ * In turn, sbt will pick it up for the new version definition
+ */
+lazy val gitTagCommand = Command.command("gitTag") { state =>
+  val extracted = Project.extract(state)
+  val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
+  //we might want to check out only for non-snapshots?
+  println(s"About to tag the new release as '$tag'")
+  //we might want to read the message from the env or from a local file
+  val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
+  Command.process(command, state2)
+}
+
+ThisBuild / commands += gitTagCommand
 
 useGpg := true
 
@@ -93,4 +120,3 @@ homepage := Some(url("https://cryptonomic.tech/"))
 pomIncludeRepository := { _ => false }
 publishMavenStyle := true
 publishTo := sonatypePublishTo.value
-
