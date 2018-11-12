@@ -79,11 +79,13 @@ A script should sign, publish and release the new artifact
 ```bash
 git clone <conseil-git-repo-master-branch> && \
 sbt clean test publishSigned sonatypeRelease && \
-sbt tagRelease
+sbt gitTag
 ```
 The `sonatypeRelease` step might be postponed to check if the sonatype staging artifact is correct and all that.
 
-The `tagRelase` task would read the current version to tag and commit the next `ci-release-<n+1>` on the repo.
+The `gitTag` task would read the current version to tag and commit the next `ci-release-<n+1>` on the _local_ repo.
+
+**Important**: the same user should `git push origin --tags` to finally complete the process, after ensuring that the generated tag matches the expectations.
 
 ---
 ## Additional references
