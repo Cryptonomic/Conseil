@@ -78,16 +78,16 @@ object PlatformDiscoveryOperations {
 
 
   private def mapType(tpe: String): DataType = {
+    val optionRegex = "Option\\[([A-Za-z0-9']+)\\]".r
     tpe match {
       case "java.sql.Timestamp'" => DataType.DateTime
       case "String'" => DataType.String
       case "Int'" => DataType.Int
       case "Long'" => DataType.LargeInt
       case "Float'" | "Double'" | "scala.math.BigDecimal'" => DataType.Decimal
-      case "Boolean" => DataType.Boolean
-      case x if x.startsWith("Option[") => mapType(x.drop(7).dropRight(1))
+      case "Boolean'" => DataType.Boolean
+      case optionRegex(t) => mapType(t)
       case _ => DataType.String
     }
   }
-
 }
