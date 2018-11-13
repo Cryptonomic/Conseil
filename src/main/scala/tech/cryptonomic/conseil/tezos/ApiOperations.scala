@@ -290,11 +290,11 @@ object ApiOperations {
   def countAll(implicit ec: ExecutionContext): Future[Map[String, Int]] = {
     dbHandle.run {
       for {
-        blocks <- TezosDb.count(Tables.Blocks)
-        accounts <- TezosDb.count(Tables.Accounts)
-        operationGroups <- TezosDb.count(Tables.OperationGroups)
-        operations <- TezosDb.count(Tables.Operations)
-        fees <- TezosDb.count(Tables.Fees)
+        blocks <- TezosDb.countRows(Tables.Blocks)
+        accounts <- TezosDb.countRows(Tables.Accounts)
+        operationGroups <- TezosDb.countRows(Tables.OperationGroups)
+        operations <- TezosDb.countRows(Tables.Operations)
+        fees <- TezosDb.countRows(Tables.Fees)
       } yield
         Map(
           Tables.Blocks.baseTableRow.tableName -> blocks,

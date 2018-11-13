@@ -15,7 +15,7 @@ trait RoutesUtil {
       .compose((_: JsonString).json)
       .wrap(MediaTypes.`application/json`)(identity _)
 
-  /*
+  /**
    * Allow generic handling of optional results, embedded in async computations.
    * In addition to converting any missing result to a NotFound http code, it allows to convert the existing content
    * to something which is marshallable as a response
@@ -32,7 +32,7 @@ trait RoutesUtil {
       case None => StatusCodes.NotFound
     }
 
-  /* converts the future value to [[JsonString]] and completes the call */
+  /** converts the future value to [[JsonString]] and completes the call */
   protected def completeWithJson[T](futureValue: Future[T])(implicit ec: ExecutionContext): StandardRoute =
     complete(futureValue.map(toJson[T]))
 

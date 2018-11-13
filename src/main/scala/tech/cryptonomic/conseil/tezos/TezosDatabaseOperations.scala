@@ -251,7 +251,7 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Blocks.exists.result
 
   /** count number of the elements in the table */
-  def count(table: TableQuery[_]): DBIO[Int] =
+  def countRows(table: TableQuery[_]): DBIO[Int] =
     table.length.result
 
   // Slick did not let me to this any other way
