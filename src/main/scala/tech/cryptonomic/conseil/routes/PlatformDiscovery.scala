@@ -24,6 +24,8 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
           pathPrefix("entities") {
             pathEnd {
               completeWithJson(PlatformDiscoveryOperations.getEntities(network))
+            }  ~ pathPrefix(Segment) { entity =>
+              completeWithJson(PlatformDiscoveryOperations.tableAttributes(entity))
             }
           }
         }
