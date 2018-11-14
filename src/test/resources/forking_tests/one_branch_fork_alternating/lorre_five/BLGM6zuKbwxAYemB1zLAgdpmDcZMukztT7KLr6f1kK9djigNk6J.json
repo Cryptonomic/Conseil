@@ -1,0 +1,231 @@
+{
+  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+  "chain_id": "NetXw7kCvfAKjhj",
+  "hash": "BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J",
+  "header": {
+    "level": 6,
+    "proto": 1,
+    "predecessor": "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp",
+    "timestamp": "2018-08-20T16:54:48Z",
+    "validation_pass": 4,
+    "operations_hash": "LLoZuebth2Bf1bknVRchHVJpi43kyABAPQ8QGDdgXihrv3y3pYBNj",
+    "fitness": [
+      "00",
+      "000000000000004f"
+    ],
+    "context": "CoVbNbWd4G286y3HqJhp3wzDQafGzCHHtu5vezeaSsCxL9wpc3cX",
+    "priority": 1,
+    "proof_of_work_nonce": "f4d3721556bfe9aa",
+    "signature": "signWXEtpa5hNTH4vZg9osEyvc3kgsn5b69t3xMhYpcugPPZhbMJ7tLKeKC8NviUcMwvJ8pfRohASrgjQmEFXaFX2GqN3mrn"
+  },
+  "metadata": {
+    "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+    "next_protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+    "test_chain_status": {
+      "status": "not_running"
+    },
+    "max_operations_ttl": 9,
+    "max_operation_data_length": 16384,
+    "max_block_header_length": 238,
+    "max_operation_list_length": [
+      {
+        "max_size": 32768,
+        "max_op": 32
+      },
+      {
+        "max_size": 32768
+      },
+      {
+        "max_size": 135168,
+        "max_op": 132
+      },
+      {
+        "max_size": 524288
+      }
+    ],
+    "baker": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+    "level": {
+      "level": 9,
+      "level_position": 8,
+      "cycle": 0,
+      "cycle_position": 8,
+      "voting_period": 0,
+      "voting_period_position": 8,
+      "expected_commitment": false
+    },
+    "voting_period_kind": "proposal",
+    "nonce_hash": null,
+    "consumed_gas": "0",
+    "deactivated": [],
+    "balance_updates": [
+      {
+        "kind": "contract",
+        "contract": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+        "change": "-512000000"
+      },
+      {
+        "kind": "freezer",
+        "category": "deposits",
+        "delegate": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+        "level": 0,
+        "change": "512000000"
+      },
+      {
+        "kind": "freezer",
+        "category": "rewards",
+        "delegate": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+        "level": 0,
+        "change": "16000000"
+      }
+    ]
+  },
+  "operations": [
+    [
+      {
+        "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+        "chain_id": "NetXw7kCvfAKjhj",
+        "hash": "opAafdHTzJTjM5PAiBjKVCKPyazWDcHnQk8gjKe4kfSBdV3wgor",
+        "branch": "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1",
+        "contents": [
+          {
+            "kind": "endorsement",
+            "level": 8,
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+                  "change": "-768000000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "deposits",
+                  "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+                  "level": 0,
+                  "change": "768000000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "rewards",
+                  "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+                  "level": 0,
+                  "change": "24000000"
+                }
+              ],
+              "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+              "slots": [
+                30,
+                29,
+                27,
+                26,
+                20,
+                19,
+                9,
+                6,
+                4,
+                2,
+                1,
+                0
+              ]
+            }
+          }
+        ],
+        "signature": "sigpToVde2CLSDKe3cQ3LpU9qt5aS9zytejzeyAyxbChqu3Lhxn1th2YYuTc4QP2uR762nT16su1qKRPw8pbGLGc6Bo1uqu1"
+      },
+      {
+        "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+        "chain_id": "NetXw7kCvfAKjhj",
+        "hash": "ooSWA1nXyYTb8q7rFaX64q27qsSE3zf5foBLrVuhXtW5ztUmQLE",
+        "branch": "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1",
+        "contents": [
+          {
+            "kind": "endorsement",
+            "level": 8,
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+                  "change": "-320000000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "deposits",
+                  "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+                  "level": 0,
+                  "change": "320000000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "rewards",
+                  "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+                  "level": 0,
+                  "change": "10000000"
+                }
+              ],
+              "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+              "slots": [
+                22,
+                15,
+                11,
+                7,
+                5
+              ]
+            }
+          }
+        ],
+        "signature": "siguzRCJRRWnVUVVAyuTU7rb25cg775bbG5CaTwfEHTy45T5tCzVnLzQ1fphgaY9nYGPynBtgUinZBtDfhBumqq3Man1kfFs"
+      },
+      {
+        "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+        "chain_id": "NetXw7kCvfAKjhj",
+        "hash": "oogKczAn9Pr2sYPsKWcynuLcUAUsxo1NojYE1bX5zHtB1DExaVc",
+        "branch": "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1",
+        "contents": [
+          {
+            "kind": "endorsement",
+            "level": 8,
+            "metadata": {
+              "balance_updates": [
+                {
+                  "kind": "contract",
+                  "contract": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+                  "change": "-512000000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "deposits",
+                  "delegate": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+                  "level": 0,
+                  "change": "512000000"
+                },
+                {
+                  "kind": "freezer",
+                  "category": "rewards",
+                  "delegate": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+                  "level": 0,
+                  "change": "16000000"
+                }
+              ],
+              "delegate": "tz1boot3mLsohEn4pV9Te3hQihH6N8U3ks59",
+              "slots": [
+                31,
+                23,
+                21,
+                18,
+                12,
+                10,
+                8,
+                3
+              ]
+            }
+          }
+        ],
+        "signature": "sigNEiAw4U4UhTNQ7yFSqRfD5j4ktiZM16NAPCmfWvj29brWdZf7R5NAJoBvkbf5oiwhBZa3Z5V3HHq4smC43c9pgYbKxqTy"
+      }
+    ],
+    [],
+    [],
+    []
+  ]
+}

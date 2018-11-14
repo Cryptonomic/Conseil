@@ -4,10 +4,46 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.util.JsonUtil
 
+import scala.concurrent.Future
 import scala.util.Try
 
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
+
+  object MockTezosNode extends TezosRPCInterface {
+
+    /*
+    def runGetQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try {
+      logger.info(s"Ran Tezos Query: Network = $network, Command = $command, Payload = $payload")
+      command match {
+        case "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe" =>
+          getStoredBlock("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe")
+        case "blocks/BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ" =>
+          getStoredBlock("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ")
+        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38" =>
+          getStoredBlock("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
+
+        case _ => throw new Exception("You are silly bear.")
+
+      }
+    }
+    */
+
+    override def runGetQuery(network: String, command: String): Try[String] = ???
+
+    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
+
+    def runAsyncGetQuery(network: String, command: String): Future[String] = ???
+
+    def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
+
+    def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = ???
+
+  }
+
+  private def getStoredBlock(hash: String): String =
+    scala.io.Source.fromFile(s"src/test/resources/tezos_blocks/$hash.json").mkString
   // THE FOLLOWING TESTS ARE COMMENTED OUT AS THIS FUNCTIONALITY IS NO LONGER COMPATIBLE WITH THE
   // TEZOS RPC INTERFACE. THIS WILL BE RECTIFIED AS PART OF A FUTURE TICKET.
   // FOR NOW, USE CONSEIL.JS FOR ALL TRANSACTION LOGIC.
