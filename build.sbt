@@ -11,11 +11,11 @@ scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
 
 libraryDependencies  ++=  Seq(
   "ch.qos.logback"                   % "logback-classic"           % "1.2.3",
+  "com.typesafe"                     % "config"                    % "1.3.2",
+  "com.typesafe.scala-logging"      %% "scala-logging"             % "3.7.2",
   "com.typesafe.akka"               %% "akka-http"                 % akkaHttpVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-stream"               % akkaVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-actor"                % akkaVersion exclude("com.typesafe", "config"),
-  "com.typesafe"                     % "config"                    % "1.3.1",
-  "com.typesafe.scala-logging"      %% "scala-logging"             % "3.7.2",
   "com.github.pureconfig"           %% "pureconfig"                % "0.10.1",
   "org.scalaj"                      %% "scalaj-http"               % "2.3.0",
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
@@ -32,6 +32,7 @@ libraryDependencies  ++=  Seq(
   "com.github.alanverbner"          %% "bip39"                     % "0.1",
   "ch.megard"                       %% "akka-http-cors"            % "0.3.0",
   "ru.yandex.qatools.embed"          % "postgresql-embedded"       % "2.10" % Test,
+  "com.typesafe.akka"               %% "akka-http-testkit"         % akkaHttpVersion % Test exclude("com.typesafe", "config"),
   "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test
 )
 
