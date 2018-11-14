@@ -255,7 +255,11 @@ object TezosDatabaseOperations extends LazyLogging {
     table.length.result
 
   // Slick did not let me to this any other way
-  /** count number of the distinct elements in the table */
+  /** count number of the distinct elements in the table
+    * WARNING!
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION.
+    * USE IT WISELY.
+    */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
     sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
 }
