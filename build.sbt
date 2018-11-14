@@ -39,6 +39,11 @@ assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
 scalacOptions ++= ScalacOptions.common
 
+//add build information as an object in code
+enablePlugins(BuildInfoPlugin)
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoPackage := "tech.cryptonomic.conseil"
+
 //uses git tags to generate the project version
 //see https://github.com/sbt/sbt-git#versioning-with-git
 enablePlugins(GitVersioning)
