@@ -18,7 +18,7 @@ object PlatformDiscoveryOperations {
   lazy val dbHandle: PostgresProfile.backend.Database = DatabaseUtil.db
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
-  private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table).toMap
+  private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
 
   def getNetworks(config: Config): List[Network] = {
     config.getObject("platforms").asScala.flatMap {
@@ -32,7 +32,7 @@ object PlatformDiscoveryOperations {
 
   def getEntities(network: String)(implicit ec: ExecutionContext): Future[List[Entity]] = {
     ApiOperations.countAll.map { counts =>
-      tablesMap.keys.toList.flatMap { tableName =>
+      tablesMap.map(_._1).flatMap { tableName =>
         counts.get(tableName).map { tableCount =>
           Entity(
             name = tableName,
@@ -52,7 +52,7 @@ object PlatformDiscoveryOperations {
   def tableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attributes]] = {
     val res: DBIO[List[Attributes]] =
       DBIO.sequence(
-        tablesMap.toList.collect {
+        tablesMap.collect {
           case (name, table) if name == tableName =>
             val overallCount = TezosDb.countRows(table)
             table.baseTableRow.create_*.map { col =>
