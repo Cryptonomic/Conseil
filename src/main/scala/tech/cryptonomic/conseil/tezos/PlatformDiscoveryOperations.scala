@@ -4,7 +4,6 @@ import com.typesafe.config.Config
 import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -75,19 +74,4 @@ object PlatformDiscoveryOperations {
       keyType = if (distinctCount == overallCount) KeyType.UniqueKey else KeyType.NonKey,
       entity = tableName
     )
-
-
-  private def mapType(tpe: String): DataType = {
-    val optionRegex = "Option\\[([A-Za-z0-9']+)\\]".r
-    tpe match {
-      case "java.sql.Timestamp'" => DataType.DateTime
-      case "String'" => DataType.String
-      case "Int'" => DataType.Int
-      case "Long'" => DataType.LargeInt
-      case "Float'" | "Double'" | "scala.math.BigDecimal'" => DataType.Decimal
-      case "Boolean'" => DataType.Boolean
-      case optionRegex(t) => mapType(t)
-      case _ => DataType.String
-    }
-  }
 }
