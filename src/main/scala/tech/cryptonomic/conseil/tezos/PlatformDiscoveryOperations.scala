@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.Config
-import slick.ast.FieldSymbol
+import slick.ast.{FieldSymbol, Type}
 import slick.jdbc.PostgresProfile
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
@@ -66,6 +66,27 @@ object PlatformDiscoveryOperations {
     dbHandle.run(res)
   }
 
+  def listAttributeValues(entity: String, attribute: String)(implicit ec: ExecutionContext): Future[Option[List[String]]] = {
+    val res = tablesMap.collectFirst {
+      case (name, table) if name == entity =>
+        table.baseTableRow.create_*.collectFirst {
+          case col if col.name == attribute =>
+            for {
+              dc <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
+              if canQueryType(mapType(col.tpe.toString)) && !isHighCardinality(dc)
+              sd <- TezosDatabaseOperations.selectDistinct(entity, attribute)
+            } yield sd
+        }
+    }.flatten
+    futOpt(res.map(dbHandle.run))
+  }
+
+  private def futOpt[A](x: Option[Future[A]])(implicit ec: ExecutionContext): Future[Option[A]] =
+    x match {
+      case Some(f) => f.map(Some(_))
+      case None => Future.successful(None)
+    }
+
   private def makeAttributes(col: FieldSymbol, distinctCount: Int, overallCount: Int, tableName: String): Attributes =
     Attributes(
       name = col.name,
@@ -89,5 +110,21 @@ object PlatformDiscoveryOperations {
       case optionRegex(t) => mapType(t)
       case _ => DataType.String
     }
+  }
+
+  private def canQueryType(dt: DataType): Boolean = {
+    // values described in the ticket #183
+    val cantQuery = List(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
+    val res = !cantQuery.contains(dt)
+    println(res)
+
+    res
+  }
+
+  private def isHighCardinality(distinctCount: Int): Boolean = {
+    // arbitrary value which will be defined in the config
+    val maxCount = 1000
+    println(distinctCount + " " + maxCount)
+    distinctCount > maxCount
   }
 }

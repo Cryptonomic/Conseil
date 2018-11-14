@@ -34,4 +34,15 @@ object PlatformDiscoveryTypes {
     val NonKey, UniqueKey = Value
   }
 
+
+//  Taking an attribute reference (described in #182) return a list of distinct values.
+//
+//    Error conditions:
+//
+//    query for high-cardinality field
+//    query for date, or datetime field
+//  query for any cardinality numeric field
+//    Query for boolean fields should return a canned list: ["True", "False"]
+
+
 }

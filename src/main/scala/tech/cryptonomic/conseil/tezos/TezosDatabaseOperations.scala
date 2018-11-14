@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import slick.jdbc.GetResult
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
@@ -262,4 +263,8 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
     sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
+
+  def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
+  }
 }

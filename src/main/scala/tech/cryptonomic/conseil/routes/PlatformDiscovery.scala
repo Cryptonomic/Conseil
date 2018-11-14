@@ -28,6 +28,12 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
               pathPrefix("attributes") {
                 pathEnd {
                   completeWithJson(PlatformDiscoveryOperations.tableAttributes(entity))
+                } ~ pathPrefix(Segment) { attribute =>
+                  pathEnd {
+                    complete(
+                      handleNoneAsNotFound(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
+                    )
+                  }
                 }
               }
             }
