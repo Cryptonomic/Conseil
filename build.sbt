@@ -64,6 +64,11 @@ runLorre := Def.inputTaskDyn {
 lazy val genSchema = taskKey[Unit]("A schema generating task.")
 fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
 
+//add build information as an object in code
+enablePlugins(BuildInfoPlugin)
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoPackage := "tech.cryptonomic.conseil"
+
 //uses git tags to generate the project version
 //see https://github.com/sbt/sbt-git#versioning-with-git
 enablePlugins(GitVersioning)

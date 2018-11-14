@@ -10,7 +10,7 @@ import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.config.ConseilAppConfig
-import tech.cryptonomic.conseil.routes.{PlatformDiscovery, Tezos}
+import tech.cryptonomic.conseil.routes._
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -36,6 +36,9 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
             logRequest("Conseil", Logging.DebugLevel) {
               pathPrefix("tezos") {
                 Tezos(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+              } ~
+              pathPrefix("info") {
+                AppInfo.route
               }
             }
           } ~ options {
