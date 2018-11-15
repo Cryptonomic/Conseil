@@ -6,6 +6,8 @@ import akka.http.scaladsl.model.{StatusCodes, ContentTypes}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 
+import tech.cryptonomic.conseil.util.JsonUtil._
+
 class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
 
   "The application info route" should {
@@ -19,7 +21,9 @@ class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       Get("/info") ~> sut ~> check {
         status shouldEqual StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
-
+        val info: Map[String, String] = toMap[String](responseAs[String])
+        info("application") shouldBe "Conseil"
+        info("version") should fullyMatch regex """^0\.\d{4}\.\d{4}(-SNAPSHOT)?"""
       }
     }
 
