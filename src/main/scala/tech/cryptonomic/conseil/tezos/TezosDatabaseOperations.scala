@@ -267,4 +267,8 @@ object TezosDatabaseOperations extends LazyLogging {
   def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
     sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
   }
+
+  def selectDistinctLike(table: String, column: String, matchingString: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
+  }
 }

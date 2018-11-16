@@ -31,8 +31,14 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
                 } ~ pathPrefix(Segment) { attribute =>
                   pathEnd {
                     complete(
-                      handleNoneAsNotFound(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
+                      handleNoneAsTooLarge(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
                     )
+                  } ~ pathPrefix("filter") {
+                    pathPrefix(Segment) { filter =>
+                      pathEnd {
+                        completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
+                      }
+                    }
                   }
                 }
               }

@@ -32,7 +32,7 @@ trait RoutesUtil {
       case None => StatusCodes.NotFound
     }
 
-  protected def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _)
+  protected def handleNoneAsTooLarge[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _)
     (implicit ec: ExecutionContext): Future[ToResponseMarshallable] =
     operation.map {
       case Some(content) => converter(content)
