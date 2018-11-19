@@ -6,689 +6,209 @@ import scala.util.Try
 import cats._
 import cats.implicits._
 
-class MockTezosNodes {
+/**
+  * Defines mocking scenarios for testing against tezos nodes
+  *
+  * The following diagrams outlines all testing scenarios available
+  *
+  * In each scenario we can imagine a "snapshot" of the node and the results
+  * that it is expected to return from the block request, based on the
+  * exact time-frame (Tn) and branch considered the "main" one at that time
+  *
+  * Most snapshot for the same time-frame will return the same results. It
+  * doesn't needs to be so, but it simplifies the data definition
+  *
+  * SCENARIO 1: no fork
+  *
+  * -----[T1]---------------  branch-0
+  *
+  *
+  * SCENARIO 2: single fork
+  *
+  *             -----------[T3]----------  branch-1
+  * -----[T1]--/---[T2]------------------  branch-0
+  *
+  * SCENARIO 3: singel fork alternating with the original
+  *
+  *             -----------[T3]---------[T5]----  branch-1
+  * -----[T1]--/---[T2]------------[T4]---------  branch-0
+  *
+  *
+  * SCENARIO 4: two forks alternating with the original
+  *
+  *             -------------------[T4]---------------  branch-2
+  *             -----------[T3]----------[T5]---------  branch-1
+  * -----[T1]--/---[T2]-------------------------[T6]--  branch-0
+  *
+  */
+object MockTezosNodes {
 
-  //RENAME ALL TEST FILES IN TERMS OF TEST OFFSETS
+  //endpoint to retrieves the head block
+  private val headRequestUrl = "blocks/head"
+  //endpoint matcher to retrieve a specific block offset, extracts the hash and the offset value
+  private val HashEndpointMatch = """blocks/([A-Za-z0-9]+)~(\d+)""".r
+  //endpoint matcher for operation requests, no need to extract
+  private val OperationsEndpointMatch = """blocks/([A-Za-z0-9]+)/operations""".r
 
-  /**
-    * Helper function that returns the json block data stored in the forking_tests files.
-    * @param hashWithOffset <hash>~<offset>, where hash is of the current head block, and offset is how many levels away
-    * @param chain which test chain we're working off of
-    * @param lorre which iteration of lorre we're working off of
-    * @return
-    */
-  private def getStoredBlock(hashWithOffset: String, chain: String, lorre: String): String =
-    scala.io.Source.fromFile(s"src/test/resources/forking_tests/$chain/$lorre/$hashWithOffset.json").mkString
+  private val emptyBlockOperationsResult = Future.successful("[[]]")
 
-  /**
-    * Represents an unforked chain with one iteration.
-    */
-  object NormalChain extends TezosRPCInterface {
+  /* expected hash based on branch and time-frame
+   * this must match the base file hash returned from the mock node when the head block is requested
+   */
+  def getHeadHash(onBranch: Int, atTime: Int) = (onBranch, atTime) match {
+    case (_, 1) => "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4"
+    case (_, 2) => "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi"
+    case (_, 3) => "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp"
+    case (0, 4) => "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1"
+    case (2, 4) => "BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp"
+    case (_, 5) => "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr"
+    case (_, 6) => "BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u"
+    case _ => throw new IllegalArgumentException(s"no scenario defined to get a head hash for branch-$onBranch at time T$atTime")
+  }
 
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = ???
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
+  /* only a limited number of offsets are expected on the mock calls,
+   * based on the scenario and current time-frame
+   */
+  def getMaxOffsets(onBranch: Int, atTime: Int) = (onBranch, atTime) match {
+    case (_, 1) => 2
+    case (_, 2) => 1
+    case (_, 3) => 1
+    case (0, 4) => 1
+    case (2, 4) => 2
+    case (_, 5) => 1
+    case (_, 6) => 3
+    case _ => throw new IllegalArgumentException(s"no scenario defines expected offsets for brach-$onBranch at time T$atTime")
 
   }
 
   /**
-    * Represents first iteration of Lorre for an unforked chain.
+    * create a simulated node interface to return pre-canned responses
+    * following a known scenario
     */
-  object NormalChainLorreOne extends TezosRPCInterface {
+  def getNode(onBranch: Int, atTime: Int) = new BaseMock {
+    //the head should depend on the branch and time both
+    val headHash = getHeadHash(onBranch, atTime)
 
-    override def runGetQuery(network: String, command: String): Try[String] = ???
+    //the number of offsets to load should never be higher than this
+    val maxExpectedOffset = getMaxOffsets(onBranch, atTime)
 
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
+    //use some mapping to define valid offsets per scenario?
+    def isValidOffset(forBranch: Int, atTime: Int) =
+      (offset: Int) => offset >= 0 && offset <= maxOffset
 
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
+    //will build the results based on local files by matching request params
+    override def runAsyncGetQuery(network: String, command: String): Future[String] =
       command match {
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0", "normal_chain", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1", "normal_chain", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2", "normal_chain", "lorre_one")
+        case `headRequestUrl` =>
+          //will return the block at offset 0
+          getStoredBlock(0, onBranch, atTime)
+        case HashEndpointMatch(`headHash`, offset) if isValidOffset(offset) =>
+          getStoredBlock(offset, onBranch, atTime)
+        case HashEndpointMatch(`headHash`, offset) =>
+          throw new InvalidStateException(s"The node simulated for branch-$onBranch at time T$atTime received an unexpected block offset request in $command")
+        case OperationsEndpointMatch(hash) =>
+          emptyBlockOperationsResult
+        case _ =>
+          throw new InvalidStateException("Unexpected request path in $command")
       }
+
+    /**
+      * Helper function that returns the json block data stored in the forking_tests files.
+      * @param offset how many levels away from the current block head
+      * @param branch which test chain branch we're working off of
+      * @param time which iteration of lorre we're working off of
+      * @return a full json string with the block information
+      */
+    private def getStoredBlock(offset: Int, branch: Int, time: Int): Future(String) =
+      Future(scala.io.Source.fromFile(s"src/test/resources/forking_tests/branch-$branch/time-T$time/head~$offset.json").mkString)
+
+  }
+
+  private type TezosNode = TezosRPCInterface
+
+  /**
+    * Allows to advance forth and back in integer steps from `0` to the provided `max`
+    * Instances are not thread-safe
+    * @param size the cursor will always be bound to this value
+    */
+  class Frame(max: Int) {
+
+    private[MockTezosNodes] val cursor = new scala.concursor.SyncVar(0)
+
+    /**
+      * Increment the frame cursor without overflowing
+      * @return `true` if the cursor actually changed
+      */
+    def next(): Boolean = {
+      val frame = cursor.take()
+      cursor.put(scala.math.max(frame + 1, max)) //no overflow
+      cursor.get() != frame
     }
 
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents a chain with one fork, with the second branch winning.
-    */
-  object OneBranchFork extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = ???
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the first iteration of Lorre on a chain with one fork, with the second branch winning.
-    */
-  object OneBranchForkLorreOne extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0", "one_branch_fork", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1", "one_branch_fork", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2", "one_branch_fork", "lorre_one")
-      }
+    /**
+      * Decrement the frame cursor without underflowing
+      * @return `true` if the cursor actually changed
+      */
+    def prev(): Boolean = {
+      val frame = cursor.take()
+      cursor.put(scala.math.min(frame - 1, 0)) //no underflow
+      cursor.get() != frame
     }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
   }
 
   /**
-    * Represents the second iteration of Lorre on a chain with one fork, with the second branch winning.
+    * Creates a sequence of mock nodes, used to simulate
+    * diffent states of the remote node in time
+    * The returned `Frame` is used to move "time" ahead and back by
+    * pointing to different nodes in the sequence
     */
-  object OneBranchForkLorreTwo extends TezosRPCInterface {
+  def sequenceNodes(first: Node, rest: Node*): (TezosNode, Frame) = {
+    val nodes = new NodeSequence(first, rest)
+    (nodes, nodes.frame)
+  }
 
-    override def runGetQuery(network: String, command: String): Try[String] = ???
+  /*
+   * A sequence of tezos interfaces that will delegate the get request
+   * to the one currently selected by the internal `frame` variable
+   */
+  private class NodeSequence(first: Node, rest: Node*) extends BaseMock {
 
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
+    private val nodes = first :: rest.toList
 
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0", "one_branch_fork", "lorre_two")
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1", "one_branch_fork", "lorre_two")
-      }
-    }
+    val frame = new Frame(nodes.size - 1)
 
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
+    override def runAsyncGetQuery(network: String, command: String): Future[String] = nodes(Frame.cursor.get).runAsyncGetQuery(network, command)
 
   }
 
-  /**
-    * Represents the third iteration of Lorre on a chain with one fork, with the second branch winning.
-    */
-  object OneBranchForkLorreThree extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0", "one_branch_fork", "lorre_three")
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1", "one_branch_fork", "lorre_three")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object OneBranchForkAlternating extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = ???
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the first iteration of Lorre on a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object OneBranchForkAlternatingLorreOne extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0", "one_branch_fork_alternating", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1", "one_branch_fork_alternating", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2", "one_branch_fork_alternating", "lorre_one")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the second iteration of Lorre on a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object OneBranchForkAlternatingLorreTwo extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0", "one_branch_fork_alternating", "lorre_two")
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1", "one_branch_fork_alternating", "lorre_two")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the third iteration of Lorre on a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object OneBranchForkAlternatingLorreThree extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0", "one_branch_fork_alternating", "lorre_three")
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1", "one_branch_fork_alternating", "lorre_three")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents the fourth iteration of Lorre on a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object OneBranchForkAlternatingLorreFour extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1~0" =>
-          getStoredBlock("BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1~0", "one_branch_fork_alternating", "lorre_four")
-        case "blocks/BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1~1" =>
-          getStoredBlock("BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1~1", "one_branch_fork_alternating", "lorre_four")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents the fifth iteration of Lorre on a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object OneBranchForkAlternatingLorreFive extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~0" =>
-          getStoredBlock("BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~0", "one_branch_fork_alternating", "lorre_five")
-        case "blocks/BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~1" =>
-          getStoredBlock("BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~1", "one_branch_fork_alternating", "lorre_five")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents a chain with two forks, with the third branch becoming the main branch.
-    */
-  object TwoBranchFork extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = ???
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents first iteration of Lorre for a chain with two forks.
-    */
-  object TwoBranchForkLorreOne extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0", "two_branch_fork", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1", "two_branch_fork", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2", "two_branch_fork", "lorre_one")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the second iteration of Lorre on a chain with two forks.
-    */
-  object TwoBranchForkLorreTwo extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0", "two_branch_fork", "lorre_two")
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1", "two_branch_fork", "lorre_two")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the third iteration of Lorre on a chain with two forks.
-    */
-  object TwoBranchForkLorreThree extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0", "two_branch_fork", "lorre_three")
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1", "two_branch_fork", "lorre_three")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents the fourth iteration of Lorre on a chain with one fork, with two branches competing for dominance as Lorre iterates.
-    */
-  object TwoBranchForkLorreFour extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~0" =>
-          getStoredBlock("BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~0", "two_branch_fork", "lorre_four")
-        case "blocks/BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~1" =>
-          getStoredBlock("BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~1", "two_branch_fork", "lorre_four")
-        case "blocks/BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~2" =>
-          getStoredBlock("BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~2", "two_branch_fork", "lorre_four")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents a chain with two forks, and three branches competing for dominance on multiple iterations of Lorre.
-    */
-  object TwoBranchForkAlternating extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = ???
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the first iteration of Lorre on a chain with two forks, and three branches competing for dominance on multiple iterations of Lorre.
-    */
-  object TwoBranchForkAlternatingLorreOne extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~0", "two_branch_fork_alternating", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~1", "two_branch_fork_alternating", "lorre_one")
-        case "blocks/BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2" =>
-          getStoredBlock("BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4~2", "two_branch_fork_alternating", "lorre_one")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the second iteration of Lorre on a chain with two forks, and three branches competing for dominance on multiple iterations of Lorre.
-    */
-  object TwoBranchForkAlternatingLorreTwo extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~0", "two_branch_fork_alternating", "lorre_two")
-        case "blocks/BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1" =>
-          getStoredBlock("BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi~1", "two_branch_fork_alternating", "lorre_two")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-
-  }
-
-  /**
-    * Represents the third iteration of Lorre on a chain with two forks, and three branches competing for dominance on multiple iterations of Lorre.
-    */
-  object TwoBranchForkAlternatingLorreThree extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~0", "two_branch_fork_alternating", "lorre_three")
-        case "blocks/BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1" =>
-          getStoredBlock("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp~1", "two_branch_fork_alternating", "lorre_three")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents the fourth iteration of Lorre on a chain with two forks, and three branches competing for dominance on multiple iterations of Lorre.
-    */
-  object TwoBranchForkAlternatingLorreFour extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~0" =>
-          getStoredBlock("BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~0", "two_branch_fork_alternating", "lorre_four")
-        case "blocks/BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~1" =>
-          getStoredBlock("BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~1", "two_branch_fork_alternating", "lorre_four")
-        case "blocks/BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~2" =>
-          getStoredBlock("BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp~2", "two_branch_fork_alternating", "lorre_four")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents the fifth iteration of Lorre on a chain with one fork, with three branches competing for dominance as Lorre iterates.
-    */
-  object TwoBranchForkAlternatingLorreFive extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~0" =>
-          getStoredBlock("BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~0", "two_branch_fork_alternating", "lorre_five")
-        case "blocks/BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~1" =>
-          getStoredBlock("BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr~1", "two_branch_fork_alternating", "lorre_five")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-  /**
-    * Represents the sixth iteration of Lorre on a chain with one fork, with three branches competing for dominance as Lorre iterates.
-    */
-  object TwoBranchForkAlternatingLorreSix extends TezosRPCInterface {
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = Future.successful{
-      command match {
-        case "blocks/BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~0" =>
-          getStoredBlock("BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~0", "two_branch_fork_alternating", "lorre_six")
-        case "blocks/BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~1" =>
-          getStoredBlock("BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~1", "two_branch_fork_alternating", "lorre_six")
-        case "blocks/BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~2" =>
-          getStoredBlock("BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~2", "two_branch_fork_alternating", "lorre_six")
-        case "blocks/BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~3" =>
-          getStoredBlock("BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u~3", "two_branch_fork_alternating", "lorre_six")
-      }
-    }
-
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
-
-    /*
-    Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
-     */
-  }
-
-
+  //SCENARIO 1 on the scheme
+  lazy val nonForkingScenario = getNode(onBranch = 0, atTime = 1)
+
+
+  //SCENARIO 2 on the scheme
+  lazy val singleForkScenario = sequenceNodes(
+    getNode(onBranch = 0, atTime = 1),
+    getNode(onBranch = 0, atTime = 2),
+    getNode(onBranch = 1, atTime = 3)
+  )
+
+  //SCENARIO 3 on the scheme
+  lazy val singleForkAlternatingScenario = sequenceNodes(
+    getNode(onBranch = 0, atTime = 1),
+    getNode(onBranch = 0, atTime = 2),
+    getNode(onBranch = 1, atTime = 3),
+    getNode(onBranch = 0, atTime = 4),
+    getNode(onBranch = 1, atTime = 5)
+  )
+
+  //SCENARIO 4 on the scheme
+  lazy val twoForksAlternatingScenario = sequenceNodes(
+    getNode(onBranch = 0, atTime = 1),
+    getNode(onBranch = 0, atTime = 2),
+    getNode(onBranch = 1, atTime = 3),
+    getNode(onBranch = 2, atTime = 4),
+    getNode(onBranch = 1, atTime = 5),
+    getNode(onBranch = 0, atTime = 6)
+  )
 
 }
