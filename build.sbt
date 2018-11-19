@@ -111,10 +111,10 @@ scmInfo := Some(
 //should fill this up with whoever needs to appear there
 developers := List(
   Developer(
-    id    = "ivanopagano",
-    name  = "Ivano Pagano",
-    email = "ivano.pagano@scalac.io",
-    url   = url("https://github.com/ivanopagano")
+    id = "Cryptonomic",
+    name = "Cryptonomic Inc",
+    email = "developers@cryptonomic.tech",
+    url = url("https://cryptonomic.tech/")
   )
 )
 
