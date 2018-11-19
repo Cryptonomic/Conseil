@@ -126,3 +126,23 @@ homepage := Some(url("https://cryptonomic.tech/"))
 pomIncludeRepository := { _ => false }
 publishMavenStyle := true
 publishTo := sonatypePublishTo.value
+import complete.DefaultParsers._
+
+lazy val runConseil = inputKey[Unit]("A conseil run task.")
+fork in runConseil := true
+javaOptions in runConseil ++= Seq("-Xms512M", "-Xmx4096M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
+runConseil := Def.inputTaskDyn {
+  val args = spaceDelimited("").parsed
+  runInputTask(Runtime, "tech.cryptonomic.conseil.Conseil", args:_*).toTask("")
+}.evaluated
+
+lazy val runLorre = inputKey[Unit]("A lorre run task.")
+fork in runLorre := true
+javaOptions ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
+runLorre := Def.inputTaskDyn {
+  val args = spaceDelimited("").parsed
+  runInputTask(Runtime, "tech.cryptonomic.conseil.Lorre", args:_*).toTask("")
+}.evaluated
+
+lazy val genSchema = taskKey[Unit]("A schema generating task.")
+fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
