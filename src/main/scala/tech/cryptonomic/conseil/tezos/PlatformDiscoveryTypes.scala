@@ -5,6 +5,9 @@ import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.KeyType.KeyType
 
+/**
+  * Classes used for Platform routes
+  */
 object PlatformDiscoveryTypes {
 
   class DataTypeRef extends TypeReference[DataType.type]
