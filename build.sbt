@@ -5,6 +5,9 @@ scalaVersion := "2.12.4"
 val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
 
+scapegoatVersion in ThisBuild := "1.3.8"
+scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
+
 libraryDependencies  ++=  Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
