@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import akka.Done
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
@@ -9,12 +8,10 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, DatabaseUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
-import scala.concurrent.duration.{Duration, SECONDS}
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import slick.jdbc.PostgresProfile.api._
 
 import cats._
 import cats.effect.IO
@@ -27,7 +24,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
   private val conf = ConfigFactory.load
 
-  private val awaitTimeInSeconds = conf.getInt("dbAwaitTimeInSeconds")
   val sodiumLibraryPath: String = conf.getString("sodium.libraryPath")
   val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
   val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
@@ -249,60 +245,76 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                   hash: BlockHash
                 ): Future[List[BlockWithAction]] = {
 
-    //Move some function to utils
-    def futureToIO[A](f: Future[A]): IO[A] = IO.fromFuture(IO(f))
+    import tech.cryptonomic.conseil.util.Shims._
+    import cats.data._
+    import cats.implicits._
 
-    def runDBIO[A](action: DBIO[A]) = futureToIO(dbHandle.run(action))
+    implicit val db = dbHandle
 
-    def getBlockIO: (String, BlockHash, Option[Int]) => IO[Block] =
-      (network, hash, maybeOffset) => futureToIO(getBlock(network, hash, maybeOffset))
+    /* just for clarity
+     * Kleisli[IO, A, B] is a typed wrapper to a funtion A => IO[B]
+     * but it enables a lot of powerful combinatory operations to simplify
+     * coding expressions
+     */
 
-    def blockExists: Block => IO[Boolean] =
-      block => {
-        val exists = TezosDatabaseOperations.blockExists(block.metadata.hash)
-        futureToIO(dbHandle.run(exists))
-      }
+    //load a block for an offset
+    val getBlockIO = Kleisli[IO, Option[Int], Block]{
+      (maybeOffset) => futureToIO(getBlock(network, hash, maybeOffset))
+    }
 
-    def blockHasBeenInvalidated: Block => IO[Boolean] =
-      block => {
-        val invalidated = TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash)
-        futureToIO(dbHandle.run(invalidated))
-      }
+    //check if the block is on db
+    val blockExists = Kleisli[IO, Block, Boolean]{
+      block => runToIO(TezosDatabaseOperations.blockExists(block.metadata.hash))
+    }
 
-    def predicate: Block => IO[(Boolean, Boolean)] =
-      block => Applicative[IO].product(blockExists(block), blockHasBeenInvalidated(block))
+    //check if the block is on the invalidated list
+    val blockHasBeenInvalidated = Kleisli[IO, Block, Boolean]{
+      block => runToIO(TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash))
+    }
+
+    //given the same input, computes both outputs
+    val predicate: Kleisli[IO, Block, (Boolean, Boolean)] =
+      blockExists &&& blockHasBeenInvalidated
+
+    //returns both the input block and the computed predicates in a 3-tuple
+    val extractPredicatesForBlock: Kleisli[IO, Block, (Boolean, Boolean, Block)] =
+      predicate.tapWith{ case (block, (exists, invalidated)) => (exists, invalidated, block)}
 
     /*
     Given an offset from the block where the hash was detected, figure out if we need to collect that
     block or perform a write action to our database.
      */
-    def unfoldingFunction(offset: Int): IO[Option[(BlockWithAction, Int)]] = {
+    def collectBlocksUntilValidExists(offset: Int): IO[Option[(BlockWithAction, Int)]] = {
 
-      //rename to make more clear
-      def f(exists: Boolean,
-            invalidated: Boolean,
-            block: Block,
-            offset: Int): Option[(BlockWithAction, Int)] = {
-        if (exists && !invalidated) None
-          //add logging, because second case should be impossible, you should not have a block that does not exists
-          //being invalidated
-        else if (!exists && invalidated) None
-        else if (exists && invalidated) {
-          val blockWithAction = BlockWithAction(block, RevalidateBlock)
-          Some(blockWithAction, offset + 1)
-        }
-        else {
-          val blockWithAction = BlockWithAction(block, WriteAndInvalidateBlock)
-          Some(blockWithAction, offset + 1)
-        }
+      //step that evaluates if the process should continue, in which case it gives back the result with the next offset
+      val evaluateConditions: ((Boolean, Boolean, Block)) => Option[(BlockWithAction, Int)] = {
+        case (exists, invalidated, block) =>
+
+          lazy val reachedValid = exists && !invalidated
+          lazy val invalidYetMissing = !exists && invalidated
+          lazy val needRevalidation = exists && invalidated
+
+          if (reachedValid)
+            None
+          else if (invalidYetMissing) {
+            //this case should be impossible, you should not have a block that doesn't exists, while being invalid
+            logger.error("While following a forked chain I stepped into an invalid block that's not stored in Conseil {}", block)
+            None
+          }
+          else if (needRevalidation)  {
+            val blockWithAction = BlockWithAction(block, RevalidateBlock)
+            Some(blockWithAction, offset + 1)
+          }
+          else {
+            val blockWithAction = BlockWithAction(block, WriteAndInvalidateBlock)
+            Some(blockWithAction, offset + 1)
+          }
       }
 
-      for {
-        block <- getBlockIO(network, hash, Some(offset))
-        tuple <- predicate(block)
-        //scala compiler complained about tuples not having a withFilter instance with IO
-        (exists, invalidated) = tuple
-      } yield f(exists, invalidated, block, offset)
+      //compose all the steps and map the output
+      val evaluateNextStep = (getBlockIO andThen extractPredicatesForBlock).map(evaluateConditions)
+      //apply the whole computation to get the result
+      evaluateNextStep(Some(offset))
 
     }
 
@@ -311,7 +323,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     Given a block, you can either update the invalidatedBlocks table, or write a new block
     to the InvalidatedBlocks table database and collect said block to be returned by the function.
     */
-    val blockStream: Stream[IO, BlockWithAction] = Stream.unfoldEval(1)(unfoldingFunction)
+    val blockStream: Stream[IO, BlockWithAction] = Stream.unfoldEval(1)(collectBlocksUntilValidExists)
     // turn blockStream to Future[List[BlockWithAction]]
     blockStream.compile.toList.unsafeToFuture()
     /*blockStream.evalMap[IO, Unit]{
