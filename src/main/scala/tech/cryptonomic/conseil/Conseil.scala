@@ -11,18 +11,13 @@ import com.typesafe.scalalogging.LazyLogging
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes.Tezos
-import tech.cryptonomic.conseil.config.{ConseilConfig, SecurityConfig}
+import tech.cryptonomic.conseil.config.ConseilAppConfig
 
 import scala.concurrent.ExecutionContextExecutor
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives {
+object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig {
 
-  val loadedConf = for {
-    server <- pureconfig.loadConfig[ConseilConfig.ServerConfiguration](namespace = "conseil")
-    securityApi <- SecurityConfig()
-  } yield (server, securityApi)
-
-  loadedConf match {
+  applicationConfiguration match {
     case Right((server, securityApi)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
@@ -62,7 +57,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
         .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(configFailures) =>
-      ConseilConfig.printConfigurationError(context = "Conseil application", details = configFailures.toList.mkString("\n\n"))
+    case Left(errors) =>
+      //nothing to do
   }
 }
