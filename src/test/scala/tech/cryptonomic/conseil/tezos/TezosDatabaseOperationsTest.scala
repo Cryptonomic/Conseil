@@ -447,8 +447,8 @@ class TezosDatabaseOperationsTest
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocks
         _ <- Tables.OperationGroups ++= opGroups
-        existing <- sut.blockExists(testHash)
-        nonExisting <- sut.blockExists(BlockHash("bogus-hash"))
+        existing <- sut.blockAndOpsExists(testHash)
+        nonExisting <- sut.blockAndOpsExists(BlockHash("bogus-hash"))
       } yield (existing, nonExisting)
 
       val (hit, miss) = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -466,11 +466,27 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocks
-        found <- sut.blockExists(testHash)
+        found <- sut.blockAndOpsExists(testHash)
       } yield found
 
       val exists = dbHandler.run(populateAndTest.transactionally).futureValue
       exists shouldBe false
+
+    }
+
+    "correctly verify if a block exists even with no associated operation group" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val testHash = BlockHash(blocks.last.hash)
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        found <- sut.blockExists(testHash)
+      } yield found
+
+      val exists = dbHandler.run(populateAndTest.transactionally).futureValue
+      exists shouldBe true
 
     }
   }

@@ -1,10 +1,8 @@
 package tech.cryptonomic.conseil.tezos
-import tech.cryptonomic.conseil.util.JsonUtil
+import tech.cryptonomic.conseil.util.JsonUtil._
 
 import scala.concurrent.Future
 import scala.util.Try
-import cats._
-import cats.implicits._
 
 /**
   * Defines mocking scenarios for testing against tezos nodes
@@ -81,11 +79,31 @@ object MockTezosNodes {
 
   }
 
+  /** currently defines batched-get in terms of async-get only */
+  trait BaseMock extends TezosRPCInterface {
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
+      Future.traverse(commands)(runAsyncGetQuery(network, _))
+
+    def runGetQuery(network: String, command: String): Try[String] = ???
+
+    def runAsyncGetQuery(network: String, command: String): Future[String] = ???
+
+    def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] = ???
+
+    def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String] = ???
+
+  }
+
   /**
     * create a simulated node interface to return pre-canned responses
     * following a known scenario
     */
   def getNode(onBranch: Int, atTime: Int) = new BaseMock {
+    import scala.concurrent.ExecutionContext.Implicits.global
+
     //the head should depend on the branch and time both
     val headHash = getHeadHash(onBranch, atTime)
 
@@ -93,8 +111,10 @@ object MockTezosNodes {
     val maxExpectedOffset = getMaxOffsets(onBranch, atTime)
 
     //use some mapping to define valid offsets per scenario?
-    def isValidOffset(forBranch: Int, atTime: Int) =
-      (offset: Int) => offset >= 0 && offset <= maxOffset
+    def isValidOffset(offset: String) = Try {
+      val intOffset = offset.toInt
+      intOffset >= 0 && intOffset <= maxExpectedOffset
+    }.getOrElse(false)
 
     //will build the results based on local files by matching request params
     override def runAsyncGetQuery(network: String, command: String): Future[String] =
@@ -103,13 +123,13 @@ object MockTezosNodes {
           //will return the block at offset 0
           getStoredBlock(0, onBranch, atTime)
         case HashEndpointMatch(`headHash`, offset) if isValidOffset(offset) =>
-          getStoredBlock(offset, onBranch, atTime)
+          getStoredBlock(offset.toInt, onBranch, atTime)
         case HashEndpointMatch(`headHash`, offset) =>
-          throw new InvalidStateException(s"The node simulated for branch-$onBranch at time T$atTime received an unexpected block offset request in $command")
+          throw new IllegalStateException(s"The node simulated for branch-$onBranch at time T$atTime received an unexpected block offset request in $command")
         case OperationsEndpointMatch(hash) =>
           emptyBlockOperationsResult
         case _ =>
-          throw new InvalidStateException("Unexpected request path in $command")
+          throw new IllegalStateException(s"Unexpected request path in $command")
       }
 
     /**
@@ -119,7 +139,7 @@ object MockTezosNodes {
       * @param time which iteration of lorre we're working off of
       * @return a full json string with the block information
       */
-    private def getStoredBlock(offset: Int, branch: Int, time: Int): Future(String) =
+    private def getStoredBlock(offset: Int, branch: Int, time: Int): Future[String] =
       Future(scala.io.Source.fromFile(s"src/test/resources/forking_tests/branch-$branch/time-T$time/head~$offset.json").mkString)
 
   }
@@ -133,7 +153,11 @@ object MockTezosNodes {
     */
   class Frame(max: Int) {
 
-    private[MockTezosNodes] val cursor = new scala.concursor.SyncVar(0)
+    private[MockTezosNodes] val cursor = {
+      val synced = new scala.concurrent.SyncVar[Int]()
+      synced.put(0)
+      synced
+    }
 
     /**
       * Increment the frame cursor without overflowing
@@ -142,7 +166,7 @@ object MockTezosNodes {
     def next(): Boolean = {
       val frame = cursor.take()
       cursor.put(scala.math.max(frame + 1, max)) //no overflow
-      cursor.get() != frame
+      cursor.get != frame
     }
 
     /**
@@ -152,7 +176,7 @@ object MockTezosNodes {
     def prev(): Boolean = {
       val frame = cursor.take()
       cursor.put(scala.math.min(frame - 1, 0)) //no underflow
-      cursor.get() != frame
+      cursor.get != frame
     }
   }
 
@@ -162,8 +186,8 @@ object MockTezosNodes {
     * The returned `Frame` is used to move "time" ahead and back by
     * pointing to different nodes in the sequence
     */
-  def sequenceNodes(first: Node, rest: Node*): (TezosNode, Frame) = {
-    val nodes = new NodeSequence(first, rest)
+  def sequenceNodes(first: TezosNode, rest: TezosNode*): (TezosNode, Frame) = {
+    val nodes = new NodeSequence(first, rest: _*)
     (nodes, nodes.frame)
   }
 
@@ -171,13 +195,14 @@ object MockTezosNodes {
    * A sequence of tezos interfaces that will delegate the get request
    * to the one currently selected by the internal `frame` variable
    */
-  private class NodeSequence(first: Node, rest: Node*) extends BaseMock {
+  private class NodeSequence(first: TezosNode, rest: TezosNode*) extends BaseMock {
 
     private val nodes = first :: rest.toList
 
     val frame = new Frame(nodes.size - 1)
 
-    override def runAsyncGetQuery(network: String, command: String): Future[String] = nodes(Frame.cursor.get).runAsyncGetQuery(network, command)
+    override def runAsyncGetQuery(network: String, command: String): Future[String] =
+      nodes(frame.cursor.get).runAsyncGetQuery(network, command)
 
   }
 

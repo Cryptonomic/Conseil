@@ -9,8 +9,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import cats._
-import cats.data._
 import cats.implicits._
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
@@ -54,23 +52,25 @@ object TezosDatabaseOperations extends LazyLogging {
       ).transactionally
 
   /**
-    * Writes a single block into the invalidated blocks table.
+    * Writes blocks to a database and adds them into the invalidated blocks table.
+    *
     * @param blocks Blocks which are being invalidated
-    * @return
+    * @return       Database action that will execute the writes as a side effect
     */
-  def writeAndInvalidateBlockIO(blocks: List[Block]): DBIO[Unit] =
+  def writeAndInvalidateBlock(blocks: List[Block]): DBIO[Unit] =
     DBIO.seq(
       Tables.Blocks            ++= blocks.map(RowConversion.convertBlock),
       Tables.InvalidatedBlocks ++= blocks.map(block => RowConversion.convertInvalidatedBlock(block))
     ).transactionally
 
   /**
-    * Updated invalidated blocks table so that current block is revalidated, and all other blocks
+    * Update invalidated blocks in the database table so that current block is revalidated, and all other blocks
     * at same level are invalidated.
+    *
     * @param block Block to be revalidated
-    * @return
+    * @return      A database action that will give back a tuple with the number of rows updated in the form (revalidated, invalidated)
     */
-  def revalidateBlockIO(block: Block): DBIO[(Int, Int)] = {
+  def revalidateBlock(block: Block): DBIO[(Int, Int)] = {
     val hash = block.metadata.hash
     val level = block.metadata.header.level
     val invalidatedAction = Tables.InvalidatedBlocks.filter(block => block.level === level && block.hash =!= hash.value).map(block => block.isInvalidated).update(true)
@@ -78,8 +78,19 @@ object TezosDatabaseOperations extends LazyLogging {
     invalidatedAction zip revalidatedAction
   }.transactionally
 
-  def revalidateBlocksIO(blocks: List[Block]): DBIO[List[(Int, Int)]] = {
-    blocks.traverse(revalidateBlockIO)
+  /**
+    * Updates blocks in the database, revalidating those in the passed-in list and
+    * invaidating all the other stored in the database at the same chain level
+    *
+    * @param blocks the blocks to set as valid
+    * @return       A database action that will return two numbers, the total revalidated rows, and the corresponding invalidated total
+    */
+  def revalidateBlocks(blocks: List[Block])(implicit ex: ExecutionContext): DBIO[(Int, Int)] = {
+    DBIO.sequence(blocks.map(revalidateBlock)).map {
+      tuples =>
+        val (revalidated, invalidated) = tuples.unzip
+        (revalidated.sum, invalidated.sum)
+    }
   }
 
   /**
