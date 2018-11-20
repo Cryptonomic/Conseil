@@ -4,6 +4,7 @@ import tech.cryptonomic.conseil.config.ConseilConfig._
 import pureconfig.{ProductHint, ConfigFieldMapping, CamelCase, loadConfig}
 import pureconfig.error.{ConfigReaderFailures, ConfigReaderFailure}
 
+/** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
   import LorreAppConfig._
 
@@ -29,6 +30,7 @@ trait LorreAppConfig {
     loadedConf
   }
 
+  /** Use the pureconfig convention to handle configuration from the command line */
   protected def readArgs(args: Array[String]): Either[ConfigReaderFailures, String] =
     if (args.length > 0) Right(args(0))
     else Left(ConfigReaderFailures(
@@ -48,6 +50,7 @@ trait LorreAppConfig {
 
 object LorreAppConfig {
 
+  /** Collects all different aspects involved for Lorre */
   final case class CombinedConfiguration(
     lorre: LorreConfiguration,
     tezos: TezosConfiguration,
