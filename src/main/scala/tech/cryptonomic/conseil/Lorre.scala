@@ -3,11 +3,10 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
-import pureconfig.{ProductHint, ConfigFieldMapping, CamelCase, loadConfig}
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.ConseilConfig._
+import tech.cryptonomic.conseil.config.LorreAppConfig
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -18,49 +17,16 @@ import scala.util.{Failure, Success}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with LazyLogging {
-
-  final case class CombinedConfiguration(
-    lorre: LorreConfiguration,
-    tezos: TezosConfiguration,
-    sodium: SodiumConfiguration,
-    batching: BatchFetchConfiguration
-  )
-
-  //TODO should be able to remove this
-  private val network =
-    if (args.length > 0) args(0)
-    else {
-      Console.err.println("""
-      | No tezos network was provided to connect to
-      | Please provide a valid network as an argument to the command line""".stripMargin)
-      sys.exit(1)
-    }
+object Lorre extends App with LazyLogging with LorreAppConfig {
 
   //reads all configuration upstart, will only complete if all values are found
-  val CombinedConfiguration(lorreConf, tezosConf, sodiumConf, batchingConf) = {
-    //applies convention to uses CamelCase when reading config fields
-    implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+  val config = loadApplicationConfiguration(args)
 
-    //read pieces from conf files and puts them together in configuration objects
-    val loadedConf =
-      for {
-        lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
-        nodeRequests <- loadConfig[TezosRequestsConfiguration]("")
-        node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
-        sodium <- loadConfig[SodiumConfiguration](namespace = "sodium.libraryPath")
-        fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-      } yield CombinedConfiguration(lorre, TezosConfiguration(network, node, nodeRequests), sodium, fetching)
+  //stop if conf is not available
+  config.left.foreach { _ => sys.exit(1) }
 
-    //something went wrong
-    loadedConf.left.foreach {
-      failures =>
-        printConfigurationError(context = "Lorre application", failures.toList.mkString("\n\n"))
-        sys.exit(1)
-    }
-    //unsafe call, but shouldn't be reached if loadedConf is a Left
-    loadedConf.right.get
-  }
+  //unsafe call, will only be reached if loadedConf is a Right
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, sodiumConf, batchingConf) = config.merge
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -112,7 +78,7 @@ object Lorre extends App with LazyLogging {
     mainLoop(iteration + 1)
   }
 
-  logger.info("About to start processing on the {} network", network)
+  logger.info("About to start processing on the {} network", tezosConf.network)
 
   try {mainLoop(0)} finally {shutdown()}
 
@@ -131,7 +97,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+    tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network, followFork = true).flatMap {
       blocks =>
         db.run(TezosDb.writeBlocks(blocks)).andThen {
           case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
@@ -151,7 +117,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosAccounts(): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network).flatMap {
+    tezosNodeOperator.getLatestAccounts(tezosConf.network).flatMap {
       case Some(accountsInfo) =>
         db.run(TezosDb.writeAccounts(accountsInfo)).andThen {
           case Success(_) => logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
