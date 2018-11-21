@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
-import tech.cryptonomic.conseil.util.RoutesUtil
+import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
 
@@ -20,7 +20,7 @@ object PlatformDiscovery {
   * @param config configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with RoutesUtil {
+class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with RouteHandling {
   val route: Route =
     get {
       pathPrefix("networks") {

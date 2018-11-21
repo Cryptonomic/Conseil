@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.RoutesUtil
+import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
 
@@ -56,7 +56,7 @@ object Tezos {
   * several Api Operations, based on database querying
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with RoutesUtil {
+class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with RouteHandling {
 
   import Tezos._
 

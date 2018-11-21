@@ -8,8 +8,10 @@ import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait RoutesUtil {
+/** Trait containing utilities for routes handling and Json serialization */
+trait RouteHandling {
 
+  /** Implicit Json marshaller for data serialization */
   implicit protected val jsonMarshaller: ToEntityMarshaller[JsonString] =
     PredefinedToEntityMarshallers.StringMarshaller
       .compose((_: JsonString).json)
