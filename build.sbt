@@ -6,6 +6,7 @@ val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
 
 scapegoatVersion in ThisBuild := "1.3.8"
+parallelExecution in Test := false
 scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
 
 libraryDependencies  ++=  Seq(
