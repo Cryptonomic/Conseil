@@ -165,7 +165,8 @@ object MockTezosNodes {
       */
     def next(): Boolean = {
       val frame = cursor.take()
-      cursor.put(scala.math.max(frame + 1, max)) //no overflow
+      cursor.put(scala.math.min(frame + 1, max)) //no overflow
+      println(s"Changed time frame from  $frame to ${cursor.get}")
       cursor.get != frame
     }
 
@@ -175,7 +176,8 @@ object MockTezosNodes {
       */
     def prev(): Boolean = {
       val frame = cursor.take()
-      cursor.put(scala.math.min(frame - 1, 0)) //no underflow
+      cursor.put(scala.math.max(frame - 1, 0)) //no underflow
+      println(s"Changed time frame from  $frame to ${cursor.get}")
       cursor.get != frame
     }
   }
