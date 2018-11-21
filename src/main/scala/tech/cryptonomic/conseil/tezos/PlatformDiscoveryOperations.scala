@@ -2,19 +2,15 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.Config
 import slick.ast.FieldSymbol
-import slick.jdbc.PostgresProfile
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
 object PlatformDiscoveryOperations {
-
-  lazy val dbHandle: PostgresProfile.backend.Database = DatabaseUtil.db
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -57,12 +53,14 @@ object PlatformDiscoveryOperations {
     * @return list of attributes as a Future
     */
   def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attributes]] = {
-    val attributesList = DBIO.sequence(makeAttributesList(tableName))
-    dbHandle.run(attributesList)
+    ApiOperations.prepareTableAttributes(makeAttributesList(tableName))
   }
 
-  /** Makes list of DB actions to be executed for extracting attributes */
-  private def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): List[DBIO[Attributes]] = {
+  /** Makes list of DB actions to be executed for extracting attributes
+    * @param  tableName name of the table from which we extract attributes
+    * @return list of DBIO queries for attributes
+    * */
+  def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): List[DBIO[Attributes]] = {
     for {
       (name, table) <- tablesMap
       if name == tableName
