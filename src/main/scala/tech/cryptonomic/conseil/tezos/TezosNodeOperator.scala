@@ -13,7 +13,6 @@ import scala.util.Try
 
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
-import cats._
 import cats.effect.IO
 import fs2.Stream
 
@@ -225,7 +224,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       fetchedBlocksMetadata <- node.runBatchedGetQuery(network, blockMetadataUrls, blockOperationsFetchConcurrency) map (blockMetadata => blockMetadata.map(jsonToBlockMetadata))
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash.value}/operations")
       fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
-    } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map(Block.tupled).map(block => BlockWithAction(block, WriteBlock))
+    } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map{ case (meta, ops) => BlockWithAction(Block(meta, ops), WriteBlock) }
   }
 
   /**
