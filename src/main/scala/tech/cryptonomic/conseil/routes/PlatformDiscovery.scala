@@ -6,15 +6,21 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
-import tech.cryptonomic.conseil.util.RoutesUtil
+import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
 
+/** Companion object providing apply implementation */
 object PlatformDiscovery {
   def apply(config: Config)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery = new PlatformDiscovery(config)
 }
 
-class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with RoutesUtil {
+/**
+  * Platform discovery routes.
+  * @param config configuration object
+  * @param apiExecutionContext is used to call the async operations exposed by the api service
+  */
+class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with RouteHandling {
   val route: Route =
     get {
       pathPrefix("networks") {
@@ -27,7 +33,7 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
             } ~ pathPrefix(Segment) { entity =>
               pathPrefix("attributes") {
                 pathEnd {
-                  completeWithJson(PlatformDiscoveryOperations.tableAttributes(entity))
+                  completeWithJson(PlatformDiscoveryOperations.getTableAttributes(entity))
                 } ~ pathPrefix(Segment) { attribute =>
                   pathEnd {
                     complete(
