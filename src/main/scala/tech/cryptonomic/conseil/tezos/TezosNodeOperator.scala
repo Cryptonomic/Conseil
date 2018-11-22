@@ -244,7 +244,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                   hash: BlockHash
                 ): Future[List[BlockWithAction]] = {
 
-    import tech.cryptonomic.conseil.util.Shims._
+    import tech.cryptonomic.conseil.util.EffectConversionUtil._
     import cats.data._
     import cats.implicits._
 

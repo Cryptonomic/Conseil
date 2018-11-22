@@ -6,7 +6,7 @@ import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api._
 
 /** Contains compatibility layer between different libraries and datatypes */
-object Shims {
+object EffectConversionUtil {
 
   /** wraps async, and possibly yet-to-run, computations into an `IO` effect */
   def futureToIO[A](f: => Future[A]): IO[A] = IO.fromFuture(IO(f))
