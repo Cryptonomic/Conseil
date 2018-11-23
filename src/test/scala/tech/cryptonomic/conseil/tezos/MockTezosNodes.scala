@@ -6,50 +6,7 @@ import tech.cryptonomic.conseil.util.JsonUtil._
 import scala.concurrent.Future
 import scala.util.Try
 
-/**
-  * Defines mocking scenarios for testing against tezos nodes
-  *
-  * The following diagrams outlines all testing scenarios available
-  *
-  * In each scenario we can imagine a "snapshot" of the node and the results
-  * that it is expected to return from the block request, based on the
-  * exact level (Ln) for that time-frame and the corresponding "main" branch
-  *
-  * Most snapshot for the same time-frame will return the same results. It
-  * doesn't needs to be so, but it simplifies the data definition
-  *
-  * SCENARIO 1: no fork
-  * - time ->
-  *
-  *
-  * -----[L2]---------------  branch-0
-  *
-  *
-  * SCENARIO 2: single fork
-  * - time ->
-  *
-  *
-  *            |-----------[L5]----------  branch-1
-  * -----[L2]--|---[L4]------------------  branch-0
-  *
-  *
-  * SCENARIO 3: single fork alternating with the original
-  * - time ->
-  *
-  *
-  *            |-----------[L5]----------[L7]------  branch-1
-  * -----[L2]--|---[L4]------------[L6]------------  branch-0
-  *
-  *
-  * SCENARIO 4: two forks alternating with the original
-  * - time ->
-  *
-  *
-  *            |-------------------[L6]---------------  branch-2
-  *            |-----------[L5]----------[L7]---------  branch-1
-  * -----[L2]--|---[L4]-------------------------[L8]--  branch-0
-  *
-  */
+/** Defines mocking scenarios for testing against tezos nodes */
 object MockTezosNodes {
 
   //endpoint to retrieves the head block
@@ -219,6 +176,48 @@ object MockTezosNodes {
 
   }
 
+  /*
+   * The following diagrams outlines all testing scenarios available
+   *
+   * In each scenario we can imagine a "snapshot" of the node and the results
+   * that it is expected to return from the block request, based on the
+   * exact level (Ln) for that time-frame and the corresponding "main" branch
+   *
+   * Most snapshot for the same time-frame will return the same results. It
+   * doesn't needs to be so, but it simplifies the data definition
+   *
+   * SCENARIO 1: no fork
+   * - time ->
+   *
+   *
+   * -----[L2]---------------  branch-0
+   *
+   *
+   * SCENARIO 2: single fork
+   * - time ->
+   *
+   *
+   *            |-----------[L5]----------  branch-1
+   * -----[L2]--|---[L4]------------------  branch-0
+   *
+   *
+   * SCENARIO 3: single fork alternating with the original
+   * - time ->
+   *
+   *
+   *            |-----------[L5]----------[L7]------  branch-1
+   * -----[L2]--|---[L4]------------[L6]------------  branch-0
+   *
+   *
+   * SCENARIO 4: two forks alternating with the original
+   * - time ->
+   *
+   *
+   *            |-------------------[L6]---------------  branch-2
+   *            |-----------[L5]----------[L7]---------  branch-1
+   * -----[L2]--|---[L4]-------------------------[L8]--  branch-0
+   *
+   */
   import FileBasedNode.getNode
 
   //SCENARIO 1 on the scheme

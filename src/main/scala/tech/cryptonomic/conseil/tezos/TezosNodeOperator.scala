@@ -193,39 +193,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     } yield forkBlocks ++ rangeBlocks
   }
 
-  /*
-   * If the currently stored block of highest level is not the same returned by the node, reload that
-   * and all the missing predecessors on the fork, with actions to re-sync conseil data with the blockchain
-   */
-  private def getForkedBlocks(network: String, headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockWithAction]] = {
-
-    import cats._
-    import cats.instances.future._
-
-    //read the latest stored top-level and the corresponding one from the current chain
-    val highestLevelFromChain = getBlock(network, headBlockHash, Some(maxLevelOffset))//chain block
-    val highestLevelOnConseil = ApiOperations.fetchLatestBlock() //stored block
-
-    //compare the results and in case read the missing data from the fork
-    Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
-      case (remote, Some(stored)) if remote.metadata.header.level != stored.level =>
-        //better stop the process than to risk corrupting conseil's database
-        logger.error(
-          s"""Loading the latest stored block and the corresponding expected block from the remote node returned a mismatched block level
-            | Conseil stored block: {}
-            | The Node returned block: {}
-          """.stripMargin,
-          stored,
-          remote.metadata
-        )
-        Future.failed(new IllegalStateException("Fork detection found inconsistent levels in corresponding blocks"))
-      case (remote, Some(stored)) if remote.metadata.hash.value != stored.hash =>
-        followFork(network, remote)
-      case _ =>
-        Future.successful(List.empty) //no additional action to take
-    }.flatten
-  }
-
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
     * @param network Which Tezos network to go against
@@ -259,6 +226,39 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash.value}/operations")
       fetchedBlocksOperations <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency) map (operations => operations.map(jsonToOperationGroups))
     } yield fetchedBlocksMetadata.zip(fetchedBlocksOperations).map{ case (meta, ops) => BlockWithAction(Block(meta, ops), WriteBlock) }
+  }
+
+  /*
+   * If the currently stored block of highest level is not the same returned by the node, reload that
+   * and all the missing predecessors on the fork, with actions to re-sync conseil data with the blockchain
+   */
+  private def getForkedBlocks(network: String, headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockWithAction]] = {
+
+    import cats._
+    import cats.instances.future._
+
+    //read the latest stored top-level and the corresponding one from the current chain
+    val highestLevelFromChain = getBlock(network, headBlockHash, Some(maxLevelOffset))//chain block
+    val highestLevelOnConseil = ApiOperations.fetchLatestBlock() //stored block
+
+    //compare the results and in case read the missing data from the fork
+    Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
+      case (remote, Some(stored)) if remote.metadata.header.level != stored.level =>
+        //better stop the process than to risk corrupting conseil's database
+        logger.error(
+          s"""Loading the latest stored block and the corresponding expected block from the remote node returned a mismatched block level
+             | Conseil stored block: {}
+             | The Node returned block: {}
+          """.stripMargin,
+          stored,
+          remote.metadata
+        )
+        Future.failed(new IllegalStateException("Fork detection found inconsistent levels in corresponding blocks"))
+      case (remote, Some(stored)) if remote.metadata.hash.value != stored.hash =>
+        followFork(network, remote)
+      case _ =>
+        Future.successful(List.empty) //no additional action to take
+    }.flatten
   }
 
   /**
