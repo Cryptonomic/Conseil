@@ -1,11 +1,19 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+import java.time.LocalDateTime
+
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
 
 class PlatformDiscoveryOperationsTest
   extends WordSpec
@@ -15,6 +23,10 @@ class PlatformDiscoveryOperationsTest
     with ScalaFutures
     with OptionValues
     with LazyLogging {
+
+  import slick.jdbc.H2Profile.api._
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   "getNetworks" should {
     "return list with one element" in {
@@ -62,10 +74,6 @@ class PlatformDiscoveryOperationsTest
   }
 
   "getEntities" should {
-
-    import slick.jdbc.H2Profile.api._
-
-    import scala.concurrent.ExecutionContext.Implicits.global
 
     "return list of attributes of Fees" in {
 
@@ -161,6 +169,85 @@ class PlatformDiscoveryOperationsTest
         DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("nonExisting"))
       }.futureValue shouldBe List.empty
     }
+  }
+
+  "listAttributeValues" should {
+
+    "return list of values of kind attribute of Fees without filter" in {
+      val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))), Duration.Inf)
+      dbHandler.run(
+        DBIO.sequence(
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        )
+      ).futureValue.flatten shouldBe List("example1")
+    }
+
+    "return throw an exeption when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
+      val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))), Duration.Inf)
+
+      val thrown = intercept[Exception] {
+        dbHandler.run(
+          DBIO.sequence(
+            PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
+          )
+        ).futureValue
+      }
+      thrown.getMessage shouldBe "The future returned an exception of type: java.util.NoSuchElementException, with message: Action.withFilter failed."
+
+    }
+
+    "return empty list when trying to sql inject" in {
+      val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))), Duration.Inf)
+      // That's how the SLQ-injected string will look like:
+      // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
+      val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
+
+      dbHandler.run(
+        DBIO.sequence(
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
+        )
+      ).futureValue.flatten shouldBe List.empty
+
+      dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
+
+    }
+    "check if filtering works correctly" in {
+      val avgFees = List(
+        AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1"),
+        AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
+      )
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)), Duration.Inf)
+
+      dbHandler.run(
+        DBIO.sequence(
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        )
+      ).futureValue.flatten.size shouldBe 2
+      dbHandler.run(
+        DBIO.sequence(
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
+        )
+      ).futureValue.flatten.size shouldBe 2
+      dbHandler.run(
+        DBIO.sequence(
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
+        )
+      ).futureValue.flatten.size shouldBe 2
+
+      dbHandler.run(
+        DBIO.sequence(
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        )
+      ).futureValue.flatten shouldBe List("example1")
+
+    }
+
   }
 
 }

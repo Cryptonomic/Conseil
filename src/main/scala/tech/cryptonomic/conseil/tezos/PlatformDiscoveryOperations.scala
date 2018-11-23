@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.Config
 import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
@@ -17,6 +18,7 @@ object PlatformDiscoveryOperations {
 
   /**
     * Extracts networks from config file
+    *
     * @param  config configuration object
     * @return list of networks from configuration
     */
@@ -30,6 +32,7 @@ object PlatformDiscoveryOperations {
 
   /**
     * Extracts entities in the DB for the given network
+    *
     * @param  network name of the network
     * @return list of entities as a Future
     */
@@ -40,7 +43,7 @@ object PlatformDiscoveryOperations {
   }
 
   /** creates entities out of provided data */
-  private def createEntities(network: String, counts: Map[String, Int])(implicit ec: ExecutionContext): List[Entity] = {
+  private def createEntities(network: String, counts: Map[String, Int]): List[Entity] = {
     for {
       (tableName, _) <- tablesMap
       tableCount <- counts.get(tableName)
@@ -49,17 +52,19 @@ object PlatformDiscoveryOperations {
 
   /**
     * Extracts attributes in the DB for the given table name
+    *
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
   def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attributes]] = {
-    ApiOperations.prepareTableAttributes(makeAttributesList(tableName))
+    ApiOperations.runQuerySequence(makeAttributesList(tableName))
   }
 
   /** Makes list of DB actions to be executed for extracting attributes
+    *
     * @param  tableName name of the table from which we extract attributes
     * @return list of DBIO queries for attributes
-    * */
+    **/
   def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): List[DBIO[Attributes]] = {
     for {
       (name, table) <- tablesMap
@@ -72,34 +77,6 @@ object PlatformDiscoveryOperations {
       } yield makeAttributes(col, distinctCnt, overallCnt, tableName)
     }
   }
-
-  def listAttributeValues(entity: String, attribute: String, withFilter: Option[String] = None)(implicit ec: ExecutionContext): Future[Option[List[String]]] = {
-    val res = tablesMap.collectFirst {
-      case (name, table) if name == entity =>
-        table.baseTableRow.create_*.collectFirst {
-          case col if col.name == attribute =>
-            for {
-              cd <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
-              if canQueryType(mapType(col.tpe.toString)) && !isHighCardinality(cd)
-              sd <- withFilter match {
-                case Some(filter) =>
-                  TezosDatabaseOperations.selectDistinctLike(entity, attribute, filter)
-                case None =>
-                  TezosDatabaseOperations.selectDistinct(entity, attribute)
-              }
-            } yield sd
-        }
-    }.flatten
-    ???
-    //futOpt(res.map(dbHandle.run))
-  }
-
-
-  private def futOpt[A](x: Option[Future[A]])(implicit ec: ExecutionContext): Future[Option[A]] =
-    x match {
-      case Some(f) => f.map(Some(_))
-      case None => Future.successful(None)
-    }
 
   /** Makes attributes out of parameters */
   private def makeAttributes(col: FieldSymbol, distinctCount: Int, overallCount: Int, tableName: String): Attributes =
@@ -117,15 +94,71 @@ object PlatformDiscoveryOperations {
     name.capitalize.replace("_", " ")
   }
 
+
+  /** Makes list of possible string values of the attributes
+    * @param  tableName name of the table from which we extract attributes
+    * @param  attribute name of the attribute
+    * @param  withFilter optional parameter which can filter attributes
+    * @return list of attributes
+    **/
+  def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None)
+    (implicit ec: ExecutionContext): Future[List[String]] = {
+    val res = verifyAttributesAndGetQueries(tableName, attribute, withFilter)
+    ApiOperations.runQuerySequence(res).map(_.flatten)
+  }
+
+  /** Makes list of DBIO actions to get possible string values of the attributes
+    * @param  tableName name of the table from which we extract attributes
+    * @param  attribute name of the attribute
+    * @param  withFilter optional parameter which can filter attributes
+    * @return list of DBIO actions to get matching attributes
+    **/
+  def verifyAttributesAndGetQueries(tableName: String, attribute: String, withFilter: Option[String])
+    (implicit ec: ExecutionContext): List[DBIO[List[String]]] = {
+    for {
+      (name, table) <- tablesMap
+      if name == tableName
+      col <- table.baseTableRow.create_*
+      if col.name == attribute
+    } yield makeAttributesQuery(name, col, withFilter)
+  }
+
+  /** Makes list of possible string values of the attributes
+    * @param  tableName name of the table from which we extract attributes
+    * @param  column name of the attribute
+    * @param  withFilter optional parameter which can filter attributes
+    * @return list of attributes
+    **/
+  private def makeAttributesQuery(tableName: String, column: FieldSymbol, withFilter: Option[String])
+    (implicit ec: ExecutionContext): DBIO[List[String]] = {
+    for {
+      distinctCount <- TezosDb.countDistinct(tableName, column.name)
+      if canQueryType(mapType(column.tpe.toString)) && !isHighCardinality(distinctCount)
+      distinctSelect <- withFilter match {
+        case Some(filter) =>
+          TezosDatabaseOperations.selectDistinctLike(tableName, column.name, sanitizeForSql(filter))
+        case None =>
+          TezosDatabaseOperations.selectDistinct(tableName, column.name)
+      }
+    } yield distinctSelect
+  }
+
+  /** Checks the data types if cannot be queried by */
   private def canQueryType(dt: DataType): Boolean = {
     // values described in the ticket #183
     val cantQuery = List(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
     !cantQuery.contains(dt)
   }
 
+  /** Checks if cardinality of the column is to high so it should not be queried */
   private def isHighCardinality(distinctCount: Int): Boolean = {
-    // arbitrary value which will be defined in the config
+    // reasonable value which I thought of for now
     val maxCount = 1000
     distinctCount > maxCount
+  }
+
+  /** Leaves only letters and digits in the SQL string*/
+  private def sanitizeForSql(str: String): String = {
+    str.filter(_.isLetterOrDigit)
   }
 }

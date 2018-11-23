@@ -36,9 +36,7 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
                   completeWithJson(PlatformDiscoveryOperations.getTableAttributes(entity))
                 } ~ pathPrefix(Segment) { attribute =>
                   pathEnd {
-                    complete(
-                      handleNoneAsTooLarge(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
-                    )
+                    completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
                   } ~ pathPrefix("filter") {
                     pathPrefix(Segment) { filter =>
                       pathEnd {

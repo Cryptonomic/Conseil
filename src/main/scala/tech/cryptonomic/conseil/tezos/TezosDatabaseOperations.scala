@@ -270,10 +270,25 @@ object TezosDatabaseOperations extends LazyLogging {
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
     sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
 
+  /**
+    * Selects distinct elements by given table and column
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table  name of the table
+    * @param column name of the column
+    * @return       distinct elements in given column as a list
+    */
   def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
     sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
   }
 
+  /**
+    * Selects distinct elements by given table and column with filter
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table          name of the table
+    * @param column         name of the column
+    * @param matchingString string which is being matched
+    * @return               distinct elements in given column as a list
+    */
   def selectDistinctLike(table: String, column: String, matchingString: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
     sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
   }
