@@ -83,7 +83,7 @@ object PlatformDiscoveryOperations {
     Attributes(
       name = col.name,
       displayName = makeDisplayName(col.name),
-      dataType = mapType(col.tpe.toString),
+      dataType = mapType(col.tpe),
       cardinality = distinctCount,
       keyType = if (distinctCount == overallCount) KeyType.UniqueKey else KeyType.NonKey,
       entity = tableName
@@ -133,7 +133,7 @@ object PlatformDiscoveryOperations {
     (implicit ec: ExecutionContext): DBIO[List[String]] = {
     for {
       distinctCount <- TezosDb.countDistinct(tableName, column.name)
-      if canQueryType(mapType(column.tpe.toString)) && !isHighCardinality(distinctCount)
+      if canQueryType(mapType(column.tpe)) && !isHighCardinality(distinctCount)
       distinctSelect <- withFilter match {
         case Some(filter) =>
           TezosDatabaseOperations.selectDistinctLike(tableName, column.name, sanitizeForSql(filter))

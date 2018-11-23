@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import slick.ast.{OptionType, Type}
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.KeyType.KeyType
 
@@ -45,20 +46,20 @@ object PlatformDiscoveryTypes {
   }
 
   /**
-    * Function maps slick column type as a string to DataType
-    * @param tpe type as a string from slick TableQuery
+    * Function maps slick jdbc column type to DataType
+    * @param tpe type from slick TableQuery
     * @return one of DataType enums
     */
-  def mapType(tpe: String): DataType = {
-    val optionRegex = "Option\\[([A-Za-z0-9']+)\\]".r
+  def mapType(tpe: Type): DataType = {
+    import slick.jdbc.PostgresProfile.columnTypes._
     tpe match {
-      case "java.sql.Timestamp'" => DataType.DateTime
-      case "String'" => DataType.String
-      case "Int'" => DataType.Int
-      case "Long'" => DataType.LargeInt
-      case "Float'" | "Double'" | "scala.math.BigDecimal'" => DataType.Decimal
-      case "Boolean'" => DataType.Boolean
-      case optionRegex(t) => mapType(t)
+      case _: TimestampJdbcType => DataType.DateTime
+      case _: StringJdbcType => DataType.String
+      case _: IntJdbcType => DataType.Int
+      case _: LongJdbcType => DataType.LargeInt
+      case _: FloatJdbcType | _: DoubleJdbcType | _: BigDecimalJdbcType => DataType.Decimal
+      case _: BooleanJdbcType => DataType.Boolean
+      case optionType: OptionType => mapType(optionType.elementType)
       case _ => DataType.String
     }
   }
