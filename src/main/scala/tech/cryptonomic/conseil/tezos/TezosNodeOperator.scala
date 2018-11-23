@@ -181,15 +181,49 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
                 minLevel: Int,
                 maxLevel: Int,
                 startBlockHash: BlockHash = blockHeadHash,
-                followFork: Boolean): Future[List[BlockWithAction]] = { //BlockWithAction
+                followFork: Boolean): Future[List[BlockWithAction]] = {
+
     val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
     val blocksFromFork =
-      if (followFork) Future.successful(List.empty)
+      if (followFork) getForkedBlocks(network, startBlockHash, maxLevel - minLevel + 1)
       else Future.successful(List.empty)
     for {
       forkBlocks <- blocksFromFork
       rangeBlocks <- blocksInRange
     } yield forkBlocks ++ rangeBlocks
+  }
+
+  /*
+   * If the currently stored block of highest level is not the same returned by the node, reload that
+   * and all the missing predecessors on the fork, with actions to re-sync conseil data with the blockchain
+   */
+  private def getForkedBlocks(network: String, headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockWithAction]] = {
+
+    import cats._
+    import cats.instances.future._
+
+    //read the latest stored top-level and the corresponding one from the current chain
+    val highestLevelFromChain = getBlock(network, headBlockHash, Some(maxLevelOffset))//chain block
+    val highestLevelOnConseil = ApiOperations.fetchLatestBlock() //stored block
+
+    //compare the results and in case read the missing data from the fork
+    Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
+      case (remote, Some(stored)) if remote.metadata.header.level != stored.level =>
+        //better stop the process than to risk corrupting conseil's database
+        logger.error(
+          s"""Loading the latest stored block and the corresponding expected block from the remote node returned a mismatched block level
+            | Conseil stored block: {}
+            | The Node returned block: {}
+          """.stripMargin,
+          stored,
+          remote.metadata
+        )
+        Future.failed(new IllegalStateException("Fork detection found inconsistent levels in corresponding blocks"))
+      case (remote, Some(stored)) if remote.metadata.hash.value != stored.hash =>
+        followFork(network, remote)
+      case _ =>
+        Future.successful(List.empty) //no additional action to take
+    }.flatten
   }
 
   /**
@@ -240,19 +274,23 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return Future of List of Blocks that were missed during the Fork, in reverse order
     */
   def followFork(
-                  network: String,
-                  hash: BlockHash
-                ): Future[List[BlockWithAction]] = {
+    network: String,
+    missingBlock: Block
+  ): Future[List[BlockWithAction]] = {
+
+    val hash = missingBlock.metadata.hash
 
     import tech.cryptonomic.conseil.util.EffectConversionUtil._
     import cats.data._
     import cats.implicits._
 
+    logger.info(s"An inconsistent level was detected with block at $hash, possibly from a forked branch, I'm syncing ...")
+
     implicit val db = dbHandle
 
     /* just for clarity
-     * Kleisli[IO, A, B] is a typed wrapper to a funtion A => IO[B]
-     * but it enables a lot of powerful combinatory operations to simplify
+     * Kleisli[IO, A, B] is a typed wrapper to a function of type: A => IO[B]
+     * hence enabling a lot of powerful combinatory operations to simplify
      * coding expressions
      */
 
@@ -280,8 +318,8 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       predicate.tapWith{ case (block, (exists, invalidated)) => (exists, invalidated, block)}
 
     /*
-    Given an offset from the block where the hash was detected, figure out if we need to collect that
-    block or perform a write action to our database.
+     * Given an offset from the block where the hash was detected, figure out if we need to collect that
+     * block or perform a write action to our database.
      */
     def collectBlocksUntilValidExists(offset: Int): IO[Option[(BlockWithAction, Int)]] = {
 
@@ -318,17 +356,16 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     }
 
     /*
-    Create IO Stream of the Forked Blocks, as well as the action to perform with said blocks
-    Given a block, you can either update the invalidatedBlocks table, or write a new block
-    to the InvalidatedBlocks table database and collect said block to be returned by the function.
-    */
+     * Create IO Stream of the Forked Blocks, as well as the action to perform with said blocks
+     * Given a block, you can either need to update the invalidatedBlocks table, or write a new block
+     * to the InvalidatedBlocks table database and collect said block to be stored by the function.
+     */
     val blockStream: Stream[IO, BlockWithAction] = Stream.unfoldEval(1)(collectBlocksUntilValidExists)
-    // turn blockStream to Future[List[BlockWithAction]]
-    blockStream.compile.toList.unsafeToFuture()
-    /*blockStream.evalMap[IO, Unit]{
-      case BlockWithAction(block, WriteAndInvalidateBlock) => runDBIO(TezosDatabaseOperations.writeAndInvalidateBlockIO(List(block)))
-      case BlockWithAction(block, RevalidateBlock) => runDBIO(TezosDatabaseOperations.revalidateBlockIO(block)).map(_ => Unit)
-    }.compile.drain*/
+    // turn blockStream to Future[List[BlockWithAction]], after adding the originally missing block as head of the result
+    blockStream.compile
+      .toList
+      .map(actions => BlockWithAction(missingBlock, WriteAndInvalidateBlock) :: actions)
+      .unsafeToFuture()
   }
 
   /**

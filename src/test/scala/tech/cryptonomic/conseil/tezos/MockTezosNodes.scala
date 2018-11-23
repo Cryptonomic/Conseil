@@ -1,4 +1,6 @@
 package tech.cryptonomic.conseil.tezos
+import java.io.FileNotFoundException
+
 import tech.cryptonomic.conseil.util.JsonUtil._
 
 import scala.concurrent.Future
@@ -59,7 +61,7 @@ object MockTezosNodes {
 
   private val emptyBlockOperationsResult = Future.successful("[[]]")
 
-  /* expected hash based on branch and level
+  /* expected head hash based on branch and level
    * this must match the base file hash returned from the mock node when the head block is requested
    */
   def getHeadHash(onBranch: Int, atLevel: Int) = (onBranch, atLevel) match {
@@ -70,22 +72,7 @@ object MockTezosNodes {
     case (2, 6) => "BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp"
     case (_, 7) => "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr"
     case (_, 8) => "BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u"
-    case _ => throw new IllegalArgumentException(s"no scenario defined to get a head hash for branch-$onBranch at time T$atLevel")
-  }
-
-  /* only a limited number of offsets are expected on the mock calls,
-   * based on the scenario and current level
-   */
-  def getMaxOffsets(onBranch: Int, atLevel: Int) = (onBranch, atLevel) match {
-    case (_, 2) => 2
-    case (_, 4) => 1
-    case (_, 5) => 1
-    case (0, 6) => 1
-    case (2, 6) => 2
-    case (_, 7) => 1
-    case (_, 8) => 3
-    case _ => throw new IllegalArgumentException(s"no scenario defines expected offsets for brach-$onBranch at time T$atLevel")
-
+    case _ => throw new IllegalArgumentException(s"no scenario defined to get a head hash for branch-$onBranch at level-$atLevel")
   }
 
   /** currently defines batched-get in terms of async-get only */
@@ -106,51 +93,64 @@ object MockTezosNodes {
 
   }
 
-  /**
-    * create a simulated node interface to return pre-canned responses
-    * following a known scenario
-    */
-  def getNode(onBranch: Int, atLevel: Int) = new BaseMock {
+  object FileBasedNode {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    //the head should depend on the branch and time both
-    val headHash = getHeadHash(onBranch, atLevel)
-
-    //the number of offsets to load should never be higher than this
-    val maxExpectedOffset = getMaxOffsets(onBranch, atLevel)
-
-    //use some mapping to define valid offsets per scenario?
-    def isValidOffset(offset: String) = Try {
-      val intOffset = offset.toInt
-      intOffset >= 0 && intOffset <= maxExpectedOffset
-    }.getOrElse(false)
-
-    //will build the results based on local files by matching request params
-    override def runAsyncGetQuery(network: String, command: String): Future[String] =
-      command match {
-        case `headRequestUrl` =>
-          //will return the block at offset 0
-          getStoredBlock(0, onBranch, atLevel)
-        case HashEndpointMatch(`headHash`, offset) if isValidOffset(offset) =>
-          getStoredBlock(offset.toInt, onBranch, atLevel)
-        case HashEndpointMatch(`headHash`, offset) =>
-          throw new IllegalStateException(s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command")
-        case OperationsEndpointMatch(hash) =>
-          emptyBlockOperationsResult
-        case _ =>
-          throw new IllegalStateException(s"Unexpected request path in $command")
-      }
+    //utility to check offset parsing
+    val isValidOffset: String => Boolean = offset => Try(offset.toInt).isSuccess
 
     /**
-      * Helper function that returns the json block data stored in the forking_tests files.
-      * @param offset how many levels away from the current block head
-      * @param branch which test chain branch we're working off of
-      * @param level  which iteration of lorre we're working off of
-      * @return a full json string with the block information
+      * create a simulated node interface to return pre-canned responses
+      * following a known scenario
+      * @param onBranch the currently main branch
+      * @param atLevel  top level of the chain for the node
+      * @param forkDetection optional hash of the block that will be different for that of the same level stored on db
       */
-    private def getStoredBlock(offset: Int, branch: Int, level: Int): Future[String] =
-      Future(scala.io.Source.fromFile(s"src/test/resources/forking_tests/branch-$branch/level-$level/head~$offset.json").mkString)
+    def getNode(onBranch: Int, atLevel: Int, forkDetection: Option[String] = None) = new BaseMock {
 
+
+      //the head should depend on the branch and time both
+      val headHash = getHeadHash(onBranch, atLevel)
+
+      //used on forks to start revalidate/invalidate existing overwritten blocks
+      //it's the block at which stored values diverge from the current active chain (not necessarily the forking point)
+      val forkedHash = forkDetection.getOrElse("")
+
+      //will build the results based on local files by matching request params
+      override def runAsyncGetQuery(network: String, command: String): Future[String] =
+        command match {
+          case `headRequestUrl` =>
+            //will return the block at offset 0
+            getStoredBlock(0, onBranch, atLevel)
+          case HashEndpointMatch(`headHash`, offset) if isValidOffset(offset) =>
+            getStoredBlock(offset.toInt, onBranch, atLevel)
+              .recoverWith { case ex: FileNotFoundException =>
+                Future.failed(new IllegalArgumentException(s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command", ex))
+              }
+          case HashEndpointMatch(`forkedHash`, offset) if forkDetection.nonEmpty =>
+            getStoredBlock(offset.toInt, onBranch, atLevel, filePrefix = "fork")
+              .recoverWith { case ex: FileNotFoundException =>
+                Future.failed(new IllegalArgumentException(s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command", ex))
+              }
+          case OperationsEndpointMatch(_) =>
+            emptyBlockOperationsResult //ignoring the matched hash
+          case _ =>
+            throw new IllegalStateException(s"Unexpected request path in $command")
+        }
+
+      /**
+        * Helper function that returns the json block data stored in the forking_tests files.
+        *
+        * @param offset     how many levels away from the current block head
+        * @param branch     which test chain branch we're working off of
+        * @param level      which iteration of lorre we're working off of
+        * @param filePrefix identifies the file name on storage, used to handle both regular latest block requests and follow-fork
+        * @return a full json string with the block information, or a failure if no file exists for such parameters
+        */
+      def getStoredBlock(offset: Int, branch: Int, level: Int, filePrefix: String = "head"): Future[String] =
+        Future(scala.io.Source.fromFile(s"src/test/resources/forking_tests/branch-$branch/level-$level/$filePrefix~$offset.json").mkString)
+
+    }
   }
 
   private type TezosNode = TezosRPCInterface
@@ -219,6 +219,8 @@ object MockTezosNodes {
 
   }
 
+  import FileBasedNode.getNode
+
   //SCENARIO 1 on the scheme
   lazy val nonForkingScenario = getNode(onBranch = 0, atLevel = 2)
 
@@ -227,26 +229,26 @@ object MockTezosNodes {
   lazy val singleForkScenario = sequenceNodes(
     getNode(onBranch = 0, atLevel = 2),
     getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5)
+    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
   )
 
   //SCENARIO 3 on the scheme
   lazy val singleForkAlternatingScenario = sequenceNodes(
     getNode(onBranch = 0, atLevel = 2),
     getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5),
-    getNode(onBranch = 0, atLevel = 6),
-    getNode(onBranch = 1, atLevel = 7)
+    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
+    getNode(onBranch = 0, atLevel = 6, forkDetection = Some("BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD")),
+    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J"))
   )
 
   //SCENARIO 4 on the scheme
   lazy val twoForksAlternatingScenario = sequenceNodes(
     getNode(onBranch = 0, atLevel = 2),
     getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5),
-    getNode(onBranch = 2, atLevel = 6),
-    getNode(onBranch = 1, atLevel = 7),
-    getNode(onBranch = 0, atLevel = 8)
+    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
+    getNode(onBranch = 2, atLevel = 6, forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")),
+    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")),
+    getNode(onBranch = 0, atLevel = 8, forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis"))
   )
 
 }
