@@ -215,8 +215,11 @@ class PlatformDiscoveryOperationsTest
         AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1"),
         AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
       )
-      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
 
+      dbHandler.run(
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+      ).futureValue shouldBe List.empty
+      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
       dbHandler.run(
         PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue shouldBe List("example1", "example2")
