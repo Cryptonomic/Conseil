@@ -8,13 +8,7 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
-  * Functionality for fetching data from the Conseil database.
-  */
-object ApiOperations {
-
-  lazy val dbHandle: Database = DatabaseUtil.db
-
+object Api {
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
   case object AscendingSort extends Sorting
@@ -22,7 +16,7 @@ object ApiOperations {
   object Sorting {
 
     /** Read an input string (`asc` or `desc`) to return a
-      * (possible) [[tech.cryptonomic.conseil.tezos.ApiOperations.Sorting]] value
+      * (possible) [[tech.cryptonomic.conseil.tezos.Api.Sorting]] value
       */
     def fromString(s: String): Option[Sorting] = s.toLowerCase match {
       case "asc" => Some(AscendingSort)
@@ -30,7 +24,6 @@ object ApiOperations {
       case _ => None
     }
   }
-
   import Filter._
 
   /**
@@ -53,22 +46,22 @@ object ApiOperations {
     * @param order                  Sort items ascending or descending
     */
   final case class Filter(
-                     limit: Option[Int] = Some(defaultLimit),
-                     blockIDs: Set[String] = Set.empty,
-                     levels: Set[Int] = Set.empty,
-                     chainIDs: Set[String] = Set.empty,
-                     protocols: Set[String] = Set.empty,
-                     operationGroupIDs: Set[String] = Set.empty,
-                     operationSources: Set[String] = Set.empty,
-                     operationDestinations: Set[String] = Set.empty,
-                     operationParticipants: Set[String] = Set.empty,
-                     operationKinds: Set[String] = Set.empty,
-                     accountIDs: Set[String] = Set.empty,
-                     accountManagers: Set[String] = Set.empty,
-                     accountDelegates: Set[String] = Set.empty,
-                     sortBy: Option[String] = None,
-                     order: Option[Sorting] = Some(DescendingSort)
-                   )
+    limit: Option[Int] = Some(defaultLimit),
+    blockIDs: Set[String] = Set.empty,
+    levels: Set[Int] = Set.empty,
+    chainIDs: Set[String] = Set.empty,
+    protocols: Set[String] = Set.empty,
+    operationGroupIDs: Set[String] = Set.empty,
+    operationSources: Set[String] = Set.empty,
+    operationDestinations: Set[String] = Set.empty,
+    operationParticipants: Set[String] = Set.empty,
+    operationKinds: Set[String] = Set.empty,
+    accountIDs: Set[String] = Set.empty,
+    accountManagers: Set[String] = Set.empty,
+    accountDelegates: Set[String] = Set.empty,
+    sortBy: Option[String] = None,
+    order: Option[Sorting] = Some(DescendingSort)
+  )
 
   object Filter {
 
@@ -114,6 +107,19 @@ object ApiOperations {
     val defaultLimit = 10
 
   }
+}
+
+object ApiOperations extends ApiOperations {
+  final lazy val dbHandle: Database = DatabaseUtil.db
+}
+
+/**
+  * Functionality for fetching data from the Conseil database.
+  */
+trait ApiOperations {
+  import Api._
+
+  def dbHandle: Database
 
   /**
     * Fetches the level of the most recent block stored in the database.

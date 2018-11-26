@@ -28,6 +28,8 @@ class TezosDatabaseOperationsTest
     with OptionValues
     with LazyLogging {
 
+  override val inMemoryDbName = "db-ops-test"
+
   "The database api" should {
 
     //needed for most tezos-db operations

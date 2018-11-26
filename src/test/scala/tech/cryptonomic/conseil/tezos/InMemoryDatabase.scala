@@ -13,17 +13,19 @@ import scala.concurrent.duration._
 trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
 
-  /** defines configuration for a randomly named h2 in-memory instance */
-  protected val confString =
+  def inMemoryDbName: String
+
+  /** defines configuration for a custom-named H2 in-memory instance */
+  lazy protected val confString =
     s"""conseildb = {
-       |    url = "jdbc:h2:mem:conseil-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
+       |    url = "jdbc:h2:mem:$inMemoryDbName;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
        |    driver              = org.h2.Driver
        |    connectionPool      = disabled
        |    keepAliveConnection = true
        |  }
     """.stripMargin
 
-  val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
+  lazy val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
   //keep in mind that this is sorted to preserve key consistency
   protected val allTables= Seq(

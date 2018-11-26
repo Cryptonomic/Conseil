@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import tech.cryptonomic.conseil.tezos.ApiOperations._
+import tech.cryptonomic.conseil.tezos.Api._
 import scala.language.higherKinds
 
 object ApiFiltering {
@@ -51,7 +51,7 @@ object ApiFiltering {
 /**
   * type class to apply complex filtering operations based on
   * underlying data access
-  * @tparam F   An effect that the output will be wrapped into, e.g. [[Try]], [[scala.concurrent.Future]]
+  * @tparam F   An effect that the output will be wrapped into, e.g. [[scala.util.Try]], [[scala.concurrent.Future]]
   * @tparam OUT The specific output value or each result row
   */
 trait ApiFiltering[F[_], OUT] {

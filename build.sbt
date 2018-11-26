@@ -41,6 +41,8 @@ excludeDependencies ++= Seq(
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
+parallelExecution in Test := false
+
 scalacOptions ++= ScalacOptions.common
 
 import complete.DefaultParsers._

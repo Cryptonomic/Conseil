@@ -1,9 +1,9 @@
 package tech.cryptonomic.conseil.db
 
-import tech.cryptonomic.conseil.tezos.{ApiFiltering, Tables, TezosDatabaseOperations}
-import tech.cryptonomic.conseil.tezos.ApiOperations._
-
+import tech.cryptonomic.conseil.tezos.{ApiFiltering, ApiOperations, Tables, TezosDatabaseOperations}
+import tech.cryptonomic.conseil.tezos.Api._
 import slick.jdbc.PostgresProfile.api._
+
 import scala.language.higherKinds
 import scala.concurrent.Future
 
@@ -372,6 +372,8 @@ trait DatabaseApiFiltering {
 
   import DatabaseQueryExecution._
   import ApiFiltering._
+
+  lazy val dbHandle = ApiOperations.dbHandle
 
   /**
     * an implementation is required to make the async [[ApiFiltering]] instances available in the context work correctly

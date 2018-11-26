@@ -4,14 +4,12 @@ import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.util.{CryptoUtil, DatabaseUtil, JsonUtil}
+import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-
-import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import cats.effect.IO
 import fs2.Stream
@@ -27,7 +25,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   val accountsFetchConcurrency: Int = conf.getInt("batchedFetches.accountConcurrencyLevel")
   val blockOperationsFetchConcurrency: Int = conf.getInt("batchedFetches.blockOperationsConcurrencyLevel")
 
-  lazy val dbHandle = DatabaseUtil.db
+  protected lazy val operations: ApiOperations = ApiOperations
 
   /**
     * A sum type representing the two types of actions that can happen with a block that is
@@ -156,7 +154,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     */
   def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[BlockWithAction]] =
     for {
-      maxLevel <- ApiOperations.fetchMaxLevel
+      maxLevel <- operations.fetchMaxLevel
       blockHead <- {
         if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         getBlockHead(network)
@@ -185,7 +183,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
     val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
     val blocksFromFork =
-      if (followFork) getForkedBlocks(network, startBlockHash, maxLevel - minLevel + 1)
+      if (followFork && minLevel > 0) getForkedBlocks(network, startBlockHash, maxLevel - minLevel + 1)
       else Future.successful(List.empty)
     for {
       forkBlocks <- blocksFromFork
@@ -278,15 +276,13 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     missingBlock: Block
   ): Future[List[BlockWithAction]] = {
 
-    val hash = missingBlock.metadata.hash
-
     import tech.cryptonomic.conseil.util.EffectConversionUtil._
     import cats.data._
     import cats.implicits._
 
-    logger.info(s"An inconsistent level was detected with block at $hash, possibly from a forked branch, I'm syncing ...")
+    logger.info(s"An inconsistent block was detected at level ${missingBlock.metadata.header.level}, with hash ${missingBlock.metadata.hash}, possibly from a forked branch, I'm syncing ...")
 
-    implicit val db = dbHandle
+    implicit val db = operations.dbHandle
 
     /* just for clarity
      * Kleisli[IO, A, B] is a typed wrapper to a function of type: A => IO[B]
@@ -296,7 +292,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
     //load a block for an offset
     val getBlockIO = Kleisli[IO, Option[Int], Block]{
-      (maybeOffset) => futureToIO(getBlock(network, hash, maybeOffset))
+      (maybeOffset) => futureToIO(getBlock(network, missingBlock.metadata.hash, maybeOffset))
     }
 
     //check if the block is on db
@@ -393,7 +389,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
     */
   def getLatestAccounts(network: String): Future[Option[AccountsWithBlockHashAndLevel]] =
-    ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).flatMap {
+    operations.dbHandle.run(operations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).flatMap {
       case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
         getAccounts(network, BlockHash(latestBlock.hash), latestBlock.level).map(Some(_))
       case (Some(latestBlock), _) =>

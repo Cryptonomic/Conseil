@@ -2,250 +2,126 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{FlatSpec, Matchers}
-import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.JsonUtil
+import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.SpanSugar._
+import tech.cryptonomic.conseil.tezos.MockTezosNodes.{sequenceNodes, FileBasedNode}
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
-import scala.concurrent.Future
-import scala.util.Try
+class TezosNodeOperatorTest
+  extends WordSpec
+    with MockFactory
+    with Matchers
+    with ScalaFutures
+    with InMemoryDatabase
+    with LazyLogging {
 
-class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
+  import FileBasedNode.getNode
 
-  object MockTezosNode extends TezosRPCInterface {
+  import scala.concurrent.ExecutionContext.Implicits.global
 
-    /*
-    def runGetQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try {
-      logger.info(s"Ran Tezos Query: Network = $network, Command = $command, Payload = $payload")
-      command match {
-        case "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe" =>
-          getStoredBlock("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe")
-        case "blocks/BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ" =>
-          getStoredBlock("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ")
-        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38" =>
-          getStoredBlock("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
+  override val inMemoryDbName = "node-ops-test"
+  val mocks = MockTezosNodes
 
-        case _ => throw new Exception("You are silly bear.")
-
-      }
-    }
-    */
-
-    override def runGetQuery(network: String, command: String): Try[String] = ???
-
-    override def runPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Try[String] = ???
-
-    def runAsyncGetQuery(network: String, command: String): Future[String] = ???
-
-    def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
-
-    def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = ???
-
-  }
-
-  private def getStoredBlock(hash: String): String =
-    scala.io.Source.fromFile(s"src/test/resources/tezos_blocks/$hash.json").mkString
-  // THE FOLLOWING TESTS ARE COMMENTED OUT AS THIS FUNCTIONALITY IS NO LONGER COMPATIBLE WITH THE
-  // TEZOS RPC INTERFACE. THIS WILL BE RECTIFIED AS PART OF A FUTURE TICKET.
-  // FOR NOW, USE CONSEIL.JS FOR ALL TRANSACTION LOGIC.
   /*
-  object MockTezosNode extends TezosRPCInterface {
+   * The following diagrams outlines all testing scenarios available
+   *
+   * In each scenario we can imagine a "snapshot" of the node and the results
+   * that it is expected to return from the block request, based on the
+   * exact level (Ln) for that time-frame and the corresponding "main" branch
+   *
+   * Most snapshot for the same time-frame will return the same results. It
+   * doesn't needs to be so, but it simplifies the data definition
+   *
+   * SCENARIO 1: no fork
+   * - time ->
+   *
+   *
+   * -----[L2]---------------  branch-0
+   *
+   *
+   * SCENARIO 2: single fork
+   * - time ->
+   *
+   *
+   *            |-----------[L5]----------  branch-1
+   * -----[L2]--|---[L4]------------------  branch-0
+   *
+   *
+   * SCENARIO 3: single fork alternating with the original
+   * - time ->
+   *
+   *
+   *            |-----------[L5]----------[L7]------  branch-1
+   * -----[L2]--|---[L4]------------[L6]------------  branch-0
+   *
+   *
+   * SCENARIO 4: two forks alternating with the original
+   * - time ->
+   *
+   *
+   *            |-------------------[L6]---------------  branch-2
+   *            |-----------[L5]----------[L7]---------  branch-1
+   * -----[L2]--|---[L4]-------------------------[L8]--  branch-0
+   *
+   */
 
-    def runGetQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try{
-      logger.info(s"Ran Tezos Query: Network = $network, Command = $command, Payload = $payload")
-      command match {
-        case "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe" =>
-          getStoredBlock("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe")
-        case "blocks/BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ" =>
-          getStoredBlock("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ")
-        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38" =>
-          getStoredBlock("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
+  "The Node Operator" should {
 
-        case "blocks/BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ/proto/operations" =>
-          getStoredOperations("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ")
-        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38/proto/operations" =>
-          getStoredOperations("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
+    val netwok = "tezos"
 
-        case "blocks/BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ/proto/context/contracts" =>
-          getStoredAccounts("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ")
-        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38/proto/context/contracts" =>
-          getStoredAccounts("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
+    "load latest blocks when there's no fork in the chain" in {
+      //SCENARIO 1 on the scheme
+      lazy val nonForkingScenario = getNode(onBranch = 0, atLevel = 2)
+      val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+      val sut= createTestOperator(nonForkingScenario)
 
-        case "blocks/BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ/proto/context/contracts/tz1btz5Av9BdpoTPnS9zGyPvpgAovmaZ23iN" =>
-          getStoredAccount("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ", "tz1btz5Av9BdpoTPnS9zGyPvpgAovmaZ23iN")
-        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38/proto/context/contracts/tz1btz5Av9BdpoTPnS9zGyPvpgAovmaZ23iN" =>
-          getStoredAccount("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38", "tz1btz5Av9BdpoTPnS9zGyPvpgAovmaZ23iN")
+      val blockActions =
+        sut.getBlocks(netwok, 0, 2, startBlockHash = headHash, followFork = true)
+            .futureValue(timeout = Timeout(10.seconds))
 
-        case "blocks/head" =>
-          getStoredBlock("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
-        case "blocks/head/proto/operations" =>
-          getStoredOperations("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
-
-        case _ => throw new Exception("You are silly bear.")
-
-      }
+      blockActions should have size 3
     }
 
-    private def getStoredBlock(hash: String): String =
-      scala.io.Source.fromFile(s"src/test/resources/tezos_blocks/$hash.json").mkString
-    private def getStoredOperations(hash: String): String =
-      scala.io.Source.fromFile(s"src/test/resources/tezos_blocks/$hash.operations.json").mkString
-    private def getStoredAccounts(hash: String): String =
-      scala.io.Source.fromFile(s"src/test/resources/tezos_blocks/$hash.accounts.json").mkString
-    private def getStoredAccount(hash: String, accountID: String): String =
-      scala.io.Source.fromFile(s"src/test/resources/tezos_blocks/$hash.account.$accountID.json").mkString
   }
 
-  object MockTezosNodeWithErrors extends TezosRPCInterface {
-
-    def runGetQuery(network: String, command: String, payload: Option[String] = None): Try[String] = Try {
-      command match {
-        case "blocks/BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38" =>
-          throw new Exception("A block request failed due to an alien invasion.")
-        case _ => MockTezosNode.runGetQuery(network, command).get
-      }
+  /* create an operator instance to test, using
+   * - a custom node interface for scenario
+   * - a test database access
+   */
+  private def createTestOperator(node: TezosRPCInterface) =
+    new TezosNodeOperator(node) {
+      override lazy val operations =
+        new ApiOperations { lazy val dbHandle = dbHandler }
     }
 
-  }
 
-  val keyStore: KeyStore = KeyStore(
-    publicKey = "edpkv3azzeq9vL869TujYhdQY5FKiQH4CGwJEzqG7m6PoX7VEpdPc9",
-    privateKey = "edskS5owtVaAtWifnCNo8tUpAw2535AXEDY4RXBRV1NHbQ58RDdpaWz2KyrvFXE4SuCTbHU8exUecW33GRqkAfLeNLBS5sPyoi",
-    publicKeyHash = "tz1hcXqtiMYFhvuirD4guE7ts4yDuCAmtD95"
+  //SCENARIO 2 on the scheme
+  lazy val singleForkScenario = sequenceNodes(
+    getNode(onBranch = 0, atLevel = 2),
+    getNode(onBranch = 0, atLevel = 4),
+    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
   )
 
-  "getBlock" should "should correctly fetch the genesis block" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val block: Try[TezosTypes.Block] = nodeOp.getBlock("zeronet", "BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe")
-    block.get.metadata.hash should be ("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe")
-  }
+  //SCENARIO 3 on the scheme
+  lazy val singleForkAlternatingScenario = sequenceNodes(
+    getNode(onBranch = 0, atLevel = 2),
+    getNode(onBranch = 0, atLevel = 4),
+    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
+    getNode(onBranch = 0, atLevel = 6, forkDetection = Some("BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD")),
+    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J"))
+  )
 
-  //skip block at level 1 because zeronet doesn't give proper response, also, hint because not the head
-  "getBlocks" should "fetch the correct number of blocks" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("zeronet", 0, 2, None, followFork = false)
-    blocks.get.length should be (3)
-  }
-
-  "getBlocks" should "handle a failed RPC request" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNodeWithErrors)
-    val blocks = nodeOp.getBlocks("zeronet", 0, 5, None, followFork = false)
-    blocks.isFailure should be (true)
-  }
-
-  "getBlocks" should "work correctly with a hint whose level is too low" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("zeronet", 1, 2, Some("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe"), followFork = false)
-    blocks.get.length should be (0)
-  }
-
-  "getBlocks" should "handle an invalid block payload" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("zeronet", 0, 2, Some("fakeblock"), followFork = false)
-    blocks.isFailure should be (true)
-  }
-
-  //java.util.NoSuchElementException: head of empty list, doesn't work correctly?
-  "getBlocks" should "work correctly with an offset and hint" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("zeronet", 3, Some("BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38"), followFork = false)
-    blocks.get.head.metadata.hash should be ("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe")
-  }
+  //SCENARIO 4 on the scheme
+  lazy val twoForksAlternatingScenario = sequenceNodes(
+    getNode(onBranch = 0, atLevel = 2),
+    getNode(onBranch = 0, atLevel = 4),
+    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
+    getNode(onBranch = 2, atLevel = 6, forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")),
+    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")),
+    getNode(onBranch = 0, atLevel = 8, forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis"))
+  )
 
 
-  "getBlocks" should "work correctly with an offset" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("zeronet", 1, None, followFork = false)
-    blocks.get.size should be (1)
-  }
-
-
-  // Once we can mock the datbase, we should test whether getBlocks() works on a forked chain.
-
-  "getBlocks" should "work correctly with a hint whose level is too high" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val blocks = nodeOp.getBlocks("zeronet", 0, 1, Some("BKiiqiGu758Q76DLiqvN2ocwowjnR3aRrXguRYVq2xw61chzQoZ"), followFork = false)
-    blocks.get.length should be (2)
-  }
-
-
-  "getAccounts" should "correctly fetch all accounts for a block" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val accounts = nodeOp.getAccounts("zeronet", "BKiRLq7c2QVr6X428RRvp6JLTJEnWPE4bc4cAQHoo9GuZz9GH38")
-    accounts.get.accounts.size should be (1) //actually 5 in tezos, 1 for testing purposes.
-    val account = accounts.get.accounts.get("tz1btz5Av9BdpoTPnS9zGyPvpgAovmaZ23iN")
-    account.get.balance should be (12000000000000.0)
-  }
-
-  "getAccounts" should "handle an invalid accounts payload" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val accounts = nodeOp.getAccounts("zeronet", "dummy")
-    accounts.isFailure should be (true)
-  }
-
-  "getAccounts" should "handle a badly-formed account payload" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(MockTezosNode)
-    val accounts = nodeOp.getAccounts("zeronet", "BMMYEBsahXhnCdb7RqGTPnt9a8kdpMApjVV5iXzxr9MFdS4MHuP")
-    accounts.isFailure should be (true)
-  }
-
-  "signOperationGroup" should "correctly compute an operation signature" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.signOperationGroup(
-      "8f90f8f1f79bd69ae7d261252c51a1f5e8910f4fa2712a026f2acadb960416d900020000f10a450269188ebd9d29c6402d186bc381770fae000000000000c3500000001900000026010000000005f5e1000000bad6e61eb7b96f08783a476508e3d83b2bb15e19ff00000002030bb8010000000000000000",
-      keyStore
-    )
-    result.get.signature should be ("edsigtu4NbVsyomvHbAtstQAMpXFSKkDxH1YoshhQQmJhVe2pyWRUYvQr7dDLetLvyL7Yi78Pe846mG6hBGLx2WJXkuqSCU6Ff2")
-  }
-
-  "sendTransaction" should "correctly send a transaction" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.sendTransactionOperation(
-      "zeronet",
-      keyStore,
-      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
-      100000000f,
-      50000f
-    )
-    result.isSuccess should be (true)
-    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
-  }
-
-  /*
-  This test is deliberately commented out as delegating to the same contract twice causes a Tezos error.
-  Once the Tezos protocol settles down, we can originate a fresh contract and then set its delegate.
-
-  "sendDelegationOperation" should "correctly delegate to a given account" in {
-    val delegatedKeyStore = keyStore.copy(publicKeyHash = "TZ1sso2qb5CZXT17rorjPe2yieBPTjz15MUg")
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.sendDelegationOperation(
-      "zeronet",
-      delegatedKeyStore,
-      "tz1cfwpEiwEssf3W7vuJY2YqNzZFqidwZ1JR",
-      1f
-    )
-    result.isSuccess should be (true)
-    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
-  }*/
-
-  "sendOriginationOperation" should "originate an account" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.sendOriginationOperation(
-      "zeronet",
-      keyStore,
-      100f,
-      keyStore.publicKeyHash,
-      spendable = true,
-      delegatable = true,
-      1f
-    )
-    result.isSuccess should be (true)
-    result.get.results.operation_results.get.count(_.errors.isDefined) should be (0)
-  }
-
-  "createIdentity" should "generate a new Tezos key pair" in {
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(TezosNodeInterface)
-    val result = nodeOp.createIdentity()
-    result.isSuccess should be (true)
-  }
-  */
 }

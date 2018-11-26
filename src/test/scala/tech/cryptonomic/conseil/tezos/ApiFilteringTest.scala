@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{WordSpec, Matchers}
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.ApiOperations._
+import tech.cryptonomic.conseil.tezos.Api._
 
 class ApiFilteringSpec extends WordSpec with Matchers with LazyLogging {
 

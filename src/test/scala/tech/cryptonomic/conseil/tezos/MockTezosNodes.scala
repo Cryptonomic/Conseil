@@ -51,6 +51,7 @@ object MockTezosNodes {
   }
 
   object FileBasedNode {
+
     import scala.concurrent.ExecutionContext.Implicits.global
 
     //utility to check offset parsing
@@ -175,79 +176,5 @@ object MockTezosNodes {
       nodes(frame.cursor.get).runAsyncGetQuery(network, command)
 
   }
-
-  /*
-   * The following diagrams outlines all testing scenarios available
-   *
-   * In each scenario we can imagine a "snapshot" of the node and the results
-   * that it is expected to return from the block request, based on the
-   * exact level (Ln) for that time-frame and the corresponding "main" branch
-   *
-   * Most snapshot for the same time-frame will return the same results. It
-   * doesn't needs to be so, but it simplifies the data definition
-   *
-   * SCENARIO 1: no fork
-   * - time ->
-   *
-   *
-   * -----[L2]---------------  branch-0
-   *
-   *
-   * SCENARIO 2: single fork
-   * - time ->
-   *
-   *
-   *            |-----------[L5]----------  branch-1
-   * -----[L2]--|---[L4]------------------  branch-0
-   *
-   *
-   * SCENARIO 3: single fork alternating with the original
-   * - time ->
-   *
-   *
-   *            |-----------[L5]----------[L7]------  branch-1
-   * -----[L2]--|---[L4]------------[L6]------------  branch-0
-   *
-   *
-   * SCENARIO 4: two forks alternating with the original
-   * - time ->
-   *
-   *
-   *            |-------------------[L6]---------------  branch-2
-   *            |-----------[L5]----------[L7]---------  branch-1
-   * -----[L2]--|---[L4]-------------------------[L8]--  branch-0
-   *
-   */
-  import FileBasedNode.getNode
-
-  //SCENARIO 1 on the scheme
-  lazy val nonForkingScenario = getNode(onBranch = 0, atLevel = 2)
-
-
-  //SCENARIO 2 on the scheme
-  lazy val singleForkScenario = sequenceNodes(
-    getNode(onBranch = 0, atLevel = 2),
-    getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
-  )
-
-  //SCENARIO 3 on the scheme
-  lazy val singleForkAlternatingScenario = sequenceNodes(
-    getNode(onBranch = 0, atLevel = 2),
-    getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
-    getNode(onBranch = 0, atLevel = 6, forkDetection = Some("BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD")),
-    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J"))
-  )
-
-  //SCENARIO 4 on the scheme
-  lazy val twoForksAlternatingScenario = sequenceNodes(
-    getNode(onBranch = 0, atLevel = 2),
-    getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
-    getNode(onBranch = 2, atLevel = 6, forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")),
-    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")),
-    getNode(onBranch = 0, atLevel = 8, forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis"))
-  )
 
 }
