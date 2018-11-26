@@ -6,6 +6,7 @@ val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
 
 scapegoatVersion in ThisBuild := "1.3.8"
+parallelExecution in Test := false
 scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
 
 libraryDependencies  ++=  Seq(
@@ -42,16 +43,16 @@ scalacOptions ++= ScalacOptions.common
 
 import complete.DefaultParsers._
 
-fork in runConseil := true
 lazy val runConseil = inputKey[Unit]("A conseil run task.")
+fork in runConseil := true
 javaOptions in runConseil ++= Seq("-Xms512M", "-Xmx4096M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runConseil := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed
   runInputTask(Runtime, "tech.cryptonomic.conseil.Conseil", args:_*).toTask("")
 }.evaluated
 
-fork in runLorre := true
 lazy val runLorre = inputKey[Unit]("A lorre run task.")
+fork in runLorre := true
 javaOptions ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runLorre := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed

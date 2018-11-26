@@ -1,9 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
+import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.Attributes
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -281,6 +282,41 @@ object ApiOperations {
           .result
           .headOption
     )
+
+  /**
+    * Counts all entities in the db
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
+    * @return Count with all amounts
+    */
+  def countAll(implicit ec: ExecutionContext): Future[Map[String, Int]] = {
+    dbHandle.run {
+      for {
+        blocks <- TezosDb.countRows(Tables.Blocks)
+        accounts <- TezosDb.countRows(Tables.Accounts)
+        operationGroups <- TezosDb.countRows(Tables.OperationGroups)
+        operations <- TezosDb.countRows(Tables.Operations)
+        fees <- TezosDb.countRows(Tables.Fees)
+      } yield
+        Map(
+          Tables.Blocks.baseTableRow.tableName -> blocks,
+          Tables.Accounts.baseTableRow.tableName -> accounts,
+          Tables.OperationGroups.baseTableRow.tableName -> operationGroups,
+          Tables.Operations.baseTableRow.tableName -> operations,
+          Tables.Fees.baseTableRow.tableName -> fees
+        )
+    }
+  }
+
+  /**
+    * Runs sequence of DBIO actions
+    * @param  attributesActions list of actions to be performed to get
+    * @return list of attributes as a Future
+    */
+  def prepareTableAttributes(attributesActions: List[DBIO[Attributes]])(implicit ec: ExecutionContext): Future[List[Attributes]] = {
+    dbHandle.run {
+      DBIO.sequence(attributesActions)
+    }
+  }
 
 }
 
