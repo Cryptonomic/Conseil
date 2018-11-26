@@ -20,6 +20,7 @@ libraryDependencies  ++=  Seq(
   "org.scalatest" %% "scalatest" % "3.0.4" % "test",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.0",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.9.0",
+  "de.heikoseeberger" %% "akka-http-jackson" % "1.22.0",
   "com.typesafe.slick" %% "slick" % "3.2.1",
   "com.typesafe.slick" %% "slick-hikaricp" % "3.2.1",
   "org.postgresql" % "postgresql" % "42.1.4",

@@ -2,7 +2,10 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import slick.jdbc.GetResult
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.routes.JsonQuery
+import tech.cryptonomic.conseil.routes.JsonQuery.Predicates
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
@@ -268,4 +271,23 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
     sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
+
+
+  private implicit val getMap = GetResult[Map[String, Any]](positionedResult => {
+    val metadata = positionedResult.rs.getMetaData
+    (1 to positionedResult.numColumns).flatMap(i => {
+      val columnName = metadata.getColumnName(i).toLowerCase
+      val columnValue = positionedResult.nextObjectOption
+      columnValue.map(columnName -> _)
+    }).toMap
+  })
+
+  def weirdSelect(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext): DBIO[List[Map[String, Any]]] = {
+    val pred = predicates.map { p =>
+      sql"""${p.field} ${JsonQuery.mapOperationToSQL(p.operation)} (${p.set.mkString(",")})"""
+    }.mkString(" AND ")
+
+    sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE #$pred""".as[Map[String, Any]].map(_.toList)
+  }
 }
+

@@ -318,5 +318,9 @@ object ApiOperations {
     }
   }
 
+
+  def getQueryResults(query: DBIO[List[Map[String, Any]]]): Future[List[Map[String, Any]]] = {
+    dbHandle.run(query)
+  }
 }
 
