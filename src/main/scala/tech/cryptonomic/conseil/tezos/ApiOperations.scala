@@ -307,13 +307,13 @@ object ApiOperations {
   }
 
   /**
-    * Runs sequence of DBIO actions
-    * @param  actions list of actions to be performed to get
-    * @return list of attributes as a Future
+    * Runs DBIO action
+    * @param  action action to be performed on db
+    * @return result of DBIO action as a Future
     */
-  def runQuerySequence[A](actions: List[DBIO[A]]): Future[List[A]] = {
+  def runQuery[A](action: DBIO[A]): Future[A] = {
     dbHandle.run {
-      DBIO.sequence(actions)
+      action
     }
   }
 

@@ -11,8 +11,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 
 class PlatformDiscoveryOperationsTest
@@ -78,7 +77,7 @@ class PlatformDiscoveryOperationsTest
     "return list of attributes of Fees" in {
 
       dbHandler.run {
-        DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("fees"))
+        PlatformDiscoveryOperations.makeAttributesList("fees")
       }.futureValue shouldBe
         List(
           Attributes("low", "Low", DataType.Int, 0, KeyType.UniqueKey, "fees"),
@@ -91,7 +90,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of accounts" in {
       dbHandler.run {
-        DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("accounts"))
+        PlatformDiscoveryOperations.makeAttributesList("accounts")
       }.futureValue shouldBe
         List(
           Attributes("account_id", "Account id", DataType.String, 0, KeyType.UniqueKey, "accounts"),
@@ -109,7 +108,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of blocks" in {
       dbHandler.run {
-        DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("blocks"))
+        PlatformDiscoveryOperations.makeAttributesList("blocks")
       }.futureValue shouldBe
         List(
           Attributes("level", "Level", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
@@ -129,7 +128,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of operations" in {
       dbHandler.run {
-        DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("operations"))
+        PlatformDiscoveryOperations.makeAttributesList("operations")
       }.futureValue shouldBe
         List(
           Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
@@ -152,7 +151,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of operation groups" in {
       dbHandler.run {
-        DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("operation_groups"))
+        PlatformDiscoveryOperations.makeAttributesList("operation_groups")
       }.futureValue shouldBe
         List(
           Attributes("protocol", "Protocol", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
@@ -166,7 +165,7 @@ class PlatformDiscoveryOperationsTest
 
     "return empty list for non existing table" in {
       dbHandler.run {
-        DBIO.sequence(PlatformDiscoveryOperations.makeAttributesList("nonExisting"))
+        PlatformDiscoveryOperations.makeAttributesList("nonExisting")
       }.futureValue shouldBe List.empty
     }
   }
@@ -175,25 +174,21 @@ class PlatformDiscoveryOperationsTest
 
     "return list of values of kind attribute of Fees without filter" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))), Duration.Inf)
       dbHandler.run(
-        DBIO.sequence(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
-        )
-      ).futureValue.flatten shouldBe List("example1")
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+      ).futureValue shouldBe List("example1")
     }
 
-    "return throw an exeption when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
+    "returns a failed future when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))), Duration.Inf)
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
       val thrown = intercept[Exception] {
         dbHandler.run(
-          DBIO.sequence(
-            PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
-          )
+          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
         ).futureValue
       }
       thrown.getMessage shouldBe "The future returned an exception of type: java.util.NoSuchElementException, with message: Action.withFilter failed."
@@ -203,48 +198,37 @@ class PlatformDiscoveryOperationsTest
     "return empty list when trying to sql inject" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))), Duration.Inf)
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
       // That's how the SLQ-injected string will look like:
       // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
       dbHandler.run(
-        DBIO.sequence(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
-        )
-      ).futureValue.flatten shouldBe List.empty
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
+      ).futureValue shouldBe List.empty
 
       dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
 
     }
-    "check if filtering works correctly" in {
+    "correctly apply the filter" in {
       val avgFees = List(
         AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1"),
         AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
       )
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)), Duration.Inf)
+      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
 
       dbHandler.run(
-        DBIO.sequence(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
-        )
-      ).futureValue.flatten.size shouldBe 2
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+      ).futureValue shouldBe List("example1", "example2")
       dbHandler.run(
-        DBIO.sequence(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
-        )
-      ).futureValue.flatten.size shouldBe 2
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
+      ).futureValue shouldBe List("example1", "example2")
       dbHandler.run(
-        DBIO.sequence(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
-        )
-      ).futureValue.flatten.size shouldBe 2
-
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
+      ).futureValue shouldBe List("example1", "example2")
       dbHandler.run(
-        DBIO.sequence(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
-        )
-      ).futureValue.flatten shouldBe List("example1")
+        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+      ).futureValue shouldBe List("example1")
 
     }
 
