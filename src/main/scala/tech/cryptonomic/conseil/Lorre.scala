@@ -103,12 +103,10 @@ object Lorre extends App with LazyLogging {
     logger.info("Processing Tezos Blocks..")
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
       blocks =>
-        //use groupBy?
-        val (mainChainBlocksWithAction, forkedBlocksWithAction) = blocks.partition(b => b.action == tezosNodeOperator.WriteBlock)
-        val (invalidatedBlocksWithAction, revalidatedBlocksWithAction) = forkedBlocksWithAction.partition(b => b.action == tezosNodeOperator.WriteAndInvalidateBlock)
-        val mainChainBlocks = mainChainBlocksWithAction.map(_.block)
-        val invalidatedBlocks = invalidatedBlocksWithAction.map(_.block)
-        val revalidatedBlocks = revalidatedBlocksWithAction.map(_.block)
+        val actionGroupings = blocks.groupBy(_.action).mapValues(actions => actions.map(_.block))
+        val mainChainBlocks = actionGroupings.getOrElse(tezosNodeOperator.WriteBlock, List.empty)
+        val invalidatedBlocks = actionGroupings.getOrElse(tezosNodeOperator.WriteAndInvalidateBlock, List.empty)
+        val revalidatedBlocks = actionGroupings.getOrElse(tezosNodeOperator.RevalidateBlock, List.empty)
         val dbAction = DBIO.seq(
           TezosDb.writeBlocks(mainChainBlocks),
           TezosDb.writeAndInvalidateBlock(invalidatedBlocks),
