@@ -237,14 +237,14 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
     //read the latest stored top-level and the corresponding one from the current chain
     val highestLevelFromChain = getBlock(network, headBlockHash, Some(maxLevelOffset))//chain block
-    val highestLevelOnConseil = ApiOperations.fetchLatestBlock() //stored block
+    val highestLevelOnConseil = operations.fetchLatestBlock() //stored block
 
     //compare the results and in case read the missing data from the fork
     Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
       case (remote, Some(stored)) if remote.metadata.header.level != stored.level =>
         //better stop the process than to risk corrupting conseil's database
         logger.error(
-          s"""Loading the latest stored block and the corresponding expected block from the remote node returned a mismatched block level
+          """Loading the latest stored block and the corresponding expected block from the remote node returned a mismatched block level
              | Conseil stored block: {}
              | The Node returned block: {}
           """.stripMargin,
@@ -254,6 +254,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         Future.failed(new IllegalStateException("Fork detection found inconsistent levels in corresponding blocks"))
       case (remote, Some(stored)) if remote.metadata.hash.value != stored.hash =>
         followFork(network, remote)
+      case (remote, None) =>
+        logger.warn("There's no latest block stored on Conseil, corresponding to level {}. Trying to recover from the remote node", remote.metadata.header.level)
+        followFork(network, remote) //the local block for that level is missing... this shouldn't actually happen!
       case _ =>
         Future.successful(List.empty) //no additional action to take
     }.flatten
@@ -280,7 +283,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     import cats.data._
     import cats.implicits._
 
-    logger.info(s"An inconsistent block was detected at level ${missingBlock.metadata.header.level}, with hash ${missingBlock.metadata.hash}, possibly from a forked branch, I'm syncing ...")
+    logger.info(s"An inconsistent block was detected at level ${missingBlock.metadata.header.level}, with hash ${missingBlock.metadata.hash.value}, possibly from a forked branch, I'm syncing ...")
 
     implicit val db = operations.dbHandle
 

@@ -33,7 +33,8 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
     Tables.OperationGroups,
     Tables.Operations,
     Tables.Accounts,
-    Tables.Fees
+    Tables.Fees,
+    Tables.InvalidatedBlocks
   )
 
   /**

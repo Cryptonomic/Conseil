@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
@@ -7,7 +9,10 @@ import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.SpanSugar._
 import tech.cryptonomic.conseil.tezos.MockTezosNodes.{sequenceNodes, FileBasedNode}
+import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+
+import scala.concurrent.Future
 
 class TezosNodeOperatorTest
   extends WordSpec
@@ -71,7 +76,7 @@ class TezosNodeOperatorTest
 
     val network = "tezos"
 
-    "load latest blocks when there's no fork in the chain" in {
+    "load blocks to save in the no-fork scenario" in {
       //SCENARIO 1 on the scheme
       lazy val nonForkingScenario = getNode(onBranch = 0, atLevel = 2)
       val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
@@ -90,6 +95,77 @@ class TezosNodeOperatorTest
       )
     }
 
+    "load blocks to save in the single-fork scenario" in {
+      //SCENARIO 2 on the scheme
+      lazy val (singleForkScenario, timeFrame) = sequenceNodes(
+        getNode(onBranch = 0, atLevel = 2),
+        getNode(onBranch = 0, atLevel = 4),
+        getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
+      )
+      val sut = createTestOperator(singleForkScenario)
+      import sut.{BlockWithAction, WriteBlock, WriteAndInvalidateBlock}
+
+      {
+        //step 1
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+        val blockActions =
+          sut.getBlocks(network, 0, 2, startBlockHash = headHash, followFork = true)
+            .futureValue(timeout = Timeout(10.seconds))
+
+        blockActions should have size 3
+        blockActions.map(_.action) should contain only WriteBlock
+        blockActions.map(_.block.metadata.hash.value) should contain allOf(
+          "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+          "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+          "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
+        )
+
+        //write to db
+        store(sut)(blockActions).isReadyWithin(1.second) shouldBe true
+
+      }
+      {
+        //step 2
+        timeFrame.next() shouldBe true
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
+        val blockActions =
+          sut.getBlocks(network, 3, 4, startBlockHash = headHash, followFork = true)
+            .futureValue(timeout = Timeout(10.seconds))
+
+        blockActions should have size 2
+        blockActions.map(_.action) should contain only WriteBlock
+        blockActions.map(_.block.metadata.hash.value) should contain allOf(
+          "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
+          "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
+        )
+
+        //write to db
+        store(sut)(blockActions).isReadyWithin(1.second) shouldBe true
+      }
+      {
+        //step 3
+        timeFrame.next() shouldBe true
+
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
+        val blockActions =
+          sut.getBlocks(network, 5, 5, startBlockHash = headHash, followFork = true)
+            .futureValue(timeout = Timeout(10.seconds))
+
+        blockActions should have size 2
+        blockActions.map {
+          case BlockWithAction(block, action) => (block.metadata.hash.value, action)
+        } should contain allOf(
+          ("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", WriteBlock), //lvl 5
+          ("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z", WriteAndInvalidateBlock) //lvl 4
+        )
+
+      }
+
+      //double check
+      timeFrame.next() shouldBe false
+
+    }
+
   }
 
   /* create an operator instance to test, using
@@ -102,13 +178,30 @@ class TezosNodeOperatorTest
         new ApiOperations { lazy val dbHandle = dbHandler }
     }
 
+  /* store rows on the db as blocks */
+  private def store(sut: TezosNodeOperator)(actions: List[sut.BlockWithAction]): Future[_] = {
+    import slick.jdbc.H2Profile.api._
 
-  //SCENARIO 2 on the scheme
-  lazy val singleForkScenario = sequenceNodes(
-    getNode(onBranch = 0, atLevel = 2),
-    getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
-  )
+    val rows = actions map {
+      case sut.BlockWithAction(block, sut.WriteBlock) =>
+        toRow(block.metadata.hash, block.metadata.header.level)
+    }
+
+    dbHandler.run(Tables.Blocks ++= rows)
+  }
+
+  private val toRow: (BlockHash, Int) => BlocksRow = (hash, level) =>
+    BlocksRow(
+      hash = hash.value,
+      level = level,
+      proto = 0,
+      predecessor = "",
+      timestamp = new Timestamp(0L),
+      validationPass = 0,
+      fitness = "",
+      protocol = ""
+    )
+
 
   //SCENARIO 3 on the scheme
   lazy val singleForkAlternatingScenario = sequenceNodes(
