@@ -15,6 +15,9 @@ import scala.concurrent.ExecutionContext
 
 
 object JsonQuery {
+
+  def apply(implicit ec: ExecutionContext): JsonQuery = new JsonQuery()
+
   /** Enumeration of operation types */
   object OperationType extends Enumeration {
     type OperationType = Value
