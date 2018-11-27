@@ -122,7 +122,7 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosAccounts(): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts_(network).flatMap {
+    tezosNodeOperator.getLatestAccounts(network).flatMap {
       case Some(accountsInfo) =>
         printTimeStamp("writing accounts", "before")
         db.run(TezosDb.writeAccounts(accountsInfo)).andThen {

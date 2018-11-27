@@ -255,17 +255,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     }
 
   /**
-    * Get accounts for the latest block in the database.
-    * @param network  Which Tezos network to go against
-    * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
-    */
-  def getLatestAccounts_(network: String): Future[Option[AccountsWithBlockHashAndLevel]] = {
-    val hash = "BKs9PgJbqduLXYojoj6kXmkoPY4iJ1Yye1XJzrXB37eywnqEXcb"
-    val level = 11933
-    getAccounts(network, BlockHash(hash), level).map(Some(_))
-  }
-
-  /**
     * Appends a key reveal operation to an operation group if needed.
     * @param operations The operations being forged as part of this operation group
     * @param managerKey The sending account's manager information
