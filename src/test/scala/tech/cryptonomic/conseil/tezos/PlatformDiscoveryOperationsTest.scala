@@ -187,9 +187,9 @@ class PlatformDiscoveryOperationsTest
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
       intercept[NoSuchElementException] {
-        dbHandler.run(
+        throw dbHandler.run(
           PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
-        ).value.get
+        ).failed.futureValue
       }
     }
 
