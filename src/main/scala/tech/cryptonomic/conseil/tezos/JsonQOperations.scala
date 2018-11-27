@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object JsonQOperations {
 
   def runPredicates(table: String, query: JsonQ)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
-    ApiOperations.getQueryResults(TezosDatabaseOperations.weirdSelect(table, query.fields, query.predicates))
+    ApiOperations.getQueryResults(TezosDatabaseOperations.selectWithPredicates(table, query.fields, query.predicates))
   }
 
 }

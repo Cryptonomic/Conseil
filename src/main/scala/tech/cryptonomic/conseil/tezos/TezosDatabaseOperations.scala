@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import slick.jdbc.GetResult
+import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder, SetParameter}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.routes.JsonQuery
 import tech.cryptonomic.conseil.routes.JsonQuery.Predicates
@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
+import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 
@@ -282,12 +283,37 @@ object TezosDatabaseOperations extends LazyLogging {
     }).toMap
   })
 
-  def weirdSelect(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext): DBIO[List[Map[String, Any]]] = {
+  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext): DBIO[List[Map[String, Any]]] = {
     val pred = predicates.map { p =>
-      sql"""${p.field} ${JsonQuery.mapOperationToSQL(p.operation)} (${p.set.mkString(",")})"""
-    }.mkString(" AND ")
+      concat(sql""" AND #${p.field} #${JsonQuery.mapOperationToSQL(p.operation, p.inverse)} """, List(values(p.set.map(_.toString))))
+    }
+    val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
+    concat(query, pred).as[Map[String, Any]].map(_.toList)
+  }
 
-    sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE #$pred""".as[Map[String, Any]].map(_.toList)
+  //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not allow concatenating actions
+  /** concatenates SQLActionsBuilders */
+  @tailrec
+  private def concat(acc: SQLActionBuilder, actions: List[SQLActionBuilder]): SQLActionBuilder = {
+    actions match {
+      case Nil => acc
+      case x :: xs => concat(SQLActionBuilder(acc.queryParts ++ x.queryParts, (p: Unit, pp: PositionedParameters) => {
+        acc.unitPConv.apply(p, pp)
+        x.unitPConv.apply(p, pp)
+      }), xs)
+    }
+  }
+
+  /** inserts values into query */
+  private def values[T](xs: TraversableOnce[T]): SQLActionBuilder = {
+    var b = sql"("
+    var first = true
+    xs.foreach { x =>
+      if(first) first = false
+      else b = concat(b, List(sql","))
+      b = concat(b, List(sql"'#$x'"))
+    }
+    concat(b, List(sql")"))
   }
 }
 
