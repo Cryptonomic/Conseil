@@ -186,13 +186,11 @@ class PlatformDiscoveryOperationsTest
 
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
-      val thrown = intercept[Exception] {
+      intercept[NoSuchElementException] {
         dbHandler.run(
           PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
-        ).futureValue
+        ).value.get
       }
-      thrown.getMessage shouldBe "The future returned an exception of type: java.util.NoSuchElementException, with message: Action.withFilter failed."
-
     }
 
     "return empty list when trying to sql inject" in {
