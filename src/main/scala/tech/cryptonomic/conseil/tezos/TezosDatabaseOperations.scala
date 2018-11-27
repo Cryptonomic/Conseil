@@ -29,6 +29,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
+
   /**
     * Writes accounts from a specific block to a database.
     *

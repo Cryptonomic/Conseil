@@ -1,8 +1,11 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.util.Calendar
+
 import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.Lorre.logger
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
@@ -84,10 +87,22 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     */
   def getAllAccountsForBlock(network: String, blockHash: BlockHash): Future[Map[AccountId, Account]] =
     for {
-      jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
-      accountIDs = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
-      accounts <- getAccountsForBlock(network, blockHash, accountIDs)
-    } yield accountIDs.zip(accounts).toMap
+      jsonEncodedAccounts : String <- {
+        printTimeStamp("account id fetching", "before")
+        node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
+      }
+      accountIDs: List[TezosTypes.AccountId] = {
+        printTimeStamp("account id fetching", "after")
+        fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
+      }
+      accounts: List[TezosTypes.Account] <- {
+        printTimeStamp("full account fetching", "before")
+        getAccountsForBlock(network, blockHash, accountIDs)
+      }
+    } yield {
+      printTimeStamp("full account fetching", "after")
+      accountIDs.zip(accounts).toMap
+    }
 
   /**
     * Fetches operations for a block, without waiting for the result
@@ -139,11 +154,11 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         getBlockHead(network)
       }
-      headLevel = blockHead.metadata.header.level
-      headHash = blockHead.metadata.hash
+      headLevel = 204161//blockHead.metadata.header.level
+      headHash = BlockHash("BLgjn9mvyQ3XnXGRQwDHPxuXXoVVg29gmtjQ26FN6fCrC9fPXvm")//blockHead.metadata.hash
       blocks <-
         if (headLevel <= maxLevel) Future.successful(List.empty)
-        else getBlocks(network, maxLevel + 1, headLevel, headHash, followFork)
+        else getBlocks(network, 204160 /*maxLevel + 1*/, headLevel, headHash, followFork)
     } yield blocks
 
   /**
@@ -238,6 +253,17 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       case _ =>
         Future.successful(None)
     }
+
+  /**
+    * Get accounts for the latest block in the database.
+    * @param network  Which Tezos network to go against
+    * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
+    */
+  def getLatestAccounts_(network: String): Future[Option[AccountsWithBlockHashAndLevel]] = {
+    val hash = "BKs9PgJbqduLXYojoj6kXmkoPY4iJ1Yye1XJzrXB37eywnqEXcb"
+    val level = 11933
+    getAccounts(network, BlockHash(hash), level).map(Some(_))
+  }
 
   /**
     * Appends a key reveal operation to an operation group if needed.
@@ -489,4 +515,18 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       publicKeyHash <- CryptoUtil.base58CheckEncode(rawPublicKeyHash, "tz1")
     } yield KeyStore(privateKey = privateKey, publicKey = publicKey, publicKeyHash = publicKeyHash)
   }
+
+
+  def printTimeStamp(action: String, beforeOrAfter: String) = {
+    val timestamp: Long = System.currentTimeMillis()
+    val calendar = Calendar.getInstance()
+    calendar.setTimeInMillis(timestamp)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(Calendar.MINUTE)
+    val second = calendar.get(Calendar.SECOND)
+    val millisecond = calendar.get(Calendar.MILLISECOND)
+    val log = "Timestamp " + beforeOrAfter + " " + action + " : (hour, minute, second, millisecond): " + (hour, minute, second, millisecond).toString()
+    logger.info(log)
+  }
+
 }

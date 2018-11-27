@@ -14,6 +14,8 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
+import java.util.Calendar
+
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
@@ -120,10 +122,14 @@ object Lorre extends App with LazyLogging {
     */
   def processTezosAccounts(): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network).flatMap {
+    tezosNodeOperator.getLatestAccounts_(network).flatMap {
       case Some(accountsInfo) =>
+        printTimeStamp("writing accounts", "before")
         db.run(TezosDb.writeAccounts(accountsInfo)).andThen {
-          case Success(_) => logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
+          case Success(_) => {
+            logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
+            printTimeStamp("writing accounts", "after")
+          }
           case Failure(e) => logger.error("Could not write accounts to the database", e)
         }.map(_ => Done)
       case None =>
@@ -133,6 +139,20 @@ object Lorre extends App with LazyLogging {
       case Failure(e) =>
         logger.error("Could not fetch accounts from client", e)
     }
+  }
+
+
+
+  def printTimeStamp(action: String, beforeOrAfter: String) = {
+    val timestamp: Long = System.currentTimeMillis()
+    val calendar = Calendar.getInstance()
+    calendar.setTimeInMillis(timestamp)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(Calendar.MINUTE)
+    val second = calendar.get(Calendar.SECOND)
+    val millisecond = calendar.get(Calendar.MILLISECOND)
+    val log = "Timestamp " + beforeOrAfter + " " + action + " : (hour, minute, second, millisecond): " + (hour, minute, second, millisecond).toString()
+    logger.info(log)
   }
 
 }
