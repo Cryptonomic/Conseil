@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.Attributes
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -308,13 +307,13 @@ object ApiOperations {
   }
 
   /**
-    * Runs sequence of DBIO actions
-    * @param  attributesActions list of actions to be performed to get
-    * @return list of attributes as a Future
+    * Runs DBIO action
+    * @param  action action to be performed on db
+    * @return result of DBIO action as a Future
     */
-  def prepareTableAttributes(attributesActions: List[DBIO[Attributes]])(implicit ec: ExecutionContext): Future[List[Attributes]] = {
+  def runQuery[A](action: DBIO[A]): Future[A] = {
     dbHandle.run {
-      DBIO.sequence(attributesActions)
+      action
     }
   }
 
