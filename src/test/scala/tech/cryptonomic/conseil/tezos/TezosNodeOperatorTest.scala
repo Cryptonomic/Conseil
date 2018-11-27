@@ -7,6 +7,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.Inspectors._
 import org.scalatest.time.SpanSugar._
 import tech.cryptonomic.conseil.tezos.MockTezosNodes.{sequenceNodes, FileBasedNode}
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
@@ -82,16 +83,23 @@ class TezosNodeOperatorTest
       val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
       val sut= createTestOperator(nonForkingScenario)
 
+      import sut.WriteBlock
+
       val blockActions =
         sut.getBlocks(network, 0, 2, startBlockHash = headHash, followFork = true)
             .futureValue(timeout = Timeout(10.seconds))
 
       blockActions should have size 3
-      blockActions.map(_.action) should contain only sut.WriteBlock
-      blockActions.map(_.block.metadata.hash.value) should contain allOf (
-        "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4",
-        "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG",
-        "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"
+
+      forAll(blockActions) {
+        _ shouldBe a [WriteBlock]
+      }
+      blockActions.collect {
+        case WriteBlock(block) => block.metadata.hash.value
+      } should contain allOf (
+        "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+        "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+        "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
       )
     }
 
@@ -103,7 +111,7 @@ class TezosNodeOperatorTest
         getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
       )
       val sut = createTestOperator(singleForkScenario)
-      import sut.{BlockWithAction, WriteBlock, WriteAndInvalidateBlock}
+      import sut.{WriteBlock, WriteAndMakeValidBlock}
 
       {
         //step 1
@@ -113,8 +121,12 @@ class TezosNodeOperatorTest
             .futureValue(timeout = Timeout(10.seconds))
 
         blockActions should have size 3
-        blockActions.map(_.action) should contain only WriteBlock
-        blockActions.map(_.block.metadata.hash.value) should contain allOf(
+        forAll(blockActions) {
+          _ shouldBe a [WriteBlock]
+        }
+        blockActions.collect {
+          case WriteBlock(block) => block.metadata.hash.value
+        } should contain allOf(
           "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
           "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
           "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
@@ -133,8 +145,12 @@ class TezosNodeOperatorTest
             .futureValue(timeout = Timeout(10.seconds))
 
         blockActions should have size 2
-        blockActions.map(_.action) should contain only WriteBlock
-        blockActions.map(_.block.metadata.hash.value) should contain allOf(
+        forAll(blockActions) {
+          _ shouldBe a [WriteBlock]
+        }
+        blockActions.collect {
+          case WriteBlock(block) => block.metadata.hash.value
+        } should contain allOf(
           "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
           "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
         )
@@ -152,12 +168,12 @@ class TezosNodeOperatorTest
             .futureValue(timeout = Timeout(10.seconds))
 
         blockActions should have size 2
-        blockActions.map {
-          case BlockWithAction(block, action) => (block.metadata.hash.value, action)
-        } should contain allOf(
-          ("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", WriteBlock), //lvl 5
-          ("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z", WriteAndInvalidateBlock) //lvl 4
-        )
+        blockActions.collect {
+          case WriteBlock(block) => block.metadata.hash.value
+        } should contain only ("BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp") //lvl 5
+        blockActions.collect {
+          case WriteAndMakeValidBlock(block) => block.metadata.hash.value
+        } should contain only ("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z") //lvl 4
 
       }
 
@@ -179,11 +195,11 @@ class TezosNodeOperatorTest
     }
 
   /* store rows on the db as blocks */
-  private def store(sut: TezosNodeOperator)(actions: List[sut.BlockWithAction]): Future[_] = {
+  private def store(sut: TezosNodeOperator)(actions: List[sut.BlockAction]): Future[_] = {
     import slick.jdbc.H2Profile.api._
 
     val rows = actions map {
-      case sut.BlockWithAction(block, sut.WriteBlock) =>
+      case sut.WriteBlock(block) =>
         toRow(block.metadata.hash, block.metadata.header.level)
     }
 

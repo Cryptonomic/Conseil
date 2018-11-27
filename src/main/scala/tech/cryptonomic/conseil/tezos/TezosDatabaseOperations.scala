@@ -4,12 +4,11 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import cats.implicits._
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 
@@ -52,16 +51,31 @@ object TezosDatabaseOperations extends LazyLogging {
       ).transactionally
 
   /**
-    * Writes blocks to a database and adds them into the invalidated blocks table.
+    * Writes blocks to a database and adds the corrisponding invalidated blocks into the appropriate invalidated table.
     *
     * @param blocks Blocks which are being invalidated
     * @return       Database action that will execute the writes as a side effect
     */
-  def writeAndInvalidateBlock(blocks: List[Block]): DBIO[Unit] =
+  def writeAndValidateBlocks(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] =
     DBIO.seq(
-      Tables.Blocks            ++= blocks.map(RowConversion.convertBlock),
-      Tables.InvalidatedBlocks ++= blocks.map(block => RowConversion.convertInvalidatedBlock(block))
+      writeBlocks(blocks),
+      invalidateBlocks(blocks),
+      revalidateBlocks(blocks)
     ).transactionally
+
+  /* find blocks at the same level as those passed-in and invalidates them */
+  private def invalidateBlocks(validBlocks: List[Block])(implicit ec: ExecutionContext) =
+    DBIO.sequence(validBlocks.map(valid => markInvalids(valid.metadata.header.level, valid.metadata.hash)))
+
+  /* find corresponding blocks that needs to be invalidated and adds them to the table */
+  private def markInvalids(level: Int, validHash: BlockHash)(implicit ec: ExecutionContext): DBIO[Int] =
+    Tables.Blocks.filter(block => block.level === level && block.hash =!= validHash.value)
+      .result
+      .map(rows => rows.map(RowConversion.convertToInvalidatedBlock)
+    ).flatMap(
+      invalid =>
+        DBIO.sequence(invalid.map(Tables.InvalidatedBlocks.insertOrUpdate)).map(_.sum)
+    )
 
   /**
     * Update invalidated blocks in the database table so that current block is revalidated, and all other blocks
@@ -280,10 +294,10 @@ object TezosDatabaseOperations extends LazyLogging {
         }
       }
 
-    private[TezosDatabaseOperations] def convertInvalidatedBlock(block: Block) =
+    private[TezosDatabaseOperations] def convertToInvalidatedBlock(block: BlocksRow) =
       Tables.InvalidatedBlocksRow(
-        hash = block.metadata.hash.value,
-        level = block.metadata.header.level,
+        hash = block.hash,
+        level = block.level,
         isInvalidated = true
       )
 
