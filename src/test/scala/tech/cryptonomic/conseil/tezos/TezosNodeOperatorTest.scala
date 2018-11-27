@@ -69,7 +69,7 @@ class TezosNodeOperatorTest
 
   "The Node Operator" should {
 
-    val netwok = "tezos"
+    val network = "tezos"
 
     "load latest blocks when there's no fork in the chain" in {
       //SCENARIO 1 on the scheme
@@ -78,10 +78,16 @@ class TezosNodeOperatorTest
       val sut= createTestOperator(nonForkingScenario)
 
       val blockActions =
-        sut.getBlocks(netwok, 0, 2, startBlockHash = headHash, followFork = true)
+        sut.getBlocks(network, 0, 2, startBlockHash = headHash, followFork = true)
             .futureValue(timeout = Timeout(10.seconds))
 
       blockActions should have size 3
+      blockActions.map(_.action) should contain only sut.WriteBlock
+      blockActions.map(_.block.metadata.hash.value) should contain allOf (
+        "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4",
+        "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG",
+        "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"
+      )
     }
 
   }
