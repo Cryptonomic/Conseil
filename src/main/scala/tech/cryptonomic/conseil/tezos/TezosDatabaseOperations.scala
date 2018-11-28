@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import slick.jdbc.GetResult
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
@@ -9,9 +10,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHash
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import cats._
-import cats.data._
-import cats.implicits._
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 
@@ -47,40 +45,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return         Future on database inserts.
     */
   def writeBlocks(blocks: List[Block]): DBIO[Unit] =
-      DBIO.seq(
-        Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
-        Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
-        Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
-      ).transactionally
-
-  /**
-    * Writes a single block into the invalidated blocks table.
-    * @param blocks Blocks which are being invalidated
-    * @return
-    */
-  def writeAndInvalidateBlockIO(blocks: List[Block]): DBIO[Unit] =
     DBIO.seq(
-      Tables.Blocks            ++= blocks.map(RowConversion.convertBlock),
-      Tables.InvalidatedBlocks ++= blocks.map(block => RowConversion.convertInvalidatedBlock(block))
-    ).transactionally
-
-  /**
-    * Updated invalidated blocks table so that current block is revalidated, and all other blocks
-    * at same level are invalidated.
-    * @param block Block to be revalidated
-    * @return
-    */
-  def revalidateBlockIO(block: Block): DBIO[(Int, Int)] = {
-    val hash = block.metadata.hash
-    val level = block.metadata.header.level
-    val invalidatedAction = Tables.InvalidatedBlocks.filter(block => block.level === level && block.hash =!= hash.value).map(block => block.isInvalidated).update(true)
-    val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash.value).map(block => block.isInvalidated).update(false)
-    invalidatedAction zip revalidatedAction
-  }.transactionally
-
-  def revalidateBlocksIO(blocks: List[Block]): DBIO[List[(Int, Int)]] = {
-    blocks.traverse(revalidateBlockIO)
-  }
+      Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
+      Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
+      Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
+    )
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -135,18 +104,18 @@ object TezosDatabaseOperations extends LazyLogging {
       operation <- operationsByGroupHash(groupHash).extract
       group <- operation.operationGroupsFk
     } yield (group, operation)
-    ).result
-    .map {
-      pairs =>
-        /*
-         * we first collect all de-normalized pairs under the common group and then extract the
-         * only key-value from the resulting map
-         */
-        val keyed = pairs.byKey()
-        keyed.keys
-          .headOption
-          .map( k => (k, keyed(k)))
-    }
+      ).result
+      .map {
+        pairs =>
+          /*
+           * we first collect all de-normalized pairs under the common group and then extract the
+           * only key-value from the resulting map
+           */
+          val keyed = pairs.byKey()
+          keyed.keys
+            .headOption
+            .map( k => (k, keyed(k)))
+      }
 
   /**
     * Checks if a block for this hash and related operations are stored on db
@@ -154,33 +123,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ec   Needed to compose the operations
     * @return     true if block and operations exists
     */
-  def blockAndOpsExists(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
+  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
     for {
       blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
       opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
     } yield blockThere && opsThere
-
-  /**
-    * Check if a block for this hash are stored on db
-    * @param hash Identifies the block
-    * @param ec   Needed to compose the operations
-    * @return     true if block and operations exists
-    */
-  def blockExists(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
-    for {
-      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
-    } yield blockThere
-
-  /**
-    * Checks if a block for this hash has ever been invalidated
-    * @param hash Identifies the block
-    * @param ec   Needed to compose the operations
-    * @return     true if block and operations exists
-    */
-  def blockExistsInInvalidatedBlocks(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
-    for {
-      blockThere <- Tables.InvalidatedBlocks.findBy(_.hash).applied(hash.value).exists.result
-    } yield blockThere
 
   /** conversions from domain objects to database row format */
   private object RowConversion {
@@ -192,7 +139,7 @@ object TezosDatabaseOperations extends LazyLogging {
         high = in.high,
         timestamp = in.timestamp,
         kind = in.kind
-    )
+      )
 
     private[TezosDatabaseOperations] def convertAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
       val AccountsWithBlockHashAndLevel(hash, level, accounts) = blockAccounts
@@ -269,13 +216,6 @@ object TezosDatabaseOperations extends LazyLogging {
         }
       }
 
-    private[TezosDatabaseOperations] def convertInvalidatedBlock(block: Block) =
-      Tables.InvalidatedBlocksRow(
-        hash = block.metadata.hash.value,
-        level = block.metadata.header.level,
-        isInvalidated = true
-      )
-
   }
 
   /* use as max block level when none exists */
@@ -311,4 +251,45 @@ object TezosDatabaseOperations extends LazyLogging {
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
+  /**
+    * Counts number of rows in the given table
+    * @param table  slick table
+    * @return       amount of rows in the table
+    */
+  def countRows(table: TableQuery[_]): DBIO[Int] =
+    table.length.result
+
+  // Slick does not allow count operations on arbitrary column names
+  /**
+    * Counts number of distinct elements by given table and column
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table  name of the table
+    * @param column name of the column
+    * @return       amount of distinct elements in given column
+    */
+  def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
+    sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
+
+  /**
+    * Selects distinct elements by given table and column
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table  name of the table
+    * @param column name of the column
+    * @return       distinct elements in given column as a list
+    */
+  def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
+  }
+
+  /**
+    * Selects distinct elements by given table and column with filter
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table          name of the table
+    * @param column         name of the column
+    * @param matchingString string which is being matched
+    * @return               distinct elements in given column as a list
+    */
+  def selectDistinctLike(table: String, column: String, matchingString: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
+  }
 }
