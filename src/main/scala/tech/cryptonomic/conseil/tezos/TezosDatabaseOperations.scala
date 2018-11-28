@@ -2,11 +2,12 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder, SetParameter}
+import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.routes.JsonQuery
-import tech.cryptonomic.conseil.routes.JsonQuery.Predicates
+import tech.cryptonomic.conseil.routes.QueryProtocol
+import tech.cryptonomic.conseil.routes.QueryProtocol.Predicates
 import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Predicates
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -297,7 +298,7 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
 
-  private implicit val getMap = GetResult[Map[String, Any]](positionedResult => {
+  private implicit val getMap: GetResult[Map[String, Any]] = GetResult[Map[String, Any]](positionedResult => {
     val metadata = positionedResult.rs.getMetaData
     (1 to positionedResult.numColumns).flatMap(i => {
       val columnName = metadata.getColumnName(i).toLowerCase
@@ -306,24 +307,37 @@ object TezosDatabaseOperations extends LazyLogging {
     }).toMap
   })
 
-  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext): DBIO[List[Map[String, Any]]] = {
+  /**
+    * Selects elements filtered by the predicates
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table          name of the table
+    * @param columns        list of column names
+    * @param predicates     list of predicates for query to be filtered with
+    * @return               list of map of [string, any], which represents list of rows as a map of column name to value
+    */
+  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext):
+  DBIO[List[Map[String, Any]]] = {
     val pred = predicates.map { p =>
-      concat(sql""" AND #${p.field} #${JsonQuery.mapOperationToSQL(p.operation, p.inverse)} """, List(values(p.set.map(_.toString))))
+      concat(
+        sql""" AND #${p.field} #${QueryProtocolTypes.mapOperationToSQL(p.operation, p.inverse)} """,
+        List(values(p.set.map(_.toString))))
     }
     val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
+
     concat(query, pred).as[Map[String, Any]].map(_.toList)
   }
 
-  //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not allow concatenating actions
+  //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not simple concatenation of actions
   /** concatenates SQLActionsBuilders */
   @tailrec
   private def concat(acc: SQLActionBuilder, actions: List[SQLActionBuilder]): SQLActionBuilder = {
     actions match {
       case Nil => acc
-      case x :: xs => concat(SQLActionBuilder(acc.queryParts ++ x.queryParts, (p: Unit, pp: PositionedParameters) => {
-        acc.unitPConv.apply(p, pp)
-        x.unitPConv.apply(p, pp)
-      }), xs)
+      case x :: xs =>
+        concat(SQLActionBuilder(acc.queryParts ++ x.queryParts, (p: Unit, pp: PositionedParameters) => {
+          acc.unitPConv.apply(p, pp)
+          x.unitPConv.apply(p, pp)
+        }), xs)
     }
   }
 

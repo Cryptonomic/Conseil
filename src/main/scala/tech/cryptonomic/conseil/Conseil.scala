@@ -11,7 +11,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.routes.{JsonQuery, PlatformDiscovery, Tezos}
+import tech.cryptonomic.conseil.routes.{QueryProtocol, PlatformDiscovery, Tezos}
 import tech.cryptonomic.conseil.util.SecurityUtil
 
 import scala.concurrent.ExecutionContextExecutor
@@ -49,7 +49,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
           }
         } ~ logRequest("Query route", Logging.DebugLevel) {
           pathPrefix("query") {
-            JsonQuery(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+            QueryProtocol(system.dispatchers.lookup("akka.tezos-dispatcher")).route
           }
         }
       } ~ options {
