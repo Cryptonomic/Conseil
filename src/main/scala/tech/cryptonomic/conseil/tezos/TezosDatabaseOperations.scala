@@ -2,10 +2,8 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.routes.QueryProtocol
-import tech.cryptonomic.conseil.routes.QueryProtocol.Predicates
+import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Predicates
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
