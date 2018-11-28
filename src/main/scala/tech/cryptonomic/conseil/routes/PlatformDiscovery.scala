@@ -34,6 +34,16 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
               pathPrefix("attributes") {
                 pathEnd {
                   completeWithJson(PlatformDiscoveryOperations.getTableAttributes(entity))
+                } ~ pathPrefix(Segment) { attribute =>
+                  pathEnd {
+                    completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
+                  } ~ pathPrefix("filter") {
+                    pathPrefix(Segment) { filter =>
+                      pathEnd {
+                        completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
+                      }
+                    }
+                  }
                 }
               }
             }
