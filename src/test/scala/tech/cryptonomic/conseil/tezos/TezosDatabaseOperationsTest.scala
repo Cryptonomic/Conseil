@@ -577,16 +577,15 @@ class TezosDatabaseOperationsTest
     "get empty map from empty table" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val blocks = generateBlockRows(1, testReferenceTime)
       val columns = List("level", "proto", "protocol", "hash")
-      val predicates = List()
+      val predicates = List.empty
 
       val populateAndTest = for {
         found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
-      result shouldBe List()
+      result shouldBe 'empty
     }
   }
 

@@ -5,13 +5,13 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Predicates
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicates}
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 
@@ -318,7 +318,7 @@ object TezosDatabaseOperations extends LazyLogging {
   DBIO[List[Map[String, Any]]] = {
     val pred = predicates.map { p =>
       concat(
-        sql""" AND #${p.field} #${QueryProtocolTypes.mapOperationToSQL(p.operation, p.inverse)} """,
+        sql""" AND #${p.field} #${mapOperationToSQL(p.operation, p.inverse)} """,
         List(values(p.set.map(_.toString))))
     }
     val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
@@ -328,15 +328,13 @@ object TezosDatabaseOperations extends LazyLogging {
 
   //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not have simple concatenation of actions
   /** concatenates SQLActionsBuilders */
-  @tailrec
   private def concat(acc: SQLActionBuilder, actions: List[SQLActionBuilder]): SQLActionBuilder = {
-    actions match {
-      case Nil => acc
-      case x :: xs =>
-        concat(SQLActionBuilder(acc.queryParts ++ x.queryParts, (p: Unit, pp: PositionedParameters) => {
-          acc.unitPConv.apply(p, pp)
-          x.unitPConv.apply(p, pp)
-        }), xs)
+    actions.foldLeft(acc) {
+      case (accumulator, action) =>
+        SQLActionBuilder(accumulator.queryParts ++ action.queryParts, (p: Unit, pp: PositionedParameters) => {
+          accumulator.unitPConv.apply(p, pp)
+          action.unitPConv.apply(p, pp)
+        })
     }
   }
 
@@ -350,6 +348,15 @@ object TezosDatabaseOperations extends LazyLogging {
       b = concat(b, List(sql"'#$x'"))
     }
     concat(b, List(sql")"))
+  }
+
+  /** maps operation type to SQL operation string */
+  private def mapOperationToSQL(operation: OperationType, inverse: Boolean): String = {
+    val op = operation match {
+      case OperationType.in => "IN"
+    }
+    if (inverse) s"NOT $op"
+    else op
   }
 }
 

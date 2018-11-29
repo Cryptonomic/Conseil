@@ -5,13 +5,6 @@ import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
 
 object QueryProtocolTypes {
-  def mapOperationToSQL(operation: OperationType, inverse: Boolean): String = {
-    val op = operation match {
-      case OperationType.in => "IN"
-    }
-    if (inverse) s"NOT $op"
-    else op
-  }
 
   /** Class required for KeyType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]
@@ -20,7 +13,7 @@ object QueryProtocolTypes {
     field: String,
     @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
     set: List[Any],
-    inverse: Boolean
+    inverse: Boolean = false
   )
 
   case class JsonQuery(

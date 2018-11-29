@@ -118,7 +118,7 @@ object PlatformDiscoveryOperations {
     distinctCount < maxCount
   }
 
-  /** Leaves only letters and digits in the SQL string */
+  /** Sanitizes string to be viable to paste int plain SQL */
   private def sanitizeForSql(str: String): String = {
     str.filter(c => c.isLetterOrDigit || c == '_')
   }
