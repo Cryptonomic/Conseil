@@ -131,34 +131,27 @@ object PlatformDiscoveryOperations {
     * */
   def queryWithPredicates(tableName: String, query: JsonQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
 
-    checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field)).flatMap { canQuery =>
-      if (canQuery) {
-        val sanitizedPredicates = query.predicates.map { predicate =>
-          predicate.copy(set = predicate.set.map(pred => sanitizeForSql(pred.toString)))
-        }
-        ApiOperations.getQueryResults(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizedPredicates))
-      } else {
-        Future.successful(List.empty)
+    if (checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field))) {
+      val sanitizedPredicates = query.predicates.map { predicate =>
+        predicate.copy(set = predicate.set.map(pred => sanitizeForSql(pred.toString)))
       }
+      ApiOperations.getQueryResults(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizedPredicates))
+    } else {
+      Future.successful(List.empty)
     }
   }
 
   /** Checks if columns exist for the given table */
-  private def checkIfCanQuery(table: String, queryFields: List[String], predicateFields: List[String])
-    (implicit ec: ExecutionContext): Future[Boolean] = {
+  private def checkIfCanQuery(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
+    val fields = (queryFields ++ predicateFields).toSet
 
-    val fields = queryFields ++ predicateFields
-
-    Future.sequence {
-      tablesMap.collect {
-        case (tableName, tableQuery) if table == table =>
-          getTableAttributes(tableName).map { attributesList =>
-            fields.toSet.subsetOf(tableQuery.baseTableRow.create_*.map(_.name).toSet) &&
-              attributesList.forall(attr => canQueryType(attr.dataType) && isLowCardinality(attr.cardinality))
-          }
-      }
-    }.map(_.headOption.getOrElse(false))
+    tablesMap.exists {
+      case (name, table) =>
+        val cols = table.baseTableRow.create_*.map(_.name).toSet
+        name == tableName && fields.subsetOf(cols)
+    }
   }
+
 
   /**
     * Extracts attributes in the DB for the given table name
@@ -174,7 +167,7 @@ object PlatformDiscoveryOperations {
     *
     * @param  tableName name of the table from which we extract attributes
     * @return list of DBIO queries for attributes
-    * */
+    **/
   def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attributes]] = {
     DBIO.sequence {
       for {
