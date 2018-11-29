@@ -325,7 +325,7 @@ object TezosDatabaseOperations extends LazyLogging {
     concat(query, pred).as[Map[String, Any]].map(_.toList)
   }
 
-  //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not simple concatenation of actions
+  //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not have simple concatenation of actions
   /** concatenates SQLActionsBuilders */
   @tailrec
   private def concat(acc: SQLActionBuilder, actions: List[SQLActionBuilder]): SQLActionBuilder = {
