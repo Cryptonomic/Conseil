@@ -296,6 +296,7 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
 
+  /** Implicit value that allows getting table row as Map[String, Any] */
   private implicit val getMap: GetResult[Map[String, Any]] = GetResult[Map[String, Any]](positionedResult => {
     val metadata = positionedResult.rs.getMetaData
     (1 to positionedResult.numColumns).flatMap(i => {

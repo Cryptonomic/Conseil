@@ -5,12 +5,13 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec, OptionValues}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow, AccountsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicates}
 
 import scala.util.Random
 
@@ -472,6 +473,120 @@ class TezosDatabaseOperationsTest
       val exists = dbHandler.run(populateAndTest.transactionally).futureValue
       exists shouldBe false
 
+    }
+
+    "get map from a block table" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val columns = List("level", "proto", "protocol", "hash")
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with predicate" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicates(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+      )
+    }
+
+    "get map from a block table with inverse predicate" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicates(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = true
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with multiple predicates" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicates(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = true
+        ),
+        Predicates(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("aQeGrbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocks
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get empty map from empty table" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val blocks = generateBlockRows(1, testReferenceTime)
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List()
+
+      val populateAndTest = for {
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List()
     }
   }
 
