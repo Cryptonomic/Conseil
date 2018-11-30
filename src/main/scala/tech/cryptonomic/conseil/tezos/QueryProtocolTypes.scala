@@ -16,7 +16,7 @@ object QueryProtocolTypes {
     inverse: Boolean = false
   )
 
-  case class JsonQuery(
+  case class FieldQuery(
     fields: List[String],
     predicates: List[Predicates]
   )

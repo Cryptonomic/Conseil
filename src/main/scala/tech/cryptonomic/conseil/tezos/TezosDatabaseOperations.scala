@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
+import slick.jdbc.GetResult
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicates}
@@ -316,38 +316,16 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext):
   DBIO[List[Map[String, Any]]] = {
+    import tech.cryptonomic.conseil.util.DatabaseUtil._
     val pred = predicates.map { p =>
       concat(
         sql""" AND #${p.field} #${mapOperationToSQL(p.operation, p.inverse)} """,
-        List(values(p.set.map(_.toString))))
+        List(values(p.set.map(_.toString)))
+      )
     }
     val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
 
     concat(query, pred).as[Map[String, Any]].map(_.toList)
-  }
-
-  //some adjusted hacks from https://github.com/slick/slick/issues/1161 as Slick does not have simple concatenation of actions
-  /** concatenates SQLActionsBuilders */
-  private def concat(acc: SQLActionBuilder, actions: List[SQLActionBuilder]): SQLActionBuilder = {
-    actions.foldLeft(acc) {
-      case (accumulator, action) =>
-        SQLActionBuilder(accumulator.queryParts ++ action.queryParts, (p: Unit, pp: PositionedParameters) => {
-          accumulator.unitPConv.apply(p, pp)
-          action.unitPConv.apply(p, pp)
-        })
-    }
-  }
-
-  /** inserts values into query */
-  private def values[T](xs: TraversableOnce[T]): SQLActionBuilder = {
-    var b = sql"("
-    var first = true
-    xs.foreach { x =>
-      if(first) first = false
-      else b = concat(b, List(sql","))
-      b = concat(b, List(sql"'#$x'"))
-    }
-    concat(b, List(sql")"))
   }
 
   /** maps operation type to SQL operation string */

@@ -459,14 +459,16 @@ class TezosDatabaseOperationsTest
 
     }
 
+    val blocksTmp = List(
+      BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",Some("context0"),Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+      BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
+    )
     "say a block doesn't exist if it has no associated operation group" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val blocks = generateBlockRows(1, testReferenceTime)
-      val testHash = BlockHash(blocks.last.hash)
+      val testHash = BlockHash(blocksTmp.last.hash)
 
       val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.Blocks ++= blocksTmp
         found <- sut.blockExists(testHash)
       } yield found
 
@@ -478,11 +480,10 @@ class TezosDatabaseOperationsTest
     "get map from a block table" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
-      val blocks = generateBlockRows(1, testReferenceTime)
       val columns = List("level", "proto", "protocol", "hash")
 
       val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.Blocks ++= blocksTmp
         found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty)
       } yield found
 
@@ -494,9 +495,6 @@ class TezosDatabaseOperationsTest
     }
 
     "get map from a block table with predicate" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(1, testReferenceTime)
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List(
         Predicates(
@@ -508,7 +506,7 @@ class TezosDatabaseOperationsTest
       )
 
       val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.Blocks ++= blocksTmp
         found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
       } yield found
 
@@ -519,9 +517,6 @@ class TezosDatabaseOperationsTest
     }
 
     "get map from a block table with inverse predicate" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(1, testReferenceTime)
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List(
         Predicates(
@@ -533,7 +528,7 @@ class TezosDatabaseOperationsTest
       )
 
       val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.Blocks ++= blocksTmp
         found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
       } yield found
 
@@ -544,9 +539,6 @@ class TezosDatabaseOperationsTest
     }
 
     "get map from a block table with multiple predicates" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(1, testReferenceTime)
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List(
         Predicates(
@@ -564,7 +556,7 @@ class TezosDatabaseOperationsTest
       )
 
       val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
+        _ <- Tables.Blocks ++= blocksTmp
         found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
       } yield found
 
@@ -575,8 +567,6 @@ class TezosDatabaseOperationsTest
     }
 
     "get empty map from empty table" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List.empty
 

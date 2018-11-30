@@ -5,7 +5,7 @@ import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.JsonQuery
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.collection.JavaConverters._
@@ -129,7 +129,7 @@ object PlatformDiscoveryOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  def queryWithPredicates(tableName: String, query: JsonQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
+  def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
 
     if (checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field))) {
       val sanitizedPredicates = query.predicates.map { predicate =>

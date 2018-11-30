@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.JsonQuery
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
 import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
@@ -23,7 +23,7 @@ class QueryProtocol(implicit apiExecutionContext: ExecutionContext) extends Lazy
 
   val route: Route =
     get {
-      entity(as[JsonQuery]) { query: JsonQuery =>
+      entity(as[FieldQuery]) { query: FieldQuery =>
         pathPrefix(Segment) { network =>
           pathPrefix(Segment) { entity =>
             pathEnd {
