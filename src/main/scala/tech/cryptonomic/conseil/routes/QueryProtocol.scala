@@ -23,11 +23,13 @@ class QueryProtocol(implicit apiExecutionContext: ExecutionContext) extends Lazy
 
   val route: Route =
     get {
-      entity(as[FieldQuery]) { query: FieldQuery =>
+      entity(as[FieldQuery]) { fieldQuery: FieldQuery =>
         pathPrefix(Segment) { network =>
           pathPrefix(Segment) { entity =>
             pathEnd {
-              completeWithJson(PlatformDiscoveryOperations.queryWithPredicates(entity, query))
+              validateQueryOrBadRequest(fieldQuery) { validatedQuery =>
+                completeWithJson(PlatformDiscoveryOperations.queryWithPredicates(entity, validatedQuery))
+              }
             }
           }
         }

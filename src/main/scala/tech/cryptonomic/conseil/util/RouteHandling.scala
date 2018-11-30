@@ -3,7 +3,8 @@ package tech.cryptonomic.conseil.util
 import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Directives.complete
-import akka.http.scaladsl.server.StandardRoute
+import akka.http.scaladsl.server.{Directive, Directive1, StandardRoute}
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,6 +34,18 @@ trait RouteHandling {
       case Some(content) => converter(content)
       case None => StatusCodes.NotFound
     }
+
+  /**
+    * Directive handling validation errors as bad requests(400)
+    * @param fieldQuery field query before validation
+    * @return Either validated query or bad request if validation failed
+    */
+  protected def validateQueryOrBadRequest(fieldQuery: FieldQuery): Directive1[FieldQuery] = Directive { inner =>
+    fieldQuery.validate match {
+      case Some(value) => inner(Tuple1(value))
+      case None => complete(StatusCodes.BadRequest)
+    }
+  }
 
   /** converts the future value to [[JsonString]] and completes the call */
   protected def completeWithJson[T](futureValue: Future[T])(implicit ec: ExecutionContext): StandardRoute =
