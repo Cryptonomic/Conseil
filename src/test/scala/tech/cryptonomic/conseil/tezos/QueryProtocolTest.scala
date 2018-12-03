@@ -72,24 +72,27 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
     predicates = List.empty
   )
 
-  val route: Route = QueryProtocol(ec).route
+  val fakePDO: QueryProtocolOperations = new QueryProtocolOperations {
+    override def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] =
+      Future.successful(responseAsMap)
+  }
+  val route: Route = new QueryProtocol(fakePDO)(ec).route
 
   "Query protocol" should {
 
-//    "return a correct response with OK status code" in {
-//      val getRequest = HttpRequest(
-//        HttpMethods.GET,
-//        uri = "/tezos/accounts",
-//        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
-//      val fakePDO = stub[PlatformDiscoveryOperations]
-//      (fakePDO.queryWithPredicates(_: String, _: FieldQuery)(_: ExecutionContext)) when("accounts", fieldQuery, ec) returns Future.successful(responseAsMap)
-//
-//      getRequest ~> route ~> check {
-//        val resp = entityAs[String]
-//        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
-//        status shouldBe StatusCodes.OK
-//      }
-//    }
+    "return a correct response with OK status code" in {
+
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/tezos/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
+
+      getRequest ~> route ~> check {
+        val resp = entityAs[String]
+        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+        status shouldBe StatusCodes.OK
+      }
+    }
 
     "return 400 BadRequest status code for request with missing fields" in {
       val getRequest = HttpRequest(

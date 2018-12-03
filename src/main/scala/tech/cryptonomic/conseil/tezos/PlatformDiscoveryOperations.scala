@@ -15,8 +15,11 @@ object PlatformDiscoveryOperations {
   def apply(): PlatformDiscoveryOperations = new PlatformDiscoveryOperations()
 }
 
+trait QueryProtocolOperations {
+  def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
+}
 
-class PlatformDiscoveryOperations {
+class PlatformDiscoveryOperations extends QueryProtocolOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -133,7 +136,7 @@ class PlatformDiscoveryOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
+  override def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
 
     if (checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field))) {
       val sanitizedPredicates = query.predicates.map { predicate =>

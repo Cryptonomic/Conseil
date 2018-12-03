@@ -32,7 +32,7 @@ libraryDependencies  ++=  Seq(
   "com.github.alanverbner" %% "bip39" % "0.1",
   "ch.megard" %% "akka-http-cors" % "0.3.0",
   "com.h2database" % "h2" % "1.4.197" % Test,
-  "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % Test
+  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
 )
 
 excludeDependencies ++= Seq(
