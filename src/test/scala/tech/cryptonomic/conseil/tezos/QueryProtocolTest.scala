@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
 import scala.concurrent.{ExecutionContext, Future}
 
 class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest with ScalaFutures with MockFactory {
-  implicit val ec: ExecutionContext = system.dispatcher
+  val ec: ExecutionContext = system.dispatcher
 
   val jsonStringRequest: String =
     """
