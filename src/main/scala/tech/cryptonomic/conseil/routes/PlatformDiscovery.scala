@@ -25,22 +25,22 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
     get {
       pathPrefix("networks") {
         pathEnd {
-          complete(toJson(PlatformDiscoveryOperations.getNetworks(config)))
+          complete(toJson(PlatformDiscoveryOperations().getNetworks(config)))
         } ~ pathPrefix(Segment) { network =>
           pathPrefix("entities") {
             pathEnd {
-              completeWithJson(PlatformDiscoveryOperations.getEntities(network))
+              completeWithJson(PlatformDiscoveryOperations().getEntities(network))
             } ~ pathPrefix(Segment) { entity =>
               pathPrefix("attributes") {
                 pathEnd {
-                  completeWithJson(PlatformDiscoveryOperations.getTableAttributes(entity))
+                  completeWithJson(PlatformDiscoveryOperations().getTableAttributes(entity))
                 } ~ pathPrefix(Segment) { attribute =>
                   pathEnd {
-                    completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
+                    completeWithJson(PlatformDiscoveryOperations().listAttributeValues(entity, attribute))
                   } ~ pathPrefix("filter") {
                     pathPrefix(Segment) { filter =>
                       pathEnd {
-                        completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
+                        completeWithJson(PlatformDiscoveryOperations().listAttributeValues(entity, attribute, Some(filter)))
                       }
                     }
                   }

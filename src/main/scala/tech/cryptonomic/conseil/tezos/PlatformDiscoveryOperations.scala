@@ -11,8 +11,12 @@ import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
-
 object PlatformDiscoveryOperations {
+  def apply(): PlatformDiscoveryOperations = new PlatformDiscoveryOperations()
+}
+
+
+class PlatformDiscoveryOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)

@@ -31,7 +31,8 @@ libraryDependencies  ++=  Seq(
   "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
   "com.github.alanverbner" %% "bip39" % "0.1",
   "ch.megard" %% "akka-http-cors" % "0.3.0",
-  "com.h2database" % "h2" % "1.4.197" % "test"
+  "com.h2database" % "h2" % "1.4.197" % Test,
+  "com.typesafe.akka" %% "akka-http-testkit" % "10.1.5" % Test
 )
 
 excludeDependencies ++= Seq(

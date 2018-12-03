@@ -28,7 +28,7 @@ class QueryProtocol(implicit apiExecutionContext: ExecutionContext) extends Lazy
           pathPrefix(Segment) { entity =>
             pathEnd {
               validateQueryOrBadRequest(fieldQuery) { validatedQuery =>
-                completeWithJson(PlatformDiscoveryOperations.queryWithPredicates(entity, validatedQuery))
+                completeWithJson(PlatformDiscoveryOperations().queryWithPredicates(entity, validatedQuery))
               }
             }
           }
