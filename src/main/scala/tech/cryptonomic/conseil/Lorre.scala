@@ -6,6 +6,7 @@ import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.duration._
@@ -61,8 +62,8 @@ object Lorre extends App with LazyLogging {
   def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      _ <- processTezosBlocks()
-      _ <- processTezosAccounts()
+      accountIds <- processTezosBlocks()
+      _ <- processTezosAccounts(accountIds)
       _ <-
         if (iteration % feeUpdateInterval == 0)
           FeeOperations.processTezosAverageFees()
@@ -98,14 +99,18 @@ object Lorre extends App with LazyLogging {
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     */
-  def processTezosBlocks(): Future[Done] = {
+  def processTezosBlocks(): Future[Map[Block, List[AccountId]]] = {
     logger.info("Processing Tezos Blocks..")
     tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
-      blocks =>
-        db.run(TezosDb.writeBlocks(blocks)).andThen {
-          case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
-          case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
-        }.map(_ => Done)
+      blocksWithAccounts =>
+        //ignore the account ids for storage
+        val blocks= blocksWithAccounts.map { case (block, _) => block }
+        db.run(TezosDb.writeBlocks(blocks))
+          .andThen {
+            case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
+            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
+          }
+          .map(_ => blocksWithAccounts.toMap)
     }.andThen {
       case Failure(e) =>
         logger.error("Could not fetch blocks from client", e)
@@ -118,17 +123,16 @@ object Lorre extends App with LazyLogging {
     * NOTE: as the call is now async, it won't stop the application on error as before, so
     * we should evaluate how to handle failed processing
     */
-  def processTezosAccounts(): Future[Done] = {
+  def processTezosAccounts(accountsInvolved: Map[Block, List[AccountId]]): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getLatestAccounts(network).flatMap {
-      case Some(accountsInfo) =>
-        db.run(TezosDb.writeAccounts(accountsInfo)).andThen {
-          case Success(_) => logger.info("Wrote {} accounts to the database.", accountsInfo.accounts.size)
-          case Failure(e) => logger.error("Could not write accounts to the database", e)
+    tezosNodeOperator.getAccountsForBlocks(network, accountsInvolved).flatMap {
+      case accountsInfos =>
+        db.run(TezosDb.writeAccounts(accountsInfos)).andThen {
+          case Success(rows) =>
+            logger.info("{} accounts were touched on the database.", rows)
+          case Failure(e)
+          => logger.error("Could not write accounts to the database", e)
         }.map(_ => Done)
-      case None =>
-        logger.info("No latest block to update, no accounts will be added to the database")
-        Future.successful(Done)
     }.andThen {
       case Failure(e) =>
         logger.error("Could not fetch accounts from client", e)

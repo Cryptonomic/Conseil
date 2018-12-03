@@ -5,10 +5,11 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec, OptionValues}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow, AccountsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 
@@ -159,7 +160,8 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "write accounts" in {
+    "write accounts for a single block" in {
+      import org.scalatest.time.SpanSugar._
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val expectedCount = 3
@@ -169,13 +171,13 @@ class TezosDatabaseOperationsTest
 
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block
-        written <- sut.writeAccounts(accountsInfo)
+        written <- sut.writeAccounts(List(accountsInfo))
         rows <- Tables.Accounts.result
       } yield (written, rows)
 
-      val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+      val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue(Timeout(2 seconds))
 
-      stored.value shouldBe expectedCount
+      stored shouldBe expectedCount
 
       dbAccounts should have size expectedCount
 
@@ -202,7 +204,7 @@ class TezosDatabaseOperationsTest
 
       val accountsInfo = generateAccounts(howMany = 1, blockHash = BlockHash("no-block-hash"), blockLevel = 1)
 
-      val resultFuture = dbHandler.run(sut.writeAccounts(accountsInfo))
+      val resultFuture = dbHandler.run(sut.writeAccounts(List(accountsInfo)))
 
       whenReady(resultFuture.failed) {
           _ shouldBe a [java.sql.SQLException]

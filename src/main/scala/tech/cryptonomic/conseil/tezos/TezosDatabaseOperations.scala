@@ -2,10 +2,9 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import slick.jdbc.GetResult
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
@@ -30,14 +29,65 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
+  def writeAccountsWithUpdates(accountsInfo: List[AccountsWithBlockHashAndLevel])(implicit ec: ExecutionContext): DBIO[Int] =
+    DBIO.sequence(accountsInfo.flatMap {
+      info =>
+        RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)
+    }).map(_.sum)
+      .transactionally
+
+
   /**
-    * Writes accounts from a specific block to a database.
+    * Writes accounts related to arbitrary blocks to a database.
     *
     * @param accountsInfo Accounts with their corresponding block hash.
-    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
+    * @return Database action that will give the total rows affected
     */
-  def writeAccounts(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
-    Tables.Accounts ++= RowConversion.convertAccounts(accountsInfo)
+  def writeAccounts(accountsInfo: List[AccountsWithBlockHashAndLevel])(implicit ec: ExecutionContext): DBIO[Int] =
+    DBIO.sequence(accountsInfo.map {
+      info =>
+        val rows = RowConversion.convertAccounts(info)
+        insertOrUpdateAccounts(rows)
+      }).map(_.sum)
+    .transactionally
+
+
+  private def insertOrUpdateAccounts(rows: List[AccountsRow])(implicit ec: ExecutionContext): DBIO[Int] = {
+
+    val incoming = rows.map(row => (row.accountId, row.blockId)).toMap
+
+    /* Slick can't yet do an `IN` operation on multiple values (like a composite key)
+     * see https://github.com/slick/slick/issues/517
+     * A quick & dirty workaround is to first get all correct account-ids and then
+     * filter results on the matching block
+     * This way we find the keys for existing rows to be updated
+     */
+    val storedKeys = Tables.Accounts
+      .filter(_.accountId inSet incoming.keySet)
+      .map(row => (row.accountId, row.blockId))
+      .result.map {
+       results => results.filter {
+         case (aid, bid) =>
+           //extract those that matches completely on block too
+           incoming.get(aid).contains(bid)
+       }.toSet
+      }
+
+    //now we separate and execute inserts and updates
+    storedKeys.flatMap {
+      alreadyExists =>
+        val (updates, inserts) = rows.partition( row =>
+          alreadyExists((row.accountId, row.blockId))
+        )
+        updateAccounts(updates).zip(Tables.Accounts ++= inserts).map {case (ups, ins) => ups + ins.getOrElse(0)}
+    }
+  }
+
+  private def updateAccounts(rows: List[AccountsRow])(implicit ec: ExecutionContext) =
+    DBIO.sequence(
+      rows.map(updated =>
+        Tables.Accounts.filter(r => r.accountId === updated.accountId && r.blockId === updated.blockId).update(updated)
+    )).map(_.sum)
 
   /**
     * Writes blocks and related operations to a database.
