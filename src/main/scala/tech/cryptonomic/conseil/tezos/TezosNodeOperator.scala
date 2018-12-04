@@ -228,8 +228,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     val jsonToOperationsAndAccounts: String => (List[OperationGroup], List[AccountId]) = json =>
       (jsonToOperationGroups(json), jsonToAccountInvolved(json))
 
-
-
     /*
     Note that this functionality is dependent on the implementation of runBatchedGetQuery, which currently
     doesn't reorder stream elements, thus ensuring the correctness of Block creation with zip.
@@ -239,45 +237,18 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockOperationUrls = fetchedBlocksMetadata.map(metadata => s"blocks/${metadata.hash.value}/operations")
       fetchedOperationsWithAccounts <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency).map(operations => operations.map(jsonToOperationsAndAccounts))
     } yield fetchedBlocksMetadata.zip(fetchedOperationsWithAccounts).map {
-      case (metadata, (opGroups, accountIds)) => (Block(metadata, opGroups), accountIds)
-    }
-  }
-
-  /**
-    * Get all accounts for a given block
-    * @param network     Which Tezos network to go against
-    * @param blockHash   Hash of given block
-    * @param headerLevel level of given block
-    * @return            Accounts with their corresponding block hash
-    */
-  @deprecated("use only getAccountsForBlocks", since = "Tezos accounts spam attack")
-  def getAccounts(network: String, blockHash: BlockHash, headerLevel: Int): Future[AccountsWithBlockHashAndLevel] = {
-    val results =
-      getAllAccountsForBlock(network, blockHash).map(
-        accounts =>
-          AccountsWithBlockHashAndLevel(blockHash, headerLevel, accounts)
-      )
-    results.failed.foreach(
-      e => logger.error(s"Could not get a list of accounts for block $blockHash", e)
-    )
-    results
-  }
-
-  /**
-    * Get accounts for the latest block in the database.
-    * @param network  Which Tezos network to go against
-    * @return         Accounts with their corresponding block hash, or [[None]] if no latest block was found
-    */
-  @deprecated("use getAccountsForBlocks", since = "Tezos accounts spam attack")
-  def getLatestAccounts(network: String): Future[Option[AccountsWithBlockHashAndLevel]] =
-    ApiOperations.dbHandle.run(ApiOperations.latestBlockIO.zip(TezosDatabaseOperations.fetchAccountsMaxBlockLevel)).flatMap {
-      case (Some(latestBlock), maxAccountsLevel) if latestBlock.level > maxAccountsLevel.toInt =>
-        getAccounts(network, BlockHash(latestBlock.hash), latestBlock.level).map(Some(_))
-      case (Some(latestBlock), _) =>
-        Future.successful(Some(AccountsWithBlockHashAndLevel(BlockHash(latestBlock.hash), latestBlock.level)))
+      case (metadata, (opGroups, accountIds)) =>
+        logger.debug(
+          """GOT block {}
+            |    operations {}
+            |    accounts {}""".stripMargin,
+          metadata, opGroups, accountIds)
+        (Block(metadata, opGroups), accountIds)
       case _ =>
-        Future.successful(None)
+        logger.error("This is a bug!!!")
+        throw new IllegalStateException("This branch is unexpected")
     }
+  }
 
   /**
     * Appends a key reveal operation to an operation group if needed.
