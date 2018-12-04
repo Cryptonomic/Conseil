@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.GetResult
+import slick.jdbc.{GetResult, SQLActionBuilder}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicate}
@@ -319,8 +319,8 @@ object TezosDatabaseOperations extends LazyLogging {
     import tech.cryptonomic.conseil.util.DatabaseUtil._
     val pred = predicates.map { p =>
       concat(
-        sql""" AND #${p.field} #${mapOperationToSQL(p.operation, p.inverse)} """,
-        List(values(p.set.map(_.toString)))
+        sql""" AND #${p.field} """,
+        List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString):_*))
       )
     }
     val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
@@ -328,13 +328,25 @@ object TezosDatabaseOperations extends LazyLogging {
     concat(query, pred).as[Map[String, Any]].map(_.toList)
   }
 
+//
+//  between, requires set to contain exactly two elements, this is a validation condition
+//  like, behaves as a contains operation, fails on non-string fields
+//  less-than, fails on non-date or non-numeric fields
+//  greater-than, fails on non-date or non-numeric fields
+//  equals, synonym for in where the set contains a single value, this is a validation condition
+
   /** maps operation type to SQL operation string */
-  private def mapOperationToSQL(operation: OperationType, inverse: Boolean): String = {
+  private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: String*): SQLActionBuilder = {
+    import tech.cryptonomic.conseil.util.DatabaseUtil._
     val op = operation match {
-      case OperationType.in => "IN"
+      case OperationType.between => sql"BETWEEN ${vals(0)} AND ${vals(1)}"
+      case OperationType.in => concat(sql"IN ", List(values(vals)))
+      case OperationType.like => sql"LIKE '%${vals(0)}%'"
+      case OperationType.lt => sql"< ${vals(0)}"
+      case OperationType.gt => sql"> ${vals(0)}"
+      case OperationType.eq => sql"= ${vals(0)}"
     }
-    if (inverse) s"NOT $op"
-    else op
+    concat(op, List(sql" IS ${!inverse}"))
   }
 }
 

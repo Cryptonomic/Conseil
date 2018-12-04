@@ -38,11 +38,17 @@ object QueryProtocolTypes {
     }
   }
 
+//  between, requires set to contain exactly two elements, this is a validation condition
+//  like, behaves as a contains operation, fails on non-string fields
+//  less-than, fails on non-date or non-numeric fields
+//  greater-than, fails on non-date or non-numeric fields
+//  equals, synonym for in where the set contains a single value, this is a validation condition
+
 
   /** Enumeration of operation types */
   object OperationType extends Enumeration {
     type OperationType = Value
-    val in = Value
+    val in, between, like, lt, gt, eq = Value
   }
 
 }
