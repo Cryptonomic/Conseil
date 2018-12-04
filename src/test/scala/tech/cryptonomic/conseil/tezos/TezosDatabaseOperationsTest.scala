@@ -187,7 +187,6 @@ class TezosDatabaseOperationsTest
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
-          row.blockLevel shouldEqual block.level
           row.manager shouldEqual account.manager
           row.spendable shouldEqual account.spendable
           row.delegateSetable shouldEqual account.delegate.setable
@@ -367,76 +366,6 @@ class TezosDatabaseOperationsTest
       val maxLevel = dbHandler.run(populateAndFetch.transactionally).futureValue
 
       maxLevel should equal(expected)
-    }
-
-    "return the default when fetching the max account level and there's no account stored" in {
-      val expected = -1
-      val maxLevel = dbHandler.run(
-        sut.fetchAccountsMaxBlockLevel
-      ).futureValue
-
-      maxLevel shouldEqual expected
-    }
-
-    "fetch accounts max block level based only on stored accounts" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(5, testReferenceTime)
-      val blocksWithAccounts = blocks.take(2)
-      val accounts = blocksWithAccounts flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val expected = blocksWithAccounts.map(_.level).max
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
-        _ <- Tables.Accounts ++= accounts
-        result <- sut.fetchAccountsMaxBlockLevel
-      } yield result
-
-      val maxLevel = dbHandler.run(populateAndTest.transactionally).futureValue
-
-      maxLevel shouldEqual expected
-
-    }
-
-    "test old accounts purging" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val levels = 5
-
-      //first prepare the data
-
-      val blocks = generateBlockRows(levels, testReferenceTime)
-      val accounts = blocks flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val populate = for {
-        bs <- Tables.Blocks ++= blocks
-        accs <- Tables.Accounts ++= accounts
-      } yield (bs, accs)
-
-      val (Some(storedBlocks), Some(storedAccounts)) = dbHandler.run(populate.transactionally).futureValue
-
-      //take level 0 (genesis block) into account
-      storedBlocks shouldEqual (levels + 1)
-      storedAccounts shouldEqual (levels + 1)
-
-      //purge
-      val removed = dbHandler.run(sut.purgeOldAccounts()).futureValue
-
-      removed shouldBe levels //only the last is left
-
-      //check the db
-      val counts = for {
-        different <- Tables.Accounts.filterNot(_.blockLevel === BigDecimal(levels)).length.result
-        same <- Tables.Accounts.filter(_.blockLevel === BigDecimal(levels)).length.result
-      } yield (different, same)
-
-      dbHandler.run(counts).futureValue shouldBe (0, 1)
-
     }
 
     "correctly verify when a block exists" in {
@@ -740,7 +669,6 @@ class TezosDatabaseOperationsTest
         AccountsRow(
           accountId = String valueOf currentId,
           blockId = block.hash,
-          blockLevel = block.level,
           manager = "manager",
           spendable = true,
           delegateSetable = false,

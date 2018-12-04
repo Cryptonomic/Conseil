@@ -135,15 +135,6 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
-    * Delete all accounts in database not associated with block at maxLevel.
-    * @return the number of rows removed
-    */
-  def purgeOldAccounts()(implicit ex: ExecutionContext): DBIO[Int] =
-    fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
-      Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
-    ).transactionally
-
-  /**
     * Reads in all operations referring to the group
     * @param groupHash is the group identifier
     * @param ec the [[ExecutionContext]] needed to compose db operations
@@ -204,8 +195,7 @@ object TezosDatabaseOperations extends LazyLogging {
             delegateValue = delegate.value,
             counter = counter,
             script = script.map(_.toString),
-            balance = balance,
-            blockLevel = level
+            balance = balance
           )
       }.toList
     }
@@ -278,16 +268,6 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Precompiled fetch for groups of operations */
   val operationGroupsByHash =
     Tables.OperationGroups.findBy(_.hash).map(_.andThen(_.take(1)))
-
-  /**
-    * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
-    */
-  private[tezos] def fetchAccountsMaxBlockLevel: DBIO[BigDecimal] =
-    Tables.Accounts
-      .map(_.blockLevel)
-      .max
-      .getOrElse(defaultBlockLevel)
-      .result
 
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
   private[tezos] def fetchMaxBlockLevel: DBIO[Int] =

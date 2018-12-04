@@ -161,11 +161,10 @@ object ApiOperations {
     *
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow], ec: ExecutionContext): Future[Seq[Tables.BlocksRow]] =
-    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
+  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow]): Future[Seq[Tables.BlocksRow]] =
+    apiFilters(filter)
 
   /**
     * Fetch a given operation group
@@ -195,11 +194,10 @@ object ApiOperations {
     * Fetches all operation groups.
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow], ec: ExecutionContext): Future[Seq[Tables.OperationGroupsRow]] =
-    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
+  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow]): Future[Seq[Tables.OperationGroupsRow]] =
+    apiFilters(filter)
 
   /**
     * Fetches all operations.
@@ -208,7 +206,7 @@ object ApiOperations {
     * @return List of operations
     */
   def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow]): Future[Seq[Tables.OperationsRow]] =
-    apiFilters(filter)(0)
+    apiFilters(filter)
 
   /**
     * Given the operation kind return the mean (along with +/- one standard deviation)
@@ -222,20 +220,12 @@ object ApiOperations {
     *           averaged over.
     */
   def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[Option[AverageFees]] =
-    apiFilters(filter)(0)
+    apiFilters(filter)
       .map( rows =>
         rows.headOption map {
           case Tables.FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
         }
       )
-
-  /**
-    * Fetches the level of the most recent block in the accounts table.
-    *
-    * @return Max level or -1 if no blocks were found in the database.
-    */
-  def fetchMaxBlockLevelForAccounts(): Future[BigDecimal] =
-    dbHandle.run(TezosDb.fetchAccountsMaxBlockLevel)
 
   /**
     * Fetches an account by account id from the db.
@@ -244,14 +234,12 @@ object ApiOperations {
     * @return The account with its associated operation groups
     */
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
-    val fetchOperation = TezosDb.fetchAccountsMaxBlockLevel.flatMap {
-      latestBlockLevel =>
+    val fetchOperation =
         Tables.Accounts
-          .filter(row =>
-            row.blockLevel === latestBlockLevel && row.accountId === account_id.id
-          ).take(1)
+          .filter(row => row.accountId === account_id.id)
+          .take(1)
           .result
-    }
+
     dbHandle.run(fetchOperation).map{
       account =>
         Map("account" -> account)
@@ -262,11 +250,10 @@ object ApiOperations {
     * Fetches a list of accounts from the db.
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of accounts
     */
-  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow], ec: ExecutionContext): Future[Seq[Tables.AccountsRow]] =
-    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
+  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow]): Future[Seq[Tables.AccountsRow]] =
+    apiFilters(filter)
 
   /**
     * @param ec ExecutionContext needed to invoke the data fetching using async results

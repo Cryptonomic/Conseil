@@ -39,7 +39,6 @@ object Lorre extends App with LazyLogging {
   private val conf = ConfigFactory.load
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
-  private val purgeAccountsInterval = conf.getInt("lorre.purgeAccountsInterval")
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
@@ -69,11 +68,6 @@ object Lorre extends App with LazyLogging {
           FeeOperations.processTezosAverageFees()
         else
           noOp
-        _ <-
-        if (iteration % purgeAccountsInterval == 0)
-          purge()
-        else
-          noOp
     } yield ()
 
     Await.ready(processing, atMost = Duration.Inf)
@@ -85,16 +79,6 @@ object Lorre extends App with LazyLogging {
   logger.info("About to start processing on the {} network", network)
 
   try {mainLoop(0)} finally {shutdown()}
-
-  /** purges old accounts */
-  def purge(): Future[Done] = {
-    val purged = db.run(TezosDb.purgeOldAccounts())
-
-    purged.andThen {
-      case Success(howMany) => logger.info("{} accounts where purged from old block levels.", howMany)
-      case Failure(e) => logger.error("Could not purge old block-levels accounts", e)
-    }.map(_ => Done)
-  }
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
@@ -130,8 +114,8 @@ object Lorre extends App with LazyLogging {
         db.run(TezosDb.writeAccounts(accountsInfos)).andThen {
           case Success(rows) =>
             logger.info("{} accounts were touched on the database.", rows)
-          case Failure(e)
-          => logger.error("Could not write accounts to the database", e)
+          case Failure(e) =>
+            logger.error("Could not write accounts to the database", e)
         }.map(_ => Done)
     }.andThen {
       case Failure(e) =>

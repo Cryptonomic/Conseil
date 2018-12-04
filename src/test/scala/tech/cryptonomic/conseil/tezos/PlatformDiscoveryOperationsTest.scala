@@ -101,8 +101,7 @@ class PlatformDiscoveryOperationsTest
           Attributes("delegate_value", "Delegate value", DataType.String, 0, KeyType.UniqueKey, "accounts"),
           Attributes("counter", "Counter", DataType.Int, 0, KeyType.UniqueKey, "accounts"),
           Attributes("script", "Script", DataType.String, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("balance", "Balance", DataType.Decimal, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("block_level", "Block level", DataType.Decimal, 0, KeyType.UniqueKey, "accounts")
+          Attributes("balance", "Balance", DataType.Decimal, 0, KeyType.UniqueKey, "accounts")
         )
     }
 
