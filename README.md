@@ -45,13 +45,15 @@ After the package step, check the SBT output for the path of the generated fat J
   
 ### Running Locally
 
+(network is any field defined under platforms.<blockchain> in either application.conf. It is an object with the protocol, hostname, port, and pathPrefix of where your node is hosted. You can manually add your own in a local config file, as well)
+
 Run the fat JAR with the JRE:
 
 `java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.cryptonomic.conseil.Conseil`
 
 And..
 
-`java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.cryptonomic.conseil.Lorre`
+`java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.cryptonomic.conseil.Lorre <network>`
 
 Run locally using SBT:
 
@@ -59,7 +61,7 @@ Run locally using SBT:
 
 And..
 
-` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Lorre"`
+` env SBT_OPTS="-Dconfig.file={path to custom config file}" sbt "runMain tech.cryptonomic.conseil.Lorre <network>"`
 
 See 'Custom Configurations' section for information about custom config files.
 
@@ -147,4 +149,4 @@ platforms: {
 }
 ```
 
-There are no strict requirements for the location in which confiuration files are saved.
+Save this file in <path to Conseil>/Conseil/src/main/resources
