@@ -6,23 +6,29 @@ import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.Operation
 
 import scala.util.Try
 
+/**
+  * Classes used for deserializing query.
+  */
 object QueryProtocolTypes {
 
-  /** Class required for KeyType enum serialization */
+  /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]
 
-  case class Predicates(
+  /** Class representing predicate */
+  case class Predicate(
     field: String,
     @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
     set: List[Any],
     inverse: Boolean = false
   )
 
-  case class FieldQuery(
+  /** Class representing query */
+  case class Query(
     fields: List[String],
-    predicates: List[Predicates]
+    predicates: List[Predicate]
   ) {
-    def validate: Option[FieldQuery] = {
+    /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
+    def validate: Option[Query] = {
       Try {
         predicates.foreach { pred =>
           fields.nonEmpty && pred.field.nonEmpty && OperationType.values.contains(pred.operation) && pred.set.nonEmpty

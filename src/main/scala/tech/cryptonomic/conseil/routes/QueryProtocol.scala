@@ -1,22 +1,23 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{entity, _}
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
 import tech.cryptonomic.conseil.tezos.{PlatformDiscoveryOperations, QueryProtocolOperations}
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
 import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object QueryProtocol {
-  def apply(implicit ec: ExecutionContext): QueryProtocol = new QueryProtocol(PlatformDiscoveryOperations())
+  def apply(implicit ec: ExecutionContext): QueryProtocol = new QueryProtocol(PlatformDiscoveryOperations)
 }
 
 /**
   * Platform discovery routes.
+  *
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
 class QueryProtocol(platformDiscoveryOps: QueryProtocolOperations)(implicit apiExecutionContext: ExecutionContext)
@@ -24,7 +25,7 @@ class QueryProtocol(platformDiscoveryOps: QueryProtocolOperations)(implicit apiE
 
   val route: Route =
     get {
-      entity(as[FieldQuery]) { fieldQuery: FieldQuery =>
+      entity(as[Query]) { fieldQuery: Query =>
         pathPrefix(Segment) { network =>
           pathPrefix(Segment) { entity =>
             pathEnd {

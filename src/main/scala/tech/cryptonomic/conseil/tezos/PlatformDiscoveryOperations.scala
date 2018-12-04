@@ -5,21 +5,21 @@ import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
-object PlatformDiscoveryOperations {
-  def apply(): PlatformDiscoveryOperations = new PlatformDiscoveryOperations()
-}
-
+/**
+  * Trait containing the interface for the QueryProtocol
+  */
 trait QueryProtocolOperations {
-  def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
+
+  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
 }
 
-class PlatformDiscoveryOperations extends QueryProtocolOperations {
+object PlatformDiscoveryOperations extends QueryProtocolOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -125,7 +125,7 @@ class PlatformDiscoveryOperations extends QueryProtocolOperations {
     distinctCount < maxCount
   }
 
-  /** Sanitizes string to be viable to paste int plain SQL */
+  /** Sanitizes string to be viable to paste into plain SQL */
   private def sanitizeForSql(str: String): String = {
     str.filter(c => c.isLetterOrDigit || c == '_')
   }
@@ -136,13 +136,13 @@ class PlatformDiscoveryOperations extends QueryProtocolOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  override def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
+  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
 
     if (checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field))) {
       val sanitizedPredicates = query.predicates.map { predicate =>
         predicate.copy(set = predicate.set.map(pred => sanitizeForSql(pred.toString)))
       }
-      ApiOperations.getQueryResults(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizedPredicates))
+      ApiOperations.runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizedPredicates))
     } else {
       Future.successful(List.empty)
     }

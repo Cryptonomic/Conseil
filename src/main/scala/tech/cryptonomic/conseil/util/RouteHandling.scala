@@ -4,7 +4,7 @@ import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMa
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.{Directive, Directive1, StandardRoute}
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,7 +40,7 @@ trait RouteHandling {
     * @param fieldQuery field query before validation
     * @return Either validated query or bad request if validation failed
     */
-  protected def validateQueryOrBadRequest(fieldQuery: FieldQuery): Directive1[FieldQuery] = Directive { inner =>
+  protected def validateQueryOrBadRequest(fieldQuery: Query): Directive1[Query] = Directive { inner =>
     fieldQuery.validate match {
       case Some(value) => inner(Tuple1(value))
       case None => complete(StatusCodes.BadRequest)

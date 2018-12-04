@@ -6,7 +6,7 @@ import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.GetResult
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicates}
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicate}
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -314,7 +314,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param predicates     list of predicates for query to be filtered with
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
-  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicates])(implicit ec: ExecutionContext):
+  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate])(implicit ec: ExecutionContext):
   DBIO[List[Map[String, Any]]] = {
     import tech.cryptonomic.conseil.util.DatabaseUtil._
     val pred = predicates.map { p =>

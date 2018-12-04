@@ -11,7 +11,7 @@ import slick.jdbc.H2Profile.api._
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicates}
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicate}
 
 import scala.util.Random
 
@@ -478,7 +478,6 @@ class TezosDatabaseOperationsTest
     }
 
     "get map from a block table" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val columns = List("level", "proto", "protocol", "hash")
 
@@ -497,7 +496,7 @@ class TezosDatabaseOperationsTest
     "get map from a block table with predicate" in {
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List(
-        Predicates(
+        Predicate(
           field = "hash",
           operation = OperationType.in,
           set = List("R0NpYZuUeF"),
@@ -519,7 +518,7 @@ class TezosDatabaseOperationsTest
     "get map from a block table with inverse predicate" in {
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List(
-        Predicates(
+        Predicate(
           field = "hash",
           operation = OperationType.in,
           set = List("R0NpYZuUeF"),
@@ -541,13 +540,13 @@ class TezosDatabaseOperationsTest
     "get map from a block table with multiple predicates" in {
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List(
-        Predicates(
+        Predicate(
           field = "hash",
           operation = OperationType.in,
           set = List("R0NpYZuUeF"),
           inverse = true
         ),
-        Predicates(
+        Predicate(
           field = "hash",
           operation = OperationType.in,
           set = List("aQeGrbXCmG"),

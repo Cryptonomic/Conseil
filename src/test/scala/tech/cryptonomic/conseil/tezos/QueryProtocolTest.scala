@@ -7,7 +7,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.routes.QueryProtocol
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.FieldQuery
+import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -67,13 +67,13 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
     )
   )
 
-  val fieldQuery = FieldQuery(
+  val fieldQuery = Query(
     fields = List("account_id", "spendable", "counter"),
     predicates = List.empty
   )
 
   val fakePDO: QueryProtocolOperations = new QueryProtocolOperations {
-    override def queryWithPredicates(tableName: String, query: FieldQuery)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] =
+    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] =
       Future.successful(responseAsMap)
   }
   val route: Route = new QueryProtocol(fakePDO)(ec).route
