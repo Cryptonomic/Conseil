@@ -25,12 +25,12 @@ class QueryProtocol(platformDiscoveryOps: QueryProtocolOperations)(implicit apiE
 
   val route: Route =
     get {
-      entity(as[Query]) { fieldQuery: Query =>
-        pathPrefix(Segment) { network =>
-          pathPrefix(Segment) { entity =>
-            pathEnd {
+      pathPrefix(Segment) { network =>
+        pathPrefix(Segment) { ent =>
+          pathEnd {
+            entity(as[Query]) { fieldQuery: Query =>
               validateQueryOrBadRequest(fieldQuery) { validatedQuery =>
-                completeWithJson(platformDiscoveryOps.queryWithPredicates(entity, validatedQuery))
+                completeWithJson(platformDiscoveryOps.queryWithPredicates(ent, validatedQuery))
               }
             }
           }
