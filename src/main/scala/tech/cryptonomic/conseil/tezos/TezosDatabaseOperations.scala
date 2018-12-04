@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
+import slick.jdbc.GetResult
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
@@ -250,4 +251,45 @@ object TezosDatabaseOperations extends LazyLogging {
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
+  /**
+    * Counts number of rows in the given table
+    * @param table  slick table
+    * @return       amount of rows in the table
+    */
+  def countRows(table: TableQuery[_]): DBIO[Int] =
+    table.length.result
+
+  // Slick does not allow count operations on arbitrary column names
+  /**
+    * Counts number of distinct elements by given table and column
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table  name of the table
+    * @param column name of the column
+    * @return       amount of distinct elements in given column
+    */
+  def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
+    sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
+
+  /**
+    * Selects distinct elements by given table and column
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table  name of the table
+    * @param column name of the column
+    * @return       distinct elements in given column as a list
+    */
+  def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
+  }
+
+  /**
+    * Selects distinct elements by given table and column with filter
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table          name of the table
+    * @param column         name of the column
+    * @param matchingString string which is being matched
+    * @return               distinct elements in given column as a list
+    */
+  def selectDistinctLike(table: String, column: String, matchingString: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
+  }
 }

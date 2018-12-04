@@ -70,9 +70,19 @@ The application expects to read and write from a database compatible with [Types
 #### Using a database instance
 
 Cryptonomic uses Postgres for all its Conseil deployments. Once a Postgres database is set up, `doc/conseil.sql` can be used to set up the latest schema. For non-Postgres databases, the schema file might have to be updated to reflect the idiosyncrasies of the particular SQL dialect being used.
+Or you can use the predefined tasks which are custom-tailored with VM launch configuration that's best suited for the actual task:
+- for Conseil:
+`sbt -Dconfig.file="{path to custom config file}" runConseil`
+- for Lorre 
+`sbt -Dconfig.file="{path to custom config file}" "runLorre alphanet"`
+- for schema generation
+`sbt -Dconfig.file="{path to custom config file}" genSchema`
+
+
+### Locally test with database [`Docker installation needed]
+The application expects to access a postgres database instance to run.
 
 #### Using a Docker image for Postgres
-
 A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.  
 You need to customize the credentials in the YAML file or in your custom configuration [see the following section]
 
