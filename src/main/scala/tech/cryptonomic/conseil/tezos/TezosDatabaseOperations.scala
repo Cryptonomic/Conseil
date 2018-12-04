@@ -320,33 +320,25 @@ object TezosDatabaseOperations extends LazyLogging {
     val pred = predicates.map { p =>
       concat(
         sql""" AND #${p.field} """,
-        List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString):_*))
+        List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString)))
       )
     }
     val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
-
     concat(query, pred).as[Map[String, Any]].map(_.toList)
   }
 
-//
-//  between, requires set to contain exactly two elements, this is a validation condition
-//  like, behaves as a contains operation, fails on non-string fields
-//  less-than, fails on non-date or non-numeric fields
-//  greater-than, fails on non-date or non-numeric fields
-//  equals, synonym for in where the set contains a single value, this is a validation condition
-
   /** maps operation type to SQL operation string */
-  private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: String*): SQLActionBuilder = {
+  private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
     import tech.cryptonomic.conseil.util.DatabaseUtil._
     val op = operation match {
-      case OperationType.between => sql"BETWEEN ${vals(0)} AND ${vals(1)}"
+      case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
       case OperationType.in => concat(sql"IN ", List(values(vals)))
-      case OperationType.like => sql"LIKE '%${vals(0)}%'"
-      case OperationType.lt => sql"< ${vals(0)}"
-      case OperationType.gt => sql"> ${vals(0)}"
-      case OperationType.eq => sql"= ${vals(0)}"
+      case OperationType.like => sql"LIKE '%#${vals.head}%'"
+      case OperationType.lt => sql"< '#${vals.head}'"
+      case OperationType.gt => sql"> '#${vals.head}'"
+      case OperationType.eq => sql"= '#${vals.head}'"
     }
-    concat(op, List(sql" IS ${!inverse}"))
+    concat(op, List(sql" IS #${!inverse}"))
   }
 }
 
