@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with LazyLogging {
+object Lorre extends App with LorreErrors with LazyLogging {
 
   //keep this import here to make it evident where we spawn our async code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -70,7 +70,16 @@ object Lorre extends App with LazyLogging {
           noOp
     } yield ()
 
-    Await.ready(processing, atMost = Duration.Inf)
+    val processResult =
+      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "true" || ignore == "yes"))
+        processing
+      else
+        processing.recover {
+          case f @ AccountsProcessingFailed(_, _) => throw f
+          case _ => () //swallowed
+        }
+
+    Await.result(processResult, atMost = Duration.Inf)
     logger.info("Taking a nap")
     Thread.sleep(sleepIntervalInSeconds * 1000)
     mainLoop(iteration + 1)
@@ -115,11 +124,14 @@ object Lorre extends App with LazyLogging {
           case Success(rows) =>
             logger.info("{} accounts were touched on the database.", rows)
           case Failure(e) =>
-            logger.error("Could not write accounts to the database", e)
-        }.map(_ => Done)
-    }.andThen {
+            logger.error("Could not write accounts to the database")
+        }
+    }.transform {
       case Failure(e) =>
-        logger.error("Could not fetch accounts from client", e)
+        val error = "I failed to fetch accounts from client and update them"
+        logger.error(error, e)
+        Failure(AccountsProcessingFailed(message = error, e))
+      case success => Success(Done)
     }
   }
 
