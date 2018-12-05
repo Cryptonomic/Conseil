@@ -5,4 +5,4 @@ scala:
 sudo: required
 
 before_install:
-   - sudo apt-get install libicu55
+   - sudo apt-get install libicu-dev
