@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, BlockAccounts, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -28,7 +28,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
-  def writeAccounts(accountsInfo: List[AccountsWithBlockHashAndLevel])(implicit ec: ExecutionContext): DBIO[Int] =
+  def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO.sequence(accountsInfo.flatMap {
       info =>
         RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)
@@ -128,8 +128,8 @@ object TezosDatabaseOperations extends LazyLogging {
         kind = in.kind
     )
 
-    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
-      val AccountsWithBlockHashAndLevel(hash, level, accounts) = blockAccounts
+    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: BlockAccounts) = {
+      val BlockAccounts(hash, accounts) = blockAccounts
       accounts.map {
         case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
           Tables.AccountsRow(

@@ -150,11 +150,10 @@ object TezosTypes {
                     counter: Int
                     )
 
-  final case class AccountsWithBlockHashAndLevel(
-                                    blockHash: BlockHash,
-                                    blockLevel: Int,
-                                    accounts: Map[AccountId, Account] = Map.empty
-                                  )
+  final case class BlockAccounts(
+                    blockHash: BlockHash,
+                    accounts: Map[AccountId, Account] = Map.empty
+                  )
 
   final case class Block(
                     metadata: BlockMetadata,

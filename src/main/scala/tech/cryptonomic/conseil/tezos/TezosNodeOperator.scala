@@ -81,17 +81,17 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param network  Which Tezos network to go against
     * @return         all Accounts with their corresponding block hash
     */
-  def getAccountsForBlocks(network: String, accountsIds: Map[Block, List[AccountId]]): Future[List[AccountsWithBlockHashAndLevel]] =
+  def getAccountsForBlocks(network: String, accountsIds: Map[Block, List[AccountId]]): Future[List[BlockAccounts]] =
     Future.traverse(accountsIds.toList){
       case (block, ids) =>
-        val (blockHash, headerLevel) = (block.metadata.hash, block.metadata.header.level)
-        val accountsInfos = getAllAccountsForBlock(network, blockHash, ids).map {
+        val hash = block.metadata.hash
+        val accountsInfos = getAllAccountsForBlock(network, hash, ids).map {
           accounts =>
             val accountsMap = ids.zip(accounts).toMap
-            AccountsWithBlockHashAndLevel(blockHash, headerLevel, accountsMap)
+            BlockAccounts(hash, accountsMap)
         }
         accountsInfos.failed.foreach(
-          e => logger.error(s"Could not get a list of accounts for block $blockHash", e)
+          e => logger.error(s"Could not get a list of accounts for block $hash", e)
         )
         accountsInfos
     }
