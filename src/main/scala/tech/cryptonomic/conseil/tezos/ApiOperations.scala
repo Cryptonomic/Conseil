@@ -249,8 +249,7 @@ object ApiOperations {
         Tables.Accounts
           .filter(row =>
             row.blockLevel === latestBlockLevel && row.accountId === account_id.id
-          ).take(1)
-          .result
+          ).result.head
     }
     dbHandle.run(fetchOperation).map{
       account =>
