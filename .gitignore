@@ -3,4 +3,4 @@
 .settings/
 target/
 .idea/
-pgdata/
+pgdata*/

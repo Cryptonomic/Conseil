@@ -184,9 +184,9 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
 
   /** connection pool settings customized for streaming requests */
   private[this] val streamingRequestsConnectionPooling = ConnectionPoolSettings(
-    conf
-      .atPath("akka.tezos-streaming-client.connection-pool")
-      .withFallback(ConfigFactory.defaultReference())
+    conf.getConfig("akka.tezos-streaming-client")
+      .atPath("akka.http.host-connection-pool")
+      .withFallback(conf)
   )
 
   /** creates a connections pool based on the host network */
@@ -217,9 +217,8 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
       .via(connections)
       .mapAsync(concurrencyLevel) {
         case (tried, _) =>
-          Future.fromTry(tried)
+          Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout))).flatten
       }
-      .mapAsync(1)(_.entity.toStrict(entityGetTimeout))
       .map(_.data.utf8String)
       .toMat(Sink.collection[String, List[String]])(Keep.right)
       .run()
