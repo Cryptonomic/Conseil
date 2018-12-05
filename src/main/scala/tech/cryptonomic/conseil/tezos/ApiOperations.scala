@@ -239,6 +239,7 @@ object ApiOperations {
           .filter(row => row.accountId === account_id.id)
           .take(1)
           .result
+          .head
 
     dbHandle.run(fetchOperation).map{
       account =>
