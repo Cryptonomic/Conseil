@@ -233,17 +233,18 @@ object ApiOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return The account with its associated operation groups
     */
-  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
+  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
     val fetchOperation =
         Tables.Accounts
           .filter(row => row.accountId === account_id.id)
           .take(1)
           .result
-          .head
 
     dbHandle.run(fetchOperation).map{
-      account =>
-        Map("account" -> account)
+      accounts =>
+        accounts.headOption.map { account =>
+          Map("account" -> account)
+        }
     }
   }
 
