@@ -224,11 +224,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       fetchedOperationsWithAccounts <- node.runBatchedGetQuery(network, blockOperationUrls, blockOperationsFetchConcurrency).map(operations => operations.map(jsonToOperationsAndAccounts))
     } yield fetchedBlocksMetadata.zip(fetchedOperationsWithAccounts).map {
       case (metadata, (opGroups, accountIds)) =>
-        logger.debug(
-          """GOT block {}
-            |    operations {}
-            |    accounts {}""".stripMargin,
-          metadata, opGroups, accountIds)
         (Block(metadata, opGroups), accountIds)
       case _ =>
         logger.error("This is a bug!!!")

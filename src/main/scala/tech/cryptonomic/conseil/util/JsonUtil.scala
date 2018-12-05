@@ -49,12 +49,14 @@ object JsonUtil {
 
   /** extractor object to read accountIds from a json string, based on the hash format*/
   object AccountIds {
-    /** regular expression matching a valid account hash */
-    val AccountHashExpression: Regex = """(tz[1-3]|KT1)[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{33}""".r
+    /** regular expression matching a valid account hash as a json string */
+    val AccountHashExpression: Regex = """"(tz[1-3]|KT1)[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{33}"""".r
 
     /** enables pattern matching with a variable number of matches */
     def unapplySeq(json: String): Option[List[String]] = {
-      val matched = AccountHashExpression.findAllIn(json)
+      val matched = AccountHashExpression
+        .findAllIn(json)
+        .map(_.tail.dropRight(1)) //removes the additional quotes
       if (matched.isEmpty) None
       else Some(matched.toList)
     }
