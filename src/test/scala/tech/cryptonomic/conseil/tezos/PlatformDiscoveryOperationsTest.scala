@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{ScalaFutures, PatienceConfiguration}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
@@ -21,11 +21,14 @@ class PlatformDiscoveryOperationsTest
     with Matchers
     with ScalaFutures
     with OptionValues
+    with PatienceConfiguration
     with LazyLogging {
 
-  import slick.jdbc.H2Profile.api._
-
+  import slick.jdbc.PostgresProfile.api._
   import scala.concurrent.ExecutionContext.Implicits.global
+
+  //allow more room for embedded db
+  implicit override val patienceConfig = PatienceConfig(timeout = scaled(500.milliseconds))
 
   "getNetworks" should {
     "return list with one element" in {
@@ -219,13 +222,13 @@ class PlatformDiscoveryOperationsTest
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
       dbHandler.run(
         PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
-      ).futureValue shouldBe List("example1", "example2")
+      ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
         PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
-      ).futureValue shouldBe List("example1", "example2")
+      ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
         PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
-      ).futureValue shouldBe List("example1", "example2")
+      ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
         PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List("example1")

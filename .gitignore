@@ -4,3 +4,4 @@
 target/
 .idea/
 pgdata*/
+test-postgres-path/*

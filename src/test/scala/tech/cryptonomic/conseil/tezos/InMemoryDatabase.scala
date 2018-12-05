@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
-import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -12,18 +11,31 @@ import scala.concurrent.duration._
   */
 trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
+  import java.nio.file._
+  import scala.collection.JavaConverters._
+  import slick.jdbc.PostgresProfile.api._
+  import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres
+  import ru.yandex.qatools.embed.postgresql.distribution.Version
 
-  /** defines configuration for a randomly named h2 in-memory instance */
+  protected val databaseName = "conseil-test"
+  protected val databasePort = 5433
+  protected val cachedRuntimePath = Paths.get("test-postgres-path")
+  /** defines configuration for a randomly named embedded instance */
   protected val confString =
     s"""conseildb = {
-       |    url = "jdbc:h2:mem:conseil-test;MODE=PostgreSQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1"
-       |    driver              = org.h2.Driver
+       |    url                 = "jdbc:postgresql://localhost:$databasePort/$databaseName"
        |    connectionPool      = disabled
        |    keepAliveConnection = true
+       |    driver              = org.postgresql.Driver
+       |    properties = {
+       |      user     = ${EmbeddedPostgres.DEFAULT_USER}
+       |      password = ${EmbeddedPostgres.DEFAULT_PASSWORD}
+       |    }
        |  }
     """.stripMargin
 
-  val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
+  lazy val instance = new EmbeddedPostgres(Version.V10_6)
+  lazy val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
   //keep in mind that this is sorted to preserve key consistency
   protected val allTables= Seq(
@@ -47,12 +59,21 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    instance.start(
+      EmbeddedPostgres.cachedRuntimeConfig(cachedRuntimePath),
+      "localhost",
+      databasePort,
+      databaseName,
+      EmbeddedPostgres.DEFAULT_USER,
+      EmbeddedPostgres.DEFAULT_PASSWORD,
+      List.empty.asJava)
     Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
 
   override protected def afterAll(): Unit = {
     Await.ready(dbHandler.run(dbSchema.drop), 1.second)
     dbHandler.close()
+    instance.stop()
     super.afterAll()
   }
 
