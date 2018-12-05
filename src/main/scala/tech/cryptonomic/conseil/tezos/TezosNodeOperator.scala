@@ -71,7 +71,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param accountIDs the ids
     * @return           the list of accounts wrapped in a [[Future]]
     */
-  def getAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[TezosTypes.Account]] =
+  def getAllAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[TezosTypes.Account]] =
     node
       .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/${blockHash.value}/context/contracts/${id.id}"), accountsFetchConcurrency)
       .map(_.map(fromJson[TezosTypes.Account]))
@@ -85,7 +85,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     Future.traverse(accountsIds.toList){
       case (block, ids) =>
         val (blockHash, headerLevel) = (block.metadata.hash, block.metadata.header.level)
-        val accountsInfos = getAccountsForBlock(network, blockHash, ids).map {
+        val accountsInfos = getAllAccountsForBlock(network, blockHash, ids).map {
           accounts =>
             val accountsMap = ids.zip(accounts).toMap
             AccountsWithBlockHashAndLevel(blockHash, headerLevel, accountsMap)
@@ -95,20 +95,6 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         )
         accountsInfos
     }
-
-  /**
-    * Fetches all accounts for a given block.
-    * @param network    Which Tezos network to go against
-    * @param blockHash  Hash of given block.
-    * @return           Accounts
-    */
-  @deprecated("Use getAccountsForBlocks", since = "Tezos accounts spam attack")
-  def getAllAccountsForBlock(network: String, blockHash: BlockHash): Future[Map[AccountId, Account]] =
-    for {
-      jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
-      accountIDs = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
-      accounts <- getAccountsForBlock(network, blockHash, accountIDs)
-    } yield accountIDs.zip(accounts).toMap
 
   /**
     * Fetches operations for a block, without waiting for the result
