@@ -78,7 +78,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   }
 
   override protected def beforeEach(): Unit = {
-    Await.ready(dbHandler.run(truncateAll), 30.millis)
+    Await.ready(dbHandler.run(truncateAll), 300.millis)
     super.beforeEach()
   }
 
