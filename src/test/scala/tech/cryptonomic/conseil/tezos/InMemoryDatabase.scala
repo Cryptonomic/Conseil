@@ -34,7 +34,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
        |  }
     """.stripMargin
 
-  lazy val instance = new EmbeddedPostgres(Version.V10_6)
+  lazy val instance = new EmbeddedPostgres(Version.V9_5_15)
   lazy val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
   //keep in mind that this is sorted to preserve key consistency
