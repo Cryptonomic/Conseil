@@ -318,8 +318,11 @@ object TezosDatabaseOperations extends LazyLogging {
   DBIO[List[Map[String, Any]]] = {
     import tech.cryptonomic.conseil.util.DatabaseUtil._
     val pred = predicates.map { p =>
+      val fieldQuery = p.precision.map{
+        prec => sql""" AND ROUND(#${p.field}, $prec) """
+      }.getOrElse(sql""" AND #${p.field} """)
       concat(
-        sql""" AND #${p.field} """,
+        fieldQuery,
         List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString)))
       )
     }
@@ -327,16 +330,18 @@ object TezosDatabaseOperations extends LazyLogging {
     concat(query, pred).as[Map[String, Any]].map(_.toList)
   }
 
-  /** maps operation type to SQL operation string */
+  /** maps operation type to SQL operation */
   private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
     import tech.cryptonomic.conseil.util.DatabaseUtil._
     val op = operation match {
       case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
       case OperationType.in => concat(sql"IN ", List(values(vals)))
       case OperationType.like => sql"LIKE '%#${vals.head}%'"
-      case OperationType.lt => sql"< '#${vals.head}'"
-      case OperationType.gt => sql"> '#${vals.head}'"
+      case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"
+      case OperationType.gt | OperationType.after => sql"> '#${vals.head}'"
       case OperationType.eq => sql"= '#${vals.head}'"
+      case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
+      case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
     }
     concat(op, List(sql" IS #${!inverse}"))
   }

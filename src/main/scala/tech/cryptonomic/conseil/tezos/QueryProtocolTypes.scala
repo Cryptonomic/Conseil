@@ -19,7 +19,8 @@ object QueryProtocolTypes {
     field: String,
     @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
     set: List[Any],
-    inverse: Boolean = false
+    inverse: Boolean = false,
+    precision: Option[Int] = None
   )
 
   /** Class representing query */
@@ -41,7 +42,7 @@ object QueryProtocolTypes {
   /** Enumeration of operation types */
   object OperationType extends Enumeration {
     type OperationType = Value
-    val in, between, like, lt, gt, eq = Value
+    val in, between, like, lt, gt, eq, startsWith, endsWith, before, after = Value
   }
 
 }
