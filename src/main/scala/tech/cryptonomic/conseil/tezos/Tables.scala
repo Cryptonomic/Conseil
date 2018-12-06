@@ -19,7 +19,7 @@ trait Tables {
   def ddl = schema
 
   /** Entity class storing rows of table Accounts
-   *  @param accountId Database column account_id SqlType(varchar)
+   *  @param accountId Database column account_id SqlType(varchar), PrimaryKey
    *  @param blockId Database column block_id SqlType(varchar)
    *  @param manager Database column manager SqlType(varchar)
    *  @param spendable Database column spendable SqlType(bool)
@@ -40,8 +40,8 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, Rep.Some(balance)).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column account_id SqlType(varchar) */
-    val accountId: Rep[String] = column[String]("account_id")
+    /** Database column account_id SqlType(varchar), PrimaryKey */
+    val accountId: Rep[String] = column[String]("account_id", O.PrimaryKey)
     /** Database column block_id SqlType(varchar) */
     val blockId: Rep[String] = column[String]("block_id")
     /** Database column manager SqlType(varchar) */
@@ -58,9 +58,6 @@ trait Tables {
     val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
     /** Database column balance SqlType(numeric) */
     val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
-
-    /** Primary key of Accounts (database name accounts_pkey) */
-    val pk = primaryKey("accounts_pkey", (accountId, blockId))
 
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)

@@ -190,7 +190,7 @@ ALTER TABLE ONLY public.operation_groups
 --
 
 ALTER TABLE ONLY public.accounts
-    ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id, block_id);
+    ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id);
 
 
 --

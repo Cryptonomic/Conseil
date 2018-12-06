@@ -17,8 +17,10 @@ object GenSchema extends App {
   val jdbcDriver = "org.postgresql.Driver"
   val slickDriver = "slick.jdbc.PostgresProfile"
   val pkg = "tech.cryptonomic.conseil.tezos"
+  val dest = "/tmp/slick"
 
+  println(s"Generating database Tables source file under $dest, in package $pkg")
   slick.codegen.SourceCodeGenerator.main(
-    Array(slickDriver, jdbcDriver, url, "/tmp/slick", pkg, s"${user}", s"${password}")
+    Array(slickDriver, jdbcDriver, url, dest, pkg, s"${user}", s"${password}")
   )
 }
