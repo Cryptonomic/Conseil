@@ -183,14 +183,14 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   }
 
   /** connection pool settings customized for streaming requests */
-  private[this] val streamingRequestsConnectionPooling = ConnectionPoolSettings(
+  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(
     conf.getConfig("akka.tezos-streaming-client")
       .atPath("akka.http.host-connection-pool")
       .withFallback(conf)
   )
 
   /** creates a connections pool based on the host network */
-  private[this] def createHostPoolFlow(network: String) = {
+  private[this] def createHostPoolFlow(settings: ConnectionPoolSettings, network: String) = {
     val host = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
@@ -198,30 +198,33 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
       Http(system).cachedHostConnectionPoolHttps[String](
         host = host,
         port = port,
-        settings = streamingRequestsConnectionPooling
+        settings = settings
       )
     else
       Http(system).cachedHostConnectionPool[String](
         host = host,
         port = port,
-        settings = streamingRequestsConnectionPooling
+        settings = settings
       )
   }
 
-  override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = withRejectionControl {
-    val connections = createHostPoolFlow(network)
-    val uris = Source(commands.map(translateCommandToUrl(network, _)))
-    val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
+  override def runBatchedGetQuery(
+    network: String,
+    commands: List[String],
+    concurrencyLevel: Int): Future[List[String]] =
+    withRejectionControl {
+      val connections = createHostPoolFlow(streamingRequestsConnectionPooling, network)
+      val uris = Source(commands.map(translateCommandToUrl(network, _)))
+      val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
 
-    uris.map(toRequest)
-      .via(connections)
-      .mapAsync(concurrencyLevel) {
-        case (tried, _) =>
-          Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout))).flatten
-      }
-      .map(_.data.utf8String)
-      .toMat(Sink.collection[String, List[String]])(Keep.right)
-      .run()
-
+      uris.map(toRequest)
+        .via(connections)
+        .mapAsync(concurrencyLevel) {
+          case (tried, _) =>
+            Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout))).flatten
+        }
+        .map(_.data.utf8String)
+        .toMat(Sink.collection[String, List[String]])(Keep.right)
+        .run()
   }
 }
