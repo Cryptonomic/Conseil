@@ -19,7 +19,7 @@ trait QueryProtocolOperations {
   def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
 }
 
-object PlatformDiscoveryOperations extends QueryProtocolOperations {
+object TezosPlatformDiscoveryOperations extends QueryProtocolOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -138,7 +138,7 @@ object PlatformDiscoveryOperations extends QueryProtocolOperations {
     * */
   override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
 
-    if (checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field))) {
+    if (areFieldsValid(tableName, query.fields, query.predicates.map(_.field))) {
       val sanitizedPredicates = query.predicates.map { predicate =>
         predicate.copy(set = predicate.set.map(pred => sanitizeForSql(pred.toString)))
       }
@@ -149,7 +149,7 @@ object PlatformDiscoveryOperations extends QueryProtocolOperations {
   }
 
   /** Checks if columns exist for the given table */
-  private def checkIfCanQuery(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
+  private def areFieldsValid(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
     val fields = (queryFields ++ predicateFields).toSet
 
     tablesMap.exists {

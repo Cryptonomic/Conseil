@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
 import tech.cryptonomic.conseil.util.RouteHandling
 
@@ -25,22 +25,22 @@ class PlatformDiscovery(config: Config)(implicit apiExecutionContext: ExecutionC
     get {
       pathPrefix("networks") {
         pathEnd {
-          complete(toJson(PlatformDiscoveryOperations.getNetworks(config)))
+          complete(toJson(TezosPlatformDiscoveryOperations.getNetworks(config)))
         } ~ pathPrefix(Segment) { network =>
           pathPrefix("entities") {
             pathEnd {
-              completeWithJson(PlatformDiscoveryOperations.getEntities(network))
+              completeWithJson(TezosPlatformDiscoveryOperations.getEntities(network))
             } ~ pathPrefix(Segment) { entity =>
               pathPrefix("attributes") {
                 pathEnd {
-                  completeWithJson(PlatformDiscoveryOperations.getTableAttributes(entity))
+                  completeWithJson(TezosPlatformDiscoveryOperations.getTableAttributes(entity))
                 } ~ pathPrefix(Segment) { attribute =>
                   pathEnd {
-                    completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
+                    completeWithJson(TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute))
                   } ~ pathPrefix("filter") {
                     pathPrefix(Segment) { filter =>
                       pathEnd {
-                        completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
+                        completeWithJson(TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
                       }
                     }
                   }

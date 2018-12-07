@@ -5,14 +5,14 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
-import tech.cryptonomic.conseil.tezos.{PlatformDiscoveryOperations, QueryProtocolOperations}
+import tech.cryptonomic.conseil.tezos.{TezosPlatformDiscoveryOperations, QueryProtocolOperations}
 import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object QueryProtocol {
-  def apply(implicit ec: ExecutionContext): QueryProtocol = new QueryProtocol(PlatformDiscoveryOperations)
+  def apply(implicit ec: ExecutionContext): QueryProtocol = new QueryProtocol(TezosPlatformDiscoveryOperations)
 }
 
 /**
@@ -25,7 +25,7 @@ class QueryProtocol(platformDiscoveryOps: QueryProtocolOperations)(implicit apiE
 
   val route: Route =
     get {
-      pathPrefix(Segment) { network =>
+      pathPrefix(Segment) { platform =>
         pathPrefix(Segment) { ent =>
           pathEnd {
             entity(as[Query]) { fieldQuery: Query =>
