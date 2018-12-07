@@ -72,9 +72,13 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return           the list of accounts wrapped in a [[Future]]
     */
   def getAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[TezosTypes.Account]] =
-    node
+    /*node
       .runBatchedGetQuery(network, accountIDs.map(id => s"blocks/${blockHash.value}/context/contracts/${id.id}"), accountsFetchConcurrency)
-      .map(_.map(fromJson[TezosTypes.Account]))
+      .map(_.map(fromJson[TezosTypes.Account]))*/
+    Future.sequence(
+      accountIDs
+        .map(id => node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${id.id}")
+          .map(fromJson[TezosTypes.Account])))
 
   /**
     * Fetches all accounts for a given block.
