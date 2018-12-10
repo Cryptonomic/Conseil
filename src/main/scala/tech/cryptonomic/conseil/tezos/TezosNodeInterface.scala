@@ -25,12 +25,17 @@ trait TezosRPCInterface {
 
   /**
     * Runs all needed RPC calls against the configured Tezos node using HTTP GET
-    * @param network          Which Tezos network to go against
-    * @param commands         RPC commands to invoke
-    * @param concurrencyLevel How many request will be executed concurrently against the node
-    * @return         Result of the RPC calls
+    * @param network  Which Tezos network to go against
+    * @param ids  correlation ids for each request to send
+    * @param mapToCommand  extract a tezos command (uri fragment) from the id
+    * @param concurrencyLevel the concurrency in processing the responses
+    * @return pairing of the correlation id with the string http response content
     */
-  def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]]
+  def runBatchedGetQuery[ID](
+    network: String,
+    ids: List[ID],
+    mapToCommand: ID => String,
+    concurrencyLevel: Int): Future[List[(ID, String)]]
 
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
@@ -190,24 +195,24 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   )
 
   /** creates a connections pool based on the host network */
-  private[this] def createHostPoolFlow(settings: ConnectionPoolSettings, network: String) = {
+  private[this] def createHostPoolFlow[ID](settings: ConnectionPoolSettings, network: String) = {
     val host = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     if (protocol == "https")
-      Http(system).cachedHostConnectionPoolHttps[String](
+      Http(system).newHostConnectionPoolHttps[ID](
         host = host,
         port = port,
         settings = settings
       )
     else
-      Http(system).cachedHostConnectionPool[String](
+      Http(system).newHostConnectionPool[ID](
         host = host,
         port = port,
         settings = settings
-      )
+    )
   }
-
+/*
   override def runBatchedGetQuery(
     network: String,
     commands: List[String],
@@ -225,6 +230,31 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
         }
         .map(_.data.utf8String)
         .toMat(Sink.collection[String, List[String]])(Keep.right)
+        .run()
+  }
+ */
+  def runBatchedGetQuery[ID](
+    network: String,
+    ids: List[ID],
+    mapToCommand: ID => String,
+    concurrencyLevel: Int): Future[List[(ID, String)]] =
+    withRejectionControl {
+      val connections = createHostPoolFlow[ID](streamingRequestsConnectionPooling, network)
+      val convertIdToUrl = mapToCommand andThen (cmd => translateCommandToUrl(network, cmd))
+      //we need to thread the id all through the streaming http stages
+      val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
+      val toRequest = (in: (String, ID)) => (HttpRequest(uri = Uri(in._1)), in._2)
+
+      uris.map(toRequest)
+        .via(connections)
+        .mapAsync(concurrencyLevel) {
+          case (tried, id) =>
+            Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout)))
+              .flatten
+              .map(entity => (entity, id))
+        }
+        .map{case (content, id) => (id, content.data.utf8String)}
+        .toMat(Sink.collection[(ID, String), List[(ID, String)]])(Keep.right)
         .run()
   }
 }

@@ -61,7 +61,7 @@ package scripts {
         val blocksUrls = (0 to offset).map(v => s"blocks/head~$v").toList
 
         val start = System.nanoTime()
-        node.runBatchedGetQuery("zeronet", blocksUrls, concurrency)
+        node.runBatchedGetQuery("zeronet", blocksUrls, identity[String], concurrency)
           .onComplete {
             case Success(jsonData) =>
               val latency = Duration(System.nanoTime() - start, "nanoseconds")
