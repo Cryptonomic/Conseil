@@ -147,11 +147,15 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       }
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
-      _  = if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-      else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
       blocks <-
-        if (headLevel <= maxLevel) Future.successful(List.empty)
-        else getBlocks(network, maxLevel + 1, headLevel, headHash, followFork)
+        if (headLevel <= maxLevel) {
+          logger.info("No new blocks to fetch from the network")
+          Future.successful(List.empty)
+        } else {
+          if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+          else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
+          getBlocks(network, maxLevel + 1, headLevel, headHash, followFork)
+        }
     } yield blocks
 
   /**
