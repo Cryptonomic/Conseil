@@ -9,7 +9,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 
 import scala.concurrent.duration._
 

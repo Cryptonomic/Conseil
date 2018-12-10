@@ -4,7 +4,7 @@ import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMa
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.{Directive, Directive1, StandardRoute}
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 
 import scala.concurrent.{ExecutionContext, Future}

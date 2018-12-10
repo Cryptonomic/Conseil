@@ -1,8 +1,8 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.generic.chain
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.OperationType.OperationType
 
 import scala.util.Try
 

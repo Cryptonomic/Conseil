@@ -6,8 +6,9 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolOperations
 import tech.cryptonomic.conseil.routes.QueryProtocol
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -101,6 +102,16 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
         entity = HttpEntity(MediaTypes.`application/json`, malforemdJsonStringRequest))
       getRequest ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+      }
+    }
+
+    "return 404 NotFound status code for request for the not supported platform" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/notSupportedPlatform/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, malforemdJsonStringRequest))
+      getRequest ~> route ~> check {
+        status shouldBe StatusCodes.NotFound
       }
     }
   }

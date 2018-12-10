@@ -1,7 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{Predicate, Query}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -11,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database.
   */
-object ApiOperations {
+object ApiOperations extends QueryProtocolOperations {
 
   lazy val dbHandle: Database = DatabaseUtil.db
 
@@ -314,6 +317,27 @@ object ApiOperations {
   def runQuery[A](action: DBIO[A]): Future[A] = {
     dbHandle.run {
       action
+    }
+  }
+
+  /** Executes the query with given predicates
+    *
+    * @param  tableName name of the table which we query
+    * @param  query     query predicates and fields
+    * @return query result as a map
+    * */
+  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
+    if (areFieldsValid(tableName, query.fields, query.predicates.map(_.field))) {
+      runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizePredicates(query.predicates)))
+    } else {
+      Future.successful(List.empty)
+    }
+  }
+
+  /** Sanitizes predicate values so query is safe from SQL injection */
+  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
+    predicates.map { predicate =>
+      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
     }
   }
 }
