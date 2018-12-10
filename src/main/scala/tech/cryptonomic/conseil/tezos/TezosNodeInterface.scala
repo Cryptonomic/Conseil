@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -107,6 +108,9 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   def withRejectionControl[T](call: => Future[T]): Future[T] =
     if (rejectingCalls.get) Future.fromTry(rejected) else call
 
+  def withRejectionControl[T](call: => Source[T, NotUsed]): Source[T, NotUsed] =
+    if (rejectingCalls.get) Source.empty[T] else call
+
   private[this] def translateCommandToUrl(network: String, command: String): String = {
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
@@ -195,55 +199,36 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   )
 
   /** creates a connections pool based on the host network */
-  private[this] def createHostPoolFlow[ID](settings: ConnectionPoolSettings, network: String) = {
+  private[this] def createHostPoolFlow[T](settings: ConnectionPoolSettings, network: String) = {
     val host = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     if (protocol == "https")
-      Http(system).newHostConnectionPoolHttps[ID](
+      Http(system).cachedHostConnectionPoolHttps[T](
         host = host,
         port = port,
         settings = settings
       )
     else
-      Http(system).newHostConnectionPool[ID](
+      Http(system).cachedHostConnectionPool[T](
         host = host,
         port = port,
         settings = settings
     )
   }
-/*
-  override def runBatchedGetQuery(
-    network: String,
-    commands: List[String],
-    concurrencyLevel: Int): Future[List[String]] =
-    withRejectionControl {
-      val connections = createHostPoolFlow(streamingRequestsConnectionPooling, network)
-      val uris = Source(commands.map(translateCommandToUrl(network, _)))
-      val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
 
-      uris.map(toRequest)
-        .via(connections)
-        .mapAsync(concurrencyLevel) {
-          case (tried, _) =>
-            Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout))).flatten
-        }
-        .map(_.data.utf8String)
-        .toMat(Sink.collection[String, List[String]])(Keep.right)
-        .run()
-  }
- */
-  def runBatchedGetQuery[ID](
+  private[this] def streamedGetQuery[CID](
     network: String,
-    ids: List[ID],
-    mapToCommand: ID => String,
-    concurrencyLevel: Int): Future[List[(ID, String)]] =
-    withRejectionControl {
-      val connections = createHostPoolFlow[ID](streamingRequestsConnectionPooling, network)
+    ids: List[CID],
+    mapToCommand: CID => String,
+    concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
+      val batchId = java.util.UUID.randomUUID()
+      logger.info("{} - New batched GET call for {} requests", batchId, ids.size)
+      val connections = createHostPoolFlow[CID](streamingRequestsConnectionPooling, network)
       val convertIdToUrl = mapToCommand andThen (cmd => translateCommandToUrl(network, cmd))
       //we need to thread the id all through the streaming http stages
       val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
-      val toRequest = (in: (String, ID)) => (HttpRequest(uri = Uri(in._1)), in._2)
+      val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
 
       uris.map(toRequest)
         .via(connections)
@@ -254,7 +239,18 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
               .map(entity => (entity, id))
         }
         .map{case (content, id) => (id, content.data.utf8String)}
-        .toMat(Sink.collection[(ID, String), List[(ID, String)]])(Keep.right)
-        .run()
   }
+
+  def runBatchedGetQuery[CID](
+    network: String,
+    ids: List[CID],
+    mapToCommand: CID => String,
+    concurrencyLevel: Int): Future[List[(CID, String)]] =
+      streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
+        .toMat(Sink.collection[(CID, String), List[(CID, String)]])(Keep.right)
+        .run()
+        .andThen {
+          case _ => logger.info("Batch completed")
+        }
+
 }
