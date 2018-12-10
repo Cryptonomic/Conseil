@@ -71,12 +71,12 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param accountIDs the ids
     * @return           the list of accounts wrapped in a [[Future]]
     */
-  def getAllAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[List[(AccountId, Account)]] =
+  def getAllAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
     node
     .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountsFetchConcurrency)
-    .map(_.map {
+    .map(_.collect {
       case (id, json) => (id, fromJson[Account](json))
-    })
+    }.toMap)
 
   /**
     * Fetches the accounts identified by id, considering them available looking at the blocks head
@@ -88,7 +88,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def getAccounts(network: String, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
     node
       .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/head/context/contracts/${id.id}", accountsFetchConcurrency)
-      .map(_.map {
+      .map(_.collect {
         case (id, json) => (id, fromJson[Account](json))
       }.toMap)
 
@@ -117,8 +117,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     //read the accounts by ids and group then again with separate blocks to get the final result
     val accountsInfos: Future[List[BlockAccounts]] =
       getAccounts(network, accountBlockAssociation.keys.toList).map {
-        accounts =>
-          val accountsMap: Map[AccountId, Account] = accounts.toMap
+        accountsMap =>
+          val missing = accountBlockAssociation.keySet -- accountsMap.keySet
+          logger.warn("The following account keys were not found querying the {} node: {}", network, missing.mkString("\n", ",\n", "\n"))
           accountsMap.groupBy {
             case (id, _) => accountBlockAssociation(id).metadata.hash
           }.map(BlockAccounts.tupled).toList
@@ -127,7 +128,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     accountsInfos.failed.foreach {
       e =>
         val showInput = accountsIds.mkString("\n")
-        logger.error(s"Could not get a list of accounts for the following blocks and ids $showInput", e)
+        logger.error(s"Could not get a list of accounts for the following blocks and ids ${showInput.take(100)}", e)
     }
     accountsInfos
   }
