@@ -65,7 +65,8 @@ CREATE TABLE public.accounts (
     delegate_value character varying,
     counter integer NOT NULL,
     script character varying,
-    balance numeric NOT NULL
+    balance numeric NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL
 );
 
 
