@@ -264,15 +264,19 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         (hash, jsonToOperationGroups(json), jsonToAccountInvolved(json))
     }
 
+    val isGenesis = (metadata: BlockMetadata) => metadata.header.level == 0
+
+    //Gets metadata for the requested offsets and associates the operations and account hashes available involved in said operations
+    //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
       fetchedBlocksMetadata <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsFetchConcurrency) map (blocksMetadata => blocksMetadata.map(jsonToBlockMetadata))
-      blockHashes = fetchedBlocksMetadata.map(_.hash)
+      blockHashes = fetchedBlocksMetadata.filterNot(isGenesis).map(_.hash)
       fetchedOperationsWithAccounts <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsFetchConcurrency).map(operations => operations.map(jsonToOperationsAndAccounts))
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, ops, accounts) => (hash, (ops, accounts))}.toMap
       fetchedBlocksMetadata.map {
         md =>
-          val (ops, accs) = operationalDataMap(md.hash)
+          val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           (Block(md, ops), accs)
       }
     }
