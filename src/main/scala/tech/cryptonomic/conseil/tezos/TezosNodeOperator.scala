@@ -196,7 +196,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         } else {
           if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
           else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
-          getBlocks(network, maxLevel + 1, headLevel, headHash, followFork)
+          getBlocks(network, headHash, maxLevel + 1, headLevel, followFork)
         }
     } yield blocks
 
@@ -210,9 +210,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return Blocks
     */
   def getBlocks(network: String,
+                startBlockHash: BlockHash = blockHeadHash,
                 minLevel: Int,
                 maxLevel: Int,
-                startBlockHash: BlockHash = blockHeadHash,
                 followFork: Boolean): Future[List[(Block, List[AccountId])]] = {
     val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
     val blocksFromFork =
@@ -227,21 +227,21 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
     * @param network Which Tezos network to go against
-    * @param hash Hash of block at max level.
+    * @param hashRef Hash of block at max level.
     * @param minLevel Minimum level, at which we stop.
     * @param maxLevel Level at which to stop collecting blocks.
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def processBlocks(
                              network : String,
-                             hash: BlockHash,
+                             hashRef: BlockHash,
                              minLevel: Int,
                              maxLevel: Int
                            ): Future[List[(Block, List[AccountId])]] = {
 
     val maxOffset: Int = maxLevel - minLevel
     val offsets = (0 to maxOffset).toList
-    val makeBlocksUrl = (offset: Int) => s"blocks/${hash.value}~${String.valueOf(offset)}"
+    val makeBlocksUrl = (offset: Int) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
     val makeOperationsUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
     val jsonToBlockMetadata: ((Int, String)) => BlockMetadata = {
