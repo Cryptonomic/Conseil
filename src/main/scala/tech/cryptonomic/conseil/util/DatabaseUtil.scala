@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.util
 
 import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.{PositionedParameters, SQLActionBuilder}
+import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 
 /**
   * Utility functions and members for common database operations.
@@ -32,4 +32,15 @@ object DatabaseUtil {
     }
     concat(b, List(sql")"))
   }
+
+  /** Implicit value that allows getting table row as Map[String, Any] */
+  implicit val getMap: GetResult[Map[String, Any]] = GetResult[Map[String, Any]](positionedResult => {
+    val metadata = positionedResult.rs.getMetaData
+    (1 to positionedResult.numColumns).flatMap(i => {
+      val columnName = metadata.getColumnName(i).toLowerCase
+      val columnValue = positionedResult.nextObjectOption
+      columnValue.map(columnName -> _)
+    }).toMap
+  })
+
 }

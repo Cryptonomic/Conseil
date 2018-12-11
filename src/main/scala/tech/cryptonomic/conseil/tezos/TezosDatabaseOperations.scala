@@ -3,13 +3,14 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.{GetResult, SQLActionBuilder}
+import slick.jdbc.SQLActionBuilder
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.OperationType.OperationType
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{OperationType, Predicate}
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
+import tech.cryptonomic.conseil.util.DatabaseUtil.{concat, values}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
@@ -295,17 +296,6 @@ object TezosDatabaseOperations extends LazyLogging {
     sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
   }
 
-
-  /** Implicit value that allows getting table row as Map[String, Any] */
-  private implicit val getMap: GetResult[Map[String, Any]] = GetResult[Map[String, Any]](positionedResult => {
-    val metadata = positionedResult.rs.getMetaData
-    (1 to positionedResult.numColumns).flatMap(i => {
-      val columnName = metadata.getColumnName(i).toLowerCase
-      val columnValue = positionedResult.nextObjectOption
-      columnValue.map(columnName -> _)
-    }).toMap
-  })
-
   /**
     * Selects elements filtered by the predicates
     * THIS METHOD IS VULNERABLE TO SQL INJECTION
@@ -317,8 +307,15 @@ object TezosDatabaseOperations extends LazyLogging {
   def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate])(implicit ec: ExecutionContext):
   DBIO[List[Map[String, Any]]] = {
     import tech.cryptonomic.conseil.util.DatabaseUtil._
-    val pred = predicates.map { p =>
-      val fieldQuery = p.precision.map{
+    val pred = makePredicates(predicates)
+    val query = makeQuery(table, columns)
+    concat(query, pred).as[Map[String, Any]].map(_.toList)
+  }
+
+  /** Prepares predicates */
+  def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
+    predicates.map { p =>
+      val fieldQuery = p.precision.map {
         prec => sql""" AND ROUND(#${p.field}, $prec) """
       }.getOrElse(sql""" AND #${p.field} """)
       concat(
@@ -326,9 +323,10 @@ object TezosDatabaseOperations extends LazyLogging {
         List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString)))
       )
     }
-    val query = sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
-    concat(query, pred).as[Map[String, Any]].map(_.toList)
-  }
+
+  /** Prepares query */
+  def makeQuery(table: String, columns: List[String]): SQLActionBuilder =
+    sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
 
   /** maps operation type to SQL operation */
   private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {

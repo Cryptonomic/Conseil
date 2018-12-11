@@ -6,8 +6,9 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
+import tech.cryptonomic.conseil.generic.chain.{QueryProtocolOperations, QueryProtocolPlatform}
 import tech.cryptonomic.conseil.routes.QueryProtocol
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -72,11 +73,13 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
     predicates = List.empty
   )
 
-  val fakePDO: QueryProtocolOperations = new QueryProtocolOperations {
+  val fakeQPO: QueryProtocolOperations = new QueryProtocolOperations {
     override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] =
       Future.successful(responseAsMap)
   }
-  val route: Route = new QueryProtocol(fakePDO)(ec).route
+
+  val fakeQPP: QueryProtocolPlatform = new QueryProtocolPlatform(Map("tezos" -> fakeQPO))
+  val route: Route = new QueryProtocol(fakeQPP)(ec).route
 
   "Query protocol" should {
 
@@ -101,6 +104,16 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
         entity = HttpEntity(MediaTypes.`application/json`, malforemdJsonStringRequest))
       getRequest ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
+      }
+    }
+
+    "return 404 NotFound status code for request for the not supported platform" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/notSupportedPlatform/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
+      getRequest ~> route ~> check {
+        status shouldBe StatusCodes.NotFound
       }
     }
   }

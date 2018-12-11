@@ -4,7 +4,7 @@ import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMa
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.{Directive, Directive1, StandardRoute}
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -51,4 +51,12 @@ trait RouteHandling {
   protected def completeWithJson[T](futureValue: Future[T])(implicit ec: ExecutionContext): StandardRoute =
     complete(futureValue.map(toJson[T]))
 
+  /** converts the Option[future] value to [[JsonString]] and completes the call or completes with NotFound */
+  protected def completeWithJsonOrNotFound[T](optionValue: Option[Future[T]])(implicit ec: ExecutionContext): StandardRoute = {
+    val response: ToResponseMarshallable = optionValue match {
+      case Some(futureValue) => futureValue.map(toJson[T])
+      case None => StatusCodes.NotFound
+    }
+    complete(response)
+  }
 }

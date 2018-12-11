@@ -3,23 +3,16 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.config.Config
 import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
-  * Trait containing the interface for the QueryProtocol
-  */
-trait QueryProtocolOperations {
 
-  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
-}
 
-object PlatformDiscoveryOperations extends QueryProtocolOperations {
+object TezosPlatformDiscoveryOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -126,30 +119,12 @@ object PlatformDiscoveryOperations extends QueryProtocolOperations {
   }
 
   /** Sanitizes string to be viable to paste into plain SQL */
-  private def sanitizeForSql(str: String): String = {
+  def sanitizeForSql(str: String): String = {
     str.filter(c => c.isLetterOrDigit || c == '_')
   }
 
-  /** Executes the query with given predicates
-    *
-    * @param  tableName name of the table which we query
-    * @param  query     query predicates and fields
-    * @return query result as a map
-    * */
-  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
-
-    if (checkIfCanQuery(tableName, query.fields, query.predicates.map(_.field))) {
-      val sanitizedPredicates = query.predicates.map { predicate =>
-        predicate.copy(set = predicate.set.map(pred => sanitizeForSql(pred.toString)))
-      }
-      ApiOperations.runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizedPredicates))
-    } else {
-      Future.successful(List.empty)
-    }
-  }
-
   /** Checks if columns exist for the given table */
-  private def checkIfCanQuery(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
+  def areFieldsValid(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
     val fields = (queryFields ++ predicateFields).toSet
 
     tablesMap.exists {
@@ -158,7 +133,6 @@ object PlatformDiscoveryOperations extends QueryProtocolOperations {
         name == tableName && fields.subsetOf(cols)
     }
   }
-
 
   /**
     * Extracts attributes in the DB for the given table name

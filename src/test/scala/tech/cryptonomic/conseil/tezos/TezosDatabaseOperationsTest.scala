@@ -11,7 +11,7 @@ import slick.jdbc.H2Profile.api._
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.QueryProtocolTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{OperationType, Predicate}
 
 import scala.util.Random
 
@@ -932,6 +932,22 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe 'empty
+    }
+
+    "return the same results for the same query" in {
+      import tech.cryptonomic.conseil.util.DatabaseUtil._
+      val columns = List("level", "proto", "protocol", "hash")
+      val tableName = Tables.Blocks.baseTableRow.tableName
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        generatedQuery <- sut.makeQuery(tableName, columns).as[Map[String, Any]]
+      } yield generatedQuery
+
+      val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
+      val expectedQueryResult = dbHandler.run(
+        sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true""".as[Map[String, Any]]
+      ).futureValue
+      generatedQueryResult shouldBe expectedQueryResult
     }
   }
 
