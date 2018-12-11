@@ -51,4 +51,12 @@ trait RouteHandling {
   protected def completeWithJson[T](futureValue: Future[T])(implicit ec: ExecutionContext): StandardRoute =
     complete(futureValue.map(toJson[T]))
 
+  /** converts the Option[future] value to [[JsonString]] and completes the call or completes with NotFound */
+  protected def completeWithJsonOrNotFound[T](optionValue: Option[Future[T]])(implicit ec: ExecutionContext): StandardRoute = {
+    val response: ToResponseMarshallable = optionValue match {
+      case Some(futureValue) => futureValue.map(toJson[T])
+      case None => StatusCodes.NotFound
+    }
+    complete(response)
+  }
 }
