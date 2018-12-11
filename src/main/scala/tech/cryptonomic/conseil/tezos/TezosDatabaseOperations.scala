@@ -129,7 +129,7 @@ object TezosDatabaseOperations extends LazyLogging {
     )
 
     private[TezosDatabaseOperations] def convertAccounts(blockAccounts: BlockAccounts) = {
-      val BlockAccounts(hash, accounts) = blockAccounts
+      val BlockAccounts(hash, level, accounts) = blockAccounts
       accounts.map {
         case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
           Tables.AccountsRow(
@@ -141,7 +141,8 @@ object TezosDatabaseOperations extends LazyLogging {
             delegateValue = delegate.value,
             counter = counter,
             script = script.map(_.toString),
-            balance = balance
+            balance = balance,
+            blockLevel = level
           )
       }.toList
     }

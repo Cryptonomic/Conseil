@@ -127,8 +127,10 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
           val missing = (accountBlockAssociation.keySet -- accountsMap.keySet).map(_.id)
           if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.mkString("\n", ",", "\n"))
           accountsMap.groupBy {
-            case (id, _) => accountBlockAssociation(id).metadata.hash
-          }.map(BlockAccounts.tupled).toList
+            case (id, _) => (accountBlockAssociation(id).metadata.hash, accountBlockAssociation(id).metadata.header.level)
+          }.map {
+            case ((bh, bl), accounts) => BlockAccounts(bh, bl, accounts)
+          }.toList
       }
 
     accountsInfos.failed.foreach {

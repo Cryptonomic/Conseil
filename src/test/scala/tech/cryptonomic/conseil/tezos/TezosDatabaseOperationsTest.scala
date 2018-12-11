@@ -194,6 +194,7 @@ class TezosDatabaseOperationsTest
           row.counter shouldEqual account.counter
           row.script shouldEqual account.script.map(_.toString)
           row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual block.level
       }
 
     }
@@ -459,7 +460,7 @@ class TezosDatabaseOperationsTest
         )
     }.toMap
 
-    BlockAccounts(blockHash, accounts)
+    BlockAccounts(blockHash, blockLevel, accounts)
   }
 
   /* randomly populate a number of blocks based on a level range */
