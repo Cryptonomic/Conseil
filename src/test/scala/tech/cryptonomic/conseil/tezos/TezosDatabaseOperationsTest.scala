@@ -211,6 +211,63 @@ class TezosDatabaseOperationsTest
       }
     }
 
+    "update accounts if they exists already" in {
+      import org.scalatest.time.SpanSugar._
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(2, testReferenceTime)
+      val account = generateAccountRows(1, blocks.head).head
+
+      val populate =
+        DBIO.seq(
+          Tables.Blocks ++= blocks,
+          Tables.Accounts += account
+        )
+
+      dbHandler.run(populate)
+
+      //prepare new accounts
+      val accountChanges = 2
+      val (hashUpdate, levelUpdate) = (blocks(1).hash, blocks(1).level)
+      val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
+
+      //check for same identifier
+      accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
+
+      //do the updates
+      val writeUpdatedAndGetRows = for {
+        written <- sut.writeAccounts(List(accountsInfo))
+        rows <- Tables.Accounts.result
+      } yield (written, rows)
+
+      val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue(Timeout(2 seconds))
+
+      //number of db changes
+      updates shouldBe accountChanges
+
+      //total number of rows on db (1 update and 1 insert expected)
+      dbAccounts should have size accountChanges
+
+      import org.scalatest.Inspectors._
+
+      //both rows on db should refer to updated data
+      forAll(dbAccounts zip accountsInfo.accounts) {
+        case (row, (id, account)) =>
+          row.accountId shouldEqual id.id
+          row.blockId shouldEqual hashUpdate
+          row.manager shouldEqual account.manager
+          row.spendable shouldEqual account.spendable
+          row.delegateSetable shouldEqual account.delegate.setable
+          row.delegateValue shouldEqual account.delegate.value
+          row.counter shouldEqual account.counter
+          row.script shouldEqual account.script.map(_.toString)
+          row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual levelUpdate
+      }
+
+    }
+
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
     }
