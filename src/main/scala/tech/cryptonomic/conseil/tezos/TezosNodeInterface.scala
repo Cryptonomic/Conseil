@@ -232,7 +232,7 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
 
       uris.map(toRequest)
         .via(connections)
-        .mapAsync(concurrencyLevel) {
+        .mapAsyncUnordered(concurrencyLevel) {
           case (tried, id) =>
             Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout)))
               .flatten

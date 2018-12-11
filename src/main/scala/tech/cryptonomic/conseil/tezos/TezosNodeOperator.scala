@@ -88,9 +88,15 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def getAccounts(network: String, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
     node
       .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/head/context/contracts/${id.id}", accountsFetchConcurrency)
-      .map(_.collect {
-        case (id, json) => (id, fromJson[Account](json))
-      }.toMap)
+      .map(
+        responseList =>
+          responseList.collect {
+            case (id, json) =>
+              val accountTry = Try(fromJson[Account](json)).map((id, _))
+              accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
+              accountTry.toOption
+          }.flatten.toMap
+      )
 
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
@@ -118,8 +124,8 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     val accountsInfos: Future[List[BlockAccounts]] =
       getAccounts(network, accountBlockAssociation.keys.toList).map {
         accountsMap =>
-          val missing = accountBlockAssociation.keySet -- accountsMap.keySet
-          logger.warn("The following account keys were not found querying the {} node: {}", network, missing.mkString("\n", ",\n", "\n"))
+          val missing = (accountBlockAssociation.keySet -- accountsMap.keySet).map(_.id)
+          if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.mkString("\n", ",", "\n"))
           accountsMap.groupBy {
             case (id, _) => accountBlockAssociation(id).metadata.hash
           }.map(BlockAccounts.tupled).toList
@@ -127,8 +133,8 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
 
     accountsInfos.failed.foreach {
       e =>
-        val showInput = accountsIds.mkString("\n")
-        logger.error(s"Could not get a list of accounts for the following blocks and ids ${showInput.take(100)}", e)
+        val showIds = accountBlockAssociation.keys.take(30).mkString("", ",", if (accountBlockAssociation.size > 30) "..." else "")
+        logger.error(s"Could not get accounts' data for ids ${showIds}", e)
     }
     accountsInfos
   }
