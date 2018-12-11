@@ -74,9 +74,15 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def getAllAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
     node
     .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountsFetchConcurrency)
-    .map(_.collect {
-      case (id, json) => (id, fromJson[Account](json))
-    }.toMap)
+    .map(
+      responseList =>
+        responseList.collect {
+          case (id, json) =>
+            val accountTry = Try(fromJson[Account](json)).map((id, _))
+            accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
+            accountTry.toOption
+        }.flatten.toMap
+    )
 
   /**
     * Fetches the accounts identified by id, considering them available looking at the blocks head
@@ -86,19 +92,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @return           the list of accounts wrapped in a [[Future]]
     */
   def getAccounts(network: String, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
-    node
-      .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/head/context/contracts/${id.id}", accountsFetchConcurrency)
-      .map(
-        responseList =>
-          responseList.collect {
-            case (id, json) =>
-              val accountTry = Try(fromJson[Account](json)).map((id, _))
-              accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
-              accountTry.toOption
-          }.flatten.toMap
-      )
+    getAllAccountsForBlock(network, blockHeadHash, accountIDs)
 
-  /**
+    /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param network  Which Tezos network to go against
     * @return         all Accounts with their corresponding block hash
