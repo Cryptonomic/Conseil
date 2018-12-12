@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.scaladsl.server.Directives.{entity, _}
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
