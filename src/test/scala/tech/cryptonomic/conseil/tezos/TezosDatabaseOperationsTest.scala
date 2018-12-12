@@ -6,7 +6,7 @@ import java.time.{LocalDate, ZoneOffset}
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, OptionValues, WordSpec}
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
@@ -27,7 +27,8 @@ class TezosDatabaseOperationsTest
     with Matchers
     with ScalaFutures
     with OptionValues
-    with LazyLogging {
+    with LazyLogging
+    with IntegrationPatience {
 
   "The database api" should {
 
@@ -161,7 +162,6 @@ class TezosDatabaseOperationsTest
     }
 
     "write accounts for a single block" in {
-      import org.scalatest.time.SpanSugar._
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val expectedCount = 3
@@ -175,7 +175,7 @@ class TezosDatabaseOperationsTest
         rows <- Tables.Accounts.result
       } yield (written, rows)
 
-      val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue(Timeout(2 seconds))
+      val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
       stored shouldBe expectedCount
 
@@ -212,7 +212,6 @@ class TezosDatabaseOperationsTest
     }
 
     "update accounts if they exists already" in {
-      import org.scalatest.time.SpanSugar._
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       //generate data
@@ -241,7 +240,7 @@ class TezosDatabaseOperationsTest
         rows <- Tables.Accounts.result
       } yield (written, rows)
 
-      val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue(Timeout(2 seconds))
+      val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
 
       //number of db changes
       updates shouldBe accountChanges
