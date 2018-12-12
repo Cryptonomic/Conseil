@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Try, Success, Failure}
 
 object TezosNodeOperator {
   /**
@@ -64,14 +64,27 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       .map(fromJson[ManagerKey])
 
   /**
+    * Fetches all accounts for a given block.
+    * @param network    Which Tezos network to go against
+    * @param blockHash  Hash of given block.
+    * @return           Accounts
+    */
+  def getAllAccountsForBlock(network: String, blockHash: BlockHash): Future[Map[AccountId, Account]] =
+    for {
+      jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
+      accountIDs = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
+      accounts <- getAccountsForBlock(network, accountIDs, blockHash)
+    } yield accounts
+
+  /**
     * Fetches the accounts identified by id
     *
     * @param network    Which Tezos network to go against
-    * @param blockHash  the block storing the accounts
     * @param accountIDs the ids
-    * @return           the list of accounts wrapped in a [[Future]]
+    * @param blockHash  the block storing the accounts, the head block if not specified
+    * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getAllAccountsForBlock(network: String, blockHash: BlockHash, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
+  def getAccountsForBlock(network: String, accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] =
     node
     .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountsFetchConcurrency)
     .map(
@@ -84,27 +97,23 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         }.flatten.toMap
     )
 
-  /**
-    * Fetches the accounts identified by id, considering them available looking at the blocks head
-    *
-    * @param network    Which Tezos network to go against
-    * @param accountIDs the ids
-    * @return           the list of accounts wrapped in a [[Future]]
-    */
-  def getAccounts(network: String, accountIDs: List[AccountId]): Future[Map[AccountId, Account]] =
-    getAllAccountsForBlock(network, blockHeadHash, accountIDs)
 
     /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param network  Which Tezos network to go against
-    * @return         all Accounts with their corresponding block hash
+    * @param accountIds a mapping from blocks to corresponding ids to load
+    * @return         Accounts with their corresponding block data
     */
   def getAccountsForBlocks(network: String, accountsIds: Map[Block, List[AccountId]]): Future[List[BlockAccounts]] = {
     /* making separate calls for blocks would not scale, as the same pool would be reused for thousands of batches, possibly
      * related to the same accounts involved in multiple operations
      * so we better group the ids and then recover the latest blocks involved for each
      */
-    val accountBlockAssociation: Map[AccountId, Block] = {
+
+    def notifyAnyLostIds(missing: Set[AccountId]) =
+      if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
+
+    def reverseIndexToLatestBlock: Map[AccountId, Block] = {
       val distinctIds = accountsIds.values.flatten.toSet
       distinctIds.map {
         id =>
@@ -116,27 +125,28 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       }.toMap
     }
 
-    //read the accounts by ids and group then again with separate blocks to get the final result
-    val accountsInfos: Future[List[BlockAccounts]] =
-      getAccounts(network, accountBlockAssociation.keys.toList).map {
-        accountsMap =>
-          val missing = (accountBlockAssociation.keySet -- accountsMap.keySet).map(_.id)
-          if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.mkString("\n", ",", "\n"))
-          accountsMap.groupBy {
-            case (id, _) => (accountBlockAssociation(id).metadata.hash, accountBlockAssociation(id).metadata.header.level)
-          }.map {
-            case ((bh, bl), accounts) => BlockAccounts(bh, bl, accounts)
-          }.toList
-      }
+    val accountsBlocksIndex = reverseIndexToLatestBlock
 
-    accountsInfos.failed.foreach {
-      e =>
-        val showIds = accountBlockAssociation.keys.take(30).mkString("", ",", if (accountBlockAssociation.size > 30) "..." else "")
-        logger.error(s"Could not get accounts' data for ids ${showIds}", e)
-    }
-    accountsInfos
+    //uses the reverse index to collect together BlockAccounts matching the same block
+    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
+      data.groupBy {
+        case (id, _) =>
+            (accountsBlocksIndex(id).metadata.hash, accountsBlocksIndex(id).metadata.header.level)
+        }.map {
+          case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
+        }.toList
+
+    //fetch accounts by requested ids and group them together with corresponding blocks
+    getAccountsForBlock(network, accountsBlocksIndex.keys.toList)
+      .andThen {
+        case Success(accountsMap) =>
+          notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
+        case Failure(err) =>
+          val showSomeIds = accountsBlocksIndex.keys.take(30).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
+          logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
+      }.map(groupByLatestBlock)
+
   }
-
 
   /**
     * Fetches operations for a block, without waiting for the result
