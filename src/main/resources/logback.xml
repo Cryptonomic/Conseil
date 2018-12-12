@@ -8,6 +8,7 @@
     </appender>
 
     <logger name="com.base22" level="TRACE"/>
+    <logger name="de.flapdoodle.embed.process" level="OFF"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />

@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.{ScalaFutures, PatienceConfiguration}
+import org.scalatest.concurrent.{ScalaFutures, IntegrationPatience}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
@@ -21,14 +21,11 @@ class PlatformDiscoveryOperationsTest
     with Matchers
     with ScalaFutures
     with OptionValues
-    with PatienceConfiguration
+    with IntegrationPatience
     with LazyLogging {
 
   import slick.jdbc.PostgresProfile.api._
   import scala.concurrent.ExecutionContext.Implicits.global
-
-  //allow more room for embedded db
-  implicit override val patienceConfig = PatienceConfig(timeout = scaled(500.milliseconds))
 
   "getNetworks" should {
     "return list with one element" in {
