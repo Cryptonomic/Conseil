@@ -5,10 +5,11 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec, OptionValues}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
-import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow, AccountsRow}
+import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 
@@ -26,7 +27,8 @@ class TezosDatabaseOperationsTest
     with Matchers
     with ScalaFutures
     with OptionValues
-    with LazyLogging {
+    with LazyLogging
+    with IntegrationPatience {
 
   "The database api" should {
 
@@ -159,7 +161,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "write accounts" in {
+    "write accounts for a single block" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val expectedCount = 3
@@ -169,13 +171,13 @@ class TezosDatabaseOperationsTest
 
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block
-        written <- sut.writeAccounts(accountsInfo)
+        written <- sut.writeAccounts(List(accountsInfo))
         rows <- Tables.Accounts.result
       } yield (written, rows)
 
       val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
-      stored.value shouldBe expectedCount
+      stored shouldBe expectedCount
 
       dbAccounts should have size expectedCount
 
@@ -185,7 +187,6 @@ class TezosDatabaseOperationsTest
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
-          row.blockLevel shouldEqual block.level
           row.manager shouldEqual account.manager
           row.spendable shouldEqual account.spendable
           row.delegateSetable shouldEqual account.delegate.setable
@@ -193,6 +194,7 @@ class TezosDatabaseOperationsTest
           row.counter shouldEqual account.counter
           row.script shouldEqual account.script.map(_.toString)
           row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual block.level
       }
 
     }
@@ -202,11 +204,67 @@ class TezosDatabaseOperationsTest
 
       val accountsInfo = generateAccounts(howMany = 1, blockHash = BlockHash("no-block-hash"), blockLevel = 1)
 
-      val resultFuture = dbHandler.run(sut.writeAccounts(accountsInfo))
+      val resultFuture = dbHandler.run(sut.writeAccounts(List(accountsInfo)))
 
       whenReady(resultFuture.failed) {
           _ shouldBe a [java.sql.SQLException]
       }
+    }
+
+    "update accounts if they exists already" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(2, testReferenceTime)
+      val account = generateAccountRows(1, blocks.head).head
+
+      val populate =
+        DBIO.seq(
+          Tables.Blocks ++= blocks,
+          Tables.Accounts += account
+        )
+
+      dbHandler.run(populate)
+
+      //prepare new accounts
+      val accountChanges = 2
+      val (hashUpdate, levelUpdate) = (blocks(1).hash, blocks(1).level)
+      val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
+
+      //check for same identifier
+      accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
+
+      //do the updates
+      val writeUpdatedAndGetRows = for {
+        written <- sut.writeAccounts(List(accountsInfo))
+        rows <- Tables.Accounts.result
+      } yield (written, rows)
+
+      val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
+
+      //number of db changes
+      updates shouldBe accountChanges
+
+      //total number of rows on db (1 update and 1 insert expected)
+      dbAccounts should have size accountChanges
+
+      import org.scalatest.Inspectors._
+
+      //both rows on db should refer to updated data
+      forAll(dbAccounts zip accountsInfo.accounts) {
+        case (row, (id, account)) =>
+          row.accountId shouldEqual id.id
+          row.blockId shouldEqual hashUpdate
+          row.manager shouldEqual account.manager
+          row.spendable shouldEqual account.spendable
+          row.delegateSetable shouldEqual account.delegate.setable
+          row.delegateValue shouldEqual account.delegate.value
+          row.counter shouldEqual account.counter
+          row.script shouldEqual account.script.map(_.toString)
+          row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual levelUpdate
+      }
+
     }
 
     "fetch nothing if looking up a non-existent operation group by hash" in {
@@ -367,76 +425,6 @@ class TezosDatabaseOperationsTest
       maxLevel should equal(expected)
     }
 
-    "return the default when fetching the max account level and there's no account stored" in {
-      val expected = -1
-      val maxLevel = dbHandler.run(
-        sut.fetchAccountsMaxBlockLevel
-      ).futureValue
-
-      maxLevel shouldEqual expected
-    }
-
-    "fetch accounts max block level based only on stored accounts" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(5, testReferenceTime)
-      val blocksWithAccounts = blocks.take(2)
-      val accounts = blocksWithAccounts flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val expected = blocksWithAccounts.map(_.level).max
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
-        _ <- Tables.Accounts ++= accounts
-        result <- sut.fetchAccountsMaxBlockLevel
-      } yield result
-
-      val maxLevel = dbHandler.run(populateAndTest.transactionally).futureValue
-
-      maxLevel shouldEqual expected
-
-    }
-
-    "test old accounts purging" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val levels = 5
-
-      //first prepare the data
-
-      val blocks = generateBlockRows(levels, testReferenceTime)
-      val accounts = blocks flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val populate = for {
-        bs <- Tables.Blocks ++= blocks
-        accs <- Tables.Accounts ++= accounts
-      } yield (bs, accs)
-
-      val (Some(storedBlocks), Some(storedAccounts)) = dbHandler.run(populate.transactionally).futureValue
-
-      //take level 0 (genesis block) into account
-      storedBlocks shouldEqual (levels + 1)
-      storedAccounts shouldEqual (levels + 1)
-
-      //purge
-      val removed = dbHandler.run(sut.purgeOldAccounts()).futureValue
-
-      removed shouldBe levels //only the last is left
-
-      //check the db
-      val counts = for {
-        different <- Tables.Accounts.filterNot(_.blockLevel === BigDecimal(levels)).length.result
-        same <- Tables.Accounts.filter(_.blockLevel === BigDecimal(levels)).length.result
-      } yield (different, same)
-
-      dbHandler.run(counts).futureValue shouldBe (0, 1)
-
-    }
-
     "correctly verify when a block exists" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
@@ -509,7 +497,7 @@ class TezosDatabaseOperationsTest
   }
 
   /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsWithBlockHashAndLevel = {
+  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -528,7 +516,7 @@ class TezosDatabaseOperationsTest
         )
     }.toMap
 
-    AccountsWithBlockHashAndLevel(blockHash, blockLevel, accounts)
+    BlockAccounts(blockHash, blockLevel, accounts)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -738,7 +726,6 @@ class TezosDatabaseOperationsTest
         AccountsRow(
           accountId = String valueOf currentId,
           blockId = block.hash,
-          blockLevel = block.level,
           manager = "manager",
           spendable = true,
           delegateSetable = false,
