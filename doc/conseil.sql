@@ -223,6 +223,10 @@ CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 
 CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
+--
+-- Name: ix_accounts_block_level; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX ix_accounts_block_level ON public.accounts USING btree (block_level);
 
 --
 -- Name: ix_accounts_manager; Type: INDEX; Schema: public; Owner: -

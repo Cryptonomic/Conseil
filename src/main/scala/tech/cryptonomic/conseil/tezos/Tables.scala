@@ -65,8 +65,10 @@ trait Tables {
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
 
+    /** Index over (blockLevel) (database name ix_accounts_block_level) */
+    val index1 = index("ix_accounts_block_level", blockLevel)
     /** Index over (manager) (database name ix_accounts_manager) */
-    val index1 = index("ix_accounts_manager", manager)
+    val index2 = index("ix_accounts_manager", manager)
   }
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
