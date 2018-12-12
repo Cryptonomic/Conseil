@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{TezosErrors, FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with LorreErrors with LazyLogging {
+object Lorre extends App with TezosErrors with LazyLogging {
 
   //keep this import here to make it evident where we spawn our async code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -70,6 +70,11 @@ object Lorre extends App with LorreErrors with LazyLogging {
           noOp
     } yield ()
 
+    /* Will stop Lorre on failure from account processing, unless overriden by the environment to keep on running.
+     * Temporarily used to avoid losing accounts updates on error, with the expectation that ops will do cleanup
+     * Onging work is planned to store the list of touched accounts betweem blokcs and accounts fetching, hence,
+     * on failure, the next cycle will resume processing pending account loads
+     */
     val processResult =
       if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "true" || ignore == "yes"))
         processing
@@ -119,8 +124,8 @@ object Lorre extends App with LorreErrors with LazyLogging {
   def processTezosAccounts(accountsInvolved: Map[Block, List[AccountId]]): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
     tezosNodeOperator.getAccountsForBlocks(network, accountsInvolved).flatMap {
-      case accountsInfos =>
-        db.run(TezosDb.writeAccounts(accountsInfos)).andThen {
+      case accountsInfo =>
+        db.run(TezosDb.writeAccounts(accountsInfo)).andThen {
           case Success(rows) =>
             logger.info("{} accounts were touched on the database.", rows)
           case Failure(e) =>

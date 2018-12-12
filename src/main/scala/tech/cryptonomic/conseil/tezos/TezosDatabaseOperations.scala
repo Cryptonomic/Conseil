@@ -28,7 +28,13 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] =
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
-  def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
+  /**
+    * Writes accounts with block data to a database.
+    *
+    * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
+    * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
+    */
+    def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO.sequence(accountsInfo.flatMap {
       info =>
         RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)

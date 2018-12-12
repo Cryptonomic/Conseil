@@ -30,6 +30,7 @@ trait TezosRPCInterface {
     * @param ids  correlation ids for each request to send
     * @param mapToCommand  extract a tezos command (uri fragment) from the id
     * @param concurrencyLevel the concurrency in processing the responses
+    * @param ID a type that will be used to correlate each request with the response
     * @return pairing of the correlation id with the string http response content
     */
   def runBatchedGetQuery[ID](
@@ -217,13 +218,23 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
     )
   }
 
+  /**
+    * Creates a stream that will produce http response content for the
+    * list of commands.
+    *
+    * @param network  Which Tezos network to go against
+    * @param ids  correlation ids for each request to send
+    * @param mapToCommand  extract a tezos command (uri fragment) from the id
+    * @param concurrencyLevel the concurrency in processing the responses
+    * @param ID a type that will be used to correlate each request with the response
+    * @return A stream source whose elements will be the response string, tupled with the correlation id,
+    *         used to match with the corresponding request
+    */
   private[this] def streamedGetQuery[CID](
     network: String,
     ids: List[CID],
     mapToCommand: CID => String,
     concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
-      val batchId = java.util.UUID.randomUUID()
-      logger.info("{} - New batched GET call for {} requests", batchId, ids.size)
       val connections = createHostPoolFlow[CID](streamingRequestsConnectionPooling, network)
       val convertIdToUrl = mapToCommand andThen (cmd => translateCommandToUrl(network, cmd))
       //we need to thread the id all through the streaming http stages
@@ -241,16 +252,20 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
         .map{case (content, id) => (id, content.data.utf8String)}
   }
 
-  def runBatchedGetQuery[CID](
+  override def runBatchedGetQuery[CID](
     network: String,
     ids: List[CID],
     mapToCommand: CID => String,
-    concurrencyLevel: Int): Future[List[(CID, String)]] =
+    concurrencyLevel: Int): Future[List[(CID, String)]] = {
+      val batchId = java.util.UUID.randomUUID()
+      logger.info("{} - New batched GET call for {} requests", batchId, ids.size)
+
       streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
         .toMat(Sink.collection[(CID, String), List[(CID, String)]])(Keep.right)
         .run()
         .andThen {
-          case _ => logger.info("Batch completed")
+          case _ => logger.info("{} - Batch completed", batchId)
         }
+    }
 
 }
