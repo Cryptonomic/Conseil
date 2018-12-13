@@ -14,7 +14,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ Fees.schema ++ OperationGroups.schema ++ Operations.schema
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -72,6 +72,35 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
+
+  /** Entity class storing rows of table AccountsCheckpoint
+   *  @param accountId Database column account_id SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
+  case class AccountsCheckpointRow(accountId: String, blockId: String, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
+  /** GetResult implicit for fetching AccountsCheckpointRow objects using plain SQL queries */
+  implicit def GetResultAccountsCheckpointRow(implicit e0: GR[String], e1: GR[scala.math.BigDecimal]): GR[AccountsCheckpointRow] = GR{
+    prs => import prs._
+    AccountsCheckpointRow.tupled((<<[String], <<[String], <<[scala.math.BigDecimal]))
+  }
+  /** Table description of table accounts_checkpoint. Objects of this class serve as prototypes for rows in queries. */
+  class AccountsCheckpoint(_tableTag: Tag) extends profile.api.Table[AccountsCheckpointRow](_tableTag, "accounts_checkpoint") {
+    def * = (accountId, blockId, blockLevel) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel)).shaped.<>({r=>import r._; _1.map(_=> AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column account_id SqlType(varchar) */
+    val accountId: Rep[String] = column[String]("account_id")
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column block_level SqlType(numeric), Default(-1) */
+    val blockLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
+
+    /** Foreign key referencing Blocks (database name checkpoint_block_id_fkey) */
+    lazy val blocksFk = foreignKey("checkpoint_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table AccountsCheckpoint */
+  lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))
 
   /** Entity class storing rows of table Blocks
    *  @param level Database column level SqlType(int4)
