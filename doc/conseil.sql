@@ -146,7 +146,7 @@ CREATE TABLE public.operations (
 CREATE TABLE public.accounts_checkpoint (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL
+    block_level integer DEFAULT '-1'::integer NOT NULL
 );
 
 --
