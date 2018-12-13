@@ -120,7 +120,7 @@ object TezosPlatformDiscoveryOperations {
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
-    str.filter(c => c.isLetterOrDigit || c == '_')
+    str.filter(c => c.isLetterOrDigit || c == '_' || c == '.')
   }
 
   /** Checks if columns exist for the given table */

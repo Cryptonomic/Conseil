@@ -315,11 +315,11 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Prepares predicates */
   def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
     predicates.map { p =>
-      val fieldQuery = p.precision.map {
+      val query = p.precision.map {
         prec => sql""" AND ROUND(#${p.field}, $prec) """
       }.getOrElse(sql""" AND #${p.field} """)
       concat(
-        fieldQuery,
+        query,
         List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString)))
       )
     }
