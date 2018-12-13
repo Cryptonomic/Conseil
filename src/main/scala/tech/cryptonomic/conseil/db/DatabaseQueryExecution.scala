@@ -186,12 +186,11 @@ object DatabaseQueryExecution {
       filter.operationKinds.isEmpty.bind || fee.kind.inSet(filter.operationKinds)
 
     /** gets filtered accounts */
-    val filteredAccounts = (appliedFilters: Filter, maxLevel: Rep[BigDecimal]) =>
+    val filteredAccounts = (appliedFilters: Filter) =>
       Tables.Accounts.filter(account =>
         filterAccountIDs(appliedFilters, account) &&
         filterAccountDelegates(appliedFilters, account) &&
-        filterAccountManagers(appliedFilters, account) &&
-        account.blockLevel === maxLevel
+        filterAccountManagers(appliedFilters, account)
       )
 
     /** gets filtered operation groups */
@@ -229,8 +228,8 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
   import DatabaseQueryExecution.Queries._
 
   /** See [[ApiFiltering#apply]] */
-  def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): F[Seq[OUT]] = {
-    val joinTables: TableSelection => JoinedTables = prepareJoins(filter, maxLevelForAccounts)
+  override def apply(filter: Filter): F[Seq[OUT]] = {
+    val joinTables: TableSelection => JoinedTables = prepareJoins(filter)
     val execute: JoinedTables => F[Seq[OUT]] = executeQuery(getFilterLimit(filter), filter.sortBy, filter.order)
     (execute compose joinTables compose select)(filter)
   }
@@ -271,14 +270,14 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
     * @param s        Which tables the filter acts upon
     * @return         One of the available joins defined through the [[JoinedTables]] ADT
     */
-  protected def prepareJoins(f: Filter, maxLevel: BigDecimal)(s: TableSelection): JoinedTables = {
+  protected def prepareJoins(f: Filter)(s: TableSelection): JoinedTables = {
     s match {
       case TableSelection(true, true, true, true) =>
         BlocksOperationGroupsOperationsAccounts(
           filteredBlocks(f)
             .join(filteredOpGroups(f)).on(_.hash === _.blockId)
             .join(filteredOps(f)).on(_._2.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapQuadJoin)
         )
       case TableSelection(true, true, true, false) =>
@@ -304,7 +303,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
             .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, true, true, false) =>
@@ -315,7 +314,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
             .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, true, false, false) =>
@@ -324,13 +323,13 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
             .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, false, true, false) =>
         EmptyJoin
       case TableSelection(false, false, false, true) =>
-        Accounts(filteredAccounts(f, maxLevel))
+        Accounts(filteredAccounts(f))
       case TableSelection(false, false, false, false) =>
         EmptyJoin
     }
@@ -654,7 +653,7 @@ trait DatabaseApiFiltering {
   implicit object FeesFiltering extends ApiFiltering[Future, Tables.FeesRow] {
 
     /** See [[ApiFiltering#apply]] */
-    def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): Future[Seq[Tables.FeesRow]] = {
+    override def apply(filter: Filter): Future[Seq[Tables.FeesRow]] = {
       import DatabaseQueryExecution.Queries
 
       val action =
