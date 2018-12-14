@@ -14,15 +14,16 @@ class ApiOperationsTest extends WordSpec with Matchers {
           "valid",
           "valid_value",
           "invalid*value",
-          "another;invalid,value"
+          "another;invalid,value",
+          "yet.another.value"
         )
       )
     )
 
     "correctly sanitize values for SQL" in {
       val results = ApiOperations.sanitizePredicates(examplePredicates).head.set
-      results should contain allElementsOf List("valid", "valid_value", "invalidvalue", "anotherinvalidvalue")
-      results.size shouldBe 4
+      results should contain allElementsOf List("valid", "valid_value", "invalidvalue", "anotherinvalidvalue", "yet.another.value")
+      results.size shouldBe 5
     }
   }
 }

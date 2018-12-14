@@ -1,6 +1,6 @@
 # Documentation for Query and Metadata interfaces
 
-Description of endpoints with example usages
+Description of endpoints with example usages. Probably all of those request will be added to Postman when query interface will be merged.
 
 ## Query interface
 
