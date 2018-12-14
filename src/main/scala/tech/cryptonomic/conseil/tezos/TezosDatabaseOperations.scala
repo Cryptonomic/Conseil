@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, BlockAccounts, Block, BlockHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountId, BlockAccounts, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -34,7 +34,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-    def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
+  def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO.sequence(accountsInfo.flatMap {
       info =>
         RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)
@@ -47,11 +47,19 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return         Future on database inserts.
     */
   def writeBlocks(blocks: List[Block]): DBIO[Unit] =
-      DBIO.seq(
-        Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
-        Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
-        Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
-      )
+    DBIO.seq(
+      Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
+      Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
+      Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
+    )
+
+  /**
+    * Writes association of account ids and block data to define accounts that needs update
+    * @param accountIds will have blocks, paired with correspoinding account ids to store
+    * @return Database action possibly returning the rows written (if available form the underlying driver)
+    */
+  def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] =
+    Tables.AccountsCheckpoint ++= accountIds.flatMap((RowConversion.convertBlockAccountsAssociation _).tupled)
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -208,6 +216,17 @@ object TezosDatabaseOperations extends LazyLogging {
             }
         }
       }
+
+    private[TezosDatabaseOperations] def convertBlockAccountsAssociation(blockHash: BlockHash, blockLevel: Int, ids: List[AccountId]): List[Tables.AccountsCheckpointRow] =
+      ids.map(
+        accountId =>
+          Tables.AccountsCheckpointRow(
+            accountId = accountId.id,
+            blockId = blockHash.value,
+            blockLevel = blockLevel
+          )
+      )
+
 
   }
 

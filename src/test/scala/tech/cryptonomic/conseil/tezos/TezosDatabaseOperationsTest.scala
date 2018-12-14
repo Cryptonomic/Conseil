@@ -267,6 +267,45 @@ class TezosDatabaseOperationsTest
 
     }
 
+    "store checkpoint account ids with block reference" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      //custom hash generator with predictable seed
+      val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+      val maxLevel = 1
+      val idPerBlock = 3
+      val expectedCount = (maxLevel + 1) * idPerBlock
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTime)
+      val ids = blocks.map(block => (BlockHash(block.hash), block.level, List.fill(idPerBlock)(AccountId(generateHash(5)))))
+
+      //store and write
+      val populateAndFetch = for {
+        _ <- Tables.Blocks ++= blocks
+        written <- sut.writeAccountsCheckpoint(ids)
+        rows <- Tables.AccountsCheckpoint.result
+      } yield (written, rows)
+
+      val (stored, checkpointRows) = dbHandler.run(populateAndFetch).futureValue
+
+      //number of changes
+      stored.value shouldBe expectedCount
+      checkpointRows should have size expectedCount
+
+      import org.scalatest.Inspectors._
+
+      val flattenedIdsData = ids.flatMap{ case (hash, level, accounts) => accounts.map((hash, level, _))}
+
+      forAll(checkpointRows.zip(flattenedIdsData)) {
+        case (row, (hash, level, accountId)) =>
+          row.blockId shouldEqual hash.value
+          row.blockLevel shouldBe level
+          row.accountId shouldEqual accountId.id
+      }
+
+    }
+
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
     }
