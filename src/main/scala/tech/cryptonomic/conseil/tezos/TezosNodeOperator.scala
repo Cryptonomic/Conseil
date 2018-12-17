@@ -98,13 +98,13 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     )
 
 
-    /**
+  /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param network  Which Tezos network to go against
     * @param accountIds a mapping from blocks to corresponding ids to load
     * @return         Accounts with their corresponding block data
     */
-  def getAccountsForBlocks(network: String, accountsIds: Map[Block, List[AccountId]]): Future[List[BlockAccounts]] = {
+  def getAccountsForBlocks(network: String, accountsIds: Map[BlockReference, List[AccountId]]): Future[List[BlockAccounts]] = {
     /* making separate calls for blocks would not scale, as the same pool would be reused for thousands of batches, possibly
      * related to the same accounts involved in multiple operations
      * so we better group the ids and then recover the latest blocks involved for each
@@ -113,14 +113,14 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
 
-    def reverseIndexToLatestBlock: Map[AccountId, Block] = {
+    def reverseIndexToLatestBlock: Map[AccountId, BlockReference] = {
       val distinctIds = accountsIds.values.flatten.toSet
       distinctIds.map {
         id =>
           accountsIds.toArray.collect {
-            case (block, ids) if ids.contains(id) => (id, block)
+            case ((hash, level), ids) if ids.contains(id) => id -> (hash, level)
           }.sortBy {
-            case (_ , block) => block.metadata.header.level
+            case (_ , (_, level)) => level
           }.last
       }.toMap
     }
@@ -130,8 +130,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     //uses the reverse index to collect together BlockAccounts matching the same block
     def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
       data.groupBy {
-        case (id, _) =>
-            (accountsBlocksIndex(id).metadata.hash, accountsBlocksIndex(id).metadata.header.level)
+        case (id, _) => accountsBlocksIndex(id)
         }.map {
           case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
         }.toList

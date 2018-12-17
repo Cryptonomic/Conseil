@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountId, BlockAccounts, Block, BlockHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountId, BlockAccounts, Block, BlockHash, BlockReference}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -72,13 +72,33 @@ object TezosDatabaseOperations extends LazyLogging {
     * only those that at the latest block level (highest value)
     * @return a database action that loads the list of relevant rows
     */
-  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsCheckpointRow]] =
+  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[BlockReference, List[AccountId]]] =
     Tables.AccountsCheckpoint.result.map(
       _.groupBy(_.accountId) //rows by accounts
         .values //only use the collection of values, ignoring the group key
-        .map(_.maxBy(_.blockLevel))
-        .toList //keep only the latest
+        .map(_.maxBy(_.blockLevel)) //keep only the latest and group by block reference
+        .groupBy{
+          case Tables.AccountsCheckpointRow(accountId, blockId, blockLevel) => (BlockHash(blockId), blockLevel)
+        }.mapValues(rows => rows.toList.map(row => AccountId(row.accountId)))
     )
+
+  /**
+    * Writes the blocks data to the database
+    * at the same time saving enough information about updated accounts to later fetch those accounts
+    * @param blocksWithAccounts a map with new blocks as keys, and updated account ids as the values
+    */
+  def writeBlocksAndCheckpointAccounts(blocksWithAccounts: Map[Block, List[AccountId]]): DBIO[Option[Int]] = {
+    //ignore the account ids for storage, and prepare the checkpoint account data
+    //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
+    val (blocks, accountUpdates) =
+      blocksWithAccounts.map {
+        case (block, accountIds) =>
+          block -> (block.metadata.hash, block.metadata.header.level, accountIds)
+      }.toList.unzip
+
+    //sequence both operations in a single transaction
+    (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates)).transactionally
+  }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.

@@ -315,15 +315,6 @@ class TezosDatabaseOperationsTest
       //store required blocks for FK
       dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
 
-      /*
-      * account1 on block-level1
-      * account2 on block-level3
-      * account3 on block-level4
-      * account4 on block-level2
-      * account5 on block-level4
-      * account6 on block-level5
-      */
-
       val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
       val blockIds = blocks.map(_.hash)
 
@@ -376,16 +367,27 @@ class TezosDatabaseOperationsTest
         Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
       )
 
+      def blockToAccountEntry(blockLevel: Int, accountIndex: Int*) =
+        (BlockHash(blockIds(blockLevel)), blockLevel) -> accountIndex.map(idx => AccountId(accountIds(idx))).toList
+
+      /*
+      * account1 on block-level1
+      * account2 on block-level3
+      * account3 on block-level4
+      * account4 on block-level2
+      * account5 on block-level4
+      * account6 on block-level5
+      */
+
       //expecting only the following to remain
       val expected =
-        Array(
-        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
-      )
+        Map(
+          blockToAccountEntry(blockLevel = 1, accountIndex = 1),
+          blockToAccountEntry(blockLevel = 2, accountIndex = 4),
+          blockToAccountEntry(blockLevel = 3, accountIndex = 2),
+          blockToAccountEntry(blockLevel = 4, 3, 5),
+          blockToAccountEntry(blockLevel = 5, accountIndex = 6)
+        )
 
       val populateAndFetch = for {
         stored <- Tables.AccountsCheckpoint ++= checkpointRows
@@ -394,7 +396,14 @@ class TezosDatabaseOperationsTest
 
       val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
       initialCount.value shouldBe checkpointRows.size
-      latest should contain theSameElementsAs expected
+
+      latest.keySet shouldEqual expected.keySet
+
+      import org.scalatest.Inspectors._
+
+      forAll(latest.toList) { case ((hash, level), ids) =>
+        expected((hash, level)) should contain theSameElementsAs ids
+      }
 
     }
 
