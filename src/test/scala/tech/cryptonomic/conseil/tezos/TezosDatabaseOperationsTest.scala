@@ -306,6 +306,98 @@ class TezosDatabaseOperationsTest
 
     }
 
+    "clean the checkpoints" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTime)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      /*
+      * account1 on block-level1
+      * account2 on block-level3
+      * account3 on block-level4
+      * account4 on block-level2
+      * account5 on block-level4
+      * account6 on block-level5
+      */
+
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+        )
+
+        val populateAndTest = for {
+          stored <- Tables.AccountsCheckpoint ++= checkpointRows
+          _ <- sut.cleanAccountsCheckpoint()
+          rows <- Tables.AccountsCheckpoint.result
+        } yield (stored, rows)
+
+        val (initialCount, left) = dbHandler.run(populateAndTest.transactionally).futureValue
+        initialCount.value shouldBe checkpointRows.size
+        left shouldBe empty
+
+      }
+
+    "read latest account ids from checkpoint" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTime)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+      )
+
+      //expecting only the following to remain
+      val expected =
+        Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+      )
+
+      val populateAndFetch = for {
+        stored <- Tables.AccountsCheckpoint ++= checkpointRows
+        rows <- sut.getLatestAccountsFromCheckpoint
+      } yield (stored, rows)
+
+      val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+      latest should contain theSameElementsAs expected
+
+    }
+
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
     }

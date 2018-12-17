@@ -62,6 +62,25 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.AccountsCheckpoint ++= accountIds.flatMap((RowConversion.convertBlockAccountsAssociation _).tupled)
 
   /**
+    * Removes  data on the accounts checkpoint table
+    * @return the database action to run
+    */
+  def cleanAccountsCheckpoint(): DBIO[Unit] = Tables.AccountsCheckpoint.schema.truncate
+
+  /**
+    * Reads the account ids in the checkpoint table, considering
+    * only those that at the latest block level (highest value)
+    * @return a database action that loads the list of relevant rows
+    */
+  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsCheckpointRow]] =
+    Tables.AccountsCheckpoint.result.map(
+      _.groupBy(_.accountId) //rows by accounts
+        .values //only use the collection of values, ignoring the group key
+        .map(_.maxBy(_.blockLevel))
+        .toList //keep only the latest
+    )
+
+  /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind  Operation kind
     * @return      The average fees for a given operation kind, if it exists
