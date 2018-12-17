@@ -4,8 +4,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, BlockAccounts, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -30,13 +29,17 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
 
   /**
-    * Writes accounts from a specific block to a database.
+    * Writes accounts with block data to a database.
     *
-    * @param accountsInfo Accounts with their corresponding block hash.
-    * @return          Database action possibly containing the number of rows written (if available from the underlying driver)
+    * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
+    * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-  def writeAccounts(accountsInfo: AccountsWithBlockHashAndLevel): DBIO[Option[Int]] =
-    Tables.Accounts ++= RowConversion.convertAccounts(accountsInfo)
+    def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
+    DBIO.sequence(accountsInfo.flatMap {
+      info =>
+        RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)
+    }).map(_.sum)
+      .transactionally
 
   /**
     * Writes blocks and related operations to a database.
@@ -84,21 +87,12 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
-    * Delete all accounts in database not associated with block at maxLevel.
-    * @return the number of rows removed
-    */
-  def purgeOldAccounts()(implicit ex: ExecutionContext): DBIO[Int] =
-    fetchAccountsMaxBlockLevel.flatMap( maxLevel =>
-      Tables.Accounts.filter(_.blockLevel =!= maxLevel).delete
-    ).transactionally
-
-  /**
     * Reads in all operations referring to the group
     * @param groupHash is the group identifier
     * @param ec the [[ExecutionContext]] needed to compose db operations
     * @return the operations and the collecting group, if there's one for the given hash, else [[None]]
     */
-  def operationsForGroup(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
+  def operationsForGroup(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
     (for {
       operation <- operationsByGroupHash(groupHash).extract
       group <- operation.operationGroupsFk
@@ -140,8 +134,8 @@ object TezosDatabaseOperations extends LazyLogging {
         kind = in.kind
     )
 
-    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: AccountsWithBlockHashAndLevel) = {
-      val AccountsWithBlockHashAndLevel(hash, level, accounts) = blockAccounts
+    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: BlockAccounts) = {
+      val BlockAccounts(hash, level, accounts) = blockAccounts
       accounts.map {
         case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
           Tables.AccountsRow(
@@ -228,16 +222,6 @@ object TezosDatabaseOperations extends LazyLogging {
   val operationGroupsByHash =
     Tables.OperationGroups.findBy(_.hash).map(_.andThen(_.take(1)))
 
-  /**
-    * Computes the level of the most recent block in the accounts table or [[defaultBlockLevel]] if none is found.
-    */
-  private[tezos] def fetchAccountsMaxBlockLevel: DBIO[BigDecimal] =
-    Tables.Accounts
-      .map(_.blockLevel)
-      .max
-      .getOrElse(defaultBlockLevel)
-      .result
-
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
   private[tezos] def fetchMaxBlockLevel: DBIO[Int] =
     Tables.Blocks
@@ -268,4 +252,27 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
     sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
+
+  /**
+    * Selects distinct elements by given table and column
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table  name of the table
+    * @param column name of the column
+    * @return       distinct elements in given column as a list
+    */
+  def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
+  }
+
+  /**
+    * Selects distinct elements by given table and column with filter
+    * THIS METHOD IS VULNERABLE TO SQL INJECTION
+    * @param table          name of the table
+    * @param column         name of the column
+    * @param matchingString string which is being matched
+    * @return               distinct elements in given column as a list
+    */
+  def selectDistinctLike(table: String, column: String, matchingString: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
+    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
+  }
 }

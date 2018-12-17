@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -25,12 +26,18 @@ trait TezosRPCInterface {
 
   /**
     * Runs all needed RPC calls against the configured Tezos node using HTTP GET
-    * @param network          Which Tezos network to go against
-    * @param commands         RPC commands to invoke
-    * @param concurrencyLevel How many request will be executed concurrently against the node
-    * @return         Result of the RPC calls
+    * @param network  Which Tezos network to go against
+    * @param ids  correlation ids for each request to send
+    * @param mapToCommand  extract a tezos command (uri fragment) from the id
+    * @param concurrencyLevel the concurrency in processing the responses
+    * @param ID a type that will be used to correlate each request with the response
+    * @return pairing of the correlation id with the string http response content
     */
-  def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]]
+  def runBatchedGetQuery[ID](
+    network: String,
+    ids: List[ID],
+    mapToCommand: ID => String,
+    concurrencyLevel: Int): Future[List[(ID, String)]]
 
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
@@ -101,6 +108,9 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
 
   def withRejectionControl[T](call: => Future[T]): Future[T] =
     if (rejectingCalls.get) Future.fromTry(rejected) else call
+
+  def withRejectionControl[T](call: => Source[T, NotUsed]): Source[T, NotUsed] =
+    if (rejectingCalls.get) Source.empty[T] else call
 
   private[this] def translateCommandToUrl(network: String, command: String): String = {
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
@@ -183,46 +193,79 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   }
 
   /** connection pool settings customized for streaming requests */
-  private[this] val streamingRequestsConnectionPooling = ConnectionPoolSettings(
-    conf
-      .atPath("akka.tezos-streaming-client.connection-pool")
-      .withFallback(ConfigFactory.defaultReference())
+  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(
+    conf.getConfig("akka.tezos-streaming-client")
+      .atPath("akka.http.host-connection-pool")
+      .withFallback(conf)
   )
 
   /** creates a connections pool based on the host network */
-  private[this] def createHostPoolFlow(network: String) = {
+  private[this] def createHostPoolFlow[T](settings: ConnectionPoolSettings, network: String) = {
     val host = conf.getString(s"platforms.tezos.$network.node.hostname")
     val port = conf.getInt(s"platforms.tezos.$network.node.port")
     val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
     if (protocol == "https")
-      Http(system).cachedHostConnectionPoolHttps[String](
+      Http(system).cachedHostConnectionPoolHttps[T](
         host = host,
         port = port,
-        settings = streamingRequestsConnectionPooling
+        settings = settings
       )
     else
-      Http(system).cachedHostConnectionPool[String](
+      Http(system).cachedHostConnectionPool[T](
         host = host,
         port = port,
-        settings = streamingRequestsConnectionPooling
-      )
+        settings = settings
+    )
   }
 
-  override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] = withRejectionControl {
-    val connections = createHostPoolFlow(network)
-    val uris = Source(commands.map(translateCommandToUrl(network, _)))
-    val toRequest = (url: String) => (HttpRequest(uri = Uri(url)), url)
+  /**
+    * Creates a stream that will produce http response content for the
+    * list of commands.
+    *
+    * @param network  Which Tezos network to go against
+    * @param ids  correlation ids for each request to send
+    * @param mapToCommand  extract a tezos command (uri fragment) from the id
+    * @param concurrencyLevel the concurrency in processing the responses
+    * @param ID a type that will be used to correlate each request with the response
+    * @return A stream source whose elements will be the response string, tupled with the correlation id,
+    *         used to match with the corresponding request
+    */
+  private[this] def streamedGetQuery[CID](
+    network: String,
+    ids: List[CID],
+    mapToCommand: CID => String,
+    concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
+      val connections = createHostPoolFlow[CID](streamingRequestsConnectionPooling, network)
+      val convertIdToUrl = mapToCommand andThen (cmd => translateCommandToUrl(network, cmd))
+      //we need to thread the id all through the streaming http stages
+      val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
+      val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
 
-    uris.map(toRequest)
-      .via(connections)
-      .mapAsync(concurrencyLevel) {
-        case (tried, _) =>
-          Future.fromTry(tried)
-      }
-      .mapAsync(1)(_.entity.toStrict(entityGetTimeout))
-      .map(_.data.utf8String)
-      .toMat(Sink.collection[String, List[String]])(Keep.right)
-      .run()
-
+      uris.map(toRequest)
+        .via(connections)
+        .mapAsyncUnordered(concurrencyLevel) {
+          case (tried, id) =>
+            Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout)))
+              .flatten
+              .map(entity => (entity, id))
+        }
+        .map{case (content, id) => (id, content.data.utf8String)}
   }
+
+  override def runBatchedGetQuery[CID](
+    network: String,
+    ids: List[CID],
+    mapToCommand: CID => String,
+    concurrencyLevel: Int): Future[List[(CID, String)]] = {
+      val batchId = java.util.UUID.randomUUID()
+      logger.info("{} - New batched GET call for {} requests", batchId, ids.size)
+
+      streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
+        .toMat(Sink.collection[(CID, String), List[(CID, String)]])(Keep.right)
+        .run()
+        .andThen {
+          case _ => logger.info("{} - Batch completed", batchId)
+        }
+    }
+
 }
