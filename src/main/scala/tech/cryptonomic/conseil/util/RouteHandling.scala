@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.util
 
 import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
-import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.StandardRoute
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 

@@ -2,13 +2,13 @@ package tech.cryptonomic.conseil.db
 
 import tech.cryptonomic.conseil.tezos.{ApiFiltering, Tables, TezosDatabaseOperations}
 import tech.cryptonomic.conseil.tezos.ApiOperations._
-
 import slick.jdbc.PostgresProfile.api._
+
 import scala.language.higherKinds
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /** database-specific filter operations support */
-object DatabaseQueryExecution {
+object DatabaseQueryExecutionTypes {
 
   /* Represents all possible joins of tables that can be made from Accounts, Blocks, Operation Groups, and Operations.
    *
@@ -189,43 +189,43 @@ object DatabaseQueryExecution {
     val filteredAccounts = (appliedFilters: Filter) =>
       Tables.Accounts.filter(account =>
         filterAccountIDs(appliedFilters, account) &&
-        filterAccountDelegates(appliedFilters, account) &&
-        filterAccountManagers(appliedFilters, account)
+          filterAccountDelegates(appliedFilters, account) &&
+          filterAccountManagers(appliedFilters, account)
       )
 
     /** gets filtered operation groups */
     val filteredOpGroups = (appliedFilters: Filter) =>
       Tables.OperationGroups.filter(opGroup =>
-      filterOperationIDs(appliedFilters, opGroup)
+        filterOperationIDs(appliedFilters, opGroup)
       )
 
     /** gets filtered operations */
     val filteredOps = (appliedFilters: Filter) =>
       Tables.Operations.filter(op =>
         filterOperationKinds(appliedFilters, op) &&
-        filterOperationDestinations(appliedFilters, op) &&
-        filterOperationSources(appliedFilters, op) &&
-        filterOperationParticipants(appliedFilters, op)
+          filterOperationDestinations(appliedFilters, op) &&
+          filterOperationSources(appliedFilters, op) &&
+          filterOperationParticipants(appliedFilters, op)
       )
 
     /** gets filtered blocks */
     val filteredBlocks = (appliedFilters: Filter) =>
       Tables.Blocks.filter(block =>
         filterBlockIDs(appliedFilters, block) &&
-        filterBlockLevels(appliedFilters, block) &&
-        filterChainIDs(appliedFilters, block) &&
-        filterProtocols(appliedFilters, block)
+          filterBlockLevels(appliedFilters, block) &&
+          filterChainIDs(appliedFilters, block) &&
+          filterProtocols(appliedFilters, block)
       )
   }
-
 }
+
 
 /** specific type class for running filtered queries on DB */
 trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
 
   import ApiFiltering.getFilterLimit
-  import DatabaseQueryExecution._
-  import DatabaseQueryExecution.Queries._
+  import DatabaseQueryExecutionTypes._
+  import DatabaseQueryExecutionTypes.Queries._
 
   /** See [[ApiFiltering#apply]] */
   override def apply(filter: Filter): F[Seq[OUT]] = {
@@ -338,7 +338,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
 }
 
 /** Collects utilities to simplify sorting operations */
-trait ActionSorting[A <: DatabaseQueryExecution.Action] {
+trait ActionSorting[A <: DatabaseQueryExecutionTypes.Action] {
   import slick.lifted.ColumnOrdered
 
   /**
@@ -367,16 +367,20 @@ trait ActionSorting[A <: DatabaseQueryExecution.Action] {
 
 }
 
-trait DatabaseApiFiltering {
+object DatabaseApiFiltering {
+  def apply(dbHandle: Database)(implicit ec: ExecutionContext): DatabaseApiFiltering = new DatabaseApiFiltering(dbHandle)
+}
 
-  import DatabaseQueryExecution._
+class DatabaseApiFiltering(dbHandle: Database)(implicit ec: ExecutionContext) {
+
+  import DatabaseQueryExecutionTypes._
   import ApiFiltering._
 
   /**
     * an implementation is required to make the async [[ApiFiltering]] instances available in the context work correctly
     * consider using the appropriate instance to compose database operations
     */
-  def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext
+  def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext = ec
 
   /* common wrapper check for many implementations
    * verify that there are blocks in the database before running a [[DBIO]]
@@ -654,7 +658,7 @@ trait DatabaseApiFiltering {
 
     /** See [[ApiFiltering#apply]] */
     override def apply(filter: Filter): Future[Seq[Tables.FeesRow]] = {
-      import DatabaseQueryExecution.Queries
+      import DatabaseQueryExecutionTypes.Queries
 
       val action =
         Tables.Fees

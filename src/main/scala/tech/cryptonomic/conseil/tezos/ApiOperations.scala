@@ -4,17 +4,14 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Functionality for fetching data from the Conseil database.
   */
+
 object ApiOperations {
-
-  lazy val dbHandle: Database = DatabaseUtil.db
-
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
   case object AscendingSort extends Sorting
@@ -53,22 +50,22 @@ object ApiOperations {
     * @param order                  Sort items ascending or descending
     */
   final case class Filter(
-                     limit: Option[Int] = Some(defaultLimit),
-                     blockIDs: Set[String] = Set.empty,
-                     levels: Set[Int] = Set.empty,
-                     chainIDs: Set[String] = Set.empty,
-                     protocols: Set[String] = Set.empty,
-                     operationGroupIDs: Set[String] = Set.empty,
-                     operationSources: Set[String] = Set.empty,
-                     operationDestinations: Set[String] = Set.empty,
-                     operationParticipants: Set[String] = Set.empty,
-                     operationKinds: Set[String] = Set.empty,
-                     accountIDs: Set[String] = Set.empty,
-                     accountManagers: Set[String] = Set.empty,
-                     accountDelegates: Set[String] = Set.empty,
-                     sortBy: Option[String] = None,
-                     order: Option[Sorting] = Some(DescendingSort)
-                   )
+    limit: Option[Int] = Some(defaultLimit),
+    blockIDs: Set[String] = Set.empty,
+    levels: Set[Int] = Set.empty,
+    chainIDs: Set[String] = Set.empty,
+    protocols: Set[String] = Set.empty,
+    operationGroupIDs: Set[String] = Set.empty,
+    operationSources: Set[String] = Set.empty,
+    operationDestinations: Set[String] = Set.empty,
+    operationParticipants: Set[String] = Set.empty,
+    operationKinds: Set[String] = Set.empty,
+    accountIDs: Set[String] = Set.empty,
+    accountManagers: Set[String] = Set.empty,
+    accountDelegates: Set[String] = Set.empty,
+    sortBy: Option[String] = None,
+    order: Option[Sorting] = Some(DescendingSort)
+  )
 
   object Filter {
 
@@ -114,6 +111,13 @@ object ApiOperations {
     val defaultLimit = 10
 
   }
+
+  def apply(dbHandle: Database): ApiOperations = new ApiOperations(dbHandle)
+
+}
+
+class ApiOperations(dbHandle: Database) {
+  import ApiOperations._
 
   /**
     * Fetches the level of the most recent block stored in the database.

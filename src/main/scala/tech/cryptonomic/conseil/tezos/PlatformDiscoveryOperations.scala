@@ -6,12 +6,17 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
 object PlatformDiscoveryOperations {
+  def apply(): PlatformDiscoveryOperations = new PlatformDiscoveryOperations(ApiOperations(DatabaseUtil.db))
+}
+
+class PlatformDiscoveryOperations(apiOperations: ApiOperations) {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -37,7 +42,7 @@ object PlatformDiscoveryOperations {
     * @return list of entities as a Future
     */
   def getEntities(network: String)(implicit ec: ExecutionContext): Future[List[Entity]] = {
-    ApiOperations.countAll.map { counts =>
+    apiOperations.countAll.map { counts =>
       createEntities(network, counts)
     }
   }
@@ -57,7 +62,7 @@ object PlatformDiscoveryOperations {
     * @return list of attributes as a Future
     */
   def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attributes]] = {
-    ApiOperations.runQuery(makeAttributesList(tableName))
+    apiOperations.runQuery(makeAttributesList(tableName))
   }
 
   /** Makes list of DB actions to be executed for extracting attributes
@@ -107,7 +112,7 @@ object PlatformDiscoveryOperations {
   def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None)
     (implicit ec: ExecutionContext): Future[List[String]] = {
     val res = verifyAttributesAndGetQueries(tableName, attribute, withFilter)
-    ApiOperations.runQuery(res)
+    apiOperations.runQuery(res)
   }
 
   /** Makes list of DBIO actions to get possible string values of the attributes

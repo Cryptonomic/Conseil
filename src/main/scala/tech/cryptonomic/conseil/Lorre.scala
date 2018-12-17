@@ -5,9 +5,8 @@ import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{TezosErrors, FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{ApiNetworkOperations, FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block}
-import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -40,8 +39,8 @@ object Lorre extends App with TezosErrors with LazyLogging {
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
 
-  lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
+  lazy val db = ApiNetworkOperations.getDatabaseMap(network)
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(), db)
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
