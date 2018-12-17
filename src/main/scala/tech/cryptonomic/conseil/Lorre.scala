@@ -70,19 +70,16 @@ object Lorre extends App with TezosErrors with LazyLogging {
           noOp
     } yield ()
 
-    /* Will stop Lorre on failure from account processing, unless overriden by the environment to keep on running.
-     * Temporarily used to avoid losing accounts updates on error, with the expectation that ops will do cleanup
-     * Onging work is planned to store the list of touched accounts betweem blokcs and accounts fetching, hence,
-     * on failure, the next cycle will resume processing pending account loads
+    /* Won't stop Lorre on failure from account processing, unless overriden by the environment to halt.
+     * Can be used to investigate issues on consistently failing account processing
      */
     val processResult =
-      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "true" || ignore == "yes"))
-        processing
-      else
+      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
         processing.recover {
           case f @ AccountsProcessingFailed(_, _) => throw f
           case _ => () //swallowed
         }
+      else processing
 
     Await.result(processResult, atMost = Duration.Inf)
     logger.info("Taking a nap")
