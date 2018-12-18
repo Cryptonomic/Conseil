@@ -8,6 +8,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 
 object ApiNetworkOperations {
@@ -18,8 +19,8 @@ object ApiNetworkOperations {
   def getDatabaseMap: Map[String, Database] = {
     val config: Config = ConfigFactory.load()
     PlatformDiscoveryOperations().getNetworks(config).map { network =>
-      network.name -> Database.forConfig(s"db.$network.conseildb")
-    }.toMap
+      network.name -> Try { Database.forConfig(s"db.$network.conseildb") }.toOption
+    }.filter(_._2.isDefined).toMap.mapValues(_.get)
   }
 }
 
