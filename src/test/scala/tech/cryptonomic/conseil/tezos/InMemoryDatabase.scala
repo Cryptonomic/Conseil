@@ -47,7 +47,6 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   protected val pgConfigs = List("-c", "full_page_writes=off")
 
   lazy val dbInstance = new EmbeddedPostgres(Version.V9_5_15)
-
   lazy val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
   //keep in mind that this is sorted to preserve key consistency

@@ -27,6 +27,7 @@ class PlatformDiscoveryOperationsTest
   import slick.jdbc.PostgresProfile.api._
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  val pdo = new PlatformDiscoveryOperations(ApiOperations(dbHandler))
   "getNetworks" should {
     "return list with one element" in {
       val cfg = ConfigFactory.parseString(
@@ -43,7 +44,7 @@ class PlatformDiscoveryOperationsTest
           | }
         """.stripMargin)
 
-      PlatformDiscoveryOperations().getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      pdo.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
     "return two networks" in {
       val cfg = ConfigFactory.parseString(
@@ -68,7 +69,7 @@ class PlatformDiscoveryOperationsTest
           |}
         """.stripMargin)
 
-      PlatformDiscoveryOperations().getNetworks(cfg).size shouldBe 2
+      pdo.getNetworks(cfg).size shouldBe 2
     }
   }
 
@@ -77,7 +78,7 @@ class PlatformDiscoveryOperationsTest
     "return list of attributes of Fees" in {
 
       dbHandler.run {
-        PlatformDiscoveryOperations().makeAttributesList("fees")
+        pdo.makeAttributesList("fees")
       }.futureValue shouldBe
         List(
           Attributes("low", "Low", DataType.Int, 0, KeyType.UniqueKey, "fees"),
@@ -90,7 +91,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of accounts" in {
       dbHandler.run {
-        PlatformDiscoveryOperations().makeAttributesList("accounts")
+        pdo.makeAttributesList("accounts")
       }.futureValue shouldBe
         List(
           Attributes("account_id", "Account id", DataType.String, 0, KeyType.UniqueKey, "accounts"),
@@ -108,7 +109,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of blocks" in {
       dbHandler.run {
-        PlatformDiscoveryOperations().makeAttributesList("blocks")
+        pdo.makeAttributesList("blocks")
       }.futureValue shouldBe
         List(
           Attributes("level", "Level", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
@@ -128,7 +129,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of operations" in {
       dbHandler.run {
-        PlatformDiscoveryOperations().makeAttributesList("operations")
+        pdo.makeAttributesList("operations")
       }.futureValue shouldBe
         List(
           Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
@@ -151,7 +152,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of operation groups" in {
       dbHandler.run {
-        PlatformDiscoveryOperations().makeAttributesList("operation_groups")
+        pdo.makeAttributesList("operation_groups")
       }.futureValue shouldBe
         List(
           Attributes("protocol", "Protocol", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
@@ -165,7 +166,7 @@ class PlatformDiscoveryOperationsTest
 
     "return empty list for non existing table" in {
       dbHandler.run {
-        PlatformDiscoveryOperations().makeAttributesList("nonExisting")
+        pdo.makeAttributesList("nonExisting")
       }.futureValue shouldBe List.empty
     }
   }
@@ -177,7 +178,7 @@ class PlatformDiscoveryOperationsTest
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", None)
+        pdo.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue shouldBe List("example1")
     }
 
@@ -188,7 +189,7 @@ class PlatformDiscoveryOperationsTest
 
       intercept[NoSuchElementException] {
         throw dbHandler.run(
-          PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "medium", None)
+          pdo.verifyAttributesAndGetQueries("fees", "medium", None)
         ).failed.futureValue
       }
     }
@@ -202,7 +203,7 @@ class PlatformDiscoveryOperationsTest
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
+        pdo.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
       ).futureValue shouldBe List.empty
 
       dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
@@ -215,20 +216,20 @@ class PlatformDiscoveryOperationsTest
       )
 
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        pdo.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List.empty
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", None)
+        pdo.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
+        pdo.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
+        pdo.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations().verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        pdo.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List("example1")
 
     }
