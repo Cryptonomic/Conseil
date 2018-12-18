@@ -5,6 +5,9 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
+  /** convenience alias to simplify declarations of block hash+level tuples */
+  type BlockReference = (BlockHash, Int)
+
   final case class BlockHash(value: String) extends AnyVal
 
   final case class OperationHash(value: String) extends AnyVal
