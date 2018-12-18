@@ -333,14 +333,14 @@ class TezosDatabaseOperationsTest
 
         val populateAndTest = for {
           stored <- Tables.AccountsCheckpoint ++= checkpointRows
-          _ <- sut.cleanAccountsCheckpoint()
+          cleaned <- sut.cleanAccountsCheckpoint()
           rows <- Tables.AccountsCheckpoint.result
-        } yield (stored, rows)
+        } yield (stored, cleaned, rows)
 
-        val (initialCount, left) = dbHandler.run(populateAndTest.transactionally).futureValue
+        val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
         initialCount.value shouldBe checkpointRows.size
-        left shouldBe empty
-
+        deletes shouldBe checkpointRows.size
+        survivors shouldBe empty
       }
 
       "clean the checkpoints with a partial id selection" in {
@@ -368,21 +368,22 @@ class TezosDatabaseOperationsTest
         Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
         )
 
-      val selection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4)).map(AccountId)
+      val inSelection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4))
 
-      val inSelection = selection.map(_.id)
+      val selection = inSelection.map(AccountId)
 
       val expected = checkpointRows.filterNot(row => inSelection(row.accountId))
 
       val populateAndTest = for {
         stored <- Tables.AccountsCheckpoint ++= checkpointRows
-        _ <- sut.cleanAccountsCheckpoint(Some(selection))
+        cleaned <- sut.cleanAccountsCheckpoint(Some(selection))
         rows <- Tables.AccountsCheckpoint.result
-      } yield (stored, rows)
+      } yield (stored, cleaned, rows)
 
-      val (initialCount, left) = dbHandler.run(populateAndTest.transactionally).futureValue
+      val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
       initialCount.value shouldBe checkpointRows.size
-      left should contain theSameElementsAs expected
+      deletes shouldEqual checkpointRows.filter(row => inSelection(row.accountId)).size
+      survivors should contain theSameElementsAs expected
 
     }
 

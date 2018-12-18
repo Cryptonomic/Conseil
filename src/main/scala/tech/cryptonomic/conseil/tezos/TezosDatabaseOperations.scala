@@ -68,16 +68,18 @@ object TezosDatabaseOperations extends LazyLogging {
     *                  We strictly assume those Ids were previously loaded from the checkpoint table itself
     * @return the database action to run
     */
-  def cleanAccountsCheckpoint(selection: Option[Set[AccountId]] = None)(implicit ec: ExecutionContext): DBIO[Unit] =
+  def cleanAccountsCheckpoint(selection: Option[Set[AccountId]] = None)(implicit ec: ExecutionContext): DBIO[Int] =
     selection match {
       case Some(ids) =>
         for {
           total <- getAccountsCheckpointSize()
-          _ <- if (total > ids.size) Tables.AccountsCheckpoint.filter(_.accountId inSet ids.map(_.id)).delete
-               else Tables.AccountsCheckpoint.schema.truncate
-        } yield ()
+          marked =
+            if (total > ids.size) Tables.AccountsCheckpoint.filter(_.accountId inSet ids.map(_.id))
+            else Tables.AccountsCheckpoint
+          deleted <- marked.delete
+        } yield deleted
       case None =>
-        Tables.AccountsCheckpoint.schema.truncate
+        Tables.AccountsCheckpoint.delete
     }
 
   /**
