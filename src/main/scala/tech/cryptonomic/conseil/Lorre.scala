@@ -138,7 +138,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
     saveAccounts.andThen {
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
-        val processed = Some(checkpoints.values.flatten.toSet)
+        val processed = Some(checkpoints.keySet)
         db.run(TezosDb.cleanAccountsCheckpoint(processed))
       case _ =>
         ()

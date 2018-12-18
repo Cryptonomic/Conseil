@@ -410,27 +410,19 @@ class TezosDatabaseOperationsTest
         Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
       )
 
-      def blockToAccountEntry(blockLevel: Int, accountIndex: Int*) =
-        (BlockHash(blockIds(blockLevel)), blockLevel) -> accountIndex.map(idx => AccountId(accountIds(idx))).toList
+      def entry(accountAtIndex: Int, atLevel: Int) =
+        AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
 
-      /*
-      * account1 on block-level1
-      * account2 on block-level3
-      * account3 on block-level4
-      * account4 on block-level2
-      * account5 on block-level4
-      * account6 on block-level5
-      */
-
-      //expecting only the following to remain
+        //expecting only the following to remain
       val expected =
         Map(
-          blockToAccountEntry(blockLevel = 1, accountIndex = 1),
-          blockToAccountEntry(blockLevel = 2, accountIndex = 4),
-          blockToAccountEntry(blockLevel = 3, accountIndex = 2),
-          blockToAccountEntry(blockLevel = 4, 3, 5),
-          blockToAccountEntry(blockLevel = 5, accountIndex = 6)
-        )
+          entry(accountAtIndex = 1, atLevel = 1),
+          entry(accountAtIndex = 2, atLevel = 3),
+          entry(accountAtIndex = 3, atLevel = 4),
+          entry(accountAtIndex = 4, atLevel = 2),
+          entry(accountAtIndex = 5, atLevel = 4),
+          entry(accountAtIndex = 6, atLevel = 5)
+      )
 
       val populateAndFetch = for {
         stored <- Tables.AccountsCheckpoint ++= checkpointRows
@@ -440,13 +432,7 @@ class TezosDatabaseOperationsTest
       val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
       initialCount.value shouldBe checkpointRows.size
 
-      latest.keySet shouldEqual expected.keySet
-
-      import org.scalatest.Inspectors._
-
-      forAll(latest.toList) { case ((hash, level), ids) =>
-        expected((hash, level)) should contain theSameElementsAs ids
-      }
+      latest.toSeq should contain theSameElementsAs expected.toSeq
 
     }
 

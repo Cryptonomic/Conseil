@@ -101,39 +101,21 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param network  Which Tezos network to go against
-    * @param accountIds a mapping from blocks to corresponding ids to load
+    * @param accountsBlocksIndex a map from unique id to the [latest] block reference
     * @return         Accounts with their corresponding block data
     */
-  def getAccountsForBlocks(network: String, accountsIds: Map[BlockReference, List[AccountId]]): Future[List[BlockAccounts]] = {
-    /* making separate calls for blocks would not scale, as the same pool would be reused for thousands of batches, possibly
-     * related to the same accounts involved in multiple operations
-     * so we better group the ids and then recover the latest blocks involved for each
-     */
+  def getAccountsForBlocks(network: String, accountsBlocksIndex: Map[AccountId, BlockReference]): Future[List[BlockAccounts]] = {
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
 
-    def reverseIndexToLatestBlock: Map[AccountId, BlockReference] = {
-      val distinctIds = accountsIds.values.flatten.toSet
-      distinctIds.map {
-        id =>
-          accountsIds.toArray.collect {
-            case ((hash, level), ids) if ids.contains(id) => id -> (hash, level)
-          }.sortBy {
-            case (_ , (_, level)) => level
-          }.last
-      }.toMap
-    }
-
-    val accountsBlocksIndex = reverseIndexToLatestBlock
-
-    //uses the reverse index to collect together BlockAccounts matching the same block
+    //uses the index to collect together BlockAccounts matching the same block
     def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
-        }.map {
-          case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
-        }.toList
+      }.map {
+        case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
+      }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
     getAccountsForBlock(network, accountsBlocksIndex.keys.toList)
@@ -141,7 +123,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         case Success(accountsMap) =>
           notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
         case Failure(err) =>
-          val showSomeIds = accountsBlocksIndex.keys.take(30).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
+          val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
           logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
       }.map(groupByLatestBlock)
 

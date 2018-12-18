@@ -91,14 +91,16 @@ object TezosDatabaseOperations extends LazyLogging {
     * only those that at the latest block level (highest value)
     * @return a database action that loads the list of relevant rows
     */
-  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[BlockReference, List[AccountId]]] =
+  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[AccountId, BlockReference]] =
     Tables.AccountsCheckpoint.result.map(
       _.groupBy(_.accountId) //rows by accounts
         .values //only use the collection of values, ignoring the group key
-        .map(_.maxBy(_.blockLevel)) //keep only the latest and group by block reference
-        .groupBy{
-          case Tables.AccountsCheckpointRow(accountId, blockId, blockLevel) => (BlockHash(blockId), blockLevel)
-        }.mapValues(rows => rows.toList.map(row => AccountId(row.accountId)))
+        .map {
+          idRows =>
+            //keep only the latest and group by block reference, and rewrap it as map entries
+            val Tables.AccountsCheckpointRow(id, latestBlockId, latestLevel) = idRows.maxBy(_.blockLevel)
+            AccountId(id) -> (BlockHash(latestBlockId), latestLevel)
+        }.toMap
     )
 
   /**
