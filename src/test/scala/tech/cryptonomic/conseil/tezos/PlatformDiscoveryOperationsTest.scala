@@ -44,7 +44,7 @@ class PlatformDiscoveryOperationsTest
           | }
         """.stripMargin)
 
-      pdo.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      NetworkConfigOperations.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
     "return two networks" in {
       val cfg = ConfigFactory.parseString(
@@ -69,7 +69,7 @@ class PlatformDiscoveryOperationsTest
           |}
         """.stripMargin)
 
-      pdo.getNetworks(cfg).size shouldBe 2
+      NetworkConfigOperations.getNetworks(cfg).size shouldBe 2
     }
   }
 

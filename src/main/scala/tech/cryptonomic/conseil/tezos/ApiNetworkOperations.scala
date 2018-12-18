@@ -18,7 +18,7 @@ object ApiNetworkOperations {
 
   def getDatabaseMap: Map[String, Database] = {
     val config: Config = ConfigFactory.load()
-    PlatformDiscoveryOperations().getNetworks(config).map { network =>
+    NetworkConfigOperations.getNetworks(config).map { network =>
       network.name -> Try { Database.forConfig(s"db.$network.conseildb") }.toOption
     }.filter(_._2.isDefined).toMap.mapValues(_.get)
   }
