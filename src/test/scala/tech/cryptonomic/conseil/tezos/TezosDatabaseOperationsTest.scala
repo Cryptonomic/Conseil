@@ -306,7 +306,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "clean the checkpoints" in {
+    "clean the checkpoints with no selection" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       //generate data
@@ -342,6 +342,49 @@ class TezosDatabaseOperationsTest
         left shouldBe empty
 
       }
+
+      "clean the checkpoints with a partial id selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTime)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+        )
+
+      val selection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4)).map(AccountId)
+
+      val inSelection = selection.map(_.id)
+
+      val expected = checkpointRows.filterNot(row => inSelection(row.accountId))
+
+      val populateAndTest = for {
+        stored <- Tables.AccountsCheckpoint ++= checkpointRows
+        _ <- sut.cleanAccountsCheckpoint(Some(selection))
+        rows <- Tables.AccountsCheckpoint.result
+      } yield (stored, rows)
+
+      val (initialCount, left) = dbHandler.run(populateAndTest.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+      left should contain theSameElementsAs expected
+
+    }
 
     "read latest account ids from checkpoint" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)

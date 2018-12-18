@@ -55,7 +55,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /**
     * Writes association of account ids and block data to define accounts that needs update
-    * @param accountIds will have blocks, paired with correspoinding account ids to store
+    * @param accountIds will have blocks, paired with corresponding account ids to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] =
@@ -63,9 +63,28 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /**
     * Removes  data on the accounts checkpoint table
+    * @param selection limits the removed rows to those
+    *                  concerning the selected elements, by default no selection is made.
+    *                  We strictly assume those Ids were previously loaded from the checkpoint table itself
     * @return the database action to run
     */
-  def cleanAccountsCheckpoint(): DBIO[Unit] = Tables.AccountsCheckpoint.schema.truncate
+  def cleanAccountsCheckpoint(selection: Option[Set[AccountId]] = None)(implicit ec: ExecutionContext): DBIO[Unit] =
+    selection match {
+      case Some(ids) =>
+        for {
+          total <- getAccountsCheckpointSize()
+          _ <- if (total > ids.size) Tables.AccountsCheckpoint.filter(_.accountId inSet ids.map(_.id)).delete
+               else Tables.AccountsCheckpoint.schema.truncate
+        } yield ()
+      case None =>
+        Tables.AccountsCheckpoint.schema.truncate
+    }
+
+  /**
+    * @return the number of distinct accounts present in the checkpoint table
+    */
+  def getAccountsCheckpointSize(): DBIO[Int] =
+    Tables.AccountsCheckpoint.distinctOn(_.accountId).length.result
 
   /**
     * Reads the account ids in the checkpoint table, considering

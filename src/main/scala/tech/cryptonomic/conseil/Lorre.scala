@@ -133,12 +133,15 @@ object Lorre extends App with TezosErrors with LazyLogging {
       checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
       accountsInfo <- tezosNodeOperator.getAccountsForBlocks(network, checkpoints)
       accountsStored <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
-    } yield accountsStored
+    } yield checkpoints
 
     saveAccounts.andThen {
       //additional cleanup, that can fail with no downsides
-      case Success(_) => db.run(TezosDb.cleanAccountsCheckpoint())
-      case _ => ()
+      case Success(checkpoints) =>
+        val processed = Some(checkpoints.values.flatten.toSet)
+        db.run(TezosDb.cleanAccountsCheckpoint(processed))
+      case _ =>
+        ()
     }.transform {
       case Failure(e) =>
         val error = "I failed to fetch accounts from client and update them"
