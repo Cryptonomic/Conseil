@@ -10,8 +10,8 @@ import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.routes.Tezos
 import tech.cryptonomic.conseil.config.ConseilAppConfig
+import tech.cryptonomic.conseil.routes.{PlatformDiscovery, Tezos}
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -43,6 +43,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           } ~ options {
             // Support for CORS pre-flight checks.
             complete("Supported methods : GET and POST.")
+          }
+        } ~ logRequest("Service route", Logging.DebugLevel) {
+          pathPrefix("metadata") {
+            PlatformDiscovery(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
           }
         }
       }

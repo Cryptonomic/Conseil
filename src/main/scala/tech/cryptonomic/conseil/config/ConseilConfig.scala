@@ -10,7 +10,6 @@ object ConseilConfig extends LazyLogging {
   final case class LorreConfiguration(
     sleepInterval: FiniteDuration,
     feeUpdateInterval: Int,
-    purgeAccountsInterval: Int,
     numberOfFeesAveraged: Int
   )
 

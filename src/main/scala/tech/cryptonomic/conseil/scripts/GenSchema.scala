@@ -19,6 +19,7 @@ object GenSchema extends App {
     lazy val jdbcDriver = "org.postgresql.Driver"
     lazy val slickProfile = "slick.jdbc.PostgresProfile"
     lazy val `package` = "tech.cryptonomic.conseil.tezos"
+    lazy val dest = "/tmp/slick"
   }
 
   //applies convention to uses CamelCase when reading config fields
@@ -28,15 +29,16 @@ object GenSchema extends App {
 
   conseilDbConf.foreach {
     cfg =>
+      println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")
       slick.codegen.SourceCodeGenerator.main(
         Array(
           cfg.slickProfile,
           cfg.jdbcDriver,
           cfg.url,
-          "/tmp/slick",
+          cfg.dest,
           cfg.`package`,
-          s"${cfg.user}",
-          s"${cfg.password}"
+          cfg.user,
+          cfg.password
         )
       )
   }

@@ -7,6 +7,7 @@ val akkaVersion = "2.5.11"
 val slickVersion = "3.2.1"
 
 scapegoatVersion in ThisBuild := "1.3.8"
+parallelExecution in Test := false
 scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
 
 libraryDependencies  ++=  Seq(
@@ -31,7 +32,7 @@ libraryDependencies  ++=  Seq(
   "com.muquit.libsodiumjna"          % "libsodium-jna"        % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
   "com.github.alanverbner"          %% "bip39"                % "0.1",
   "ch.megard"                       %% "akka-http-cors"       % "0.3.0",
-  "com.h2database"                   % "h2" % "1.4.197"       % Test
+  "ru.yandex.qatools.embed"          % "postgresql-embedded"  % "2.10" % Test
 )
 
 excludeDependencies ++= Seq(
