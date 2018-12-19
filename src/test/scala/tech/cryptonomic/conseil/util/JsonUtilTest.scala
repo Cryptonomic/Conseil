@@ -51,6 +51,8 @@ class JsonUtilTest extends WordSpec with Matchers {
       }
     }
 
+  }
+
   "AccountIds unapply object" should {
 
     val jsonOperations =

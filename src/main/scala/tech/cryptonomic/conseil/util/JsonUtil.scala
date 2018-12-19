@@ -66,7 +66,6 @@ object JsonUtil {
 
   def fromJson[T: Manifest](json: String): T =
     mapper.readValue[T](json.filterNot(Character.isISOControl))
-  }
 
   /** extractor object to read accountIds from a json string, based on the hash format*/
   object AccountIds {

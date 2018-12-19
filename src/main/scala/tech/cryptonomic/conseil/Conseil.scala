@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContextExecutor
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig {
 
   applicationConfiguration match {
-    case Right((server, securityApi)) =>
+    case Right((server, platforms, securityApi)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
@@ -30,7 +30,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-      val sslConfig = AkkaSSLConfig()
+      val sslConfig = AkkaSSLConfig() //Should get rid of this??
 
       val route = cors() {
         enableCORS {
@@ -46,7 +46,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           }
         } ~ logRequest("Service route", Logging.DebugLevel) {
           pathPrefix("metadata") {
-            PlatformDiscovery(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+            PlatformDiscovery(platforms)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
           }
         }
       }

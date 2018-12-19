@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.scripts
 
-import pureconfig.{ProductHint, ConfigFieldMapping, CamelCase, loadConfig}
+import pureconfig.{ConfigFieldMapping, CamelCase, loadConfig}
+import pureconfig.generic.auto._
+import pureconfig.generic.ProductHint
 
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.

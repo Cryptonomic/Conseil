@@ -1,6 +1,6 @@
 name := "Conseil"
 version := "0.0.1"
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.8"
 
 val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
@@ -17,7 +17,7 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.akka"               %% "akka-actor"           % akkaVersion,
   "com.typesafe"                     % "config"               % "1.3.1",
   "com.typesafe.scala-logging"      %% "scala-logging"        % "3.7.2",
-  "com.github.pureconfig"           %% "pureconfig"           % "0.9.2",
+  "com.github.pureconfig"           %% "pureconfig"           % "0.10.1",
   "org.scalaj"                      %% "scalaj-http"          % "2.3.0",
   "org.scalatest"                   %% "scalatest"            % "3.0.4" % Test,
   "com.fasterxml.jackson.core"       % "jackson-databind"     % "2.9.0",

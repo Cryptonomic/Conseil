@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
-import tech.cryptonomic.conseil.config.ConseilConfig.{SodiumConfiguration, BatchFetchConfiguration}
+import tech.cryptonomic.conseil.config.{SodiumConfiguration, BatchFetchConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Try, Success, Failure}
@@ -81,7 +81,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     */
   def getAccountsForBlock(network: String, accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] =
     node
-    .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountsFetchConcurrency)
+    .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountConcurrencyLevel)
     .map(
       responseList =>
         responseList.collect {
@@ -255,9 +255,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     //Gets metadata for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
-      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsFetchConcurrency) map (blocksMetadata => blocksMetadata.map(jsonToBlockMetadata))
+      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) map (blocksMetadata => blocksMetadata.map(jsonToBlockMetadata))
       blockHashes = fetchedBlocksMetadata.filterNot(isGenesis).map(_.hash)
-      fetchedOperationsWithAccounts <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsFetchConcurrency).map(operations => operations.map(jsonToOperationsAndAccounts))
+      fetchedOperationsWithAccounts <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsConcurrencyLevel).map(operations => operations.map(jsonToOperationsAndAccounts))
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, ops, accounts) => (hash, (ops, accounts))}.toMap
       fetchedBlocksMetadata.map {

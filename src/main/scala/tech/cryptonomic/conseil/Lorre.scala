@@ -26,7 +26,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   config.left.foreach { _ => sys.exit(1) }
 
   //unsafe call, will only be reached if loadedConf is a Right
-  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, sodiumConf, batchingConf) = config.merge
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, sodiumConf, batchingConf) = config.merge
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -41,7 +41,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   sys.addShutdownHook(shutdown)
 
   lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf), batchingConf)
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")

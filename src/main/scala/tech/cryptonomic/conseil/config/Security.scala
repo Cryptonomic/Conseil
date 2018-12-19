@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.config
 
-object SecurityConfig {
+import pureconfig.generic.auto._
+
+object Security {
 
   /** creates security data from configuration */
   def apply(): Either[pureconfig.error.ConfigReaderFailures, SecurityApi] =

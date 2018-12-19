@@ -8,9 +8,9 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import com.typesafe.scalalogging.LazyLogging
-import com.typesafe.config.ConfigFactory
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
-import tech.cryptonomic.conseil.config.ConseilConfig
+import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
+import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.{Try, Failure}
@@ -80,7 +80,7 @@ trait TezosRPCInterface {
 /**
   * Concrete implementation of the above.
   */
-class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
+class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCallsConfiguration, streamingConfig: HttpStreamingConfiguration)(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
   import config._
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -177,21 +177,8 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
     }
   }
 
-  /* Connection pool settings customized for streaming requests
-   * This can't be swapped for a pureconfig definition because
-   * it's an akka internal way of defining the pool options
-   * and it's based on Lighbend Config class
-   */
-  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = {
-    //TODO move this into TezosConfiguration, and add Load-time check of expected entries
-    val dynamicConfig = ConfigFactory.load()
-    ConnectionPoolSettings(
-      dynamicConfig
-        .getConfig("akka.tezos-streaming-client")
-        .atPath("akka.http.host-connection-pool")
-        .withFallback(dynamicConfig)
-    )
-  }
+  /* Connection pool settings customized for streaming requests */
+  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(streamingConfig.pool)
 
   /* creates a connections pool based on the host network */
   private[this] def getHostPoolFlow[T] = {
@@ -226,7 +213,7 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
     ids: List[CID],
     mapToCommand: CID => String,
     concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
-      val convertIdToUrl = mapToCommand andThen (cmd => translateCommandToUrl(network, cmd))
+      val convertIdToUrl = mapToCommand andThen translateCommandToUrl
       //we need to thread the id all through the streaming http stages
       val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
       val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
@@ -235,11 +222,11 @@ class TezosNodeInterface(config: ConseilConfig.TezosConfiguration)(implicit syst
         .via(getHostPoolFlow)
         .mapAsyncUnordered(concurrencyLevel) {
           case (tried, id) =>
-            Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout)))
+            Future.fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
               .flatten
               .map(entity => (entity, id))
         }
-        .map{case (content, id) => (id, content.data.utf8String)}
+        .map{case (content: HttpEntity.Strict, id) => (id, content.data.utf8String)}
   }
 
   override def runBatchedGetQuery[CID](

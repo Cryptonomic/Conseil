@@ -1,7 +1,10 @@
 package tech.cryptonomic.conseil.config
 
-import tech.cryptonomic.conseil.config.ConseilConfig._
-import pureconfig.{ProductHint, ConfigFieldMapping, CamelCase, loadConfig}
+import tech.cryptonomic.conseil.config.Platforms._
+import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
+import pureconfig.{ConfigFieldMapping, CamelCase, loadConfig}
+import pureconfig.generic.auto._
+import pureconfig.generic.ProductHint
 import pureconfig.error.{ConfigReaderFailures, ConfigReaderFailure}
 
 /** wraps all configuration needed to run Lorre */
@@ -16,11 +19,12 @@ trait LorreAppConfig {
     val loadedConf = for {
       network <- readArgs(commandLineArgs)
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
-      nodeRequests <- loadConfig[TezosRequestsConfiguration]("")
+      nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
+      streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       sodium <- loadConfig[SodiumConfiguration](namespace = "sodium.libraryPath")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node, nodeRequests), sodium, fetching)
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node), nodeRequests, streamingClient, sodium, fetching)
 
     //something went wrong
     loadedConf.left.foreach {
@@ -54,6 +58,8 @@ object LorreAppConfig {
   final case class CombinedConfiguration(
     lorre: LorreConfiguration,
     tezos: TezosConfiguration,
+    nodeRequests: NetworkCallsConfiguration,
+    streamingClientPool: HttpStreamingConfiguration,
     sodium: SodiumConfiguration,
     batching: BatchFetchConfiguration
   )
