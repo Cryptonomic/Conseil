@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives.{complete, provide}
 import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
+import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try

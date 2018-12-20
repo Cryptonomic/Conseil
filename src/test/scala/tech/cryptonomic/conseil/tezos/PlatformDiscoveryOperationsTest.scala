@@ -6,8 +6,9 @@ import java.time.LocalDateTime
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.{ScalaFutures, IntegrationPatience}
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 

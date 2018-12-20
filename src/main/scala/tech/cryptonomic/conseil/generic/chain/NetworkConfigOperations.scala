@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.generic.chain
 
 import com.typesafe.config.Config
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.Network
