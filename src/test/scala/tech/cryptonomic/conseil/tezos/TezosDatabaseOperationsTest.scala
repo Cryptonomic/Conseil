@@ -5,10 +5,11 @@ import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec, OptionValues}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
-import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow, AccountsRow}
+import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 
@@ -26,7 +27,8 @@ class TezosDatabaseOperationsTest
     with Matchers
     with ScalaFutures
     with OptionValues
-    with LazyLogging {
+    with LazyLogging
+    with IntegrationPatience {
 
   "The database api" should {
 
@@ -159,7 +161,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "write accounts" in {
+    "write accounts for a single block" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val expectedCount = 3
@@ -169,13 +171,13 @@ class TezosDatabaseOperationsTest
 
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block
-        written <- sut.writeAccounts(accountsInfo)
+        written <- sut.writeAccounts(List(accountsInfo))
         rows <- Tables.Accounts.result
       } yield (written, rows)
 
       val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
-      stored.value shouldBe expectedCount
+      stored shouldBe expectedCount
 
       dbAccounts should have size expectedCount
 
@@ -185,7 +187,6 @@ class TezosDatabaseOperationsTest
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
-          row.blockLevel shouldEqual block.level
           row.manager shouldEqual account.manager
           row.spendable shouldEqual account.spendable
           row.delegateSetable shouldEqual account.delegate.setable
@@ -193,6 +194,7 @@ class TezosDatabaseOperationsTest
           row.counter shouldEqual account.counter
           row.script shouldEqual account.script.map(_.toString)
           row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual block.level
       }
 
     }
@@ -202,11 +204,237 @@ class TezosDatabaseOperationsTest
 
       val accountsInfo = generateAccounts(howMany = 1, blockHash = BlockHash("no-block-hash"), blockLevel = 1)
 
-      val resultFuture = dbHandler.run(sut.writeAccounts(accountsInfo))
+      val resultFuture = dbHandler.run(sut.writeAccounts(List(accountsInfo)))
 
       whenReady(resultFuture.failed) {
           _ shouldBe a [java.sql.SQLException]
       }
+    }
+
+    "update accounts if they exists already" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(2, testReferenceTime)
+      val account = generateAccountRows(1, blocks.head).head
+
+      val populate =
+        DBIO.seq(
+          Tables.Blocks ++= blocks,
+          Tables.Accounts += account
+        )
+
+      dbHandler.run(populate)
+
+      //prepare new accounts
+      val accountChanges = 2
+      val (hashUpdate, levelUpdate) = (blocks(1).hash, blocks(1).level)
+      val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
+
+      //check for same identifier
+      accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
+
+      //do the updates
+      val writeUpdatedAndGetRows = for {
+        written <- sut.writeAccounts(List(accountsInfo))
+        rows <- Tables.Accounts.result
+      } yield (written, rows)
+
+      val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
+
+      //number of db changes
+      updates shouldBe accountChanges
+
+      //total number of rows on db (1 update and 1 insert expected)
+      dbAccounts should have size accountChanges
+
+      import org.scalatest.Inspectors._
+
+      //both rows on db should refer to updated data
+      forAll(dbAccounts zip accountsInfo.accounts) {
+        case (row, (id, account)) =>
+          row.accountId shouldEqual id.id
+          row.blockId shouldEqual hashUpdate
+          row.manager shouldEqual account.manager
+          row.spendable shouldEqual account.spendable
+          row.delegateSetable shouldEqual account.delegate.setable
+          row.delegateValue shouldEqual account.delegate.value
+          row.counter shouldEqual account.counter
+          row.script shouldEqual account.script.map(_.toString)
+          row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual levelUpdate
+      }
+
+    }
+
+    "store checkpoint account ids with block reference" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      //custom hash generator with predictable seed
+      val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+      val maxLevel = 1
+      val idPerBlock = 3
+      val expectedCount = (maxLevel + 1) * idPerBlock
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTime)
+      val ids = blocks.map(block => (BlockHash(block.hash), block.level, List.fill(idPerBlock)(AccountId(generateHash(5)))))
+
+      //store and write
+      val populateAndFetch = for {
+        _ <- Tables.Blocks ++= blocks
+        written <- sut.writeAccountsCheckpoint(ids)
+        rows <- Tables.AccountsCheckpoint.result
+      } yield (written, rows)
+
+      val (stored, checkpointRows) = dbHandler.run(populateAndFetch).futureValue
+
+      //number of changes
+      stored.value shouldBe expectedCount
+      checkpointRows should have size expectedCount
+
+      import org.scalatest.Inspectors._
+
+      val flattenedIdsData = ids.flatMap{ case (hash, level, accounts) => accounts.map((hash, level, _))}
+
+      forAll(checkpointRows.zip(flattenedIdsData)) {
+        case (row, (hash, level, accountId)) =>
+          row.blockId shouldEqual hash.value
+          row.blockLevel shouldBe level
+          row.accountId shouldEqual accountId.id
+      }
+
+    }
+
+    "clean the checkpoints with no selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTime)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+        )
+
+        val populateAndTest = for {
+          stored <- Tables.AccountsCheckpoint ++= checkpointRows
+          cleaned <- sut.cleanAccountsCheckpoint()
+          rows <- Tables.AccountsCheckpoint.result
+        } yield (stored, cleaned, rows)
+
+        val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
+        initialCount.value shouldBe checkpointRows.size
+        deletes shouldBe checkpointRows.size
+        survivors shouldBe empty
+      }
+
+      "clean the checkpoints with a partial id selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTime)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+        )
+
+      val inSelection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4))
+
+      val selection = inSelection.map(AccountId)
+
+      val expected = checkpointRows.filterNot(row => inSelection(row.accountId))
+
+      val populateAndTest = for {
+        stored <- Tables.AccountsCheckpoint ++= checkpointRows
+        cleaned <- sut.cleanAccountsCheckpoint(Some(selection))
+        rows <- Tables.AccountsCheckpoint.result
+      } yield (stored, cleaned, rows)
+
+      val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+      deletes shouldEqual checkpointRows.filter(row => inSelection(row.accountId)).size
+      survivors should contain theSameElementsAs expected
+
+    }
+
+    "read latest account ids from checkpoint" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTime)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+      )
+
+      def entry(accountAtIndex: Int, atLevel: Int) =
+        AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+
+        //expecting only the following to remain
+      val expected =
+        Map(
+          entry(accountAtIndex = 1, atLevel = 1),
+          entry(accountAtIndex = 2, atLevel = 3),
+          entry(accountAtIndex = 3, atLevel = 4),
+          entry(accountAtIndex = 4, atLevel = 2),
+          entry(accountAtIndex = 5, atLevel = 4),
+          entry(accountAtIndex = 6, atLevel = 5)
+      )
+
+      val populateAndFetch = for {
+        stored <- Tables.AccountsCheckpoint ++= checkpointRows
+        rows <- sut.getLatestAccountsFromCheckpoint
+      } yield (stored, rows)
+
+      val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+
+      latest.toSeq should contain theSameElementsAs expected.toSeq
+
     }
 
     "fetch nothing if looking up a non-existent operation group by hash" in {
@@ -367,76 +595,6 @@ class TezosDatabaseOperationsTest
       maxLevel should equal(expected)
     }
 
-    "return the default when fetching the max account level and there's no account stored" in {
-      val expected = -1
-      val maxLevel = dbHandler.run(
-        sut.fetchAccountsMaxBlockLevel
-      ).futureValue
-
-      maxLevel shouldEqual expected
-    }
-
-    "fetch accounts max block level based only on stored accounts" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(5, testReferenceTime)
-      val blocksWithAccounts = blocks.take(2)
-      val accounts = blocksWithAccounts flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val expected = blocksWithAccounts.map(_.level).max
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
-        _ <- Tables.Accounts ++= accounts
-        result <- sut.fetchAccountsMaxBlockLevel
-      } yield result
-
-      val maxLevel = dbHandler.run(populateAndTest.transactionally).futureValue
-
-      maxLevel shouldEqual expected
-
-    }
-
-    "test old accounts purging" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val levels = 5
-
-      //first prepare the data
-
-      val blocks = generateBlockRows(levels, testReferenceTime)
-      val accounts = blocks flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val populate = for {
-        bs <- Tables.Blocks ++= blocks
-        accs <- Tables.Accounts ++= accounts
-      } yield (bs, accs)
-
-      val (Some(storedBlocks), Some(storedAccounts)) = dbHandler.run(populate.transactionally).futureValue
-
-      //take level 0 (genesis block) into account
-      storedBlocks shouldEqual (levels + 1)
-      storedAccounts shouldEqual (levels + 1)
-
-      //purge
-      val removed = dbHandler.run(sut.purgeOldAccounts()).futureValue
-
-      removed shouldBe levels //only the last is left
-
-      //check the db
-      val counts = for {
-        different <- Tables.Accounts.filterNot(_.blockLevel === BigDecimal(levels)).length.result
-        same <- Tables.Accounts.filter(_.blockLevel === BigDecimal(levels)).length.result
-      } yield (different, same)
-
-      dbHandler.run(counts).futureValue shouldBe (0, 1)
-
-    }
-
     "correctly verify when a block exists" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
@@ -509,7 +667,7 @@ class TezosDatabaseOperationsTest
   }
 
   /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsWithBlockHashAndLevel = {
+  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -528,7 +686,7 @@ class TezosDatabaseOperationsTest
         )
     }.toMap
 
-    AccountsWithBlockHashAndLevel(blockHash, blockLevel, accounts)
+    BlockAccounts(blockHash, blockLevel, accounts)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -738,7 +896,6 @@ class TezosDatabaseOperationsTest
         AccountsRow(
           accountId = String valueOf currentId,
           blockId = block.hash,
-          blockLevel = block.level,
           manager = "manager",
           spendable = true,
           delegateSetable = false,

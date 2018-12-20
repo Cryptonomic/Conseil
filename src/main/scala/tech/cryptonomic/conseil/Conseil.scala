@@ -46,6 +46,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
           pathPrefix("info") {
             AppInfo.route
           }
+        } ~ logRequest("Service route", Logging.DebugLevel) {
+          pathPrefix("metadata") {
+            PlatformDiscovery(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+          }
         }
       } ~ options {
         // Support for CORS pre-flight checks.

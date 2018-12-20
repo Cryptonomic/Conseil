@@ -14,26 +14,26 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Accounts.schema ++ Blocks.schema ++ Fees.schema ++ OperationGroups.schema ++ Operations.schema
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
   /** Entity class storing rows of table Accounts
-    *  @param accountId Database column account_id SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param manager Database column manager SqlType(varchar)
-    *  @param spendable Database column spendable SqlType(bool)
-    *  @param delegateSetable Database column delegate_setable SqlType(bool)
-    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param counter Database column counter SqlType(int4)
-    *  @param script Database column script SqlType(varchar), Default(None)
-    *  @param balance Database column balance SqlType(numeric)
-    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
+   *  @param accountId Database column account_id SqlType(varchar), PrimaryKey
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param manager Database column manager SqlType(varchar)
+   *  @param spendable Database column spendable SqlType(bool)
+   *  @param delegateSetable Database column delegate_setable SqlType(bool)
+   *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
+   *  @param counter Database column counter SqlType(int4)
+   *  @param script Database column script SqlType(varchar), Default(None)
+   *  @param balance Database column balance SqlType(numeric)
+   *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
   case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
   implicit def GetResultAccountsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal]): GR[AccountsRow] = GR{
     prs => import prs._
-      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
+    AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
   }
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
   class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
@@ -41,8 +41,8 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, Rep.Some(balance), Rep.Some(blockLevel)).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9.get, _10.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column account_id SqlType(varchar) */
-    val accountId: Rep[String] = column[String]("account_id")
+    /** Database column account_id SqlType(varchar), PrimaryKey */
+    val accountId: Rep[String] = column[String]("account_id", O.PrimaryKey)
     /** Database column block_id SqlType(varchar) */
     val blockId: Rep[String] = column[String]("block_id")
     /** Database column manager SqlType(varchar) */
@@ -62,9 +62,6 @@ trait Tables {
     /** Database column block_level SqlType(numeric), Default(-1) */
     val blockLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
 
-    /** Primary key of Accounts (database name accounts_pkey) */
-    val pk = primaryKey("accounts_pkey", (accountId, blockId))
-
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
 
@@ -76,24 +73,53 @@ trait Tables {
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
 
+  /** Entity class storing rows of table AccountsCheckpoint
+   *  @param accountId Database column account_id SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
+  case class AccountsCheckpointRow(accountId: String, blockId: String, blockLevel: Int = -1)
+  /** GetResult implicit for fetching AccountsCheckpointRow objects using plain SQL queries */
+  implicit def GetResultAccountsCheckpointRow(implicit e0: GR[String], e1: GR[Int]): GR[AccountsCheckpointRow] = GR{
+    prs => import prs._
+    AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int]))
+  }
+  /** Table description of table accounts_checkpoint. Objects of this class serve as prototypes for rows in queries. */
+  class AccountsCheckpoint(_tableTag: Tag) extends profile.api.Table[AccountsCheckpointRow](_tableTag, "accounts_checkpoint") {
+    def * = (accountId, blockId, blockLevel) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel)).shaped.<>({r=>import r._; _1.map(_=> AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column account_id SqlType(varchar) */
+    val accountId: Rep[String] = column[String]("account_id")
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column block_level SqlType(int4), Default(-1) */
+    val blockLevel: Rep[Int] = column[Int]("block_level", O.Default(-1))
+
+    /** Foreign key referencing Blocks (database name checkpoint_block_id_fkey) */
+    lazy val blocksFk = foreignKey("checkpoint_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table AccountsCheckpoint */
+  lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))
+
   /** Entity class storing rows of table Blocks
-    *  @param level Database column level SqlType(int4)
-    *  @param proto Database column proto SqlType(int4)
-    *  @param predecessor Database column predecessor SqlType(varchar)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param validationPass Database column validation_pass SqlType(int4)
-    *  @param fitness Database column fitness SqlType(varchar)
-    *  @param context Database column context SqlType(varchar), Default(None)
-    *  @param signature Database column signature SqlType(varchar), Default(None)
-    *  @param protocol Database column protocol SqlType(varchar)
-    *  @param chainId Database column chain_id SqlType(varchar), Default(None)
-    *  @param hash Database column hash SqlType(varchar)
-    *  @param operationsHash Database column operations_hash SqlType(varchar), Default(None) */
+   *  @param level Database column level SqlType(int4)
+   *  @param proto Database column proto SqlType(int4)
+   *  @param predecessor Database column predecessor SqlType(varchar)
+   *  @param timestamp Database column timestamp SqlType(timestamp)
+   *  @param validationPass Database column validation_pass SqlType(int4)
+   *  @param fitness Database column fitness SqlType(varchar)
+   *  @param context Database column context SqlType(varchar), Default(None)
+   *  @param signature Database column signature SqlType(varchar), Default(None)
+   *  @param protocol Database column protocol SqlType(varchar)
+   *  @param chainId Database column chain_id SqlType(varchar), Default(None)
+   *  @param hash Database column hash SqlType(varchar)
+   *  @param operationsHash Database column operations_hash SqlType(varchar), Default(None) */
   case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]]): GR[BlocksRow] = GR{
     prs => import prs._
-      BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String]))
+    BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
@@ -135,16 +161,16 @@ trait Tables {
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
   /** Entity class storing rows of table Fees
-    *  @param low Database column low SqlType(int4)
-    *  @param medium Database column medium SqlType(int4)
-    *  @param high Database column high SqlType(int4)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param kind Database column kind SqlType(varchar) */
+   *  @param low Database column low SqlType(int4)
+   *  @param medium Database column medium SqlType(int4)
+   *  @param high Database column high SqlType(int4)
+   *  @param timestamp Database column timestamp SqlType(timestamp)
+   *  @param kind Database column kind SqlType(varchar) */
   case class FeesRow(low: Int, medium: Int, high: Int, timestamp: java.sql.Timestamp, kind: String)
   /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
   implicit def GetResultFeesRow(implicit e0: GR[Int], e1: GR[java.sql.Timestamp], e2: GR[String]): GR[FeesRow] = GR{
     prs => import prs._
-      FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String]))
+    FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String]))
   }
   /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
   class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, "fees") {
@@ -167,17 +193,17 @@ trait Tables {
   lazy val Fees = new TableQuery(tag => new Fees(tag))
 
   /** Entity class storing rows of table OperationGroups
-    *  @param protocol Database column protocol SqlType(varchar)
-    *  @param chainId Database column chain_id SqlType(varchar), Default(None)
-    *  @param hash Database column hash SqlType(varchar), PrimaryKey
-    *  @param branch Database column branch SqlType(varchar)
-    *  @param signature Database column signature SqlType(varchar), Default(None)
-    *  @param blockId Database column block_id SqlType(varchar) */
+   *  @param protocol Database column protocol SqlType(varchar)
+   *  @param chainId Database column chain_id SqlType(varchar), Default(None)
+   *  @param hash Database column hash SqlType(varchar), PrimaryKey
+   *  @param branch Database column branch SqlType(varchar)
+   *  @param signature Database column signature SqlType(varchar), Default(None)
+   *  @param blockId Database column block_id SqlType(varchar) */
   case class OperationGroupsRow(protocol: String, chainId: Option[String] = None, hash: String, branch: String, signature: Option[String] = None, blockId: String)
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
   implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[OperationGroupsRow] = GR{
     prs => import prs._
-      OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String]))
+    OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String]))
   }
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
@@ -205,26 +231,26 @@ trait Tables {
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
   /** Entity class storing rows of table Operations
-    *  @param kind Database column kind SqlType(varchar)
-    *  @param source Database column source SqlType(varchar), Default(None)
-    *  @param amount Database column amount SqlType(varchar), Default(None)
-    *  @param destination Database column destination SqlType(varchar), Default(None)
-    *  @param balance Database column balance SqlType(varchar), Default(None)
-    *  @param delegate Database column delegate SqlType(varchar), Default(None)
-    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
-    *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
-    *  @param fee Database column fee SqlType(varchar), Default(None)
-    *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
-    *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None)
-    *  @param blockHash Database column block_hash SqlType(varchar)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param blockLevel Database column block_level SqlType(int4)
-    *  @param pkh Database column pkh SqlType(varchar), Default(None) */
+   *  @param kind Database column kind SqlType(varchar)
+   *  @param source Database column source SqlType(varchar), Default(None)
+   *  @param amount Database column amount SqlType(varchar), Default(None)
+   *  @param destination Database column destination SqlType(varchar), Default(None)
+   *  @param balance Database column balance SqlType(varchar), Default(None)
+   *  @param delegate Database column delegate SqlType(varchar), Default(None)
+   *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+   *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
+   *  @param fee Database column fee SqlType(varchar), Default(None)
+   *  @param storageLimit Database column storage_limit SqlType(varchar), Default(None)
+   *  @param gasLimit Database column gas_limit SqlType(varchar), Default(None)
+   *  @param blockHash Database column block_hash SqlType(varchar)
+   *  @param timestamp Database column timestamp SqlType(timestamp)
+   *  @param blockLevel Database column block_level SqlType(int4)
+   *  @param pkh Database column pkh SqlType(varchar), Default(None) */
   case class OperationsRow(kind: String, source: Option[String] = None, amount: Option[String] = None, destination: Option[String] = None, balance: Option[String] = None, delegate: Option[String] = None, operationGroupHash: String, operationId: Int, fee: Option[String] = None, storageLimit: Option[String] = None, gasLimit: Option[String] = None, blockHash: String, timestamp: java.sql.Timestamp, blockLevel: Int, pkh: Option[String] = None)
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Int], e3: GR[java.sql.Timestamp]): GR[OperationsRow] = GR{
     prs => import prs._
-      OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String], <<[String], <<[java.sql.Timestamp], <<[Int], <<?[String]))
+    OperationsRow.tupled((<<[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<[String], <<[Int], <<?[String], <<?[String], <<?[String], <<[String], <<[java.sql.Timestamp], <<[Int], <<?[String]))
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {

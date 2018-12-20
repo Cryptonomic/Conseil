@@ -3,4 +3,5 @@
 .settings/
 target/
 .idea/
-pgdata/
+pgdata*/
+test-postgres-path/*

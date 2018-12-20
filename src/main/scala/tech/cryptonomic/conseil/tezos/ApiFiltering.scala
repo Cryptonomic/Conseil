@@ -58,10 +58,9 @@ trait ApiFiltering[F[_], OUT] {
 
   /**
     * Applies filtering
-    * @param filter              A `Filter` instance
-    * @param maxLevelForAccounts How far in the chain we have accounts for
-    * @return                    A sequence of filtered results wrapped in the effect `F`
+    * @param filter A `Filter` instance
+    * @return       A sequence of filtered results wrapped in the effect `F`
     */
-  def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): F[Seq[OUT]]
+  def apply(filter: Filter): F[Seq[OUT]]
 
 }
