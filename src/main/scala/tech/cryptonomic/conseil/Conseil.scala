@@ -41,7 +41,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
     enableCORS {
       validateApiKey { _ =>
         val apiExecutionContext = system.dispatchers.lookup("akka.tezos-dispatcher")
-        val apiNetworkOperations = ApiNetworkOperations(apiExecutionContext)
+        val apiNetworkOperations = ApiNetworkOperations(conf, apiExecutionContext)
         logRequest("Conseil", Logging.DebugLevel) {
           pathPrefix("tezos") {
             Tezos(apiNetworkOperations)(apiExecutionContext).route
