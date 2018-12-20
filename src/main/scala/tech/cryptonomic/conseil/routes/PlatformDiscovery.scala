@@ -12,8 +12,8 @@ import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(config: Config)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
-    new PlatformDiscovery(ApiNetworkOperations(), config)
+  def apply(apiNetworkOperations: ApiNetworkOperations, config: Config)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+    new PlatformDiscovery(apiNetworkOperations, config)
 }
 
 /**
@@ -30,7 +30,7 @@ class PlatformDiscovery(apiNetworkOperations: ApiNetworkOperations, config: Conf
         pathEnd {
           complete(toJson(NetworkConfigOperations.getNetworks(config)))
         } ~ pathPrefix(Segment) { network =>
-          getApiOperations(network) { apiOperations =>
+          getApiOperations("tezos", network) { apiOperations =>
             val platformDiscoveryOperations = PlatformDiscoveryOperations(apiOperations)
             pathPrefix("entities") {
               pathEnd {

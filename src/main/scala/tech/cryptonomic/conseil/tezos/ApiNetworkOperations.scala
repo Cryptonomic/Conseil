@@ -10,33 +10,43 @@ import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-
 object ApiNetworkOperations {
-  private lazy val networkOperationsMap: Map[String, Database] = getDatabaseMap
-
-  def apply(): ApiNetworkOperations = new ApiNetworkOperations(networkOperationsMap)
-
-  def getDatabaseMap: Map[String, Database] = {
-    val config: Config = ConfigFactory.load()
-    NetworkConfigOperations.getNetworks(config).map { network =>
-      network.name -> Try { Database.forConfig(s"db.$network.conseildb") }.toOption
-    }.filter(_._2.isDefined).toMap.mapValues(_.get)
-  }
+  def apply(ec: ExecutionContext): ApiNetworkOperations = new ApiNetworkOperations(ec)
 }
 
-class ApiNetworkOperations(networkOperationsMap: Map[String, Database]) {
-  def getApiOperations(network: String): Directive1[ApiOperations] = {
-    networkOperationsMap.get(network) match {
-      case Some(value) => provide(ApiOperations(value))
+class ApiNetworkOperations(ec: ExecutionContext) {
+  private lazy val apiOperationsMap: Map[(String, String), ApiOperations] = getDatabaseMap(ApiOperations.apply)
+
+  private lazy val apiFilteringMap: Map[(String, String), DatabaseApiFiltering] = getDatabaseMap { db =>
+    new DatabaseApiFiltering {
+      override def asyncApiFiltersExecutionContext: ExecutionContext = ec
+
+      override def dbHandle = db
+    }
+  }
+
+  def getApiOperations(platform: String, network: String): Directive1[ApiOperations] = {
+    apiOperationsMap.get((platform, network)) match {
+      case Some(value) => provide(value)
       case None => complete(StatusCodes.NotFound)
     }
   }
 
-  def getApiFiltering(network: String, apiFilteringExecutionContext: ExecutionContext): Directive1[DatabaseApiFiltering] = {
-    networkOperationsMap.get(network) match {
-      case Some(value) => provide(DatabaseApiFiltering(value)(apiFilteringExecutionContext))
+  def getApiFiltering(platform: String, network: String): Directive1[DatabaseApiFiltering] = {
+    apiFilteringMap.get((platform, network)) match {
+      case Some(value) => provide(value)
       case None => complete(StatusCodes.NotFound)
     }
   }
 
+  private def getDatabaseMap[A](fun: Database => A): Map[(String, String), A] = {
+    val config: Config = ConfigFactory.load()
+    NetworkConfigOperations.getPlatforms(config).flatMap { platform =>
+      NetworkConfigOperations.getNetworks(config).map { network =>
+        (platform, network.name) -> Try {
+          fun(Database.forConfig(s"databases.$platform.${network.name}.conseildb"))
+        }.toOption
+      }
+    }.filter(_._2.isDefined).toMap.mapValues(_.get)
+  }
 }

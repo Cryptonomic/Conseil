@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos._
@@ -44,7 +43,8 @@ object Tezos {
       provide(keyStore)
   }
 
-  def apply(implicit apiExecutionContext: ExecutionContext) = new Tezos(ApiNetworkOperations())
+  def apply(apiNetworkOperations: ApiNetworkOperations)(implicit apiExecutionContext: ExecutionContext) =
+    new Tezos(apiNetworkOperations)
 
 }
 
@@ -69,8 +69,8 @@ class Tezos(apiNetworkOperations: ApiNetworkOperations)
 
   /** expose filtered results through rest endpoints */
   val route: Route = pathPrefix(Segment) { network =>
-    apiNetworkOperations.getApiOperations(network) { apiOperations =>
-      apiNetworkOperations.getApiFiltering(network, asyncApiFiltersExecutionContext) { apiFiltering =>
+    apiNetworkOperations.getApiOperations("tezos", network) { apiOperations =>
+      apiNetworkOperations.getApiFiltering("tezos", network) { apiFiltering =>
         get {
           gatherConseilFilter { filter =>
             import apiFiltering._

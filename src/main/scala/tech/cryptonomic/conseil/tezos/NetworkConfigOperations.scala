@@ -17,4 +17,17 @@ object NetworkConfigOperations {
       (network, _) <- strippedConf.atKey(platform).getObject(platform).asScala
     } yield Network(network, network.capitalize, platform, network)
   }.toList
+
+
+  /**
+    * Extracts platforms from config file
+    *
+    * @param  config configuration object
+    * @return list of platforms from configuration
+    */
+  def getPlatforms(config: Config): List[String] = {
+    for {
+      (platform, _) <- config.getObject("platforms").asScala
+    } yield platform
+  }.toList
 }

@@ -2,13 +2,13 @@ package tech.cryptonomic.conseil.db
 
 import tech.cryptonomic.conseil.tezos.{ApiFiltering, Tables, TezosDatabaseOperations}
 import tech.cryptonomic.conseil.tezos.ApiOperations._
-import slick.jdbc.PostgresProfile.api._
 
+import slick.jdbc.PostgresProfile.api._
 import scala.language.higherKinds
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /** database-specific filter operations support */
-object DatabaseQueryExecutionTypes {
+object DatabaseQueryExecution {
 
   /* Represents all possible joins of tables that can be made from Accounts, Blocks, Operation Groups, and Operations.
    *
@@ -217,15 +217,15 @@ object DatabaseQueryExecutionTypes {
           filterProtocols(appliedFilters, block)
       )
   }
-}
 
+}
 
 /** specific type class for running filtered queries on DB */
 trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
 
   import ApiFiltering.getFilterLimit
-  import DatabaseQueryExecutionTypes._
-  import DatabaseQueryExecutionTypes.Queries._
+  import DatabaseQueryExecution._
+  import DatabaseQueryExecution.Queries._
 
   /** See [[ApiFiltering#apply]] */
   override def apply(filter: Filter): F[Seq[OUT]] = {
@@ -338,7 +338,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
 }
 
 /** Collects utilities to simplify sorting operations */
-trait ActionSorting[A <: DatabaseQueryExecutionTypes.Action] {
+trait ActionSorting[A <: DatabaseQueryExecution.Action] {
   import slick.lifted.ColumnOrdered
 
   /**
@@ -367,31 +367,29 @@ trait ActionSorting[A <: DatabaseQueryExecutionTypes.Action] {
 
 }
 
-object DatabaseApiFiltering {
-  def apply(dbHandle: Database)(implicit ec: ExecutionContext): DatabaseApiFiltering = new DatabaseApiFiltering(dbHandle)
-}
+trait DatabaseApiFiltering {
 
-class DatabaseApiFiltering(dbHandle: Database)(implicit ec: ExecutionContext) {
-
-  import DatabaseQueryExecutionTypes._
+  import DatabaseQueryExecution._
   import ApiFiltering._
 
   /**
     * an implementation is required to make the async [[ApiFiltering]] instances available in the context work correctly
     * consider using the appropriate instance to compose database operations
     */
-  def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext = ec
+  def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext
+
+  def dbHandle: Database
 
   /* common wrapper check for many implementations
    * verify that there are blocks in the database before running a [[DBIO]]
    * If none exists the call returns a failed DBIO
    */
   private[this] def ensuringBlocksExist[R](dbOperation: => DBIO[R]): DBIO[R] =
-      TezosDatabaseOperations.doBlocksExist().flatMap {
-        blocksStored =>
-          if(blocksStored) dbOperation
-          else DBIO.failed(new NoSuchElementException("No block data is currently available"))
-      }(asyncApiFiltersExecutionContext)
+    TezosDatabaseOperations.doBlocksExist().flatMap {
+      blocksStored =>
+        if(blocksStored) dbOperation
+        else DBIO.failed(new NoSuchElementException("No block data is currently available"))
+    }(asyncApiFiltersExecutionContext)
 
 
   /** an instance to execute filtering and sorting for blocks, asynchronously */
@@ -407,7 +405,7 @@ class DatabaseApiFiltering(dbHandle: Database)(implicit ec: ExecutionContext) {
       )
 
     private[this] val extractActionFromJoins = (joinedTables: JoinedTables) =>
-        //there will be some action only if the joined tables have the expected shape
+      //there will be some action only if the joined tables have the expected shape
       PartialFunction.condOpt(joinedTables) {
         case Blocks(blocks) => blocks
 
@@ -442,26 +440,26 @@ class DatabaseApiFiltering(dbHandle: Database)(implicit ec: ExecutionContext) {
       order: Option[Sorting],
       action: BlocksAction): BlocksAction = {
 
-        val column = sortBy.map(_.toLowerCase).map {
-          case "level" => t: Tables.Blocks => sortingOn(t.level, order)
-          case "proto" => t: Tables.Blocks => sortingOn(t.proto, order)
-          case "predecessor" => t: Tables.Blocks => sortingOn(t.predecessor, order)
-          case "timestamp" => t: Tables.Blocks => sortingOn(t.timestamp, order)
-          case "validation_pass" => t: Tables.Blocks => sortingOn(t.validationPass, order)
-          case "fitness" => t: Tables.Blocks => sortingOn(t.fitness, order)
-          case "context" => t: Tables.Blocks => sortingOn(t.context, order)
-          case "signature" => t: Tables.Blocks => sortingOn(t.signature, order)
-          case "protocol" => t: Tables.Blocks => sortingOn(t.protocol, order)
-          case "chain_id" => t: Tables.Blocks => sortingOn(t.chainId, order)
-          case "hash" => t: Tables.Blocks => sortingOn(t.hash, order)
-          case "operations_hash" => t: Tables.Blocks => sortingOn(t.operationsHash, order)
-        } getOrElse {
-          t: Tables.Blocks => sortingOn(t.level, order)
-        }
+      val column = sortBy.map(_.toLowerCase).map {
+        case "level" => t: Tables.Blocks => sortingOn(t.level, order)
+        case "proto" => t: Tables.Blocks => sortingOn(t.proto, order)
+        case "predecessor" => t: Tables.Blocks => sortingOn(t.predecessor, order)
+        case "timestamp" => t: Tables.Blocks => sortingOn(t.timestamp, order)
+        case "validation_pass" => t: Tables.Blocks => sortingOn(t.validationPass, order)
+        case "fitness" => t: Tables.Blocks => sortingOn(t.fitness, order)
+        case "context" => t: Tables.Blocks => sortingOn(t.context, order)
+        case "signature" => t: Tables.Blocks => sortingOn(t.signature, order)
+        case "protocol" => t: Tables.Blocks => sortingOn(t.protocol, order)
+        case "chain_id" => t: Tables.Blocks => sortingOn(t.chainId, order)
+        case "hash" => t: Tables.Blocks => sortingOn(t.hash, order)
+        case "operations_hash" => t: Tables.Blocks => sortingOn(t.operationsHash, order)
+      } getOrElse {
+        t: Tables.Blocks => sortingOn(t.level, order)
+      }
 
-        action.copy(
-          action = action.action.sortBy(column)
-        )
+      action.copy(
+        action = action.action.sortBy(column)
+      )
 
     }
 
@@ -514,23 +512,23 @@ class DatabaseApiFiltering(dbHandle: Database)(implicit ec: ExecutionContext) {
       order: Option[Sorting],
       action: AccountsAction): AccountsAction = {
 
-        val column = sortBy.map(_.toLowerCase).map {
-          case "account_id" => t: Tables.Accounts => sortingOn(t.accountId, order)
-          case "block_id" => t: Tables.Accounts => sortingOn(t.blockId, order)
-          case "manager" => t: Tables.Accounts => sortingOn(t.manager, order)
-          case "spendable" => t: Tables.Accounts => sortingOn(t.spendable, order)
-          case "delegate_setable" => t: Tables.Accounts => sortingOn(t.delegateSetable, order)
-          case "delegate_value" => t: Tables.Accounts => sortingOn(t.delegateValue, order)
-          case "counter" => t: Tables.Accounts => sortingOn(t.counter, order)
-          case "script" => t: Tables.Accounts => sortingOn(t.script, order)
-          case "balance" => t: Tables.Accounts => sortingOn(t.balance, order)
-        } getOrElse {
-          t: Tables.Accounts => sortingOn(t.accountId, order)
-        }
+      val column = sortBy.map(_.toLowerCase).map {
+        case "account_id" => t: Tables.Accounts => sortingOn(t.accountId, order)
+        case "block_id" => t: Tables.Accounts => sortingOn(t.blockId, order)
+        case "manager" => t: Tables.Accounts => sortingOn(t.manager, order)
+        case "spendable" => t: Tables.Accounts => sortingOn(t.spendable, order)
+        case "delegate_setable" => t: Tables.Accounts => sortingOn(t.delegateSetable, order)
+        case "delegate_value" => t: Tables.Accounts => sortingOn(t.delegateValue, order)
+        case "counter" => t: Tables.Accounts => sortingOn(t.counter, order)
+        case "script" => t: Tables.Accounts => sortingOn(t.script, order)
+        case "balance" => t: Tables.Accounts => sortingOn(t.balance, order)
+      } getOrElse {
+        t: Tables.Accounts => sortingOn(t.accountId, order)
+      }
 
-        action.copy(
-          action = action.action.sortBy(column)
-        )
+      action.copy(
+        action = action.action.sortBy(column)
+      )
 
     }
 
@@ -658,7 +656,7 @@ class DatabaseApiFiltering(dbHandle: Database)(implicit ec: ExecutionContext) {
 
     /** See [[ApiFiltering#apply]] */
     override def apply(filter: Filter): Future[Seq[Tables.FeesRow]] = {
-      import DatabaseQueryExecutionTypes.Queries
+      import DatabaseQueryExecution.Queries
 
       val action =
         Tables.Fees
