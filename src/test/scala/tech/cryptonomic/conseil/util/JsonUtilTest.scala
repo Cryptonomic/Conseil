@@ -1,9 +1,10 @@
 package tech.cryptonomic.conseil.util
 
-import org.scalatest.{WordSpec, Matchers}
+import org.scalatest.{Matchers, WordSpec}
 import JsonUtil._
+import com.stephenn.scalatest.jsonassert.JsonMatchers
 
-class JsonUtilTest extends WordSpec with Matchers {
+class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
 
   "AccountIds unapply object" should {
 
@@ -60,25 +61,41 @@ class JsonUtilTest extends WordSpec with Matchers {
     }
 
     "extract the valid account ids from a json string" in {
-
       jsonOperations match {
         case AccountIds(first, rest @ _*) =>
           Set(first) ++ rest should contain theSameElementsAs Set("tz1UmPE44pqWrEgW8sTRs6ED1DgwF7k43ncQ")
         case _ =>
           fail("Account ids were not matched")
       }
-
     }
 
     "not extract a valid hash format as part of another value in a json string" in {
-
       jsonOperations ++ signature match {
         case AccountIds(first, rest @ _*) =>
           Set(first) ++ rest should contain theSameElementsAs Set("tz1UmPE44pqWrEgW8sTRs6ED1DgwF7k43ncQ")
         case _ =>
           fail("Account ids were not matched")
       }
+    }
 
+    "convert a simple map to json" in {
+      val result = JsonUtil.toJson(Map("key1" -> "value1", "key2" -> "value2")).json
+      result should matchJson("""{"key1": "value1", "key2": "value2"}""")
+    }
+
+    "convert a complex map to json" in {
+      val result = JsonUtil.toJson(Map("a" -> "b", "c" -> Map("d" -> "e", "f" -> "g"))).json
+      result should matchJson("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
+    }
+
+    "convert a simple json to a map" in {
+      val result = JsonUtil.toMap[String]("""{"key1": "value1", "key2": "value2"}""")
+      result should be(Map("key1" -> "value1", "key2" -> "value2"))
+    }
+
+    "convert a compex json to a map" in {
+      val result = JsonUtil.toMap[Any]("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
+      result should be(Map("a" -> "b", "c" -> Map("d" -> "e", "f" -> "g")))
     }
   }
 
