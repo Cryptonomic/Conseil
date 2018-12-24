@@ -170,10 +170,9 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
     * @param network    Which Tezos network to go against
-    * @param followFork If the predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
     * @return           Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[(Block, List[AccountId])]] =
+  def getBlocksNotInDatabase(network: String): Future[List[(Block, List[AccountId])]] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
       blockHead <- {
@@ -188,7 +187,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
         } else {
           if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
           else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
-          getBlocks(network, headHash, maxLevel + 1, headLevel, followFork)
+          getBlocks(network, headHash, maxLevel + 1, headLevel)
         }
     } yield blocks
 
@@ -202,7 +201,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, 1, headLevel, followFork = true)
+      blocks <- getBlocks(network, headHash, 1, headLevel)
     } yield blocks
 
   /**
@@ -216,32 +215,8 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, max(1, headLevel - amount), headLevel, followFork = true)
+      blocks <- getBlocks(network, headHash, max(1, headLevel - amount), headLevel)
     } yield blocks
-
-  /**
-    * Get the blocks in a specified range.
-    * @param network Which tezos network to go against
-    * @param minLevel Minimum block level
-    * @param maxLevel Maximum block level
-    * @param startBlockHash If specified, start from the supplied block hash, otherwise, head of the chain.
-    * @param followFork If predecessor of the minLevel block appears to be on a fork, also capture the blocks on the fork.
-    * @return Blocks
-    */
-  def getBlocks(network: String,
-                startBlockHash: BlockHash = blockHeadHash,
-                minLevel: Int,
-                maxLevel: Int,
-                followFork: Boolean): Future[List[(Block, List[AccountId])]] = {
-    val blocksInRange = processBlocks(network, startBlockHash, minLevel, maxLevel)
-    val blocksFromFork =
-      if (followFork) Future.successful(List.empty)
-      else Future.successful(List.empty)
-    for {
-      forkBlocks <- blocksFromFork
-      rangeBlocks <- blocksInRange
-    } yield forkBlocks ++ rangeBlocks
-  }
 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
@@ -251,7 +226,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
     * @param maxLevel Level at which to stop collecting blocks.
     * @return the async list of blocks with relative account ids touched in the operations
     */
-  private def processBlocks(
+  private def getBlocks(
                              network : String,
                              hashRef: BlockHash,
                              minLevel: Int,

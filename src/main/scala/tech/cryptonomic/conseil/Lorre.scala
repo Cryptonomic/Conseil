@@ -123,7 +123,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
 
     val blocksToSynchronize = depth match {
       case Everything => tezosNodeOperator.getAllBlocks(network)
-      case Newest => tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true)
+      case Newest => tezosNodeOperator.getBlocksNotInDatabase(network)
       case Custom(n) => tezosNodeOperator.getLastBlocks(network, n)
     }
 
