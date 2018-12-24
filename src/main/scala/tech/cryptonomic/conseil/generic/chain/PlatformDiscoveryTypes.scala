@@ -18,6 +18,9 @@ object PlatformDiscoveryTypes {
   class KeyTypeRef extends TypeReference[KeyType.type]
 
   /** Case class representing network */
+  final case class Platform(name: String, displayName: String)
+
+  /** Case class representing network */
   final case class Network(name: String, displayName: String, platform: String, network: String)
 
   /** Case class representing single entity of a given network */

@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.generic.chain
 
 import com.typesafe.config.Config
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.Network
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.collection.JavaConverters._
 
@@ -26,9 +26,9 @@ object NetworkConfigOperations {
     * @param  config configuration object
     * @return list of platforms from configuration
     */
-  def getPlatforms(config: Config): List[String] = {
+  def getPlatforms(config: Config): List[Platform] = {
     for {
       (platform, _) <- config.getObject("platforms").asScala
-    } yield platform
+    } yield Platform(platform, platform.capitalize)
   }.toList
 }

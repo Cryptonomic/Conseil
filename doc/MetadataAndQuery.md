@@ -102,7 +102,10 @@ curl -vvv --request GET \
 
 #### example response:
 ```
-[ "tezos" ]
+[ {
+  "name" : "tezos",
+  "displayName" : "Tezos"
+} ]
 ```
 
 ### Networks metadata
