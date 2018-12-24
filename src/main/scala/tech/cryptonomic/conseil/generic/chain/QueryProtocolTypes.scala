@@ -24,7 +24,7 @@ object QueryProtocolTypes {
 
   /** Class representing query */
   case class Query(
-    fields: List[String],
+    fields: List[String] = List.empty,
     predicates: List[Predicate]
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
