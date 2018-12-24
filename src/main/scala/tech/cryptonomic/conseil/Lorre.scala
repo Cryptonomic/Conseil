@@ -26,14 +26,37 @@ object Lorre extends App with TezosErrors with LazyLogging {
   //how long to wait for graceful shutdown of system components
   private[this] val shutdownWait = 10.seconds
 
-  private val network =
-    if (args.length > 0) args(0)
-    else {
-      Console.err.println("""
-      | No tezos network was provided to connect to
-      | Please provide a valid network as an argument to the command line""".stripMargin)
-      sys.exit(1)
+  sealed class Depth()
+  case class Everything() extends Depth
+  case class Newest() extends Depth
+  case class Custom(depth: Int) extends Depth
+
+  case class Config(private val d: Int = -1, networks: Seq[String] = Seq()) {
+    def depth = {
+      d match {
+        case -1 => Everything
+        case 0 => Newest
+        case n: Int => Custom(n)
+      }
     }
+  }
+
+  val parser = new scopt.OptionParser[Config]("lorre") {
+
+    arg[String]("network").required().action( (x, c) =>
+      c.copy(networks = c.networks :+ x) ).text("which network to use")
+
+    opt[Int]("depth")
+      .action((depth, c) => c.copy(d = depth))
+      .validate(it => if (it >= -1) success else failure("Value <depth> must be >= -1") )
+      .text("how many blocks to synchronize starting with head (use -1 for everything and 0 for only new ones)")
+
+    help("help").text("prints this usage text")
+  }
+
+  private val config: Config = parser.parse(args, Config()).getOrElse(sys.exit(1))
+  private val network = config.networks.head
+  private val depth = config.depth
 
   private val conf = ConfigFactory.load
   private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
@@ -97,7 +120,14 @@ object Lorre extends App with TezosErrors with LazyLogging {
     */
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+
+    val blocksToSynchronize = depth match {
+      case Everything => tezosNodeOperator.getAllBlocks(network)
+      case Newest => tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true)
+      case Custom(n) => tezosNodeOperator.getLastBlocks(network, n)
+    }
+
+    blocksToSynchronize.flatMap {
       blocksWithAccounts =>
         db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))
           .andThen {

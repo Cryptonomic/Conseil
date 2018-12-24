@@ -9,7 +9,8 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Try, Success, Failure}
+import scala.math.max
+import scala.util.{Failure, Success, Try}
 
 object TezosNodeOperator {
   /**
@@ -189,6 +190,33 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
           else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
           getBlocks(network, headHash, maxLevel + 1, headLevel, followFork)
         }
+    } yield blocks
+
+  /**
+    * Gets all blocks.
+    * @param network    Which Tezos network to go against
+    * @return           Blocks and Account hashes involved
+    */
+  def getAllBlocks(network: String): Future[List[(Block, List[AccountId])]] =
+    for {
+      blockHead <- getBlockHead(network)
+      headLevel = blockHead.metadata.header.level
+      headHash = blockHead.metadata.hash
+      blocks <- getBlocks(network, headHash, 1, headLevel, followFork = true)
+    } yield blocks
+
+  /**
+    * Gets last n blocks.
+    * @param network    Which Tezos network to go against
+    * @param amount     Amount of latest block to fetch
+    * @return           Blocks and Account hashes involved
+    */
+  def getLastBlocks(network: String, amount: Int): Future[List[(Block, List[AccountId])]] =
+    for {
+      blockHead <- getBlockHead(network)
+      headLevel = blockHead.metadata.header.level
+      headHash = blockHead.metadata.hash
+      blocks <- getBlocks(network, headHash, max(1, headLevel - amount), headLevel, followFork = true)
     } yield blocks
 
   /**

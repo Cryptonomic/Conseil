@@ -31,6 +31,7 @@ libraryDependencies  ++=  Seq(
   "com.muquit.libsodiumjna" % "libsodium-jna" % "1.0.4" exclude("org.slf4j", "slf4j-log4j12"),
   "com.github.alanverbner" %% "bip39" % "0.1",
   "ch.megard" %% "akka-http-cors" % "0.3.0",
+  "com.github.scopt" %% "scopt" % "3.7.1",
   "ru.yandex.qatools.embed" % "postgresql-embedded" % "2.10" % Test,
   "com.stephenn" %% "scalatest-json-jsonassert" % "0.0.3" % Test
 )
