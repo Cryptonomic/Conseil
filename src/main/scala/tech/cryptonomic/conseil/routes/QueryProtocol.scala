@@ -27,11 +27,13 @@ class QueryProtocol(queryProtocolPlatform: QueryProtocolPlatform)(implicit apiEx
   val route: Route =
     get {
       pathPrefix(Segment) { platform =>
-        pathPrefix(Segment) { ent =>
-          pathEnd {
-            entity(as[Query]) { query: Query =>
-              validateQueryOrBadRequest(query) { validatedQuery =>
-                completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
+        pathPrefix(Segment) { network =>
+          pathPrefix(Segment) { ent =>
+            pathEnd {
+              entity(as[Query]) { query: Query =>
+                validateQueryOrBadRequest(query) { validatedQuery =>
+                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
+                }
               }
             }
           }

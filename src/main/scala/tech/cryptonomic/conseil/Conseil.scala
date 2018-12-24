@@ -43,13 +43,15 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
           pathPrefix("tezos") {
             Tezos(system.dispatchers.lookup("akka.tezos-dispatcher")).route
           }
-        } ~ logRequest("Discovery route", Logging.DebugLevel) {
-          pathPrefix("metadata") {
-            PlatformDiscovery(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
-          }
-        } ~ logRequest("Query route", Logging.DebugLevel) {
-          pathPrefix("query") {
-            QueryProtocol(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+        } ~ pathPrefix("v2") {
+          logRequest("Discovery route", Logging.DebugLevel) {
+            pathPrefix("metadata") {
+              PlatformDiscovery(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+            }
+          } ~ logRequest("Query route", Logging.DebugLevel) {
+            pathPrefix("query") {
+              QueryProtocol(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+            }
           }
         }
       } ~ options {
