@@ -55,9 +55,6 @@ object JsonUtil {
       .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
       .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
 
-  def toJson(value: Map[Symbol, Any]): JsonString =
-    toJson(value map { case (k,v) => k.name -> v})
-
   def toJson[T](value: T): JsonString =
     JsonString(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value))
 

@@ -5,4 +5,5 @@ target/
 .idea/
 pgdata*/
 test-postgres-path/*
+.DS_Store
 *.log
