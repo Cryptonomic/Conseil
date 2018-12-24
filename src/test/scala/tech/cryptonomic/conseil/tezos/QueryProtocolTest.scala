@@ -87,7 +87,7 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
 
       val getRequest = HttpRequest(
         HttpMethods.GET,
-        uri = "/tezos/accounts",
+        uri = "/tezos/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
 
       getRequest ~> route ~> check {
@@ -100,7 +100,7 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
     "return 400 BadRequest status code for request with missing fields" in {
       val getRequest = HttpRequest(
         HttpMethods.GET,
-        uri = "/tezos/accounts",
+        uri = "/tezos/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, malforemdJsonStringRequest))
       getRequest ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
@@ -110,7 +110,7 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
     "return 404 NotFound status code for request for the not supported platform" in {
       val getRequest = HttpRequest(
         HttpMethods.GET,
-        uri = "/notSupportedPlatform/accounts",
+        uri = "/notSupportedPlatform/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
       getRequest ~> route ~> check {
         status shouldBe StatusCodes.NotFound

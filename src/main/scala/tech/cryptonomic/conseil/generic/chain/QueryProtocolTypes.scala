@@ -32,7 +32,7 @@ object QueryProtocolTypes {
     def validate: Option[Query] = {
       Try {
         predicates.foreach { pred =>
-          fields.nonEmpty && pred.field.nonEmpty && OperationType.values.contains(pred.operation) && pred.set.nonEmpty
+          pred.field.nonEmpty && OperationType.values.contains(pred.operation) && pred.set.nonEmpty
         }
         this
       }.toOption

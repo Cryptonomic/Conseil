@@ -52,6 +52,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives {
             pathPrefix("query") {
               QueryProtocol(system.dispatchers.lookup("akka.tezos-dispatcher")).route
             }
+          } ~ logRequest("Backward compatible data route", Logging.DebugLevel) {
+            pathPrefix("data") {
+              QueryProtocol(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+            }
           }
         }
       } ~ options {

@@ -9,7 +9,7 @@ Query interface is based on elasticsearch-like model using `GET` request with pa
 #### Example query
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/query/{{platform}}/{{entity}}' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/query/{{platform}}/{{network}}/{{entity}}' \
   --header 'Content-Type: application/json' \
   --header 'apiKey: hooman' \
   -d @'{{query.file.json}}'
@@ -36,7 +36,7 @@ curl -vvv --request GET \
 #### Example query:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/query/tezos/accounts' \
+  --url 'http://localhost:1337/query/tezos/zeronet/accounts' \
   --header 'Content-Type: application/json' \
   --header 'apiKey: hooman' \
   -d '{
@@ -84,17 +84,38 @@ curl -vvv --request GET \
 
 Following endpoints provide possibility of getting the model of the db for usage in `Query interface`
 
-#### Networks metadata
+### Platforms metadata
+
+Request for listing the platforms
+```
+curl -vvv --request GET \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/platforms' \
+  --header 'apiKey: hooman'
+
+```
+#### example request:
+```
+curl -vvv --request GET \
+  --url 'http://localhost:1337/v2/metadata/platforms' \
+  --header 'apiKey: hooman'
+```
+
+#### example response:
+```
+[ "tezos" ]
+```
+
+### Networks metadata
 Request for getting all of the supported networks - at the moment one Conseil instance support one network at the time, values are being brought up from the config file:
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/metadata/networks' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/{{platform-name}}/networks' \
   --header 'apiKey: hooman'
 ```
 #### example request:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/metadata/networks' \
+  --url 'http://localhost:1337/v2/metadata/{{platform-name}}/networks' \
   --header 'apiKey: hooman'
 ```
 #### example response:
@@ -129,13 +150,13 @@ Provides information about which entities are available fro querying
 #### Request for getting all of the supported entities
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/metadata/networks/{{network-name}}/entities' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/{{platform-name}}/{{network-name}}/entities' \
   --header 'apiKey: hooman'
 ```
 #### example request:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/metadata/networks/alphanet/entities' \
+  --url 'http://localhost:1337/v2/metadata/tezos/alphanet/entities' \
   --header 'apiKey: hooman'
 ```
 
@@ -179,13 +200,13 @@ Provides description of the attributes available in the given entity
 
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/metadata/networks/{{network-name}}/entities/{{entity-name}}/attributes' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/{{platform-name}}/{{network-name}}/{{entity-name}}/attributes' \
   --header 'apiKey: hooman'
 ```
 #### example request:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/metadata/networks/alphanet/entities/accounts/attributes' \
+  --url 'http://localhost:1337/v2/metadata/tezos/alphanet/accounts/attributes' \
   --header 'apiKey: hooman'
 ```
 
@@ -271,13 +292,13 @@ Provides all distinct values of chosen attribute - except for high cardinality f
 #### Request for getting all values of the given attribute:
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/metadata/networks/{{network-name}}/entities/{{entity-name}}/attributes/{{attribute-name}}' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/{{platform-name}}/{{network-name}}/{{entity-name}}/{{attribute-name}}' \
   --header 'apiKey: hooman'
 ```
 #### example request:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/metadata/networks/alphanet/entities/accounts/attributes/delegate_value' \
+  --url 'http://localhost:1337/v2/metadata/tezos/alphanet/accounts/delegate_value' \
   --header 'apiKey: hooman'
 ```
 
@@ -295,14 +316,14 @@ This endpoint gives possibility of filtering attributes by value
 
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/metadata/networks/{{network-name}}/entities/{{entity-name}}/attributes/{{attribute-name}}/filter/{{value-to-filter-with}}' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/{{platform-name}}/{{network-name}}/{{entity-name}}/{{attribute-name}}/{{value-to-filter-with}}' \
   --header 'apiKey: hooman'
 ```
 
 #### example request:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/metadata/networks/alphanet/entities/accounts/attributes/delegate_value/filter/tz1Za' \
+  --url 'http://localhost:1337/v2/metadata/tezos/alphanet/accounts/delegate_value/tz1Za' \
   --header 'apiKey: hooman'
 ```
 

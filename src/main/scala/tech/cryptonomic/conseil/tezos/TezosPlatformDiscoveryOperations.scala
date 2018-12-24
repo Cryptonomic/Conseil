@@ -1,13 +1,11 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.Config
 import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -16,20 +14,6 @@ object TezosPlatformDiscoveryOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
-
-  /**
-    * Extracts networks from config file
-    *
-    * @param  config configuration object
-    * @return list of networks from configuration
-    */
-  def getNetworks(config: Config): List[Network] = {
-    for {
-      (platform, strippedConf) <- config.getObject("platforms").asScala
-      (network, _) <- strippedConf.atKey(platform).getObject(platform).asScala
-    } yield Network(network, network.capitalize, platform, network)
-  }.toList
-
 
   /**
     * Extracts entities in the DB for the given network

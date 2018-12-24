@@ -8,6 +8,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 
@@ -43,7 +44,7 @@ class TezosPlatformDiscoveryOperationsTest
           | }
         """.stripMargin)
 
-      TezosPlatformDiscoveryOperations.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      NetworkConfigOperations.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
     "return two networks" in {
       val cfg = ConfigFactory.parseString(
@@ -68,7 +69,7 @@ class TezosPlatformDiscoveryOperationsTest
           |}
         """.stripMargin)
 
-      TezosPlatformDiscoveryOperations.getNetworks(cfg).size shouldBe 2
+      NetworkConfigOperations.getNetworks(cfg).size shouldBe 2
     }
   }
 

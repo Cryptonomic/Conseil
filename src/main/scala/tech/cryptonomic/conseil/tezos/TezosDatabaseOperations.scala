@@ -325,8 +325,10 @@ object TezosDatabaseOperations extends LazyLogging {
     }
 
   /** Prepares query */
-  def makeQuery(table: String, columns: List[String]): SQLActionBuilder =
-    sql"""SELECT #${columns.mkString(",")} FROM #$table WHERE true """
+  def makeQuery(table: String, columns: List[String]): SQLActionBuilder = {
+    val cols = if(columns.isEmpty) "*" else columns.mkString(",")
+    sql"""SELECT #$cols FROM #$table WHERE true """
+  }
 
   /** maps operation type to SQL operation */
   private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
