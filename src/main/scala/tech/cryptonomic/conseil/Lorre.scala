@@ -5,10 +5,9 @@ import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block}
 import slick.jdbc.PostgresProfile.api._
-
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -32,8 +31,8 @@ object Lorre extends App with TezosErrors with LazyLogging {
     if (args.length > 1) (args(0), args(1))
     else {
       Console.err.println("""
-      | No tezos network was provided to connect to
-      | Please provide a valid network as an argument to the command line""".stripMargin)
+      | No tezos platform and/or network was provided to connect to
+      | Please provide a valid platform/network as an argument to the command line""".stripMargin)
       sys.exit(1)
     }
 
@@ -42,7 +41,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
   private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
 
   lazy val db = Database.forConfig(s"databases.$platform.$network.conseildb")
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(), db)
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(), ApiOperations(db))
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)

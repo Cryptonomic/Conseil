@@ -19,6 +19,7 @@ object PlatformDiscovery {
 
 /**
   * Platform discovery routes.
+  * @param apiNetworkOperations ApiNetworkOperations object
   * @param config configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */

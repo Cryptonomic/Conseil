@@ -7,7 +7,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
-import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -31,7 +30,7 @@ object TezosNodeOperator {
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
-class TezosNodeOperator(val node: TezosRPCInterface, dbHandle: Database)(implicit executionContext: ExecutionContext) extends LazyLogging {
+class TezosNodeOperator(val node: TezosRPCInterface, apiOperations: ApiOperations)(implicit executionContext: ExecutionContext) extends LazyLogging {
   import TezosNodeOperator._
 
   private val conf = ConfigFactory.load
@@ -194,7 +193,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, dbHandle: Database)(implici
     */
   def getBlocksNotInDatabase(network: String, followFork: Boolean): Future[List[(Block, List[AccountId])]] =
     for {
-      maxLevel <- ApiOperations(dbHandle).fetchMaxLevel()
+      maxLevel <- apiOperations.fetchMaxLevel()
       blockHead <- {
         getBlockHead(network)
       }
