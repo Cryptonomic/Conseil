@@ -8,7 +8,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
-import com.typesafe.sslconfig.akka.AkkaSSLConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.routes.{PlatformDiscovery, Tezos}
@@ -30,7 +29,6 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-      val sslConfig = AkkaSSLConfig() //Should get rid of this??
 
       val route = cors() {
         enableCORS {

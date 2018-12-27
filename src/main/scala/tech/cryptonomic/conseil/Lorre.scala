@@ -26,16 +26,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   config.left.foreach { _ => sys.exit(1) }
 
   //unsafe call, will only be reached if loadedConf is a Right
-  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, sodiumConf, batchingConf) = config.merge
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf) = config.merge
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
 
-  implicit val sodium = sodiumConf
-
   //how long to wait for graceful shutdown of system components
-  private[this] val shutdownWait = 10.seconds
+  val shutdownWait = 10.seconds
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)

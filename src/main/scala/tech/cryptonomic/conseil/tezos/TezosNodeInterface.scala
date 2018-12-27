@@ -81,7 +81,7 @@ trait TezosRPCInterface {
   * Concrete implementation of the above.
   */
 class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCallsConfiguration, streamingConfig: HttpStreamingConfiguration)(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
-  import config._
+  import config.nodeConfig
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -108,7 +108,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try{
       val url = translateCommandToUrl(command)
-      logger.debug(s"Querying URL $url for platform Tezos and network $network")
+      logger.debug("Querying URL {} for platform Tezos and network {}", url, config.network)
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(

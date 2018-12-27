@@ -22,9 +22,8 @@ trait LorreAppConfig {
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
-      sodium <- loadConfig[SodiumConfiguration](namespace = "sodium.libraryPath")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node), nodeRequests, streamingClient, sodium, fetching)
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node), nodeRequests, streamingClient, fetching)
 
     //something went wrong
     loadedConf.left.foreach {
@@ -60,7 +59,6 @@ object LorreAppConfig {
     tezos: TezosConfiguration,
     nodeRequests: NetworkCallsConfiguration,
     streamingClientPool: HttpStreamingConfiguration,
-    sodium: SodiumConfiguration,
     batching: BatchFetchConfiguration
   )
 

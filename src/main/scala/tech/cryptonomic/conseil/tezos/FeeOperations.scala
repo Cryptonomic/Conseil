@@ -42,7 +42,9 @@ object FeeOperations extends LazyLogging {
 
   /**
     * Calculates average fees for each operation kind and stores them into a fees table.
-    * @return
+    * @param numberOfFeesAveraged a limit on how many of the latest fee values will be used for averaging
+    * @param ex the needed ExecutionContext to combine multiple database operations
+    * @return a future result of the number of rows stored to db, if supported by the driver
     */
   def processTezosAverageFees(numberOfFeesAveraged: Int)(implicit ex: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")

@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Platforms._
 import pureconfig.generic.auto._
-
+import pureconfig.loadConfig
 
 /** wraps all configuration needed to run Conseil */
 trait ConseilAppConfig {
@@ -10,9 +10,12 @@ trait ConseilAppConfig {
   protected lazy val applicationConfiguration = {
     import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig._
 
+    //this extra configuration might be needed as we add send operations to the conseil API
+    // crypto <- loadConfig[SodiumConfiguration](namespace = "sodium.libraryPath")
+
     val loadedConf = for {
-      server <- pureconfig.loadConfig[ServerConfiguration](namespace = "conseil")
-      platforms <- pureconfig.loadConfig[PlatformsConfiguration](namespace = "platforms")
+      server <- loadConfig[ServerConfiguration](namespace = "conseil")
+      platforms <- loadConfig[PlatformsConfiguration](namespace = "platforms")
       securityApi <- Security()
     } yield (server, platforms, securityApi)
 
