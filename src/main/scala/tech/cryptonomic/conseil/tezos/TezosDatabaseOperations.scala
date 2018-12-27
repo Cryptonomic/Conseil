@@ -316,7 +316,7 @@ object TezosDatabaseOperations extends LazyLogging {
     *
     * @param  predicates  list of predicates to be transformed
     * @return             list of transformed predicates
-    * */
+    */
   def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
     predicates.map { p =>
       val query = p.precision.map {
@@ -328,7 +328,11 @@ object TezosDatabaseOperations extends LazyLogging {
       )
     }
 
-  /** Prepares query */
+  /** Prepares query
+    * @param table    table on which query will be executed
+    * @param columns  columns which are selected from teh table
+    * @return         SQLAction with basic query
+    */
   def makeQuery(table: String, columns: List[String]): SQLActionBuilder = {
     val cols = if(columns.isEmpty) "*" else columns.mkString(",")
     sql"""SELECT #$cols FROM #$table WHERE true """
