@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolOperations
+import tech.cryptonomic.conseil.generic.chain.DataOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{Predicate, Query}
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, Query}
+import tech.cryptonomic.conseil.tezos.TezosMetadataOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database.
   */
-object ApiOperations extends QueryProtocolOperations {
+object ApiOperations extends DataOperations {
 
   lazy val dbHandle: Database = DatabaseUtil.db
 

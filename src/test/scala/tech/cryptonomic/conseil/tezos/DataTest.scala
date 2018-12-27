@@ -3,16 +3,17 @@ package tech.cryptonomic.conseil.tezos
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.generic.chain.{QueryProtocolOperations, QueryProtocolPlatform}
-import tech.cryptonomic.conseil.routes.QueryProtocol
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
+import tech.cryptonomic.conseil.routes.Data
+import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest with ScalaFutures with MockFactory {
+class DataTest extends WordSpec with Matchers with ScalatestRouteTest with ScalaFutures with MockFactory {
   val ec: ExecutionContext = system.dispatcher
 
   val jsonStringRequest: String =
@@ -73,13 +74,26 @@ class QueryProtocolTest extends WordSpec with Matchers with ScalatestRouteTest w
     predicates = List.empty
   )
 
-  val fakeQPO: QueryProtocolOperations = new QueryProtocolOperations {
+  val fakeQPO: DataOperations = new DataOperations {
     override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] =
       Future.successful(responseAsMap)
   }
 
-  val fakeQPP: QueryProtocolPlatform = new QueryProtocolPlatform(Map("tezos" -> fakeQPO))
-  val route: Route = new QueryProtocol(fakeQPP)(ec).route
+  val fakeQPP: DataPlatform = new DataPlatform(Map("tezos" -> fakeQPO))
+  val cfg = ConfigFactory.parseString(
+    """
+      | platforms.tezos : {
+      |  alphanet: {
+      |    node: {
+      |      protocol: "http",
+      |      hostname: "localhost",
+      |      port: 8732
+      |      pathPrefix: ""
+      |    }
+      |  }
+      | }
+    """.stripMargin)
+  val route: Route = new Data(cfg, fakeQPP)(ec).route
 
   "Query protocol" should {
 

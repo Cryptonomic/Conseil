@@ -1,22 +1,24 @@
-package tech.cryptonomic.conseil.generic.chain
+package tech.cryptonomic.conseil.util
 
 import com.typesafe.config.Config
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
+import tech.cryptonomic.conseil.generic.chain.MetadataTypes.{Network, Platform}
 
 import scala.collection.JavaConverters._
 
-object NetworkConfigOperations {
+object ConfigUtil {
   /**
     * Extracts networks from config file
     *
     * @param  config configuration object
+    * @param  platform platform name
     * @return list of networks from configuration
     */
-  def getNetworks(config: Config): List[Network] = {
+  def getNetworks(config: Config, platform: String): List[Network] = {
     for {
-      (platform, strippedConf) <- config.getObject("platforms").asScala
-      (network, _) <- strippedConf.atKey(platform).getObject(platform).asScala
-    } yield Network(network, network.capitalize, platform, network)
+      (platformName, strippedConf) <- config.getObject("platforms").asScala
+      if platformName == platform
+      (network, _) <- strippedConf.atKey(platformName).getObject(platformName).asScala
+    } yield Network(network, network.capitalize, platformName, network)
   }.toList
 
 
@@ -31,4 +33,5 @@ object NetworkConfigOperations {
       (platform, _) <- config.getObject("platforms").asScala
     } yield Platform(platform, platform.capitalize)
   }.toList
+
 }

@@ -1,13 +1,13 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * Trait containing the interface for the QueryProtocol
+  * Trait containing the interface for the Data
   */
-trait QueryProtocolOperations {
+trait DataOperations {
   /** Interface method for querying with given predicates
     *
     * @param  tableName name of the table which we query

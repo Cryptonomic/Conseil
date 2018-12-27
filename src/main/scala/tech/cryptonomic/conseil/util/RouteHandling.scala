@@ -3,9 +3,13 @@ package tech.cryptonomic.conseil.util
 import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Directives.complete
-import akka.http.scaladsl.server.{Directive, Directive1, StandardRoute}
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
+import akka.http.scaladsl.server.{Directive, Directive0, Directive1, StandardRoute}
+import com.typesafe.config.Config
+import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.tezos.TezosMetadataOperations
+import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
+import akka.http.scaladsl.server.Directives._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -58,5 +62,21 @@ trait RouteHandling {
       case None => StatusCodes.NotFound
     }
     complete(response)
+  }
+  /** validates pltform and network */
+  protected def validatePlatformAndNetwork(config: Config, platform: String, network: String): Directive0 = {
+    getNetworks(config, platform).find(_.network == network) match {
+      case Some(_) => pass
+      case None => complete(StatusCodes.NotFound)
+    }
+  }
+
+  /** validates entity if it exists */
+  protected def validateEntity(entity: String): Directive0 = {
+    if (TezosMetadataOperations.isEntityValid(entity)) {
+      pass
+    } else {
+      complete(StatusCodes.NotFound)
+    }
   }
 }

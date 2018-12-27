@@ -5,12 +5,12 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
 import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
 import tech.cryptonomic.conseil.util.CollectionOps._
-import tech.cryptonomic.conseil.util.DatabaseUtil.{concat, values}
+import tech.cryptonomic.conseil.util.DatabaseUtil.{concatenateSqlActions, insertValuesIntoSqlAction, getMap, SqlActionHelper}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
@@ -306,19 +306,23 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate])(implicit ec: ExecutionContext):
   DBIO[List[Map[String, Any]]] = {
-    import tech.cryptonomic.conseil.util.DatabaseUtil._
-    val pred = makePredicates(predicates)
-    val query = makeQuery(table, columns)
-    concat(query, pred).as[Map[String, Any]].map(_.toList)
+     makeQuery(table, columns)
+       .addPredicates(predicates)
+       .as[Map[String, Any]]
+       .map(_.toList)
   }
 
-  /** Prepares predicates */
+  /** Prepares predicates and transforms them into SQLActionBuilders
+    *
+    * @param  predicates  list of predicates to be transformed
+    * @return             list of transformed predicates
+    * */
   def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
     predicates.map { p =>
       val query = p.precision.map {
-        prec => sql""" AND ROUND(#${p.field}, $prec) """
+        precision => sql""" AND ROUND(#${p.field}, $precision) """
       }.getOrElse(sql""" AND #${p.field} """)
-      concat(
+      concatenateSqlActions(
         query,
         List(mapOperationToSQL(p.operation, p.inverse, p.set.map(_.toString)))
       )
@@ -332,10 +336,9 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** maps operation type to SQL operation */
   private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
-    import tech.cryptonomic.conseil.util.DatabaseUtil._
     val op = operation match {
       case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
-      case OperationType.in => concat(sql"IN ", List(values(vals)))
+      case OperationType.in => concatenateSqlActions(sql"IN ", List(insertValuesIntoSqlAction(vals)))
       case OperationType.like => sql"LIKE '%#${vals.head}%'"
       case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"
       case OperationType.gt | OperationType.after => sql"> '#${vals.head}'"
@@ -343,7 +346,7 @@ object TezosDatabaseOperations extends LazyLogging {
       case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
       case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
     }
-    concat(op, List(sql" IS #${!inverse}"))
+    concatenateSqlActions(op, List(sql" IS #${!inverse}"))
   }
 }
 

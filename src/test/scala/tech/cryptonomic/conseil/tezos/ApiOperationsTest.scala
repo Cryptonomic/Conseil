@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
 
 class ApiOperationsTest extends WordSpec with Matchers {
 

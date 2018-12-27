@@ -2,15 +2,14 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.generic.chain.MetadataTypes.DataType.DataType
+import tech.cryptonomic.conseil.generic.chain.MetadataTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-
-object TezosPlatformDiscoveryOperations {
+object TezosMetadataOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
@@ -41,7 +40,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  attribute  name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    * */
+    **/
   def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None)
     (implicit ec: ExecutionContext): Future[List[String]] = {
     val res = verifyAttributesAndGetQueries(tableName, attribute, withFilter)
@@ -54,7 +53,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  attribute  name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of DBIO actions to get matching attributes
-    * */
+    **/
   def verifyAttributesAndGetQueries(tableName: String, attribute: String, withFilter: Option[String])
     (implicit ec: ExecutionContext): DBIO[List[String]] = {
     DBIO.sequence {
@@ -73,7 +72,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    * */
+    **/
   private def makeAttributesQuery(tableName: String, column: FieldSymbol, withFilter: Option[String])
     (implicit ec: ExecutionContext): DBIO[List[String]] = {
     for {
@@ -118,6 +117,31 @@ object TezosPlatformDiscoveryOperations {
     }
   }
 
+
+  /** Checks if entity is valid
+    *
+    * @param tableName name of the table(entity) which needs to be checked
+    * @return boolean which tells us if entity is valid
+    */
+  def isEntityValid(tableName: String): Boolean = {
+    tablesMap.map(_._1).contains(tableName)
+  }
+
+  /** Checks if attribute is valid for given entity
+    *
+    * @param tableName  name of the table(entity) which needs to be checked
+    * @param columnName name of the column(attribute) which needs to be checked
+    * @return boolean which tells us if attribute is valid for given entity
+    */
+  def isAttributeValid(tableName: String, columnName: String): Boolean = {
+    {
+      for {
+        (_, table) <- tablesMap.find(_._1 == tableName)
+        column <- table.baseTableRow.create_*.find(_.name == columnName)
+      } yield column
+    }.isDefined
+  }
+
   /**
     * Extracts attributes in the DB for the given table name
     *
@@ -132,7 +156,7 @@ object TezosPlatformDiscoveryOperations {
     *
     * @param  tableName name of the table from which we extract attributes
     * @return list of DBIO queries for attributes
-    **/
+    * */
   def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attributes]] = {
     DBIO.sequence {
       for {

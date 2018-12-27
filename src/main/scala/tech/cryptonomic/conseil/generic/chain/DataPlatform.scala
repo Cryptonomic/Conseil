@@ -1,13 +1,13 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.tezos.ApiOperations
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing default apply implementation */
-object QueryProtocolPlatform {
-  def apply(): QueryProtocolPlatform = new QueryProtocolPlatform(Map("tezos" -> ApiOperations))
+object DataPlatform {
+  def apply(): DataPlatform = new DataPlatform(Map("tezos" -> ApiOperations))
 }
 
 /** Class for validating if query protocol exists for the given platform
@@ -15,7 +15,7 @@ object QueryProtocolPlatform {
   * @param operationsMap map of platformName -> QueryProtocolOperations
   * */
 
-class QueryProtocolPlatform(operationsMap: Map[String, QueryProtocolOperations]) {
+class DataPlatform(operationsMap: Map[String, DataOperations]) {
 
   /** Interface method for querying with given predicates
     *

@@ -2,14 +2,14 @@ package tech.cryptonomic.conseil.generic.chain
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.OperationType.OperationType
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 
 import scala.util.Try
 
 /**
   * Classes used for deserializing query.
   */
-object QueryProtocolTypes {
+object DataTypes {
 
   /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]

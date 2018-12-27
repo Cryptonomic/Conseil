@@ -11,7 +11,7 @@ import slick.jdbc.H2Profile.api._
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.generic.chain.QueryProtocolTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
 
 import scala.util.Random
 
