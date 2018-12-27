@@ -175,9 +175,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
   def getBlocksNotInDatabase(network: String): Future[List[(Block, List[AccountId])]] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
-      blockHead <- {
-        getBlockHead(network)
-      }
+      blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
       blocks <-
@@ -215,7 +213,7 @@ class TezosNodeOperator(val node: TezosRPCInterface)(implicit executionContext: 
       blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, max(1, headLevel - amount), headLevel)
+      blocks <- getBlocks(network, headHash, max(1, headLevel - amount + 1), headLevel)
     } yield blocks
 
   /**

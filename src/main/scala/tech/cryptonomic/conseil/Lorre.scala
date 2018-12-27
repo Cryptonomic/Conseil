@@ -1,4 +1,3 @@
-
 package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
@@ -105,9 +104,14 @@ object Lorre extends App with TezosErrors with LazyLogging {
       else processing
 
     Await.result(processResult, atMost = Duration.Inf)
-    logger.info("Taking a nap")
-    Thread.sleep(sleepIntervalInSeconds * 1000)
-    mainLoop(iteration + 1)
+
+    depth match {
+      case Newest =>
+        logger.info("Taking a nap")
+        Thread.sleep(sleepIntervalInSeconds * 1000)
+        mainLoop(iteration + 1)
+      case _ => ()
+    }
   }
 
   logger.info("About to start processing on the {} network", network)
