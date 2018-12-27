@@ -36,6 +36,7 @@ class TezosDatabaseOperationsTest
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val sut = TezosDatabaseOperations
+    val feesToConsider = 1000
 
     "write fees" in {
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
@@ -498,10 +499,50 @@ class TezosDatabaseOperationsTest
       )
 
       //check
-      val feesCalculation = sut.calculateAverageFees(ops.head.kind)
+      val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
+    }
+
+    "handle invalid fee data using the default value" in {
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      val block = generateBlockRows(1, testReferenceTime).head
+      val group = generateOperationGroupRows(block).head
+
+      // mu = 152.59625
+      // std-dev = 331.4
+      // the sample std-dev should be 354.3, using correction formula
+      val fees = Seq(
+        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), Some("1-00"), Some("1020.30"), Some("1.00"), Some("inv4lid")
+      )
+      val ops = wrapFeesWithOperationRows(fees, block, group)
+
+      val populate = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.OperationGroups += group
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+      } yield ids
+
+      dbHandler.run(populate).futureValue should have size (fees.size)
+
+      //expectations
+      val (mu, sigma) = (153, 332)
+      val latest = new Timestamp(ops.map(_.timestamp.getTime).max)
+
+      val expected = AverageFees(
+        low = 0,
+        medium = mu,
+        high = mu + sigma,
+        timestamp = latest,
+        kind = ops.head.kind
+      )
+
+      //check
+      val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
+
+      dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
     }
 
     "return None when computing average fees for a kind with no data" in {
@@ -522,7 +563,7 @@ class TezosDatabaseOperationsTest
       dbHandler.run(populate).futureValue should have size (fees.size)
 
       //check
-      val feesCalculation = sut.calculateAverageFees("undefined")
+      val feesCalculation = sut.calculateAverageFees("undefined", feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue shouldBe None
 
@@ -566,7 +607,7 @@ class TezosDatabaseOperationsTest
         kind = ops.head.kind
       )
       //check
-      val feesCalculation = sut.calculateAverageFees(selection.head.kind)
+      val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 

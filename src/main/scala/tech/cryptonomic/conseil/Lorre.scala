@@ -3,10 +3,10 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{TezosErrors, FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.config.LorreAppConfig
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -17,33 +17,29 @@ import scala.util.{Failure, Success}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with TezosErrors with LazyLogging {
+object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
-  //keep this import here to make it evident where we spawn our async code
+  //reads all configuration upstart, will only complete if all values are found
+  val config = loadApplicationConfiguration(args)
+
+  //stop if conf is not available
+  config.left.foreach { _ => sys.exit(1) }
+
+  //unsafe call, will only be reached if loadedConf is a Right
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf) = config.merge
+
+  //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
 
   //how long to wait for graceful shutdown of system components
-  private[this] val shutdownWait = 10.seconds
-
-  private val network =
-    if (args.length > 0) args(0)
-    else {
-      Console.err.println("""
-      | No tezos network was provided to connect to
-      | Please provide a valid network as an argument to the command line""".stripMargin)
-      sys.exit(1)
-    }
-
-  private val conf = ConfigFactory.load
-  private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
-  private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
-
-  lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
+  val shutdownWait = 10.seconds
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
+
+  lazy val db = DatabaseUtil.db
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
@@ -64,8 +60,8 @@ object Lorre extends App with TezosErrors with LazyLogging {
       _ <- processTezosBlocks()
       _ <- processTezosAccounts()
       _ <-
-        if (iteration % feeUpdateInterval == 0)
-          FeeOperations.processTezosAverageFees()
+        if (iteration % lorreConf.feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
         else
           noOp
     } yield ()
@@ -83,11 +79,11 @@ object Lorre extends App with TezosErrors with LazyLogging {
 
     Await.result(processResult, atMost = Duration.Inf)
     logger.info("Taking a nap")
-    Thread.sleep(sleepIntervalInSeconds * 1000)
+    Thread.sleep(lorreConf.sleepInterval.toMillis)
     mainLoop(iteration + 1)
   }
 
-  logger.info("About to start processing on the {} network", network)
+  logger.info("About to start processing on the {} network", tezosConf.network)
 
   try {mainLoop(0)} finally {shutdown()}
 
@@ -97,7 +93,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
     */
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+    tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network, followFork = true).flatMap {
       blocksWithAccounts =>
         db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))
           .andThen {
@@ -131,7 +127,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
 
     val saveAccounts = for {
       checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
-      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(network, checkpoints)
+      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
       accountsStored <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
     } yield checkpoints
 

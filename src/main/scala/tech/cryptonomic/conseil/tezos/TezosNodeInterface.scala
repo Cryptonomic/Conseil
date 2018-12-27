@@ -7,12 +7,12 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
+import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
+import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
-import scala.concurrent.duration._
 import scala.util.{Try, Failure}
 import scala.util.control.NoStackTrace
 
@@ -78,20 +78,10 @@ trait TezosRPCInterface {
 }
 
 /**
-  * Shared configurations related to node operation
-  */
-object TezosNodeConfig {
-  private[tezos] val conf = ConfigFactory.load
-  private[tezos] val awaitTime = conf.getInt("dbAwaitTimeInSeconds").seconds
-  private[tezos] val entityGetTimeout = conf.getInt("GET-ResponseEntityTimeoutInSeconds").seconds
-  private[tezos] val entityPostTimeout = conf.getInt("POST-ResponseEntityTimeoutInSeconds").seconds
-}
-
-/**
   * Concrete implementation of the above.
   */
-class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
-  import TezosNodeConfig._
+class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCallsConfiguration, streamingConfig: HttpStreamingConfiguration)(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
+  import config.nodeConfig
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -112,18 +102,13 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   def withRejectionControl[T](call: => Source[T, NotUsed]): Source[T, NotUsed] =
     if (rejectingCalls.get) Source.empty[T] else call
 
-  private[this] def translateCommandToUrl(network: String, command: String): String = {
-    val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
-    val hostname = conf.getString(s"platforms.tezos.$network.node.hostname")
-    val port = conf.getInt(s"platforms.tezos.$network.node.port")
-    val pathPrefix = conf.getString(s"platforms.tezos.$network.node.pathPrefix")
-    s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
-  }
+  private[this] def translateCommandToUrl(command: String): String =
+    s"${nodeConfig.protocol}://${nodeConfig.hostname}:${nodeConfig.port}/${nodeConfig.pathPrefix}chains/main/$command"
 
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try{
-      val url = translateCommandToUrl(network, command)
-      logger.debug(s"Querying URL $url for platform Tezos and network $network")
+      val url = translateCommandToUrl(command)
+      logger.debug("Querying URL {} for platform Tezos and network {}", url, config.network)
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
           HttpRequest(
@@ -131,30 +116,30 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
             url
           )
         )
-      val response: HttpResponse = Await.result(responseFuture, awaitTime)
-      val responseBodyFuture = response.entity.toStrict(entityGetTimeout).map(_.data.utf8String)
-      val responseBody = Await.result(responseBodyFuture, awaitTime)
+      val response: HttpResponse = Await.result(responseFuture, requestConfig.requestAwaitTime)
+      val responseBodyFuture = response.entity.toStrict(requestConfig.GETResponseEntityTimeout).map(_.data.utf8String)
+      val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
       logger.debug(s"Query result: $responseBody")
       responseBody
     }
   }
 
   override def runAsyncGetQuery(network: String, command: String): Future[String] = withRejectionControl {
-    val url = translateCommandToUrl(network, command)
+    val url = translateCommandToUrl(command)
     val request = HttpRequest(HttpMethods.GET, url)
-    logger.debug("Async querying URL {} for platform Tezos and network {}", url, network)
+    logger.debug("Async querying URL {} for platform Tezos and network {}", url, config.network)
 
     for {
       response <- Http(system).singleRequest(request)
-      strict <- response.entity.toStrict(entityGetTimeout)
+      strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
     } yield strict.data.utf8String
 
   }
 
   override def runPostQuery(network: String, command: String, payload: Option[JsonString]= None): Try[String] = withRejectionControl {
     Try {
-      val url = translateCommandToUrl(network, command)
-      logger.debug(s"Querying URL $url for platform Tezos and network $network with payload $payload")
+      val url = translateCommandToUrl(command)
+      logger.debug("Querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
       val postedData = payload.getOrElse(JsonString.emptyObject)
       val responseFuture: Future[HttpResponse] =
         Http(system).singleRequest(
@@ -164,9 +149,9 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
             entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
           )
         )
-      val response: HttpResponse = Await.result(responseFuture, awaitTime)
-      val responseBodyFuture = response.entity.toStrict(entityPostTimeout).map(_.data).map(_.utf8String)
-      val responseBody = Await.result(responseBodyFuture, awaitTime)
+      val response: HttpResponse = Await.result(responseFuture, requestConfig.requestAwaitTime)
+      val responseBodyFuture = response.entity.toStrict(requestConfig.POSTResponseEntityTimeout).map(_.data).map(_.utf8String)
+      val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
       logger.debug(s"Query result: $responseBody")
       responseBody
 
@@ -174,8 +159,8 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
   }
 
   override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString]= None): Future[String] = withRejectionControl {
-    val url = translateCommandToUrl(network, command)
-    logger.debug(s"Async querying URL $url for platform Tezos and network $network with payload $payload")
+    val url = translateCommandToUrl(command)
+    logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
     val postedData = payload.getOrElse(JsonString.emptyObject)
     val request = HttpRequest(
       HttpMethods.POST,
@@ -184,7 +169,7 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
     )
     for {
       response <- Http(system).singleRequest(request)
-      strict <- response.entity.toStrict(entityPostTimeout)
+      strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
     } yield {
       val responseBody = strict.data.utf8String
       logger.debug("Query results: {}", responseBody)
@@ -192,64 +177,56 @@ class TezosNodeInterface(implicit system: ActorSystem) extends TezosRPCInterface
     }
   }
 
-  /** connection pool settings customized for streaming requests */
-  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(
-    conf.getConfig("akka.tezos-streaming-client")
-      .atPath("akka.http.host-connection-pool")
-      .withFallback(conf)
-  )
+  /* Connection pool settings customized for streaming requests */
+  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(streamingConfig.pool)
 
-  /** creates a connections pool based on the host network */
-  private[this] def createHostPoolFlow[T](settings: ConnectionPoolSettings, network: String) = {
-    val host = conf.getString(s"platforms.tezos.$network.node.hostname")
-    val port = conf.getInt(s"platforms.tezos.$network.node.port")
-    val protocol = conf.getString(s"platforms.tezos.$network.node.protocol")
-    if (protocol == "https")
+  /* creates a connections pool based on the host network */
+  private[this] def getHostPoolFlow[T] = {
+    if (nodeConfig.protocol == "https")
       Http(system).cachedHostConnectionPoolHttps[T](
-        host = host,
-        port = port,
-        settings = settings
+        host = nodeConfig.hostname,
+        port = nodeConfig.port,
+        settings = streamingRequestsConnectionPooling
       )
     else
       Http(system).cachedHostConnectionPool[T](
-        host = host,
-        port = port,
-        settings = settings
-    )
+        host = nodeConfig.hostname,
+        port = nodeConfig.port,
+        settings = streamingRequestsConnectionPooling
+      )
   }
 
   /**
-    * Creates a stream that will produce http response content for the
-    * list of commands.
-    *
-    * @param network  Which Tezos network to go against
-    * @param ids  correlation ids for each request to send
-    * @param mapToCommand  extract a tezos command (uri fragment) from the id
-    * @param concurrencyLevel the concurrency in processing the responses
-    * @param ID a type that will be used to correlate each request with the response
-    * @return A stream source whose elements will be the response string, tupled with the correlation id,
-    *         used to match with the corresponding request
-    */
+  * Creates a stream that will produce http response content for the
+  * list of commands.
+  *
+  * @param network  Which Tezos network to go against
+  * @param ids  correlation ids for each request to send
+  * @param mapToCommand  extract a tezos command (uri fragment) from the id
+  * @param concurrencyLevel the concurrency in processing the responses
+  * @param ID a type that will be used to correlate each request with the response
+  * @return A stream source whose elements will be the response string, tupled with the correlation id,
+  *         used to match with the corresponding request
+  */
   private[this] def streamedGetQuery[CID](
     network: String,
     ids: List[CID],
     mapToCommand: CID => String,
     concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
-      val connections = createHostPoolFlow[CID](streamingRequestsConnectionPooling, network)
-      val convertIdToUrl = mapToCommand andThen (cmd => translateCommandToUrl(network, cmd))
+      val convertIdToUrl = mapToCommand andThen translateCommandToUrl
       //we need to thread the id all through the streaming http stages
       val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
       val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
 
       uris.map(toRequest)
-        .via(connections)
+        .via(getHostPoolFlow)
         .mapAsyncUnordered(concurrencyLevel) {
           case (tried, id) =>
-            Future.fromTry(tried.map(_.entity.toStrict(entityGetTimeout)))
+            Future.fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
               .flatten
               .map(entity => (entity, id))
         }
-        .map{case (content, id) => (id, content.data.utf8String)}
+        .map{case (content: HttpEntity.Strict, id) => (id, content.data.utf8String)}
   }
 
   override def runBatchedGetQuery[CID](
