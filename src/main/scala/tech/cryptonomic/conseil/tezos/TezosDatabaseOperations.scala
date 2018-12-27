@@ -166,8 +166,8 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Reads in all operations referring to the group
     * @param groupHash is the group identifier
-    * @param ec the [[ExecutionContext]] needed to compose db operations
-    * @return the operations and the collecting group, if there's one for the given hash, else [[None]]
+    * @param ec the `ExecutionContext` needed to compose db operations
+    * @return the operations and the collecting group, if there's one for the given hash, else `None`
     */
   def operationsForGroup(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
     (for {
