@@ -79,4 +79,13 @@ trait RouteHandling {
       complete(StatusCodes.NotFound)
     }
   }
+
+  /** validates attribute if it exists in the given entity */
+  protected def validateAttributes(entity: String, attribute: String): Directive0 = {
+    if (TezosMetadataOperations.isAttributeValid(entity, attribute)) {
+      pass
+    } else {
+      complete(StatusCodes.NotFound)
+    }
+  }
 }

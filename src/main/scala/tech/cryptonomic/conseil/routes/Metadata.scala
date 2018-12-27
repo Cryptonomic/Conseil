@@ -47,11 +47,13 @@ class Metadata(config: Config)
                       completeWithJson(TezosMetadataOperations.getTableAttributes(entity))
                     }
                   } ~ pathPrefix(Segment) { attribute =>
-                    pathEnd {
-                      completeWithJson(TezosMetadataOperations.listAttributeValues(entity, attribute))
-                    } ~ pathPrefix(Segment) { filter =>
+                    validateAttributes(entity, attribute) {
                       pathEnd {
-                        completeWithJson(TezosMetadataOperations.listAttributeValues(entity, attribute, Some(filter)))
+                        completeWithJson(TezosMetadataOperations.listAttributeValues(entity, attribute))
+                      } ~ pathPrefix(Segment) { filter =>
+                        pathEnd {
+                          completeWithJson(TezosMetadataOperations.listAttributeValues(entity, attribute, Some(filter)))
+                        }
                       }
                     }
                   }
