@@ -8,6 +8,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{ScalaFutures, IntegrationPatience}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 
@@ -26,49 +27,36 @@ class PlatformDiscoveryOperationsTest
 
   import slick.jdbc.PostgresProfile.api._
   import scala.concurrent.ExecutionContext.Implicits.global
+  import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig._
+  import tech.cryptonomic.conseil.config.Platforms._
 
   "getNetworks" should {
     "return list with one element" in {
-      val cfg = ConfigFactory.parseString(
-        """
-          | platforms.tezos : {
-          |  alphanet: {
-          |    node: {
-          |      protocol: "http",
-          |      hostname: "localhost",
-          |      port: 8732
-          |      pathPrefix: ""
-          |    }
-          |  }
-          | }
-        """.stripMargin)
+      val config = PlatformsConfiguration(
+        platforms = Map(
+          Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+        )
+      )
 
-      PlatformDiscoveryOperations.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      PlatformDiscoveryOperations.getNetworks(config) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
-    "return two networks" in {
-      val cfg = ConfigFactory.parseString(
-        """
-          |platforms.tezos : {
-          |  alphanet: {
-          |    node: {
-          |      protocol: "http",
-          |      hostname: "localhost",
-          |      port: 8732
-          |      pathPrefix: ""
-          |    }
-          |  }
-          |  alphanet-staging : {
-          |    node: {
-          |      protocol: "https"
-          |      hostname: "nautilus.cryptonomic.tech",
-          |      port: 8732
-          |      pathPrefix: "tezos/alphanet/"
-          |    }
-          |  }
-          |}
-        """.stripMargin)
 
-      PlatformDiscoveryOperations.getNetworks(cfg).size shouldBe 2
+    "return two networks" in {
+      val config = PlatformsConfiguration(
+        platforms = Map(
+          Tezos -> List(
+            TezosConfiguration(
+              "alphanet",
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
+            ),
+            TezosConfiguration(
+              "alphanet-staging",
+              TezosNodeConfiguration(protocol = "https", hostname = "nautilus.cryptonomic.tech", port = 8732, pathPrefix = "tezos/alphanet/")
+            )
+          )
+        )
+      )
+      PlatformDiscoveryOperations.getNetworks(config) should have size 2
     }
   }
 

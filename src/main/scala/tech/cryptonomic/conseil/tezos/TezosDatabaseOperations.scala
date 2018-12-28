@@ -1,23 +1,20 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, BlockAccounts, Block, BlockHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountId, BlockAccounts, Block, BlockHash, BlockReference}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
+import scala.util.Try
 
 /**
   * Functions for writing Tezos data to a database.
   */
 object TezosDatabaseOperations extends LazyLogging {
-
-  private val conf = ConfigFactory.load
-  private val numberOfFeesAveraged = conf.getInt("lorre.numberOfFeesAveraged")
 
   /**
     * Writes computed fees averages to a database.
@@ -34,7 +31,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-    def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
+  def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO.sequence(accountsInfo.flatMap {
       info =>
         RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)
@@ -47,21 +44,101 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return         Future on database inserts.
     */
   def writeBlocks(blocks: List[Block]): DBIO[Unit] =
-      DBIO.seq(
-        Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
-        Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
-        Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
-      )
+    DBIO.seq(
+      Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
+      Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
+      Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
+    )
+
+  /**
+    * Writes association of account ids and block data to define accounts that needs update
+    * @param accountIds will have blocks, paired with corresponding account ids to store
+    * @return Database action possibly returning the rows written (if available form the underlying driver)
+    */
+  def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] =
+    Tables.AccountsCheckpoint ++= accountIds.flatMap((RowConversion.convertBlockAccountsAssociation _).tupled)
+
+  /**
+    * Removes  data on the accounts checkpoint table
+    * @param selection limits the removed rows to those
+    *                  concerning the selected elements, by default no selection is made.
+    *                  We strictly assume those Ids were previously loaded from the checkpoint table itself
+    * @return the database action to run
+    */
+  def cleanAccountsCheckpoint(selection: Option[Set[AccountId]] = None)(implicit ec: ExecutionContext): DBIO[Int] =
+    selection match {
+      case Some(ids) =>
+        for {
+          total <- getAccountsCheckpointSize()
+          marked =
+            if (total > ids.size) Tables.AccountsCheckpoint.filter(_.accountId inSet ids.map(_.id))
+            else Tables.AccountsCheckpoint
+          deleted <- marked.delete
+        } yield deleted
+      case None =>
+        Tables.AccountsCheckpoint.delete
+    }
+
+  /**
+    * @return the number of distinct accounts present in the checkpoint table
+    */
+  def getAccountsCheckpointSize(): DBIO[Int] =
+    Tables.AccountsCheckpoint.distinctOn(_.accountId).length.result
+
+  /**
+    * Reads the account ids in the checkpoint table, considering
+    * only those that at the latest block level (highest value)
+    * @return a database action that loads the list of relevant rows
+    */
+  def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[AccountId, BlockReference]] =
+    Tables.AccountsCheckpoint.result.map(
+      _.groupBy(_.accountId) //rows by accounts
+        .values //only use the collection of values, ignoring the group key
+        .map {
+          idRows =>
+            //keep only the latest and group by block reference, and rewrap it as map entries
+            val Tables.AccountsCheckpointRow(id, latestBlockId, latestLevel) = idRows.maxBy(_.blockLevel)
+            AccountId(id) -> (BlockHash(latestBlockId), latestLevel)
+        }.toMap
+    )
+
+  /**
+    * Writes the blocks data to the database
+    * at the same time saving enough information about updated accounts to later fetch those accounts
+    * @param blocksWithAccounts a map with new blocks as keys, and updated account ids as the values
+    */
+  def writeBlocksAndCheckpointAccounts(blocksWithAccounts: Map[Block, List[AccountId]]): DBIO[Option[Int]] = {
+    //ignore the account ids for storage, and prepare the checkpoint account data
+    //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
+    val (blocks, accountUpdates) =
+      blocksWithAccounts.map {
+        case (block, accountIds) =>
+          block -> (block.metadata.hash, block.metadata.header.level, accountIds)
+      }.toList.unzip
+
+    //sequence both operations in a single transaction
+    (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates)).transactionally
+  }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
-    * @param kind  Operation kind
-    * @return      The average fees for a given operation kind, if it exists
+    * @param kind                 Operation kind
+    * @param numberOfFeesAveraged How many values to use for statistics computations
+    * @return                     The average fees for a given operation kind, if it exists
     */
-  def calculateAverageFees(kind: String)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
+  def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
+    def parseFee(fee: String): Option[Double] =
+      Try(fee.toDouble).fold(
+        error => {
+          logger.error("I encountered an invalid fee value during average computation: '{}'", fee)
+          None
+        },
+        Some(_)
+      )
+
     def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[String], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
-        case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
+        case (fee, _) => fee.flatMap(parseFee).getOrElse(0.0)
       }
       val m: Int = ceil(mean(values)).toInt
       val s: Int = ceil(stdev(values)).toInt
@@ -89,8 +166,8 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Reads in all operations referring to the group
     * @param groupHash is the group identifier
-    * @param ec the [[ExecutionContext]] needed to compose db operations
-    * @return the operations and the collecting group, if there's one for the given hash, else [[None]]
+    * @param ec the `ExecutionContext` needed to compose db operations
+    * @return the operations and the collecting group, if there's one for the given hash, else `None`
     */
   def operationsForGroup(groupHash: String)(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
     (for {
@@ -208,6 +285,17 @@ object TezosDatabaseOperations extends LazyLogging {
             }
         }
       }
+
+    private[TezosDatabaseOperations] def convertBlockAccountsAssociation(blockHash: BlockHash, blockLevel: Int, ids: List[AccountId]): List[Tables.AccountsCheckpointRow] =
+      ids.map(
+        accountId =>
+          Tables.AccountsCheckpointRow(
+            accountId = accountId.id,
+            blockId = blockHash.value,
+            blockLevel = blockLevel
+          )
+      )
+
 
   }
 
