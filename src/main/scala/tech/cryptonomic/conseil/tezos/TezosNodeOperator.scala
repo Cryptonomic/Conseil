@@ -200,7 +200,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param amount     Amount of latest block to fetch
     * @return           Blocks and Account hashes involved
     */
-  def getLastBlocks(network: String, amount: Int): Future[List[(Block, List[AccountId])]] =
+  def getLatestBlocks(network: String, amount: Int): Future[List[(Block, List[AccountId])]] =
     for {
       blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level

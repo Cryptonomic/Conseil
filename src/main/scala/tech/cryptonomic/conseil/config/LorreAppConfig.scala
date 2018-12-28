@@ -59,9 +59,9 @@ trait LorreAppConfig {
   /** Use the pureconfig convention to handle configuration from the command line */
   protected def readArgs(args: Array[String]): Either[ConfigReaderFailures, (String, Depth)] = {
 
-    val config: ArgumentsConfig = argsParser.parse(args, ArgumentsConfig()).getOrElse(sys.exit(1))
-    val network = config.networks.head
-    val depth = config.depth
+    val argumentsConfig = argsParser.parse(args, ArgumentsConfig()).getOrElse(sys.exit(1))
+    val network = argumentsConfig.networks.head
+    val depth = argumentsConfig.depth
 
     Right(network, depth)
   }

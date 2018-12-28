@@ -83,7 +83,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
         mainLoop(iteration + 1)
-      case _ => ()
+      case _ =>
+        logger.info("Synchronization is done")
     }
   }
 
@@ -101,7 +102,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     val blocksToSynchronize = tezosConf.depth match {
       case Everything => tezosNodeOperator.getAllBlocks(tezosConf.network)
       case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
-      case Custom(n) => tezosNodeOperator.getLastBlocks(tezosConf.network, n)
+      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, n)
       case Range(levelFrom, levelTo) => tezosNodeOperator.getRange(tezosConf.network, levelFrom, levelTo)
     }
 
