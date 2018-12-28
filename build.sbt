@@ -67,7 +67,7 @@ fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
 
 //add build information as an object in code
 enablePlugins(BuildInfoPlugin)
-buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, git.gitHeadCommit)
 buildInfoPackage := "tech.cryptonomic.conseil"
 
 //uses git tags to generate the project version
@@ -100,7 +100,7 @@ git.gitTagToVersionNumber := { tag: String =>
 lazy val prepareReleaseTag = taskKey[String]("Use the current version to define a git-tag for a new release")
 prepareReleaseTag := Versioning.prepareReleaseTagDef.value
 
-//read the details
+//read the command details for a description
 lazy val gitTagCommand =
   Command.command(
     name = "gitTag",
