@@ -30,7 +30,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       |
     """.stripMargin
 
-  val malforemdJsonStringRequest: String =
+  val malformedJsonStringRequest: String =
     """
       |{
       |  "fields": ["account_id", "spendable", "counter"],
@@ -115,7 +115,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       val getRequest = HttpRequest(
         HttpMethods.GET,
         uri = "/tezos/alphanet/accounts",
-        entity = HttpEntity(MediaTypes.`application/json`, malforemdJsonStringRequest))
+        entity = HttpEntity(MediaTypes.`application/json`, malformedJsonStringRequest))
       getRequest ~> route ~> check {
         status shouldBe StatusCodes.BadRequest
       }
