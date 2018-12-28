@@ -53,13 +53,23 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
-      logger.info("Bonjour...")
+      logger.info("""
+        | =========================***=========================
+        |  Conseil v.{}
+        |  {}
+        | =========================***=========================
+        |
+        |  Bonjour...
+        |""".stripMargin,
+        BuildInfo.version,
+        BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
+      )
 
       sys.addShutdownHook {
         bindingFuture
-        .flatMap(_.unbind().andThen{ case _ => logger.info("Server stopped...")} )
-        .flatMap( _ => system.terminate())
-        .onComplete(_ => logger.info("We're done here, nothing else to see"))
+          .flatMap(_.unbind().andThen{ case _ => logger.info("Server stopped...")} )
+          .flatMap( _ => system.terminate())
+          .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
     case Left(errors) =>
