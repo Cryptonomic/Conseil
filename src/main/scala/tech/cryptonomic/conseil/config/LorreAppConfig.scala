@@ -15,20 +15,25 @@ trait LorreAppConfig {
     arg[String]("network").required().action( (x, c) =>
       c.copy(networks = c.networks :+ x) ).text("which network to use")
 
-    opt[Int]("depth")
+    opt[String]("depth")
       .action((depth, c) => c.copy(d = depth))
       .validate(it => if (it >= -1) success else failure("Value <depth> must be >= -1") )
-      .text("how many blocks to synchronize starting with head (use -1 for everything and 0 for only new ones)")
+      .text("how many blocks to synchronize starting with head (use -1 or all for everything and 0 or new for only new ones)")
 
     help("help").text("prints this usage text")
   }
 
-  private case class ArgumentsConfig(private val d: Int = -1, networks: Seq[String] = Seq()) {
+  object Int {
+    def unapply(s: String): Option[Int] = util.Try(s.toInt).toOption
+  }
+
+  private case class ArgumentsConfig(private val d: String = "", networks: Seq[String] = Seq()) {
+
     def depth: Depth = {
       d match {
-        case -1 => Everything
-        case 0 => Newest
-        case n: Int => Custom(n)
+        case Int(-1) || "all" => Everything
+        case Int(0) || "new" => Newest
+        case Int(n) => Custom(n)
       }
     }
   }

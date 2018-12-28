@@ -103,7 +103,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       case Everything => tezosNodeOperator.getAllBlocks(tezosConf.network)
       case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
       case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, n)
-      case Range(levelFrom, levelTo) => tezosNodeOperator.getRange(tezosConf.network, levelFrom, levelTo)
     }
 
     blocksToSynchronize.flatMap {

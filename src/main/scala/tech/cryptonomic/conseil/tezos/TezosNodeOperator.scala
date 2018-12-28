@@ -209,20 +209,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     } yield blocks
 
   /**
-    * Gets blocks in range by level (inclusive).
-    * @param network    Which Tezos network to go against
-    * @param levelFrom  Number of lowest level, inclusive
-    * @param levelTo    Number of highest level, inclusive
-    * @return           Blocks and Account hashes involved
-    */
-  def getRange(network: String, levelFrom: Int, levelTo: Int): Future[List[(Block, List[AccountId])]] =
-    for {
-      blockHead <- getBlockHead(network)
-      headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, levelFrom, levelTo)
-    } yield blocks
-
-  /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
     * @param network Which Tezos network to go against
     * @param hashRef Hash of block at max level.
