@@ -3,9 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
-import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-
-import scala.util.Try
 
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
   // THE FOLLOWING TESTS ARE COMMENTED OUT AS THIS FUNCTIONALITY IS NO LONGER COMPATIBLE WITH THE
