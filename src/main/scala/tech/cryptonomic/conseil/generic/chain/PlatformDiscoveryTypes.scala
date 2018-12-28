@@ -3,13 +3,13 @@ package tech.cryptonomic.conseil.generic.chain
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import slick.ast.{OptionType, Type}
-import tech.cryptonomic.conseil.generic.chain.MetadataTypes.DataType.DataType
-import tech.cryptonomic.conseil.generic.chain.MetadataTypes.KeyType.KeyType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.KeyType
 
 /**
   * Classes used for Platform routes
   */
-object MetadataTypes {
+object PlatformDiscoveryTypes {
 
   /** Class required for DataType enum serialization */
   class DataTypeRef extends TypeReference[DataType.type]

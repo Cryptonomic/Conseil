@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.{Directive, Directive0, Directive1, StandardRoute}
 import com.typesafe.config.Config
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
-import tech.cryptonomic.conseil.tezos.TezosMetadataOperations
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
 import akka.http.scaladsl.server.Directives._
@@ -73,7 +73,7 @@ trait RouteHandling {
 
   /** validates entity if it exists */
   protected def validateEntity(entity: String): Directive0 = {
-    if (TezosMetadataOperations.isEntityValid(entity)) {
+    if (TezosPlatformDiscoveryOperations.isEntityValid(entity)) {
       pass
     } else {
       complete(StatusCodes.NotFound)
@@ -82,7 +82,7 @@ trait RouteHandling {
 
   /** validates attribute if it exists in the given entity */
   protected def validateAttributes(entity: String, attribute: String): Directive0 = {
-    if (TezosMetadataOperations.isAttributeValid(entity, attribute)) {
+    if (TezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)) {
       pass
     } else {
       complete(StatusCodes.NotFound)

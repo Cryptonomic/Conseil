@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.util
 
 import com.typesafe.config.Config
-import tech.cryptonomic.conseil.generic.chain.MetadataTypes.{Network, Platform}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.collection.JavaConverters._
 

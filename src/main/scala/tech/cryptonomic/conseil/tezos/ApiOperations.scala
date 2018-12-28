@@ -4,7 +4,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, Query}
-import tech.cryptonomic.conseil.tezos.TezosMetadataOperations.{areFieldsValid, sanitizeForSql}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil

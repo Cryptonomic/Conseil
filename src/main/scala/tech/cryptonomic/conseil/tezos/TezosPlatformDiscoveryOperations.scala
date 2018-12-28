@@ -2,14 +2,14 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.ast.FieldSymbol
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.MetadataTypes.DataType.DataType
-import tech.cryptonomic.conseil.generic.chain.MetadataTypes._
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object TezosMetadataOperations {
+object TezosPlatformDiscoveryOperations {
 
   private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)

@@ -9,7 +9,7 @@ Query interface is based on elasticsearch-like model using `GET` request with pa
 #### Example query
 ```
 curl -vvv --request GET \
-  --url '{{protocol}}://{{hostname}}:{{port}}/query/{{platform}}/{{network}}/{{entity}}' \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/data/{{platform}}/{{network}}/{{entity}}' \
   --header 'Content-Type: application/json' \
   --header 'apiKey: hooman' \
   -d @'{{query.file.json}}'
@@ -36,7 +36,7 @@ curl -vvv --request GET \
 #### Example query:
 ```
 curl -vvv --request GET \
-  --url 'http://localhost:1337/query/tezos/zeronet/accounts' \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/accounts' \
   --header 'Content-Type: application/json' \
   --header 'apiKey: hooman' \
   -d '{

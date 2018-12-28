@@ -9,13 +9,13 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.generic.chain.MetadataTypes.{Attributes, DataType, KeyType, Network}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.duration._
 
 
-class TezosMetadataOperationsTest
+class TezosPlatformDiscoveryOperationsTest
   extends WordSpec
     with InMemoryDatabase
     with MockFactory
@@ -78,7 +78,7 @@ class TezosMetadataOperationsTest
     "return list of attributes of Fees" in {
 
       dbHandler.run {
-        TezosMetadataOperations.makeAttributesList("fees")
+        TezosPlatformDiscoveryOperations.makeAttributesList("fees")
       }.futureValue shouldBe
         List(
           Attributes("low", "Low", DataType.Int, 0, KeyType.UniqueKey, "fees"),
@@ -91,7 +91,7 @@ class TezosMetadataOperationsTest
 
     "return list of attributes of accounts" in {
       dbHandler.run {
-        TezosMetadataOperations.makeAttributesList("accounts")
+        TezosPlatformDiscoveryOperations.makeAttributesList("accounts")
       }.futureValue shouldBe
         List(
           Attributes("account_id", "Account id", DataType.String, 0, KeyType.UniqueKey, "accounts"),
@@ -109,7 +109,7 @@ class TezosMetadataOperationsTest
 
     "return list of attributes of blocks" in {
       dbHandler.run {
-        TezosMetadataOperations.makeAttributesList("blocks")
+        TezosPlatformDiscoveryOperations.makeAttributesList("blocks")
       }.futureValue shouldBe
         List(
           Attributes("level", "Level", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
@@ -129,7 +129,7 @@ class TezosMetadataOperationsTest
 
     "return list of attributes of operations" in {
       dbHandler.run {
-        TezosMetadataOperations.makeAttributesList("operations")
+        TezosPlatformDiscoveryOperations.makeAttributesList("operations")
       }.futureValue shouldBe
         List(
           Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
@@ -152,7 +152,7 @@ class TezosMetadataOperationsTest
 
     "return list of attributes of operation groups" in {
       dbHandler.run {
-        TezosMetadataOperations.makeAttributesList("operation_groups")
+        TezosPlatformDiscoveryOperations.makeAttributesList("operation_groups")
       }.futureValue shouldBe
         List(
           Attributes("protocol", "Protocol", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
@@ -166,7 +166,7 @@ class TezosMetadataOperationsTest
 
     "return empty list for non existing table" in {
       dbHandler.run {
-        TezosMetadataOperations.makeAttributesList("nonExisting")
+        TezosPlatformDiscoveryOperations.makeAttributesList("nonExisting")
       }.futureValue shouldBe List.empty
     }
   }
@@ -178,7 +178,7 @@ class TezosMetadataOperationsTest
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue shouldBe List("example1")
     }
 
@@ -189,7 +189,7 @@ class TezosMetadataOperationsTest
 
       intercept[NoSuchElementException] {
         throw dbHandler.run(
-          TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "medium", None)
+          TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
         ).failed.futureValue
       }
     }
@@ -203,7 +203,7 @@ class TezosMetadataOperationsTest
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
       ).futureValue shouldBe List.empty
 
       dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
@@ -216,32 +216,32 @@ class TezosMetadataOperationsTest
       )
 
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List.empty
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue shouldBe List("example1", "example2")
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
       ).futureValue shouldBe List("example1", "example2")
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
       ).futureValue shouldBe List("example1", "example2")
       dbHandler.run(
-        TezosMetadataOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List("example1")
 
     }
 
     "should validate correctly fields" in {
-      TezosMetadataOperations.areFieldsValid("fees", List("low", "medium", "high", "timestamp", "kind"), List.empty) shouldBe true
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "high", "timestamp", "kind"), List.empty) shouldBe true
     }
     "should validate correctly fields when only some of them are selected" in {
-      TezosMetadataOperations.areFieldsValid("fees", List("low", "medium", "kind"), List.empty) shouldBe true
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind"), List.empty) shouldBe true
     }
     "should return false when there will be field not existing in the DB" in {
-      TezosMetadataOperations.areFieldsValid("fees", List("low", "medium", "kind", "WRONG"), List.empty) shouldBe false
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind", "WRONG"), List.empty) shouldBe false
     }
 
   }
