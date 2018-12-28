@@ -2,9 +2,9 @@ package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.util.RouteHandling
@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: Config)(implicit ec: ExecutionContext): Data = new Data(config, DataPlatform())
+  def apply(config: PlatformsConfiguration)(implicit ec: ExecutionContext): Data = new Data(config, DataPlatform())
 }
 
 /**
@@ -22,7 +22,7 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: Config, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
+class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with RouteHandling with JacksonSupport {
 
   val route: Route =

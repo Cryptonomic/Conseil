@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 

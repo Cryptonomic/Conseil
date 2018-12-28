@@ -3,13 +3,13 @@ package tech.cryptonomic.conseil.tezos
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.typesafe.config.ConfigFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
+import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
 import tech.cryptonomic.conseil.routes.Data
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -80,19 +80,11 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   }
 
   val fakeQPP: DataPlatform = new DataPlatform(Map("tezos" -> fakeQPO))
-  val cfg = ConfigFactory.parseString(
-    """
-      | platforms.tezos : {
-      |  alphanet: {
-      |    node: {
-      |      protocol: "http",
-      |      hostname: "localhost",
-      |      port: 8732
-      |      pathPrefix: ""
-      |    }
-      |  }
-      | }
-    """.stripMargin)
+  val cfg = PlatformsConfiguration(
+    platforms = Map(
+      Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+    )
+  )
   val route: Route = new Data(cfg, fakeQPP)(ec).route
 
   "Query protocol" should {

@@ -11,7 +11,6 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.util.SecurityUtil
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -49,11 +48,11 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         } ~ pathPrefix("v2") {
           logRequest("Metadata Route", Logging.DebugLevel) {
             pathPrefix("metadata") {
-              PlatformDiscovery(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+              PlatformDiscovery(platforms)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
             }
           } ~ logRequest("Data Route", Logging.DebugLevel) {
             pathPrefix("data") {
-              Data(conf)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+              Data(platforms)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
             }
           }
         }

@@ -3,14 +3,12 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
-import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
-import tech.cryptonomic.conseil.tezos.Tables.{OperationGroupsRow, OperationsRow}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountsWithBlockHashAndLevel, Block, BlockHash}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountId, BlockAccounts, Block, BlockHash, BlockReference}
+import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
-import tech.cryptonomic.conseil.util.DatabaseUtil.{concatenateSqlActions, insertValuesIntoSqlAction, getMap, SqlActionHelper}
+import tech.cryptonomic.conseil.util.DatabaseUtil.{SqlActionHelper, concatenateSqlActions, getMap, insertValuesIntoSqlAction}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext

@@ -3,14 +3,12 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.{ScalaFutures, IntegrationPatience}
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
-import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
+import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.duration._
@@ -27,9 +25,9 @@ class TezosPlatformDiscoveryOperationsTest
     with LazyLogging {
 
   import slick.jdbc.PostgresProfile.api._
-  import scala.concurrent.ExecutionContext.Implicits.global
-  import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig._
   import tech.cryptonomic.conseil.config.Platforms._
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   "getNetworks" should {
     "return list with one element" in {
@@ -39,7 +37,7 @@ class TezosPlatformDiscoveryOperationsTest
         )
       )
 
-      PlatformDiscoveryOperations.getNetworks(config) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      ConfigUtil.getNetworks(config, "tezos") shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
 
     "return two networks" in {
@@ -57,7 +55,7 @@ class TezosPlatformDiscoveryOperationsTest
           )
         )
       )
-      PlatformDiscoveryOperations.getNetworks(config) should have size 2
+      ConfigUtil.getNetworks(config, "tezos") should have size 2
     }
   }
 
@@ -208,13 +206,13 @@ class TezosPlatformDiscoveryOperationsTest
       ).futureValue shouldBe List.empty
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
         TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))

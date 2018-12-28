@@ -2,14 +2,13 @@ package tech.cryptonomic.conseil.util
 
 import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
-import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.server.Directives.{complete, _}
 import akka.http.scaladsl.server.{Directive, Directive0, Directive1, StandardRoute}
-import com.typesafe.config.Config
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
-import akka.http.scaladsl.server.Directives._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -63,8 +62,8 @@ trait RouteHandling {
     }
     complete(response)
   }
-  /** validates pltform and network */
-  protected def validatePlatformAndNetwork(config: Config, platform: String, network: String): Directive0 = {
+  /** validates platform and network */
+  protected def validatePlatformAndNetwork(config: PlatformsConfiguration, platform: String, network: String): Directive0 = {
     getNetworks(config, platform).find(_.network == network) match {
       case Some(_) => pass
       case None => complete(StatusCodes.NotFound)
