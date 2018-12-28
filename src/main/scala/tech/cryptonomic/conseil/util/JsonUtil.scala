@@ -1,8 +1,11 @@
 package tech.cryptonomic.conseil.util
 
+import com.fasterxml.jackson.core.{JsonParser, JsonParseException}
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import scala.annotation.tailrec
+import scala.util.Try
 
 import scala.util.matching.Regex
 
@@ -24,24 +27,42 @@ object JsonUtil {
     // and return the [[JsonString]] within a wrapping effect (e.g. Option, Try, Either)
     private[JsonUtil] def apply(json: String): JsonString = new JsonString(json)
 
+    /**
+      * Creates a [[JsonString]] from a generic String, doing formal validation
+      * @param s the "stringified" json
+      * @return a valid JsonString or a failed [[Try]] with the parsing error
+      */
+    def wrapString(s: String): Try[JsonString] =
+      Try {
+        validate(mapper.getFactory.createParser(s))
+      }.map(_ => JsonString(s))
+
+    //verifies if the parser can proceed till the end
+    @tailrec
+    @throws[JsonParseException]("when content is not parseable, especially for not well-formed json")
+    private def validate(parser: JsonParser): Boolean = {
+      parser.nextToken == null || validate(parser)
+    }
+
     /** A [[JsonString]] representing a json object with no attributes */
     lazy val emptyObject = JsonString("{}")
 
   }
 
-  val mapper = new ObjectMapper() with ScalaObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  private val mapper = new ObjectMapper with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+      .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+      .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
+      .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
 
-  def toJson[T](value: T): JsonString = {
+  def toJson[T](value: T): JsonString =
     JsonString(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value))
-  }
 
-  def toMap[V](json:String)(implicit m: Manifest[V]): Map[String, V] = fromJson[Map[String,V]](json)
+  def toMap[V](json:String)(implicit m: Manifest[V]): Map[String, V] =
+    fromJson[Map[String,V]](json)
 
-  def fromJson[T](json: String)(implicit m : Manifest[T]): T = {
+  def fromJson[T: Manifest](json: String): T =
     mapper.readValue[T](json.filterNot(Character.isISOControl))
-  }
 
   /** extractor object to read accountIds from a json string, based on the hash format*/
   object AccountIds {

@@ -6,3 +6,4 @@ target/
 pgdata*/
 test-postgres-path/*
 .DS_Store
+*.log

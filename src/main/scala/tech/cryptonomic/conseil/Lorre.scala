@@ -2,10 +2,10 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{TezosErrors, FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest, Range}
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -16,56 +16,29 @@ import scala.util.{Failure, Success}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with TezosErrors with LazyLogging {
+object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
-  //keep this import here to make it evident where we spawn our async code
+  //reads all configuration upstart, will only complete if all values are found
+  val config = loadApplicationConfiguration(args)
+
+  //stop if conf is not available
+  config.left.foreach { _ => sys.exit(1) }
+
+  //unsafe call, will only be reached if loadedConf is a Right
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf) = config.merge
+
+  //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
 
   //how long to wait for graceful shutdown of system components
-  private[this] val shutdownWait = 10.seconds
-
-  sealed class Depth()
-  case class Everything() extends Depth
-  case class Newest() extends Depth
-  case class Custom(depth: Int) extends Depth
-
-  case class Config(private val d: Int = -1, networks: Seq[String] = Seq()) {
-    def depth = {
-      d match {
-        case -1 => Everything
-        case 0 => Newest
-        case n: Int => Custom(n)
-      }
-    }
-  }
-
-  val parser = new scopt.OptionParser[Config]("lorre") {
-
-    arg[String]("network").required().action( (x, c) =>
-      c.copy(networks = c.networks :+ x) ).text("which network to use")
-
-    opt[Int]("depth")
-      .action((depth, c) => c.copy(d = depth))
-      .validate(it => if (it >= -1) success else failure("Value <depth> must be >= -1") )
-      .text("how many blocks to synchronize starting with head (use -1 for everything and 0 for only new ones)")
-
-    help("help").text("prints this usage text")
-  }
-
-  private val config: Config = parser.parse(args, Config()).getOrElse(sys.exit(1))
-  private val network = config.networks.head
-  private val depth = config.depth
-
-  private val conf = ConfigFactory.load
-  private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
-  private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
-
-  lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface())
+  val shutdownWait = 10.seconds
 
   //whatever happens we try to clean up
-  sys.addShutdownHook(shutdown)
+  sys.addShutdownHook(shutdown())
+
+  lazy val db = DatabaseUtil.db
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
@@ -86,8 +59,8 @@ object Lorre extends App with TezosErrors with LazyLogging {
       _ <- processTezosBlocks()
       _ <- processTezosAccounts()
       _ <-
-        if (iteration % feeUpdateInterval == 0)
-          FeeOperations.processTezosAverageFees()
+        if (iteration % lorreConf.feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
         else
           noOp
     } yield ()
@@ -105,16 +78,16 @@ object Lorre extends App with TezosErrors with LazyLogging {
 
     Await.result(processResult, atMost = Duration.Inf)
 
-    depth match {
+    tezosConf.depth match {
       case Newest =>
         logger.info("Taking a nap")
-        Thread.sleep(sleepIntervalInSeconds * 1000)
+        Thread.sleep(lorreConf.sleepInterval.toMillis)
         mainLoop(iteration + 1)
       case _ => ()
     }
   }
 
-  logger.info("About to start processing on the {} network", network)
+  logger.info("About to start processing on the {} network", tezosConf.network)
 
   try {mainLoop(0)} finally {shutdown()}
 
@@ -125,10 +98,11 @@ object Lorre extends App with TezosErrors with LazyLogging {
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
 
-    val blocksToSynchronize = depth match {
-      case Everything => tezosNodeOperator.getAllBlocks(network)
-      case Newest => tezosNodeOperator.getBlocksNotInDatabase(network)
-      case Custom(n) => tezosNodeOperator.getLastBlocks(network, n)
+    val blocksToSynchronize = tezosConf.depth match {
+      case Everything => tezosNodeOperator.getAllBlocks(tezosConf.network)
+      case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
+      case Custom(n) => tezosNodeOperator.getLastBlocks(tezosConf.network, n)
+      case Range(levelFrom, levelTo) => tezosNodeOperator.getRange(tezosConf.network, levelFrom, levelTo)
     }
 
     blocksToSynchronize.flatMap {
@@ -165,7 +139,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
 
     val saveAccounts = for {
       checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
-      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(network, checkpoints)
+      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
       accountsStored <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
     } yield checkpoints
 
