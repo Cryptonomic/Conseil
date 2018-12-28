@@ -86,7 +86,7 @@ Following endpoints provide possibility of getting the model of the db for usage
 
 ### Platforms metadata
 
-Request for listing the platforms
+Request for listing the platforms - it depends on the config file:
 ```
 curl -vvv --request GET \
   --url '{{protocol}}://{{hostname}}:{{port}}/v2/metadata/platforms' \
@@ -148,7 +148,7 @@ curl -vvv --request GET \
 
 ### Entities metadata
 
-Provides information about which entities are available fro querying
+Provides information about which entities are available for querying
 
 #### Request for getting all of the supported entities
 ```
