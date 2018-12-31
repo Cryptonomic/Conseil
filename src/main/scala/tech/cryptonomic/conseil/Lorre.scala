@@ -5,7 +5,7 @@ import akka.Done
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest, Range}
+import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec

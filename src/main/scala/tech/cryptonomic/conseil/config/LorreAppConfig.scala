@@ -17,7 +17,6 @@ trait LorreAppConfig {
 
     opt[String]("depth")
       .action((depth, c) => c.copy(d = depth))
-      .validate(it => if (it >= -1) success else failure("Value <depth> must be >= -1") )
       .text("how many blocks to synchronize starting with head (use -1 or all for everything and 0 or new for only new ones)")
 
     help("help").text("prints this usage text")
@@ -31,8 +30,10 @@ trait LorreAppConfig {
 
     def depth: Depth = {
       d match {
-        case Int(-1) || "all" => Everything
-        case Int(0) || "new" => Newest
+        case Int(-1) => Everything
+        case "all" => Everything
+        case Int(0) => Newest
+        case "new" => Newest
         case Int(n) => Custom(n)
       }
     }
