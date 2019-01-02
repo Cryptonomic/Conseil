@@ -30,8 +30,13 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
 
   import Tezos._
 
+  /*
+   * reuse the same context as the one for ApiOperations calls
+   * as long as it doesn't create issues or performance degradation
+   */
   override val asyncApiFiltersExecutionContext: ExecutionContext = apiExecutionContext
 
+  /** Route for the POST query */
   val postRoute: Route =
     post {
       commonRoute { (platform, network) =>
@@ -47,6 +52,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       }
     }
 
+  /** Route for the GET query with query parameters filtering */
   val getRoute: Route =
     get {
       commonRoute {
@@ -108,6 +114,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       }
     }
 
+  /** common route builder with platform and network validation */
   private def commonRoute(routeBuilder: (String, String) => Route): Route =
     pathPrefix(Segment) { platform =>
       pathPrefix(Segment) { network =>
@@ -116,6 +123,5 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
         }
       }
     }
-
 
 }

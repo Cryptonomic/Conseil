@@ -72,6 +72,8 @@ object ApiOperations extends DataOperations {
                      sortBy: Option[String] = None,
                      order: Option[Sorting] = Some(DescendingSort)
                    ) {
+
+    /** transforms Filter into a Query with a set of predicates */
     def toQuery: Query = {
       Query(
         fields = List.empty,
