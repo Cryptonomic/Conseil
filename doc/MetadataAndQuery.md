@@ -8,7 +8,7 @@ Query interface is based on elasticsearch-like model using `GET` request with pa
 
 #### Example query
 ```
-curl -vvv --request GET \
+curl -vvv --request POST \
   --url '{{protocol}}://{{hostname}}:{{port}}/v2/data/{{platform}}/{{network}}/{{entity}}' \
   --header 'Content-Type: application/json' \
   --header 'apiKey: hooman' \
@@ -35,7 +35,7 @@ curl -vvv --request GET \
 
 #### Example query:
 ```
-curl -vvv --request GET \
+curl -vvv --request POST \
   --url 'http://localhost:1337/v2/data/tezos/alphanet/accounts' \
   --header 'Content-Type: application/json' \
   --header 'apiKey: hooman' \

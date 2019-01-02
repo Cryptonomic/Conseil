@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, Query}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -71,7 +71,80 @@ object ApiOperations extends DataOperations {
                      accountDelegates: Set[String] = Set.empty,
                      sortBy: Option[String] = None,
                      order: Option[Sorting] = Some(DescendingSort)
-                   )
+                   ) {
+    def toQuery: Query = {
+      Query(
+        fields = List.empty,
+        predicates = List(
+          Predicate(
+            field = "block_id",
+            operation = OperationType.in,
+            set = blockIDs.toList
+          ),
+          Predicate(
+            field = "level",
+            operation = OperationType.in,
+            set = levels.toList
+          ),
+          Predicate(
+            field = "chain_id",
+            operation = OperationType.in,
+            set = chainIDs.toList
+          ),
+          Predicate(
+            field = "protocol",
+            operation = OperationType.in,
+            set = protocols.toList
+          ),
+          Predicate(
+            field = "level",
+            operation = OperationType.in,
+            set = levels.toList
+          ),
+          Predicate(
+            field = "group_id",
+            operation = OperationType.in,
+            set = operationGroupIDs.toList
+          ),
+          Predicate(
+            field = "source",
+            operation = OperationType.in,
+            set = operationSources.toList
+          ),
+          Predicate(
+            field = "destination",
+            operation = OperationType.in,
+            set = operationDestinations.toList
+          ),
+          Predicate(
+            field = "participant",
+            operation = OperationType.in,
+            set = operationParticipants.toList
+          ),
+          Predicate(
+            field = "kind",
+            operation = OperationType.in,
+            set = operationKinds.toList
+          ),
+          Predicate(
+            field = "account_id",
+            operation = OperationType.in,
+            set = accountIDs.toList
+          ),
+          Predicate(
+            field = "manager",
+            operation = OperationType.in,
+            set = accountManagers.toList
+          ),
+          Predicate(
+            field = "delegate",
+            operation = OperationType.in,
+            set = accountDelegates.toList
+          )
+        ).filter(_.set.nonEmpty)
+      )
+    }
+  }
 
   object Filter {
 

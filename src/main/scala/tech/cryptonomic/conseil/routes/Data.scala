@@ -7,6 +7,8 @@ import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.RouteHandling
 
 import scala.concurrent.ExecutionContext
@@ -25,24 +27,75 @@ object Data {
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with RouteHandling with JacksonSupport {
 
-  val route: Route =
-    get {
-      pathPrefix(Segment) { platform =>
-        pathPrefix(Segment) { network =>
-          validatePlatformAndNetwork(config, platform, network) {
-            pathPrefix(Segment) { ent =>
-              validateEntity(ent) {
-                pathEnd {
-                  entity(as[Query]) { query: Query =>
-                    validateQueryOrBadRequest(query) { validatedQuery =>
-                      completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
-                    }
-                  }
-                }
+  import Tezos._
+
+  val postRoute: Route =
+    post {
+      commonRoute { (platform, network) =>
+        pathPrefix(Segment) { ent =>
+          validateEntity(ent) {
+            entity(as[Query]) { query: Query =>
+              validateQueryOrBadRequest(query) { validatedQuery =>
+                completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
               }
             }
           }
         }
       }
     }
+
+  val getRoute: Route =
+    get {
+      commonRoute {
+        (platform, network) =>
+          gatherConseilFilter { filter =>
+            validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
+              pathPrefix("blocks") {
+                pathEnd {
+                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery))
+                } ~ path("head") {
+                  completeWithJson(ApiOperations.fetchLatestBlock())
+                } ~ path(Segment).as(BlockHash) { blockId =>
+                  complete(
+                    handleNoneAsNotFound(ApiOperations.fetchBlock(blockId))
+                  )
+                }
+              } ~ pathPrefix("accounts") {
+                pathEnd {
+                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery))
+                } ~ path(Segment).as(AccountId) { accountId =>
+                  complete(
+                    handleNoneAsNotFound(ApiOperations.fetchAccount(accountId))
+                  )
+                }
+              } ~ pathPrefix("operation_groups") {
+                pathEnd {
+                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery))
+                } ~ path(Segment) { operationGroupId =>
+                  complete(
+                    handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
+                  )
+                }
+              } ~ pathPrefix("operations") {
+                path("avgFees") {
+                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "fees", filter.toQuery))
+                } ~ pathEnd {
+                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery))
+                }
+              }
+            }
+          }
+
+      }
+    }
+
+  private def commonRoute(routeBuilder: (String, String) => Route): Route =
+    pathPrefix(Segment) { platform =>
+      pathPrefix(Segment) { network =>
+        validatePlatformAndNetwork(config, platform, network) {
+            routeBuilder(platform, network)
+        }
+      }
+    }
+
 }

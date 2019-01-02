@@ -92,7 +92,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     "return a correct response with OK status code" in {
 
       val getRequest = HttpRequest(
-        HttpMethods.GET,
+        HttpMethods.POST,
         uri = "/tezos/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
 
@@ -105,7 +105,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
     "return 400 BadRequest status code for request with missing fields" in {
       val getRequest = HttpRequest(
-        HttpMethods.GET,
+        HttpMethods.POST,
         uri = "/tezos/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, malformedJsonStringRequest))
       getRequest ~> route ~> check {
@@ -115,7 +115,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
     "return 404 NotFound status code for request for the not supported platform" in {
       val getRequest = HttpRequest(
-        HttpMethods.GET,
+        HttpMethods.POST,
         uri = "/notSupportedPlatform/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
       getRequest ~> route ~> check {
