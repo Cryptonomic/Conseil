@@ -85,7 +85,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
     )
   )
-  val route: Route = new Data(cfg, fakeQPP)(ec).route
+  val route: Route = new Data(cfg, fakeQPP)(ec).postRoute
 
   "Query protocol" should {
 
