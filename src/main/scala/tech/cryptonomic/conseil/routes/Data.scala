@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.tezos.ApiOperations
@@ -25,7 +26,7 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with RouteHandling with JacksonSupport {
+  extends LazyLogging with RouteHandling with DatabaseApiFiltering with JacksonSupport {
 
   import Tezos._
 
@@ -52,25 +53,37 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
             validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
               pathPrefix("blocks") {
                 pathEnd {
-                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery))
+                  completeWithJsonOrNotFound(
+                    queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery)
+                  )
                 } ~ path("head") {
-                  completeWithJson(ApiOperations.fetchLatestBlock())
+                  completeWithJson(
+                    ApiOperations.fetchLatestBlock()
+                  )
                 } ~ path(Segment).as(BlockHash) { blockId =>
                   complete(
-                    handleNoneAsNotFound(ApiOperations.fetchBlock(blockId))
+                    handleNoneAsNotFound(
+                      ApiOperations.fetchBlock(blockId)
+                    )
                   )
                 }
               } ~ pathPrefix("accounts") {
                 pathEnd {
-                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery))
+                  completeWithJsonOrNotFound(
+                    queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery)
+                  )
                 } ~ path(Segment).as(AccountId) { accountId =>
                   complete(
-                    handleNoneAsNotFound(ApiOperations.fetchAccount(accountId))
+                    handleNoneAsNotFound(
+                      ApiOperations.fetchAccount(accountId)
+                    )
                   )
                 }
               } ~ pathPrefix("operation_groups") {
                 pathEnd {
-                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery))
+                  completeWithJsonOrNotFound(
+                    queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
+                  )
                 } ~ path(Segment) { operationGroupId =>
                   complete(
                     handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
@@ -78,9 +91,13 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
                 }
               } ~ pathPrefix("operations") {
                 path("avgFees") {
-                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "fees", filter.toQuery))
+                  complete(
+                    handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
+                  )
                 } ~ pathEnd {
-                  completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery))
+                  completeWithJsonOrNotFound(
+                    queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
+                  )
                 }
               }
             }
