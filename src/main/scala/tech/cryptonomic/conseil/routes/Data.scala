@@ -30,6 +30,8 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
 
   import Tezos._
 
+  override val asyncApiFiltersExecutionContext: ExecutionContext = apiExecutionContext
+
   val postRoute: Route =
     post {
       commonRoute { (platform, network) =>
@@ -114,5 +116,6 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
         }
       }
     }
+
 
 }
