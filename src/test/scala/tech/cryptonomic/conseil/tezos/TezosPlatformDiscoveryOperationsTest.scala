@@ -3,19 +3,19 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.duration._
 
 
-class PlatformDiscoveryOperationsTest
+class TezosPlatformDiscoveryOperationsTest
   extends WordSpec
     with InMemoryDatabase
     with MockFactory
@@ -26,51 +26,38 @@ class PlatformDiscoveryOperationsTest
     with LazyLogging {
 
   import slick.jdbc.PostgresProfile.api._
+  import tech.cryptonomic.conseil.config.Platforms._
+
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val sut = new PlatformDiscoveryOperations(ApiOperations(dbHandler))
   "getNetworks" should {
     "return list with one element" in {
-      val cfg = ConfigFactory.parseString(
-        """
-          | platforms.tezos : {
-          |  alphanet: {
-          |    node: {
-          |      protocol: "http",
-          |      hostname: "localhost",
-          |      port: 8732
-          |      pathPrefix: ""
-          |    }
-          |  }
-          | }
-        """.stripMargin)
+      val config = PlatformsConfiguration(
+        platforms = Map(
+          Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+        )
+      )
 
-      NetworkConfigOperations.getNetworks(cfg) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      ConfigUtil.getNetworks(config, "tezos") shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
-    "return two networks" in {
-      val cfg = ConfigFactory.parseString(
-        """
-          |platforms.tezos : {
-          |  alphanet: {
-          |    node: {
-          |      protocol: "http",
-          |      hostname: "localhost",
-          |      port: 8732
-          |      pathPrefix: ""
-          |    }
-          |  }
-          |  alphanet-staging : {
-          |    node: {
-          |      protocol: "https"
-          |      hostname: "nautilus.cryptonomic.tech",
-          |      port: 8732
-          |      pathPrefix: "tezos/alphanet/"
-          |    }
-          |  }
-          |}
-        """.stripMargin)
 
-      NetworkConfigOperations.getNetworks(cfg).size shouldBe 2
+    "return two networks" in {
+      val config = PlatformsConfiguration(
+        platforms = Map(
+          Tezos -> List(
+            TezosConfiguration(
+              "alphanet",
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
+            ),
+            TezosConfiguration(
+              "alphanet-staging",
+              TezosNodeConfiguration(protocol = "https", hostname = "nautilus.cryptonomic.tech", port = 8732, pathPrefix = "tezos/alphanet/")
+            )
+          )
+        )
+      )
+      ConfigUtil.getNetworks(config, "tezos") should have size 2
     }
   }
 
@@ -233,6 +220,16 @@ class PlatformDiscoveryOperationsTest
         sut.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List("example1")
 
+    }
+
+    "should validate correctly fields" in {
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "high", "timestamp", "kind"), List.empty) shouldBe true
+    }
+    "should validate correctly fields when only some of them are selected" in {
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind"), List.empty) shouldBe true
+    }
+    "should return false when there will be field not existing in the DB" in {
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind", "WRONG"), List.empty) shouldBe false
     }
 
   }

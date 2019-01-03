@@ -139,6 +139,15 @@ CREATE TABLE public.operations (
     pkh character varying
 );
 
+--
+-- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounts_checkpoint (
+    account_id character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer DEFAULT '-1'::integer NOT NULL
+);
 
 --
 -- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: public; Owner: -
@@ -263,6 +272,12 @@ CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
+--
+-- Name: accounts checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounts_checkpoint
+    ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 --
 -- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -

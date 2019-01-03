@@ -2,6 +2,7 @@
 Query API for the Tezos blockchain
 
 [![Build Status](https://travis-ci.org/Cryptonomic/Conseil.svg?branch=master)](https://travis-ci.org/Cryptonomic/Conseil)
+[![Coverage Status](https://coveralls.io/repos/github/Cryptonomic/Conseil/badge.svg?branch=master)](https://coveralls.io/github/Cryptonomic/Conseil?branch=master)
 
 ## Running Conseil
 
@@ -9,7 +10,7 @@ Conseil has two entry points:
 - `src/main/tech/cryptonomic/Conseil/Conseil.scala` runs a server exposing a RESTful API.
 - `src/main/tech/cryptonomic/Conseil/Lorre.scala` is a background process that runs on loop and writes Tezos blockchain data to database.
 
-### Warning 
+### Warning
 
 The Conseil server should be run behind a proxy such as Nginx with TLS enabled through something like LetsEncrypt. Futhermore, [HTTP Strict Transport Security](https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security) and [Certification Authority Authorization](https://en.wikipedia.org/wiki/DNS_Certification_Authority_Authorization) are highly recommended!
 
@@ -32,17 +33,17 @@ Deployment
 Run the following command from the root directory of the repository:
 
 `sbt compile`
-  
+
 #### Package
 
 Run the following command from the root directory of the repository:
- 
+
 `sbt assembly`
 
 #### Deploy
 
 After the package step, check the SBT output for the path of the generated fat JAR file. Copy this file to the desired deployment area.
-  
+
 ### Running Locally
 
 (network is any field defined under platforms.<blockchain> in either application.conf. It is an object with the protocol, hostname, port, and pathPrefix of where your node is hosted. You can manually add your own in a local config file, as well)
@@ -75,7 +76,7 @@ Cryptonomic uses Postgres for all its Conseil deployments. Once a Postgres datab
 Or you can use the predefined tasks which are custom-tailored with VM launch configuration that's best suited for the actual task:
 - for Conseil:
 `sbt -Dconfig.file="{path to custom config file}" runConseil`
-- for Lorre 
+- for Lorre
 `sbt -Dconfig.file="{path to custom config file}" "runLorre alphanet"`
 - for schema generation
 `sbt -Dconfig.file="{path to custom config file}" genSchema`
@@ -85,7 +86,7 @@ Or you can use the predefined tasks which are custom-tailored with VM launch con
 The application expects to access a postgres database instance to run.
 
 #### Using a Docker image for Postgres
-A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.  
+A `docker-compose.yml` file is included in the `root` directory that will launch a docker container with the database.
 You need to customize the credentials in the YAML file or in your custom configuration [see the following section]
 
 To run the database, from the project root
@@ -98,7 +99,7 @@ To stop the database
 ```bash
 docker-compose down
 ```
-This will stop and remove the container, but will keep the db data in the `pgdata` project folder, 
+This will stop and remove the container, but will keep the db data in the `pgdata` project folder,
 so you can restart the container without losing any information stored.
 
 To clean and restart the db from scratch, simply remove all `pgdata` content while the container is _not running_.
@@ -119,7 +120,7 @@ See 'Custom Configurations' section for information about custom config files.
 
 ### Custom configurations
 
-Conseil uses [Typesafe Config](https://github.com/lightbend/config) and [Slick](http://slick.lightbend.com/doc/3.2.0/database.html) for managing its configurations. Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which inherits from `src/main/resources/application.conf` for production or `src/main/resources/developer.conf` for local development. 
+Conseil uses [Typesafe Config](https://github.com/lightbend/config) and [Slick](http://slick.lightbend.com/doc/3.2.0/database.html) for managing its configurations. Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which inherits from `src/main/resources/application.conf` for production or `src/main/resources/developer.conf` for local development.
 
 Here is an example showing a default configuration used with custom database and Tezos node settings:
 
@@ -150,3 +151,6 @@ platforms: {
 ```
 
 Save this file in <path to Conseil>/Conseil/src/main/resources
+
+## Publishing the artifacts
+If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)

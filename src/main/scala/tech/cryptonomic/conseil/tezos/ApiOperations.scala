@@ -1,7 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.generic.chain.DataOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
@@ -10,8 +13,10 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database.
   */
+object ApiOperations extends DataOperations {
 
-object ApiOperations {
+  lazy val dbHandle: Database = DatabaseUtil.db
+
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
   case object AscendingSort extends Sorting
@@ -50,22 +55,97 @@ object ApiOperations {
     * @param order                  Sort items ascending or descending
     */
   final case class Filter(
-    limit: Option[Int] = Some(defaultLimit),
-    blockIDs: Set[String] = Set.empty,
-    levels: Set[Int] = Set.empty,
-    chainIDs: Set[String] = Set.empty,
-    protocols: Set[String] = Set.empty,
-    operationGroupIDs: Set[String] = Set.empty,
-    operationSources: Set[String] = Set.empty,
-    operationDestinations: Set[String] = Set.empty,
-    operationParticipants: Set[String] = Set.empty,
-    operationKinds: Set[String] = Set.empty,
-    accountIDs: Set[String] = Set.empty,
-    accountManagers: Set[String] = Set.empty,
-    accountDelegates: Set[String] = Set.empty,
-    sortBy: Option[String] = None,
-    order: Option[Sorting] = Some(DescendingSort)
-  )
+                     limit: Option[Int] = Some(defaultLimit),
+                     blockIDs: Set[String] = Set.empty,
+                     levels: Set[Int] = Set.empty,
+                     chainIDs: Set[String] = Set.empty,
+                     protocols: Set[String] = Set.empty,
+                     operationGroupIDs: Set[String] = Set.empty,
+                     operationSources: Set[String] = Set.empty,
+                     operationDestinations: Set[String] = Set.empty,
+                     operationParticipants: Set[String] = Set.empty,
+                     operationKinds: Set[String] = Set.empty,
+                     accountIDs: Set[String] = Set.empty,
+                     accountManagers: Set[String] = Set.empty,
+                     accountDelegates: Set[String] = Set.empty,
+                     sortBy: Option[String] = None,
+                     order: Option[Sorting] = Some(DescendingSort)
+                   ) {
+
+    /** transforms Filter into a Query with a set of predicates */
+    def toQuery: Query = {
+      Query(
+        fields = List.empty,
+        predicates = List(
+          Predicate(
+            field = "block_id",
+            operation = OperationType.in,
+            set = blockIDs.toList
+          ),
+          Predicate(
+            field = "level",
+            operation = OperationType.in,
+            set = levels.toList
+          ),
+          Predicate(
+            field = "chain_id",
+            operation = OperationType.in,
+            set = chainIDs.toList
+          ),
+          Predicate(
+            field = "protocol",
+            operation = OperationType.in,
+            set = protocols.toList
+          ),
+          Predicate(
+            field = "level",
+            operation = OperationType.in,
+            set = levels.toList
+          ),
+          Predicate(
+            field = "group_id",
+            operation = OperationType.in,
+            set = operationGroupIDs.toList
+          ),
+          Predicate(
+            field = "source",
+            operation = OperationType.in,
+            set = operationSources.toList
+          ),
+          Predicate(
+            field = "destination",
+            operation = OperationType.in,
+            set = operationDestinations.toList
+          ),
+          Predicate(
+            field = "participant",
+            operation = OperationType.in,
+            set = operationParticipants.toList
+          ),
+          Predicate(
+            field = "kind",
+            operation = OperationType.in,
+            set = operationKinds.toList
+          ),
+          Predicate(
+            field = "account_id",
+            operation = OperationType.in,
+            set = accountIDs.toList
+          ),
+          Predicate(
+            field = "manager",
+            operation = OperationType.in,
+            set = accountManagers.toList
+          ),
+          Predicate(
+            field = "delegate",
+            operation = OperationType.in,
+            set = accountDelegates.toList
+          )
+        ).filter(_.set.nonEmpty)
+      )
+    }
+  }
 
   object Filter {
 
@@ -173,7 +253,7 @@ class ApiOperations(dbHandle: Database) {
   /**
     * Fetch a given operation group
     *
-    * Running the returned operation will fail with [[NoSuchElementException]] if no block is found on the db
+    * Running the returned operation will fail with `NoSuchElementException` if no block is found on the db
     *
     * @param operationGroupHash Operation group hash
     * @param ec ExecutionContext needed to invoke the data fetching using async results
@@ -310,5 +390,25 @@ class ApiOperations(dbHandle: Database) {
     }
   }
 
+  /** Executes the query with given predicates
+    *
+    * @param  tableName name of the table which we query
+    * @param  query     query predicates and fields
+    * @return query result as a map
+    * */
+  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
+    if (areFieldsValid(tableName, query.fields, query.predicates.map(_.field))) {
+      runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizePredicates(query.predicates)))
+    } else {
+      Future.successful(List.empty)
+    }
+  }
+
+  /** Sanitizes predicate values so query is safe from SQL injection */
+  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
+    predicates.map { predicate =>
+      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
+    }
+  }
 }
 

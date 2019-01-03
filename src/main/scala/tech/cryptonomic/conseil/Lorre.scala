@@ -3,11 +3,13 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block}
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.tezos.{TezosErrors, FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.config.LorreAppConfig
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -18,33 +20,29 @@ import scala.util.{Failure, Success}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with TezosErrors with LazyLogging {
+object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
-  //keep this import here to make it evident where we spawn our async code
+  //reads all configuration upstart, will only complete if all values are found
+  val config = loadApplicationConfiguration(args)
+
+  //stop if conf is not available
+  config.left.foreach { _ => sys.exit(1) }
+
+  //unsafe call, will only be reached if loadedConf is a Right
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf) = config.merge
+
+  //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
 
   //how long to wait for graceful shutdown of system components
-  private[this] val shutdownWait = 10.seconds
-
-  private val (platform, network) =
-    if (args.length > 1) (args(0), args(1))
-    else {
-      Console.err.println("""
-      | No tezos platform and/or network was provided to connect to
-      | Please provide a valid platform/network as an argument to the command line""".stripMargin)
-      sys.exit(1)
-    }
-
-  private val conf = ConfigFactory.load
-  private val sleepIntervalInSeconds = conf.getInt("lorre.sleepIntervalInSeconds")
-  private val feeUpdateInterval = conf.getInt("lorre.feeUpdateInterval")
-
-  lazy val db = Database.forConfig(s"databases.$platform.$network.conseildb")
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(), ApiOperations(db))
+  val shutdownWait = 10.seconds
 
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
+
+  lazy val db = Database.forConfig(s"databases.$platform.$network.conseildb")
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
@@ -53,6 +51,7 @@ object Lorre extends App with TezosErrors with LazyLogging {
       tezosNodeOperator.node
         .shutdown()
         .flatMap(ShutdownComplete => system.terminate())
+
     Await.result(nodeShutdown, shutdownWait)
     logger.info("All things closed")
   }
@@ -61,54 +60,63 @@ object Lorre extends App with TezosErrors with LazyLogging {
   def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
-      accountIds <- processTezosBlocks()
-      _ <- processTezosAccounts(accountIds)
+      _ <- processTezosBlocks()
+      _ <- processTezosAccounts()
       _ <-
-        if (iteration % feeUpdateInterval == 0)
-          FeeOperations.processTezosAverageFees()
+        if (iteration % lorreConf.feeUpdateInterval == 0)
+          FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
         else
           noOp
     } yield ()
 
-    /* Will stop Lorre on failure from account processing, unless overriden by the environment to keep on running.
-     * Temporarily used to avoid losing accounts updates on error, with the expectation that ops will do cleanup
-     * Onging work is planned to store the list of touched accounts betweem blokcs and accounts fetching, hence,
-     * on failure, the next cycle will resume processing pending account loads
+    /* Won't stop Lorre on failure from account processing, unless overriden by the environment to halt.
+     * Can be used to investigate issues on consistently failing account processing
      */
     val processResult =
-      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "true" || ignore == "yes"))
-        processing
-      else
+      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
         processing.recover {
           case f @ AccountsProcessingFailed(_, _) => throw f
           case _ => () //swallowed
         }
+      else processing
 
     Await.result(processResult, atMost = Duration.Inf)
     logger.info("Taking a nap")
-    Thread.sleep(sleepIntervalInSeconds * 1000)
+    Thread.sleep(lorreConf.sleepInterval.toMillis)
     mainLoop(iteration + 1)
   }
 
-  logger.info("About to start processing on the {} network", network)
+  logger.info("""
+    | =========================***=========================
+    |  Lorre v.{}
+    |  {}
+    | =========================***=========================
+    |
+    |  About to start processing data on the {} network
+    |""".stripMargin,
+    BuildInfo.version,
+    BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
+    tezosConf.network
+  )
 
   try {mainLoop(0)} finally {shutdown()}
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
+    * Additionally stores account references that needs updating, too
     */
-  def processTezosBlocks(): Future[Map[Block, List[AccountId]]] = {
+  def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
+    tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network, followFork = true).flatMap {
       blocksWithAccounts =>
-        //ignore the account ids for storage
-        val blocks= blocksWithAccounts.map { case (block, _) => block }
-        db.run(TezosDb.writeBlocks(blocks))
+        db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))
           .andThen {
-            case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
-            case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
+            case Success(accountsCount) =>
+              logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
+            case Failure(e) =>
+              logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
           }
-          .map(_ => blocksWithAccounts.toMap)
+          .map(_ => Done)
     }.andThen {
       case Failure(e) =>
         logger.error("Could not fetch blocks from client", e)
@@ -116,21 +124,34 @@ object Lorre extends App with TezosErrors with LazyLogging {
   }
 
   /**
-    * Fetches and stores all accounts from the latest block stored in the database.
+    * Fetches and stores all accounts from the latest blocks stored in the database.
     *
     * NOTE: as the call is now async, it won't stop the application on error as before, so
     * we should evaluate how to handle failed processing
     */
-  def processTezosAccounts(accountsInvolved: Map[Block, List[AccountId]]): Future[Done] = {
+  def processTezosAccounts(): Future[Done] = {
     logger.info("Processing latest Tezos accounts data..")
-    tezosNodeOperator.getAccountsForBlocks(network, accountsInvolved).flatMap {
-      case accountsInfo =>
-        db.run(TezosDb.writeAccounts(accountsInfo)).andThen {
-          case Success(rows) =>
-            logger.info("{} accounts were touched on the database.", rows)
-          case Failure(e) =>
-            logger.error("Could not write accounts to the database")
-        }
+
+    def logOutcome[A](outcome: Future[A]): Future[A] = outcome.andThen {
+      case Success(rows) =>
+        logger.info("{} accounts were touched on the database.", rows)
+      case Failure(e) =>
+        logger.error("Could not write accounts to the database")
+    }
+
+    val saveAccounts = for {
+      checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
+      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
+      accountsStored <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
+    } yield checkpoints
+
+    saveAccounts.andThen {
+      //additional cleanup, that can fail with no downsides
+      case Success(checkpoints) =>
+        val processed = Some(checkpoints.keySet)
+        db.run(TezosDb.cleanAccountsCheckpoint(processed))
+      case _ =>
+        ()
     }.transform {
       case Failure(e) =>
         val error = "I failed to fetch accounts from client and update them"
