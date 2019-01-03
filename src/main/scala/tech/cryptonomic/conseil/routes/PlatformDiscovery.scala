@@ -4,9 +4,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryOperations
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
-import tech.cryptonomic.conseil.util.RouteHandling
+import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 
 import scala.concurrent.ExecutionContext
 
@@ -17,30 +17,41 @@ object PlatformDiscovery {
 
 /**
   * Platform discovery routes.
-  * @param config configuration object
+  *
+  * @param config              configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
 class PlatformDiscovery(config: PlatformsConfiguration)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with RouteHandling {
   val route: Route =
     get {
-      pathPrefix("networks") {
-        pathEnd {
-          complete(toJson(PlatformDiscoveryOperations.getNetworks(config)))
-        } ~ pathPrefix(Segment) { network =>
-          pathPrefix("entities") {
+      pathPrefix("platforms") {
+        complete(toJson(ConfigUtil.getPlatforms(config)))
+      } ~
+        pathPrefix(Segment) { platform =>
+          pathPrefix("networks") {
             pathEnd {
-              completeWithJson(PlatformDiscoveryOperations.getEntities(network))
-            } ~ pathPrefix(Segment) { entity =>
-              pathPrefix("attributes") {
+              complete(toJson(ConfigUtil.getNetworks(config, platform)))
+            }
+          } ~ pathPrefix(Segment) { network =>
+            validatePlatformAndNetwork(config, platform, network) {
+              pathPrefix("entities") {
                 pathEnd {
-                  completeWithJson(PlatformDiscoveryOperations.getTableAttributes(entity))
-                } ~ pathPrefix(Segment) { attribute =>
-                  pathEnd {
-                    completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute))
-                  } ~ pathPrefix("filter") {
-                    pathPrefix(Segment) { filter =>
+                  completeWithJson(TezosPlatformDiscoveryOperations.getEntities(network))
+                }
+              } ~ pathPrefix(Segment) { entity =>
+                validateEntity(entity) {
+                  pathPrefix("attributes") {
+                    pathEnd {
+                      completeWithJson(TezosPlatformDiscoveryOperations.getTableAttributes(entity))
+                    }
+                  } ~ pathPrefix(Segment) { attribute =>
+                    validateAttributes(entity, attribute) {
                       pathEnd {
-                        completeWithJson(PlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
+                        completeWithJson(TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute))
+                      } ~ pathPrefix(Segment) { filter =>
+                        pathEnd {
+                          completeWithJson(TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)))
+                        }
                       }
                     }
                   }
@@ -49,6 +60,5 @@ class PlatformDiscovery(config: PlatformsConfiguration)(implicit apiExecutionCon
             }
           }
         }
-      }
     }
 }

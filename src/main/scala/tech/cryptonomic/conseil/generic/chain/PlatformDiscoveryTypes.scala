@@ -1,10 +1,10 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.generic.chain
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import slick.ast.{OptionType, Type}
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.DataType.DataType
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.KeyType.KeyType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.KeyType
 
 /**
   * Classes used for Platform routes
@@ -16,6 +16,9 @@ object PlatformDiscoveryTypes {
 
   /** Class required for KeyType enum serialization */
   class KeyTypeRef extends TypeReference[KeyType.type]
+
+  /** Case class representing network */
+  final case class Platform(name: String, displayName: String)
 
   /** Case class representing network */
   final case class Network(name: String, displayName: String, platform: String, network: String)

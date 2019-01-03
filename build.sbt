@@ -21,6 +21,7 @@ libraryDependencies  ++=  Seq(
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
+  "de.heikoseeberger"               %% "akka-http-jackson"         % "1.22.0",
   "com.typesafe.slick"              %% "slick"                     % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-hikaricp"            % slickVersion exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-codegen"             % slickVersion,

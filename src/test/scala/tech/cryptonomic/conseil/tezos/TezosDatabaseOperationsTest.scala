@@ -12,6 +12,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
 
 import scala.util.Random
 
@@ -671,6 +672,481 @@ class TezosDatabaseOperationsTest
       val exists = dbHandler.run(populateAndTest.transactionally).futureValue
       exists shouldBe false
 
+    }
+
+    val blocksTmp = List(
+      BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",Some("context0"),Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+      BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
+    )
+
+    "get map from a block table" in {
+
+      val columns = List("level", "proto", "protocol", "hash")
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+      )
+    }
+
+    "get map from a block table with inverse predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = true
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with multiple predicates" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = true
+        ),
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("aQeGrbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get empty map from empty table" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List.empty
+
+      val populateAndTest = for {
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    "get map from a block table with eq predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.eq,
+          set = List("aQeGrbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with eq predicate on numeric type" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.eq,
+          set = List(1),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+
+    "get map from a block table with like predicate when starts with pattern" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.like,
+          set = List("aQeGr"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with like predicate when ends with pattern" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.like,
+          set = List("rbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with like predicate when pattern is in the middle" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.like,
+          set = List("rbX"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with less than predicate when one element fulfils it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.lt,
+          set = List(1),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+      )
+    }
+
+    "get empty map from a block table with less than predicate when no elements fulfil it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.lt,
+          set = List(0),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    "get map from a block table with between predicate when two element fulfill it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.between,
+          set = List(-10,10),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with between predicate when one element fulfill it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.between,
+          set = List(1,10),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+    "get map from a block table with datetime field" in {
+      val columns = List("level", "proto", "protocol", "hash", "timestamp")
+      val predicates = List(
+        Predicate(
+          field = "timestamp",
+          operation = OperationType.gt,
+          set = List(new Timestamp(0)),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG", "timestamp" -> new Timestamp(1))
+      )
+    }
+    "get map from a block table with startsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.startsWith,
+          set = List("R0Np"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+      )
+    }
+    "get empty map from a block table with startsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.startsWith,
+          set = List("YZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+    "get map from a block table with endsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.endsWith,
+          set = List("ZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+      )
+    }
+    "get empty map from a block table with endsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.endsWith,
+          set = List("R0NpYZ"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    val accRow = AccountsRow(
+      accountId = 1.toString,
+      blockId = "R0NpYZuUeF",
+      blockLevel = 0,
+      manager = "manager",
+      spendable = true,
+      delegateSetable = false,
+      delegateValue = None,
+      counter = 0,
+      script = None,
+      balance = BigDecimal(1.45)
+    )
+    "get one element when correctly rounded value" in {
+      val columns = List("account_id", "balance")
+      val predicates = List(
+        Predicate(
+          field = "balance",
+          operation = OperationType.eq,
+          set = List(1.5),
+          inverse = false,
+          precision = Some(1)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        _ <- Tables.Accounts += accRow
+        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue.map(_.mapValues(_.toString))
+      result shouldBe List(Map("account_id" -> "1", "balance" -> "1.45"))
+    }
+    "get empty list of elements when correctly rounded value does not match" in {
+      val columns = List("account_id", "balance")
+      val predicates = List(
+        Predicate(
+          field = "balance",
+          operation = OperationType.eq,
+          set = List(1.5),
+          inverse = false,
+          precision = Some(2)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        _ <- Tables.Accounts += accRow
+        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    "return the same results for the same query" in {
+      import tech.cryptonomic.conseil.util.DatabaseUtil._
+      val columns = List("level", "proto", "protocol", "hash")
+      val tableName = Tables.Blocks.baseTableRow.tableName
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        generatedQuery <- sut.makeQuery(tableName, columns).as[Map[String, Any]]
+      } yield generatedQuery
+
+      val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
+      val expectedQueryResult = dbHandler.run(
+        sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true""".as[Map[String, Any]]
+      ).futureValue
+      generatedQueryResult shouldBe expectedQueryResult
     }
   }
 
