@@ -5,7 +5,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
-import tech.cryptonomic.conseil.config.{SodiumConfiguration, BatchFetchConfiguration}
+import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
