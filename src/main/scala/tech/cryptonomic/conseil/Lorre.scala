@@ -88,7 +88,18 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     }
   }
 
-  logger.info("About to start processing on the {} network", tezosConf.network)
+  logger.info("""
+    | =========================***=========================
+    |  Lorre v.{}
+    |  {}
+    | =========================***=========================
+    |
+    |  About to start processing data on the {} network
+    |""".stripMargin,
+    BuildInfo.version,
+    BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
+    tezosConf.network
+  )
 
   try {mainLoop(0)} finally {shutdown()}
 

@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.util
 
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.util.Try
 import tech.cryptonomic.conseil.config.Platforms._
@@ -9,13 +10,42 @@ import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, Newest}
 
 object ConfigUtil {
 
+  /**
+    * Extracts networks from config file
+    *
+    * @param  config a mapping from platform to all available networks configurations
+    * @return list of networks from configuration
+    */
+  def getNetworks(config: PlatformsConfiguration, platformName: String): List[Network] =
+    for {
+      (platform, configs) <- config.platforms.toList
+      if platform == BlockchainPlatform.fromString(platformName)
+      networkConfiguration <- configs
+    } yield {
+      val network = networkConfiguration.network
+      Network(network, network.capitalize, platform.name, network)
+    }
+
+  /**
+    * Extracts platforms from config file
+    *
+    * @param  config configuration object
+    * @return list of platforms from configuration
+    */
+  def getPlatforms(config: PlatformsConfiguration): List[Platform] = {
+    for {
+      (platform, _) <- config.platforms.toList
+    } yield Platform(platform.name, platform.name.capitalize)
+  }
+
   object Pureconfig extends LazyLogging {
-    import pureconfig.{ConfigReader, ConfigFieldMapping, CamelCase}
     import pureconfig.error.{ConfigReaderFailures, ExceptionThrown, FailureReason, ThrowableFailure}
-    import pureconfig.generic.auto._
     import pureconfig.generic.ProductHint
-    import scala.collection.mutable
+    import pureconfig.generic.auto._
+    import pureconfig.{CamelCase, ConfigFieldMapping, ConfigReader}
+
     import scala.collection.JavaConverters._
+    import scala.collection.mutable
 
     /** converts multiple read failures to a single, generic, FailureReason */
     val reasonFromReadFailures = (failures: ConfigReaderFailures) =>
@@ -119,7 +149,7 @@ object ConfigUtil {
             ).toEither
             .left.map{
               //wraps the error into pureconfig's one
-              t => ConfigReaderFailures(new ThrowableFailure(t, None))
+              t => ConfigReaderFailures(ThrowableFailure(t, None))
             }
 
         //compose the configuration reading outcomes

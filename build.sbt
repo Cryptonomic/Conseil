@@ -21,6 +21,7 @@ libraryDependencies  ++=  Seq(
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
+  "de.heikoseeberger"               %% "akka-http-jackson"         % "1.22.0",
   "com.typesafe.slick"              %% "slick"                     % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-hikaricp"            % slickVersion exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-codegen"             % slickVersion,
@@ -68,7 +69,7 @@ fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
 
 //add build information as an object in code
 enablePlugins(BuildInfoPlugin)
-buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, git.gitHeadCommit)
 buildInfoPackage := "tech.cryptonomic.conseil"
 
 //uses git tags to generate the project version
@@ -101,21 +102,27 @@ git.gitTagToVersionNumber := { tag: String =>
 lazy val prepareReleaseTag = taskKey[String]("Use the current version to define a git-tag for a new release")
 prepareReleaseTag := Versioning.prepareReleaseTagDef.value
 
-/* A command to call the "git tag" commands (from sbt-git) with custom args.
- * Allows any automated environment (e.g. jenkins, travis) to call
- * "sbt gitTag" when a new release has been just published, thus bumping the versioning
- * tag and pushing to git
- * In turn, sbt will pick it up for the new version definition
- */
-lazy val gitTagCommand = Command.command("gitTag") { state =>
-  val extracted = Project.extract(state)
-  val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
-  //we might want to check out only for non-snapshots?
-  println(s"About to tag the new release as '$tag'")
-  //we might want to read the message from the env or from a local file
-  val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
-  Command.process(command, state2)
-}
+//read the command details for a description
+lazy val gitTagCommand =
+  Command.command(
+    name = "gitTag",
+    briefHelp = "will run the git tag command based on conseil versioning policy",
+    detail =
+    """ A command to call the "git tag" commands (from sbt-git) with custom args.
+      | Allows any automated environment (e.g. jenkins, travis) to call
+      | "sbt gitTag" when a new release has been just published, bumping the versioning tag,
+      | ready for pushing to the git repo.
+      | In turn, sbt will pick the newly-minted tag for the new version definition.
+    """.stripMargin) {
+      state =>
+        val extracted = Project.extract(state)
+        val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
+        //we might want to check out only for non-snapshots?
+        println(s"About to tag the new release as '$tag'")
+        //we might want to read the message from the env or from a local file
+        val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
+        Command.process(command, state2)
+  }
 
 ThisBuild / commands += gitTagCommand
 

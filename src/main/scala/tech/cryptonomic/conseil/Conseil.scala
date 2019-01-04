@@ -30,12 +30,17 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
+      val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
+      lazy val tezos = Tezos(tezosDispatcher)
+      lazy val platformDiscovery = PlatformDiscovery(platforms)(tezosDispatcher)
+      lazy val data = Data(platforms)(tezosDispatcher)
+
       val route = cors() {
         enableCORS {
           validateApiKey { _ =>
             logRequest("Conseil", Logging.DebugLevel) {
               pathPrefix("tezos") {
-                Tezos(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+                tezos.route
               } ~
               pathPrefix("info") {
                 AppInfo.route
@@ -45,21 +50,37 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
             // Support for CORS pre-flight checks.
             complete("Supported methods : GET and POST.")
           }
-        } ~ logRequest("Service route", Logging.DebugLevel) {
-          pathPrefix("metadata") {
-            PlatformDiscovery(platforms)(system.dispatchers.lookup("akka.tezos-dispatcher")).route
+        } ~ pathPrefix("v2") {
+          logRequest("Metadata Route", Logging.DebugLevel) {
+            pathPrefix("metadata") {
+              platformDiscovery.route
+            }
+          } ~ logRequest("Data Route", Logging.DebugLevel) {
+            pathPrefix("data") {
+              data.getRoute ~ data.postRoute
+            }
           }
         }
       }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
-      logger.info("Bonjour...")
+      logger.info("""
+        | =========================***=========================
+        |  Conseil v.{}
+        |  {}
+        | =========================***=========================
+        |
+        |  Bonjour...
+        |""".stripMargin,
+        BuildInfo.version,
+        BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
+      )
 
       sys.addShutdownHook {
         bindingFuture
-        .flatMap(_.unbind().andThen{ case _ => logger.info("Server stopped...")} )
-        .flatMap( _ => system.terminate())
-        .onComplete(_ => logger.info("We're done here, nothing else to see"))
+          .flatMap(_.unbind().andThen{ case _ => logger.info("Server stopped...")} )
+          .flatMap( _ => system.terminate())
+          .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
     case Left(errors) =>

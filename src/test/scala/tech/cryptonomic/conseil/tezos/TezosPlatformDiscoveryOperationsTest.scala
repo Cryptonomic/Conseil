@@ -7,14 +7,15 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
 import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.duration._
 
 
-class PlatformDiscoveryOperationsTest
+class TezosPlatformDiscoveryOperationsTest
   extends WordSpec
     with InMemoryDatabase
     with MockFactory
@@ -28,6 +29,8 @@ class PlatformDiscoveryOperationsTest
   import scala.concurrent.ExecutionContext.Implicits.global
   import tech.cryptonomic.conseil.config.Platforms._
 
+  import scala.concurrent.ExecutionContext.Implicits.global
+
   "getNetworks" should {
     "return list with one element" in {
       val config = PlatformsConfiguration(
@@ -36,7 +39,7 @@ class PlatformDiscoveryOperationsTest
         )
       )
 
-      PlatformDiscoveryOperations.getNetworks(config) shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
+      ConfigUtil.getNetworks(config, "tezos") shouldBe List(Network("alphanet", "Alphanet", "tezos", "alphanet"))
     }
 
     "return two networks" in {
@@ -56,7 +59,7 @@ class PlatformDiscoveryOperationsTest
           )
         )
       )
-      PlatformDiscoveryOperations.getNetworks(config) should have size 2
+      ConfigUtil.getNetworks(config, "tezos") should have size 2
     }
   }
 
@@ -65,7 +68,7 @@ class PlatformDiscoveryOperationsTest
     "return list of attributes of Fees" in {
 
       dbHandler.run {
-        PlatformDiscoveryOperations.makeAttributesList("fees")
+        TezosPlatformDiscoveryOperations.makeAttributesList("fees")
       }.futureValue shouldBe
         List(
           Attributes("low", "Low", DataType.Int, 0, KeyType.UniqueKey, "fees"),
@@ -78,7 +81,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of accounts" in {
       dbHandler.run {
-        PlatformDiscoveryOperations.makeAttributesList("accounts")
+        TezosPlatformDiscoveryOperations.makeAttributesList("accounts")
       }.futureValue shouldBe
         List(
           Attributes("account_id", "Account id", DataType.String, 0, KeyType.UniqueKey, "accounts"),
@@ -96,7 +99,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of blocks" in {
       dbHandler.run {
-        PlatformDiscoveryOperations.makeAttributesList("blocks")
+        TezosPlatformDiscoveryOperations.makeAttributesList("blocks")
       }.futureValue shouldBe
         List(
           Attributes("level", "Level", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
@@ -116,7 +119,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of operations" in {
       dbHandler.run {
-        PlatformDiscoveryOperations.makeAttributesList("operations")
+        TezosPlatformDiscoveryOperations.makeAttributesList("operations")
       }.futureValue shouldBe
         List(
           Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
@@ -139,7 +142,7 @@ class PlatformDiscoveryOperationsTest
 
     "return list of attributes of operation groups" in {
       dbHandler.run {
-        PlatformDiscoveryOperations.makeAttributesList("operation_groups")
+        TezosPlatformDiscoveryOperations.makeAttributesList("operation_groups")
       }.futureValue shouldBe
         List(
           Attributes("protocol", "Protocol", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
@@ -153,7 +156,7 @@ class PlatformDiscoveryOperationsTest
 
     "return empty list for non existing table" in {
       dbHandler.run {
-        PlatformDiscoveryOperations.makeAttributesList("nonExisting")
+        TezosPlatformDiscoveryOperations.makeAttributesList("nonExisting")
       }.futureValue shouldBe List.empty
     }
   }
@@ -165,7 +168,7 @@ class PlatformDiscoveryOperationsTest
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue shouldBe List("example1")
     }
 
@@ -176,7 +179,7 @@ class PlatformDiscoveryOperationsTest
 
       intercept[NoSuchElementException] {
         throw dbHandler.run(
-          PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
+          TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "medium", None)
         ).failed.futureValue
       }
     }
@@ -190,7 +193,7 @@ class PlatformDiscoveryOperationsTest
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", maliciousFilter)
       ).futureValue shouldBe List.empty
 
       dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
@@ -203,22 +206,32 @@ class PlatformDiscoveryOperationsTest
       )
 
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List.empty
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", None)
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ex"))
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("ample"))
       ).futureValue should contain theSameElementsAs List("example1", "example2")
       dbHandler.run(
-        PlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
+        TezosPlatformDiscoveryOperations.verifyAttributesAndGetQueries("fees", "kind", Some("1"))
       ).futureValue shouldBe List("example1")
 
+    }
+
+    "should validate correctly fields" in {
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "high", "timestamp", "kind"), List.empty) shouldBe true
+    }
+    "should validate correctly fields when only some of them are selected" in {
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind"), List.empty) shouldBe true
+    }
+    "should return false when there will be field not existing in the DB" in {
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind", "WRONG"), List.empty) shouldBe false
     }
 
   }
