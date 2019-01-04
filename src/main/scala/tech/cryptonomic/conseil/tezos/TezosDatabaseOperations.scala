@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, QueryOrdering}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -374,12 +374,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param table          name of the table
     * @param columns        list of column names
     * @param predicates     list of predicates for query to be filtered with
+    * @param ordering       list of ordering conditions for the query
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
-  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate])(implicit ec: ExecutionContext):
+  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate], ordering: List[QueryOrdering])(implicit ec: ExecutionContext):
   DBIO[List[Map[String, Any]]] = {
      makeQuery(table, columns)
        .addPredicates(predicates)
+       .addOrdering(ordering)
        .as[Map[String, Any]]
        .map(_.toList)
   }
@@ -406,6 +408,11 @@ object TezosDatabaseOperations extends LazyLogging {
   def makeQuery(table: String, columns: List[String]): SQLActionBuilder = {
     val cols = if(columns.isEmpty) "*" else columns.mkString(",")
     sql"""SELECT #$cols FROM #$table WHERE true """
+  }
+
+  def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
+    val orderingBy = ordering.map(x => s"#${x.field} #${x.direction}").mkString(",")
+    sql""" ORDER BY $orderingBy"""
   }
 
   /** maps operation type to SQL operation */

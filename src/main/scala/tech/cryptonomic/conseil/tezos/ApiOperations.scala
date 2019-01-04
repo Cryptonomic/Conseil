@@ -391,8 +391,8 @@ object ApiOperations extends DataOperations {
     * @return query result as a map
     * */
   override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
-    if (areFieldsValid(tableName, query.fields, query.predicates.map(_.field))) {
-      runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizePredicates(query.predicates)))
+    if (areFieldsValid(tableName, query.fields ++ query.predicates.map(_.field) ++ query.orderBy.map(_.field))) {
+      runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizePredicates(query.predicates), query.orderBy))
     } else {
       Future.successful(List.empty)
     }

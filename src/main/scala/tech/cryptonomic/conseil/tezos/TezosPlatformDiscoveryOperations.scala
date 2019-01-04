@@ -107,13 +107,11 @@ object TezosPlatformDiscoveryOperations {
   }
 
   /** Checks if columns exist for the given table */
-  def areFieldsValid(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
-    val fields = (queryFields ++ predicateFields).toSet
-
+  def areFieldsValid(tableName: String, fields: List[String]): Boolean = {
     tablesMap.exists {
       case (name, table) =>
         val cols = table.baseTableRow.create_*.map(_.name).toSet
-        name == tableName && fields.subsetOf(cols)
+        name == tableName && fields.toSet.subsetOf(cols)
     }
   }
 

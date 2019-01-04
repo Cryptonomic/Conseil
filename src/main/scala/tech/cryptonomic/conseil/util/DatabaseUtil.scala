@@ -2,8 +2,8 @@ package tech.cryptonomic.conseil.util
 
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Predicate
-import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.makePredicates
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.{makePredicates, makeOrdering}
 
 /**
   * Utility functions and members for common database operations.
@@ -60,6 +60,15 @@ object DatabaseUtil {
       */
     def addPredicates(predicates: List[Predicate]): SQLActionBuilder = {
       concatenateSqlActions(action, makePredicates(predicates))
+    }
+
+    def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
+      val queryOrdering = if(ordering.isEmpty) {
+        List.empty
+      } else {
+        List(makeOrdering(ordering))
+      }
+      concatenateSqlActions(action, queryOrdering)
     }
   }
 

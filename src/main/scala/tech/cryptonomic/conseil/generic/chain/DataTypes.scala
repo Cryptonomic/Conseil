@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.generic.chain
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 
 import scala.util.Try
 
@@ -23,10 +24,21 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
+  /** Enumeration for order direction */
+  object OrderDirection extends Enumeration {
+    type OrderDirection = Value
+    val asc, desc = Value
+  }
+
+  /** Class required for Ordering enum serialization */
+  class QueryOrderingRef extends TypeReference[OrderDirection.type]
+  case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
+
   /** Class representing query */
   case class Query(
     fields: List[String] = List.empty,
-    predicates: List[Predicate]
+    predicates: List[Predicate],
+    orderBy: List[QueryOrdering] = List.empty
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
     def validate: Option[Query] = {
