@@ -9,7 +9,6 @@ import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.makePredicates
   * Utility functions and members for common database operations.
   */
 object DatabaseUtil {
-  lazy val db = Database.forConfig("conseildb")
 
   /** Concatenates SQLActionsBuilders
     * Slick does not support easy concatenation of actions so we need this function based on https://github.com/slick/slick/issues/1161

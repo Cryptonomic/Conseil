@@ -1,20 +1,16 @@
 
 package tech.cryptonomic.conseil
 
-import akka.actor.ActorSystem
 import akka.Done
+import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.{TezosErrors, FeeOperations, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.LorreAppConfig
+import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 
-import scala.concurrent.duration._
 import scala.annotation.tailrec
+import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 /**
@@ -41,8 +37,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown)
 
-  lazy val db = Database.forConfig(s"databases.$platform.$network.conseildb")
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
+  lazy val db = Database.forConfig(s"databases.tezos.${tezosConf.network}.conseildb")
+  lazy val apiOperations = ApiOperations(db)
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf, apiOperations)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")

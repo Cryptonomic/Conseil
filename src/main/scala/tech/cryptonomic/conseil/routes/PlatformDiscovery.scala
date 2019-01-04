@@ -3,10 +3,9 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
-import tech.cryptonomic.conseil.tezos.{ApiNetworkOperations, PlatformDiscoveryOperations}
-import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.generic.chain.ApiNetworkOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 
@@ -40,7 +39,7 @@ class PlatformDiscovery(apiNetworkOperations: ApiNetworkOperations, config: Plat
           } ~ pathPrefix(Segment) { network =>
             validatePlatformAndNetwork(config, platform, network) {
               getApiOperations("tezos", network) { apiOperations =>
-                val platformDiscoveryOperations = PlatformDiscoveryOperations(apiOperations)
+                val platformDiscoveryOperations = TezosPlatformDiscoveryOperations(apiOperations)
                 pathPrefix("entities") {
                   pathEnd {
                     completeWithJson(platformDiscoveryOperations.getEntities(network))

@@ -1,23 +1,24 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.generic.chain
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives.{complete, provide}
-import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
-import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
+import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 /** Companion object for apply in ApiNetworkOperations */
 object ApiNetworkOperations {
-  def apply(config: Config, ec: ExecutionContext): ApiNetworkOperations = new ApiNetworkOperations(config, ec)
+  def apply(config: PlatformsConfiguration, ec: ExecutionContext): ApiNetworkOperations = new ApiNetworkOperations(config, ec)
 }
 
 /** Class for storing object which require DB */
-class ApiNetworkOperations(config: Config, ec: ExecutionContext) {
+class ApiNetworkOperations(config: PlatformsConfiguration, ec: ExecutionContext) {
 
   /** map storing ApiOperations objects for given (platform, network) */
   private lazy val apiOperationsMap: Map[(String, String), ApiOperations] = getDatabaseMap(ApiOperations.apply)
@@ -58,10 +59,10 @@ class ApiNetworkOperations(config: Config, ec: ExecutionContext) {
   /** Helper method for creating map from (network, platform) to given type of object */
   private def getDatabaseMap[A](fun: Database => A): Map[(String, String), A] = {
     for {
-      platform <- NetworkConfigOperations.getPlatforms(config)
-      network <- NetworkConfigOperations.getNetworks(config)
-      db <- Try(fun(Database.forConfig(s"databases.$platform.${network.name}.conseildb"))).toOption
-    } yield (platform, network.name) -> db
+      platform <- ConfigUtil.getPlatforms(config)
+      network <- ConfigUtil.getNetworks(config, platform.name)
+      db <- Try(fun(Database.forConfig(s"databases.${platform.name}.${network.name}.conseildb"))).toOption
+    } yield (platform.name, network.name) -> db
   }.toMap
 
 }

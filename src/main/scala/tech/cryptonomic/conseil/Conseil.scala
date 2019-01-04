@@ -10,9 +10,8 @@ import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes.{PlatformDiscovery, Tezos}
-import tech.cryptonomic.conseil.tezos.ApiNetworkOperations
-import tech.cryptonomic.conseil.util.SecurityUtil
 import tech.cryptonomic.conseil.config.ConseilAppConfig
+import tech.cryptonomic.conseil.generic.chain.ApiNetworkOperations
 import tech.cryptonomic.conseil.routes._
 
 import scala.concurrent.ExecutionContextExecutor
@@ -34,9 +33,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
-      lazy val tezos = Tezos(tezosDispatcher)
-      lazy val platformDiscovery = PlatformDiscovery(platforms)(tezosDispatcher)
-      lazy val data = Data(platforms)(tezosDispatcher)
+      val apiNetworkOperations = ApiNetworkOperations(platforms, tezosDispatcher)
+      lazy val tezos = Tezos(apiNetworkOperations)
+      lazy val platformDiscovery = PlatformDiscovery(apiNetworkOperations, platforms)(tezosDispatcher)
+      lazy val data = Data(platforms, apiNetworkOperations)(tezosDispatcher)
 
       val route = cors() {
         enableCORS {

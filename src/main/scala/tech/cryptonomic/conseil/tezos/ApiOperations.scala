@@ -4,7 +4,6 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
@@ -13,9 +12,8 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database.
   */
-object ApiOperations extends DataOperations {
+object ApiOperations {
 
-  lazy val dbHandle: Database = DatabaseUtil.db
 
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
@@ -194,9 +192,15 @@ object ApiOperations extends DataOperations {
 
   def apply(dbHandle: Database): ApiOperations = new ApiOperations(dbHandle)
 
+  /** Sanitizes predicate values so query is safe from SQL injection */
+  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
+    predicates.map { predicate =>
+      predicate.copy(set = predicate.set.map(field => TezosPlatformDiscoveryOperations.sanitizeForSql(field.toString)))
+    }
+  }
 }
 
-class ApiOperations(dbHandle: Database) {
+class ApiOperations(dbHandle: Database) extends DataOperations {
   import ApiOperations._
 
   /**
@@ -397,17 +401,10 @@ class ApiOperations(dbHandle: Database) {
     * @return query result as a map
     * */
   override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
-    if (areFieldsValid(tableName, query.fields, query.predicates.map(_.field))) {
+    if (TezosPlatformDiscoveryOperations.areFieldsValid(tableName, query.fields, query.predicates.map(_.field))) {
       runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizePredicates(query.predicates)))
     } else {
       Future.successful(List.empty)
-    }
-  }
-
-  /** Sanitizes predicate values so query is safe from SQL injection */
-  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
-    predicates.map { predicate =>
-      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
     }
   }
 }

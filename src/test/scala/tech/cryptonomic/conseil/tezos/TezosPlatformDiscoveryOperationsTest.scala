@@ -8,7 +8,6 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
-import tech.cryptonomic.conseil.generic.chain.NetworkConfigOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.util.ConfigUtil
 
@@ -30,7 +29,7 @@ class TezosPlatformDiscoveryOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val sut = new PlatformDiscoveryOperations(ApiOperations(dbHandler))
+  val sut = new TezosPlatformDiscoveryOperations(ApiOperations(dbHandler))
   "getNetworks" should {
     "return list with one element" in {
       val config = PlatformsConfiguration(
