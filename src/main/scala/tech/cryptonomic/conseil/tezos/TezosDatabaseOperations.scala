@@ -411,8 +411,8 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-    val orderingBy = ordering.map(x => s"#${x.field} #${x.direction}").mkString(",")
-    sql""" ORDER BY $orderingBy"""
+    val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
+    sql""" ORDER BY #$orderingBy"""
   }
 
   /** maps operation type to SQL operation */

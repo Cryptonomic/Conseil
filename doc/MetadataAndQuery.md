@@ -29,6 +29,12 @@ curl -vvv --request POST \
       "inverse": false,                 // boolean parameter, in case when we want to negate the predicate, like 'not in this set' with operation 'in' and 'inverse' set to false - optional, defaults to false
       "precision": 2                    // optional parameter for comparison in decimal numbers, for example if we put in set '1.5' and in precision '2' we will match decimal values like '1.45'
   	}
+  ],
+  "orderBy": [                          // list of fields and directions to order by, starting with most significant
+    {
+      "field": field_name,              // name of the field to order by
+      "direction": "asc"                // direction to order by, asc or desc
+    }
   ]
 }
 ```
