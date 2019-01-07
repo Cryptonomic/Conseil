@@ -9,6 +9,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.model.Model
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
@@ -130,7 +131,7 @@ class TezosDatabaseOperationsTest
              val query = for {
               o <- Tables.Operations
               g <- o.operationGroupsFk
-            } yield (g, o)
+            } yield (g, o.mapTo[tech.cryptonomic.conseil.model.Model.Operation])
             query.result
            }.futureValue
 
@@ -145,17 +146,17 @@ class TezosDatabaseOperationsTest
               val operation = operationGroup.contents.value.head
               opRow.kind shouldEqual operation.kind
               opRow.source shouldEqual operation.source
-              opRow.fee shouldEqual operation.fee
-              opRow.storageLimit shouldEqual operation.storageLimit
-              opRow.gasLimit shouldEqual operation.gasLimit
-              opRow.amount shouldEqual operation.amount
+              opRow.fee shouldEqual operation.fee.map(BigDecimal(_))
+              opRow.storageLimit shouldEqual operation.storageLimit.map(BigDecimal(_))
+              opRow.gasLimit shouldEqual operation.gasLimit.map(BigDecimal(_))
+              opRow.amount shouldEqual operation.amount.map(BigDecimal(_))
               opRow.destination shouldEqual operation.destination
               opRow.pkh shouldEqual operation.pkh
               opRow.delegate shouldEqual operation.delegate
-              opRow.balance shouldEqual operation.balance
+              opRow.balance shouldEqual operation.balance.map(BigDecimal(_))
               opRow.operationGroupHash shouldEqual operationGroup.hash.value
               opRow.blockHash shouldEqual operationBlock.metadata.hash.value
-              opRow.blockLevel shouldEqual operationBlock.metadata.header.level
+              opRow.level.value shouldEqual operationBlock.metadata.header.level
               opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
           }
       }
@@ -444,28 +445,36 @@ class TezosDatabaseOperationsTest
     }
 
     "fetch existing operations with their group on a existing hash" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
+
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val block = generateBlockRows(1, testReferenceTime).head
       val group = generateOperationGroupRows(block).head
-      val ops = generateOperationRowsForGroup(block, group)
+      val ops = generateOperationsForGroup(block, group)
 
       val populateAndFetch = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
         result <- sut.operationsForGroup(group.hash)
       } yield (result, ids)
 
       val (Some((groupRow, operationRows)), operationIds) = dbHandler.run(populateAndFetch).futureValue
 
+      //we now have only a generic HList repr. so columns are accessed by position
+      val operationId: Tables.OperationsRow => Int = _.apply(0)
+
       groupRow.hash shouldEqual group.hash
       operationRows should have size ops.size
-      operationRows.map(_.operationId).toList should contain theSameElementsAs operationIds
+      operationRows.map(operationId).toList should contain theSameElementsAs operationIds
 
     }
 
     "compute correct average fees from stored operations" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
@@ -475,14 +484,14 @@ class TezosDatabaseOperationsTest
       // std-dev = 331.4
       // the sample std-dev should be 354.3, using correction formula
       val fees = Seq(
-        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), None, Some("1020.30"), Some("1.00"), None
+        Some(BigDecimal(35.23)), Some(BigDecimal(12.01)), Some(BigDecimal(2.22)), Some(BigDecimal(150.01)), None, Some(BigDecimal(1020.30)), Some(BigDecimal(1.00)), None
       )
-      val ops = wrapFeesWithOperationRows(fees, block, group)
+      val ops = wrapFeesWithOperations(fees, block, group)
 
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -504,61 +513,23 @@ class TezosDatabaseOperationsTest
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
-    }
-
-    "handle invalid fee data using the default value" in {
-      //generate data
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateBlockRows(1, testReferenceTime).head
-      val group = generateOperationGroupRows(block).head
-
-      // mu = 152.59625
-      // std-dev = 331.4
-      // the sample std-dev should be 354.3, using correction formula
-      val fees = Seq(
-        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), Some("1-00"), Some("1020.30"), Some("1.00"), Some("inv4lid")
-      )
-      val ops = wrapFeesWithOperationRows(fees, block, group)
-
-      val populate = for {
-        _ <- Tables.Blocks += block
-        _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
-      } yield ids
-
-      dbHandler.run(populate).futureValue should have size (fees.size)
-
-      //expectations
-      val (mu, sigma) = (153, 332)
-      val latest = new Timestamp(ops.map(_.timestamp.getTime).max)
-
-      val expected = AverageFees(
-        low = 0,
-        medium = mu,
-        high = mu + sigma,
-        timestamp = latest,
-        kind = ops.head.kind
-      )
-
-      //check
-      val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
-
-      dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
     }
 
     "return None when computing average fees for a kind with no data" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
       val group = generateOperationGroupRows(block).head
 
-      val fees = Seq.fill(3)(Some("1.0"))
-      val ops = wrapFeesWithOperationRows(fees, block, group)
+      val fees = Seq.fill(3)(Some(BigDecimal(1)))
+      val ops = wrapFeesWithOperations(fees, block, group)
 
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -571,17 +542,19 @@ class TezosDatabaseOperationsTest
     }
 
     "compute average fees only using the selected operation kinds" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
       val group = generateOperationGroupRows(block).head
 
-      val (selectedFee, ignoredFee) = (Some("1.0"), Some("1000.0"))
+      val (selectedFee, ignoredFee) = (Some(BigDecimal(1)), Some(BigDecimal(1000)))
 
       val fees = Seq(selectedFee, selectedFee, ignoredFee, ignoredFee)
 
       //change kind for fees we want to ignore
-      val ops = wrapFeesWithOperationRows(fees, block, group).map {
+      val ops = wrapFeesWithOperations(fees, block, group).map {
         case op if op.fee == ignoredFee => op.copy(kind = op.kind + "ignore")
         case op => op
       }
@@ -591,7 +564,7 @@ class TezosDatabaseOperationsTest
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -1316,16 +1289,16 @@ class TezosDatabaseOperationsTest
           source = Some("source"),
           proposal = Some("proposal"),
           ballot = Some("ballot"),
-          fee = Some("fee"),
+          fee = Some("1"),
           counter = Some(0),
-          gasLimit = Some("gasLimit"),
-          storageLimit = Some("storageLimit"),
+          gasLimit = Some("100"),
+          storageLimit = Some("1000"),
           publicKey = Some("publicKey"),
-          amount = Some("amount"),
+          amount = Some("1"),
           destination = Some("destination"),
           parameters = Some("parameters"),
           managerPubKey = Some("managerPubKey"),
-          balance = Some("balance"),
+          balance = Some("0"),
           spendable = Some(true),
           delegatable = Some(true),
           delegate = Some("delegate")
@@ -1367,38 +1340,38 @@ class TezosDatabaseOperationsTest
   }
 
   /* create operations related to a specific group, with random data */
-  private def generateOperationRowsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
+  private def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Model.Operation] =
    if (howMany > 0) {
 
      (1 to howMany).map {
        counting =>
-         Tables.OperationsRow(
+         Model.Operation(
            kind = "operation-kind",
            operationGroupHash = group.hash,
            operationId = -1,
            blockHash = block.hash,
            timestamp = block.timestamp,
-           blockLevel = block.level
+           level = Some(block.level)
          )
      }.toList
    } else List.empty
 
   /* create operation rows to hold the given fees */
-  private def wrapFeesWithOperationRows(
-    fees: Seq[Option[String]],
+  private def wrapFeesWithOperations(
+    fees: Seq[Option[BigDecimal]],
     block: BlocksRow,
     group: OperationGroupsRow) = {
 
     fees.zipWithIndex.map {
       case (fee, index) =>
-        OperationsRow(
+        Model.Operation(
           kind = "kind",
           operationGroupHash = group.hash,
           operationId = -1,
           fee = fee,
           blockHash = block.hash,
           timestamp = new Timestamp(block.timestamp.getTime + index),
-          blockLevel = block.level
+          level = Some(block.level)
         )
     }
 
@@ -1425,5 +1398,4 @@ class TezosDatabaseOperationsTest
 
   }
 
-
-}
+ }

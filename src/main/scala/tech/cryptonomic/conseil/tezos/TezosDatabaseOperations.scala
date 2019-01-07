@@ -5,20 +5,23 @@ import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.model.Model
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
+import tech.cryptonomic.conseil.util.ConversionSyntax._
 import tech.cryptonomic.conseil.util.DatabaseUtil.{SqlActionHelper, concatenateSqlActions, getMap, insertValuesIntoSqlAction}
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
-import scala.util.Try
 
 /**
   * Functions for writing Tezos data to a database.
   */
 object TezosDatabaseOperations extends LazyLogging {
+
+  import DatabaseConversions._
 
   /**
     * Writes computed fees averages to a database.
@@ -27,7 +30,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] =
-    Tables.Fees ++= fees.map(RowConversion.convertAverageFees)
+    Tables.Fees ++= fees.map(_.convertTo[Tables.FeesRow])
 
   /**
     * Writes accounts with block data to a database.
@@ -38,7 +41,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO.sequence(accountsInfo.flatMap {
       info =>
-        RowConversion.convertAccounts(info).map(Tables.Accounts.insertOrUpdate)
+        info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
     }).map(_.sum)
       .transactionally
 
@@ -49,9 +52,9 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeBlocks(blocks: List[Block]): DBIO[Unit] =
     DBIO.seq(
-      Tables.Blocks          ++= blocks.map(RowConversion.convertBlock),
-      Tables.OperationGroups ++= blocks.flatMap(RowConversion.convertBlocksOperationGroups),
-      Tables.Operations      ++= blocks.flatMap(RowConversion.convertBlockOperations)
+      Tables.Blocks          ++= blocks.map(_.convertTo[Tables.BlocksRow]),
+      Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, Tables.OperationGroupsRow]),
+      Tables.Operations      ++= blocks.flatMap(_.convertToA[List, Tables.OperationsRow])
     )
 
   /**
@@ -60,7 +63,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] =
-    Tables.AccountsCheckpoint ++= accountIds.flatMap((RowConversion.convertBlockAccountsAssociation _).tupled)
+    Tables.AccountsCheckpoint ++= accountIds.flatMap((convertBlockAccountsAssociation _).tupled)
 
   /**
     * Removes  data on the accounts checkpoint table
@@ -131,18 +134,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return                     The average fees for a given operation kind, if it exists
     */
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
-    def parseFee(fee: String): Option[Double] =
-      Try(fee.toDouble).fold(
-        error => {
-          logger.error("I encountered an invalid fee value during average computation: '{}'", fee)
-          None
-        },
-        Some(_)
-      )
-
-    def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[String], java.sql.Timestamp)]): AverageFees = {
+    def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[BigDecimal], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
-        case (fee, _) => fee.flatMap(parseFee).getOrElse(0.0)
+        case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
       }
       val m: Int = ceil(mean(values)).toInt
       val s: Int = ceil(stdev(values)).toInt
@@ -202,106 +196,6 @@ object TezosDatabaseOperations extends LazyLogging {
       blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
       opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
     } yield blockThere && opsThere
-
-  /** conversions from domain objects to database row format */
-  private object RowConversion {
-
-    private[TezosDatabaseOperations] def convertAverageFees(in: AverageFees) =
-      Tables.FeesRow(
-        low = in.low,
-        medium = in.medium,
-        high = in.high,
-        timestamp = in.timestamp,
-        kind = in.kind
-    )
-
-    private[TezosDatabaseOperations] def convertAccounts(blockAccounts: BlockAccounts) = {
-      val BlockAccounts(hash, level, accounts) = blockAccounts
-      accounts.map {
-        case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
-          Tables.AccountsRow(
-            accountId = id.id,
-            blockId = hash.value,
-            manager = manager,
-            spendable = spendable,
-            delegateSetable = delegate.setable,
-            delegateValue = delegate.value,
-            counter = counter,
-            script = script.map(_.toString),
-            balance = balance,
-            blockLevel = level
-          )
-      }.toList
-    }
-
-    private[TezosDatabaseOperations] def convertBlock(block: Block) = {
-      val header = block.metadata.header
-      Tables.BlocksRow(
-        level = header.level,
-        proto = header.proto,
-        predecessor = header.predecessor.value,
-        timestamp = header.timestamp,
-        validationPass = header.validationPass,
-        fitness = header.fitness.mkString(","),
-        context = Some(header.context), //put in later
-        signature = header.signature,
-        protocol = block.metadata.protocol,
-        chainId = block.metadata.chain_id,
-        hash = block.metadata.hash.value,
-        operationsHash = header.operations_hash
-      )
-    }
-
-    private[TezosDatabaseOperations] def convertBlocksOperationGroups(block: Block): List[Tables.OperationGroupsRow] =
-      block.operationGroups.map{ og =>
-        Tables.OperationGroupsRow(
-          protocol = og.protocol,
-          chainId = og.chain_id,
-          hash = og.hash.value,
-          branch = og.branch,
-          signature = og.signature,
-          blockId = block.metadata.hash.value
-        )
-      }
-
-    private[TezosDatabaseOperations] def convertBlockOperations(block: Block): List[Tables.OperationsRow] =
-      block.operationGroups.flatMap{ og =>
-        og.contents.fold(List.empty[Tables.OperationsRow]){
-          operations =>
-            operations.map { operation =>
-              Tables.OperationsRow(
-                kind = operation.kind,
-                source = operation.source,
-                fee = operation.fee,
-                gasLimit = operation.gasLimit,
-                storageLimit = operation.storageLimit,
-                amount = operation.amount,
-                destination = operation.destination,
-                operationGroupHash = og.hash.value,
-                operationId = 0,
-                balance = operation.balance,
-                delegate = operation.delegate,
-                blockHash = block.metadata.hash.value,
-                blockLevel = block.metadata.header.level,
-                timestamp = block.metadata.header.timestamp,
-                pkh = operation.pkh
-              )
-            }
-        }
-      }
-
-    private[TezosDatabaseOperations] def convertBlockAccountsAssociation(blockHash: BlockHash, blockLevel: Int, ids: List[AccountId]): List[Tables.AccountsCheckpointRow] =
-      ids.map(
-        accountId =>
-          Tables.AccountsCheckpointRow(
-            accountId = accountId.id,
-            blockId = blockHash.value,
-            blockLevel = blockLevel
-          )
-      )
-
-
-  }
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BigDecimal = -1
