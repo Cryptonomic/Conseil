@@ -1194,28 +1194,6 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "get map from a block table and sort by hash in descending order" in {
-      val columns = List("level", "proto", "protocol", "hash")
-      val predicates = List()
-      val sortBy = List(
-        QueryOrdering(
-          field = "hash",
-          direction = OrderDirection.desc
-        )
-      )
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
-      } yield found
-
-      val result = dbHandler.run(populateAndTest.transactionally).futureValue
-      result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG"),
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
-      )
-    }
-
     "get map from a block table and sort by hash in ascending order" in {
       val columns = List("level", "proto", "protocol", "hash")
       val predicates = List()
@@ -1233,11 +1211,33 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
+        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG"),
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+      )
+    }
+
+    "get map from a block table and sort by hash in descending order" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List()
+      val sortBy = List(
+        QueryOrdering(
+          field = "hash",
+          direction = OrderDirection.desc
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
         Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
         Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
       )
     }
-///////////////
+
     "get map from a block table and sort by hash in ascending order and by hash in ascending order" in {
       val columns = List("level", "proto")
       val predicates = List()
