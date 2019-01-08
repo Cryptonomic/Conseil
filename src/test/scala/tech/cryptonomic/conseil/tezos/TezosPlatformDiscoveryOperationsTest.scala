@@ -141,6 +141,7 @@ class TezosPlatformDiscoveryOperationsTest
           Attributes("spendable", "Spendable", DataType.Boolean, 0, KeyType.UniqueKey, "operations"),
           Attributes("delegatable", "Delegatable", DataType.Boolean, 0, KeyType.UniqueKey, "operations"),
           Attributes("script", "Script", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("status", "Status", DataType.String, 0, KeyType.UniqueKey, "operations"),
           Attributes("block_hash", "Block hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
           Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "operations")
         )

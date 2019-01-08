@@ -10,7 +10,7 @@ import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.model.Model
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
@@ -144,19 +144,31 @@ class TezosDatabaseOperationsTest
               val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
               val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
               val operation = operationGroup.contents.value.head
+              opRow.operationId should be > -1
+              opRow.operationGroupHash shouldEqual operationGroup.hash.value
               opRow.kind shouldEqual operation.kind
+              opRow.level.value shouldEqual operationBlock.metadata.header.level
+              opRow.delegate shouldEqual operation.delegate
+              opRow.slots shouldEqual operation.slots.map(_.mkString("[", ",", "]"))
+              opRow.nonce shouldEqual operation.nonce
+              opRow.pkh shouldEqual operation.pkh
+              opRow.secret shouldEqual operation.secret
               opRow.source shouldEqual operation.source
               opRow.fee shouldEqual operation.fee.map(BigDecimal(_))
-              opRow.storageLimit shouldEqual operation.storageLimit.map(BigDecimal(_))
+              opRow.counter shouldEqual operation.counter.map(BigDecimal(_))
               opRow.gasLimit shouldEqual operation.gasLimit.map(BigDecimal(_))
+              opRow.storageLimit shouldEqual operation.storageLimit.map(BigDecimal(_))
+              opRow.publicKey shouldEqual operation.publicKey
               opRow.amount shouldEqual operation.amount.map(BigDecimal(_))
               opRow.destination shouldEqual operation.destination
-              opRow.pkh shouldEqual operation.pkh
-              opRow.delegate shouldEqual operation.delegate
+              opRow.parameters shouldEqual operation.parameters
+              opRow.managerPubkey shouldEqual operation.managerPubKey
               opRow.balance shouldEqual operation.balance.map(BigDecimal(_))
-              opRow.operationGroupHash shouldEqual operationGroup.hash.value
+              opRow.spendable shouldEqual operation.spendable
+              opRow.delegatable shouldEqual operation.delegatable
+              opRow.script shouldBe empty
+              opRow.status shouldBe empty
               opRow.blockHash shouldEqual operationBlock.metadata.hash.value
-              opRow.level.value shouldEqual operationBlock.metadata.header.level
               opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
           }
       }

@@ -28,6 +28,7 @@ object Model {
     spendable: Option[Boolean] = None,
     delegatable: Option[Boolean] = None,
     script: Option[String] = None,
+    status: Option[String] = None,
     blockHash: String,
     timestamp: java.sql.Timestamp
   )
