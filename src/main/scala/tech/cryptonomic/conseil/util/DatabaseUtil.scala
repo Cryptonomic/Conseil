@@ -62,6 +62,10 @@ object DatabaseUtil {
       concatenateSqlActions(action, makePredicates(predicates))
     }
 
+    /** Method for adding ordering to existing SQLAction
+      * @param ordering   list of QueryOrdering to add
+      * @return           new SQLActionBuilder containing ordering statements
+      */
     def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
       val queryOrdering = if(ordering.isEmpty) {
         List.empty
