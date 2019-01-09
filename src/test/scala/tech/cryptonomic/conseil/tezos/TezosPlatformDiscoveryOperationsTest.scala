@@ -221,13 +221,13 @@ class TezosPlatformDiscoveryOperationsTest
     }
 
     "should validate correctly fields" in {
-      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "high", "timestamp", "kind")) shouldBe true
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", Set("low", "medium", "high", "timestamp", "kind")) shouldBe true
     }
     "should validate correctly fields when only some of them are selected" in {
-      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind")) shouldBe true
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", Set("low", "medium", "kind")) shouldBe true
     }
     "should return false when there will be field not existing in the DB" in {
-      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind", "WRONG")) shouldBe false
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", Set("low", "medium", "kind", "WRONG")) shouldBe false
     }
 
   }
