@@ -410,6 +410,10 @@ object TezosDatabaseOperations extends LazyLogging {
     sql"""SELECT #$cols FROM #$table WHERE true """
   }
 
+  /** Prepares ordering parameters
+    * @param ordering  list of ordering parameters
+    * @return          SQLAction with ordering
+    */
   def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
     val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
     sql""" ORDER BY #$orderingBy"""
