@@ -5,7 +5,6 @@ import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.SQLActionBuilder
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
-import tech.cryptonomic.conseil.model.Model
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._

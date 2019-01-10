@@ -5,8 +5,18 @@ package tech.cryptonomic.conseil.tezos
   */
 object TezosTypes {
 
+  //TODO use in a custom decoder for json strings that needs to have a proper encoding
+  lazy val isBase58Check: String => Boolean = (s: String) => {
+    val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
+    pattern.matcher(s).matches
+  }
+
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
+
+  final case class PublicKeyHash(value: String) extends AnyVal
+
+  final case class Signature(value: String) extends AnyVal
 
   final case class BlockHash(value: String) extends AnyVal
 
@@ -35,6 +45,36 @@ object TezosTypes {
                             hash: BlockHash,
                             header: BlockHeader
                   )
+
+  sealed trait TezosOperation extends Product with Serializable
+
+  object TezosOperation {
+
+    final case class Endorsement(
+      level: Int,
+      metadata: EndorsementMetadata
+    ) extends TezosOperation
+
+    final case class EndorsementMetadata(
+      slots: List[Int],
+      delegate: PublicKeyHash,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+    )
+
+    object OperationMetadata {
+      //we're currently making no difference between contract or freezer updates
+      final case class BalanceUpdate(
+        kind: String,
+        change: Int,
+        category: Option[String],
+        contract: Option[String],
+        delegate: Option[String],
+        level: Option[Int]
+      )
+    }
+
+  }
+
 
   final case class OperationMetadata(
                               delegate: Option[String],
