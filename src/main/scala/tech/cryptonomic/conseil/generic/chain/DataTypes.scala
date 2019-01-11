@@ -38,7 +38,8 @@ object DataTypes {
   case class Query(
     fields: List[String] = List.empty,
     predicates: List[Predicate],
-    orderBy: List[QueryOrdering] = List.empty
+    orderBy: List[QueryOrdering] = List.empty,
+    limit: Int = 10000
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
     def validate: Option[Query] = {

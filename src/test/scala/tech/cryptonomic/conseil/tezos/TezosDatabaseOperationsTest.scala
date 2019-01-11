@@ -685,7 +685,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -708,7 +708,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -730,7 +730,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -758,7 +758,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -772,7 +772,7 @@ class TezosDatabaseOperationsTest
       val predicates = List.empty
 
       val populateAndTest = for {
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -792,7 +792,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -814,7 +814,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -837,7 +837,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -859,7 +859,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -881,7 +881,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -903,7 +903,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -925,7 +925,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -945,13 +945,35 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
         Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
         Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+      )
+    }
+
+    "get map from a block table with between predicate when two element fulfill it but limited to 1 element" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.between,
+          set = List(-10,10),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 1)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
       )
     }
 
@@ -968,7 +990,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -989,7 +1011,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1010,7 +1032,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1031,7 +1053,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1050,7 +1072,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1071,7 +1093,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1105,7 +1127,7 @@ class TezosDatabaseOperationsTest
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
         _ <- Tables.Accounts += accRow
-        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue.map(_.mapValues(_.toString))
@@ -1126,7 +1148,7 @@ class TezosDatabaseOperationsTest
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
         _ <- Tables.Accounts += accRow
-        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates, List.empty)
+        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates, List.empty, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1162,7 +1184,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1184,7 +1206,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1206,7 +1228,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1228,7 +1250,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -1256,7 +1278,7 @@ class TezosDatabaseOperationsTest
 
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp2
-        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy)
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, 3)
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue

@@ -377,11 +377,13 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ordering       list of ordering conditions for the query
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
-  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate], ordering: List[QueryOrdering])(implicit ec: ExecutionContext):
+  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate], ordering: List[QueryOrdering], limit: Int)
+    (implicit ec: ExecutionContext):
   DBIO[List[Map[String, Any]]] = {
      makeQuery(table, columns)
        .addPredicates(predicates)
        .addOrdering(ordering)
+       .addLimit(limit)
        .as[Map[String, Any]]
        .map(_.toList)
   }
@@ -410,9 +412,21 @@ object TezosDatabaseOperations extends LazyLogging {
     sql"""SELECT #$cols FROM #$table WHERE true """
   }
 
+  /** Prepares ordering parameters
+    * @param ordering  list of ordering parameters
+    * @return          SQLAction with ordering
+    */
   def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
     val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
     sql""" ORDER BY #$orderingBy"""
+  }
+
+  /** Prepares limit parameters
+    * @param limit  list of ordering parameters
+    * @return          SQLAction with ordering
+    */
+  def makeLimit(limit: Int): SQLActionBuilder = {
+    sql""" LIMIT $limit"""
   }
 
   /** maps operation type to SQL operation */

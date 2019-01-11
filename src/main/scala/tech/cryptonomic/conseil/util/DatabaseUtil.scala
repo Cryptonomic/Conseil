@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.util
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrdering}
-import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.{makePredicates, makeOrdering}
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.{makePredicates, makeOrdering, makeLimit}
 
 /**
   * Utility functions and members for common database operations.
@@ -73,6 +73,14 @@ object DatabaseUtil {
         List(makeOrdering(ordering))
       }
       concatenateSqlActions(action, queryOrdering)
+    }
+
+    /** Method for adding limit to existing SQLAction
+      * @param limit      limit to add
+      * @return           new SQLActionBuilder containing limit statement
+      */
+    def addLimit(limit: Int): SQLActionBuilder = {
+      concatenateSqlActions(action, List(makeLimit(limit)))
     }
   }
 

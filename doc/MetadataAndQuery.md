@@ -35,7 +35,8 @@ curl -vvv --request POST \
       "field": "field_name",            // name of the field to order by
       "direction": "asc"                // direction to order by, asc or desc
     }
-  ]
+  ],
+  "limit": 100
 }
 ```
 
@@ -70,7 +71,8 @@ curl -vvv --request POST \
       "field":"account_id", 
       "direction": "asc"
     }
-  ]
+  ],
+  "limit": 100
 }'
 ```
 
