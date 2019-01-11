@@ -22,6 +22,8 @@ object TezosTypes {
 
   final case class OperationHash(value: String) extends AnyVal
 
+  final case class ContractId(id: String) extends AnyVal
+
   final case class AccountId(id: String) extends AnyVal
 
   /** a conventional value to get the latest block in the chain */
@@ -67,8 +69,8 @@ object TezosTypes {
         kind: String,
         change: Int,
         category: Option[String],
-        contract: Option[String],
-        delegate: Option[String],
+        contract: Option[ContractId],
+        delegate: Option[PublicKeyHash],
         level: Option[Int]
       )
     }

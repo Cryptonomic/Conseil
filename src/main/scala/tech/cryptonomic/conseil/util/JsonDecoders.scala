@@ -7,7 +7,8 @@ object JsonDecoders {
   object Circe {
 
     import io.circe.Decoder
-    import tech.cryptonomic.conseil.tezos.TezosTypes.{isBase58Check, PublicKeyHash, Signature, BlockHash, OperationHash, AccountId}
+    import io.circe.generic.semiauto._
+    import tech.cryptonomic.conseil.tezos.TezosTypes._
 
     private final case class Base58Check(content: String) extends AnyVal
 
@@ -21,7 +22,12 @@ object JsonDecoders {
     implicit lazy val signatureDecoder: Decoder[Signature] = base58CheckDecoder.map(b58 => Signature(b58.content))
     implicit lazy val blockHashDecoder: Decoder[BlockHash] = base58CheckDecoder.map(b58 => BlockHash(b58.content))
     implicit lazy val opHashDecoder: Decoder[OperationHash] = base58CheckDecoder.map(b58 => OperationHash(b58.content))
+    implicit lazy val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
     implicit lazy val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))
+
+    implicit lazy val endorsementMetadataDecoder: Decoder[TezosOperation.EndorsementMetadata] = deriveDecoder[TezosOperation.EndorsementMetadata]
+    implicit lazy val balanceUpdateDecoder: Decoder[TezosOperation.OperationMetadata.BalanceUpdate] = deriveDecoder[TezosOperation.OperationMetadata.BalanceUpdate]
+    implicit lazy val endorsementDecoder: Decoder[TezosOperation.Endorsement] = deriveDecoder[TezosOperation.Endorsement]
 
   }
 

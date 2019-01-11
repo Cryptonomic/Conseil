@@ -66,6 +66,96 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
+    "decode valid json base58check strings into a ContractId" in {
+      val decoded = decode[ContractId](jsonStringOf(validHash))
+      decoded.right.value shouldBe ContractId(validHash)
+    }
+
+    "fail to decode an invalid json base58check strings into a ContractId" in {
+      val decoded = decode[ContractId](jsonStringOf(invalidHash))
+      decoded shouldBe 'left
+    }
+
+    val endorsementJson =
+      """{
+        |  "kind": "endorsement",
+        |  "level": 182308,
+        |  "metadata": {
+        |      "balance_updates": [
+        |          {
+        |              "kind": "contract",
+        |              "contract": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |              "change": "-256000000"
+        |          },
+        |          {
+        |              "kind": "freezer",
+        |              "category": "deposits",
+        |              "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |              "level": 1424,
+        |              "change": "256000000"
+        |          },
+        |          {
+        |              "kind": "freezer",
+        |              "category": "rewards",
+        |              "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |              "level": 1424,
+        |              "change": "4000000"
+        |          }
+        |      ],
+        |      "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |      "slots": [
+        |          29,
+        |          27,
+        |          20,
+        |          17
+        |      ]
+        |  }
+        |}""".stripMargin
+
+    val expectedEndorsement =
+          TezosOperation.Endorsement(
+            level = 182308,
+            metadata = TezosOperation.EndorsementMetadata(
+              slots =List(29, 27, 20, 17),
+              delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
+              balance_updates = List(
+                TezosOperation.OperationMetadata.BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+                  change = -256000000,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                TezosOperation.OperationMetadata.BalanceUpdate(
+                  kind = "freezer",
+                  category = Some("deposits"),
+                  delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+                  change = 256000000,
+                  contract = None,
+                  level = Some(1424)
+                ),
+                TezosOperation.OperationMetadata.BalanceUpdate(
+                  kind = "freezer",
+                  category = Some("rewards"),
+                  delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+                  change = 4000000,
+                  contract = None,
+                  level = Some(1424)
+                )
+              )
+          )
+        )
+
+    "decode an endorsement operation from json" in {
+      val decoded = decode[TezosOperation.Endorsement](endorsementJson)
+      decoded shouldBe 'right
+
+      val endorsement = decoded.right.value
+      endorsement shouldBe a [TezosOperation.Endorsement]
+      endorsement shouldEqual expectedEndorsement
+
+    }
   }
 
 }
