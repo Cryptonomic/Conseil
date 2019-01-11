@@ -56,6 +56,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
+    "decode valid json base58check strings into a AccountId" in {
+      val decoded = decode[AccountId](jsonStringOf(validHash))
+      decoded.right.value shouldBe AccountId(validHash)
+    }
+
+    "fail to decode an invalid json base58check strings into a AccountId" in {
+      val decoded = decode[AccountId](jsonStringOf(invalidHash))
+      decoded shouldBe 'left
+    }
+
   }
 
 }
