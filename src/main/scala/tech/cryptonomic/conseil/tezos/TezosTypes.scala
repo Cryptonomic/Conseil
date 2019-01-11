@@ -26,6 +26,8 @@ object TezosTypes {
 
   final case class AccountId(id: String) extends AnyVal
 
+  final case class ChainId(id: String) extends AnyVal
+
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
@@ -48,14 +50,15 @@ object TezosTypes {
                             header: BlockHeader
                   )
 
-  sealed trait TezosOperation extends Product with Serializable
 
-  object TezosOperation {
+  object TezosOperations {
+
+    sealed trait Operation extends Product with Serializable
 
     final case class Endorsement(
       level: Int,
       metadata: EndorsementMetadata
-    ) extends TezosOperation
+    ) extends Operation
 
     final case class EndorsementMetadata(
       slots: List[Int],
@@ -74,6 +77,15 @@ object TezosTypes {
         level: Option[Int]
       )
     }
+
+    final case class Group (
+      protocol: String,
+      chain_id: Option[ChainId],
+      hash: OperationHash,
+      branch: BlockHash,
+      contents: List[Operation],
+      signature: Option[Signature]
+    )
 
   }
 

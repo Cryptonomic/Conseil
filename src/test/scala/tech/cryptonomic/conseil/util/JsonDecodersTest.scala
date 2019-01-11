@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
   import JsonDecoders.Circe._
+  import JsonDecoders.Circe.Operations._
   import io.circe.parser.decode
 
   "the json decoders" should {
@@ -113,13 +114,13 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         |}""".stripMargin
 
     val expectedEndorsement =
-          TezosOperation.Endorsement(
+          TezosOperations.Endorsement(
             level = 182308,
-            metadata = TezosOperation.EndorsementMetadata(
+            metadata = TezosOperations.EndorsementMetadata(
               slots =List(29, 27, 20, 17),
               delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
               balance_updates = List(
-                TezosOperation.OperationMetadata.BalanceUpdate(
+                TezosOperations.OperationMetadata.BalanceUpdate(
                   kind = "contract",
                   contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
                   change = -256000000,
@@ -127,7 +128,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
                   delegate = None,
                   level = None
                 ),
-                TezosOperation.OperationMetadata.BalanceUpdate(
+                TezosOperations.OperationMetadata.BalanceUpdate(
                   kind = "freezer",
                   category = Some("deposits"),
                   delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
@@ -135,7 +136,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
                   contract = None,
                   level = Some(1424)
                 ),
-                TezosOperation.OperationMetadata.BalanceUpdate(
+                TezosOperations.OperationMetadata.BalanceUpdate(
                   kind = "freezer",
                   category = Some("rewards"),
                   delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
@@ -148,14 +149,49 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         )
 
     "decode an endorsement operation from json" in {
-      val decoded = decode[TezosOperation.Endorsement](endorsementJson)
+      val decoded = decode[TezosOperations.Operation](endorsementJson)
       decoded shouldBe 'right
 
       val endorsement = decoded.right.value
-      endorsement shouldBe a [TezosOperation.Endorsement]
+      endorsement shouldBe a [TezosOperations.Endorsement]
       endorsement shouldEqual expectedEndorsement
 
     }
+
+    val operationsGroupJson =
+      s"""{
+          |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+          |  "chain_id": "NetXSzLHKwSumh7",
+          |  "hash": "oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n",
+          |  "branch": "BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy",
+          |  "contents": [$endorsementJson],
+          |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
+        }""".stripMargin
+
+    println("JUST TO BE SURE: operations are: ")
+    println(operationsGroupJson)
+
+    val expectedGroup =
+      TezosOperations.Group(
+        protocol = "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+        chain_id = Some(ChainId("NetXSzLHKwSumh7")),
+        hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
+        branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
+        signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
+        contents = List(expectedEndorsement)
+      )
+
+    "decode a group of operations from json" in {
+
+      val decoded = decode[TezosOperations.Group](operationsGroupJson)
+      decoded shouldBe 'right
+
+      val operations = decoded.right.value
+      operations shouldBe a [TezosOperations.Group]
+      operations shouldEqual expectedGroup
+
+    }
+
   }
 
 }
