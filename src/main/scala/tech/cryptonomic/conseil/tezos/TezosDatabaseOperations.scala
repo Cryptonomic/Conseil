@@ -2,13 +2,11 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.SQLActionBuilder
-import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrdering}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
-import tech.cryptonomic.conseil.util.DatabaseUtil.{SqlActionHelper, concatenateSqlActions, getMap, insertValuesIntoSqlAction}
+import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
@@ -388,60 +386,5 @@ object TezosDatabaseOperations extends LazyLogging {
        .map(_.toList)
   }
 
-  /** Prepares predicates and transforms them into SQLActionBuilders
-    *
-    * @param  predicates  list of predicates to be transformed
-    * @return             list of transformed predicates
-    */
-  def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
-    predicates.map { predicate =>
-      concatenateSqlActions(
-        predicate.precision.map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
-          .getOrElse(sql""" AND #${predicate.field} """),
-        List(mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString)))
-      )
-    }
-
-  /** Prepares query
-    * @param table    table on which query will be executed
-    * @param columns  columns which are selected from teh table
-    * @return         SQLAction with basic query
-    */
-  def makeQuery(table: String, columns: List[String]): SQLActionBuilder = {
-    val cols = if(columns.isEmpty) "*" else columns.mkString(",")
-    sql"""SELECT #$cols FROM #$table WHERE true """
-  }
-
-  /** Prepares ordering parameters
-    * @param ordering  list of ordering parameters
-    * @return          SQLAction with ordering
-    */
-  def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-    val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
-    sql""" ORDER BY #$orderingBy"""
-  }
-
-  /** Prepares limit parameters
-    * @param limit  list of ordering parameters
-    * @return          SQLAction with ordering
-    */
-  def makeLimit(limit: Int): SQLActionBuilder = {
-    sql""" LIMIT $limit"""
-  }
-
-  /** maps operation type to SQL operation */
-  private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
-    val op = operation match {
-      case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
-      case OperationType.in => concatenateSqlActions(sql"IN ", List(insertValuesIntoSqlAction(vals)))
-      case OperationType.like => sql"LIKE '%#${vals.head}%'"
-      case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"
-      case OperationType.gt | OperationType.after => sql"> '#${vals.head}'"
-      case OperationType.eq => sql"= '#${vals.head}'"
-      case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
-      case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
-    }
-    concatenateSqlActions(op, List(sql" IS #${!inverse}"))
-  }
 }
 

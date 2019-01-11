@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationG
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.util.Random
 
@@ -1156,12 +1157,12 @@ class TezosDatabaseOperationsTest
     }
 
     "return the same results for the same query" in {
-      import tech.cryptonomic.conseil.util.DatabaseUtil._
+      import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
       val columns = List("level", "proto", "protocol", "hash")
       val tableName = Tables.Blocks.baseTableRow.tableName
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        generatedQuery <- sut.makeQuery(tableName, columns).as[Map[String, Any]]
+        generatedQuery <- makeQuery(tableName, columns).as[Map[String, Any]]
       } yield generatedQuery
 
       val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
