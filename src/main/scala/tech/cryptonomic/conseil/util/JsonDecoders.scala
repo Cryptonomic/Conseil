@@ -20,6 +20,12 @@ object JsonDecoders {
         .ensure(isBase58Check, "The passed-in json string is not a proper Base58Check encoding")
         .map(Base58Check)
 
+    implicit val nonceDecoder: Decoder[Nonce] =
+      Decoder.decodeString
+        .map(_.trim)
+        .ensure((_: String).forall(_.isLetterOrDigit), "The passed-in json string is not a valid nonce")
+        .map(Nonce)
+
     implicit val pkhDecoder: Decoder[PublicKeyHash] = base58CheckDecoder.map(b58 => PublicKeyHash(b58.content))
     implicit val signatureDecoder: Decoder[Signature] = base58CheckDecoder.map(b58 => Signature(b58.content))
     implicit val blockHashDecoder: Decoder[BlockHash] = base58CheckDecoder.map(b58 => BlockHash(b58.content))
@@ -34,10 +40,11 @@ object JsonDecoders {
           .withDiscriminator("kind")
           .withSnakeCaseConstructorNames
 
-      implicit val balanceUpdateDecoder: Decoder[TezosOperations.OperationMetadata.BalanceUpdate] = deriveDecoder[TezosOperations.OperationMetadata.BalanceUpdate]
-      implicit val endorsementMetadataDecoder: Decoder[TezosOperations.EndorsementMetadata] = deriveDecoder[TezosOperations.EndorsementMetadata]
+      implicit val balanceUpdateDecoder: Decoder[TezosOperations.OperationMetadata.BalanceUpdate] = deriveDecoder
+      implicit val endorsementMetadataDecoder: Decoder[TezosOperations.EndorsementMetadata] = deriveDecoder
+      implicit val seedNonceRevelationMetadataDecoder: Decoder[TezosOperations.SeedNonceRevelationMetadata] = deriveDecoder
       implicit val operationDecoder: Decoder[TezosOperations.Operation] = deriveDecoder[TezosOperations.Operation]
-      implicit val operationGroupDecoder: Decoder[TezosOperations.Group] = deriveDecoder[TezosOperations.Group]
+      implicit val operationGroupDecoder: Decoder[TezosOperations.Group] = deriveDecoder
 
     }
 

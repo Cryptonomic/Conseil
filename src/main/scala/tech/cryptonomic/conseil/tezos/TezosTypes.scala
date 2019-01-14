@@ -28,6 +28,8 @@ object TezosTypes {
 
   final case class ChainId(id: String) extends AnyVal
 
+  final case class Nonce(value: String) extends AnyVal
+
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
@@ -63,6 +65,16 @@ object TezosTypes {
     final case class EndorsementMetadata(
       slots: List[Int],
       delegate: PublicKeyHash,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+    )
+
+    final case class SeedNonceRevelation(
+      level: Int,
+      nonce: Nonce,
+      metadata: SeedNonceRevelationMetadata
+    ) extends Operation
+
+    final case class SeedNonceRevelationMetadata(
       balance_updates: List[OperationMetadata.BalanceUpdate]
     )
 

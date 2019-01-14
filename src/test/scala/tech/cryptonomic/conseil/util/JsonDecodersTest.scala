@@ -9,6 +9,140 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
   import JsonDecoders.Circe.Operations._
   import io.circe.parser.decode
 
+  /* defines example tezos json definitions of operations and typed counterparts used in the tests */
+  trait OperationsJsonData {
+    import TezosOperations.{Endorsement, SeedNonceRevelation, EndorsementMetadata, SeedNonceRevelationMetadata}
+    import TezosOperations.OperationMetadata.BalanceUpdate
+
+    val endorsementJson =
+      """{
+        |  "kind": "endorsement",
+        |  "level": 182308,
+        |  "metadata": {
+        |      "balance_updates": [
+        |          {
+        |              "kind": "contract",
+        |              "contract": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |              "change": "-256000000"
+        |          },
+        |          {
+        |              "kind": "freezer",
+        |              "category": "deposits",
+        |              "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |              "level": 1424,
+        |              "change": "256000000"
+        |          },
+        |          {
+        |              "kind": "freezer",
+        |              "category": "rewards",
+        |              "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |              "level": 1424,
+        |              "change": "4000000"
+        |          }
+        |      ],
+        |      "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+        |      "slots": [
+        |          29,
+        |          27,
+        |          20,
+        |          17
+        |      ]
+        |  }
+        |}""".stripMargin
+
+    val expectedEndorsement =
+      Endorsement(
+        level = 182308,
+        metadata = EndorsementMetadata(
+          slots =List(29, 27, 20, 17),
+          delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+              change = -256000000,
+              category = None,
+              delegate = None,
+              level = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("deposits"),
+              delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+              change = 256000000,
+              contract = None,
+              level = Some(1424)
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("rewards"),
+              delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
+              change = 4000000,
+              contract = None,
+              level = Some(1424)
+            )
+          )
+      )
+    )
+
+    val nonceRevelationJson =
+      """{
+      |  "kind": "seed_nonce_revelation",
+      |  "level": 199360,
+      |  "nonce": "4ddd711e76cf8c71671688aff7ce9ff67bf24bc16be31cd5dbbdd267456745e0",
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "freezer",
+      |              "category": "rewards",
+      |              "delegate": "tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9",
+      |              "level": 1557,
+      |              "change": "125000"
+      |          }
+      |      ]
+      |  }
+      |}""".stripMargin
+
+    val expectedNonceRevelation =
+      SeedNonceRevelation(
+        level = 199360,
+        nonce = Nonce("4ddd711e76cf8c71671688aff7ce9ff67bf24bc16be31cd5dbbdd267456745e0"),
+        metadata = SeedNonceRevelationMetadata(
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("rewards"),
+              delegate = Some(PublicKeyHash("tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9")),
+              level = Some(1557),
+              change = 125000,
+              contract = None
+            )
+          )
+        )
+      )
+
+    val operationsGroupJson =
+      s"""{
+          |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+          |  "chain_id": "NetXSzLHKwSumh7",
+          |  "hash": "oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n",
+          |  "branch": "BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy",
+          |  "contents": [$endorsementJson, $nonceRevelationJson],
+          |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
+        }""".stripMargin
+
+    val expectedGroup =
+      TezosOperations.Group(
+        protocol = "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+        chain_id = Some(ChainId("NetXSzLHKwSumh7")),
+        hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
+        branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
+        signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
+        contents = List(expectedEndorsement, expectedNonceRevelation)
+      )
+
+  }
+
   "the json decoders" should {
 
     val validHash = "signiRfcqmbGc6UtW1WzuJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
@@ -77,111 +211,27 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
-    val endorsementJson =
-      """{
-        |  "kind": "endorsement",
-        |  "level": 182308,
-        |  "metadata": {
-        |      "balance_updates": [
-        |          {
-        |              "kind": "contract",
-        |              "contract": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
-        |              "change": "-256000000"
-        |          },
-        |          {
-        |              "kind": "freezer",
-        |              "category": "deposits",
-        |              "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
-        |              "level": 1424,
-        |              "change": "256000000"
-        |          },
-        |          {
-        |              "kind": "freezer",
-        |              "category": "rewards",
-        |              "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
-        |              "level": 1424,
-        |              "change": "4000000"
-        |          }
-        |      ],
-        |      "delegate": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
-        |      "slots": [
-        |          29,
-        |          27,
-        |          20,
-        |          17
-        |      ]
-        |  }
-        |}""".stripMargin
-
-    val expectedEndorsement =
-          TezosOperations.Endorsement(
-            level = 182308,
-            metadata = TezosOperations.EndorsementMetadata(
-              slots =List(29, 27, 20, 17),
-              delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
-              balance_updates = List(
-                TezosOperations.OperationMetadata.BalanceUpdate(
-                  kind = "contract",
-                  contract = Some(ContractId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-                  change = -256000000,
-                  category = None,
-                  delegate = None,
-                  level = None
-                ),
-                TezosOperations.OperationMetadata.BalanceUpdate(
-                  kind = "freezer",
-                  category = Some("deposits"),
-                  delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-                  change = 256000000,
-                  contract = None,
-                  level = Some(1424)
-                ),
-                TezosOperations.OperationMetadata.BalanceUpdate(
-                  kind = "freezer",
-                  category = Some("rewards"),
-                  delegate = Some(PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio")),
-                  change = 4000000,
-                  contract = None,
-                  level = Some(1424)
-                )
-              )
-          )
-        )
-
-    "decode an endorsement operation from json" in {
+    "decode an endorsement operation from json" in new OperationsJsonData {
       val decoded = decode[TezosOperations.Operation](endorsementJson)
       decoded shouldBe 'right
 
-      val endorsement = decoded.right.value
-      endorsement shouldBe a [TezosOperations.Endorsement]
-      endorsement shouldEqual expectedEndorsement
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.Endorsement]
+      operation shouldEqual expectedEndorsement
 
     }
 
-    val operationsGroupJson =
-      s"""{
-          |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
-          |  "chain_id": "NetXSzLHKwSumh7",
-          |  "hash": "oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n",
-          |  "branch": "BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy",
-          |  "contents": [$endorsementJson],
-          |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
-        }""".stripMargin
+    "decode a seed nonce revelation operation from json" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Operation](nonceRevelationJson)
+      decoded shouldBe 'right
 
-    println("JUST TO BE SURE: operations are: ")
-    println(operationsGroupJson)
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.SeedNonceRevelation]
+      operation shouldEqual expectedNonceRevelation
 
-    val expectedGroup =
-      TezosOperations.Group(
-        protocol = "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
-        chain_id = Some(ChainId("NetXSzLHKwSumh7")),
-        hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
-        branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
-        signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
-        contents = List(expectedEndorsement)
-      )
+    }
 
-    "decode a group of operations from json" in {
+    "decode a group of operations from json" in new OperationsJsonData {
 
       val decoded = decode[TezosOperations.Group](operationsGroupJson)
       decoded shouldBe 'right
