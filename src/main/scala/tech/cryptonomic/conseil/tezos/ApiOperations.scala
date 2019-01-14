@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataOperations
+import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
@@ -144,7 +144,7 @@ object ApiOperations extends DataOperations {
             set = accountDelegates.toList
           )
         ).filter(_.set.nonEmpty),
-        limit = limit.getOrElse(defaultLimit)
+        limit = limit.orElse(Some(DataTypes.defaultLimitValue))
       )
     }
   }
@@ -399,7 +399,7 @@ object ApiOperations extends DataOperations {
           query.fields,
           sanitizePredicates(query.predicates),
           query.orderBy,
-          Math.min(query.limit, 100000)
+          Math.min(query.limit.get, DataTypes.maxLimitValue)
         )
       )
     } else {
