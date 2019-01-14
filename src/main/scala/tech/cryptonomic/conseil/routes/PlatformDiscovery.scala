@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.routes
 
 import akka.actor.ActorSystem
 import akka.http.caching.LfuCache
-import akka.http.caching.scaladsl.{Cache, CachingSettings, LfuCacheSettings}
+import akka.http.caching.scaladsl.{Cache, CachingSettings}
 import akka.http.scaladsl.model.{HttpMethods, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.CachingDirectives._
@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil._
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
@@ -30,17 +29,13 @@ object PlatformDiscovery {
   */
 class PlatformDiscovery(config: PlatformsConfiguration)(implicit apiExecutionContext: ExecutionContext, system: ActorSystem) extends LazyLogging with RouteHandling {
   val defaultCachingSettings: CachingSettings = CachingSettings(system)
-  lazy val lfuCacheSettings: LfuCacheSettings =
-    defaultCachingSettings.lfuCacheSettings
-      .withInitialCapacity(25)
-      .withMaxCapacity(50)
-      .withTimeToLive(20.seconds)
-      .withTimeToIdle(10.seconds)
-  lazy val simpleKeyer: PartialFunction[RequestContext, Uri] = {
+
+  val simpleKeyer: PartialFunction[RequestContext, Uri] = {
     case r: RequestContext if r.request.method == HttpMethods.GET => r.request.uri
   }
   val cachingSettings: CachingSettings =
-    defaultCachingSettings.withLfuCacheSettings(lfuCacheSettings)
+    defaultCachingSettings.withLfuCacheSettings(defaultCachingSettings.lfuCacheSettings)
+
   val lfuCache: Cache[Uri, RouteResult] = LfuCache(cachingSettings)
 
   val route: Route =
