@@ -28,16 +28,23 @@ object PlatformDiscovery {
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
 class PlatformDiscovery(config: PlatformsConfiguration)(implicit apiExecutionContext: ExecutionContext, system: ActorSystem) extends LazyLogging with RouteHandling {
-  val defaultCachingSettings: CachingSettings = CachingSettings(system)
 
-  val simpleKeyer: PartialFunction[RequestContext, Uri] = {
+  /** default caching settings*/
+  private val defaultCachingSettings: CachingSettings = CachingSettings(system)
+
+  /** simple partial function for filtering */
+  private val simpleKeyer: PartialFunction[RequestContext, Uri] = {
     case r: RequestContext if r.request.method == HttpMethods.GET => r.request.uri
   }
-  val cachingSettings: CachingSettings =
+
+  /** LFU caching settings */
+  private val cachingSettings: CachingSettings =
     defaultCachingSettings.withLfuCacheSettings(defaultCachingSettings.lfuCacheSettings)
 
-  val lfuCache: Cache[Uri, RouteResult] = LfuCache(cachingSettings)
+  /** LFU cache */
+  private val lfuCache: Cache[Uri, RouteResult] = LfuCache(cachingSettings)
 
+  /** Metadata route */
   val route: Route =
     get {
       cache(lfuCache, simpleKeyer) {
