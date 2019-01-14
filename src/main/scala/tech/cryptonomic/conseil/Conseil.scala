@@ -32,7 +32,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
       lazy val tezos = Tezos(tezosDispatcher)
-      lazy val platformDiscovery = PlatformDiscovery(platforms)(tezosDispatcher)
+      lazy val platformDiscovery = PlatformDiscovery(platforms)(tezosDispatcher, system)
       lazy val data = Data(platforms)(tezosDispatcher)
 
       val route = cors() {
