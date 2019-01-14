@@ -11,7 +11,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
   /* defines example tezos json definitions of operations and typed counterparts used in the tests */
   trait OperationsJsonData {
-    import TezosOperations.{Endorsement, SeedNonceRevelation, EndorsementMetadata, SeedNonceRevelationMetadata}
+    import TezosOperations.{Endorsement, SeedNonceRevelation, EndorsementMetadata, BalanceUpdatesMetadata, ActivateAccount}
     import TezosOperations.OperationMetadata.BalanceUpdate
 
     val endorsementJson =
@@ -107,7 +107,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       SeedNonceRevelation(
         level = 199360,
         nonce = Nonce("4ddd711e76cf8c71671688aff7ce9ff67bf24bc16be31cd5dbbdd267456745e0"),
-        metadata = SeedNonceRevelationMetadata(
+        metadata = BalanceUpdatesMetadata(
           balance_updates = List(
             BalanceUpdate(
               kind = "freezer",
@@ -121,13 +121,51 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         )
       )
 
+    val activationJson =
+      """{
+      |  "kind": "activate_account",
+      |  "pkh": "tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw",
+      |  "secret": "026a9a6b7ea07238dab3e4322d93a6abe8da278a",
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw",
+      |              "change": "13448692695"
+      |          }
+      |      ]
+      |  }
+    }""".stripMargin
+
+    val expectedActivation =
+      ActivateAccount(
+        pkh = PublicKeyHash("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw"),
+        secret = Secret("026a9a6b7ea07238dab3e4322d93a6abe8da278a"),
+        metadata = BalanceUpdatesMetadata(
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw")),
+              change = 13448692695L,
+              category = None,
+              delegate = None,
+              level = None
+            )
+          )
+        )
+      )
+
     val operationsGroupJson =
       s"""{
           |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
           |  "chain_id": "NetXSzLHKwSumh7",
           |  "hash": "oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n",
           |  "branch": "BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy",
-          |  "contents": [$endorsementJson, $nonceRevelationJson],
+          |  "contents": [
+          |    $endorsementJson,
+          |    $nonceRevelationJson,
+          |    $activationJson
+          |  ],
           |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
         }""".stripMargin
 
@@ -138,7 +176,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
         branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
         signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
-        contents = List(expectedEndorsement, expectedNonceRevelation)
+        contents = List(expectedEndorsement, expectedNonceRevelation, expectedActivation)
       )
 
   }
@@ -228,6 +266,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       val operation = decoded.right.value
       operation shouldBe a [TezosOperations.SeedNonceRevelation]
       operation shouldEqual expectedNonceRevelation
+
+    }
+
+    "decode an account activation operation from json" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Operation](activationJson)
+      decoded shouldBe 'right
+
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.ActivateAccount]
+      operation shouldEqual expectedActivation
 
     }
 

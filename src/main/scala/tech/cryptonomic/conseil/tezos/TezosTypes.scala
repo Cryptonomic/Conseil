@@ -30,6 +30,8 @@ object TezosTypes {
 
   final case class Nonce(value: String) extends AnyVal
 
+  final case class Secret(value: String) extends AnyVal
+
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
@@ -71,10 +73,16 @@ object TezosTypes {
     final case class SeedNonceRevelation(
       level: Int,
       nonce: Nonce,
-      metadata: SeedNonceRevelationMetadata
+      metadata: BalanceUpdatesMetadata
     ) extends Operation
 
-    final case class SeedNonceRevelationMetadata(
+    final case class ActivateAccount(
+      pkh: PublicKeyHash,
+      secret: Secret,
+      metadata: BalanceUpdatesMetadata
+    ) extends Operation
+
+    final case class BalanceUpdatesMetadata(
       balance_updates: List[OperationMetadata.BalanceUpdate]
     )
 
@@ -82,7 +90,7 @@ object TezosTypes {
       //we're currently making no difference between contract or freezer updates
       final case class BalanceUpdate(
         kind: String,
-        change: Int,
+        change: Long,
         category: Option[String],
         contract: Option[ContractId],
         delegate: Option[PublicKeyHash],
