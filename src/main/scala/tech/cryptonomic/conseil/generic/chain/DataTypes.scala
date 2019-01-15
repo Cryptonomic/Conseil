@@ -12,6 +12,12 @@ import scala.util.Try
   */
 object DataTypes {
 
+  /** Default value of limit parameter */
+  val defaultLimitValue: Int = 10000
+
+  /** Max value of limit parameter */
+  val maxLimitValue: Int = 100000
+
   /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]
 
@@ -38,7 +44,8 @@ object DataTypes {
   case class Query(
     fields: List[String] = List.empty,
     predicates: List[Predicate],
-    orderBy: List[QueryOrdering] = List.empty
+    orderBy: List[QueryOrdering] = List.empty,
+    limit: Option[Int] = Some(defaultLimitValue)
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
     def validate: Option[Query] = {

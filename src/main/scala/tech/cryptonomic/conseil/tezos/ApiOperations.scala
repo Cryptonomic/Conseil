@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataOperations
+import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
@@ -143,7 +143,8 @@ object ApiOperations extends DataOperations {
             operation = OperationType.in,
             set = accountDelegates.toList
           )
-        ).filter(_.set.nonEmpty)
+        ).filter(_.set.nonEmpty),
+        limit = limit.orElse(Some(DataTypes.defaultLimitValue))
       )
     }
   }
@@ -392,7 +393,15 @@ object ApiOperations extends DataOperations {
     * */
   override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] = {
     if (areFieldsValid(tableName, (query.fields ++ query.predicates.map(_.field) ++ query.orderBy.map(_.field)).toSet)) {
-      runQuery(TezosDatabaseOperations.selectWithPredicates(tableName, query.fields, sanitizePredicates(query.predicates), query.orderBy))
+      runQuery(
+        TezosDatabaseOperations.selectWithPredicates(
+          tableName,
+          query.fields,
+          sanitizePredicates(query.predicates),
+          query.orderBy,
+          Math.min(query.limit.get, DataTypes.maxLimitValue)
+        )
+      )
     } else {
       Future.successful(List.empty)
     }
