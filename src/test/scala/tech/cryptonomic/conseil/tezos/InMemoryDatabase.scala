@@ -40,7 +40,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   /* turns off anti-corruption guarantees settings that will improve performance on testing
    * override to change or add test-specific settings
    */
-  protected val pgInitParams = List("--nosync")
+  protected val pgInitParams = List("--nosync", "--lc-collate=C")
   /* turns off anti-corruption guarantees settings that will improve performance on testing
    * override to change or add test-specific settings
    */
