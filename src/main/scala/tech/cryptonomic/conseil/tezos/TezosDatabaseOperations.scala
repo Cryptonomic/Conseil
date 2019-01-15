@@ -373,6 +373,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param columns        list of column names
     * @param predicates     list of predicates for query to be filtered with
     * @param ordering       list of ordering conditions for the query
+    * @param limit          max number of rows fetched
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
   def selectWithPredicates(
