@@ -75,7 +75,12 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing ordering statements
         */
       def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-        concatenateSqlActions(action, makeOrdering(ordering))
+        val queryOrdering = if (ordering.isEmpty) {
+          List.empty
+        } else {
+          List(makeOrdering(ordering))
+        }
+        concatenateSqlActions(action, queryOrdering:_*)
       }
 
       /** Method for adding limit to existing SQLAction
@@ -119,11 +124,8 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-      if(ordering.isEmpty) sql""""""
-      else {
-        val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
-        sql""" ORDER BY #$orderingBy"""
-      }
+      val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
+      sql""" ORDER BY #$orderingBy"""
     }
 
     /** Prepares limit parameters
