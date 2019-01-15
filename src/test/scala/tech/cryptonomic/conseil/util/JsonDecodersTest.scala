@@ -11,8 +11,17 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
   /* defines example tezos json definitions of operations and typed counterparts used in the tests */
   trait OperationsJsonData {
-    import TezosOperations.{Endorsement, SeedNonceRevelation, EndorsementMetadata, BalanceUpdatesMetadata, ActivateAccount}
+    import TezosOperations._
     import TezosOperations.OperationMetadata.BalanceUpdate
+    import TezosOperations.OperationResult.Error
+
+    val errorJson =
+      """{
+        |  "kind": "temporary",
+        |  "id": "proto.alpha.gas_exhausted.operation"
+        |}""".stripMargin
+
+    val expectedError = Error("""{"kind":"temporary","id":"proto.alpha.gas_exhausted.operation"}""")
 
     val endorsementJson =
       """{
@@ -135,7 +144,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       |          }
       |      ]
       |  }
-    }""".stripMargin
+      |}""".stripMargin
 
     val expectedActivation =
       ActivateAccount(
@@ -155,19 +164,175 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         )
       )
 
+    val revealJson =
+      """{
+      |  "kind": "reveal",
+      |  "source": "KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq",
+      |  "fee": "10000",
+      |  "counter": "1",
+      |  "gas_limit": "10000",
+      |  "storage_limit": "257",
+      |  "public_key": "edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz",
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq",
+      |              "change": "-10000"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+      |              "level": 1561,
+      |              "change": "10000"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "consumed_gas": "10000"
+      |      },
+      |      "internal_operation_results": [
+      |          {
+      |              "kind": "reveal",
+      |              "nonce": 1234,
+      |              "public_key": "edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz",
+      |              "source": "KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq",
+      |              "result": {
+      |                  "status": "applied",
+      |                  "consumed_gas": "10000"
+      |              }
+      |          }
+      |      ]
+      |  }
+      |}""".stripMargin
+
+    //ignores the internal_operation_result
+    val expectedReveal =
+      Reveal(
+        source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+        fee = PositiveDecimal(10000),
+        counter = PositiveDecimal(1),
+        gas_limit = PositiveDecimal(10000),
+        storage_limit = PositiveDecimal(257),
+        public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
+        metadata =
+          RevealMetadata(
+            balance_updates = List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
+                change = -10000L,
+                category = None,
+                delegate = None,
+                level = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("fees"),
+                delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+                level = Some(1561),
+                change = 10000L,
+                contract = None
+              )
+            ),
+            operation_result =
+              OperationResult.Reveal(
+                status = "applied",
+                consumed_gas = Some(Decimal(10000)),
+                errors = None
+              )
+          )
+      )
+
+    //used to check if internal errors are correctly decoded
+    val failedRevealJson =
+      """{
+      |  "kind": "reveal",
+      |  "source": "tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf",
+      |  "fee": "1300",
+      |  "counter": "454133",
+      |  "gas_limit": "100",
+      |  "storage_limit": "0",
+      |  "public_key": "edpkuuNeGwDGBBGNdp7eEDUnb3tJKfhyxoo9A8GkDbdHEaPYYG8MJj",
+      |  "metadata": {
+      |    "balance_updates": [
+      |      {
+      |        "kind": "contract",
+      |        "contract": "tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf",
+      |        "change": "-1300"
+      |      },
+      |      {
+      |        "kind": "freezer",
+      |        "category": "fees",
+      |        "delegate": "tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU",
+      |        "level": 1567,
+      |        "change": "1300"
+      |      }
+      |    ],
+      |    "operation_result": {
+      |      "status": "failed",
+      |      "errors": [
+      |        {
+      |          "kind": "temporary",
+      |          "id": "proto.alpha.gas_exhausted.operation"
+      |        }
+      |      ]
+      |    }
+      |  }
+      }""".stripMargin
+
+    val expectedFailedReveal =
+      Reveal(
+        source = ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf"),
+        fee = PositiveDecimal(1300),
+        counter = PositiveDecimal(454133),
+        gas_limit = PositiveDecimal(100),
+        storage_limit = PositiveDecimal(0),
+        public_key = PublicKey("edpkuuNeGwDGBBGNdp7eEDUnb3tJKfhyxoo9A8GkDbdHEaPYYG8MJj"),
+        metadata =
+          RevealMetadata(
+            balance_updates = List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf")),
+                change = -1300L,
+                category = None,
+                delegate = None,
+                level = None
+              ),
+              BalanceUpdate(
+                kind = "freezer",
+                category = Some("fees"),
+                delegate = Some(PublicKeyHash("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")),
+                level = Some(1567),
+                change = 1300L,
+                contract = None
+              )
+            ),
+            operation_result =
+              OperationResult.Reveal(
+                status = "failed",
+                errors = Some(List(Error("""{"kind":"temporary","id":"proto.alpha.gas_exhausted.operation"}"""))),
+                consumed_gas = None
+              )
+          )
+      )
+
     val operationsGroupJson =
       s"""{
-          |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
-          |  "chain_id": "NetXSzLHKwSumh7",
-          |  "hash": "oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n",
-          |  "branch": "BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy",
-          |  "contents": [
-          |    $endorsementJson,
-          |    $nonceRevelationJson,
-          |    $activationJson
-          |  ],
-          |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
-        }""".stripMargin
+        |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
+        |  "chain_id": "NetXSzLHKwSumh7",
+        |  "hash": "oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n",
+        |  "branch": "BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy",
+        |  "contents": [
+        |    $endorsementJson,
+        |    $nonceRevelationJson,
+        |    $activationJson,
+        |    $failedRevealJson
+        |  ],
+        |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
+        |}""".stripMargin
 
     val expectedGroup =
       TezosOperations.Group(
@@ -176,76 +341,162 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
         branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
         signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
-        contents = List(expectedEndorsement, expectedNonceRevelation, expectedActivation)
+        contents = List(expectedEndorsement, expectedNonceRevelation, expectedActivation, expectedFailedReveal)
       )
 
   }
 
   "the json decoders" should {
 
-    val validHash = "signiRfcqmbGc6UtW1WzuJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
-    val invalidHash = "signiRfcqmbGc6UtW1WzuJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSl"
+    val validB58Hash = "signiRfcqmbGc6UtW1WzuJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf"
+    val invalidB58Hash = "signiRfcqmbGc6UtW1WzuJNGzRRsWDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSl"
+    val alphanumneric = "asdopkjfap2398ufa3908wimv3pw98vja3pw98v"
+    val invalidAlphanumeric = "@*;akjfa80330"
+    val invalidJson = """{wrongname: "name"}"""
 
     /** wrap in quotes to be a valid json string */
     val jsonStringOf = (content: String) => s""""$content""""
 
+    "decode valid json base58check strings into a PublicKey" in {
+      val decoded = decode[PublicKey](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe PublicKey(validB58Hash)
+    }
+
+    "fail to decode an invalid json base58check strings into a PublicKey" in {
+      val decoded = decode[PublicKey](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
     "decode valid json base58check strings into a PublicKeyHash" in {
-      val decoded = decode[PublicKeyHash](jsonStringOf(validHash))
-      decoded.right.value shouldBe PublicKeyHash(validHash)
+      val decoded = decode[PublicKeyHash](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe PublicKeyHash(validB58Hash)
     }
 
     "fail to decode an invalid json base58check strings into a PublicKeyHash" in {
-      val decoded = decode[PublicKeyHash](jsonStringOf(invalidHash))
+      val decoded = decode[PublicKeyHash](jsonStringOf(invalidB58Hash))
       decoded shouldBe 'left
     }
 
     "decode valid json base58check strings into a Signature" in {
-      val decoded = decode[Signature](jsonStringOf(validHash))
-      decoded.right.value shouldBe Signature(validHash)
+      val decoded = decode[Signature](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe Signature(validB58Hash)
     }
 
     "fail to decode an invalid json base58check strings into a Signature" in {
-      val decoded = decode[Signature](jsonStringOf(invalidHash))
+      val decoded = decode[Signature](jsonStringOf(invalidB58Hash))
       decoded shouldBe 'left
     }
 
     "decode valid json base58check strings into a BlockHash" in {
-      val decoded = decode[BlockHash](jsonStringOf(validHash))
-      decoded.right.value shouldBe BlockHash(validHash)
+      val decoded = decode[BlockHash](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe BlockHash(validB58Hash)
     }
 
     "fail to decode an invalid json base58check strings into a BlockHash" in {
-      val decoded = decode[BlockHash](jsonStringOf(invalidHash))
+      val decoded = decode[BlockHash](jsonStringOf(invalidB58Hash))
       decoded shouldBe 'left
     }
 
     "decode valid json base58check strings into a OperationHash" in {
-      val decoded = decode[OperationHash](jsonStringOf(validHash))
-      decoded.right.value shouldBe OperationHash(validHash)
+      val decoded = decode[OperationHash](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe OperationHash(validB58Hash)
     }
 
     "fail to decode an invalid json base58check strings into a OperationHash" in {
-      val decoded = decode[OperationHash](jsonStringOf(invalidHash))
+      val decoded = decode[OperationHash](jsonStringOf(invalidB58Hash))
       decoded shouldBe 'left
     }
 
     "decode valid json base58check strings into a AccountId" in {
-      val decoded = decode[AccountId](jsonStringOf(validHash))
-      decoded.right.value shouldBe AccountId(validHash)
+      val decoded = decode[AccountId](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe AccountId(validB58Hash)
     }
 
     "fail to decode an invalid json base58check strings into a AccountId" in {
-      val decoded = decode[AccountId](jsonStringOf(invalidHash))
+      val decoded = decode[AccountId](jsonStringOf(invalidB58Hash))
       decoded shouldBe 'left
     }
 
     "decode valid json base58check strings into a ContractId" in {
-      val decoded = decode[ContractId](jsonStringOf(validHash))
-      decoded.right.value shouldBe ContractId(validHash)
+      val decoded = decode[ContractId](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe ContractId(validB58Hash)
     }
 
     "fail to decode an invalid json base58check strings into a ContractId" in {
-      val decoded = decode[ContractId](jsonStringOf(invalidHash))
+      val decoded = decode[ContractId](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
+    "decode valid json base58check strings into a ChainId" in {
+      val decoded = decode[ChainId](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe ChainId(validB58Hash)
+    }
+
+    "fail to decode an invalid json base58check strings into a ChainId" in {
+      val decoded = decode[ChainId](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
+    "decode valid json alphanumneric strings into a Nonce" in {
+      val decoded = decode[Nonce](jsonStringOf(alphanumneric))
+      decoded.right.value shouldBe Nonce(alphanumneric)
+    }
+
+    "fail to decode an invalid json alphanumneric strings into a Nonce" in {
+      val decoded = decode[Nonce](jsonStringOf(invalidAlphanumeric))
+      decoded shouldBe 'left
+    }
+
+    "decode valid json alphanumneric strings into a Secret" in {
+      val decoded = decode[Secret](jsonStringOf(alphanumneric))
+      decoded.right.value shouldBe Secret(alphanumneric)
+    }
+
+    "fail to decode an invalid json alphanumneric strings into a Secret" in {
+      val decoded = decode[Secret](jsonStringOf(invalidAlphanumeric))
+      decoded shouldBe 'left
+    }
+
+    "decode valid json strings representing a PositiveBigNumber" in {
+      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("1000000000"))
+      decoded.right.value shouldEqual TezosOperations.PositiveDecimal(1000000000)
+    }
+
+    "decode valid json strings representing zero as a PositiveBigNumber" in {
+      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("0"))
+      decoded.right.value shouldEqual TezosOperations.PositiveDecimal(0)
+    }
+
+    "decode invalid json for PositiveBigNumber, representing negatives, as the original string" in {
+      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("-1000000000"))
+      decoded.right.value shouldBe TezosOperations.InvalidPositiveDecimal("-1000000000")
+    }
+
+    "decode invalid json for PositiveBigNumber, not representing numbers, as the original string" in {
+      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("1AA000000000"))
+      decoded.right.value shouldBe TezosOperations.InvalidPositiveDecimal("1AA000000000")
+    }
+
+    "decode valid json strings representing both positive and negative values as BigNumber" in {
+      val decoded = decode[TezosOperations.BigNumber](jsonStringOf("1000000000"))
+      decoded.right.value shouldEqual TezosOperations.Decimal(1000000000)
+
+      val negDecoded = decode[TezosOperations.BigNumber](jsonStringOf("-1000000000"))
+      negDecoded.right.value shouldBe TezosOperations.Decimal(-1000000000)
+    }
+
+    "decode invalid json for BigNumber, not representing numbers, as the original string" in {
+      val decoded = decode[TezosOperations.BigNumber](jsonStringOf("1AA000000000"))
+      decoded.right.value shouldBe TezosOperations.InvalidDecimal("1AA000000000")
+    }
+
+    "decode valid json into Error values" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.OperationResult.Error](errorJson)
+      decoded.right.value shouldEqual expectedError
+    }
+
+    "fail to decode invalid json into Error values" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.OperationResult.Error](invalidJson)
       decoded shouldBe 'left
     }
 
@@ -276,6 +527,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       val operation = decoded.right.value
       operation shouldBe a [TezosOperations.ActivateAccount]
       operation shouldEqual expectedActivation
+
+    }
+
+    "decode an reveal operation from json" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Operation](revealJson)
+      decoded shouldBe 'right
+
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.Reveal]
+      operation shouldEqual expectedReveal
 
     }
 

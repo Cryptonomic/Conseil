@@ -14,6 +14,8 @@ object TezosTypes {
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
 
+  final case class PublicKey(value: String) extends AnyVal
+
   final case class PublicKeyHash(value: String) extends AnyVal
 
   final case class Signature(value: String) extends AnyVal
@@ -55,20 +57,27 @@ object TezosTypes {
                   )
 
 
+  /* collector for tezos operations data structures */
   object TezosOperations {
 
+    /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`
+     * all the while accepting `0` as valid
+     */
+    sealed trait PositiveBigNumber extends Product with Serializable
+    final case class PositiveDecimal(value: BigDecimal) extends PositiveBigNumber
+    final case class InvalidPositiveDecimal(jsonString: String) extends PositiveBigNumber
+
+    sealed trait BigNumber extends Product with Serializable
+    final case class Decimal(value: BigDecimal) extends BigNumber
+    final case class InvalidDecimal(jsonString: String) extends BigNumber
+
+    /** root of the operation hiearchy */
     sealed trait Operation extends Product with Serializable
 
     final case class Endorsement(
       level: Int,
       metadata: EndorsementMetadata
     ) extends Operation
-
-    final case class EndorsementMetadata(
-      slots: List[Int],
-      delegate: PublicKeyHash,
-      balance_updates: List[OperationMetadata.BalanceUpdate]
-    )
 
     final case class SeedNonceRevelation(
       level: Int,
@@ -82,10 +91,49 @@ object TezosTypes {
       metadata: BalanceUpdatesMetadata
     ) extends Operation
 
+    final case class Reveal(
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      public_key: PublicKey,
+      source: ContractId,
+      metadata: RevealMetadata
+    ) extends Operation
+
+    final case class EndorsementMetadata(
+      slots: List[Int],
+      delegate: PublicKeyHash,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+    )
+
+    //for now we ignore internal results, as it gets funny as sitting naked on a wasps' nest
+    final case class RevealMetadata(
+      operation_result: OperationResult.Reveal,
+      balance_updates: List[OperationMetadata.BalanceUpdate]
+    )
+
+    //generic metadata, used whenever balance updates are the only thing inside
     final case class BalanceUpdatesMetadata(
       balance_updates: List[OperationMetadata.BalanceUpdate]
     )
 
+
+    /** defines common result structures, following the json-schema definitions */
+    object OperationResult {
+      //we're not yet encoding the complex schema for errors, storing them as simple strings
+      final case class Error(json: String) extends AnyVal
+
+      //we're currently making no difference between different statuses
+      final case class Reveal(
+        status: String,
+        consumed_gas: Option[BigNumber],
+        errors: Option[List[Error]]
+      )
+
+    }
+
+    /** defines common metadata structures, following the json-schema definitions */
     object OperationMetadata {
       //we're currently making no difference between contract or freezer updates
       final case class BalanceUpdate(
@@ -98,6 +146,7 @@ object TezosTypes {
       )
     }
 
+    /** a grouping of operations with common "header" information */
     final case class Group (
       protocol: String,
       chain_id: Option[ChainId],

@@ -7,6 +7,7 @@ object JsonDecoders {
   object Circe {
 
     import io.circe.Decoder
+    import cats.syntax.functor._
     import io.circe.generic.extras._
     import io.circe.generic.extras.semiauto._
     import io.circe.generic.extras.Configuration
@@ -47,6 +48,7 @@ object JsonDecoders {
       )
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
+    implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
     implicit val pkhDecoder: Decoder[PublicKeyHash] = base58CheckDecoder.map(b58 => PublicKeyHash(b58.content))
     implicit val signatureDecoder: Decoder[Signature] = base58CheckDecoder.map(b58 => Signature(b58.content))
     implicit val blockHashDecoder: Decoder[BlockHash] = base58CheckDecoder.map(b58 => BlockHash(b58.content))
@@ -61,6 +63,50 @@ object JsonDecoders {
      */
     object Operations {
 
+      import TezosOperations._
+
+      /* decode any json value to its string representation wrapped in a Error*/
+      implicit val errorDecoder: Decoder[OperationResult.Error] =
+        Decoder.decodeJson
+          .map(json => OperationResult.Error(json.noSpaces))
+
+      /* try decoding a number */
+      private implicit val bignumDecoder: Decoder[Decimal] =
+        Decoder.decodeString
+          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .map(Decimal)
+
+      /* try decoding a positive number */
+      private implicit val positiveBignumDecoder: Decoder[PositiveDecimal] =
+        Decoder.decodeString
+          .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
+          .ensure(_ >= 0, "The passed-in json string is not a non-negative number")
+          .map(PositiveDecimal)
+
+      /* read any string and wrap it */
+      private implicit val invalidBignumDecoder: Decoder[InvalidDecimal] =
+        Decoder.decodeString
+          .map(InvalidDecimal)
+
+      /* read any string and wrap it */
+      private implicit val invalidPositiveBignumDecoder: Decoder[InvalidPositiveDecimal] =
+        Decoder.decodeString
+          .map(InvalidPositiveDecimal)
+
+      /* decodes in turn each subtype, failing that will fallthrough to the next one */
+      implicit val bigPositiveDecoder: Decoder[PositiveBigNumber] =
+        List[Decoder[PositiveBigNumber]](
+          Decoder[PositiveDecimal].widen,
+          Decoder[InvalidPositiveDecimal].widen
+        ).reduceLeft(_ or _)
+
+      /* decodes in turn each subtype, failing that will fallthrough to the next one */
+      implicit val bigNumberDecoder: Decoder[BigNumber] =
+        List[Decoder[BigNumber]](
+          Decoder[Decimal].widen,
+          Decoder[InvalidDecimal].widen
+        ).reduceLeft(_ or _)
+
       //use the kind field to distinguish subtypes of the Operation ADT
       implicit val derivationConfig: Configuration =
         Configuration.default
@@ -68,11 +114,13 @@ object JsonDecoders {
           .withSnakeCaseConstructorNames
 
       //derive all needed decoders
-      implicit val balanceUpdateDecoder: Decoder[TezosOperations.OperationMetadata.BalanceUpdate] = deriveDecoder
-      implicit val endorsementMetadataDecoder: Decoder[TezosOperations.EndorsementMetadata] = deriveDecoder
-      implicit val seedNonceRevelationMetadataDecoder: Decoder[TezosOperations.BalanceUpdatesMetadata] = deriveDecoder
-      implicit val operationDecoder: Decoder[TezosOperations.Operation] = deriveDecoder[TezosOperations.Operation]
-      implicit val operationGroupDecoder: Decoder[TezosOperations.Group] = deriveDecoder
+      implicit val balanceUpdateDecoder: Decoder[OperationMetadata.BalanceUpdate] = deriveDecoder
+      implicit val endorsementMetadataDecoder: Decoder[EndorsementMetadata] = deriveDecoder
+      implicit val balanceUpdatesMetadataDecoder: Decoder[BalanceUpdatesMetadata] = deriveDecoder
+      implicit val resultRevealDecoder: Decoder[OperationResult.Reveal] = deriveDecoder
+      implicit val revealMetadataDecoder: Decoder[RevealMetadata] = deriveDecoder
+      implicit val operationDecoder: Decoder[Operation] = deriveDecoder[Operation]
+      implicit val operationGroupDecoder: Decoder[Group] = deriveDecoder
 
     }
 
