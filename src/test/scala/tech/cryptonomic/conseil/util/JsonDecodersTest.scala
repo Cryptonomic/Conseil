@@ -23,6 +23,94 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
     val expectedError = Error("""{"kind":"temporary","id":"proto.alpha.gas_exhausted.operation"}""")
 
+    val michelsonJson =
+      """{
+      |  "prim": "code",
+      |  "args": [
+      |      {
+      |        "prim": "CAR"
+      |      },
+      |      {
+      |        "prim": "NIL",
+      |        "args": [
+      |          {
+      |            "prim": "operation"
+      |          }
+      |        ]
+      |      },
+      |      {
+      |        "prim": "PAIR"
+      |      }
+      |  ]
+      |}""".stripMargin
+
+    val expectedMichelson = MichelsonV1("""{"prim":"code","args":[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]}""")
+
+    val bigmapdiffJson =
+      s"""{
+      |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+      |  "key": $michelsonJson
+      |}""".stripMargin
+
+    val expectedBigMapDiff =
+      Contract.BigMapDiff(
+        key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
+        key = expectedMichelson,
+        value = None
+      )
+
+    val scriptJson =
+      """{
+      |  "code": [
+      |      {
+      |          "prim": "parameter",
+      |          "args": [
+      |              {
+      |                  "prim": "string"
+      |              }
+      |          ]
+      |      },
+      |      {
+      |          "prim": "storage",
+      |          "args": [
+      |              {
+      |                  "prim": "string"
+      |              }
+      |          ]
+      |      },
+      |      {
+      |          "prim": "code",
+      |          "args": [
+      |              [
+      |                  {
+      |                      "prim": "CAR"
+      |                  },
+      |                  {
+      |                      "prim": "NIL",
+      |                      "args": [
+      |                          {
+      |                              "prim": "operation"
+      |                          }
+      |                      ]
+      |                  },
+      |                  {
+      |                      "prim": "PAIR"
+      |                  }
+      |              ]
+      |          ]
+      |      }
+      |  ],
+      |  "storage": {
+      |      "string": "hello"
+      |  }
+      |}""".stripMargin
+
+    val expectedScript =
+      Scripted.Contracts(
+        code = MichelsonV1("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
+        storage = MichelsonV1("""{"string":"hello"}""")
+      )
+
     val endorsementJson =
       """{
         |  "kind": "endorsement",
@@ -217,7 +305,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         storage_limit = PositiveDecimal(257),
         public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
         metadata =
-          RevealMetadata(
+          ResultMetadata[OperationResult.Reveal](
             balance_updates = List(
               BalanceUpdate(
                 kind = "contract",
@@ -291,7 +379,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         storage_limit = PositiveDecimal(0),
         public_key = PublicKey("edpkuuNeGwDGBBGNdp7eEDUnb3tJKfhyxoo9A8GkDbdHEaPYYG8MJj"),
         metadata =
-          RevealMetadata(
+          ResultMetadata(
             balance_updates = List(
               BalanceUpdate(
                 kind = "contract",
@@ -319,6 +407,230 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
           )
       )
 
+    val transactionJson =
+      """{
+      |  "kind": "transaction",
+      |  "source": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "fee": "1416",
+      |  "counter": "407940",
+      |  "gas_limit": "11475",
+      |  "storage_limit": "0",
+      |  "amount": "0",
+      |  "destination": "KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy",
+      |  "parameters": {
+      |      "string": "world"
+      |  },
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |              "change": "-1416"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+      |              "level": 1583,
+      |              "change": "1416"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "storage": {
+      |              "string": "world"
+      |          },
+      |          "consumed_gas": "11375",
+      |          "storage_size": "46"
+      |      }
+      |  }
+      |}""".stripMargin
+
+    val expectedTransaction =
+      Transaction(
+        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        fee = PositiveDecimal(1416),
+        counter = PositiveDecimal(407940),
+        gas_limit = PositiveDecimal(11475),
+        storage_limit = PositiveDecimal(0),
+        amount = PositiveDecimal(0),
+        destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
+        parameters = Some(MichelsonV1("""{"string":"world"}""")),
+        metadata = ResultMetadata(
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+              change = -1416L,
+              category = None,
+              delegate = None,
+              level = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+              level = Some(1583),
+              change = 1416L,
+              contract = None
+            )
+          ),
+          operation_result =
+            OperationResult.Transaction(
+              status = "applied",
+              storage = Some(MichelsonV1("""{"string":"world"}""")),
+              consumed_gas = Some(Decimal(11375)),
+              storage_size = Some(Decimal(46)),
+              allocated_destination_contract = None,
+              balance_updates = None,
+              big_map_diff = None,
+              originated_contracts = None,
+              paid_storage_size_diff = None,
+              errors = None
+            )
+        )
+    )
+
+    val originationJson =
+      s"""{
+      |  "kind": "origination",
+      |  "source": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "fee": "1441",
+      |  "counter": "407941",
+      |  "gas_limit": "11362",
+      |  "storage_limit": "323",
+      |  "manager_pubkey": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "balance": "1000000",
+      |  "spendable": false,
+      |  "delegatable": false,
+      |  "script": $scriptJson,
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |              "change": "-1441"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+      |              "level": 1583,
+      |              "change": "1441"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "balance_updates": [
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |                  "change": "-46000"
+      |              },
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |                  "change": "-257000"
+      |              },
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |                  "change": "-1000000"
+      |              },
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4",
+      |                  "change": "1000000"
+      |              }
+      |          ],
+      |          "originated_contracts": [
+      |              "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"
+      |          ],
+      |          "consumed_gas": "11262",
+      |          "storage_size": "46",
+      |          "paid_storage_size_diff": "46"
+      |      }
+      |  }
+      |}""".stripMargin
+
+    val expectedOrigination =
+      Origination(
+        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        fee = PositiveDecimal(1441),
+        counter = PositiveDecimal(407941),
+        gas_limit = PositiveDecimal(11362),
+        storage_limit = PositiveDecimal(323),
+        manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        balance = PositiveDecimal(1000000),
+        spendable = Some(false),
+        delegatable = Some(false),
+        delegate = None,
+        script = Some(expectedScript),
+        metadata = ResultMetadata(
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+              change = -1441L,
+              category = None,
+              delegate = None,
+              level = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1583),
+              change = 1441L,
+              contract = None
+            )
+          ),
+          operation_result =
+            OperationResult.Origination(
+              status = "applied",
+              balance_updates = Some(List(
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                  change = -46000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                  change = -257000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                  change = -1000000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
+                  change = 1000000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                )
+              )),
+              originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
+              consumed_gas = Some(Decimal(11262)),
+              storage_size = Some(Decimal(46)),
+              paid_storage_size_diff = Some(Decimal(46)),
+              errors = None
+            )
+          )
+        )
+
     val operationsGroupJson =
       s"""{
         |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
@@ -329,7 +641,9 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         |    $endorsementJson,
         |    $nonceRevelationJson,
         |    $activationJson,
-        |    $failedRevealJson
+        |    $failedRevealJson,
+        |    $transactionJson,
+        |    $originationJson
         |  ],
         |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
         |}""".stripMargin
@@ -341,7 +655,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
         branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
         signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
-        contents = List(expectedEndorsement, expectedNonceRevelation, expectedActivation, expectedFailedReveal)
+        contents = List(expectedEndorsement, expectedNonceRevelation, expectedActivation, expectedFailedReveal, expectedTransaction, expectedOrigination)
       )
 
   }
@@ -437,6 +751,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
+    "decode valid json base58check strings into a ScriptId" in {
+      val decoded = decode[ScriptId](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe ScriptId(validB58Hash)
+    }
+
+    "fail to decode an invalid json base58check strings into a ScriptId" in {
+      val decoded = decode[ScriptId](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
     "decode valid json alphanumneric strings into a Nonce" in {
       val decoded = decode[Nonce](jsonStringOf(alphanumneric))
       decoded.right.value shouldBe Nonce(alphanumneric)
@@ -454,6 +778,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
     "fail to decode an invalid json alphanumneric strings into a Secret" in {
       val decoded = decode[Secret](jsonStringOf(invalidAlphanumeric))
+      decoded shouldBe 'left
+    }
+
+    "decode valid json into MichelsonV1 values" in new OperationsJsonData {
+      val decoded = decode[MichelsonV1](michelsonJson)
+      decoded.right.value shouldEqual expectedMichelson
+    }
+
+    "fail to decode invalid json into MichelsonV1 values" in new OperationsJsonData {
+      val decoded = decode[MichelsonV1](invalidJson)
       decoded shouldBe 'left
     }
 
@@ -488,6 +822,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     "decode invalid json for BigNumber, not representing numbers, as the original string" in {
       val decoded = decode[TezosOperations.BigNumber](jsonStringOf("1AA000000000"))
       decoded.right.value shouldBe TezosOperations.InvalidDecimal("1AA000000000")
+    }
+
+    "decode valid json into a BigMapDiff value" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Contract.BigMapDiff](bigmapdiffJson)
+      decoded.right.value shouldEqual expectedBigMapDiff
+    }
+
+    "decode valid json into a Scipted.Cntracts value" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Scripted.Contracts](scriptJson)
+      decoded.right.value shouldEqual expectedScript
     }
 
     "decode valid json into Error values" in new OperationsJsonData {
@@ -537,6 +881,26 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       val operation = decoded.right.value
       operation shouldBe a [TezosOperations.Reveal]
       operation shouldEqual expectedReveal
+
+    }
+
+    "decode an transaction operation from json" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Operation](transactionJson)
+      decoded shouldBe 'right
+
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.Transaction]
+      operation shouldEqual expectedTransaction
+
+    }
+
+    "decode an origination operation from json" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Operation](originationJson)
+      decoded shouldBe 'right
+
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.Origination]
+      operation shouldEqual expectedOrigination
 
     }
 

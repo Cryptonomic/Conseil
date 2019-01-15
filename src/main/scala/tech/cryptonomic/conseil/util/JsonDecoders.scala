@@ -47,6 +47,11 @@ object JsonDecoders {
         DecodedConstructor = Secret
       )
 
+    /* decode any json value to its string representation wrapped in a MichelsonV1*/
+    implicit val michelsonDecoder: Decoder[MichelsonV1] =
+      Decoder.decodeJson.map(json => MichelsonV1(json.noSpaces))
+
+
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
     implicit val pkhDecoder: Decoder[PublicKeyHash] = base58CheckDecoder.map(b58 => PublicKeyHash(b58.content))
@@ -56,6 +61,7 @@ object JsonDecoders {
     implicit val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
     implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
+    implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
 
     /*
      * Collects definitions of decoders for the Operations hierarchy.
@@ -67,8 +73,7 @@ object JsonDecoders {
 
       /* decode any json value to its string representation wrapped in a Error*/
       implicit val errorDecoder: Decoder[OperationResult.Error] =
-        Decoder.decodeJson
-          .map(json => OperationResult.Error(json.noSpaces))
+        Decoder.decodeJson.map(json => OperationResult.Error(json.noSpaces))
 
       /* try decoding a number */
       private implicit val bignumDecoder: Decoder[Decimal] =
@@ -113,13 +118,19 @@ object JsonDecoders {
           .withDiscriminator("kind")
           .withSnakeCaseConstructorNames
 
-      //derive all needed decoders
+      //derive all the remaining decoders, sorted to preserve dependencies
+      implicit val bigmapdiffDecoder: Decoder[Contract.BigMapDiff] = deriveDecoder
+      implicit val scriptedContractsDecoder: Decoder[Scripted.Contracts] = deriveDecoder
       implicit val balanceUpdateDecoder: Decoder[OperationMetadata.BalanceUpdate] = deriveDecoder
       implicit val endorsementMetadataDecoder: Decoder[EndorsementMetadata] = deriveDecoder
       implicit val balanceUpdatesMetadataDecoder: Decoder[BalanceUpdatesMetadata] = deriveDecoder
-      implicit val resultRevealDecoder: Decoder[OperationResult.Reveal] = deriveDecoder
-      implicit val revealMetadataDecoder: Decoder[RevealMetadata] = deriveDecoder
-      implicit val operationDecoder: Decoder[Operation] = deriveDecoder[Operation]
+      implicit val revealResultDecoder: Decoder[OperationResult.Reveal] = deriveDecoder
+      implicit val transactionResultDecoder: Decoder[OperationResult.Transaction] = deriveDecoder
+      implicit val originationResultDecoder: Decoder[OperationResult.Origination] = deriveDecoder
+      implicit val revealMetadataDecoder: Decoder[ResultMetadata[OperationResult.Reveal]] = deriveDecoder
+      implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] = deriveDecoder
+      implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] = deriveDecoder
+      implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[Group] = deriveDecoder
 
     }

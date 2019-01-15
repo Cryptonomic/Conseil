@@ -34,6 +34,10 @@ object TezosTypes {
 
   final case class Secret(value: String) extends AnyVal
 
+  final case class MichelsonV1(expression: String) extends AnyVal
+
+  final case class ScriptId(value: String) extends AnyVal
+
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
@@ -71,8 +75,25 @@ object TezosTypes {
     final case class Decimal(value: BigDecimal) extends BigNumber
     final case class InvalidDecimal(jsonString: String) extends BigNumber
 
+    object Contract {
+      final case class BigMapDiff(
+        key_hash: ScriptId,
+        key: MichelsonV1,
+        value: Option[MichelsonV1]
+      )
+    }
+
+    object Scripted {
+      final case class Contracts(
+        storage: MichelsonV1,
+        code: MichelsonV1
+      )
+    }
+
     /** root of the operation hiearchy */
     sealed trait Operation extends Product with Serializable
+
+    //operations definition
 
     final case class Endorsement(
       level: Int,
@@ -98,8 +119,37 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       public_key: PublicKey,
       source: ContractId,
-      metadata: RevealMetadata
+      metadata: ResultMetadata[OperationResult.Reveal]
     ) extends Operation
+
+    final case class Transaction(
+      counter: PositiveBigNumber,
+      amount: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      source: ContractId,
+      destination: ContractId,
+      parameters: Option[MichelsonV1],
+      metadata: ResultMetadata[OperationResult.Transaction]
+    ) extends Operation
+
+    final case class Origination(
+      counter: PositiveBigNumber,
+      fee: PositiveBigNumber,
+      source: ContractId,
+      balance: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      manager_pubkey: PublicKeyHash,
+      delegatable: Option[Boolean],
+      delegate: Option[PublicKeyHash],
+      spendable: Option[Boolean],
+      script: Option[Scripted.Contracts],
+      metadata: ResultMetadata[OperationResult.Origination]
+    ) extends Operation
+
+    //metadata definitions, both shared or specific to operation kind
 
     final case class EndorsementMetadata(
       slots: List[Int],
@@ -108,8 +158,8 @@ object TezosTypes {
     )
 
     //for now we ignore internal results, as it gets funny as sitting naked on a wasps' nest
-    final case class RevealMetadata(
-      operation_result: OperationResult.Reveal,
+    final case class ResultMetadata[RESULT](
+      operation_result: RESULT,
       balance_updates: List[OperationMetadata.BalanceUpdate]
     )
 
@@ -118,16 +168,39 @@ object TezosTypes {
       balance_updates: List[OperationMetadata.BalanceUpdate]
     )
 
-
     /** defines common result structures, following the json-schema definitions */
     object OperationResult {
       //we're not yet encoding the complex schema for errors, storing them as simple strings
       final case class Error(json: String) extends AnyVal
 
-      //we're currently making no difference between different statuses
+      //we're currently making no difference between different statuses in any of the results
+
       final case class Reveal(
         status: String,
         consumed_gas: Option[BigNumber],
+        errors: Option[List[Error]]
+      )
+
+      final case class Transaction(
+        status: String,
+        allocated_destination_contract: Option[Boolean],
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        big_map_diff: Option[List[Contract.BigMapDiff]],
+        consumed_gas: Option[BigNumber],
+        originated_contracts: Option[List[ContractId]],
+        paid_storage_size_diff: Option[BigNumber],
+        storage: Option[MichelsonV1],
+        storage_size: Option[BigNumber],
+        errors: Option[List[Error]]
+      )
+
+      final case class Origination(
+        status: String,
+        balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
+        consumed_gas: Option[BigNumber],
+        originated_contracts: Option[List[ContractId]],
+        paid_storage_size_diff: Option[BigNumber],
+        storage_size: Option[BigNumber],
         errors: Option[List[Error]]
       )
 
