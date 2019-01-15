@@ -375,9 +375,13 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ordering       list of ordering conditions for the query
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
-  def selectWithPredicates(table: String, columns: List[String], predicates: List[Predicate], ordering: List[QueryOrdering], limit: Int)
-    (implicit ec: ExecutionContext):
-  DBIO[List[Map[String, Any]]] = {
+  def selectWithPredicates(
+    table: String,
+    columns: List[String],
+    predicates: List[Predicate],
+    ordering: List[QueryOrdering],
+    limit: Int)
+    (implicit ec: ExecutionContext): DBIO[List[Map[String, Any]]] = {
      makeQuery(table, columns)
        .addPredicates(predicates)
        .addOrdering(ordering)

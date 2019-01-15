@@ -22,7 +22,7 @@ object DatabaseUtil {
       * @param actions list of actions to concatenate
       * @return one SQLActionBuilder containing concatenated actions
       */
-    def concatenateSqlActions(acc: SQLActionBuilder, actions: List[SQLActionBuilder]): SQLActionBuilder = {
+    def concatenateSqlActions(acc: SQLActionBuilder, actions: SQLActionBuilder*): SQLActionBuilder = {
       actions.foldLeft(acc) {
         case (accumulator, action) =>
           SQLActionBuilder(accumulator.queryParts ++ action.queryParts, (p: Unit, pp: PositionedParameters) => {
@@ -42,10 +42,10 @@ object DatabaseUtil {
       var first = true
       xs.foreach { x =>
         if (first) first = false
-        else b = concatenateSqlActions(b, List(sql","))
-        b = concatenateSqlActions(b, List(sql"'#$x'"))
+        else b = concatenateSqlActions(b, sql",")
+        b = concatenateSqlActions(b, sql"'#$x'")
       }
-      concatenateSqlActions(b, List(sql")"))
+      concatenateSqlActions(b, sql")")
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
@@ -66,7 +66,7 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing given predicates
         */
       def addPredicates(predicates: List[Predicate]): SQLActionBuilder = {
-        concatenateSqlActions(action, makePredicates(predicates))
+        concatenateSqlActions(action, makePredicates(predicates):_*)
       }
 
       /** Method for adding ordering to existing SQLAction
@@ -75,12 +75,7 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing ordering statements
         */
       def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-        val queryOrdering = if (ordering.isEmpty) {
-          List.empty
-        } else {
-          List(makeOrdering(ordering))
-        }
-        concatenateSqlActions(action, queryOrdering)
+        concatenateSqlActions(action, makeOrdering(ordering))
       }
 
       /** Method for adding limit to existing SQLAction
@@ -89,7 +84,7 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addLimit(limit: Int): SQLActionBuilder = {
-        concatenateSqlActions(action, List(makeLimit(limit)))
+        concatenateSqlActions(action, makeLimit(limit))
       }
     }
 
@@ -103,7 +98,7 @@ object DatabaseUtil {
         concatenateSqlActions(
           predicate.precision.map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
             .getOrElse(sql""" AND #${predicate.field} """),
-          List(mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString)))
+          mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
         )
       }
 
@@ -124,8 +119,11 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-      val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
-      sql""" ORDER BY #$orderingBy"""
+      if(ordering.isEmpty) sql""""""
+      else {
+        val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
+        sql""" ORDER BY #$orderingBy"""
+      }
     }
 
     /** Prepares limit parameters
@@ -141,7 +139,7 @@ object DatabaseUtil {
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
       val op = operation match {
         case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
-        case OperationType.in => concatenateSqlActions(sql"IN ", List(insertValuesIntoSqlAction(vals)))
+        case OperationType.in => concatenateSqlActions(sql"IN ", insertValuesIntoSqlAction(vals))
         case OperationType.like => sql"LIKE '%#${vals.head}%'"
         case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"
         case OperationType.gt | OperationType.after => sql"> '#${vals.head}'"
@@ -149,7 +147,7 @@ object DatabaseUtil {
         case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
         case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
       }
-      concatenateSqlActions(op, List(sql" IS #${!inverse}"))
+      concatenateSqlActions(op, sql" IS #${!inverse}")
     }
   }
 
