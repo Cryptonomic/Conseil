@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes
 import akka.actor.ActorSystem
 import akka.http.caching.LfuCache
 import akka.http.caching.scaladsl.{Cache, CachingSettings}
-import akka.http.scaladsl.model.{HttpMethods, Uri}
+import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.CachingDirectives._
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
@@ -17,8 +17,8 @@ import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(config:  PlatformsConfiguration)(implicit apiExecutionContext: ExecutionContext, system: ActorSystem): PlatformDiscovery =
-    new PlatformDiscovery(config)
+  def apply(config: PlatformsConfiguration, system: ActorSystem)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+    new PlatformDiscovery(config, system)(apiExecutionContext)
 }
 
 /**
@@ -27,14 +27,14 @@ object PlatformDiscovery {
   * @param config              configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: PlatformsConfiguration)(implicit apiExecutionContext: ExecutionContext, system: ActorSystem) extends LazyLogging with RouteHandling {
+class PlatformDiscovery(config: PlatformsConfiguration, system: ActorSystem)(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with RouteHandling {
 
   /** default caching settings*/
   private val defaultCachingSettings: CachingSettings = CachingSettings(system)
 
   /** simple partial function for filtering */
-  private val simpleKeyer: PartialFunction[RequestContext, Uri] = {
-    case r: RequestContext if r.request.method == HttpMethods.GET => r.request.uri
+  private val requestCacheKeyer: PartialFunction[RequestContext, Uri] = {
+    case r: RequestContext => r.request.uri
   }
 
   /** LFU caching settings */
@@ -47,7 +47,7 @@ class PlatformDiscovery(config: PlatformsConfiguration)(implicit apiExecutionCon
   /** Metadata route */
   val route: Route =
     get {
-      cache(lfuCache, simpleKeyer) {
+      cache(lfuCache, requestCacheKeyer) {
         pathPrefix("platforms") {
           complete(toJson(ConfigUtil.getPlatforms(config)))
         } ~
