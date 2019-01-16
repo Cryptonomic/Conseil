@@ -149,6 +149,16 @@ object TezosTypes {
       metadata: ResultMetadata[OperationResult.Origination]
     ) extends Operation
 
+    final case class Delegation(
+      counter: PositiveBigNumber,
+      source: ContractId,
+      fee: PositiveBigNumber,
+      gas_limit: PositiveBigNumber,
+      storage_limit: PositiveBigNumber,
+      delegate: Option[PublicKeyHash],
+      metadata: ResultMetadata[OperationResult.Delegation]
+    ) extends Operation
+
     //metadata definitions, both shared or specific to operation kind
 
     final case class EndorsementMetadata(
@@ -201,6 +211,12 @@ object TezosTypes {
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
         storage_size: Option[BigNumber],
+        errors: Option[List[Error]]
+      )
+
+      final case class Delegation(
+        status: String,
+        consumed_gas: Option[BigNumber],
         errors: Option[List[Error]]
       )
 

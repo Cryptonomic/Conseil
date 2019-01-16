@@ -127,9 +127,11 @@ object JsonDecoders {
       implicit val revealResultDecoder: Decoder[OperationResult.Reveal] = deriveDecoder
       implicit val transactionResultDecoder: Decoder[OperationResult.Transaction] = deriveDecoder
       implicit val originationResultDecoder: Decoder[OperationResult.Origination] = deriveDecoder
+      implicit val delegationResultDecoder: Decoder[OperationResult.Delegation] = deriveDecoder
       implicit val revealMetadataDecoder: Decoder[ResultMetadata[OperationResult.Reveal]] = deriveDecoder
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] = deriveDecoder
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] = deriveDecoder
+      implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[Group] = deriveDecoder
 

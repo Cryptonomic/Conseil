@@ -631,6 +631,73 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
           )
         )
 
+    val delegationJson =
+      """{
+      |  "kind": "delegation",
+      |  "source": "KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9",
+      |  "fee": "1400",
+      |  "counter": "2",
+      |  "gas_limit": "10100",
+      |  "storage_limit": "0",
+      |  "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9",
+      |              "change": "-1400"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+      |              "level": 1612,
+      |              "change": "1400"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "consumed_gas": "10000"
+      |      }
+      |  }
+      |}""".stripMargin
+
+    val expectedDelegation =
+      Delegation(
+        source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+        fee = PositiveDecimal(1400),
+        counter = PositiveDecimal(2),
+        gas_limit = PositiveDecimal(10100),
+        storage_limit = PositiveDecimal(0),
+        delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+        metadata = ResultMetadata(
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9")),
+              change = -1400L,
+              category = None,
+              delegate = None,
+              level = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1612),
+              change = 1400L,
+              contract = None
+            )
+          ),
+          operation_result =
+            OperationResult.Delegation(
+              status = "applied",
+              consumed_gas = Some(Decimal(10000)),
+              errors = None
+            )
+        )
+      )
+
     val operationsGroupJson =
       s"""{
         |  "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
@@ -643,7 +710,8 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         |    $activationJson,
         |    $failedRevealJson,
         |    $transactionJson,
-        |    $originationJson
+        |    $originationJson,
+        |    $delegationJson
         |  ],
         |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
         |}""".stripMargin
@@ -655,7 +723,14 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
         hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
         branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
         signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
-        contents = List(expectedEndorsement, expectedNonceRevelation, expectedActivation, expectedFailedReveal, expectedTransaction, expectedOrigination)
+        contents = List(
+          expectedEndorsement,
+          expectedNonceRevelation,
+          expectedActivation,
+          expectedFailedReveal,
+          expectedTransaction,
+          expectedOrigination,
+          expectedDelegation)
       )
 
   }
@@ -901,6 +976,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       val operation = decoded.right.value
       operation shouldBe a [TezosOperations.Origination]
       operation shouldEqual expectedOrigination
+
+    }
+
+    "decode a delegation operation from json" in new OperationsJsonData {
+      val decoded = decode[TezosOperations.Operation](delegationJson)
+      decoded shouldBe 'right
+
+      val operation = decoded.right.value
+      operation shouldBe a [TezosOperations.Delegation]
+      operation shouldEqual expectedDelegation
 
     }
 
