@@ -155,7 +155,7 @@ object ConfigUtil {
 
     private def loadConfigForEntryPath(namespace: String, referenceEntryPath: String): Either[ConfigReaderFailures, Config] = {
       //read a conseil-specific entry into the expected path for the config
-      def loadHostPoolConfig(rootConfig: Config): Either[ConfigReaderFailures, Config] =
+      def loadValidatedConfig(rootConfig: Config): Either[ConfigReaderFailures, Config] =
         Try(rootConfig.getConfig(namespace)
           .atPath(referenceEntryPath) //puts the config entry where expected by akka
           .withFallback(rootConfig) //adds default values, where not overriden
@@ -173,8 +173,8 @@ object ConfigUtil {
       //compose the configuration reading outcomes
       for {
         akkaConf <- pureconfig.loadConfig[Config]
-        tezosClientConfig <- loadHostPoolConfig(akkaConf)
-      } yield tezosClientConfig
+        validatedConfig <- loadValidatedConfig(akkaConf)
+      } yield validatedConfig
     }
 
   }
