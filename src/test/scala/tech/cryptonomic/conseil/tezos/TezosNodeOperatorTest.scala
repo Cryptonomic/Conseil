@@ -16,7 +16,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
   val config = BatchFetchConfiguration(1, 1)
 
   implicit val executionContext = ExecutionContext.global
-  implicit val defaultPatience = PatienceConfig(timeout = Span(600, Millis))
+  implicit val defaultPatience = PatienceConfig(timeout = Span(1000, Millis))
 
   "getBlock" should "should correctly fetch the genesis block" in {
     //given
