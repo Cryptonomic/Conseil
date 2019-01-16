@@ -26,14 +26,12 @@ trait LorreAppConfig {
     def unapply(s: String): Option[Int] = util.Try(s.toInt).toOption
   }
 
-  private case class ArgumentsConfig(private val d: String = "", networks: Seq[String] = Seq()) {
+  private case class ArgumentsConfig(private val d: String = "new", networks: Seq[String] = Seq()) {
 
     def depth: Depth = {
       d match {
-        case Int(-1) => Everything
-        case "all" => Everything
-        case Int(0) => Newest
-        case "new" => Newest
+        case Int(-1) | "all" => Everything
+        case Int(0)  | "new" => Newest
         case Int(n) => Custom(n)
       }
     }

@@ -52,7 +52,7 @@ object Platforms extends LazyLogging {
   }
 
   /** collects all config related to a tezos network */
-  final case class TezosConfiguration(network: String, depth: Depth, nodeConfig: TezosNodeConfiguration) extends PlatformConfiguration
+  final case class TezosConfiguration(network: String, depth: Depth = Newest, nodeConfig: TezosNodeConfiguration) extends PlatformConfiguration
 
   /** unexpected or yet to define platform */
   final case class UnknownPlatformConfiguration(network: String = "", depth: Depth = Newest) extends PlatformConfiguration

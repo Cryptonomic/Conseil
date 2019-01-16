@@ -2,19 +2,21 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Millis, Span}
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
-import scala.concurrent.duration._
 
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
-class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging {
+class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures {
 
   val tezosRPCInterface = stub[TezosRPCInterface]
   val config = BatchFetchConfiguration(1, 1)
 
   implicit val executionContext = ExecutionContext.global
+  implicit val defaultPatience = PatienceConfig(timeout = Span(600, Millis))
 
   "getBlock" should "should correctly fetch the genesis block" in {
     //given
@@ -27,7 +29,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val block: Future[TezosTypes.Block] = nodeOp.getBlock("zeronet", BlockHash("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe"))
 
     //then
-    Await.result(block, 1.second).metadata.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
+    block.futureValue.metadata.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
   }
 
   "getAllBlocks" should "should correctly fetch all the blocks" in {
@@ -44,7 +46,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getAllBlocks("zeronet")
 
     //then
-    Await.result(block, 1.second) should have length 1
+    block.futureValue should have length 1
   }
 
   "getLatestBlocks" should "should correctly fetch latest blocks" in {
@@ -61,6 +63,6 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getLatestBlocks("zeronet", 1)
 
     //then
-    Await.result(block, 1.second) should have length 1
+    block.futureValue should have length 1
   }
 }
