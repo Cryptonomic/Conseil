@@ -159,6 +159,11 @@ object TezosTypes {
       metadata: ResultMetadata[OperationResult.Delegation]
     ) extends Operation
 
+    final case object DoubleEndorsementEvidence extends Operation
+    final case object DoubleBakingEvidence extends Operation
+    final case object Proposals extends Operation
+    final case object Ballot extends Operation
+
     //metadata definitions, both shared or specific to operation kind
 
     final case class EndorsementMetadata(
@@ -373,7 +378,7 @@ object TezosTypes {
 
   final case class Block(
                     metadata: BlockMetadata,
-                    operationGroups: List[OperationGroup]
+                    operationGroups: List[TezosOperations.Group]
                   )
 
   final case class ManagerKey(

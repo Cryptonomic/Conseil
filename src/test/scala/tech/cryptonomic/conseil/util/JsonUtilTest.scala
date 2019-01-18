@@ -67,7 +67,7 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
       result should be(Map("key1" -> "value1", "key2" -> "value2"))
     }
 
-    "convert a compex json to a map" in {
+    "convert a complex json to a map" in {
       val result = JsonUtil.toMap[Any]("""{"a": "b", "c": {"d": "e", "f": "g"}}""")
       result should be(Map("a" -> "b", "c" -> Map("d" -> "e", "f" -> "g")))
     }

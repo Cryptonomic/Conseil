@@ -4,6 +4,12 @@ import scala.math.BigDecimal
 
 object Model {
 
+  /** A class useful to obviate for slick's encoding of a
+    * operation row as a HList object, whose fields are not
+    * as easy to extract, if not by position
+    * Any Query result from Tables.OperationsRow can be converted
+    * to this representation by using `.mapTo[Model.Operation]`
+    */
   case class Operation(
     operationId: Int,
     operationGroupHash: String,

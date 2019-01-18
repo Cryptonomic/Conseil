@@ -746,6 +746,23 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     /** wrap in quotes to be a valid json string */
     val jsonStringOf = (content: String) => s""""$content""""
 
+    "fail to decode json with duplicate fields" in {
+      import io.circe.Decoder
+      import io.circe.generic.extras._
+      import io.circe.generic.extras.semiauto._
+
+      case class JsonTest(field: String)
+
+      implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+
+      val duplicateDecoded = decode[JsonTest]("""{"field": "test", "field": "duplicate"}""")
+      duplicateDecoded shouldBe 'right
+
+      val duplicateUndecoded = decode[JsonTest]("""{"field": "test", "inner": {"key": "one", "key": "duplicate"}}""")
+      duplicateUndecoded shouldBe 'right
+
+    }
+
     "decode valid json base58check strings into a PublicKey" in {
       val decoded = decode[PublicKey](jsonStringOf(validB58Hash))
       decoded.right.value shouldBe PublicKey(validB58Hash)

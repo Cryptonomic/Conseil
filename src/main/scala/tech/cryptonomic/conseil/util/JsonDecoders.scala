@@ -8,10 +8,35 @@ object JsonDecoders {
 
     import io.circe.Decoder
     import cats.syntax.functor._
+    import io.circe.{ Error, Errors }
     import io.circe.generic.extras._
     import io.circe.generic.extras.semiauto._
     import io.circe.generic.extras.Configuration
     import tech.cryptonomic.conseil.tezos.TezosTypes._
+
+    type JsonDecoded[T] = Either[Error, T]
+
+    /** Collects failures in json parsing, when circe is used to decode the objects out of strings
+      *
+      * @param jsonResults a list of generic input data that internally has some json string
+      * @param decoding the operation that converts a single generic Encoded value to a possibly failed Decoded type
+      * @tparam Encoded a json string, possibly with additional data, e.g. the original request correlation-id for our tezos-rpc
+      * @tparam Decoded the type of the final result of correctly decoding the input json
+      * @return an `Either` with all `io.circe.Errors` aggregated on the `Left` if there's any, or a `Right` with all the decoded results
+      */
+    def handleDecodingErrors[Encoded, Decoded](jsonResults: List[Encoded], decoding: Encoded => Either[Error, Decoded]): Either[Errors, List[Decoded]] = {
+      import cats.data._
+      import cats.syntax.either._
+
+      val results = jsonResults.map(decoding)
+
+      lazy val correctlyDecoded: List[Decoded] = results.collect { case Right(dec) => dec }
+      val decodingErrors: Option[io.circe.Errors] =
+      NonEmptyList.fromList(results.collect { case Left(decodingError) => decodingError })
+      .map(io.circe.Errors)
+
+      decodingErrors.fold(ifEmpty = correctlyDecoded.asRight[io.circe.Errors])(_.asLeft[List[Decoded]])
+    }
 
     /* local definition of a base-58-check string wrapper, to allow parsing validation */
     private final case class Base58Check(content: String) extends AnyVal

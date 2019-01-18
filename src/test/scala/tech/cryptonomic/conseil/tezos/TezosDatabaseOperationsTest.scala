@@ -75,7 +75,7 @@ class TezosDatabaseOperationsTest
       val generatedBlocks = basicBlocks.zipWithIndex map {
         case (block, idx) =>
           //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, operations = 1)(randomSeed + idx)
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
 
@@ -137,39 +137,46 @@ class TezosDatabaseOperationsTest
 
           val generatedGroups = generatedBlocks.map(_.operationGroups.head)
 
-          dbOperations should have size (generatedGroups.map(_.contents.map(_.size).getOrElse(0)).sum)
+          dbOperations should have size (generatedGroups.map(_.contents.size).sum)
 
           forAll(dbOperations) {
             case (groupRow, opRow) =>
               val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
               val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
-              val operation = operationGroup.contents.value.head
               opRow.operationId should be > -1
               opRow.operationGroupHash shouldEqual operationGroup.hash.value
-              opRow.kind shouldEqual operation.kind
-              opRow.level.value shouldEqual operationBlock.metadata.header.level
-              opRow.delegate shouldEqual operation.delegate
-              opRow.slots shouldEqual operation.slots.map(_.mkString("[", ",", "]"))
-              opRow.nonce shouldEqual operation.nonce
-              opRow.pkh shouldEqual operation.pkh
-              opRow.secret shouldEqual operation.secret
-              opRow.source shouldEqual operation.source
-              opRow.fee shouldEqual operation.fee.map(BigDecimal(_))
-              opRow.counter shouldEqual operation.counter.map(BigDecimal(_))
-              opRow.gasLimit shouldEqual operation.gasLimit.map(BigDecimal(_))
-              opRow.storageLimit shouldEqual operation.storageLimit.map(BigDecimal(_))
-              opRow.publicKey shouldEqual operation.publicKey
-              opRow.amount shouldEqual operation.amount.map(BigDecimal(_))
-              opRow.destination shouldEqual operation.destination
-              opRow.parameters shouldEqual operation.parameters
-              opRow.managerPubkey shouldEqual operation.managerPubKey
-              opRow.balance shouldEqual operation.balance.map(BigDecimal(_))
-              opRow.spendable shouldEqual operation.spendable
-              opRow.delegatable shouldEqual operation.delegatable
-              opRow.script shouldBe empty
-              opRow.status shouldBe empty
               opRow.blockHash shouldEqual operationBlock.metadata.hash.value
               opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
+              val operation = opRow.kind match {
+                case "endorsement" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Endorsement])
+                case "seed_nonce_revelation" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.SeedNonceRevelation])
+                case "activate_account" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.ActivateAccount])
+                case "reveal" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Reveal])
+                case "transaction" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Transaction])
+                case "origination" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Origination])
+                case "delegation" =>
+                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Delegation])
+                case "double_endorsement_evidence" =>
+                  operationGroup.contents.find(_ == TezosOperations.DoubleEndorsementEvidence)
+                case "double_baking_evidence" =>
+                  operationGroup.contents.find(_ == TezosOperations.DoubleBakingEvidence)
+                case "proposals" =>
+                  operationGroup.contents.find(_ == TezosOperations.Proposals)
+                case "ballot" =>
+                  operationGroup.contents.find(_ == TezosOperations.Ballot)
+                case _ => None
+              }
+
+              import DatabaseConversions._
+              import tech.cryptonomic.conseil.util.ConversionSyntax._
+
+              (operationBlock, operationGroup.hash, operation.value).convertTo[Tables.OperationsRow] shouldEqual opRow
           }
       }
 
@@ -1276,59 +1283,22 @@ class TezosDatabaseOperationsTest
   }
 
   /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  private def generateOperationGroup(block: Block, operations: Int)(implicit randomSeed: RandomSeed): OperationGroup = {
-    require(operations >= 0, "the test won't generate a negative number of operations")
+  private def generateOperationGroup(block: Block, generateOperations: Boolean)(implicit randomSeed: RandomSeed): TezosOperations.Group = {
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
-    def fillOperations(): Option[List[Operation]] = {
-      val ops = List.fill(operations) {
-        Operation(
-          kind = "kind",
-          block = Some(block.metadata.hash.value),
-          level = Some(block.metadata.header.level),
-          slots = Some(List(0)),
-          nonce = Some(generateHash(10)),
-          op1 = None,
-          op2 = None,
-          bh1 = None,
-          bh2 = None,
-          pkh = Some("pkh"),
-          secret = Some("secret"),
-          proposals = Some(List("proposal")),
-          period = Some("period"),
-          source = Some("source"),
-          proposal = Some("proposal"),
-          ballot = Some("ballot"),
-          fee = Some("1"),
-          counter = Some(0),
-          gasLimit = Some("100"),
-          storageLimit = Some("1000"),
-          publicKey = Some("publicKey"),
-          amount = Some("1"),
-          destination = Some("destination"),
-          parameters = Some("parameters"),
-          managerPubKey = Some("managerPubKey"),
-          balance = Some("0"),
-          spendable = Some(true),
-          delegatable = Some(true),
-          delegate = Some("delegate")
-        )
-      }
-      if (ops.isEmpty) None else Some(ops)
-    }
-
-
-    OperationGroup(
+    TezosOperations.Group(
       protocol = "protocol",
-      chain_id = block.metadata.chain_id,
+      chain_id = block.metadata.chain_id.map(ChainId),
       hash = OperationHash(generateHash(10)),
-      branch = generateHash(10),
-      signature = Some(s"sig${generateHash(10)}"),
-      contents = fillOperations()
+      branch = BlockHash(generateHash(10)),
+      signature = Some(Signature(s"sig${generateHash(10)}")),
+      contents = if (generateOperations) generateAnyOperation else List.empty
     )
   }
+
+  private def generateAnyOperation(implicit randomSeed: RandomSeed): List[TezosOperations.Operation] = Nil
 
 
   /* create an empty operation group for each block passed in, using random values */

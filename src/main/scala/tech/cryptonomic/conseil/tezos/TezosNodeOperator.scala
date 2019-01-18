@@ -4,6 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.util.JsonDecoders
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.config.{SodiumConfiguration, BatchFetchConfiguration}
 
@@ -127,9 +128,20 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param blockHash Hash of the block
     * @return          The `Future` list of operations
     */
-  def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[OperationGroup]] =
+  def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[TezosOperations.Group]] = {
+    import io.circe.parser.decode
+    import JsonDecoders.Circe.Operations._
+
+    def decodeOperations(json: String) =
+      decode[List[List[TezosOperations.Group]]](json).map(_.flatten) match {
+        case Left(failure) => Future.failed(failure)
+        case Right(results) => Future.successful(results)
+      }
+
     node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/operations")
-      .map(ll => fromJson[List[List[OperationGroup]]](ll).flatten)
+      .flatMap(decodeOperations)
+
+  }
 
   /**
     * Fetches a single block from the chain, without waiting for the result
@@ -142,10 +154,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     for {
       block <- node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString").map(fromJson[BlockMetadata])
       ops <-
-        if (block.header.level == 0)
-          Future.successful(List.empty[OperationGroup]) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
-        else
-          getAllOperationsForBlock(network, hash)
+        if (block.header.level > 0) getAllOperationsForBlock(network, hash)
+        else Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
     } yield Block(block, ops)
   }
 
@@ -216,11 +226,15 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def processBlocks(
-                             network : String,
-                             hashRef: BlockHash,
-                             minLevel: Int,
-                             maxLevel: Int
-                           ): Future[List[(Block, List[AccountId])]] = {
+    network : String,
+    hashRef: BlockHash,
+    minLevel: Int,
+    maxLevel: Int
+  ): Future[List[(Block, List[AccountId])]] = {
+
+    import io.circe.parser.decode
+    import JsonDecoders.Circe.{ JsonDecoded, handleDecodingErrors }
+    import JsonDecoders.Circe.Operations._
 
     val maxOffset: Int = maxLevel - minLevel
     val offsets = (0 to maxOffset).toList
@@ -231,8 +245,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       case (_, json) => fromJson[BlockMetadata](json)
     }
 
-    val jsonToOperationGroups: String => List[OperationGroup] =
-      json => fromJson[List[List[OperationGroup]]](json).flatten
+    val jsonToOperationGroups: String => JsonDecoded[List[TezosOperations.Group]] =
+      json => decode[List[List[TezosOperations.Group]]](json).map(_.flatten)
 
     //extracts any formally valid account hash from the passed-in string
     val jsonToAccountInvolved: String => List[AccountId] = {
@@ -242,19 +256,26 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     }
 
     //from the same json, converts to a list of operations and the involved account ids
-    val jsonToOperationsAndAccounts: ((BlockHash, String)) => (BlockHash, List[OperationGroup], List[AccountId]) = {
+    val jsonToOperationsAndAccounts: ((BlockHash, String)) => JsonDecoded[(BlockHash, List[TezosOperations.Group], List[AccountId])] = {
       case (hash, json) =>
-        (hash, jsonToOperationGroups(json), jsonToAccountInvolved(json))
+        jsonToOperationGroups(json).map( groups => (hash, groups, jsonToAccountInvolved(json)))
     }
 
     val isGenesis = (metadata: BlockMetadata) => metadata.header.level == 0
+
+    def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[TezosOperations.Group], List[AccountId])]] =
+      handleDecodingErrors(in, jsonToOperationsAndAccounts) match {
+        case Left(failure) => Future.failed(failure.errors.head)
+        case Right(results) => Future.successful(results)
+      }
 
     //Gets metadata for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
       fetchedBlocksMetadata <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) map (blocksMetadata => blocksMetadata.map(jsonToBlockMetadata))
       blockHashes = fetchedBlocksMetadata.filterNot(isGenesis).map(_.hash)
-      fetchedOperationsWithAccounts <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsConcurrencyLevel).map(operations => operations.map(jsonToOperationsAndAccounts))
+      fetchedOperations <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsConcurrencyLevel)
+      fetchedOperationsWithAccounts <- decodeOperations(fetchedOperations)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, ops, accounts) => (hash, (ops, accounts))}.toMap
       fetchedBlocksMetadata.map {
@@ -264,6 +285,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       }
     }
   }
+
 }
 
 /**
