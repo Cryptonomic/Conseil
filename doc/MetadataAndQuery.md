@@ -4,7 +4,7 @@ Description of endpoints with example usages. Probably all of those request will
 
 ## Query interface
 
-Query interface is based on elasticsearch-like model using `GET` request with payload
+Query interface is using `POST` for passing the query
 
 #### Example query
 ```
@@ -29,7 +29,14 @@ curl -vvv --request POST \
       "inverse": false,                 // boolean parameter, in case when we want to negate the predicate, like 'not in this set' with operation 'in' and 'inverse' set to false - optional, defaults to false
       "precision": 2                    // optional parameter for comparison in decimal numbers, for example if we put in set '1.5' and in precision '2' we will match decimal values like '1.45'
   	}
-  ]
+  ],
+  "orderBy": [                          // list of fields and directions to order by, starting with most significant
+    {
+      "field": "field_name",            // name of the field to order by
+      "direction": "asc"                // direction to order by, asc or desc
+    }
+  ],
+  "limit": 100
 }
 ```
 
@@ -57,27 +64,41 @@ curl -vvv --request POST \
       true
     ],
     "inverse": false
-  },
-  {
-    "field": "balance",
-    "operation": "in",
-    "set": [
-      50000
-    ],
-    "inverse": true
   }
-]
+],
+  "orderBy":[
+    {
+      "field":"account_id", 
+      "direction": "asc"
+    }
+  ],
+  "limit": 100
 }'
 ```
 
 #### example response:
 ```
 [ {
+  "account_id" : "tz1MHHw1fR6xNWeHdNi7Ss2dtQn9JEhoKQf6",
+  "spendable" : true,
+  "counter" : 2146,
+  "balance" : 50000
+}, {
+  "account_id" : "tz1QKqxcFNNQ8pc39aY4iEdCjMqKXgVetHkt",
+  "spendable" : true,
+  "counter" : 2177,
+  "balance" : 50000
+}, {
   "account_id" : "tz1ZwkHmBrQwdFze1ZD49kBakeJ1JBQ4Rrt2",
   "spendable" : true,
   "counter" : 2230,
   "balance" : 13700669952
-} 
+}, {
+  "account_id" : "tz1fJvouvcpQy9v7Uck2orT9QE4Gkeee3N8R",
+  "spendable" : true,
+  "counter" : 2148,
+  "balance" : 50000
+} ]
 ```
 
 ### Metadata interface

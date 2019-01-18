@@ -16,6 +16,7 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.akka"               %% "akka-http"                 % akkaHttpVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-stream"               % akkaVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-actor"                % akkaVersion exclude("com.typesafe", "config"),
+  "com.typesafe.akka"               %% "akka-http-caching"         % akkaHttpVersion exclude("com.typesafe", "config"),
   "com.github.pureconfig"           %% "pureconfig"                % "0.10.1",
   "org.scalaj"                      %% "scalaj-http"               % "2.3.0",
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
