@@ -35,7 +35,8 @@ libraryDependencies  ++=  Seq(
   "ch.megard"                       %% "akka-http-cors"            % "0.3.0",
   "ru.yandex.qatools.embed"          % "postgresql-embedded"       % "2.10" % Test,
   "com.typesafe.akka"               %% "akka-http-testkit"         % akkaHttpVersion % Test exclude("com.typesafe", "config"),
-  "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test
+  "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test,
+  "com.github.scopt"                %% "scopt"                     % "4.0.0-RC2"
 )
 
 excludeDependencies ++= Seq(

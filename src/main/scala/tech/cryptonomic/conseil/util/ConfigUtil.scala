@@ -7,6 +7,8 @@ import tech.cryptonomic.conseil.config.{HttpCacheConfiguration, HttpStreamingCon
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.util.Try
+import tech.cryptonomic.conseil.config.Platforms._
+import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, Newest}
 
 object ConfigUtil {
 
@@ -97,7 +99,7 @@ object ConfigUtil {
                 .left.map(ExceptionThrown)
                 .flatMap(readAndFailWithFailureReason[TezosNodeConfiguration])
                 //creates the whole config entry
-                .map(TezosConfiguration(network, _))
+                .map(TezosConfiguration(network, Newest, _))
           }
           foldReadResults(parsed) {
             _.toList

@@ -1512,7 +1512,7 @@ class TezosDatabaseOperationsTest
    if (howMany > 0) {
 
      (1 to howMany).map {
-       counting =>
+       _ =>
          Tables.OperationsRow(
            kind = "operation-kind",
            operationGroupHash = group.hash,

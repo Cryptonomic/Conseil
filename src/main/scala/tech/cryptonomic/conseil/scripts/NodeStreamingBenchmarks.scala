@@ -52,7 +52,7 @@ package scripts {
       reqConf <- loadConfig[NetworkCallsConfiguration]("")
       nodeConf <- loadConfig[TezosNodeConfiguration](namespace = s"platform.tezos.$network.node")
       clientConf <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
-    } yield (TezosConfiguration(network, nodeConf), reqConf, clientConf)
+    } yield (TezosConfiguration(network, Newest, nodeConf), reqConf, clientConf)
 
     loadedConf.foreach {
       conf =>
