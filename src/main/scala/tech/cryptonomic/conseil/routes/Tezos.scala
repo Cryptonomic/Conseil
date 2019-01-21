@@ -6,7 +6,6 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.generic.chain.ApiNetworkOperations
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.tezos._
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.RouteHandling
 

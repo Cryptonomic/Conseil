@@ -16,9 +16,7 @@ object TezosPlatformDiscoveryOperations {
   private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
 
   /** Checks if columns exist for the given table */
-  def areFieldsValid(tableName: String, queryFields: List[String], predicateFields: List[String]): Boolean = {
-    val fields = (queryFields ++ predicateFields).toSet
-
+  def areFieldsValid(tableName: String, fields: Set[String]): Boolean = {
     tablesMap.exists {
       case (name, table) =>
         val cols = table.baseTableRow.create_*.map(_.name).toSet
@@ -176,20 +174,6 @@ class TezosPlatformDiscoveryOperations(apiOperations: ApiOperations) {
     distinctCount < maxCount
   }
 
-  /** Sanitizes string to be viable to paste into plain SQL */
-  def sanitizeForSql(str: String): String = {
-    str.filter(c => c.isLetterOrDigit || c == '_' || c == '.')
-  }
-
-  /** Checks if columns exist for the given table */
-  def areFieldsValid(tableName: String, fields: Set[String]): Boolean = {
-    tablesMap.exists {
-      case (name, table) =>
-        val cols = table.baseTableRow.create_*.map(_.name).toSet
-        name == tableName && fields.subsetOf(cols)
-    }
-  }
-
 
   /** Checks if entity is valid
     *
@@ -213,36 +197,6 @@ class TezosPlatformDiscoveryOperations(apiOperations: ApiOperations) {
         column <- table.baseTableRow.create_*.find(_.name == columnName)
       } yield column
     }.isDefined
-  }
-
-  /**
-    * Extracts attributes in the DB for the given table name
-    *
-    * @param  tableName name of the table from which we extract attributes
-    * @return list of attributes as a Future
-    */
-  def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attributes]] = {
-    ApiOperations.runQuery(makeAttributesList(tableName))
-  }
-
-  /** Makes list of DB actions to be executed for extracting attributes
-    *
-    * @param  tableName name of the table from which we extract attributes
-    * @return list of DBIO queries for attributes
-    * */
-  def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attributes]] = {
-    DBIO.sequence {
-      for {
-        (name, table) <- tablesMap
-        if name == tableName
-        col <- table.baseTableRow.create_*
-      } yield {
-        for {
-          overallCnt <- TezosDb.countRows(table)
-          distinctCnt <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
-        } yield makeAttributes(col, distinctCnt, overallCnt, tableName)
-      }
-    }
   }
 
   /** Makes attributes out of parameters */

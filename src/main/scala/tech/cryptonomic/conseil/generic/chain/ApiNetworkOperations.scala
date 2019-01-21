@@ -14,7 +14,8 @@ import scala.util.Try
 
 /** Companion object for apply in ApiNetworkOperations */
 object ApiNetworkOperations {
-  def apply(config: PlatformsConfiguration, ec: ExecutionContext): ApiNetworkOperations = new ApiNetworkOperations(config, ec)
+  def apply(config: PlatformsConfiguration, ec: ExecutionContext): ApiNetworkOperations =
+    new ApiNetworkOperations(config, ec)
 }
 
 /** Class for storing object which require DB */

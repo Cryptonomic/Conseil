@@ -167,7 +167,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     */
   def getBlocksNotInDatabase(network: String): Future[List[(Block, List[AccountId])]] =
     for {
-      maxLevel <- ApiOperations.fetchMaxLevel
+      maxLevel <- apiOperations.fetchMaxLevel
       blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash

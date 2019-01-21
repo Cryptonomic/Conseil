@@ -5,7 +5,6 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.ApiNetworkOperations
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
