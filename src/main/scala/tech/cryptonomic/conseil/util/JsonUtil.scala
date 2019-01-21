@@ -53,7 +53,7 @@ object JsonUtil {
     mapper.registerModule(DefaultScalaModule)
       .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
       .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
-      .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+      .disable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
 
   def toJson[T](value: T): JsonString =
     JsonString(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value))

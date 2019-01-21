@@ -8,6 +8,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import slick.jdbc.PostgresProfile
+import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
@@ -84,7 +85,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
   val cfg = PlatformsConfiguration(
     platforms = Map(
-      Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+      Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
     )
   )
 

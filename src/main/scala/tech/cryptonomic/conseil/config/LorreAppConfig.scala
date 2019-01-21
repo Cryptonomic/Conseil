@@ -1,15 +1,41 @@
 package tech.cryptonomic.conseil.config
 
+import pureconfig.error.ConfigReaderFailures
+import pureconfig.generic.ProductHint
+import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
+import pureconfig.generic.auto._
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
-import pureconfig.{ConfigFieldMapping, CamelCase, loadConfig}
-import pureconfig.generic.auto._
-import pureconfig.generic.ProductHint
-import pureconfig.error.{ConfigReaderFailures, ConfigReaderFailure}
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
   import LorreAppConfig._
+
+  private val argsParser = new scopt.OptionParser[ArgumentsConfig]("lorre") {
+    arg[String]("network").required().action( (x, c) =>
+      c.copy(networks = c.networks :+ x) ).text("which network to use")
+
+    opt[String]("depth")
+      .action((depth, c) => c.copy(d = depth))
+      .text("how many blocks to synchronize starting with head (use -1 or all for everything and 0 or new for only new ones)")
+
+    help("help").text("prints this usage text")
+  }
+
+  object Int {
+    def unapply(s: String): Option[Int] = util.Try(s.toInt).toOption
+  }
+
+  private case class ArgumentsConfig(private val d: String = "new", networks: Seq[String] = Seq()) {
+
+    def depth: Depth = {
+      d match {
+        case Int(-1) | "all" => Everything
+        case Int(0)  | "new" => Newest
+        case Int(n) => Custom(n)
+      }
+    }
+  }
 
   /** Reads all configuration upstart, will print all errors encountered during loading */
   protected def loadApplicationConfiguration(commandLineArgs: Array[String]): Either[ConfigReaderFailures, CombinedConfiguration] = {
@@ -17,13 +43,14 @@ trait LorreAppConfig {
     implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
     val loadedConf = for {
-      network <- readArgs(commandLineArgs)
+      parsedCommandLineArgs <- readArgs(commandLineArgs)
+      (network, depth) = parsedCommandLineArgs
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node), nodeRequests, streamingClient, fetching)
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node), nodeRequests, streamingClient, fetching)
 
     //something went wrong
     loadedConf.left.foreach {
@@ -34,21 +61,14 @@ trait LorreAppConfig {
   }
 
   /** Use the pureconfig convention to handle configuration from the command line */
-  protected def readArgs(args: Array[String]): Either[ConfigReaderFailures, String] =
-    if (args.length > 0) Right(args(0))
-    else Left(ConfigReaderFailures(
-      //custom-made to adapt from a file-parsing-based error to missing cli args
-      new ConfigReaderFailure {
-        val description = """
-          | No tezos network was provided to connect to
-          | Please provide a valid network as an argument to the command line""".stripMargin
+  protected def readArgs(args: Array[String]): Either[ConfigReaderFailures, (String, Depth)] = {
 
-        val location = None
+    val argumentsConfig = argsParser.parse(args, ArgumentsConfig()).getOrElse(sys.exit(1))
+    val network = argumentsConfig.networks.head
+    val depth = argumentsConfig.depth
 
-        override def toString(): String = description
-      }
-    ))
-
+    Right(network, depth)
+  }
 }
 
 object LorreAppConfig {

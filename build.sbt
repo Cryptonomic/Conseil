@@ -16,6 +16,7 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.akka"               %% "akka-http"                 % akkaHttpVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-stream"               % akkaVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-actor"                % akkaVersion exclude("com.typesafe", "config"),
+  "com.typesafe.akka"               %% "akka-http-caching"         % akkaHttpVersion exclude("com.typesafe", "config"),
   "com.github.pureconfig"           %% "pureconfig"                % "0.10.1",
   "org.scalaj"                      %% "scalaj-http"               % "2.3.0",
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
@@ -34,7 +35,8 @@ libraryDependencies  ++=  Seq(
   "ch.megard"                       %% "akka-http-cors"            % "0.3.0",
   "ru.yandex.qatools.embed"          % "postgresql-embedded"       % "2.10" % Test,
   "com.typesafe.akka"               %% "akka-http-testkit"         % akkaHttpVersion % Test exclude("com.typesafe", "config"),
-  "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test
+  "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test,
+  "com.github.scopt"                %% "scopt"                     % "4.0.0-RC2"
 )
 
 excludeDependencies ++= Seq(

@@ -131,7 +131,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(implicit ec: ExecutionContext): DBIO[Option[AverageFees]] = {
     def parseFee(fee: String): Option[Double] =
       Try(fee.toDouble).fold(
-        error => {
+        _ => {
           logger.error("I encountered an invalid fee value during average computation: '{}'", fee)
           None
         },

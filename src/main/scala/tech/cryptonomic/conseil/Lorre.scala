@@ -1,4 +1,3 @@
-
 package tech.cryptonomic.conseil
 
 import akka.Done
@@ -7,6 +6,9 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.config.LorreAppConfig
 import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.{Duration, _}
@@ -35,7 +37,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   val shutdownWait = 10.seconds
 
   //whatever happens we try to clean up
-  sys.addShutdownHook(shutdown)
+  sys.addShutdownHook(shutdown())
 
   lazy val db = Database.forConfig(s"databases.tezos.${tezosConf.network}.conseildb")
   lazy val apiOperations = ApiOperations(db)
@@ -78,9 +80,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       else processing
 
     Await.result(processResult, atMost = Duration.Inf)
-    logger.info("Taking a nap")
-    Thread.sleep(lorreConf.sleepInterval.toMillis)
-    mainLoop(iteration + 1)
+
+    tezosConf.depth match {
+      case Newest =>
+        logger.info("Taking a nap")
+        Thread.sleep(lorreConf.sleepInterval.toMillis)
+        mainLoop(iteration + 1)
+      case _ =>
+        logger.info("Synchronization is done")
+    }
   }
 
   logger.info("""
@@ -104,7 +112,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     */
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
-    tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network, followFork = true).flatMap {
+
+    val blocksToSynchronize = tezosConf.depth match {
+      case Everything => tezosNodeOperator.getAllBlocks(tezosConf.network)
+      case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
+      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, n)
+    }
+
+    blocksToSynchronize.flatMap {
       blocksWithAccounts =>
         db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))
           .andThen {

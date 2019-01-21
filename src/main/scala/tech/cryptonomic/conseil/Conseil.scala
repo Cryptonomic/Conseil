@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContextExecutor
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig {
 
   applicationConfiguration match {
-    case Right((server, platforms, securityApi)) =>
+    case Right((server, platforms, securityApi, caching)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
@@ -35,7 +35,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
       val apiNetworkOperations = ApiNetworkOperations(platforms, tezosDispatcher)
       lazy val tezos = Tezos(apiNetworkOperations)
-      lazy val platformDiscovery = PlatformDiscovery(apiNetworkOperations, platforms)(tezosDispatcher)
+      lazy val platformDiscovery = PlatformDiscovery(platforms, caching)(tezosDispatcher)
       lazy val data = Data(platforms, apiNetworkOperations)(tezosDispatcher)
 
       val route = cors() {

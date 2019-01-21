@@ -69,10 +69,12 @@ class ConfigUtilTest extends WordSpec with Matchers {
       platforms.values.flatten should contain only (
         TezosConfiguration(
           "alphanet",
+          Newest,
           TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http")
         ),
         TezosConfiguration(
           "alphanet-staging",
+          Newest,
           TezosNodeConfiguration(hostname = "nautilus.cryptonomic.tech", port = 8732, protocol = "https", pathPrefix = "tezos/alphanet/")
         )
       )
@@ -112,6 +114,7 @@ class ConfigUtilTest extends WordSpec with Matchers {
       platforms.values.flatten should contain only (
         TezosConfiguration(
           "alphanet",
+          Newest,
           TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http")
         ),
         UnknownPlatformConfiguration("some-network")
