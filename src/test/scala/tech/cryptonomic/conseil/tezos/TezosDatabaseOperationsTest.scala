@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
+import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
 
