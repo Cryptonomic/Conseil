@@ -8,8 +8,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.config.ConseilAppConfig
+import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
 
 import scala.concurrent.ExecutionContextExecutor
@@ -21,9 +21,9 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
-            provide(apiKey)
+          provide(apiKey)
         case _ =>
-            complete((Unauthorized, "Incorrect API key"))
+          complete((Unauthorized, "Incorrect API key"))
       }
 
       implicit val system: ActorSystem = ActorSystem("conseil-system")
@@ -41,49 +41,49 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
             logRequest("Conseil", Logging.DebugLevel) {
               pathPrefix("tezos") {
                 tezos.route
-              } ~
-              pathPrefix("info") {
+              } ~ pathPrefix("info") {
                 AppInfo.route
+              }
+            } ~ pathPrefix("v2") {
+              logRequest("Metadata Route", Logging.DebugLevel) {
+                pathPrefix("metadata") {
+                  platformDiscovery.route
+                }
+              } ~ logRequest("Data Route", Logging.DebugLevel) {
+                pathPrefix("data") {
+                  data.getRoute ~ data.postRoute
+                }
               }
             }
           } ~ options {
             // Support for CORS pre-flight checks.
             complete("Supported methods : GET and POST.")
           }
-        } ~ pathPrefix("v2") {
-          logRequest("Metadata Route", Logging.DebugLevel) {
-            pathPrefix("metadata") {
-              platformDiscovery.route
-            }
-          } ~ logRequest("Data Route", Logging.DebugLevel) {
-            pathPrefix("data") {
-              data.getRoute ~ data.postRoute
-            }
-          }
         }
       }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
-      logger.info("""
-        | =========================***=========================
-        |  Conseil v.{}
-        |  {}
-        | =========================***=========================
-        |
-        |  Bonjour...
-        |""".stripMargin,
+      logger.info(
+        """
+          | =========================***=========================
+          |  Conseil v.{}
+          |  {}
+          | =========================***=========================
+          |
+          |  Bonjour...
+          |""".stripMargin,
         BuildInfo.version,
         BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
       )
 
       sys.addShutdownHook {
         bindingFuture
-          .flatMap(_.unbind().andThen{ case _ => logger.info("Server stopped...")} )
-          .flatMap( _ => system.terminate())
+          .flatMap(_.unbind().andThen { case _ => logger.info("Server stopped...") })
+          .flatMap(_ => system.terminate())
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
     case Left(errors) =>
-      //nothing to do
+    //nothing to do
   }
 }

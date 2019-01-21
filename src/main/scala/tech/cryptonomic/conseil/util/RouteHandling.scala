@@ -62,6 +62,15 @@ trait RouteHandling {
     }
     complete(response)
   }
+
+  /** validates platform */
+  protected def validatePlatform(config: PlatformsConfiguration, platform: String): Directive0 = {
+    getNetworks(config, platform) match {
+      case Nil => complete(StatusCodes.NotFound)
+      case _ => pass
+    }
+  }
+
   /** validates platform and network */
   protected def validatePlatformAndNetwork(config: PlatformsConfiguration, platform: String, network: String): Directive0 = {
     getNetworks(config, platform).find(_.network == network) match {

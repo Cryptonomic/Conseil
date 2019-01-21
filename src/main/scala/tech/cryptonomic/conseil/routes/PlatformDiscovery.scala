@@ -54,8 +54,10 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
         } ~
           pathPrefix(Segment) { platform =>
             pathPrefix("networks") {
-              pathEnd {
-                complete(toJson(ConfigUtil.getNetworks(config, platform)))
+              validatePlatform(config, platform) {
+                pathEnd {
+                  complete(toJson(ConfigUtil.getNetworks(config, platform)))
+                }
               }
             } ~ pathPrefix(Segment) { network =>
               validatePlatformAndNetwork(config, platform, network) {
