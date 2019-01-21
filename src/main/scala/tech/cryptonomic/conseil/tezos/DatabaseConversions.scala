@@ -6,14 +6,12 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import tech.cryptonomic.conseil.util.Conversion.Id
 
-import scala.util.Try
-
 object DatabaseConversions {
 
   //single field conversions
-  private def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
+  def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
 
-  private def extractBigDecimal(number: TezosOperations.PositiveBigNumber): Option[BigDecimal] = number match {
+  def extractBigDecimal(number: TezosOperations.PositiveBigNumber): Option[BigDecimal] = number match {
     case TezosOperations.PositiveDecimal(value) => Some(value)
     case _ => None
   }
@@ -274,6 +272,7 @@ object DatabaseConversions {
         spendable = from.spendable,
         delegatable = from.delegatable,
         script = from.script,
+        status = from.status,
         blockHash = from.blockHash,
         timestamp = from.timestamp
       )

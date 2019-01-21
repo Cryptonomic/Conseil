@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
@@ -9,22 +8,17 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.model.Model
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate}
 
 import scala.util.Random
 
-/* use this to make random generation implicit but deterministic */
-case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable {
-  def +(extra: Long): RandomSeed = RandomSeed(seed + extra)
-}
-
 class TezosDatabaseOperationsTest
   extends WordSpec
     with MockFactory
+    with TezosDataGeneration
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
@@ -121,9 +115,9 @@ class TezosDatabaseOperationsTest
               val group = blockForGroup.operationGroups.head
               groupRow.hash shouldEqual group.hash.value
               groupRow.blockId shouldEqual blockForGroup.metadata.hash.value
-              groupRow.chainId shouldEqual group.chain_id
-              groupRow.branch shouldEqual group.branch
-              groupRow.signature shouldEqual group.signature
+              groupRow.chainId shouldEqual group.chain_id.map(_.id)
+              groupRow.branch shouldEqual group.branch.value
+              groupRow.signature shouldEqual group.signature.map(_.value)
           }
 
           val dbOperations =
@@ -176,7 +170,9 @@ class TezosDatabaseOperationsTest
               import DatabaseConversions._
               import tech.cryptonomic.conseil.util.ConversionSyntax._
 
-              (operationBlock, operationGroup.hash, operation.value).convertTo[Tables.OperationsRow] shouldEqual opRow
+              val generatedConversion = (operationBlock, operationGroup.hash, operation.value).convertTo[Tables.OperationsRow]
+              val dbConversion = opRow.convertTo[Tables.OperationsRow]
+              generatedConversion.tail shouldEqual dbConversion.tail //take into account that the id is only generated on save
           }
       }
 
@@ -1140,244 +1136,6 @@ class TezosDatabaseOperationsTest
       ).futureValue
       generatedQueryResult shouldBe expectedQueryResult
     }
-  }
-
-  //a stable timestamp reference if needed
-  private lazy val testReferenceTime =
-    new Timestamp(
-      LocalDate.of(2018, 1, 1)
-        .atStartOfDay
-        .toEpochSecond(ZoneOffset.UTC)
-    )
-
-  //creates pseudo-random strings of given length, based on an existing [[Random]] generator
-  private val alphaNumericGenerator =
-    (random: Random) => random.alphanumeric.take(_: Int).mkString
-
-  /* randomly populate a number of fees */
-  private def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
-    require(howMany > 0, "the test can generates a positive number of fees, you asked for a non positive value")
-
-    val rnd = new Random(randomSeed.seed)
-
-    (1 to howMany).map {
-      current =>
-        val low = rnd.nextInt(10)
-        val medium = rnd.nextInt(10) + 10
-        val high = rnd.nextInt(10) + 20
-        AverageFees(
-          low = low,
-          medium = medium,
-          high = high,
-          timestamp = new Timestamp(startAt.getTime + current),
-          kind = "kind"
-        )
-    }.toList
-  }
-
-  /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
-
-    val rnd = new Random(randomSeed.seed)
-
-    val accounts = (1 to howMany).map {
-      currentId =>
-        (AccountId(String valueOf currentId),
-          Account(
-            manager = "manager",
-            balance = rnd.nextInt,
-            spendable = true,
-            delegate = AccountDelegate(setable = false, value = Some("delegate-value")),
-            script = Some("script"),
-            counter = currentId
-          )
-        )
-    }.toMap
-
-    BlockAccounts(blockHash, blockLevel, accounts)
-  }
-
-  /* randomly populate a number of blocks based on a level range */
-  private def generateBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Block] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    //same for all blocks
-    val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
-
-    def generateOne(level: Int, predecessorHash: BlockHash): Block =
-      Block(
-        BlockMetadata(
-          "protocol",
-          Some(chainHash),
-          BlockHash(generateHash(10)),
-          BlockHeader(
-            level = level,
-            proto = 1,
-            predecessor = predecessorHash,
-            timestamp = new Timestamp(startMillis + level),
-            validationPass = 0,
-            operations_hash = None,
-            fitness = Seq.empty,
-            context = s"context$level",
-            signature = Some(s"sig${generateHash(10)}")
-          )),
-        operationGroups = List.empty
-      )
-
-    //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"))
-
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.metadata.hash)
-        currentBlock :: chain
-    }.reverse
-
-  }
-
-
-  /* randomly populate a number of blocks based on a level range */
-  private def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    //same for all blocks
-    val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
-
-    def generateOne(level: Int, predecessorHash: String): BlocksRow =
-      BlocksRow(
-      level = level,
-      proto = 1,
-      predecessor = predecessorHash,
-      timestamp = new Timestamp(startMillis + level),
-      validationPass = 0,
-      fitness = "fitness",
-      protocol = "protocol",
-      context = Some(s"context$level"),
-      signature = Some(s"sig${generateHash(10)}"),
-      chainId = Some(chainHash),
-      hash = generateHash(10)
-    )
-
-    //we need somewhere to start with
-    val genesis = generateOne(0, "genesis")
-
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.hash)
-        currentBlock :: chain
-    }.reverse
-
-  }
-
-  /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  private def generateOperationGroup(block: Block, generateOperations: Boolean)(implicit randomSeed: RandomSeed): TezosOperations.Group = {
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    TezosOperations.Group(
-      protocol = "protocol",
-      chain_id = block.metadata.chain_id.map(ChainId),
-      hash = OperationHash(generateHash(10)),
-      branch = BlockHash(generateHash(10)),
-      signature = Some(Signature(s"sig${generateHash(10)}")),
-      contents = if (generateOperations) generateAnyOperation else List.empty
-    )
-  }
-
-  private def generateAnyOperation(implicit randomSeed: RandomSeed): List[TezosOperations.Operation] = Nil
-
-
-  /* create an empty operation group for each block passed in, using random values */
-  private def generateOperationGroupRows(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
-    require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    blocks.map(
-      block =>
-        Tables.OperationGroupsRow(
-          protocol = "protocol",
-          chainId = block.chainId,
-          hash = generateHash(10),
-          branch = generateHash(10),
-          signature = Some(s"sig${generateHash(10)}"),
-          blockId = block.hash
-        )
-    ).toList
-  }
-
-  /* create operations related to a specific group, with random data */
-  private def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Model.Operation] =
-   if (howMany > 0) {
-
-     (1 to howMany).map {
-       counting =>
-         Model.Operation(
-           kind = "operation-kind",
-           operationGroupHash = group.hash,
-           operationId = -1,
-           blockHash = block.hash,
-           timestamp = block.timestamp,
-           level = Some(block.level)
-         )
-     }.toList
-   } else List.empty
-
-  /* create operation rows to hold the given fees */
-  private def wrapFeesWithOperations(
-    fees: Seq[Option[BigDecimal]],
-    block: BlocksRow,
-    group: OperationGroupsRow) = {
-
-    fees.zipWithIndex.map {
-      case (fee, index) =>
-        Model.Operation(
-          kind = "kind",
-          operationGroupHash = group.hash,
-          operationId = -1,
-          fee = fee,
-          blockHash = block.hash,
-          timestamp = new Timestamp(block.timestamp.getTime + index),
-          level = Some(block.level)
-        )
-    }
-
-  }
-
-  /* randomly generates a number of account rows for some block */
-  private def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
-
-    (1 to howMany).map {
-      currentId =>
-        AccountsRow(
-          accountId = String valueOf currentId,
-          blockId = block.hash,
-          manager = "manager",
-          spendable = true,
-          delegateSetable = false,
-          delegateValue = None,
-          counter = 0,
-          script = None,
-          balance = 0
-        )
-    }.toList
-
   }
 
  }
