@@ -8,6 +8,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attributes, DataType, KeyType, Network}
+import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.util.ConfigUtil
 
@@ -25,6 +26,7 @@ class TezosPlatformDiscoveryOperationsTest
     with LazyLogging {
 
   import slick.jdbc.PostgresProfile.api._
+  import scala.concurrent.ExecutionContext.Implicits.global
   import tech.cryptonomic.conseil.config.Platforms._
 
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,7 +35,7 @@ class TezosPlatformDiscoveryOperationsTest
     "return list with one element" in {
       val config = PlatformsConfiguration(
         platforms = Map(
-          Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+          Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
         )
       )
 
@@ -46,10 +48,12 @@ class TezosPlatformDiscoveryOperationsTest
           Tezos -> List(
             TezosConfiguration(
               "alphanet",
+              Newest,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
             ),
             TezosConfiguration(
               "alphanet-staging",
+              Newest,
               TezosNodeConfiguration(protocol = "https", hostname = "nautilus.cryptonomic.tech", port = 8732, pathPrefix = "tezos/alphanet/")
             )
           )
@@ -232,13 +236,13 @@ class TezosPlatformDiscoveryOperationsTest
     }
 
     "should validate correctly fields" in {
-      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "high", "timestamp", "kind"), List.empty) shouldBe true
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", Set("low", "medium", "high", "timestamp", "kind")) shouldBe true
     }
     "should validate correctly fields when only some of them are selected" in {
-      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind"), List.empty) shouldBe true
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", Set("low", "medium", "kind")) shouldBe true
     }
     "should return false when there will be field not existing in the DB" in {
-      TezosPlatformDiscoveryOperations.areFieldsValid("fees", List("low", "medium", "kind", "WRONG"), List.empty) shouldBe false
+      TezosPlatformDiscoveryOperations.areFieldsValid("fees", Set("low", "medium", "kind", "WRONG")) shouldBe false
     }
 
   }

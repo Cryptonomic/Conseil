@@ -5,6 +5,8 @@ import org.scalatest.Inspectors._
 import JsonUtil._
 import com.stephenn.scalatest.jsonassert.JsonMatchers
 
+case class TestObject(field: String = "")
+
 class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
 
   "JsonUtil" should {
@@ -40,8 +42,7 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
           "{", //incomplete
           "{field : true}", //missing quotes
           """{"field" : trues}""", // invalid field value
-          """{"field" : true, }""", // incomplete object fields
-          """{"field" : true, "field" : 1}""" // duplicate field
+          """{"field" : true, }""" // incomplete object fields
         )
 
       forAll(invalid) {
@@ -72,6 +73,16 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
       result should be(Map("a" -> "b", "c" -> Map("d" -> "e", "f" -> "g")))
     }
 
+    "allow lenient parsing of json with duplicate object keys, actually deserialized or not" in {
+
+      val duplicateKey = """{"field": "value", "field": "dup"}"""
+
+      JsonUtil.fromJson[TestObject](duplicateKey) shouldBe TestObject(field = "dup")
+
+      val duplicateInnerKey = """{"field": "value", "inner": {"field":"inner", "field": "dup", "another": 10}}"""
+
+      JsonUtil.fromJson[TestObject](duplicateInnerKey) shouldBe TestObject(field = "value")
+    }
 
   }
 
