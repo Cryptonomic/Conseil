@@ -32,7 +32,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     block.futureValue.metadata.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
   }
 
-  "getAllBlocks" should "should correctly fetch all the blocks" in {
+  "getLatestBlocks" should "should correctly fetch all the blocks if no depth is passed-in" in {
     //given
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
@@ -43,7 +43,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 
     //when
-    val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getAllBlocks("zeronet")
+    val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getLatestBlocks("zeronet")
 
     //then
     block.futureValue should have length 1
@@ -60,7 +60,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 
     //when
-    val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getLatestBlocks("zeronet", 1)
+    val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getLatestBlocks("zeronet", Some(1))
 
     //then
     block.futureValue should have length 1

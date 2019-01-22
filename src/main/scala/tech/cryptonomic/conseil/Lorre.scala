@@ -69,16 +69,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
      * Can be used to investigate issues on consistently failing block or account processing.
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
-    val processResult =
+    val attemptedProcessing =
       if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
-        processing.recover {
-          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) => throw f
-          case _ => () //swallow the error and proceed with the default behaviour
-        }
-      else
         processing
+      else
+        processing.recover {
+          //swallow the error and proceed with the default behaviour
+          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) => ()
+        }
 
-    Await.result(processResult, atMost = Duration.Inf)
+    Await.result(attemptedProcessing, atMost = Duration.Inf)
 
     tezosConf.depth match {
       case Newest =>
@@ -113,9 +113,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     logger.info("Processing Tezos Blocks..")
 
     val blocksToSynchronize = tezosConf.depth match {
-      case Everything => tezosNodeOperator.getAllBlocks(tezosConf.network)
       case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
-      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, n)
+      case Everything => tezosNodeOperator.getLatestBlocks(tezosConf.network)
+      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, Some(n))
     }
 
     blocksToSynchronize.flatMap {
