@@ -15,4 +15,6 @@ trait DataOperations {
     * @return query result as a map
     * */
   def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
+
+  def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int]
 }

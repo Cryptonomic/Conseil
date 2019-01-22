@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
+import tech.cryptonomic.conseil.generic.chain.DataOperations
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -31,7 +32,7 @@ object TezosNodeOperator {
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
-class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration, apiOperations: ApiOperations)
+class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration, apiOperations: DataOperations)
   (implicit executionContext: ExecutionContext) extends LazyLogging {
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel}
 
