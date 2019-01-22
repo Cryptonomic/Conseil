@@ -187,7 +187,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
           logger.info("No new blocks to fetch from the network")
           Future.successful(List.empty)
         } else {
-          if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+          if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain.")
           else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
           getBlocks(network, headHash, maxLevel + 1, headLevel, followFork)
         }

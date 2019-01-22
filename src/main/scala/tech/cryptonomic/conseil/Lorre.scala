@@ -104,16 +104,18 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     */
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
+
     tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network, followFork = true).flatMap {
       blocksWithAccounts =>
-        db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))
-          .andThen {
-            case Success(accountsCount) =>
-              logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
-            case Failure(e) =>
-              logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
-          }
-          .map(_ => Done)
+
+        def logOutcome[A](outcome: Future[Option[A]]): Future[Option[A]] = outcome.andThen {
+          case Success(accountsCount) =>
+            logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
+          case Failure(e) =>
+            logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
+        }
+
+        logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))).map(_ => Done)
     }.andThen {
       case Failure(e) =>
         logger.error("Could not fetch blocks from client", e)
