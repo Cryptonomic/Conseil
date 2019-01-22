@@ -74,7 +74,7 @@ trait TezosRPCInterface {
   def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String]
 
   /** Frees any resource that was eventually reserved */
-  def shutdown(): Future[ShutdownComplete]= Future.successful(ShutdownComplete)
+  def shutdown(): Future[ShutdownComplete] = Future.successful(ShutdownComplete)
 }
 
 /**

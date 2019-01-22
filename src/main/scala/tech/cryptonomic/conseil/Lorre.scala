@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil
 import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
 
@@ -46,7 +46,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     val nodeShutdown =
       tezosNodeOperator.node
         .shutdown()
-        .flatMap(ShutdownComplete => system.terminate())
+        .flatMap((_: ShutdownComplete) => system.terminate())
 
     Await.result(nodeShutdown, shutdownWait)
     logger.info("All things closed")
@@ -65,16 +65,18 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
           noOp
     } yield ()
 
-    /* Won't stop Lorre on failure from account processing, unless overriden by the environment to halt.
-     * Can be used to investigate issues on consistently failing account processing
+    /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
+     * Can be used to investigate issues on consistently failing block or account processing.
+     * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val processResult =
       if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
         processing.recover {
-          case f @ AccountsProcessingFailed(_, _) => throw f
-          case _ => () //swallowed
+          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) => throw f
+          case _ => () //swallow the error and proceed with the default behaviour
         }
-      else processing
+      else
+        processing
 
     Await.result(processResult, atMost = Duration.Inf)
 
@@ -126,10 +128,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
             logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
         }
 
-        logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))).map(_ => Done)
-    }.andThen {
+        logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)))
+    }.transform {
       case Failure(e) =>
-        logger.error("Could not fetch blocks from client", e)
+        val error = "Could not fetch blocks from client"
+        logger.error(error, e)
+        Failure(BlocksProcessingFailed(message = error, e))
+      case Success(_) => Success(Done)
     }
   }
 
