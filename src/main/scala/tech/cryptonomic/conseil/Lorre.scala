@@ -111,9 +111,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     logger.info("Processing Tezos Blocks..")
 
     val blocksToSynchronize = tezosConf.depth match {
-      case Everything => tezosNodeOperator.getAllBlocks(tezosConf.network)
       case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
-      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, n)
+      case Everything => tezosNodeOperator.getLatestBlocks(tezosConf.network)
+      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, Some(n))
     }
 
     blocksToSynchronize.flatMap {

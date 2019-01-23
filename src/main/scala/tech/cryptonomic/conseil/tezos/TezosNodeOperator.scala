@@ -33,6 +33,9 @@ object TezosNodeOperator {
   */
 class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext) extends LazyLogging {
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel}
+  //use this alias to make signatures easier to read and kept in-sync
+  private type BlockFetchingResults = List[(Block, List[AccountId])]
+
 
   /**
     * Fetches a specific account for a given block.
@@ -164,7 +167,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param network    Which Tezos network to go against
     * @return           Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(network: String): Future[List[(Block, List[AccountId])]] =
+  def getBlocksNotInDatabase(network: String): Future[BlockFetchingResults] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
       blockHead <- getBlockHead(network)
@@ -182,31 +185,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     } yield blocks
 
   /**
-    * Gets all blocks.
+    * Gets last `depth` blocks.
     * @param network    Which Tezos network to go against
+    * @param depth      Number of latest block to fetch, `None` to get all
     * @return           Blocks and Account hashes involved
     */
-  def getAllBlocks(network: String): Future[List[(Block, List[AccountId])]] =
-    for {
-      blockHead <- getBlockHead(network)
-      headLevel = blockHead.metadata.header.level
-      headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, 1, headLevel)
-    } yield blocks
-
-  /**
-    * Gets last n blocks.
-    * @param network    Which Tezos network to go against
-    * @param count      Number of latest block to fetch
-    * @return           Blocks and Account hashes involved
-    */
-  def getLatestBlocks(network: String, count: Int): Future[List[(Block, List[AccountId])]] =
-    for {
-      blockHead <- getBlockHead(network)
-      headLevel = blockHead.metadata.header.level
-      headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, max(1, headLevel - count + 1), headLevel)
-    } yield blocks
+  def getLatestBlocks(network: String, depth: Option[Int] = None): Future[BlockFetchingResults] =
+    getBlockHead(network).flatMap {
+      head =>
+        val headLevel = head.metadata.header.level
+        val headHash = head.metadata.hash
+        val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
+        getBlocks(network, headHash, minLevel, headLevel)
+    }
 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
