@@ -241,8 +241,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleScriptedContract =
       Scripted.Contracts(
-        code = MichelsonV1("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
-        storage = MichelsonV1("""{"string":"hello"}""")
+        code = Micheline("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
+        storage = Micheline("""{"string":"hello"}""")
       )
 
     val sampleEndorsement =
@@ -362,7 +362,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         storage_limit = PositiveDecimal(0),
         amount = PositiveDecimal(0),
         destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-        parameters = Some(MichelsonV1("""{"string":"world"}""")),
+        parameters = Some(Micheline("""{"string":"world"}""")),
         metadata = ResultMetadata(
           balance_updates = List(
             BalanceUpdate(
@@ -385,7 +385,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
           operation_result =
             OperationResult.Transaction(
               status = "applied",
-              storage = Some(MichelsonV1("""{"string":"world"}""")),
+              storage = Some(Micheline("""{"string":"world"}""")),
               consumed_gas = Some(Decimal(11375)),
               storage_size = Some(Decimal(46)),
               allocated_destination_contract = None,

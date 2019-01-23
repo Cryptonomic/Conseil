@@ -147,13 +147,13 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
-    "decode valid json into MichelsonV1 values" in new OperationsJsonData {
-      val decoded = decode[MichelsonV1](michelsonJson)
-      decoded.right.value shouldEqual expectedMichelson
+    "decode valid json into Micheline values" in new OperationsJsonData {
+      val decoded = decode[Micheline](michelineJson)
+      decoded.right.value shouldEqual expectedMicheline
     }
 
-    "fail to decode invalid json into MichelsonV1 values" in new OperationsJsonData {
-      val decoded = decode[MichelsonV1](invalidJson)
+    "fail to decode invalid json into Micheline values" in new OperationsJsonData {
+      val decoded = decode[Micheline](invalidJson)
       decoded shouldBe 'left
     }
 

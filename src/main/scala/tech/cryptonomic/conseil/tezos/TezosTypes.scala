@@ -34,7 +34,7 @@ object TezosTypes {
 
   final case class Secret(value: String) extends AnyVal
 
-  final case class MichelsonV1(expression: String) extends AnyVal
+  final case class Micheline(expression: String) extends AnyVal
 
   final case class ScriptId(value: String) extends AnyVal
 
@@ -78,15 +78,15 @@ object TezosTypes {
     object Contract {
       final case class BigMapDiff(
         key_hash: ScriptId,
-        key: MichelsonV1,
-        value: Option[MichelsonV1]
+        key: Micheline,
+        value: Option[Micheline]
       )
     }
 
     object Scripted {
       final case class Contracts(
-        storage: MichelsonV1,
-        code: MichelsonV1
+        storage: Micheline,
+        code: Micheline
       )
     }
 
@@ -130,7 +130,7 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       source: ContractId,
       destination: ContractId,
-      parameters: Option[MichelsonV1],
+      parameters: Option[Micheline],
       metadata: ResultMetadata[OperationResult.Transaction]
     ) extends Operation
 
@@ -204,7 +204,7 @@ object TezosTypes {
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
-        storage: Option[MichelsonV1],
+        storage: Option[Micheline],
         storage_size: Option[BigNumber],
         errors: Option[List[Error]]
       )

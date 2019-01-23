@@ -12,7 +12,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures {
 
-  val tezosRPCInterface = stub[TezosRPCInterface]
   val config = BatchFetchConfiguration(1, 1)
 
   implicit val executionContext = ExecutionContext.global
@@ -20,6 +19,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "getBlock" should "should correctly fetch the genesis block" in {
     //given
+    val tezosRPCInterface = stub[TezosRPCInterface]
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe~").returns(Future.successful(TezosResponseBuilder.blockResponse))
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
 
@@ -34,6 +34,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "getLatestBlocks" should "should correctly fetch all the blocks if no depth is passed-in" in {
     //given
+    val tezosRPCInterface = stub[TezosRPCInterface]
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
 
@@ -51,6 +52,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   "getLatestBlocks" should "should correctly fetch latest blocks" in {
     //given
+    val tezosRPCInterface = stub[TezosRPCInterface]
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
 

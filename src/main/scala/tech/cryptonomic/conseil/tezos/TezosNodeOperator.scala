@@ -35,6 +35,9 @@ object TezosNodeOperator {
 class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext) extends LazyLogging {
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel}
 
+  //use this alias to make signatures easier to read and kept in-sync
+  private type BlockFetchingResults = List[(Block, List[AccountId])]
+
   /**
     * Fetches a specific account for a given block.
     * @param network    Which Tezos network to go against
@@ -174,7 +177,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param network    Which Tezos network to go against
     * @return           Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(network: String): Future[List[(Block, List[AccountId])]] =
+  def getBlocksNotInDatabase(network: String): Future[BlockFetchingResults] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
       blockHead <- getBlockHead(network)
@@ -197,7 +200,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param depth      Number of latest block to fetch, `None` to get all blocks
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks(network: String, depth: Option[Int] = None): Future[List[(Block, List[AccountId])]] =
+  def getLatestBlocks(network: String, depth: Option[Int] = None): Future[BlockFetchingResults] =
     getBlockHead(network).flatMap {
       head =>
         val headLevel = head.metadata.header.level
@@ -219,7 +222,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     hashRef: BlockHash,
     minLevel: Int,
     maxLevel: Int
-  ): Future[List[(Block, List[AccountId])]] = {
+  ): Future[BlockFetchingResults] = {
 
     import io.circe.parser.decode
     import JsonDecoders.Circe.{ JsonDecoded, handleDecodingErrors }

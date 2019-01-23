@@ -72,9 +72,9 @@ object JsonDecoders {
         DecodedConstructor = Secret
       )
 
-    /* decode any json value to its string representation wrapped in a MichelsonV1*/
-    implicit val michelsonDecoder: Decoder[MichelsonV1] =
-      Decoder.decodeJson.map(json => MichelsonV1(json.noSpaces))
+    /* decode any json value to its string representation wrapped in a Micheline*/
+    implicit val michelineDecoder: Decoder[Micheline] =
+      Decoder.decodeJson.map(json => Micheline(json.noSpaces))
 
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
