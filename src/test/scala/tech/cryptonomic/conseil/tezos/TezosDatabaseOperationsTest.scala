@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, QueryOrdering}
-import tech.cryptonomic.conseil.util.{DatabaseUtil, RandomSeed}
+import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
 
@@ -126,7 +126,7 @@ class TezosDatabaseOperationsTest
              val query = for {
               o <- Tables.Operations
               g <- o.operationGroupsFk
-            } yield (g, o.mapTo[tech.cryptonomic.conseil.model.Model.Operation])
+            } yield (g, o.mapTo[Model.Operation])
             query.result
            }.futureValue
 

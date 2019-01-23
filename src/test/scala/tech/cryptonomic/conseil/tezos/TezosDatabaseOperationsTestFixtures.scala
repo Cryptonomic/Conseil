@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import scala.util.Random
 
-import tech.cryptonomic.conseil.model.Model
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
@@ -177,20 +176,16 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create operations related to a specific group, with random data */
   def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Model.Operation] =
-   if (howMany > 0) {
-
-     (1 to howMany).map {
-       counting =>
-         Model.Operation(
-           kind = "operation-kind",
-           operationGroupHash = group.hash,
-           operationId = -1,
-           blockHash = block.hash,
-           timestamp = block.timestamp,
-           level = Some(block.level)
-         )
-     }.toList
-   } else List.empty
+    List.fill(howMany) {
+      Model.Operation(
+        kind = "operation-kind",
+        operationGroupHash = group.hash,
+        operationId = -1,
+        blockHash = block.hash,
+        timestamp = block.timestamp,
+        level = Some(block.level)
+      )
+    }
 
   /* create operation rows to hold the given fees */
   def wrapFeesWithOperations(

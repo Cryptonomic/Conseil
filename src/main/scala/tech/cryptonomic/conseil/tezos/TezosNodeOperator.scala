@@ -4,7 +4,6 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.JsonDecoders
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 
@@ -136,6 +135,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     import io.circe.parser.decode
     import JsonDecoders.Circe.Operations._
 
+    //parse json, and try to convert to objects, converting failures to a failed `Future`
     def decodeOperations(json: String) =
       decode[List[List[TezosOperations.Group]]](json).map(_.flatten) match {
         case Left(failure) => Future.failed(failure)

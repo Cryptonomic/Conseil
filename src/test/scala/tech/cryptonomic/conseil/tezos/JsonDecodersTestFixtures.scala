@@ -1,6 +1,6 @@
-package tech.cryptonomic.conseil.util
+package tech.cryptonomic.conseil.tezos
 
-import tech.cryptonomic.conseil.tezos.TezosTypes._
+import TezosTypes._
 
 /* defines example tezos json definitions of operations and typed counterparts used in the tests */
 trait OperationsJsonData {

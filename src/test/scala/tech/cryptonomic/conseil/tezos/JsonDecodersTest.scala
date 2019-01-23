@@ -1,7 +1,7 @@
-package tech.cryptonomic.conseil.util
+package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{WordSpec, Matchers, EitherValues}
-import tech.cryptonomic.conseil.tezos.TezosTypes._
+import TezosTypes._
 
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
@@ -22,7 +22,6 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
     "fail to decode json with duplicate fields" in {
       import io.circe.Decoder
-      import io.circe.generic.extras._
       import io.circe.generic.extras.semiauto._
 
       case class JsonTest(field: String)

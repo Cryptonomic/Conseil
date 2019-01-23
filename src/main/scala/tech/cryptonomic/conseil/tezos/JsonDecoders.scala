@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.util
+package tech.cryptonomic.conseil.tezos
 
 /** This expose decoders for json conversions */
 object JsonDecoders {

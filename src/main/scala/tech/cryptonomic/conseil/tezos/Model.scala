@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.model
+package tech.cryptonomic.conseil.tezos
 
 import scala.math.BigDecimal
 
