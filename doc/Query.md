@@ -412,6 +412,6 @@ curl --request POST \
 
 #### Example response
 ```
-401 - Bad Request
+400 - Bad Request
 Errors: InvalidPredicateField(counterxd),InvalidQueryField(spendableble),InvalidQueryField(balantines)
 ```

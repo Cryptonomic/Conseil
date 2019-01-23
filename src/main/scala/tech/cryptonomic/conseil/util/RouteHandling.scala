@@ -40,6 +40,7 @@ trait RouteHandling {
 
   /**
     * Directive handling validation errors as bad requests(400)
+    * @param entity entity on which query should be ran
     * @param fieldQuery field query before validation
     * @return Either validated query or bad request if validation failed
     */
