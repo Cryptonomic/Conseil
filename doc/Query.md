@@ -256,49 +256,52 @@ curl -vvv --request POST \
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
   {
-    "field": "level",
-    "operation": "gt",
+    "field": "timestamp",
+    "operation": "after",
     "set": [
-      2100
+      "2018-08-01T11:36:12" 
     ],
     "inverse": false
   }
 ],
 "orderBy": [{"field":"level", "direction":"asc"}],
 "limit" : 5
-}'    
+}'
 ```
+
 
 #### Example response
 
 ```
 [ {
-  "level" : 2101,
-  "timestamp" : 1533119712000,
+  "level" : 1984,
+  "timestamp" : 1533116202000,
   "protocol" : "PsYLVpVvgbLhAhoqAkMFUo6gudkJ9weNXhUYCiLDzcUpFpkk8Wt",
-  "hash" : "BMM9m9KiBUDjZLESPUfBxYR25Sv7oLEBmZwav6aBXMVaaxr2Dev"
+  "hash" : "BM3cZzQHGZ4iB5ZFYyAgkzJTPNjipB7HGJt8WhBdWnfGMSovUpd"
 }, {
-  "level" : 2102,
-  "timestamp" : 1533119742000,
+  "level" : 1985,
+  "timestamp" : 1533116232000,
   "protocol" : "PsYLVpVvgbLhAhoqAkMFUo6gudkJ9weNXhUYCiLDzcUpFpkk8Wt",
-  "hash" : "BKsHuvtc3Fo4queWev4c7YGBPgZEoKnRfQjxMnhtuc6F3BqAfqg"
+  "hash" : "BL2KzqdfYpHBUwN15iYZQxdtugZsqDzt52H8ppDaYcJMtBCU2TB"
 }, {
-  "level" : 2103,
-  "timestamp" : 1533119772000,
+  "level" : 1986,
+  "timestamp" : 1533116262000,
   "protocol" : "PsYLVpVvgbLhAhoqAkMFUo6gudkJ9weNXhUYCiLDzcUpFpkk8Wt",
-  "hash" : "BLEANDkB7prpTfMyx1thwsLnRSz8sJQ7jvmsxVDvqfaid34dZCt"
+  "hash" : "BLXHPJBtJAEJMNhTd9hX9tqSUZdkyC67hXiB9Myz7EfvrdnVkRq"
 }, {
-  "level" : 2104,
-  "timestamp" : 1533119802000,
+  "level" : 1987,
+  "timestamp" : 1533116292000,
   "protocol" : "PsYLVpVvgbLhAhoqAkMFUo6gudkJ9weNXhUYCiLDzcUpFpkk8Wt",
-  "hash" : "BKmUYCYVv4UyGJWbCsB8wShd4N2Q71XzHdJUYvNkdRtRsBiGUHZ"
+  "hash" : "BMQ3j3VY4ywdKYMZFeGN6H5npSM4YL2XWmuWZGhrsytztRq13nv"
 }, {
-  "level" : 2105,
-  "timestamp" : 1533119832000,
+  "level" : 1988,
+  "timestamp" : 1533116322000,
   "protocol" : "PsYLVpVvgbLhAhoqAkMFUo6gudkJ9weNXhUYCiLDzcUpFpkk8Wt",
-  "hash" : "BMcU2eAsjjKQHDM5M1h1KZHsiqa6RVZ8XphHCJqZnWwAWMpJFuN"
-} ]   
+  "hash" : "BM7YmRNb3F7msLqnQHEMMYP2ufEwMx7Rr7jXGa2j5UuLra2ntSr"
+* Connection #0 to host localhost left intact
+} ] 
 ```
+
 
 
 
