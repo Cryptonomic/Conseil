@@ -43,10 +43,10 @@ trait RouteHandling {
     * @param fieldQuery field query before validation
     * @return Either validated query or bad request if validation failed
     */
-  protected def validateQueryOrBadRequest(fieldQuery: Query): Directive1[Query] = Directive { inner =>
-    fieldQuery.validate match {
-      case Some(value) => inner(Tuple1(value))
-      case None => complete(StatusCodes.BadRequest)
+  protected def validateQueryOrBadRequest(entity: String, fieldQuery: Query): Directive1[Query] = Directive { inner =>
+    fieldQuery.validate(entity) match {
+      case Right(value) => inner(Tuple1(value))
+      case Left(errors) => complete(StatusCodes.BadRequest -> s"Errors: ${errors.mkString(",")}")
     }
   }
 

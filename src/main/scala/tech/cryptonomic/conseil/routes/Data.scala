@@ -43,7 +43,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
         pathPrefix(Segment) { ent =>
           validateEntity(ent) {
             entity(as[Query]) { query: Query =>
-              validateQueryOrBadRequest(query) { validatedQuery =>
+              validateQueryOrBadRequest(ent, query) { validatedQuery =>
                 completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
               }
             }
