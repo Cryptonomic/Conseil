@@ -70,7 +70,7 @@ object DataTypes {
         }
         this
       }.toOption.map { query =>
-        val invalidQueryFileds = query
+        val invalidQueryFields = query
           .fields
           .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
           .map(InvalidQueryField)
@@ -79,11 +79,11 @@ object DataTypes {
           .map(_.field)
           .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
           .map(InvalidPredicateField)
-        invalidPredicateFields ::: invalidQueryFileds
+        invalidPredicateFields ::: invalidQueryFields
       } match {
         case Some(Nil) => Right(this)
         case Some(wrongFields)  => Left(wrongFields)
-        case _ => Left(List(UnexpectedError("Probably of the required fields is missing")))
+        case _ => Left(List(UnexpectedError("Probably one of the required fields is missing")))
       }
     }
   }
