@@ -144,7 +144,7 @@ object ApiOperations extends DataOperations {
             set = accountDelegates.toList
           )
         ).filter(_.set.nonEmpty),
-        limit = limit.orElse(Some(DataTypes.defaultLimitValue))
+        limit = limit.getOrElse(DataTypes.defaultLimitValue)
       )
     }
   }
@@ -399,7 +399,7 @@ object ApiOperations extends DataOperations {
           query.fields,
           sanitizePredicates(query.predicates),
           query.orderBy,
-          Math.min(query.limit.get, DataTypes.maxLimitValue)
+          Math.min(query.limit, DataTypes.maxLimitValue)
         )
       )
     } else {

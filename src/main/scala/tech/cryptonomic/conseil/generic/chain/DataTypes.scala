@@ -6,18 +6,23 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationT
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
-import scala.util.Try
 
 /**
   * Classes used for deserializing query.
   */
 object DataTypes {
+  import io.scalaland.chimney.dsl._
 
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
 
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
+
+  /** Trait representing query validation errors */
+  sealed trait QueryValidationError {
+    val message: String
+  }
 
   /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]
@@ -31,20 +36,10 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
-  /** Enumeration for order direction */
-  object OrderDirection extends Enumeration {
-    type OrderDirection = Value
-    val asc, desc = Value
-  }
-
   /** Class required for Ordering enum serialization */
   class QueryOrderingRef extends TypeReference[OrderDirection.type]
-  case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
 
-  /** Trait representing query validation errors */
-  sealed trait QueryValidationError {
-    val message: String
-  }
+  case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
 
   /** Class representing invalid query field */
   case class InvalidQueryField(message: String) extends QueryValidationError
@@ -58,36 +53,44 @@ object DataTypes {
   /** Class representing query */
   case class Query(
     fields: List[String] = List.empty,
-    predicates: List[Predicate],
+    predicates: List[Predicate] = List.empty,
     orderBy: List[QueryOrdering] = List.empty,
-    limit: Option[Int] = Some(defaultLimitValue)
+    limit: Int = defaultLimitValue
+  )
+
+  /** Class representing query got through the REST API */
+  case class ApiQuery(
+    fields: Option[List[String]],
+    predicates: Option[List[Predicate]],
+    orderBy: Option[List[QueryOrdering]],
+    limit: Option[Int]
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
     def validate(entity: String): Either[List[QueryValidationError], Query] = {
-      Try {
-        predicates.foreach { pred =>
-          pred.field.nonEmpty && OperationType.values.contains(pred.operation) && pred.set.nonEmpty
-        }
-        this
-      }.toOption.map { query =>
-        val invalidQueryFields = query
-          .fields
-          .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
-          .map(InvalidQueryField)
-        val invalidPredicateFields = query
-          .predicates
-          .map(_.field)
-          .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
-          .map(InvalidPredicateField)
-        invalidPredicateFields ::: invalidQueryFields
-      } match {
-        case Some(Nil) => Right(this)
-        case Some(wrongFields)  => Left(wrongFields)
-        case _ => Left(List(UnexpectedError("Probably one of the required fields is missing")))
+      val query = Query().patchWith(this)
+
+      val invalidQueryFields = query
+        .fields
+        .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
+        .map(InvalidQueryField)
+      val invalidPredicateFields = query
+        .predicates
+        .map(_.field)
+        .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
+        .map(InvalidPredicateField)
+
+      invalidPredicateFields ::: invalidQueryFields match {
+        case Nil => Right(query)
+        case wrongFields => Left(wrongFields)
       }
     }
   }
 
+  /** Enumeration for order direction */
+  object OrderDirection extends Enumeration {
+    type OrderDirection = Value
+    val asc, desc = Value
+  }
 
   /** Enumeration of operation types */
   object OperationType extends Enumeration {
