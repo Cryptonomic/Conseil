@@ -110,26 +110,42 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
 
-    val blocksToSynchronize = tezosConf.depth match {
+    val blockPagesToSynchronize = tezosConf.depth match {
       case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
       case Everything => tezosNodeOperator.getLatestBlocks(tezosConf.network)
       case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, Some(n))
     }
 
-    blocksToSynchronize.flatMap {
-      blocksWithAccounts =>
-        db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap))
-          .andThen {
+    def storeResultsPage(results: Future[tezosNodeOperator.BlockFetchingResults]): Future[Int] =
+      results.flatMap {
+        blocksWithAccounts =>
+
+          def logOutcome[A](outcome: Future[Option[A]]): Future[Option[A]] = outcome.andThen {
             case Success(accountsCount) =>
               logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
             case Failure(e) =>
               logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
           }
-          .map(_ => Done)
-    }.andThen {
+
+          logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)))
+            .map(_ => blocksWithAccounts.size)
+
+        }
+
+    blockPagesToSynchronize.map {
+      case (pages, total) =>
+        pages.foldLeft(0) {
+          (processed, nextPage) =>
+            val progress = scala.math.floor(processed * 100 / total)
+            logger.info("Completed processing {}% of total requested blocks", progress)
+            processed + Await.result(storeResultsPage(nextPage), atMost = 5 minutes)
+        }
+        Done
+    } andThen {
       case Failure(e) =>
         logger.error("Could not fetch blocks from client", e)
     }
+
   }
 
   /**
@@ -151,7 +167,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     val saveAccounts = for {
       checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
       accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
-      accountsStored <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
+      _ <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
     } yield checkpoints
 
     saveAccounts.andThen {

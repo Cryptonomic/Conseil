@@ -37,16 +37,30 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
 
-    (tezosRPCInterface.runBatchedGetQuery[Int] _).when("zeronet", (0 to 162099).toList, *, *).returns(Future.successful(List((0, TezosResponseBuilder.batchedGetQueryResponse))))
-    (tezosRPCInterface.runBatchedGetQuery[BlockHash] _).when("zeronet", *, *, *).returns(Future.successful(List((BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetQuerySecondCallResponse))))
+
+    (tezosRPCInterface.runBatchedGetQuery[Int] _)
+      .when("zeronet", *, *, *)
+      .returns(Future.successful(List((0, TezosResponseBuilder.batchedGetQueryResponse))))
+      .anyNumberOfTimes
+
+    (tezosRPCInterface.runBatchedGetQuery[BlockHash] _)
+      .when("zeronet", *, *, *)
+      .returns(Future.successful(List((BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetQuerySecondCallResponse))))
+      .anyNumberOfTimes
 
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 
     //when
-    val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getAllBlocks("zeronet")
+    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks("zeronet")
 
     //then
-    block.futureValue should have length 1
+    val (pages, total) = blockPages.futureValue
+    total shouldBe 162100
+    val results = pages.toList
+    results should have length 163
+    logger.info("First page is {}", results.head.futureValue)
+    results.head.futureValue should have length 1
+
   }
 
   "getLatestBlocks" should "should correctly fetch latest blocks" in {
@@ -60,9 +74,13 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 
     //when
-    val block: Future[List[(TezosTypes.Block, List[TezosTypes.AccountId])]] = nodeOp.getLatestBlocks("zeronet", 1)
+    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks("zeronet", Some(1))
 
     //then
-    block.futureValue should have length 1
-  }
+    val (pages, total) = blockPages.futureValue
+    total shouldBe 1
+    val results = pages.toList
+    results should have length 1
+    results.head.futureValue should have length 1
+ }
 }
