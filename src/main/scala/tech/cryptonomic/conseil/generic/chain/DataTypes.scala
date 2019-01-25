@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import java.io.Serializable
-
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
