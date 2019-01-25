@@ -142,7 +142,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
           def logProgress(processed: Int) = {
             val elapsed = System.nanoTime() - start
             val progress = processed.toDouble/total
-            logger.info("Completed processing {}% of total requested blocks", "%.2f".format(progress))
+            logger.info("Completed processing {}% of total requested blocks", "%.2f".format(progress * 100))
 
             val etaMins = Duration(scala.math.ceil(elapsed / progress), NANOSECONDS).toMinutes
             if (processed < total && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
@@ -178,7 +178,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     * we should evaluate how to handle failed processing
     */
   def processTezosAccounts(): Future[Done] = {
-    logger.info("Processing latest Tezos accounts data..")
+    logger.info("Processing latest Tezos accounts data... no estimate available.")
 
     def logOutcome[A](outcome: Future[A]): Future[A] = outcome.andThen {
       case Success(rows) =>
