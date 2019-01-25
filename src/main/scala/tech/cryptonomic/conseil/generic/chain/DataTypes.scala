@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.generic.chain
 
+import java.io.Serializable
+
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -20,7 +22,7 @@ object DataTypes {
   val maxLimitValue: Int = 100000
 
   /** Trait representing query validation errors */
-  sealed trait QueryValidationError {
+  sealed trait QueryValidationError extends Product with Serializable {
     val message: String
   }
 
@@ -47,8 +49,7 @@ object DataTypes {
   /** Class representing invalid predicate field */
   case class InvalidPredicateField(message: String) extends QueryValidationError
 
-  /** Class representing unexpected error */
-  case class UnexpectedError(message: String) extends QueryValidationError
+  case class ErrorFields()
 
   /** Class representing query */
   case class Query(
