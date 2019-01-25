@@ -49,8 +49,6 @@ object DataTypes {
   /** Class representing invalid predicate field */
   case class InvalidPredicateField(message: String) extends QueryValidationError
 
-  case class ErrorFields()
-
   /** Class representing query */
   case class Query(
     fields: List[String] = List.empty,
