@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures {
 
-  val config = BatchFetchConfiguration(1, 1)
+  val config = BatchFetchConfiguration(1, 1, 500)
 
   implicit val executionContext = ExecutionContext.global
   implicit val defaultPatience = PatienceConfig(timeout = Span(1000, Millis))
@@ -38,13 +38,17 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
 
-    (tezosRPCInterface.runBatchedGetQuery[Int] _)
+    (tezosRPCInterface.runBatchedGetQuery[Any] _)
       .when("zeronet", *, *, *)
-      .returns(Future.successful(List((0, TezosResponseBuilder.batchedGetQueryResponse))))
-
-    (tezosRPCInterface.runBatchedGetQuery[BlockHash] _)
-      .when("zeronet", *, *, *)
-      .returns(Future.successful(List((BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetQuerySecondCallResponse))))
+      .onCall( (_, input, _, _) =>
+        Future.successful(List(
+          //dirty trick to find the type of input content and provide the appropriate response
+          input match {
+            case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetQueryResponse)
+            case _ => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetQuerySecondCallResponse)
+          }
+        ))
+      )
 
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 
@@ -53,10 +57,10 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
     //then
     val (pages, total) = blockPages.futureValue
-    total shouldBe 162100
+    total shouldBe 3
     val results = pages.toList
-    results should have length 163
-//    results.head.futureValue should have length 1
+    results should have length 1
+    results.head.futureValue should have length 1
 
   }
 

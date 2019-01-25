@@ -32,7 +32,7 @@ object TezosNodeOperator {
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
 class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext) extends LazyLogging {
-  import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel}
+  import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
@@ -168,7 +168,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param pageSize how big a part is allowed to be
     * @return an iterator over the part, which are themselves `Ranges`
     */
-  def partitionBlocksRanges(levels: Range.Inclusive, pageSize: Int = 1000): Iterator[Range.Inclusive] =
+  def partitionBlocksRanges(levels: Range.Inclusive, pageSize: Int = blockPageSize): Iterator[Range.Inclusive] =
     levels.grouped(pageSize)
       .filterNot(_.isEmpty)
       .map(subRange => subRange.head to subRange.last)
@@ -188,7 +188,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       if (maxLevel < headLevel) {
         //got something to load
         if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-        else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
+        else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
         val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
           page => getBlocks(network, (headHash, headLevel), page)
         )

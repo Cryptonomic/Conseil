@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -116,7 +116,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, Some(n))
     }
 
-    def storeResultsPage(results: Future[tezosNodeOperator.BlockFetchingResults]): Future[Int] =
+    /* will store a single page of block results */
+    def processBlocksPage(results: Future[tezosNodeOperator.BlockFetchingResults]): Future[Int] =
       results.flatMap {
         blocksWithAccounts =>
 
@@ -132,18 +133,40 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
         }
 
-    blockPagesToSynchronize.map {
-      case (pages, total) =>
-        pages.foldLeft(0) {
-          (processed, nextPage) =>
-            val progress = scala.math.floor(processed * 100 / total)
-            logger.info("Completed processing {}% of total requested blocks", progress)
-            processed + Await.result(storeResultsPage(nextPage), atMost = 5 minutes)
-        }
-        Done
-    } andThen {
+
+      blockPagesToSynchronize.flatMap {
+        // Fails the whole process if any page processing fails
+        case (pages, total) => Future.fromTry(Try {
+          val start = System.nanoTime()
+
+          def logProgress(processed: Int) = {
+            val elapsed = System.nanoTime() - start
+            val progress = processed.toDouble/total
+            logger.info("Completed processing {}% of total requested blocks", "%.2f".format(progress))
+
+            val etaMins = Duration(scala.math.ceil(elapsed / progress), NANOSECONDS).toMinutes
+            if (processed < total && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
+
+            processed
+          }
+
+          /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
+          * The size and partition of results is driven by the NodeOperator itself, were each page contains a
+          * "thunked" future of the result.
+          * Such future will be actually started only as the page iterator is scanned, one element at the time
+          */
+          pages.foldLeft(0) {
+            (processed, nextPage) =>
+              //wait for each page to load, before looking at the next and implicitly start the new computation
+              logProgress(processed + Await.result(processBlocksPage(nextPage), atMost = 5 minutes))
+          }
+        })
+    } transform {
       case Failure(e) =>
-        logger.error("Could not fetch blocks from client", e)
+        val error = "I could not fetch all the requested blocks from the client"
+        logger.error(error, e)
+        Failure(e)
+      case Success(_) => Success(Done)
     }
 
   }
