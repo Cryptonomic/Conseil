@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.actor.ActorSystem
 import akka.http.caching.LfuCache
 import akka.http.caching.scaladsl.{Cache, CachingSettings}
 import akka.http.scaladsl.model.Uri
@@ -54,8 +53,10 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
         } ~
           pathPrefix(Segment) { platform =>
             pathPrefix("networks") {
-              pathEnd {
-                complete(toJson(ConfigUtil.getNetworks(config, platform)))
+              validatePlatform(config, platform) {
+                pathEnd {
+                  complete(toJson(ConfigUtil.getNetworks(config, platform)))
+                }
               }
             } ~ pathPrefix(Segment) { network =>
               validatePlatformAndNetwork(config, platform, network) {

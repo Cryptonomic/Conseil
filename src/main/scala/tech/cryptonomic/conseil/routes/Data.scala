@@ -7,7 +7,7 @@ import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.ApiQuery
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.RouteHandling
@@ -42,8 +42,8 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       commonRoute { (platform, network) =>
         pathPrefix(Segment) { ent =>
           validateEntity(ent) {
-            entity(as[Query]) { query: Query =>
-              validateQueryOrBadRequest(query) { validatedQuery =>
+            entity(as[ApiQuery]) { apiQuery: ApiQuery =>
+              validateQueryOrBadRequest(ent, apiQuery) { validatedQuery =>
                 completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
               }
             }

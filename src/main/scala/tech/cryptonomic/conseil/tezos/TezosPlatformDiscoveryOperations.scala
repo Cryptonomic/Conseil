@@ -40,7 +40,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  attribute  name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    **/
+    * */
   def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None)
     (implicit ec: ExecutionContext): Future[List[String]] = {
     val res = verifyAttributesAndGetQueries(tableName, attribute, withFilter)
@@ -53,7 +53,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  attribute  name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of DBIO actions to get matching attributes
-    **/
+    * */
   def verifyAttributesAndGetQueries(tableName: String, attribute: String, withFilter: Option[String])
     (implicit ec: ExecutionContext): DBIO[List[String]] = {
     DBIO.sequence {
@@ -72,7 +72,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    **/
+    * */
   private def makeAttributesQuery(tableName: String, column: FieldSymbol, withFilter: Option[String])
     (implicit ec: ExecutionContext): DBIO[List[String]] = {
     for {
@@ -103,7 +103,8 @@ object TezosPlatformDiscoveryOperations {
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
-    str.filter(c => c.isLetterOrDigit || c == '_' || c == '.')
+    val supportedCharacters = Set('_', '.', '+', ':', '-')
+    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
   }
 
   /** Checks if columns exist for the given table */
@@ -154,7 +155,7 @@ object TezosPlatformDiscoveryOperations {
     *
     * @param  tableName name of the table from which we extract attributes
     * @return list of DBIO queries for attributes
-    * */
+    **/
   def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attributes]] = {
     DBIO.sequence {
       for {
