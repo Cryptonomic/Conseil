@@ -98,6 +98,9 @@ trait Tables {
 
     /** Foreign key referencing Blocks (database name checkpoint_block_id_fkey) */
     lazy val blocksFk = foreignKey("checkpoint_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Index over (blockLevel) (database name ix_accounts_checkpoint_block_level) */
+    val index1 = index("ix_accounts_checkpoint_block_level", blockLevel)
   }
   /** Collection-like TableQuery object for table AccountsCheckpoint */
   lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))

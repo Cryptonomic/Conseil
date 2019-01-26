@@ -264,6 +264,11 @@ CREATE INDEX ix_operations_destination ON public.operations USING btree (destina
 
 CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 
+--
+-- Name: ix_accounts_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint USING btree (block_level);
 
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

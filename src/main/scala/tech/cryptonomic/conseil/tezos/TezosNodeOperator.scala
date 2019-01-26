@@ -32,7 +32,10 @@ object TezosNodeOperator {
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
 class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext) extends LazyLogging {
-  import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel}
+  import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
+  //use this alias to make signatures easier to read and kept in-sync
+  type BlockFetchingResults = List[(Block, List[AccountId])]
+  type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
 
   /**
     * Fetches a specific account for a given block.
@@ -160,71 +163,75 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
   }
 
   /**
+    * Given a level range, creates sub-ranges of max the given size
+    * @param levels a range of levels to partition into (possibly) smaller parts
+    * @param pageSize how big a part is allowed to be
+    * @return an iterator over the part, which are themselves `Ranges`
+    */
+  def partitionBlocksRanges(levels: Range.Inclusive, pageSize: Int = blockPageSize): Iterator[Range.Inclusive] =
+    levels.grouped(pageSize)
+      .filterNot(_.isEmpty)
+      .map(subRange => subRange.head to subRange.last)
+
+  /**
     * Gets all blocks from the head down to the oldest block not already in the database.
     * @param network    Which Tezos network to go against
     * @return           Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(network: String): Future[List[(Block, List[AccountId])]] =
+  def getBlocksNotInDatabase(network: String): Future[PaginatedBlocksResults] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
       blockHead <- getBlockHead(network)
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
-      blocks <-
-        if (headLevel <= maxLevel) {
-          logger.info("No new blocks to fetch from the network")
-          Future.successful(List.empty)
-        } else {
-          if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-          else logger.info("Found new block head at level {}, currently stored max is {}. Fetching missing blocks", headLevel, maxLevel)
-          getBlocks(network, headHash, maxLevel + 1, headLevel)
-        }
-    } yield blocks
+    } yield {
+      if (maxLevel < headLevel) {
+        //got something to load
+        if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+        else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
+        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
+          page => getBlocks(network, (headHash, headLevel), page)
+        )
+        (pagedResults, headLevel - maxLevel - 1)
+      } else {
+        logger.info("No new blocks to fetch from the network")
+        (Iterator.empty, 0)
+      }
+    }
 
   /**
-    * Gets all blocks.
+    * Gets last `depth` blocks.
     * @param network    Which Tezos network to go against
+    * @param depth      Number of latest block to fetch, `None` to get all
     * @return           Blocks and Account hashes involved
     */
-  def getAllBlocks(network: String): Future[List[(Block, List[AccountId])]] =
-    for {
-      blockHead <- getBlockHead(network)
-      headLevel = blockHead.metadata.header.level
-      headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, 1, headLevel)
-    } yield blocks
-
-  /**
-    * Gets last n blocks.
-    * @param network    Which Tezos network to go against
-    * @param count      Number of latest block to fetch
-    * @return           Blocks and Account hashes involved
-    */
-  def getLatestBlocks(network: String, count: Int): Future[List[(Block, List[AccountId])]] =
-    for {
-      blockHead <- getBlockHead(network)
-      headLevel = blockHead.metadata.header.level
-      headHash = blockHead.metadata.hash
-      blocks <- getBlocks(network, headHash, max(1, headLevel - count + 1), headLevel)
-    } yield blocks
+  def getLatestBlocks(network: String, depth: Option[Int] = None): Future[PaginatedBlocksResults] =
+    getBlockHead(network).map {
+      head =>
+        val headLevel = head.metadata.header.level
+        val headHash = head.metadata.hash
+        val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
+        val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
+          page => getBlocks(network, (headHash, headLevel), page)
+        )
+        (pagedResults, headLevel - minLevel + 1)
+    }
 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
     * @param network Which Tezos network to go against
-    * @param hashRef Hash of block at max level.
-    * @param minLevel Minimum level, at which we stop.
-    * @param maxLevel Level at which to stop collecting blocks.
+    * @param reference Hash and level of a known block
+    * @param levelRange a range of levels to load
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def getBlocks(
-                             network : String,
-                             hashRef: BlockHash,
-                             minLevel: Int,
-                             maxLevel: Int
-                           ): Future[List[(Block, List[AccountId])]] = {
-
-    val maxOffset: Int = maxLevel - minLevel
-    val offsets = (0 to maxOffset).toList
+    network : String,
+    reference: (BlockHash, Int),
+    levelRange: Range.Inclusive
+  ): Future[BlockFetchingResults] = {
+    val (hashRef, levelRef) = reference
+    require(levelRange.start >= 0 && levelRange.end <= levelRef)
+    val offsets = levelRange.map(lvl => levelRef - lvl).toList
     val makeBlocksUrl = (offset: Int) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
     val makeOperationsUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
