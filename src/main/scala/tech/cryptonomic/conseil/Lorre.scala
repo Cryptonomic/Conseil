@@ -146,7 +146,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
           val progress = processed.toDouble/total
           logger.info("Completed processing {}% of total requested blocks", "%.2f".format(progress * 100))
 
-          val etaMins = Duration(scala.math.ceil(elapsed / progress), NANOSECONDS).toMinutes
+          val etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
           if (processed < total && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
 
           processed
