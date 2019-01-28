@@ -158,145 +158,145 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode valid json strings representing a PositiveBigNumber" in {
-      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("1000000000"))
-      decoded.right.value shouldEqual TezosOperations.PositiveDecimal(1000000000)
+      val decoded = decode[PositiveBigNumber](jsonStringOf("1000000000"))
+      decoded.right.value shouldEqual PositiveDecimal(1000000000)
     }
 
     "decode valid json strings representing zero as a PositiveBigNumber" in {
-      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("0"))
-      decoded.right.value shouldEqual TezosOperations.PositiveDecimal(0)
+      val decoded = decode[PositiveBigNumber](jsonStringOf("0"))
+      decoded.right.value shouldEqual PositiveDecimal(0)
     }
 
     "decode invalid json for PositiveBigNumber, representing negatives, as the original string" in {
-      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("-1000000000"))
-      decoded.right.value shouldBe TezosOperations.InvalidPositiveDecimal("-1000000000")
+      val decoded = decode[PositiveBigNumber](jsonStringOf("-1000000000"))
+      decoded.right.value shouldBe InvalidPositiveDecimal("-1000000000")
     }
 
     "decode invalid json for PositiveBigNumber, not representing numbers, as the original string" in {
-      val decoded = decode[TezosOperations.PositiveBigNumber](jsonStringOf("1AA000000000"))
-      decoded.right.value shouldBe TezosOperations.InvalidPositiveDecimal("1AA000000000")
+      val decoded = decode[PositiveBigNumber](jsonStringOf("1AA000000000"))
+      decoded.right.value shouldBe InvalidPositiveDecimal("1AA000000000")
     }
 
     "decode valid json strings representing both positive and negative values as BigNumber" in {
-      val decoded = decode[TezosOperations.BigNumber](jsonStringOf("1000000000"))
-      decoded.right.value shouldEqual TezosOperations.Decimal(1000000000)
+      val decoded = decode[BigNumber](jsonStringOf("1000000000"))
+      decoded.right.value shouldEqual Decimal(1000000000)
 
-      val negDecoded = decode[TezosOperations.BigNumber](jsonStringOf("-1000000000"))
-      negDecoded.right.value shouldBe TezosOperations.Decimal(-1000000000)
+      val negDecoded = decode[BigNumber](jsonStringOf("-1000000000"))
+      negDecoded.right.value shouldBe Decimal(-1000000000)
     }
 
     "decode invalid json for BigNumber, not representing numbers, as the original string" in {
-      val decoded = decode[TezosOperations.BigNumber](jsonStringOf("1AA000000000"))
-      decoded.right.value shouldBe TezosOperations.InvalidDecimal("1AA000000000")
+      val decoded = decode[BigNumber](jsonStringOf("1AA000000000"))
+      decoded.right.value shouldBe InvalidDecimal("1AA000000000")
     }
 
     "decode valid json into a BigMapDiff value" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Contract.BigMapDiff](bigmapdiffJson)
+      val decoded = decode[Contract.BigMapDiff](bigmapdiffJson)
       decoded.right.value shouldEqual expectedBigMapDiff
     }
 
     "decode valid json into a Scipted.Cntracts value" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Scripted.Contracts](scriptJson)
+      val decoded = decode[Scripted.Contracts](scriptJson)
       decoded.right.value shouldEqual expectedScript
     }
 
     "decode valid json into Error values" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.OperationResult.Error](errorJson)
+      val decoded = decode[OperationResult.Error](errorJson)
       decoded.right.value shouldEqual expectedError
     }
 
     "fail to decode invalid json into Error values" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.OperationResult.Error](invalidJson)
+      val decoded = decode[OperationResult.Error](invalidJson)
       decoded shouldBe 'left
     }
 
     "decode an endorsement operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(endorsementJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(endorsementJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.Endorsement]
+      operation shouldBe a [Endorsement]
       operation shouldEqual expectedEndorsement
 
     }
 
     "decode a seed nonce revelation operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(nonceRevelationJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(nonceRevelationJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.SeedNonceRevelation]
+      operation shouldBe a [SeedNonceRevelation]
       operation shouldEqual expectedNonceRevelation
 
     }
 
     "decode an account activation operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(activationJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(activationJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.ActivateAccount]
+      operation shouldBe a [ActivateAccount]
       operation shouldEqual expectedActivation
 
     }
 
     "decode an reveal operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(revealJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(revealJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.Reveal]
+      operation shouldBe a [Reveal]
       operation shouldEqual expectedReveal
 
     }
 
     "decode an transaction operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(transactionJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(transactionJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.Transaction]
+      operation shouldBe a [Transaction]
       operation shouldEqual expectedTransaction
 
     }
 
     "decode an origination operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(originationJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(originationJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.Origination]
+      operation shouldBe a [Origination]
       operation shouldEqual expectedOrigination
 
     }
 
     "decode an origination operation from alphanet schema json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(alphanetOriginationJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(alphanetOriginationJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.Origination]
+      operation shouldBe a [Origination]
       operation shouldEqual expectedOrigination
 
     }
 
     "decode a delegation operation from json" in new OperationsJsonData {
-      val decoded = decode[TezosOperations.Operation](adaptManagerPubkeyField(delegationJson))
+      val decoded = decode[Operation](adaptManagerPubkeyField(delegationJson))
       decoded shouldBe 'right
 
       val operation = decoded.right.value
-      operation shouldBe a [TezosOperations.Delegation]
+      operation shouldBe a [Delegation]
       operation shouldEqual expectedDelegation
 
     }
 
     "decode a group of operations from json" in new OperationsJsonData {
 
-      val decoded = decode[TezosOperations.Group](operationsGroupJson)
+      val decoded = decode[OperationsGroup](operationsGroupJson)
       decoded shouldBe 'right
 
       val operations = decoded.right.value
-      operations shouldBe a [TezosOperations.Group]
+      operations shouldBe a [OperationsGroup]
       operations shouldEqual expectedGroup
 
     }

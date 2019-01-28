@@ -10,8 +10,8 @@ object DatabaseConversions {
   //single field conversions
   def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
 
-  def extractBigDecimal(number: TezosOperations.PositiveBigNumber): Option[BigDecimal] = number match {
-    case TezosOperations.PositiveDecimal(value) => Some(value)
+  def extractBigDecimal(number: PositiveBigNumber): Option[BigDecimal] = number match {
+    case PositiveDecimal(value) => Some(value)
     case _ => None
   }
 
@@ -84,8 +84,8 @@ object DatabaseConversions {
   }
 
   //Cannot directly convert a single operation to a row, because we need the block and operation-group info to build the database row
-  implicit val operationToOperationsRowReader = new Conversion[Id, (Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] {
-    override def convert(from: (Block, OperationHash, TezosOperations.Operation)) =
+  implicit val operationToOperationsRowReader = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
+    override def convert(from: (Block, OperationHash, Operation)) =
       (convertEndorsement orElse
       convertNonceRevelation orElse
       convertActivateAccount orElse
@@ -96,8 +96,8 @@ object DatabaseConversions {
       convertUnhandledOperations)(from)
   }
 
-  private val convertEndorsement: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.Endorsement(level, metadata)) =>
+  private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Endorsement(level, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -111,8 +111,8 @@ object DatabaseConversions {
       )
   }
 
-  private val convertNonceRevelation: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.SeedNonceRevelation(level, nonce, metadata)) =>
+  private val convertNonceRevelation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, SeedNonceRevelation(level, nonce, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -125,8 +125,8 @@ object DatabaseConversions {
       )
   }
 
-  private val convertActivateAccount: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.ActivateAccount(pkh, secret, metadata)) =>
+  private val convertActivateAccount: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, ActivateAccount(pkh, secret, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -139,8 +139,8 @@ object DatabaseConversions {
     )
   }
 
-  private val convertReveal: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
+  private val convertReveal: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -158,8 +158,8 @@ object DatabaseConversions {
     )
   }
 
-  private val convertTransaction: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)) =>
+  private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -179,8 +179,8 @@ object DatabaseConversions {
     )
   }
 
-  private val convertOrigination: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.Origination(counter, fee, source, balance, gas_limit, storage_limit, mpk, delegatable, delegate, spendable, script, metadata)) =>
+  private val convertOrigination: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Origination(counter, fee, source, balance, gas_limit, storage_limit, mpk, delegatable, delegate, spendable, script, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -203,8 +203,8 @@ object DatabaseConversions {
     )
   }
 
-  private val convertDelegation: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
-    case (block, groupHash, TezosOperations.Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
+  private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -222,13 +222,13 @@ object DatabaseConversions {
     )
   }
 
-  private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, TezosOperations.Operation), Tables.OperationsRow] = {
+  private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, op) =>
       val kind = op match {
-        case TezosOperations.DoubleEndorsementEvidence => "double_endorsement_evidence"
-        case TezosOperations.DoubleBakingEvidence => "double_baking_evidence"
-        case TezosOperations.Proposals => "proposals"
-        case TezosOperations.Ballot => "ballot"
+        case DoubleEndorsementEvidence => "double_endorsement_evidence"
+        case DoubleBakingEvidence => "double_baking_evidence"
+        case Proposals => "proposals"
+        case Ballot => "ballot"
         case _ => ""
       }
       Tables.OperationsRow(

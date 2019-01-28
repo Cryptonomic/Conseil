@@ -94,8 +94,6 @@ object JsonDecoders {
      */
     object Operations {
 
-      import TezosOperations._
-
       /* decode any json value to its string representation wrapped in a Error*/
       implicit val errorDecoder: Decoder[OperationResult.Error] =
         Decoder.decodeJson.map(json => OperationResult.Error(json.noSpaces))
@@ -158,7 +156,7 @@ object JsonDecoders {
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] = deriveDecoder
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
-      implicit val operationGroupDecoder: Decoder[Group] = deriveDecoder
+      implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
 
     }
 

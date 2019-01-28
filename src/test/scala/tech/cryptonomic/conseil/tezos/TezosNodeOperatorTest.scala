@@ -20,8 +20,10 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
   "getBlock" should "should correctly fetch the genesis block" in {
     //given
     val tezosRPCInterface = stub[TezosRPCInterface]
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe~").returns(Future.successful(TezosResponseBuilder.blockResponse))
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
+    val blockResponse = Future.successful(TezosResponseBuilder.blockResponse)
+    val operationResponse = Future.successful(TezosResponseBuilder.operationsResponse)
+    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe~").returns(blockResponse)
+    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe/operations").returns(operationResponse)
 
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 

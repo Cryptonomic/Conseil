@@ -22,7 +22,6 @@ object JsonUtil {
     managerPubkeyMatcher.replaceAllIn(json, replacement = managerPubkeyAdaptation)
   }
 
-
   /*
    * We're reducing visibility of the JsonString constuction (both class and object)
    * to allow instantiation only from JsonUtil's methods

@@ -1,8 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.tezos.TezosTypes.TezosOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.TezosOperations.OperationMetadata.BalanceUpdate
+import tech.cryptonomic.conseil.tezos.TezosTypes.OperationMetadata.BalanceUpdate
 
 trait DBConversionsData {
 

@@ -131,7 +131,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param blockHash Hash of the block
     * @return          The `Future` list of operations
     */
-  def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[TezosOperations.Group]] = {
+  def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[OperationsGroup]] = {
     import io.circe.parser.decode
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
@@ -139,7 +139,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     //parse json, and try to convert to objects, converting failures to a failed `Future`
     //we could later improve by "accumulating" all errors in a single failed future, with `decodeAccumulating`
     def decodeOperations(json: String) =
-      decode[List[List[TezosOperations.Group]]](adaptManagerPubkeyField(json)).map(_.flatten) match {
+      decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(json)).map(_.flatten) match {
         case Left(failure) => Future.failed(failure)
         case Right(results) => Future.successful(results)
       }
@@ -256,8 +256,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       case (_, json) => fromJson[BlockMetadata](json)
     }
 
-    val jsonToOperationGroups: String => JsonDecoded[List[TezosOperations.Group]] =
-      json => decode[List[List[TezosOperations.Group]]](adaptManagerPubkeyField(json)).map(_.flatten)
+    val jsonToOperationGroups: String => JsonDecoded[List[OperationsGroup]] =
+      json => decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(json)).map(_.flatten)
 
     //extracts any formally valid account hash from the passed-in string
     val jsonToAccountInvolved: String => List[AccountId] = {
@@ -267,14 +267,14 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     }
 
     //from the same json, converts to a list of operations and the involved account ids
-    val jsonToOperationsAndAccounts: ((BlockHash, String)) => JsonDecoded[(BlockHash, List[TezosOperations.Group], List[AccountId])] = {
+    val jsonToOperationsAndAccounts: ((BlockHash, String)) => JsonDecoded[(BlockHash, List[OperationsGroup], List[AccountId])] = {
       case (hash, json) =>
         jsonToOperationGroups(json).map( groups => (hash, groups, jsonToAccountInvolved(json)))
     }
 
     val isGenesis = (metadata: BlockMetadata) => metadata.header.level == 0
 
-    def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[TezosOperations.Group], List[AccountId])]] =
+    def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[OperationsGroup], List[AccountId])]] =
       handleDecodingErrors(in, jsonToOperationsAndAccounts) match {
         case Left(failure) => Future.failed(failure.errors.head)
         case Right(results) => Future.successful(results)

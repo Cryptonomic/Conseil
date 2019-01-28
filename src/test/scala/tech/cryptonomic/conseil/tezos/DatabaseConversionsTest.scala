@@ -2,8 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.Inspectors._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Operation => _, _}
-import tech.cryptonomic.conseil.tezos.TezosTypes.TezosOperations._
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{ConversionSyntax, RandomSeed}
 
 class DatabaseConversionsTest

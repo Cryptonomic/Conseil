@@ -144,27 +144,27 @@ class TezosDatabaseOperationsTest
               opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
               val operation = opRow.kind match {
                 case "endorsement" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Endorsement])
+                  operationGroup.contents.find(_.isInstanceOf[Endorsement])
                 case "seed_nonce_revelation" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.SeedNonceRevelation])
+                  operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
                 case "activate_account" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.ActivateAccount])
+                  operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
                 case "reveal" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Reveal])
+                  operationGroup.contents.find(_.isInstanceOf[Reveal])
                 case "transaction" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Transaction])
+                  operationGroup.contents.find(_.isInstanceOf[Transaction])
                 case "origination" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Origination])
+                  operationGroup.contents.find(_.isInstanceOf[Origination])
                 case "delegation" =>
-                  operationGroup.contents.find(_.isInstanceOf[TezosOperations.Delegation])
+                  operationGroup.contents.find(_.isInstanceOf[Delegation])
                 case "double_endorsement_evidence" =>
-                  operationGroup.contents.find(_ == TezosOperations.DoubleEndorsementEvidence)
+                  operationGroup.contents.find(_ == DoubleEndorsementEvidence)
                 case "double_baking_evidence" =>
-                  operationGroup.contents.find(_ == TezosOperations.DoubleBakingEvidence)
+                  operationGroup.contents.find(_ == DoubleBakingEvidence)
                 case "proposals" =>
-                  operationGroup.contents.find(_ == TezosOperations.Proposals)
+                  operationGroup.contents.find(_ == Proposals)
                 case "ballot" =>
-                  operationGroup.contents.find(_ == TezosOperations.Ballot)
+                  operationGroup.contents.find(_ == Ballot)
                 case _ => None
               }
 

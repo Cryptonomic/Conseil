@@ -4,9 +4,8 @@ import TezosTypes._
 
 /* defines example tezos json definitions of operations and typed counterparts used in the tests */
 trait OperationsJsonData {
-  import TezosOperations._
-  import TezosOperations.OperationMetadata.BalanceUpdate
-  import TezosOperations.OperationResult.Error
+  import OperationMetadata.BalanceUpdate
+  import OperationResult.Error
 
   val errorJson =
     """{
@@ -773,7 +772,7 @@ trait OperationsJsonData {
       |}""".stripMargin
 
   val expectedGroup =
-    TezosOperations.Group(
+    OperationsGroup(
       protocol = "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
       chain_id = Some(ChainId("NetXSzLHKwSumh7")),
       hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),

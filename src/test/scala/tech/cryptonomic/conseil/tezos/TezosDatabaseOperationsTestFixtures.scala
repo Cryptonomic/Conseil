@@ -139,12 +139,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  def generateOperationGroup(block: Block, generateOperations: Boolean)(implicit randomSeed: RandomSeed): TezosOperations.Group = {
+  def generateOperationGroup(block: Block, generateOperations: Boolean)(implicit randomSeed: RandomSeed): OperationsGroup = {
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
-    TezosOperations.Group(
+    OperationsGroup(
       protocol = "protocol",
       chain_id = block.metadata.chain_id.map(ChainId),
       hash = OperationHash(generateHash(10)),
@@ -233,8 +233,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   object Operations {
 
-    import tech.cryptonomic.conseil.tezos.TezosTypes.TezosOperations._
-    import tech.cryptonomic.conseil.tezos.TezosTypes.TezosOperations.OperationMetadata.BalanceUpdate
+    import OperationMetadata.BalanceUpdate
 
     val sampleScriptedContract =
       Scripted.Contracts(
