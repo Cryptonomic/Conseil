@@ -645,7 +645,7 @@ trait DatabaseApiFiltering {
         case Some(validAction) =>
           ensuringBlocksExist {
             validAction.distinct
-              .sortBy(_.level.desc)
+              .sortBy(_.blockLevel.desc)
               .take(limit)
               .map(_.mapTo[Model.Operation])
               .result

@@ -147,6 +147,7 @@ CREATE TABLE public.operations (
     script character varying,
     status character varying,
     block_hash character varying NOT NULL,
+    block_level integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
 

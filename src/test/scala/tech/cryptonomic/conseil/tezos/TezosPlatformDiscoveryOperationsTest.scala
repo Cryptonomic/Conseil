@@ -147,6 +147,7 @@ class TezosPlatformDiscoveryOperationsTest
           Attributes("script", "Script", DataType.String, 0, KeyType.UniqueKey, "operations"),
           Attributes("status", "Status", DataType.String, 0, KeyType.UniqueKey, "operations"),
           Attributes("block_hash", "Block hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("block_level", "Block level", DataType.Int, 0, KeyType.UniqueKey, "operations"),
           Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "operations")
         )
     }

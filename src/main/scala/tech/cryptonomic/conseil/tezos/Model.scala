@@ -36,6 +36,7 @@ object Model {
     script: Option[String] = None,
     status: Option[String] = None,
     blockHash: String,
+    blockLevel: Int,
     timestamp: java.sql.Timestamp
   )
 

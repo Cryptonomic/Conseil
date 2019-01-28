@@ -106,6 +106,7 @@ object DatabaseConversions {
         delegate = Some(metadata.delegate.value),
         slots = Some(metadata.slots).map(concatenateToString),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
       )
   }
@@ -119,6 +120,7 @@ object DatabaseConversions {
         level = Some(level),
         nonce = Some(nonce.value),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
       )
   }
@@ -132,6 +134,7 @@ object DatabaseConversions {
         pkh = Some(pkh.value),
         secret = Some(secret.value),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
     )
   }
@@ -150,6 +153,7 @@ object DatabaseConversions {
         publicKey = Some(pk.value),
         status = Some(metadata.operation_result.status),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
     )
   }
@@ -170,6 +174,7 @@ object DatabaseConversions {
         parameters = parameters.map(_.expression),
         status = Some(metadata.operation_result.status),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
     )
   }
@@ -193,6 +198,7 @@ object DatabaseConversions {
         script = script.map(_.code.expression),
         status = Some(metadata.operation_result.status),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
     )
   }
@@ -211,6 +217,7 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         status = Some(metadata.operation_result.status),
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
     )
   }
@@ -229,6 +236,7 @@ object DatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = kind,
         blockHash = block.metadata.hash.value,
+        blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
       )
   }
@@ -273,6 +281,7 @@ object DatabaseConversions {
         script = from.script,
         status = from.status,
         blockHash = from.blockHash,
+        blockLevel = from.blockLevel,
         timestamp = from.timestamp
       )
 }

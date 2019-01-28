@@ -68,11 +68,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "endorsement"
       level.value shouldBe sampleEndorsement.level
@@ -135,11 +137,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "seed_nonce_revelation"
       level.value shouldBe sampleNonceRevelation.level
@@ -202,11 +206,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "activate_account"
       pkh.value shouldBe sampleAccountActivation.pkh.value
@@ -269,11 +275,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "reveal"
       source.value shouldBe sampleReveal.source.id
@@ -348,11 +356,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "transaction"
       source.value shouldBe sampleTransaction.source.id
@@ -430,11 +440,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "origination"
       delegate shouldBe sampleOrigination.delegate.map(_.value)
@@ -512,11 +524,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "delegation"
       delegate shouldBe sampleDelegation.delegate.map(_.value)
@@ -591,11 +605,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "double_endorsement_evidence"
 
@@ -658,11 +674,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "double_baking_evidence"
 
@@ -725,11 +743,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "proposals"
 
@@ -792,11 +812,13 @@ class DatabaseConversionsTest
       val script = converted(22)
       val status = converted(23)
       val blockHash = converted(24)
-      val timestamp = converted(25)
+      val blockLevel = converted(25)
+      val timestamp = converted(26)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.metadata.hash.value
+      blockLevel shouldBe block.metadata.header.level
       timestamp shouldBe block.metadata.header.timestamp
       kind shouldBe "ballot"
 
