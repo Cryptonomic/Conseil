@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.{MediaTypes, StatusCodes}
 import akka.http.scaladsl.server.Directives.{complete, _}
 import akka.http.scaladsl.server.{Directive, Directive0, Directive1, StandardRoute}
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{ApiQuery, Query}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, toJson}
@@ -22,15 +22,16 @@ trait RouteHandling {
       .wrap(MediaTypes.`application/json`)(identity _)
 
   /**
-   * Allow generic handling of optional results, embedded in async computations.
-   * In addition to converting any missing result to a NotFound http code, it allows to convert the existing content
-   * to something which is marshallable as a response
-   * @param operation is the computation that will provide, as soon as available, an optional result
-   * @param converter a final conversion function to turn the original T, when available to a marshallable result,
-   *        by default the function converts to a [[JsonString]]
-   * @param T the type of the possible result of the async computation
-   * @param R the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
-   */
+    * Allow generic handling of optional results, embedded in async computations.
+    * In addition to converting any missing result to a NotFound http code, it allows to convert the existing content
+    * to something which is marshallable as a response
+    *
+    * @param operation is the computation that will provide, as soon as available, an optional result
+    * @param converter a final conversion function to turn the original T, when available to a marshallable result,
+    *                  by default the function converts to a [[JsonString]]
+    * @param T         the type of the possible result of the async computation
+    * @param R         the final outcome, which must be compatible with an available [[ToResponseMarshaller]]
+    */
   protected def handleNoneAsNotFound[T, R: ToResponseMarshaller](operation: => Future[Option[T]], converter: T => R = toJson[T] _)
     (implicit ec: ExecutionContext): Future[ToResponseMarshallable] =
     operation.map {
@@ -40,13 +41,15 @@ trait RouteHandling {
 
   /**
     * Directive handling validation errors as bad requests(400)
+    *
+    * @param entity     entity on which query should be ran
     * @param fieldQuery field query before validation
     * @return Either validated query or bad request if validation failed
     */
-  protected def validateQueryOrBadRequest(fieldQuery: Query): Directive1[Query] = Directive { inner =>
-    fieldQuery.validate match {
-      case Some(value) => inner(Tuple1(value))
-      case None => complete(StatusCodes.BadRequest)
+  protected def validateQueryOrBadRequest(entity: String, fieldQuery: ApiQuery): Directive1[Query] = Directive { inner =>
+    fieldQuery.validate(entity) match {
+      case Right(value) => inner(Tuple1(value))
+      case Left(errors) => complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     }
   }
 
@@ -62,6 +65,15 @@ trait RouteHandling {
     }
     complete(response)
   }
+
+  /** validates platform */
+  protected def validatePlatform(config: PlatformsConfiguration, platform: String): Directive0 = {
+    if (getNetworks(config, platform).isEmpty)
+      complete(StatusCodes.NotFound)
+    else
+      pass
+  }
+
   /** validates platform and network */
   protected def validatePlatformAndNetwork(config: PlatformsConfiguration, platform: String, network: String): Directive0 = {
     getNetworks(config, platform).find(_.network == network) match {

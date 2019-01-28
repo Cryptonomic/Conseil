@@ -95,7 +95,16 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that loads the list of relevant rows
     */
   def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[AccountId, BlockReference]] =
-    Tables.AccountsCheckpoint.result.map(
+    for {
+      ids <- Tables.AccountsCheckpoint.map(_.accountId).distinct.result
+      rows <- DBIO.sequence(ids.map {
+                id => Tables.AccountsCheckpoint.filter(_.accountId === id).sortBy(_.blockLevel.desc).take(1).result.head
+              })
+    } yield rows.map {
+      case Tables.AccountsCheckpointRow(id, blockId, level) => AccountId(id) -> (BlockHash(blockId), level)
+    }.toMap
+
+/*     Tables.AccountsCheckpoint.result.map(
       _.groupBy(_.accountId) //rows by accounts
         .values //only use the collection of values, ignoring the group key
         .map {
@@ -105,7 +114,7 @@ object TezosDatabaseOperations extends LazyLogging {
             AccountId(id) -> (BlockHash(latestBlockId), latestLevel)
         }.toMap
     )
-
+ */
   /**
     * Writes the blocks data to the database
     * at the same time saving enough information about updated accounts to later fetch those accounts

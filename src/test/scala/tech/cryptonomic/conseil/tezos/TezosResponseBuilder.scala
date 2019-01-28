@@ -8,7 +8,7 @@ object TezosResponseBuilder {
       "chain_id": "NetXSzLHKwSumh7",
       "hash": "BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c",
       "header": {
-        "level": 162100,
+        "level": 3,
         "proto": 1,
         "predecessor": "BKnYkTEdwfDAYitjVM6s7AL5wNSUGeYVuUkKpnF1k9xijPwmUav",
         "timestamp": "2019-01-04T10:37:53Z",
@@ -37,7 +37,7 @@ object TezosResponseBuilder {
              "contents": [
                {
                  "kind": "endorsement",
-                 "level": 162123,
+                 "level": 3,
                  "metadata": {
                    "balance_updates": [
                      {
@@ -81,7 +81,7 @@ object TezosResponseBuilder {
              "contents": [
                {
                  "kind": "endorsement",
-                 "level": 162123,
+                 "level": 3,
                  "metadata": {
                    "balance_updates": [
                      {
@@ -129,7 +129,7 @@ object TezosResponseBuilder {
              "contents": [
                {
                  "kind": "endorsement",
-                 "level": 162123,
+                 "level": 3,
                  "metadata": {
                    "balance_updates": [
                      {
@@ -169,7 +169,7 @@ object TezosResponseBuilder {
              "contents": [
                {
                  "kind": "endorsement",
-                 "level": 162123,
+                 "level": 3,
                  "metadata": {
                    "balance_updates": [
                      {
@@ -211,7 +211,7 @@ object TezosResponseBuilder {
              "contents": [
                {
                  "kind": "endorsement",
-                 "level": 162123,
+                 "level": 3,
                  "metadata": {
                    "balance_updates": [
                      {
@@ -253,7 +253,7 @@ object TezosResponseBuilder {
              "contents": [
                {
                  "kind": "endorsement",
-                 "level": 162123,
+                 "level": 3,
                  "metadata": {
                    "balance_updates": [
                      {

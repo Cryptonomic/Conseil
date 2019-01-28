@@ -235,13 +235,13 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
     mapToCommand: CID => String,
     concurrencyLevel: Int): Future[List[(CID, String)]] = {
       val batchId = java.util.UUID.randomUUID()
-      logger.info("{} - New batched GET call for {} requests", batchId, ids.size)
+      logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
 
       streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
         .toMat(Sink.collection[(CID, String), List[(CID, String)]])(Keep.right)
         .run()
         .andThen {
-          case _ => logger.info("{} - Batch completed", batchId)
+          case _ => logger.debug("{} - Batch completed", batchId)
         }
     }
 
