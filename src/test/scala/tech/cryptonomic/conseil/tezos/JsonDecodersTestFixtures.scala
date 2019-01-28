@@ -624,6 +624,69 @@ trait OperationsJsonData {
         )
       )
 
+    // uses an inconsistent field name for managerPubkey
+    val alphanetOriginationJson =
+      s"""{
+      |  "kind": "origination",
+      |  "source": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "fee": "1441",
+      |  "counter": "407941",
+      |  "gas_limit": "11362",
+      |  "storage_limit": "323",
+      |  "managerPubkey": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "balance": "1000000",
+      |  "spendable": false,
+      |  "delegatable": false,
+      |  "script": $scriptJson,
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |              "change": "-1441"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+      |              "level": 1583,
+      |              "change": "1441"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "balance_updates": [
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |                  "change": "-46000"
+      |              },
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |                  "change": "-257000"
+      |              },
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |                  "change": "-1000000"
+      |              },
+      |              {
+      |                  "kind": "contract",
+      |                  "contract": "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4",
+      |                  "change": "1000000"
+      |              }
+      |          ],
+      |          "originated_contracts": [
+      |              "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"
+      |          ],
+      |          "consumed_gas": "11262",
+      |          "storage_size": "46",
+      |          "paid_storage_size_diff": "46"
+      |      }
+      |  }
+      |}""".stripMargin
+
   val delegationJson =
     """{
     |  "kind": "delegation",

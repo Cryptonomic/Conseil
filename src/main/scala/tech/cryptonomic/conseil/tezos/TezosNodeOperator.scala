@@ -134,10 +134,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
   def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[TezosOperations.Group]] = {
     import io.circe.parser.decode
     import JsonDecoders.Circe.Operations._
+    import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
     //parse json, and try to convert to objects, converting failures to a failed `Future`
+    //we could later improve by "accumulating" all errors in a single failed future, with `decodeAccumulating`
     def decodeOperations(json: String) =
-      decode[List[List[TezosOperations.Group]]](json).map(_.flatten) match {
+      decode[List[List[TezosOperations.Group]]](adaptManagerPubkeyField(json)).map(_.flatten) match {
         case Left(failure) => Future.failed(failure)
         case Right(results) => Future.successful(results)
       }
@@ -242,6 +244,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     import io.circe.parser.decode
     import JsonDecoders.Circe.{ JsonDecoded, handleDecodingErrors }
     import JsonDecoders.Circe.Operations._
+    import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
@@ -254,7 +257,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     }
 
     val jsonToOperationGroups: String => JsonDecoded[List[TezosOperations.Group]] =
-      json => decode[List[List[TezosOperations.Group]]](json).map(_.flatten)
+      json => decode[List[List[TezosOperations.Group]]](adaptManagerPubkeyField(json)).map(_.flatten)
 
     //extracts any formally valid account hash from the passed-in string
     val jsonToAccountInvolved: String => List[AccountId] = {
