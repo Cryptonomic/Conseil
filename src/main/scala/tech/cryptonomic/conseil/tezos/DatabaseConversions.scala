@@ -253,8 +253,8 @@ object DatabaseConversions {
 
   }
 
-  implicit val modelOperationToRow = new Conversion[Id, Model.Operation, Tables.OperationsRow] {
-    override def convert(from: Model.Operation) =
+  implicit val tableMappingOperationToRow = new Conversion[Id, DBTableMapping.Operation, Tables.OperationsRow] {
+    override def convert(from: DBTableMapping.Operation) =
       Tables.OperationsRow(
         operationId = from.operationId,
         operationGroupHash = from.operationGroupHash,

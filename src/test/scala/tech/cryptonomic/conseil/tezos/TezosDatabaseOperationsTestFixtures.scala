@@ -175,9 +175,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* create operations related to a specific group, with random data */
-  def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Model.Operation] =
+  def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[DBTableMapping.Operation] =
     List.fill(howMany) {
-      Model.Operation(
+      DBTableMapping.Operation(
         kind = "operation-kind",
         operationGroupHash = group.hash,
         operationId = -1,
@@ -196,7 +196,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     fees.zipWithIndex.map {
       case (fee, index) =>
-        Model.Operation(
+        DBTableMapping.Operation(
           kind = "kind",
           operationGroupHash = group.hash,
           operationId = -1,

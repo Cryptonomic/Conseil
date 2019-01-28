@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import scala.math.BigDecimal
 
-object Model {
+object DBTableMapping {
 
   /** A class useful to obviate for slick's encoding of a
     * operation row as a HList object, whose fields are not

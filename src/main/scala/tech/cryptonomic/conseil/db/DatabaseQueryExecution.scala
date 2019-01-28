@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.db
 
 import tech.cryptonomic.conseil.tezos.{ApiFiltering, Tables, TezosDatabaseOperations}
 import tech.cryptonomic.conseil.tezos.ApiOperations._
-import tech.cryptonomic.conseil.tezos.Model
+import tech.cryptonomic.conseil.tezos.DBTableMapping
 
 import slick.jdbc.PostgresProfile.api._
 import scala.language.higherKinds
@@ -618,7 +618,7 @@ trait DatabaseApiFiltering {
   }
 
   /** an instance to execute filtering and sorting for operations, asynchronously */
-  implicit object OperationsFiltering extends DatabaseQueryExecution[Future, Model.Operation] {
+  implicit object OperationsFiltering extends DatabaseQueryExecution[Future, DBTableMapping.Operation] {
 
     override def select(f: Filter): TableSelection =
       TableSelection(
@@ -640,14 +640,14 @@ trait DatabaseApiFiltering {
       limit: Int,
       sortBy: Option[String],
       sortOrder: Option[Sorting]
-    ): JoinedTables => Future[Seq[Model.Operation]] =
+    ): JoinedTables => Future[Seq[DBTableMapping.Operation]] =
       extractActionFromJoins andThen {
         case Some(validAction) =>
           ensuringBlocksExist {
             validAction.distinct
               .sortBy(_.blockLevel.desc)
               .take(limit)
-              .map(_.mapTo[Model.Operation])
+              .map(_.mapTo[DBTableMapping.Operation])
               .result
           }
         case _ =>

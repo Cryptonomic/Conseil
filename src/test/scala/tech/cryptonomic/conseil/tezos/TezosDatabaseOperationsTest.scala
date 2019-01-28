@@ -126,7 +126,7 @@ class TezosDatabaseOperationsTest
              val query = for {
               o <- Tables.Operations
               g <- o.operationGroupsFk
-            } yield (g, o.mapTo[Model.Operation])
+            } yield (g, o.mapTo[DBTableMapping.Operation])
             query.result
            }.futureValue
 
