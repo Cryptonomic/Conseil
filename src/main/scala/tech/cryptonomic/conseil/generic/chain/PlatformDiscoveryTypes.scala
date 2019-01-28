@@ -24,14 +24,14 @@ object PlatformDiscoveryTypes {
   final case class Network(name: String, displayName: String, platform: String, network: String)
 
   /** Case class representing single entity of a given network */
-  final case class Entity(name: String, displayName: String, count: Int, network: String)
+  final case class Entity(name: String, displayName: String, count: Int)
 
   /** Case class representing single attribute of given entity from DB */
   final case class Attributes(
     name: String,
     displayName: String,
     @JsonScalaEnumeration(classOf[DataTypeRef]) dataType: DataType,
-    cardinality: Int,
+    cardinality: Option[Int],
     @JsonScalaEnumeration(classOf[KeyTypeRef]) keyType: KeyType,
     entity: String
   )

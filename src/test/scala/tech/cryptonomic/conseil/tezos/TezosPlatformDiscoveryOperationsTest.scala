@@ -71,11 +71,11 @@ class TezosPlatformDiscoveryOperationsTest
         TezosPlatformDiscoveryOperations.makeAttributesList("fees")
       }.futureValue shouldBe
         List(
-          Attributes("low", "Low", DataType.Int, 0, KeyType.UniqueKey, "fees"),
-          Attributes("medium", "Medium", DataType.Int, 0, KeyType.UniqueKey, "fees"),
-          Attributes("high", "High", DataType.Int, 0, KeyType.UniqueKey, "fees"),
-          Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "fees"),
-          Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "fees")
+          Attributes("low", "Low", DataType.Int, None, KeyType.UniqueKey, "fees"),
+          Attributes("medium", "Medium", DataType.Int, None, KeyType.UniqueKey, "fees"),
+          Attributes("high", "High", DataType.Int, None, KeyType.UniqueKey, "fees"),
+          Attributes("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "fees"),
+          Attributes("kind", "Kind", DataType.String, Some(0), KeyType.UniqueKey, "fees")
         )
     }
 
@@ -84,16 +84,16 @@ class TezosPlatformDiscoveryOperationsTest
         TezosPlatformDiscoveryOperations.makeAttributesList("accounts")
       }.futureValue shouldBe
         List(
-          Attributes("account_id", "Account id", DataType.String, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("block_id", "Block id", DataType.String, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("manager", "Manager", DataType.String, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("spendable", "Spendable", DataType.Boolean, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("delegate_setable", "Delegate setable", DataType.Boolean, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("delegate_value", "Delegate value", DataType.String, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("counter", "Counter", DataType.Int, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("script", "Script", DataType.String, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("balance", "Balance", DataType.Decimal, 0, KeyType.UniqueKey, "accounts"),
-          Attributes("block_level", "Block level", DataType.Decimal, 0, KeyType.UniqueKey, "accounts")
+          Attributes("account_id", "Account id", DataType.String, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("block_id", "Block id", DataType.String, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("manager", "Manager", DataType.String, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("spendable", "Spendable", DataType.Boolean, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("delegate_setable", "Delegate setable", DataType.Boolean, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("delegate_value", "Delegate value", DataType.String, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("counter", "Counter", DataType.Int, None, KeyType.UniqueKey, "accounts"),
+          Attributes("script", "Script", DataType.String, Some(0), KeyType.UniqueKey, "accounts"),
+          Attributes("balance", "Balance", DataType.Decimal, None, KeyType.UniqueKey, "accounts"),
+          Attributes("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
         )
     }
 
@@ -102,18 +102,18 @@ class TezosPlatformDiscoveryOperationsTest
         TezosPlatformDiscoveryOperations.makeAttributesList("blocks")
       }.futureValue shouldBe
         List(
-          Attributes("level", "Level", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("proto", "Proto", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("predecessor", "Predecessor", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("validation_pass", "Validation pass", DataType.Int, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("fitness", "Fitness", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("context", "Context", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("signature", "Signature", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("protocol", "Protocol", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("chain_id", "Chain id", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("hash", "Hash", DataType.String, 0, KeyType.UniqueKey, "blocks"),
-          Attributes("operations_hash", "Operations hash", DataType.String, 0, KeyType.UniqueKey, "blocks")
+          Attributes("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+          Attributes("proto", "Proto", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+          Attributes("predecessor", "Predecessor", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "blocks"),
+          Attributes("validation_pass", "Validation pass", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+          Attributes("fitness", "Fitness", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("context", "Context", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("signature", "Signature", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("protocol", "Protocol", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("chain_id", "Chain id", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("hash", "Hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("operations_hash", "Operations hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks")
         )
     }
 
@@ -122,21 +122,21 @@ class TezosPlatformDiscoveryOperationsTest
         TezosPlatformDiscoveryOperations.makeAttributesList("operations")
       }.futureValue shouldBe
         List(
-          Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("source", "Source", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("amount", "Amount", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("destination", "Destination", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("balance", "Balance", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("delegate", "Delegate", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("operation_group_hash", "Operation group hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("operation_id", "Operation id", DataType.Int, 0, KeyType.UniqueKey, "operations"),
-          Attributes("fee", "Fee", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("storage_limit", "Storage limit", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("gas_limit", "Gas limit", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("block_hash", "Block hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "operations"),
-          Attributes("block_level", "Block level", DataType.Int, 0, KeyType.UniqueKey, "operations"),
-          Attributes("pkh", "Pkh", DataType.String, 0, KeyType.UniqueKey, "operations")
+          Attributes("kind", "Kind", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("source", "Source", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("amount", "Amount", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("destination", "Destination", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("balance", "Balance", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("delegate", "Delegate", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("operation_group_hash", "Operation group hash", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
+          Attributes("fee", "Fee", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("storage_limit", "Storage limit", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("gas_limit", "Gas limit", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("block_hash", "Block hash", DataType.String, Some(0), KeyType.UniqueKey, "operations"),
+          Attributes("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
+          Attributes("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+          Attributes("pkh", "Pkh", DataType.String, Some(0), KeyType.UniqueKey, "operations")
         )
     }
 
@@ -145,12 +145,12 @@ class TezosPlatformDiscoveryOperationsTest
         TezosPlatformDiscoveryOperations.makeAttributesList("operation_groups")
       }.futureValue shouldBe
         List(
-          Attributes("protocol", "Protocol", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
-          Attributes("chain_id", "Chain id", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
-          Attributes("hash", "Hash", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
-          Attributes("branch", "Branch", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
-          Attributes("signature", "Signature", DataType.String, 0, KeyType.UniqueKey, "operation_groups"),
-          Attributes("block_id", "Block id", DataType.String, 0, KeyType.UniqueKey, "operation_groups")
+          Attributes("protocol", "Protocol", DataType.String, Some(0), KeyType.UniqueKey, "operation_groups"),
+          Attributes("chain_id", "Chain id", DataType.String, Some(0), KeyType.UniqueKey, "operation_groups"),
+          Attributes("hash", "Hash", DataType.String, Some(0), KeyType.UniqueKey, "operation_groups"),
+          Attributes("branch", "Branch", DataType.String, Some(0), KeyType.UniqueKey, "operation_groups"),
+          Attributes("signature", "Signature", DataType.String, Some(0), KeyType.UniqueKey, "operation_groups"),
+          Attributes("block_id", "Block id", DataType.String, Some(0), KeyType.UniqueKey, "operation_groups")
         )
     }
 
