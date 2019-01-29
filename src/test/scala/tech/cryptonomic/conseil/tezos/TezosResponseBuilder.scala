@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 object TezosResponseBuilder {
 
-  def blockResponse: String = {
+  val blockResponse: String =
     """{
       "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
       "chain_id": "NetXSzLHKwSumh7",
@@ -24,9 +24,8 @@ object TezosResponseBuilder {
         "signature": "sigPsHz3864TiJBAMoeZEw2p26Aq9LfYQ4SbFZkkLhYe3k4mStXsHhkCV5wfSc7fGMXdpyLSZjsTdkiUWXrBc1u1T2JSYab9"
       }
     }""""
-  }
 
-  def operationsResponse: String = {
+  val operationsResponse: String =
     """[
          [
            {
@@ -295,9 +294,8 @@ object TezosResponseBuilder {
            }
          ]
        ]"""
-  }
 
-  def batchedGetQueryResponse: String = {
+  val batchedGetQueryResponse: String =
     """{
         "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
         "chain_id": "NetXSzLHKwSumh7",
@@ -688,9 +686,8 @@ object TezosResponseBuilder {
           ]
         ]
       }"""
-  }
 
-  def batchedGetQuerySecondCallResponse: String = {
+  val batchedGetQuerySecondCallResponse: String =
     """[
         [
           {
@@ -1000,5 +997,5 @@ object TezosResponseBuilder {
           }
         ]
       ]"""
-  }
+
 }

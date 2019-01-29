@@ -38,7 +38,7 @@ object ConversionSyntax {
 
     /** converts the object to a `TO` instance, wrapped in a `F` effect. */
     def convertToA[F[_], TO](implicit conv: Conversion[F, FROM, TO]): F[TO] =
-    conv.convert(from)
+      conv.convert(from)
 
     /** converts the object to a `TO` instance, with no effect wrapping the result */
     def convertTo[TO](implicit conv: Conversion[Conversion.Id, FROM, TO]): TO =

@@ -2,20 +2,17 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Span}
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures {
+class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures with IntegrationPatience {
+  import ExecutionContext.Implicits.global
 
   val config = BatchFetchConfiguration(1, 1, 500)
-
-  implicit val executionContext = ExecutionContext.global
-  implicit val defaultPatience = PatienceConfig(timeout = Span(1000, Millis))
 
   "getBlock" should "should correctly fetch the genesis block" in {
     //given
@@ -87,4 +84,5 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     results should have length 1
     results.head.futureValue should have length 1
  }
+
 }
