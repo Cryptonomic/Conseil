@@ -49,12 +49,12 @@ object DatabaseUtil {
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
-    implicit val getMap: GetResult[Map[String, Any]] = GetResult[Map[String, Any]](positionedResult => {
+    implicit val getMap: GetResult[Map[String, Option[Any]]] = GetResult[Map[String, Option[Any]]](positionedResult => {
       val metadata = positionedResult.rs.getMetaData
-      (1 to positionedResult.numColumns).flatMap(i => {
+      (1 to positionedResult.numColumns).map(i => {
         val columnName = metadata.getColumnName(i).toLowerCase
         val columnValue = positionedResult.nextObjectOption
-        columnValue.map(columnName -> _)
+        columnName -> columnValue
       }).toMap
     })
 
