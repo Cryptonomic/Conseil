@@ -122,21 +122,33 @@ class TezosPlatformDiscoveryOperationsTest
         TezosPlatformDiscoveryOperations.makeAttributesList("operations")
       }.futureValue shouldBe
         List(
-          Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("source", "Source", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("amount", "Amount", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("destination", "Destination", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("balance", "Balance", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("delegate", "Delegate", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("operation_group_hash", "Operation group hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
           Attributes("operation_id", "Operation id", DataType.Int, 0, KeyType.UniqueKey, "operations"),
-          Attributes("fee", "Fee", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("storage_limit", "Storage limit", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("gas_limit", "Gas limit", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("operation_group_hash", "Operation group hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("kind", "Kind", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("level", "Level", DataType.Int, 0, KeyType.UniqueKey, "operations"),
+          Attributes("delegate", "Delegate", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("slots", "Slots", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("nonce", "Nonce", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("pkh", "Pkh", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("secret", "Secret", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("source", "Source", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("fee", "Fee", DataType.Decimal, 0, KeyType.UniqueKey, "operations"),
+          Attributes("counter", "Counter", DataType.Decimal, 0, KeyType.UniqueKey, "operations"),
+          Attributes("gas_limit", "Gas limit", DataType.Decimal, 0, KeyType.UniqueKey, "operations"),
+          Attributes("storage_limit", "Storage limit", DataType.Decimal, 0, KeyType.UniqueKey, "operations"),
+          Attributes("public_key", "Public key", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("amount", "Amount", DataType.Decimal, 0, KeyType.UniqueKey, "operations"),
+          Attributes("destination", "Destination", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("parameters", "Parameters", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("manager_pubkey", "Manager pubkey", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("balance", "Balance", DataType.Decimal, 0, KeyType.UniqueKey, "operations"),
+          Attributes("spendable", "Spendable", DataType.Boolean, 0, KeyType.UniqueKey, "operations"),
+          Attributes("delegatable", "Delegatable", DataType.Boolean, 0, KeyType.UniqueKey, "operations"),
+          Attributes("script", "Script", DataType.String, 0, KeyType.UniqueKey, "operations"),
+          Attributes("status", "Status", DataType.String, 0, KeyType.UniqueKey, "operations"),
           Attributes("block_hash", "Block hash", DataType.String, 0, KeyType.UniqueKey, "operations"),
-          Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "operations"),
           Attributes("block_level", "Block level", DataType.Int, 0, KeyType.UniqueKey, "operations"),
-          Attributes("pkh", "Pkh", DataType.String, 0, KeyType.UniqueKey, "operations")
+          Attributes("timestamp", "Timestamp", DataType.DateTime, 0, KeyType.UniqueKey, "operations")
         )
     }
 

@@ -14,6 +14,14 @@ import scala.util.matching.Regex
   */
 object JsonUtil {
 
+  private val managerPubkeyMatcher = """("managerPubkey":)""".r
+  private val managerPubkeyAdaptation = """"manager_pubkey":"""
+
+  /** convert alphanet schema field name to the zeronet one */
+  def adaptManagerPubkeyField(json: String): String = {
+    managerPubkeyMatcher.replaceAllIn(json, replacement = managerPubkeyAdaptation)
+  }
+
   /*
    * We're reducing visibility of the JsonString constuction (both class and object)
    * to allow instantiation only from JsonUtil's methods
