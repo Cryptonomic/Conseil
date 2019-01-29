@@ -8,6 +8,7 @@ import scala.concurrent.duration._
 import scala.util._
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.config.Platforms._
+import tech.cryptonomic.conseil.tezos.ShutdownComplete
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
 
 package tezos {
@@ -68,7 +69,7 @@ package scripts {
           import scala.concurrent.ExecutionContext.Implicits.global
           println("System closing...")
           val nodeShutdown = node.shutdown()
-          .flatMap(ShutdowComplete => system.terminate())
+            .flatMap((_: ShutdownComplete) => system.terminate())
 
           Await.result(nodeShutdown, 1.second)
           println("All engines stopped.")

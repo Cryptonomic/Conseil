@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
@@ -9,21 +8,18 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
-
-/* use this to make random generation implicit but deterministic */
-case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable {
-  def +(extra: Long): RandomSeed = RandomSeed(seed + extra)
-}
 
 class TezosDatabaseOperationsTest
   extends WordSpec
     with MockFactory
+    with TezosDataGeneration
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
@@ -74,7 +70,7 @@ class TezosDatabaseOperationsTest
       val generatedBlocks = basicBlocks.zipWithIndex map {
         case (block, idx) =>
           //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, operations = 1)(randomSeed + idx)
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
 
@@ -120,9 +116,9 @@ class TezosDatabaseOperationsTest
               val group = blockForGroup.operationGroups.head
               groupRow.hash shouldEqual group.hash.value
               groupRow.blockId shouldEqual blockForGroup.metadata.hash.value
-              groupRow.chainId shouldEqual group.chain_id
-              groupRow.branch shouldEqual group.branch
-              groupRow.signature shouldEqual group.signature
+              groupRow.chainId shouldEqual group.chain_id.map(_.id)
+              groupRow.branch shouldEqual group.branch.value
+              groupRow.signature shouldEqual group.signature.map(_.value)
           }
 
           val dbOperations =
@@ -130,33 +126,54 @@ class TezosDatabaseOperationsTest
              val query = for {
               o <- Tables.Operations
               g <- o.operationGroupsFk
-            } yield (g, o)
+            } yield (g, o.mapTo[DBTableMapping.Operation])
             query.result
            }.futureValue
 
           val generatedGroups = generatedBlocks.map(_.operationGroups.head)
 
-          dbOperations should have size (generatedGroups.map(_.contents.map(_.size).getOrElse(0)).sum)
+          dbOperations should have size (generatedGroups.map(_.contents.size).sum)
 
           forAll(dbOperations) {
             case (groupRow, opRow) =>
               val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
               val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
-              val operation = operationGroup.contents.value.head
-              opRow.kind shouldEqual operation.kind
-              opRow.source shouldEqual operation.source
-              opRow.fee shouldEqual operation.fee
-              opRow.storageLimit shouldEqual operation.storageLimit
-              opRow.gasLimit shouldEqual operation.gasLimit
-              opRow.amount shouldEqual operation.amount
-              opRow.destination shouldEqual operation.destination
-              opRow.pkh shouldEqual operation.pkh
-              opRow.delegate shouldEqual operation.delegate
-              opRow.balance shouldEqual operation.balance
+              opRow.operationId should be > -1
               opRow.operationGroupHash shouldEqual operationGroup.hash.value
               opRow.blockHash shouldEqual operationBlock.metadata.hash.value
-              opRow.blockLevel shouldEqual operationBlock.metadata.header.level
               opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
+              val operation = opRow.kind match {
+                case "endorsement" =>
+                  operationGroup.contents.find(_.isInstanceOf[Endorsement])
+                case "seed_nonce_revelation" =>
+                  operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
+                case "activate_account" =>
+                  operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
+                case "reveal" =>
+                  operationGroup.contents.find(_.isInstanceOf[Reveal])
+                case "transaction" =>
+                  operationGroup.contents.find(_.isInstanceOf[Transaction])
+                case "origination" =>
+                  operationGroup.contents.find(_.isInstanceOf[Origination])
+                case "delegation" =>
+                  operationGroup.contents.find(_.isInstanceOf[Delegation])
+                case "double_endorsement_evidence" =>
+                  operationGroup.contents.find(_ == DoubleEndorsementEvidence)
+                case "double_baking_evidence" =>
+                  operationGroup.contents.find(_ == DoubleBakingEvidence)
+                case "proposals" =>
+                  operationGroup.contents.find(_ == Proposals)
+                case "ballot" =>
+                  operationGroup.contents.find(_ == Ballot)
+                case _ => None
+              }
+
+              import DatabaseConversions._
+              import tech.cryptonomic.conseil.util.ConversionSyntax._
+
+              val generatedConversion = (operationBlock, operationGroup.hash, operation.value).convertTo[Tables.OperationsRow]
+              val dbConversion = opRow.convertTo[Tables.OperationsRow]
+              generatedConversion.tail shouldEqual dbConversion.tail //take into account that the id is only generated on save
           }
       }
 
@@ -444,28 +461,36 @@ class TezosDatabaseOperationsTest
     }
 
     "fetch existing operations with their group on a existing hash" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
+
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
       val block = generateBlockRows(1, testReferenceTime).head
       val group = generateOperationGroupRows(block).head
-      val ops = generateOperationRowsForGroup(block, group)
+      val ops = generateOperationsForGroup(block, group)
 
       val populateAndFetch = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
         result <- sut.operationsForGroup(group.hash)
       } yield (result, ids)
 
       val (Some((groupRow, operationRows)), operationIds) = dbHandler.run(populateAndFetch).futureValue
 
+      //we now have only a generic HList repr. so columns are accessed by position
+      val operationId: Tables.OperationsRow => Int = _.apply(0)
+
       groupRow.hash shouldEqual group.hash
       operationRows should have size ops.size
-      operationRows.map(_.operationId).toList should contain theSameElementsAs operationIds
+      operationRows.map(operationId).toList should contain theSameElementsAs operationIds
 
     }
 
     "compute correct average fees from stored operations" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
@@ -475,14 +500,14 @@ class TezosDatabaseOperationsTest
       // std-dev = 331.4
       // the sample std-dev should be 354.3, using correction formula
       val fees = Seq(
-        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), None, Some("1020.30"), Some("1.00"), None
+        Some(BigDecimal(35.23)), Some(BigDecimal(12.01)), Some(BigDecimal(2.22)), Some(BigDecimal(150.01)), None, Some(BigDecimal(1020.30)), Some(BigDecimal(1.00)), None
       )
-      val ops = wrapFeesWithOperationRows(fees, block, group)
+      val ops = wrapFeesWithOperations(fees, block, group)
 
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -504,61 +529,23 @@ class TezosDatabaseOperationsTest
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
-    }
-
-    "handle invalid fee data using the default value" in {
-      //generate data
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateBlockRows(1, testReferenceTime).head
-      val group = generateOperationGroupRows(block).head
-
-      // mu = 152.59625
-      // std-dev = 331.4
-      // the sample std-dev should be 354.3, using correction formula
-      val fees = Seq(
-        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), Some("1-00"), Some("1020.30"), Some("1.00"), Some("inv4lid")
-      )
-      val ops = wrapFeesWithOperationRows(fees, block, group)
-
-      val populate = for {
-        _ <- Tables.Blocks += block
-        _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
-      } yield ids
-
-      dbHandler.run(populate).futureValue should have size (fees.size)
-
-      //expectations
-      val (mu, sigma) = (153, 332)
-      val latest = new Timestamp(ops.map(_.timestamp.getTime).max)
-
-      val expected = AverageFees(
-        low = 0,
-        medium = mu,
-        high = mu + sigma,
-        timestamp = latest,
-        kind = ops.head.kind
-      )
-
-      //check
-      val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
-
-      dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
     }
 
     "return None when computing average fees for a kind with no data" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
       val group = generateOperationGroupRows(block).head
 
-      val fees = Seq.fill(3)(Some("1.0"))
-      val ops = wrapFeesWithOperationRows(fees, block, group)
+      val fees = Seq.fill(3)(Some(BigDecimal(1)))
+      val ops = wrapFeesWithOperations(fees, block, group)
 
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -571,17 +558,19 @@ class TezosDatabaseOperationsTest
     }
 
     "compute average fees only using the selected operation kinds" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.ConversionSyntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
       val group = generateOperationGroupRows(block).head
 
-      val (selectedFee, ignoredFee) = (Some("1.0"), Some("1000.0"))
+      val (selectedFee, ignoredFee) = (Some(BigDecimal(1)), Some(BigDecimal(1000)))
 
       val fees = Seq(selectedFee, selectedFee, ignoredFee, ignoredFee)
 
       //change kind for fees we want to ignore
-      val ops = wrapFeesWithOperationRows(fees, block, group).map {
+      val ops = wrapFeesWithOperations(fees, block, group).map {
         case op if op.fee == ignoredFee => op.copy(kind = op.kind + "ignore")
         case op => op
       }
@@ -591,7 +580,7 @@ class TezosDatabaseOperationsTest
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -1329,280 +1318,4 @@ class TezosDatabaseOperationsTest
     }
   }
 
-  //a stable timestamp reference if needed
-  private lazy val testReferenceTime =
-    new Timestamp(
-      LocalDate.of(2018, 1, 1)
-        .atStartOfDay
-        .toEpochSecond(ZoneOffset.UTC)
-    )
-
-  //creates pseudo-random strings of given length, based on an existing [[Random]] generator
-  private val alphaNumericGenerator =
-    (random: Random) => random.alphanumeric.take(_: Int).mkString
-
-  /* randomly populate a number of fees */
-  private def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
-    require(howMany > 0, "the test can generates a positive number of fees, you asked for a non positive value")
-
-    val rnd = new Random(randomSeed.seed)
-
-    (1 to howMany).map {
-      current =>
-        val low = rnd.nextInt(10)
-        val medium = rnd.nextInt(10) + 10
-        val high = rnd.nextInt(10) + 20
-        AverageFees(
-          low = low,
-          medium = medium,
-          high = high,
-          timestamp = new Timestamp(startAt.getTime + current),
-          kind = "kind"
-        )
-    }.toList
-  }
-
-  /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
-
-    val rnd = new Random(randomSeed.seed)
-
-    val accounts = (1 to howMany).map {
-      currentId =>
-        (AccountId(String valueOf currentId),
-          Account(
-            manager = "manager",
-            balance = rnd.nextInt,
-            spendable = true,
-            delegate = AccountDelegate(setable = false, value = Some("delegate-value")),
-            script = Some("script"),
-            counter = currentId
-          )
-        )
-    }.toMap
-
-    BlockAccounts(blockHash, blockLevel, accounts)
-  }
-
-  /* randomly populate a number of blocks based on a level range */
-  private def generateBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Block] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    //same for all blocks
-    val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
-
-    def generateOne(level: Int, predecessorHash: BlockHash): Block =
-      Block(
-        BlockMetadata(
-          "protocol",
-          Some(chainHash),
-          BlockHash(generateHash(10)),
-          BlockHeader(
-            level = level,
-            proto = 1,
-            predecessor = predecessorHash,
-            timestamp = new Timestamp(startMillis + level),
-            validationPass = 0,
-            operations_hash = None,
-            fitness = Seq.empty,
-            context = s"context$level",
-            signature = Some(s"sig${generateHash(10)}")
-          )),
-        operationGroups = List.empty
-      )
-
-    //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"))
-
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.metadata.hash)
-        currentBlock :: chain
-    }.reverse
-
-  }
-
-
-  /* randomly populate a number of blocks based on a level range */
-  private def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    //same for all blocks
-    val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
-
-    def generateOne(level: Int, predecessorHash: String): BlocksRow =
-      BlocksRow(
-      level = level,
-      proto = 1,
-      predecessor = predecessorHash,
-      timestamp = new Timestamp(startMillis + level),
-      validationPass = 0,
-      fitness = "fitness",
-      protocol = "protocol",
-      context = Some(s"context$level"),
-      signature = Some(s"sig${generateHash(10)}"),
-      chainId = Some(chainHash),
-      hash = generateHash(10)
-    )
-
-    //we need somewhere to start with
-    val genesis = generateOne(0, "genesis")
-
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.hash)
-        currentBlock :: chain
-    }.reverse
-
-  }
-
-  /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  private def generateOperationGroup(block: Block, operations: Int)(implicit randomSeed: RandomSeed): OperationGroup = {
-    require(operations >= 0, "the test won't generate a negative number of operations")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    def fillOperations(): Option[List[Operation]] = {
-      val ops = List.fill(operations) {
-        Operation(
-          kind = "kind",
-          block = Some(block.metadata.hash.value),
-          level = Some(block.metadata.header.level),
-          slots = Some(List(0)),
-          nonce = Some(generateHash(10)),
-          op1 = None,
-          op2 = None,
-          bh1 = None,
-          bh2 = None,
-          pkh = Some("pkh"),
-          secret = Some("secret"),
-          proposals = Some(List("proposal")),
-          period = Some("period"),
-          source = Some("source"),
-          proposal = Some("proposal"),
-          ballot = Some("ballot"),
-          fee = Some("fee"),
-          counter = Some(0),
-          gasLimit = Some("gasLimit"),
-          storageLimit = Some("storageLimit"),
-          publicKey = Some("publicKey"),
-          amount = Some("amount"),
-          destination = Some("destination"),
-          parameters = Some("parameters"),
-          managerPubKey = Some("managerPubKey"),
-          balance = Some("balance"),
-          spendable = Some(true),
-          delegatable = Some(true),
-          delegate = Some("delegate")
-        )
-      }
-      if (ops.isEmpty) None else Some(ops)
-    }
-
-
-    OperationGroup(
-      protocol = "protocol",
-      chain_id = block.metadata.chain_id,
-      hash = OperationHash(generateHash(10)),
-      branch = generateHash(10),
-      signature = Some(s"sig${generateHash(10)}"),
-      contents = fillOperations()
-    )
-  }
-
-
-  /* create an empty operation group for each block passed in, using random values */
-  private def generateOperationGroupRows(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
-    require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    blocks.map(
-      block =>
-        Tables.OperationGroupsRow(
-          protocol = "protocol",
-          chainId = block.chainId,
-          hash = generateHash(10),
-          branch = generateHash(10),
-          signature = Some(s"sig${generateHash(10)}"),
-          blockId = block.hash
-        )
-    ).toList
-  }
-
-  /* create operations related to a specific group, with random data */
-  private def generateOperationRowsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
-   if (howMany > 0) {
-
-     (1 to howMany).map {
-       _ =>
-         Tables.OperationsRow(
-           kind = "operation-kind",
-           operationGroupHash = group.hash,
-           operationId = -1,
-           blockHash = block.hash,
-           timestamp = block.timestamp,
-           blockLevel = block.level
-         )
-     }.toList
-   } else List.empty
-
-  /* create operation rows to hold the given fees */
-  private def wrapFeesWithOperationRows(
-    fees: Seq[Option[String]],
-    block: BlocksRow,
-    group: OperationGroupsRow) = {
-
-    fees.zipWithIndex.map {
-      case (fee, index) =>
-        OperationsRow(
-          kind = "kind",
-          operationGroupHash = group.hash,
-          operationId = -1,
-          fee = fee,
-          blockHash = block.hash,
-          timestamp = new Timestamp(block.timestamp.getTime + index),
-          blockLevel = block.level
-        )
-    }
-
-  }
-
-  /* randomly generates a number of account rows for some block */
-  private def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
-
-    (1 to howMany).map {
-      currentId =>
-        AccountsRow(
-          accountId = String valueOf currentId,
-          blockId = block.hash,
-          manager = "manager",
-          spendable = true,
-          delegateSetable = false,
-          delegateValue = None,
-          counter = 0,
-          script = None,
-          balance = 0
-        )
-    }.toList
-
-  }
-
-
-}
+ }

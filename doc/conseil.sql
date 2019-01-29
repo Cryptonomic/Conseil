@@ -122,21 +122,33 @@ CREATE TABLE public.operation_groups (
 --
 
 CREATE TABLE public.operations (
-    kind character varying NOT NULL,
-    source character varying,
-    amount character varying,
-    destination character varying,
-    balance character varying,
-    delegate character varying,
-    operation_group_hash character varying NOT NULL,
     operation_id integer NOT NULL,
-    fee character varying,
-    storage_limit character varying,
-    gas_limit character varying,
+    operation_group_hash character varying NOT NULL,
+    kind character varying NOT NULL,
+    level integer,
+    delegate character varying,
+    slots character varying,
+    nonce character varying,
+    pkh character varying,
+    secret character varying,
+    source character varying,
+    fee numeric,
+    counter numeric,
+    gas_limit numeric,
+    storage_limit numeric,
+    public_key character varying,
+    amount numeric,
+    destination character varying,
+    parameters character varying,
+    manager_pubkey character varying,
+    balance numeric,
+    spendable boolean,
+    delegatable boolean,
+    script character varying,
+    status character varying,
     block_hash character varying NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL,
     block_level integer NOT NULL,
-    pkh character varying
+    "timestamp" timestamp without time zone NOT NULL
 );
 
 --
@@ -154,18 +166,6 @@ CREATE TABLE public.accounts_checkpoint (
 --
 
 CREATE SEQUENCE public.operations_operation_id_seq
-    START WITH 177489
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: operations_operation_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.operations_operation_id_seq1
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -177,14 +177,14 @@ CREATE SEQUENCE public.operations_operation_id_seq1
 -- Name: operations_operation_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.operations_operation_id_seq1 OWNED BY public.operations.operation_id;
+ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.operation_id;
 
 
 --
 -- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq1'::regclass);
+ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq'::regclass);
 
 
 --

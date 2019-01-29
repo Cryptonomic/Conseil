@@ -2,26 +2,25 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Span}
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures {
+class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures with IntegrationPatience {
+  import ExecutionContext.Implicits.global
 
   val config = BatchFetchConfiguration(1, 1, 500)
-
-  implicit val executionContext = ExecutionContext.global
-  implicit val defaultPatience = PatienceConfig(timeout = Span(1000, Millis))
 
   "getBlock" should "should correctly fetch the genesis block" in {
     //given
     val tezosRPCInterface = stub[TezosRPCInterface]
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe~").returns(Future.successful(TezosResponseBuilder.blockResponse))
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
+    val blockResponse = Future.successful(TezosResponseBuilder.blockResponse)
+    val operationResponse = Future.successful(TezosResponseBuilder.operationsResponse)
+    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe~").returns(blockResponse)
+    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe/operations").returns(operationResponse)
 
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
 
@@ -32,7 +31,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     block.futureValue.metadata.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
   }
 
-  "getAllBlocks" should "should correctly fetch all the blocks" in {
+  "getLatestBlocks" should "should correctly fetch all the blocks if no depth is passed-in" in {
     //given
     val tezosRPCInterface = stub[TezosRPCInterface]
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
@@ -85,4 +84,5 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     results should have length 1
     results.head.futureValue should have length 1
  }
+
 }
