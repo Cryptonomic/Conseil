@@ -60,7 +60,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] =
-    Tables.AccountsCheckpoint ++= accountIds.flatMap((convertBlockAccountsAssociation _).tupled)
+    Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
 
   /**
     * Removes  data on the accounts checkpoint table

@@ -84,7 +84,7 @@ object DatabaseConversions {
   }
 
   //Cannot directly convert a single operation to a row, because we need the block and operation-group info to build the database row
-  implicit val operationToOperationsRowReader = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
+  implicit val operationToOperationsRow = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
     override def convert(from: (Block, OperationHash, Operation)) =
       (convertEndorsement orElse
       convertNonceRevelation orElse
@@ -284,16 +284,21 @@ object DatabaseConversions {
         blockLevel = from.blockLevel,
         timestamp = from.timestamp
       )
-}
+  }
 
-  def convertBlockAccountsAssociation(blockHash: BlockHash, blockLevel: Int, ids: List[AccountId]): List[Tables.AccountsCheckpointRow] =
-    ids.map(
-      accountId =>
-        Tables.AccountsCheckpointRow(
-          accountId = accountId.id,
-          blockId = blockHash.value,
-          blockLevel = blockLevel
-        )
-    )
+  implicit val blockAccountsAssociationToCheckpointRow = new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
+    override def convert(from: (BlockHash, Int, List[AccountId])) = {
+      val (blockHash, blockLevel, ids) = from
+      ids.map(
+        accountId =>
+          Tables.AccountsCheckpointRow(
+            accountId = accountId.id,
+            blockId = blockHash.value,
+            blockLevel = blockLevel
+          )
+      )
+    }
+
+  }
 
 }
