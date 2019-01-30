@@ -62,7 +62,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
               validatePlatformAndNetwork(config, platform, network) {
                 pathPrefix("entities") {
                   pathEnd {
-                    completeWithJson(TezosPlatformDiscoveryOperations.getEntities(network))
+                    completeWithJson(TezosPlatformDiscoveryOperations.getEntities)
                   }
                 } ~ pathPrefix(Segment) { entity =>
                   validateEntity(entity) {

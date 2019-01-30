@@ -668,6 +668,65 @@ class TezosDatabaseOperationsTest
       BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
     )
 
+    "get all values from the table with nulls as nones" in {
+
+      val columns = List()
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty, 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(0)),
+          "context" -> Some("context0"),
+          "proto" -> Some(1),
+          "signature" -> Some("sigqs6AXPny9K"),
+          "hash" -> Some("R0NpYZuUeF"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("genesis"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(0)
+        ),
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(1)),
+          "context" -> Some("context1"),
+          "proto" -> Some(1),
+          "signature" -> Some("sigTZ2IB879wD"),
+          "hash" -> Some("aQeGrbXCmG"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("R0NpYZuUeF"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(1)
+        )
+      )
+    }
+
+
+    "get null values from the table as none" in {
+
+      val columns = List("level", "proto", "protocol", "hash", "operations_hash")
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty, 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"), "operations_hash" -> None),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"), "operations_hash" -> None)
+      )
+    }
+
     "get map from a block table" in {
 
       val columns = List("level", "proto", "protocol", "hash")
@@ -679,8 +738,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -702,7 +761,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
 
@@ -724,7 +783,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -752,7 +811,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -786,7 +845,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -808,7 +867,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -831,7 +890,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -853,7 +912,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -875,7 +934,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -897,7 +956,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
 
@@ -939,8 +998,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -962,7 +1021,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
 
@@ -984,7 +1043,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
     "get map from a block table with datetime field" in {
@@ -1005,7 +1064,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG", "timestamp" -> new Timestamp(1))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"), "timestamp" -> Some(new Timestamp(1)))
       )
     }
     "get map from a block table with startsWith predicate" in {
@@ -1026,7 +1085,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
     "get empty map from a block table with startsWith predicate" in {
@@ -1066,7 +1125,7 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
     "get empty map from a block table with endsWith predicate" in {
@@ -1120,7 +1179,7 @@ class TezosDatabaseOperationsTest
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue.map(_.mapValues(_.toString))
-      result shouldBe List(Map("account_id" -> "1", "balance" -> "1.45"))
+      result shouldBe List(Map("account_id" -> "Some(1)", "balance" -> "Some(1.45)"))
     }
     "get empty list of elements when correctly rounded value does not match" in {
       val columns = List("account_id", "balance")
@@ -1178,8 +1237,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -1200,8 +1259,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG"),
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
 
@@ -1222,8 +1281,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG"),
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF")
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
     }
 
@@ -1244,8 +1303,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 0, "proto" -> 1, "protocol" -> "protocol", "hash" -> "R0NpYZuUeF"),
-        Map("level" -> 1, "proto" -> 1, "protocol" -> "protocol", "hash" -> "aQeGrbXCmG")
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
       )
     }
 
@@ -1272,9 +1331,9 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> 2, "proto" -> 2),
-        Map("level" -> 0, "proto" -> 1),
-        Map("level" -> 1, "proto" -> 1)
+        Map("level" -> Some(2), "proto" -> Some(2)),
+        Map("level" -> Some(0), "proto" -> Some(1)),
+        Map("level" -> Some(1), "proto" -> Some(1))
       )
     }
   }

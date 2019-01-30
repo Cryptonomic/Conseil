@@ -57,16 +57,16 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       |}]
     """.stripMargin
 
-  val responseAsMap: List[Map[String, Any]] = List(
+  val responseAsMap: List[Map[String, Option[Any]]] = List(
     Map(
-      "account_id" -> "tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1",
-      "spendable" -> true,
-      "counter" -> 1137
+      "account_id" -> Some("tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1"),
+      "spendable" -> Some(true),
+      "counter" -> Some(1137)
     ),
     Map(
-      "account_id" -> "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np",
-      "spendable" -> true,
-      "counter" -> 2
+      "account_id" -> Some("KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"),
+      "spendable" -> Some(true),
+      "counter" -> Some(2)
     )
   )
 
@@ -76,7 +76,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   )
 
   val fakeQPO: DataOperations = new DataOperations {
-    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]] =
+    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Option[Any]]]] =
       Future.successful(responseAsMap)
   }
 

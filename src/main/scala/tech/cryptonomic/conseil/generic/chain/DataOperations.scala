@@ -14,5 +14,5 @@ trait DataOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Any]]]
+  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Option[Any]]]]
 }

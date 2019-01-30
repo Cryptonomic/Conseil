@@ -24,7 +24,8 @@ class DataPlatform(operationsMap: Map[String, DataOperations]) {
     * @param  query     query predicates and fields
     * @return query result as a option[map]
     * */
-  def queryWithPredicates(platform: String, tableName: String, query: Query)(implicit ec: ExecutionContext): Option[Future[List[Map[String, Any]]]] = {
+  def queryWithPredicates(platform: String, tableName: String, query: Query)
+    (implicit ec: ExecutionContext): Option[Future[List[Map[String, Option[Any]]]]] = {
     operationsMap.get(platform).map(_.queryWithPredicates(tableName, query))
   }
 }

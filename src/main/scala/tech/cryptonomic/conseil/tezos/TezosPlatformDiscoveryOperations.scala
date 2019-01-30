@@ -17,21 +17,18 @@ object TezosPlatformDiscoveryOperations {
   /**
     * Extracts entities in the DB for the given network
     *
-    * @param  network name of the network
     * @return list of entities as a Future
     */
-  def getEntities(network: String)(implicit ec: ExecutionContext): Future[List[Entity]] = {
-    ApiOperations.countAll.map { counts =>
-      createEntities(network, counts)
-    }
+  def getEntities(implicit ec: ExecutionContext): Future[List[Entity]] = {
+    ApiOperations.countAll.map(createEntities)
   }
 
   /** creates entities out of provided data */
-  private def createEntities(network: String, counts: Map[String, Int]): List[Entity] = {
+  private def createEntities(counts: Map[String, Int]): List[Entity] = {
     for {
       (tableName, _) <- tablesMap
       tableCount <- counts.get(tableName)
-    } yield Entity(tableName, makeDisplayName(tableName), tableCount, network)
+    } yield Entity(tableName, makeDisplayName(tableName), tableCount)
   }
 
   /** Makes list of possible string values of the attributes
@@ -163,16 +160,20 @@ object TezosPlatformDiscoveryOperations {
         if name == tableName
         col <- table.baseTableRow.create_*
       } yield {
-        for {
-          overallCnt <- TezosDb.countRows(table)
-          distinctCnt <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
-        } yield makeAttributes(col, distinctCnt, overallCnt, tableName)
+        if(canQueryType(mapType(col.tpe))) {
+          for {
+            overallCnt <- TezosDb.countRows(table)
+            distinctCnt <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
+          } yield makeAttributes(col, Some(distinctCnt), Some(overallCnt), tableName)
+        } else {
+          DBIO.successful(makeAttributes(col, None, None, tableName))
+        }
       }
     }
   }
 
   /** Makes attributes out of parameters */
-  private def makeAttributes(col: FieldSymbol, distinctCount: Int, overallCount: Int, tableName: String): Attributes =
+  private def makeAttributes(col: FieldSymbol, distinctCount: Option[Int], overallCount: Option[Int], tableName: String): Attributes =
     Attributes(
       name = col.name,
       displayName = makeDisplayName(col.name),

@@ -284,12 +284,12 @@ object TezosDatabaseOperations extends LazyLogging {
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
     limit: Int)
-    (implicit ec: ExecutionContext): DBIO[List[Map[String, Any]]] = {
+    (implicit ec: ExecutionContext): DBIO[List[Map[String, Option[Any]]]] = {
      makeQuery(table, columns)
        .addPredicates(predicates)
        .addOrdering(ordering)
        .addLimit(limit)
-       .as[Map[String, Any]]
+       .as[Map[String, Option[Any]]]
        .map(_.toList)
   }
 
