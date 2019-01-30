@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, BalanceUpdates.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -106,6 +106,47 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table AccountsCheckpoint */
   lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))
+
+  /** Entity class storing rows of table BalanceUpdates
+   *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param operationId Database column operation_id SqlType(int4)
+   *  @param kind Database column kind SqlType(varchar)
+   *  @param contract Database column contract SqlType(varchar), Default(None)
+   *  @param change Database column change SqlType(numeric)
+   *  @param level Database column level SqlType(numeric), Default(None)
+   *  @param delegate Database column delegate SqlType(varchar), Default(None)
+   *  @param category Database column category SqlType(varchar), Default(None) */
+  case class BalanceUpdatesRow(id: Int, operationId: Int, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None)
+  /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
+  implicit def GetResultBalanceUpdatesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]], e3: GR[scala.math.BigDecimal], e4: GR[Option[scala.math.BigDecimal]]): GR[BalanceUpdatesRow] = GR{
+    prs => import prs._
+    BalanceUpdatesRow.tupled((<<[Int], <<[Int], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
+  }
+  /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
+  class BalanceUpdates(_tableTag: Tag) extends profile.api.Table[BalanceUpdatesRow](_tableTag, "balance_updates") {
+    def * = (id, operationId, kind, contract, change, level, delegate, category) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(id), Rep.Some(operationId), Rep.Some(kind), contract, Rep.Some(change), level, delegate, category).shaped.<>({r=>import r._; _1.map(_=> BalanceUpdatesRow.tupled((_1.get, _2.get, _3.get, _4, _5.get, _6, _7, _8)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column id SqlType(serial), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column operation_id SqlType(int4) */
+    val operationId: Rep[Int] = column[Int]("operation_id")
+    /** Database column kind SqlType(varchar) */
+    val kind: Rep[String] = column[String]("kind")
+    /** Database column contract SqlType(varchar), Default(None) */
+    val contract: Rep[Option[String]] = column[Option[String]]("contract", O.Default(None))
+    /** Database column change SqlType(numeric) */
+    val change: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("change")
+    /** Database column level SqlType(numeric), Default(None) */
+    val level: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("level", O.Default(None))
+    /** Database column delegate SqlType(varchar), Default(None) */
+    val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
+    /** Database column category SqlType(varchar), Default(None) */
+    val category: Rep[Option[String]] = column[Option[String]]("category", O.Default(None))
+  }
+  /** Collection-like TableQuery object for table BalanceUpdates */
+  lazy val BalanceUpdates = new TableQuery(tag => new BalanceUpdates(tag))
 
   /** Entity class storing rows of table Blocks
    *  @param level Database column level SqlType(int4)

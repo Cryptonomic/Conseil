@@ -151,6 +151,23 @@ CREATE TABLE public.operations (
     "timestamp" timestamp without time zone NOT NULL
 );
 
+
+--
+-- Name: balance_updates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.balance_updates (
+    id integer NOT NULL,
+    operation_id integer NOT NULL,
+    kind character varying NOT NULL,
+    contract character varying,
+    change numeric NOT NULL,
+    level numeric,
+    delegate character varying,
+    category character varying
+);
+
+
 --
 -- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -
 --
@@ -160,6 +177,7 @@ CREATE TABLE public.accounts_checkpoint (
     block_id character varying NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL
 );
+
 
 --
 -- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: public; Owner: -
@@ -174,7 +192,7 @@ CREATE SEQUENCE public.operations_operation_id_seq
 
 
 --
--- Name: operations_operation_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: operations_operation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.operation_id;
@@ -185,6 +203,32 @@ ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.ope
 --
 
 ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq'::regclass);
+
+
+--
+-- Name: balance_updates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.balance_updates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: balance_updates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.balance_updates_id_seq OWNED BY public.balance_updates.id;
+
+
+--
+-- Name: balance_updates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.balance_updates ALTER COLUMN id SET DEFAULT nextval('public.balance_updates_id_seq'::regclass);
 
 
 --
@@ -217,6 +261,14 @@ ALTER TABLE ONLY public.blocks
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT "operationId" PRIMARY KEY (operation_id);
+
+
+--
+-- Name: balance_updates balance_updates_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.balance_updates
+    ADD CONSTRAINT "balance_updates_key" PRIMARY KEY (id);
 
 
 --
