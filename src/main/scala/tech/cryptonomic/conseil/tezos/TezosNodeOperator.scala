@@ -197,14 +197,16 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       headLevel = blockHead.metadata.header.level
       headHash = blockHead.metadata.hash
     } yield {
+      val bootstrapping = maxLevel == -1
       if (maxLevel < headLevel) {
         //got something to load
-        if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+        if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
         val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
           page => getBlocks(network, (headHash, headLevel), page)
         )
-        (pagedResults, headLevel - maxLevel - 1)
+        val minLevel = if (bootstrapping) 1 else maxLevel
+        (pagedResults, headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")
         (Iterator.empty, 0)
