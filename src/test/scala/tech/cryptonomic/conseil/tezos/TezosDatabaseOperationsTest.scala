@@ -679,14 +679,34 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("operations_hash" -> None, "timestamp" -> Some(new Timestamp(0)), "context" -> Some("context0"), "proto" -> Some(1),
-          "signature" -> Some("sigqs6AXPny9K"), "hash" -> Some("R0NpYZuUeF"), "fitness" -> Some("fitness"),
-          "validation_pass" -> Some(0), "protocol" -> Some("protocol"), "predecessor" -> Some("genesis"),
-          "chain_id" -> Some("YLBMy"), "level" -> Some(0)),
-        Map("operations_hash" -> None, "timestamp" -> Some(new Timestamp(1)), "context" -> Some("context1"), "proto" -> Some(1),
-          "signature" -> Some("sigTZ2IB879wD"), "hash" -> Some("aQeGrbXCmG"), "fitness" -> Some("fitness"),
-          "validation_pass" -> Some(0), "protocol" -> Some("protocol"), "predecessor" -> Some("R0NpYZuUeF"),
-          "chain_id" -> Some("YLBMy"), "level" -> Some(1))
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(0)),
+          "context" -> Some("context0"),
+          "proto" -> Some(1),
+          "signature" -> Some("sigqs6AXPny9K"),
+          "hash" -> Some("R0NpYZuUeF"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("genesis"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(0)
+        ),
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(1)),
+          "context" -> Some("context1"),
+          "proto" -> Some(1),
+          "signature" -> Some("sigTZ2IB879wD"),
+          "hash" -> Some("aQeGrbXCmG"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("R0NpYZuUeF"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(1)
+        )
       )
     }
 
