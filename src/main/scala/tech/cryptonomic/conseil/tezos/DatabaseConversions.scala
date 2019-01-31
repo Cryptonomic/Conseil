@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
-import tech.cryptonomic.conseil.util.Conversion.Id
+import tech.cryptonomic.conseil.util.Conversion._
 
 object DatabaseConversions {
 
@@ -242,7 +242,7 @@ object DatabaseConversions {
   }
 
   implicit val blockToOperationsRow = new Conversion[List, Block, Tables.OperationsRow] {
-    import tech.cryptonomic.conseil.util.ConversionSyntax._
+    import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
     override def convert(from: Block) =
       from.operationGroups.flatMap { group =>
@@ -250,6 +250,40 @@ object DatabaseConversions {
           (from, group.hash, op).convertTo[Tables.OperationsRow]
         }
       }
+
+  }
+
+  /** Not all operations have some form of balance updates... we're ignoring some type, like ballots,
+    * thus we can't extract from those anyway.
+    * We get back an empty List, where not applicable
+    * We define a typeclass/trait that encodes the availability of balance updates
+    */
+  implicit def operationToBalanceUpdates[OP <: Operation : HasBalanceUpdates] = new Conversion[List, (Int, OP), Tables.BalanceUpdatesRow] {
+    import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
+
+    override def convert(from: (Int, OP)) = {
+      val (operationRowId, operation) = from
+      operation.getAllBalanceUpdates.map {
+        case OperationMetadata.BalanceUpdate(
+          kind,
+          change,
+          category,
+          contract,
+          delegate,
+          level
+        ) =>
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          operationId = operationRowId,
+          kind = kind,
+          contract = contract.map(_.id),
+          change = BigDecimal(change),
+          level = level.map(BigDecimal(_)),
+          delegate = delegate.map(_.value),
+          category = category
+        )
+      }
+    }
 
   }
 

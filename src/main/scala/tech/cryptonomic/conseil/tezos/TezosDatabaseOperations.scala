@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrderin
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
-import tech.cryptonomic.conseil.util.ConversionSyntax._
+import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 

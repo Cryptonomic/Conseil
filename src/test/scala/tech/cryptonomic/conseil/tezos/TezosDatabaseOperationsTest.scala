@@ -169,7 +169,7 @@ class TezosDatabaseOperationsTest
               }
 
               import DatabaseConversions._
-              import tech.cryptonomic.conseil.util.ConversionSyntax._
+              import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
               val generatedConversion = (operationBlock, operationGroup.hash, operation.value).convertTo[Tables.OperationsRow]
               val dbConversion = opRow.convertTo[Tables.OperationsRow]
@@ -462,7 +462,7 @@ class TezosDatabaseOperationsTest
 
     "fetch existing operations with their group on a existing hash" in {
       import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.ConversionSyntax._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
 
@@ -490,7 +490,7 @@ class TezosDatabaseOperationsTest
 
     "compute correct average fees from stored operations" in {
       import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.ConversionSyntax._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
@@ -533,7 +533,7 @@ class TezosDatabaseOperationsTest
 
     "return None when computing average fees for a kind with no data" in {
       import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.ConversionSyntax._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
@@ -559,7 +559,7 @@ class TezosDatabaseOperationsTest
 
     "compute average fees only using the selected operation kinds" in {
       import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.ConversionSyntax._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
       val block = generateBlockRows(1, testReferenceTime).head
