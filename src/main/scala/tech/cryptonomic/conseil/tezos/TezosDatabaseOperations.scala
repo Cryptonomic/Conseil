@@ -45,14 +45,46 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Writes blocks and related operations to a database.
     * @param blocks   Block with operations.
-    * @return         Future on database inserts.
+    * @return         Database action to execute.
     */
-  def writeBlocks(blocks: List[Block]): DBIO[Unit] =
+  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+    // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
+    import cats.data.Kleisli
+    import cats.instances.list._
+    import slickeffect.implicits._
+    import DatabaseConversions.OperationTablesData
+    import Tables.{BalanceUpdatesRow, BlocksRow, OperationGroupsRow, OperationsRow}
+
+    //straightforward Database IO Actions waiting to be just run
+    val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
+    val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
+
+    //a function that takes a row to save and creates an action to do that, returning the new id
+    val saveOperationGetNewId = Kleisli[DBIO, OperationsRow, Int] {
+      Tables.Operations returning Tables.Operations.map(_.operationId) += _
+    }
+    //a function that takes rows to save with an operation id, and creates an action to do that
+    val saveBalanceUpdatesForId = Kleisli[DBIO, (Int, List[BalanceUpdatesRow]), Option[Int]]{
+      case (operationRowId, balanceRows) =>
+        Tables.BalanceUpdates ++= balanceRows.map(_.copy(operationId = operationRowId))
+    }
+
+    /* Compose the kleisli functions to get a single "action function"
+     * Calling `.first` will make the kleisli take a tuple and only apply the function to the first element
+     * leaving the second untouched.
+     * We do this to align the output with the input of the second step
+     */
+    val saveOperationsAndBalances: Kleisli[DBIO, (OperationsRow, List[BalanceUpdatesRow]), Option[Int]] =
+      saveOperationGetNewId.first andThen saveBalanceUpdatesForId
+
+    //Sequence the save actions, the third being applied to a whole collection of operations and balances
     DBIO.seq(
-      Tables.Blocks          ++= blocks.map(_.convertTo[Tables.BlocksRow]),
-      Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, Tables.OperationGroupsRow]),
-      Tables.Operations      ++= blocks.flatMap(_.convertToA[List, Tables.OperationsRow])
+      saveBlocksAction,
+      saveGroupsAction,
+      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData]))
     )
+
+  }
 
   /**
     * Writes association of account ids and block data to define accounts that needs update
@@ -120,7 +152,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * at the same time saving enough information about updated accounts to later fetch those accounts
     * @param blocksWithAccounts a map with new blocks as keys, and updated account ids as the values
     */
-  def writeBlocksAndCheckpointAccounts(blocksWithAccounts: Map[Block, List[AccountId]]): DBIO[Option[Int]] = {
+  def writeBlocksAndCheckpointAccounts(blocksWithAccounts: Map[Block, List[AccountId]])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     //ignore the account ids for storage, and prepare the checkpoint account data
     //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
     val (blocks, accountUpdates) =

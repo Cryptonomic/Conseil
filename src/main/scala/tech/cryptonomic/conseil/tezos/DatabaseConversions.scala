@@ -258,12 +258,11 @@ object DatabaseConversions {
     * We get back an empty List, where not applicable
     * We define a typeclass/trait that encodes the availability of balance updates
     */
-  implicit def operationToBalanceUpdates[OP <: Operation : HasBalanceUpdates] = new Conversion[List, (Int, OP), Tables.BalanceUpdatesRow] {
+  implicit def operationToBalanceUpdates[OP <: Operation : HasBalanceUpdates] = new Conversion[List, OP, Tables.BalanceUpdatesRow] {
     import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
 
-    override def convert(from: (Int, OP)) = {
-      val (operationRowId, operation) = from
-      operation.getAllBalanceUpdates.map {
+    override def convert(from: OP) =
+      from.getAllBalanceUpdates.map {
         case OperationMetadata.BalanceUpdate(
           kind,
           change,
@@ -274,7 +273,7 @@ object DatabaseConversions {
         ) =>
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = operationRowId,
+          operationId = 0,
           kind = kind,
           contract = contract.map(_.id),
           change = BigDecimal(change),
@@ -283,7 +282,28 @@ object DatabaseConversions {
           category = category
         )
       }
-    }
+
+  }
+
+  type OperationTablesData = (Tables.OperationsRow, List[Tables.BalanceUpdatesRow])
+
+  /** Will convert to paired list of operations with related balance updates
+    * with one HUGE CAVEAT: both have only temporary, meaningless, `operationId`s
+    *
+    * To correctly create the relation on the db, we must first store the operations, get
+    * each generated id, and pass it to the associated balance-updates
+    */
+  implicit val blockToOperationTablesData = new Conversion[List, Block, OperationTablesData] {
+    import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+    override def convert(from: Block) =
+      from.operationGroups.flatMap { group =>
+        group.contents.map { op =>
+          val operationRow = (from, group.hash, op).convertTo[Tables.OperationsRow]
+          val balanceUpdateRows = op.convertToA[List, Tables.BalanceUpdatesRow]
+          (operationRow, balanceUpdateRows)
+        }
+      }
 
   }
 

@@ -121,6 +121,9 @@ class TezosDatabaseOperationsTest
               groupRow.signature shouldEqual group.signature.map(_.value)
           }
 
+          /* we read operations as mappings to a case class for ease of comparison vs.
+           * having to check un-tagged field values from a HList
+           */
           val dbOperations =
            dbHandler.run {
              val query = for {
@@ -136,45 +139,72 @@ class TezosDatabaseOperationsTest
 
           forAll(dbOperations) {
             case (groupRow, opRow) =>
-              val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
-              val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
-              opRow.operationId should be > -1
-              opRow.operationGroupHash shouldEqual operationGroup.hash.value
-              opRow.blockHash shouldEqual operationBlock.metadata.hash.value
-              opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
-              val operation = opRow.kind match {
-                case "endorsement" =>
-                  operationGroup.contents.find(_.isInstanceOf[Endorsement])
-                case "seed_nonce_revelation" =>
-                  operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
-                case "activate_account" =>
-                  operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
-                case "reveal" =>
-                  operationGroup.contents.find(_.isInstanceOf[Reveal])
-                case "transaction" =>
-                  operationGroup.contents.find(_.isInstanceOf[Transaction])
-                case "origination" =>
-                  operationGroup.contents.find(_.isInstanceOf[Origination])
-                case "delegation" =>
-                  operationGroup.contents.find(_.isInstanceOf[Delegation])
-                case "double_endorsement_evidence" =>
-                  operationGroup.contents.find(_ == DoubleEndorsementEvidence)
-                case "double_baking_evidence" =>
-                  operationGroup.contents.find(_ == DoubleBakingEvidence)
-                case "proposals" =>
-                  operationGroup.contents.find(_ == Proposals)
-                case "ballot" =>
-                  operationGroup.contents.find(_ == Ballot)
-                case _ => None
-              }
+            val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
+            val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
+            //figure out common fields
+            opRow.operationId should be > -1
+            opRow.operationGroupHash shouldEqual operationGroup.hash.value
+            opRow.blockHash shouldEqual operationBlock.metadata.hash.value
+            opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
+            //figure out the correct sub-type
+            val operationMatch = opRow.kind match {
+              case "endorsement" =>
+                operationGroup.contents.find(_.isInstanceOf[Endorsement])
+              case "seed_nonce_revelation" =>
+                operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
+              case "activate_account" =>
+                operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
+              case "reveal" =>
+                operationGroup.contents.find(_.isInstanceOf[Reveal])
+              case "transaction" =>
+                operationGroup.contents.find(_.isInstanceOf[Transaction])
+              case "origination" =>
+                operationGroup.contents.find(_.isInstanceOf[Origination])
+              case "delegation" =>
+                operationGroup.contents.find(_.isInstanceOf[Delegation])
+              case "double_endorsement_evidence" =>
+                operationGroup.contents.find(_ == DoubleEndorsementEvidence)
+              case "double_baking_evidence" =>
+                operationGroup.contents.find(_ == DoubleBakingEvidence)
+              case "proposals" =>
+                operationGroup.contents.find(_ == Proposals)
+              case "ballot" =>
+                operationGroup.contents.find(_ == Ballot)
+              case _ => None
+            }
 
-              import DatabaseConversions._
-              import tech.cryptonomic.conseil.util.Conversion.Syntax._
+            operationMatch shouldBe 'defined
 
-              val generatedConversion = (operationBlock, operationGroup.hash, operation.value).convertTo[Tables.OperationsRow]
-              val dbConversion = opRow.convertTo[Tables.OperationsRow]
-              generatedConversion.tail shouldEqual dbConversion.tail //take into account that the id is only generated on save
+            val operation = operationMatch.value
+
+            /* Convert both the generated and loaded operations to a tables row representation
+             * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
+             * that the conversion itself is correct
+             */
+            import DatabaseConversions._
+            import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+            val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
+            val dbConversion = opRow.convertTo[Tables.OperationsRow]
+            //skip the id, to take into account that it's only generated on save
+            generatedConversion.tail shouldEqual dbConversion.tail
+
+            /* check stored balance updates */
+            //convert and set the real stored operation id
+            val generatedUpdateRows =
+              operation.convertToA[List, Tables.BalanceUpdatesRow]
+                .map(_.copy(operationId = opRow.operationId))
+
+            //reset the generated id for matching
+            val dbUpdateRows = dbHandler.run(
+              Tables.BalanceUpdates.filter(_.operationId === opRow.operationId).result
+            ).futureValue
+            .map(_.copy(id = 0))
+
+            dbUpdateRows should contain theSameElementsAs generatedUpdateRows
+
           }
+
       }
 
 
