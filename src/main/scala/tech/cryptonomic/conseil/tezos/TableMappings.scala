@@ -35,6 +35,7 @@ object DBTableMapping {
     delegatable: Option[Boolean] = None,
     script: Option[String] = None,
     status: Option[String] = None,
+    consumedGas: Option[BigDecimal] = None,
     blockHash: String,
     blockLevel: Int,
     timestamp: java.sql.Timestamp

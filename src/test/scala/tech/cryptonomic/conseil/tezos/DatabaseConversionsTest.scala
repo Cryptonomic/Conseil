@@ -162,9 +162,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -194,6 +195,7 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
+        consumedGas ::
         status :: Nil) {
         _ shouldBe 'empty
       }
@@ -231,9 +233,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -263,6 +266,7 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
+        consumedGas ::
         status :: Nil) {
         _ shouldBe 'empty
       }
@@ -300,9 +304,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -332,6 +337,7 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
+        consumedGas ::
         status :: Nil) {
         _ shouldBe 'empty
       }
@@ -369,9 +375,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -398,6 +405,10 @@ class DatabaseConversionsTest
       }
       publicKey.value shouldBe sampleReveal.public_key.value
       status.value shouldBe sampleReveal.metadata.operation_result.status
+      sampleReveal.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -450,9 +461,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -484,6 +496,10 @@ class DatabaseConversionsTest
       destination.value shouldBe sampleTransaction.destination.id
       parameters shouldBe sampleTransaction.parameters.map(_.expression)
       status.value shouldBe sampleTransaction.metadata.operation_result.status
+      sampleTransaction.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -534,9 +550,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -571,6 +588,10 @@ class DatabaseConversionsTest
       delegatable shouldBe sampleOrigination.delegatable
       script shouldBe sampleOrigination.script.map(_.code.expression)
       status.value shouldBe sampleOrigination.metadata.operation_result.status
+      sampleOrigination.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -618,9 +639,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -647,6 +669,10 @@ class DatabaseConversionsTest
         case _ => storageLimit shouldBe 'empty
       }
       status.value shouldBe sampleDelegation.metadata.operation_result.status
+      sampleDelegation.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -699,9 +725,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -731,7 +758,8 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -768,9 +796,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -800,7 +829,8 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -837,9 +867,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -869,7 +900,8 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -906,9 +938,10 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
@@ -938,7 +971,8 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 

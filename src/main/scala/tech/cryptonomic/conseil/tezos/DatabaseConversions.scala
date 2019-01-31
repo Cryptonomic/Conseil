@@ -15,6 +15,11 @@ object DatabaseConversions {
     case _ => None
   }
 
+  def extractBigDecimal(number: BigNumber): Option[BigDecimal] = number match {
+    case Decimal(value) => Some(value)
+    case _ => None
+  }
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -152,6 +157,7 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         publicKey = Some(pk.value),
         status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.metadata.hash.value,
         blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
@@ -173,6 +179,7 @@ object DatabaseConversions {
         destination = Some(destination.id),
         parameters = parameters.map(_.expression),
         status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.metadata.hash.value,
         blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
@@ -197,6 +204,7 @@ object DatabaseConversions {
         delegatable = delegatable,
         script = script.map(_.code.expression),
         status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.metadata.hash.value,
         blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
@@ -216,6 +224,7 @@ object DatabaseConversions {
         gasLimit = extractBigDecimal(gas_limit),
         storageLimit = extractBigDecimal(storage_limit),
         status = Some(metadata.operation_result.status),
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.metadata.hash.value,
         blockLevel = block.metadata.header.level,
         timestamp = block.metadata.header.timestamp
@@ -334,6 +343,7 @@ object DatabaseConversions {
         delegatable = from.delegatable,
         script = from.script,
         status = from.status,
+        consumedGas = from.consumedGas,
         blockHash = from.blockHash,
         blockLevel = from.blockLevel,
         timestamp = from.timestamp
