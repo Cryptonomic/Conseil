@@ -86,7 +86,7 @@ object ApiOperations extends DataOperations {
           Predicate(
             field = "level",
             operation = OperationType.in,
-            set = levels.toList
+            set = levels.toList.map(_.toString)
           ),
           Predicate(
             field = "chain_id",
@@ -101,7 +101,7 @@ object ApiOperations extends DataOperations {
           Predicate(
             field = "level",
             operation = OperationType.in,
-            set = levels.toList
+            set = levels.toList.map(_.toString)
           ),
           Predicate(
             field = "group_id",
@@ -218,7 +218,7 @@ object ApiOperations extends DataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -228,8 +228,8 @@ object ApiOperations extends DataOperations {
       val (blocks, groups) = paired.unzip
       blocks.headOption.map {
         block => Map(
-          'block -> block,
-          'operation_groups -> groups
+          "block" -> block,
+          "operation_groups" -> groups
         )
       }
     }

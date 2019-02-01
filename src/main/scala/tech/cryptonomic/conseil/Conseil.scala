@@ -8,13 +8,14 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
+import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
 
 import scala.concurrent.ExecutionContextExecutor
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig {
+object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with ErrorAccumulatingCirceSupport {
 
   applicationConfiguration match {
     case Right((server, platforms, securityApi, caching)) =>
@@ -49,18 +50,23 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
                 pathPrefix("metadata") {
                   platformDiscovery.route
                 }
-              } ~ logRequest("Data Route", Logging.DebugLevel) {
-                pathPrefix("data") {
-                  data.getRoute ~ data.postRoute
-                }
               }
-            }
+            } ~ data.postRoute
           } ~ options {
             // Support for CORS pre-flight checks.
             complete("Supported methods : GET and POST.")
           }
         }
-      }
+      } ~
+        pathEndOrSingleSlash {
+          getFromResource("web/index.html")
+        } ~
+        pathPrefix("swagger-ui") {
+          getFromResourceDirectory("web/swagger-ui/")
+        } ~
+        path("openapi.json") {
+          complete(OpenApi.openapiJson)
+        }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       logger.info(
