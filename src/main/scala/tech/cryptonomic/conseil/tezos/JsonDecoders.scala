@@ -8,7 +8,7 @@ object JsonDecoders {
 
     import io.circe.Decoder
     import cats.syntax.functor._
-    import io.circe.{ Error, Errors }
+    import io.circe.{Error, Errors, JsonObject}
     import io.circe.generic.extras._
     import io.circe.generic.extras.semiauto._
     import io.circe.generic.extras.Configuration
@@ -41,8 +41,14 @@ object JsonDecoders {
     /* local definition of a base-58-check string wrapper, to allow parsing validation */
     private final case class Base58Check(content: String) extends AnyVal
 
+    //lookup a key definition and, if found, swaps the key with a new field name, removing the old field altogether
+    private def convertJsonFieldName(from: String, to: String) = (json: JsonObject) =>
+      json(from).map(
+        value => json.remove(from).add(to, value)
+      ).getOrElse(json)
+
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
-    private def deriveDecoderFromString[T](validateString: String => Boolean, failedValidation: String, DecodedConstructor: String => T): Decoder[T] =
+    private def decoderForValidString[T](validateString: String => Boolean, failedValidation: String, DecodedConstructor: String => T): Decoder[T] =
       Decoder.decodeString
         .map(_.trim)
         .ensure(validateString, failedValidation)
@@ -50,7 +56,7 @@ object JsonDecoders {
 
     /* decode only base58check-encoded strings */
     private implicit val base58CheckDecoder: Decoder[Base58Check] =
-      deriveDecoderFromString(
+      decoderForValidString(
         validateString = isBase58Check,
         failedValidation = "The passed-in json string is not a proper Base58Check encoding",
         DecodedConstructor = Base58Check
@@ -58,7 +64,7 @@ object JsonDecoders {
 
     /* decode only valid nonces */
     implicit val nonceDecoder: Decoder[Nonce] =
-      deriveDecoderFromString(
+      decoderForValidString(
         validateString = _.forall(_.isLetterOrDigit),
         failedValidation = "The passed-in json string is not a valid nonce",
         DecodedConstructor = Nonce
@@ -66,7 +72,7 @@ object JsonDecoders {
 
     /* decode only valid secrets */
     implicit val secretDecoder: Decoder[Secret] =
-      deriveDecoderFromString(
+      decoderForValidString(
         validateString = _.forall(_.isLetterOrDigit),
         failedValidation = "The passed-in json string is not a valid secret",
         DecodedConstructor = Secret
@@ -155,7 +161,17 @@ object JsonDecoders {
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] = deriveDecoder
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] = deriveDecoder
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
-      implicit val operationDecoder: Decoder[Operation] = deriveDecoder
+      //the json needs pre-processing, to see if we need to adapt the schema version between different networks
+      implicit val operationDecoder: Decoder[Operation] =
+        deriveDecoder[Operation].prepare { cursor =>
+          if (cursor.keys.exists(_.exists(_ == "managerPubkey"))) {
+            //dig with the cursor to get the json object and update it
+            cursor.withFocus(_.mapObject(
+              convertJsonFieldName(from = "managerPubkey", to = "manager_pubkey")
+            ))
+          }
+          else cursor
+        }
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
 
     }

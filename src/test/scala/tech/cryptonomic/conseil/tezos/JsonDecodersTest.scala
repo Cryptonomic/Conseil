@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{WordSpec, Matchers, EitherValues}
 import TezosTypes._
-import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
@@ -211,7 +210,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode an endorsement operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(endorsementJson))
+      val decoded = decode[Operation](endorsementJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -221,7 +220,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode a seed nonce revelation operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(nonceRevelationJson))
+      val decoded = decode[Operation](nonceRevelationJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -231,7 +230,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode an account activation operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(activationJson))
+      val decoded = decode[Operation](activationJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -241,7 +240,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode an reveal operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(revealJson))
+      val decoded = decode[Operation](revealJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -251,7 +250,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode an transaction operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(transactionJson))
+      val decoded = decode[Operation](transactionJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -261,7 +260,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode an origination operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(originationJson))
+      val decoded = decode[Operation](originationJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -271,7 +270,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode an origination operation from alphanet schema json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(alphanetOriginationJson))
+      val decoded = decode[Operation](alphanetOriginationJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
@@ -281,7 +280,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode a delegation operation from json" in new OperationsJsonData {
-      val decoded = decode[Operation](adaptManagerPubkeyField(delegationJson))
+      val decoded = decode[Operation](delegationJson)
       decoded shouldBe 'right
 
       val operation = decoded.right.value
