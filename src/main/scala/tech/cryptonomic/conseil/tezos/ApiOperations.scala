@@ -209,8 +209,14 @@ object ApiOperations extends DataOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
-    dbHandle.run(latestBlockIO())
+  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] =
+    runBlockFetch {
+      latestBlockIO flatMap (
+        _.map(
+          block => fetchBlockIO(BlockHash(block.hash))
+        ).getOrElse(DBIO.successful(Seq.empty))
+      )
+    }
 
   /**
     * Fetches a block by block hash from the db.
@@ -218,13 +224,12 @@ object ApiOperations extends DataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
-    val joins = for {
-      groups <- Tables.OperationGroups if groups.blockId === hash.value
-      block <- groups.blocksFk
-    } yield (block, groups)
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] =
+    runBlockFetch(fetchBlockIO(hash))
 
-    dbHandle.run(joins.result).map { paired =>
+  /* actually executes a query that is supposed to return a block with info on operations */
+  private def runBlockFetch(fetchAction: DBIO[Seq[(Tables.BlocksRow, Tables.OperationGroupsRow)]])(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
+    dbHandle.run(fetchAction).map { paired =>
       val (blocks, groups) = paired.unzip
       blocks.headOption.map {
         block => Map(
@@ -233,6 +238,22 @@ object ApiOperations extends DataOperations {
         )
       }
     }
+  }
+
+  /**
+    * Fetches a block by block hash from the db.
+    *
+    * @param hash The block's hash
+    * @return A Db action that will return the block along with its operations, if the hash matches anything
+    */
+  def fetchBlockIO(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Seq[(Tables.BlocksRow, Tables.OperationGroupsRow)]] = {
+    val joined = for {
+      groups <- Tables.OperationGroups if groups.blockId === hash.value
+      block <- groups.blocksFk
+    } yield (block, groups)
+
+    joined.result
+
   }
 
   /**
