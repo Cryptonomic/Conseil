@@ -243,7 +243,7 @@ class TezosDatabaseOperationsTest
           Tables.Accounts += account
         )
 
-      dbHandler.run(populate)
+      dbHandler.run(populate).futureValue
 
       //prepare new accounts
       val accountChanges = 2
