@@ -12,6 +12,7 @@ import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
+import tech.cryptonomic.conseil.routes.openapi.OpenApi
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -57,17 +58,17 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
             complete("Supported methods : GET and POST.")
           }
         }
-      } ~
+      } ~ path("doc") {
         pathEndOrSingleSlash {
           getFromResource("web/index.html")
         } ~
-        pathPrefix("swagger-ui") {
-          getFromResourceDirectory("web/swagger-ui/")
-        } ~
-        path("openapi.json") {
-          complete(OpenApi.openapiJson)
-        }
-
+          pathPrefix("swagger-ui") {
+            getFromResourceDirectory("web/swagger-ui/")
+          } ~
+          path("openapi.json") {
+            complete(OpenApi.openapiJson)
+          }
+      }
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       logger.info(
         """
