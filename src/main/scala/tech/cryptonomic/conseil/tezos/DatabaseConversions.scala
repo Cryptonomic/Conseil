@@ -271,8 +271,10 @@ object DatabaseConversions {
     import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
 
     override def convert(from: OP) =
-      from.getAllBalanceUpdates.map {
-        case OperationMetadata.BalanceUpdate(
+      from.getAllBalanceUpdates.flatMap {
+        case (source, updates) =>
+        updates.map{
+          case OperationMetadata.BalanceUpdate(
           kind,
           change,
           category,
@@ -282,7 +284,8 @@ object DatabaseConversions {
         ) =>
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = source.name,
           kind = kind,
           contract = contract.map(_.id),
           change = BigDecimal(change),
@@ -291,6 +294,7 @@ object DatabaseConversions {
           category = category
         )
       }
+    }.toList
 
   }
 

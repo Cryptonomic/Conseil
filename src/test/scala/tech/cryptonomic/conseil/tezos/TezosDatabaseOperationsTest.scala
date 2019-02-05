@@ -193,11 +193,11 @@ class TezosDatabaseOperationsTest
             //convert and set the real stored operation id
             val generatedUpdateRows =
               operation.convertToA[List, Tables.BalanceUpdatesRow]
-                .map(_.copy(operationId = opRow.operationId))
+                .map(_.copy(sourceId = opRow.operationId))
 
             //reset the generated id for matching
             val dbUpdateRows = dbHandler.run(
-              Tables.BalanceUpdates.filter(_.operationId === opRow.operationId).result
+              Tables.BalanceUpdates.filter(_.sourceId === opRow.operationId).result
             ).futureValue
             .map(_.copy(id = 0))
 

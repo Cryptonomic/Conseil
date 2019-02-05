@@ -42,7 +42,8 @@ class DatabaseConversionsTest
       sampleReveal.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation",
           kind = "contract",
           contract = Some("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
           change = -10000L,
@@ -52,7 +53,8 @@ class DatabaseConversionsTest
         ),
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation",
           kind = "freezer",
           contract = None,
           change = 10000L,
@@ -70,7 +72,8 @@ class DatabaseConversionsTest
       sampleOrigination.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation",
           kind = "contract",
           contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
           change = -1441L,
@@ -80,7 +83,8 @@ class DatabaseConversionsTest
         ),
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation",
           kind = "freezer",
           contract = None,
           change = 1441L,
@@ -90,7 +94,8 @@ class DatabaseConversionsTest
         ),
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation_result",
           kind = "contract",
           contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
           change = -46000L,
@@ -100,7 +105,8 @@ class DatabaseConversionsTest
         ),
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation_result",
           kind = "contract",
           contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
           change = -257000L,
@@ -110,7 +116,8 @@ class DatabaseConversionsTest
         ),
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation_result",
           kind = "contract",
           contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
           change = -1000000L,
@@ -120,7 +127,8 @@ class DatabaseConversionsTest
         ),
         Tables.BalanceUpdatesRow(
           id = 0,
-          operationId = 0,
+          sourceId = 0,
+          source = "operation_result",
           kind = "contract",
           contract = Some("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"),
           change = 1000000L,
