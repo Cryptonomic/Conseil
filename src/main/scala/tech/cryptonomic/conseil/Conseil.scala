@@ -12,7 +12,7 @@ import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.routes.openapi.OpenApi
+import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -66,7 +66,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
             getFromResourceDirectory("web/swagger-ui/")
           } ~
           path("openapi.json") {
-            complete(OpenApi.openapiJson)
+            complete(OpenApiDoc.openapiJson)
           }
       }
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)

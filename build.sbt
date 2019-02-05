@@ -2,7 +2,7 @@ name := "Conseil"
 scalaVersion := "2.12.8"
 
 val akkaHttpVersion = "10.1.0"
-val akkaVersion = "2.5.11"
+val akkaVersion = "2.5.19"
 val slickVersion = "3.2.1"
 val circeVersion = "0.11.0"
 val endpointsVersion = "0.8.0"
@@ -29,12 +29,12 @@ libraryDependencies  ++=  Seq(
   "io.circe"                        %% "circe-parser"              % circeVersion,
   "io.circe"                        %% "circe-generic"             % circeVersion,
   "io.circe"                        %% "circe-generic-extras"      % circeVersion,
-  "de.heikoseeberger" %% "akka-http-circe" % "1.23.0",
+  "de.heikoseeberger" %% "akka-http-circe" % "1.23.0" exclude("com.typesafe.akka", "akka-http"),
   "org.julienrf" %% "endpoints-algebra" % endpointsVersion,
   "org.julienrf" %% "endpoints-openapi" % endpointsVersion,
   "org.julienrf" %% "endpoints-json-schema-generic" % endpointsVersion,
-  "org.julienrf" %% "endpoints-akka-http-server" % endpointsVersion,
-  "de.heikoseeberger"               %% "akka-http-jackson"         % "1.22.0",
+  "org.julienrf" %% "endpoints-akka-http-server" % endpointsVersion exclude("com.typesafe.akka", "akka-http"),
+  "de.heikoseeberger"               %% "akka-http-jackson"         % "1.23.0",
   "com.typesafe.slick"              %% "slick"                     % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-hikaricp"            % slickVersion exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-codegen"             % slickVersion,

@@ -31,7 +31,7 @@ object DataTypes {
   case class Predicate(
     field: String,
     @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
-    set: List[Any],
+    set: List[Any] = List.empty,
     inverse: Boolean = false,
     precision: Option[Int] = None
   )

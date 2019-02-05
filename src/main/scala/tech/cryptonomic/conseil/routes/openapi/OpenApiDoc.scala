@@ -6,7 +6,7 @@ import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
 import io.circe.Json
 import io.circe.syntax._
 
-object OpenApi
+object OpenApiDoc
   extends Endpoints
     with openapi.Endpoints
     with openapi.JsonSchemaEntities
@@ -17,9 +17,9 @@ object OpenApi
   def openapiJson: Json =
     openapi.asJson
 
-  def validated[A](response: List[OpenApi.DocumentedResponse], invalidDocs: Documentation): List[OpenApi.DocumentedResponse] =
-    response :+ OpenApi.DocumentedResponse(
-      status = 401,
+  def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
+    response :+ OpenApiDoc.DocumentedResponse(
+      status = 400,
       documentation = invalidDocs.getOrElse(""),
       content = Map(
         "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString)))

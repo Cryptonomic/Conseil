@@ -5,7 +5,6 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
 
 trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
 
-
   implicit def queryRequestSchema: JsonSchema[ApiQuery] =
     genericJsonSchema[ApiQuery]
 
@@ -23,13 +22,6 @@ trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
 
   implicit def anySchema: JsonSchema[Any]
 
-  //implicit def anyOptionSchema: JsonSchema[Option[Any]]
-
-  //implicit def sth[A : JsonSchema : Encoder ]: JsonSchema[Map[String, A]]
-
-  //implicit def mapRespSchema[A : JsonSchema : Encoder ]: JsonSchema[Map[String, Option[A]]]
-
   implicit def queryResponseSchema: JsonSchema[List[Map[String, Option[Any]]]]
-
 
 }

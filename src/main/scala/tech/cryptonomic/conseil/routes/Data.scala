@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import endpoints.akkahttp
+import io.circe.Decoder.Result
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
@@ -71,7 +72,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   import io.circe._
   import io.circe.syntax._
 
-  private val anyEncoder: Encoder[Any] = (a: Any) => a match {
+  def anyEncoder: Encoder[Any] = (a: Any) => a match {
     case x: java.lang.String => Json.fromString(x)
     case x: java.lang.Integer => Json.fromInt(x)
     case x: java.sql.Timestamp => Json.fromBigInt(x.getTime)
