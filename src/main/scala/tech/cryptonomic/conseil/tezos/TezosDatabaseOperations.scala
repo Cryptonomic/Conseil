@@ -66,7 +66,7 @@ object TezosDatabaseOperations extends LazyLogging {
     //a function that takes rows to save with an operation id, and creates an action to do that
     val saveBalanceUpdatesForId = Kleisli[DBIO, (Int, List[BalanceUpdatesRow]), Option[Int]]{
       case (operationRowId, balanceRows) =>
-        Tables.BalanceUpdates ++= balanceRows.map(_.copy(sourceId = operationRowId))
+        Tables.BalanceUpdates ++= balanceRows.map(_.copy(sourceId = Some(operationRowId)))
     }
 
     /* Compose the kleisli functions to get a single "action function"

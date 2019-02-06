@@ -160,7 +160,8 @@ CREATE TABLE public.operations (
 CREATE TABLE public.balance_updates (
     id integer NOT NULL,
     source character varying NOT NULL,
-    source_id integer NOT NULL,
+    source_id integer,
+    source_hash character varying,
     kind character varying NOT NULL,
     contract character varying,
     change numeric NOT NULL,

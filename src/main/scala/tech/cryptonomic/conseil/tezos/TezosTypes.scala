@@ -57,7 +57,8 @@ object TezosTypes {
                             protocol: String,
                             chain_id: Option[String],
                             hash: BlockHash,
-                            header: BlockHeader
+                            header: BlockHeader,
+                            balance_updates: List[OperationMetadata.BalanceUpdate]
                   )
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`

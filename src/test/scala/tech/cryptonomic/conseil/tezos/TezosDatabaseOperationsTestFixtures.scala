@@ -69,10 +69,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
     def generateOne(level: Int, predecessorHash: BlockHash): Block =
       Block(
         BlockMetadata(
-          "protocol",
-          Some(chainHash),
-          BlockHash(generateHash(10)),
-          BlockHeader(
+          protocol = "protocol",
+          chain_id = Some(chainHash),
+          hash = BlockHash(generateHash(10)),
+          header = BlockHeader(
             level = level,
             proto = 1,
             predecessor = predecessorHash,
@@ -82,7 +82,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
             fitness = Seq.empty,
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
-          )),
+          ),
+          balance_updates = List.empty
+        ),
         operationGroups = List.empty
       )
 

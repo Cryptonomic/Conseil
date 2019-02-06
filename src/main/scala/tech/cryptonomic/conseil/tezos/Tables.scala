@@ -110,31 +110,34 @@ trait Tables {
   /** Entity class storing rows of table BalanceUpdates
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
    *  @param source Database column source SqlType(varchar)
-   *  @param sourceId Database column source_id SqlType(int4)
+   *  @param sourceId Database column source_id SqlType(int4), Default(None)
+   *  @param sourceHash Database column source_hash SqlType(varchar), Default(None)
    *  @param kind Database column kind SqlType(varchar)
    *  @param contract Database column contract SqlType(varchar), Default(None)
    *  @param change Database column change SqlType(numeric)
    *  @param level Database column level SqlType(numeric), Default(None)
    *  @param delegate Database column delegate SqlType(varchar), Default(None)
    *  @param category Database column category SqlType(varchar), Default(None) */
-  case class BalanceUpdatesRow(id: Int, source: String, sourceId: Int, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None)
+  case class BalanceUpdatesRow(id: Int, source: String, sourceId: Option[Int] = None, sourceHash: Option[String] = None, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None)
   /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
-  implicit def GetResultBalanceUpdatesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[String]], e3: GR[scala.math.BigDecimal], e4: GR[Option[scala.math.BigDecimal]]): GR[BalanceUpdatesRow] = GR{
+  implicit def GetResultBalanceUpdatesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[Int]], e3: GR[Option[String]], e4: GR[scala.math.BigDecimal], e5: GR[Option[scala.math.BigDecimal]]): GR[BalanceUpdatesRow] = GR{
     prs => import prs._
-    BalanceUpdatesRow.tupled((<<[Int], <<[String], <<[Int], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
+    BalanceUpdatesRow.tupled((<<[Int], <<[String], <<?[Int], <<?[String], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
   }
   /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
   class BalanceUpdates(_tableTag: Tag) extends profile.api.Table[BalanceUpdatesRow](_tableTag, "balance_updates") {
-    def * = (id, source, sourceId, kind, contract, change, level, delegate, category) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
+    def * = (id, source, sourceId, sourceHash, kind, contract, change, level, delegate, category) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(id), Rep.Some(source), Rep.Some(sourceId), Rep.Some(kind), contract, Rep.Some(change), level, delegate, category).shaped.<>({r=>import r._; _1.map(_=> BalanceUpdatesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5, _6.get, _7, _8, _9)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(id), Rep.Some(source), sourceId, sourceHash, Rep.Some(kind), contract, Rep.Some(change), level, delegate, category).shaped.<>({r=>import r._; _1.map(_=> BalanceUpdatesRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6, _7.get, _8, _9, _10)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(serial), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
     /** Database column source SqlType(varchar) */
     val source: Rep[String] = column[String]("source")
-    /** Database column source_id SqlType(int4) */
-    val sourceId: Rep[Int] = column[Int]("source_id")
+    /** Database column source_id SqlType(int4), Default(None) */
+    val sourceId: Rep[Option[Int]] = column[Option[Int]]("source_id", O.Default(None))
+    /** Database column source_hash SqlType(varchar), Default(None) */
+    val sourceHash: Rep[Option[String]] = column[Option[String]]("source_hash", O.Default(None))
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
     /** Database column contract SqlType(varchar), Default(None) */

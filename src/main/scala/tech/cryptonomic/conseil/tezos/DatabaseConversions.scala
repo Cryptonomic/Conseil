@@ -269,6 +269,7 @@ object DatabaseConversions {
     */
   implicit def operationToBalanceUpdates[OP <: Operation] = new Conversion[List, OP, Tables.BalanceUpdatesRow] {
     import tech.cryptonomic.conseil.tezos.OperationBalances._
+    import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
     import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
     import cats.syntax.show._
 
@@ -286,7 +287,6 @@ object DatabaseConversions {
         ) =>
         Tables.BalanceUpdatesRow(
           id = 0,
-          sourceId = 0,
           source = source.show,
           kind = kind,
           contract = contract.map(_.id),
