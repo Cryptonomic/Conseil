@@ -19,7 +19,7 @@ class DatabaseConversionsTest
     val groupHash = OperationHash("operationhash")
 
     //keep level 1, dropping the genesis block
-    val block = generateBlocks(toLevel = 1, startAt = testReferenceTime).drop(1).head
+    val block = generateSingleBlock(atLevel = 1, atTime = testReferenceTime)
 
     val sut = DatabaseConversions
 
@@ -35,9 +35,67 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidPositiveDecimal("1000A")) shouldBe 'empty
     }
 
+    "convert Balance Updates in BlockMetadata to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import BlockBalances._
+      import SymbolSourceDescriptor.Show._
+
+      //generate data
+      val updates = generateBalanceUpdates(3)
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceTime, balanceUpdates = updates)
+
+      //convert
+      val updateRows = block.metadata.convertToA[List, Tables.BalanceUpdatesRow]
+
+      //verify
+      val up1 :: up2 :: up3 :: Nil = updates
+
+      updateRows should contain theSameElementsAs List(
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = Some(block.metadata.hash.value),
+          source = "block",
+          kind = up1.kind,
+          contract = up1.contract.map(_.id),
+          change = BigDecimal(up1.change),
+          level = up1.level.map(BigDecimal(_)),
+          delegate = up1.delegate.map(_.value),
+          category = up1.category
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = Some(block.metadata.hash.value),
+          source = "block",
+          kind = up2.kind,
+          contract = up2.contract.map(_.id),
+          change = BigDecimal(up2.change),
+          level = up2.level.map(BigDecimal(_)),
+          delegate = up2.delegate.map(_.value),
+          category = up2.category
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = Some(block.metadata.hash.value),
+          source = "block",
+          kind = up3.kind,
+          contract = up3.contract.map(_.id),
+          change = BigDecimal(up3.change),
+          level = up3.level.map(BigDecimal(_)),
+          delegate = up3.delegate.map(_.value),
+          category = up3.category
+        )
+      )
+    }
+
     "convert Balance Updates in Operations to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
+      import OperationBalances._
+      import SymbolSourceDescriptor.Show._
 
       sampleReveal.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
         Tables.BalanceUpdatesRow(
@@ -70,6 +128,8 @@ class DatabaseConversionsTest
     "convert Balance Updates in all nested levels of Operations to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
+      import OperationBalances._
+      import SymbolSourceDescriptor.Show._
 
       sampleOrigination.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
         Tables.BalanceUpdatesRow(

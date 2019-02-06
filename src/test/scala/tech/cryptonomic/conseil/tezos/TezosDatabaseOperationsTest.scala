@@ -183,6 +183,9 @@ class TezosDatabaseOperationsTest
              */
             import DatabaseConversions._
             import tech.cryptonomic.conseil.util.Conversion.Syntax._
+            //used as a constraint to read balance updates from operations
+            import tech.cryptonomic.conseil.tezos.OperationBalances._
+            import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
 
             val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
             val dbConversion = opRow.convertTo[Tables.OperationsRow]

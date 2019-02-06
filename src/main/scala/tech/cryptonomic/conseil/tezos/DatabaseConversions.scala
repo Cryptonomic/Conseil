@@ -265,15 +265,17 @@ object DatabaseConversions {
   /** Not all operations have some form of balance updates... we're ignoring some type, like ballots,
     * thus we can't extract from those anyway.
     * We get back an empty List, where not applicable
-    * We define a typeclass/trait that encodes the availability of balance updates
+    * We define a typeclass/trait that encodes the availability of balance updates, to reuse it for operations as well as blocks
+    * @tparam T the source type that contains the balance updates values
+    * @tparam S the SourceDescriptor type for the available `HasBalanceUpdates[T]` instance, used to add the `Show` contraint
+    * @param aux used to search for an instance of the `HasBalanceUpdates` type class for `T` and at the same time expose the `SourceDescriptor` type as `S`
+    * @param show provide a way to convert the `S` descriptor to a string, needed to write it on the `BalanceUpdatesRow`
     */
-  implicit def operationToBalanceUpdates[OP <: Operation] = new Conversion[List, OP, Tables.BalanceUpdatesRow] {
-    import tech.cryptonomic.conseil.tezos.OperationBalances._
-    import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+  implicit def anyToBalanceUpdates[T, S](implicit aux: HasBalanceUpdates.Aux[T, S], show: cats.Show[S]) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
     import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
     import cats.syntax.show._
 
-    override def convert(from: OP) =
+    override def convert(from: T) =
       from.getAllBalanceUpdates.flatMap {
         case (source, updates) =>
         updates.map{
@@ -288,6 +290,7 @@ object DatabaseConversions {
         Tables.BalanceUpdatesRow(
           id = 0,
           source = source.show,
+          sourceHash = from.getHash,
           kind = kind,
           contract = contract.map(_.id),
           change = BigDecimal(change),
@@ -300,16 +303,19 @@ object DatabaseConversions {
 
   }
 
+  /** Utility alias when we need to keep related data paired together */
   type OperationTablesData = (Tables.OperationsRow, List[Tables.BalanceUpdatesRow])
 
   /** Will convert to paired list of operations with related balance updates
-    * with one HUGE CAVEAT: both have only temporary, meaningless, `operationId`s
+    * with one HUGE CAVEAT: both have only temporary, meaningless, `sourceId`s
     *
     * To correctly create the relation on the db, we must first store the operations, get
     * each generated id, and pass it to the associated balance-updates
     */
   implicit val blockToOperationTablesData = new Conversion[List, Block, OperationTablesData] {
     import tech.cryptonomic.conseil.util.Conversion.Syntax._
+    import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+    import tech.cryptonomic.conseil.tezos.OperationBalances._
 
     override def convert(from: Block) =
       from.operationGroups.flatMap { group =>

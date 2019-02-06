@@ -100,6 +100,44 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   }
 
+  /** Randomly geneates a single block, for a specific level
+    * WARN the algorithm is linear in the level requested, don't use it with high values
+    */
+  def generateSingleBlock(atLevel: Int, atTime: Timestamp, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
+    val generated = generateBlocks(toLevel = atLevel, startAt = atTime)
+      .last
+
+    //ouch, how to hurt ourselves with deeply nested case class attributes!
+    generated.copy(
+        metadata = generated.metadata.copy(
+          header = generated.metadata.header.copy(
+            timestamp = atTime
+          ),
+          balance_updates = balanceUpdates
+        )
+      )
+  }
+
+  def generateBalanceUpdates(howMany: Int)(implicit randomSeed: RandomSeed): List[OperationMetadata.BalanceUpdate] = {
+    require(howMany > 0, "the test can only generate a positive number of balance updates, you asked for a non positive value")
+
+    val randomSource = new Random(randomSeed.seed)
+
+    //custom hash generator with predictable seed
+    val generateAlphaNumeric: Int => String = alphaNumericGenerator(randomSource)
+
+    List.fill(howMany) {
+      OperationMetadata.BalanceUpdate(
+        kind = generateAlphaNumeric(10),
+        change = randomSource.nextLong(),
+        category = Some(generateAlphaNumeric(10)),
+        contract = Some(ContractId(generateAlphaNumeric(10))),
+        delegate = Some(PublicKeyHash(generateAlphaNumeric(10))),
+        level = Some(randomSource.nextInt(100))
+      )
+    }
+
+  }
 
   /* randomly populate a number of blocks based on a level range */
   def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
@@ -214,7 +252,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly generates a number of account rows for some block */
   def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
+    require(howMany > 0, "the test can only generate a positive number of accounts, you asked for a non positive value")
 
     (1 to howMany).map {
       currentId =>
