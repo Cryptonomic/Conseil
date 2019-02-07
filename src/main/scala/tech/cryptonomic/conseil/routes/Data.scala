@@ -1,15 +1,18 @@
 package tech.cryptonomic.conseil.routes
 
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import endpoints.akkahttp
-import io.circe.Decoder.Result
+import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.routes.openapi.Endpoints
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{ApiQuery, QueryValidationError}
+import tech.cryptonomic.conseil.routes.openapi.{Endpoints, Validation}
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -49,6 +52,33 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       }.left.map(Future.successful).bisequence.map(eitherOptionOps)
   }
 
+  import shapeless._
+  import poly._
+  import shapeless.ops.tuple.FlatMapper
+  import syntax.std.tuple._
+
+  trait LowPriorityFlatten extends Poly1 {
+    implicit def default[T] = at[T](Tuple1(_))
+  }
+  object flatten extends LowPriorityFlatten {
+    implicit def caseTuple[P <: Product](implicit fm: FlatMapper[P, flatten.type]) =
+      at[P](_.flatMap(flatten))
+  }
+
+  val blocksRoute: Route = blocksEndpoint.implementedByAsync {
+    case ((platform, network, cc), apiKey) => {
+      val ccc = flatten(cc)
+      val query = (ApiOperations.Filter.readParams _).tupled
+      val sth = query(ccc)
+      val sth2 = sth.toQuery
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
+          queryProtocolPlatform.queryWithPredicates(platform, "blocks", sth2)
+        }
+      }
+    }
+  }
+
   private def optionFutureOps[M](x: Option[Future[M]]): Future[Option[M]] =
     Future.sequence(Option.option2Iterable(x)).map(_.headOption)
 
@@ -59,18 +89,25 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   }
 
 
-  /** common route builder with platform and network validation */
-  private def commonRoute(routeBuilder: (String, String) => Route): Route =
-    pathPrefix(Segment) { platform =>
-      pathPrefix(Segment) { network =>
-        validatePlatformAndNetwork(config, platform, network) {
-          routeBuilder(platform, network)
-        }
-      }
-    }
+//  /** common route builder with platform and network validation */
+//  private def commonRoute(routeBuilder: (String, String) => Route): Route =
+//    pathPrefix(Segment) { platform =>
+//      pathPrefix(Segment) { network =>
+//        validatePlatformAndNetwork(config, platform, network) {
+//          routeBuilder(platform, network)
+//        }
+//      }
+//    }
 
   import io.circe._
   import io.circe.syntax._
+
+  def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
+    case Left(errors) =>
+      complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
+    case Right(success) =>
+      response(success)
+  }
 
   def anyEncoder: Encoder[Any] = (a: Any) => a match {
     case x: java.lang.String => Json.fromString(x)

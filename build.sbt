@@ -12,6 +12,11 @@ scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
 scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
 
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  Resolver.sonatypeRepo("snapshots")
+)
+
 libraryDependencies  ++=  Seq(
   "ch.qos.logback"                   % "logback-classic"           % "1.2.3",
   "com.typesafe"                     % "config"                    % "1.3.2",
@@ -33,7 +38,8 @@ libraryDependencies  ++=  Seq(
   "org.julienrf" %% "endpoints-algebra" % endpointsVersion,
   "org.julienrf" %% "endpoints-openapi" % endpointsVersion,
   "org.julienrf" %% "endpoints-json-schema-generic" % endpointsVersion,
-  "org.julienrf" %% "endpoints-akka-http-server" % endpointsVersion exclude("com.typesafe.akka", "akka-http"),
+  "org.julienrf" %% "endpoints-akka-http-server" % endpointsVersion,
+  "com.chuusai" %% "shapeless" % "2.3.3",
   "de.heikoseeberger"               %% "akka-http-jackson"         % "1.23.0",
   "com.typesafe.slick"              %% "slick"                     % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-hikaricp"            % slickVersion exclude("org.slf4j", "slf4j-api"),

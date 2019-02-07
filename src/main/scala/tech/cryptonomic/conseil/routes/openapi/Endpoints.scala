@@ -1,18 +1,21 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.server.Directives.{complete, parameter}
 import akka.http.scaladsl.server.Route
 import endpoints.algebra
 import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{ApiQuery, QueryValidationError}
 import tech.cryptonomic.conseil.util.RouteHandling
+import akka.http.scaladsl.server.Directives._
+
 
 trait Endpoints
   extends algebra.Endpoints
     with algebra.JsonSchemaEntities
     with RouteHandling
     with JsonSchemas
+    with QueryStringListsServer
     with Validation {
 
   //{{protocol}}://{{hostname}}:{{port}}/v2/data/{{platform}}/{{network}}/{{entity}}
@@ -27,33 +30,30 @@ trait Endpoints
       ).orNotFound(Some("Not found"))
     )
 
-  def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
-    case Left(errors) =>
-      complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
-    case Right(success) =>
-      response(success)
-  }
+  def blocksEndpoint: Endpoint[((String, String, (((((((Option[Int], List[String], List[Int]), List[String], List[String]), List[String], List[String]), List[String], List[String]), List[String], List[String]), List[String], List[String]), Option[String], Option[String])), String), Option[List[Map[String, Option[Any]]]]] =
+    endpoint(
+      request = get(
+        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "blocks" /? myQueryStringParams,
+        headers = header("apiKey")),
+      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint")).orNotFound(Some("Not found"))
+    )
 
-  //  "limit".as[Int].?,
-  //  "block_id".as[String].*,
-  //  "block_level".as[Int].*,
-  //  "block_netid".as[String].*,
-  //  "block_protocol".as[String].*,
-  //  "operation_id".as[String].*,
-  //  "operation_source".as[String].*,
-  //  "operation_destination".as[String].*,
-  //  "operation_participant".as[String].*,
-  //  "operation_kind".as[String].*,
-  //  "account_id".as[String].*,
-  //  "account_manager".as[String].*,
-  //  "account_delegate".as[String].*,
-  //  "sort_by".as[String].?,
-  //  "order".as[String].?
 
-  //  def queryBlocksEndpoint = endpoint(
-  //    get(path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "blocks"),
-  //    ? qs),
-  //    jsonResponse[List[Map[String, Option[Any]]]](docs = Some("List of available Pizzas in menu"))
-  //  )
+  val myQueryStringParams =
+    optQs[Int]("limit") &
+      qsList[String]("blockIDs") &
+      qsList[Int]("levels") &
+      qsList[String]("chainIDs") &
+      qsList[String]("protocols") &
+      qsList[String]("operationGroupIDs") &
+      qsList[String]("operationSources") &
+      qsList[String]("operationDestinations") &
+      qsList[String]("operationParticipants") &
+      qsList[String]("operationKinds") &
+      qsList[String]("accountIDs") &
+      qsList[String]("accountManagers") &
+      qsList[String]("accountDelegates") &
+      optQs[String]("sortBy") &
+      optQs[String]("order")
 
 }

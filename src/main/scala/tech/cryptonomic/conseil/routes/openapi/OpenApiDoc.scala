@@ -12,7 +12,7 @@ object OpenApiDoc
     with openapi.JsonSchemaEntities
     with openapi.BasicAuthentication {
 
-  def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(queryEndpoint)
+  def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(queryEndpoint, blocksEndpoint)
 
   def openapiJson: Json =
     openapi.asJson
@@ -30,4 +30,5 @@ object OpenApiDoc
 
 
   override implicit def queryResponseSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("any")
+
 }
