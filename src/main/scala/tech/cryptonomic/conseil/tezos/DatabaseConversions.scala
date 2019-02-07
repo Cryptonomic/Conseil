@@ -56,7 +56,7 @@ object DatabaseConversions {
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
-      val header = from.metadata.header
+      val header = from.data.header
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
@@ -66,9 +66,9 @@ object DatabaseConversions {
         fitness = header.fitness.mkString(","),
         context = Some(header.context), //put in later
         signature = header.signature,
-        protocol = from.metadata.protocol,
-        chainId = from.metadata.chain_id,
-        hash = from.metadata.hash.value,
+        protocol = from.data.protocol,
+        chainId = from.data.chain_id,
+        hash = from.data.hash.value,
         operationsHash = header.operations_hash
       )
     }
@@ -83,7 +83,7 @@ object DatabaseConversions {
           hash = og.hash.value,
           branch = og.branch.value,
           signature = og.signature.map(_.value),
-          blockId = from.metadata.hash.value
+          blockId = from.data.hash.value
         )
       }
   }
@@ -110,9 +110,9 @@ object DatabaseConversions {
         level = Some(level),
         delegate = Some(metadata.delegate.value),
         slots = Some(metadata.slots).map(concatenateToString),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
       )
   }
 
@@ -124,9 +124,9 @@ object DatabaseConversions {
         kind = "seed_nonce_revelation",
         level = Some(level),
         nonce = Some(nonce.value),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
       )
   }
 
@@ -138,9 +138,9 @@ object DatabaseConversions {
         kind = "activate_account",
         pkh = Some(pkh.value),
         secret = Some(secret.value),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
     )
   }
 
@@ -158,9 +158,9 @@ object DatabaseConversions {
         publicKey = Some(pk.value),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
     )
   }
 
@@ -180,9 +180,9 @@ object DatabaseConversions {
         parameters = parameters.map(_.expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
     )
   }
 
@@ -205,9 +205,9 @@ object DatabaseConversions {
         script = script.map(_.code.expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
     )
   }
 
@@ -225,9 +225,9 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
     )
   }
 
@@ -244,9 +244,9 @@ object DatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = kind,
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = block.data.header.timestamp
       )
   }
 
@@ -280,24 +280,24 @@ object DatabaseConversions {
         case (source, updates) =>
         updates.map{
           case OperationMetadata.BalanceUpdate(
-          kind,
-          change,
-          category,
-          contract,
-          delegate,
-          level
-        ) =>
-        Tables.BalanceUpdatesRow(
-          id = 0,
-          source = source.show,
-          sourceHash = from.getHash,
-          kind = kind,
-          contract = contract.map(_.id),
-          change = BigDecimal(change),
-          level = level.map(BigDecimal(_)),
-          delegate = delegate.map(_.value),
-          category = category
-        )
+            kind,
+            change,
+            category,
+            contract,
+            delegate,
+            level
+          ) =>
+          Tables.BalanceUpdatesRow(
+            id = 0,
+            source = source.show,
+            sourceHash = from.getHash,
+            kind = kind,
+            contract = contract.map(_.id),
+            change = BigDecimal(change),
+            level = level.map(BigDecimal(_)),
+            delegate = delegate.map(_.value),
+            category = category
+          )
       }
     }.toList
 

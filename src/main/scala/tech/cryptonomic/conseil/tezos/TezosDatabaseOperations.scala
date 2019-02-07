@@ -52,11 +52,14 @@ object TezosDatabaseOperations extends LazyLogging {
     import cats.data.Kleisli
     import cats.instances.list._
     import slickeffect.implicits._
+    import BlockBalances._
+    import SymbolSourceDescriptor.Show._
     import DatabaseConversions.OperationTablesData
     import Tables.{BalanceUpdatesRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
     //straightforward Database IO Actions waiting to be just run
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
+    val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap(_.data.convertToA[List, BalanceUpdatesRow])
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
 
     //a function that takes a row to save and creates an action to do that, returning the new id
@@ -64,7 +67,7 @@ object TezosDatabaseOperations extends LazyLogging {
       Tables.Operations returning Tables.Operations.map(_.operationId) += _
     }
     //a function that takes rows to save with an operation id, and creates an action to do that
-    val saveBalanceUpdatesForId = Kleisli[DBIO, (Int, List[BalanceUpdatesRow]), Option[Int]]{
+    val saveBalanceUpdatesForOperationId = Kleisli[DBIO, (Int, List[BalanceUpdatesRow]), Option[Int]]{
       case (operationRowId, balanceRows) =>
         Tables.BalanceUpdates ++= balanceRows.map(_.copy(sourceId = Some(operationRowId)))
     }
@@ -75,11 +78,12 @@ object TezosDatabaseOperations extends LazyLogging {
      * We do this to align the output with the input of the second step
      */
     val saveOperationsAndBalances: Kleisli[DBIO, (OperationsRow, List[BalanceUpdatesRow]), Option[Int]] =
-      saveOperationGetNewId.first andThen saveBalanceUpdatesForId
+      saveOperationGetNewId.first andThen saveBalanceUpdatesForOperationId
 
     //Sequence the save actions, the third being applied to a whole collection of operations and balances
     DBIO.seq(
       saveBlocksAction,
+      saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
       saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData]))
     )
@@ -158,7 +162,7 @@ object TezosDatabaseOperations extends LazyLogging {
     val (blocks, accountUpdates) =
       blocksWithAccounts.map {
         case (block, accountIds) =>
-          block -> (block.metadata.hash, block.metadata.header.level, accountIds)
+          block -> (block.data.hash, block.data.header.level, accountIds)
       }.toList.unzip
 
     //sequence both operations in a single transaction

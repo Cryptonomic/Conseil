@@ -105,19 +105,20 @@ object OperationBalances {
 
 }
 
-/** Provides instances of `HasBalanceUpdates` for the tezos block metadata
-  * Simply import this object to have the additinal methods to extract balances from metadata.
+/** Provides instances of `HasBalanceUpdates` for the tezos block data
+  * Simply import this object to have the additinal methods to extract balances from data.
   */
 object BlockBalances {
 
-  implicit val balanceUpdatesInstance = new HasBalanceUpdates[BlockMetadata] {
+  implicit val balanceUpdatesInstance = new HasBalanceUpdates[BlockData] {
     type SourceDescriptor = Symbol
     import SymbolSourceDescriptor._
 
-    override def getAllBalanceUpdates(metadata: BlockMetadata)(implicit show: Show[Symbol]) =
-      Map(BLOCK_SOURCE -> metadata.balance_updates)
+    //the updates might actually be missing from json
+    override def getAllBalanceUpdates(data: BlockData)(implicit show: Show[Symbol]) =
+      Map(BLOCK_SOURCE -> Option(data.metadata.balance_updates).getOrElse(List.empty))
 
-    override def getHash(metadata: BlockMetadata) = Option(metadata.hash.value)
+    override def getHash(data: BlockData) = Option(data.hash.value)
 
   }
 

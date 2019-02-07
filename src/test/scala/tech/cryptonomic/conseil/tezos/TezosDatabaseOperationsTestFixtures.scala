@@ -68,7 +68,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     def generateOne(level: Int, predecessorHash: BlockHash): Block =
       Block(
-        BlockMetadata(
+        BlockData(
           protocol = "protocol",
           chain_id = Some(chainHash),
           hash = BlockHash(generateHash(10)),
@@ -83,7 +83,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          balance_updates = List.empty
+          metadata = BlockHeaderMetadata(balance_updates = List.empty)
         ),
         operationGroups = List.empty
       )
@@ -94,7 +94,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
       case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.metadata.hash)
+        val currentBlock = generateOne(lvl, chain.head.data.hash)
         currentBlock :: chain
     }.reverse
 
@@ -109,11 +109,13 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     //ouch, how to hurt ourselves with deeply nested case class attributes!
     generated.copy(
-        metadata = generated.metadata.copy(
-          header = generated.metadata.header.copy(
+        data = generated.data.copy(
+          header = generated.data.header.copy(
             timestamp = atTime
           ),
-          balance_updates = balanceUpdates
+          metadata = generated.data.metadata.copy(
+            balance_updates = balanceUpdates
+          )
         )
       )
   }
@@ -186,7 +188,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     OperationsGroup(
       protocol = "protocol",
-      chain_id = block.metadata.chain_id.map(ChainId),
+      chain_id = block.data.chain_id.map(ChainId),
       hash = OperationHash(generateHash(10)),
       branch = BlockHash(generateHash(10)),
       signature = Some(Signature(s"sig${generateHash(10)}")),

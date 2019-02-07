@@ -88,6 +88,12 @@ object JsonDecoders {
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
 
+    /* Collects definitions to decode blocks and their components */
+    object Blocks {
+      // we need to decode BalanceUpdates
+      import Operations._
+    }
+
     /*
      * Collects definitions of decoders for the Operations hierarchy.
      * Import this in scope to be able to call `io.circe.parser.decode[T](json)` for a valid type of operation

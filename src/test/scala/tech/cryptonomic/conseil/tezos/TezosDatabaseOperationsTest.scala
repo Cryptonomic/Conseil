@@ -85,18 +85,18 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocks zip generatedBlocks) {
             case (row, block) =>
-              row.level shouldEqual block.metadata.header.level
-              row.proto shouldEqual block.metadata.header.proto
-              row.predecessor shouldEqual block.metadata.header.predecessor.value
-              row.timestamp shouldEqual block.metadata.header.timestamp
-              row.validationPass shouldEqual block.metadata.header.validationPass
-              row.fitness shouldEqual block.metadata.header.fitness.mkString(",")
-              row.context.value shouldEqual block.metadata.header.context
-              row.signature shouldEqual block.metadata.header.signature
-              row.protocol shouldEqual block.metadata.protocol
-              row.chainId shouldEqual block.metadata.chain_id
-              row.hash shouldEqual block.metadata.hash.value
-              row.operationsHash shouldEqual block.metadata.header.operations_hash
+              row.level shouldEqual block.data.header.level
+              row.proto shouldEqual block.data.header.proto
+              row.predecessor shouldEqual block.data.header.predecessor.value
+              row.timestamp shouldEqual block.data.header.timestamp
+              row.validationPass shouldEqual block.data.header.validationPass
+              row.fitness shouldEqual block.data.header.fitness.mkString(",")
+              row.context.value shouldEqual block.data.header.context
+              row.signature shouldEqual block.data.header.signature
+              row.protocol shouldEqual block.data.protocol
+              row.chainId shouldEqual block.data.chain_id
+              row.hash shouldEqual block.data.hash.value
+              row.operationsHash shouldEqual block.data.header.operations_hash
           }
 
           val dbBlocksAndGroups =
@@ -112,10 +112,10 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocksAndGroups) {
             case (blockRow, groupRow) =>
-              val blockForGroup = generatedBlocks.find(_.metadata.hash.value == blockRow.hash).value
+              val blockForGroup = generatedBlocks.find(_.data.hash.value == blockRow.hash).value
               val group = blockForGroup.operationGroups.head
               groupRow.hash shouldEqual group.hash.value
-              groupRow.blockId shouldEqual blockForGroup.metadata.hash.value
+              groupRow.blockId shouldEqual blockForGroup.data.hash.value
               groupRow.chainId shouldEqual group.chain_id.map(_.id)
               groupRow.branch shouldEqual group.branch.value
               groupRow.signature shouldEqual group.signature.map(_.value)
@@ -144,8 +144,8 @@ class TezosDatabaseOperationsTest
             //figure out common fields
             opRow.operationId should be > -1
             opRow.operationGroupHash shouldEqual operationGroup.hash.value
-            opRow.blockHash shouldEqual operationBlock.metadata.hash.value
-            opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
+            opRow.blockHash shouldEqual operationBlock.data.hash.value
+            opRow.timestamp shouldEqual operationBlock.data.header.timestamp
             //figure out the correct sub-type
             val operationMatch = opRow.kind match {
               case "endorsement" =>
@@ -207,9 +207,49 @@ class TezosDatabaseOperationsTest
             dbUpdateRows should contain theSameElementsAs generatedUpdateRows
 
           }
-
       }
 
+    }
+
+    "write metadata balance updates along with the blocks" in {
+      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+
+      val basicBlocks = generateBlocks(2, testReferenceTime)
+      val generatedBlocks = basicBlocks.zipWithIndex.map {
+        case (block, idx) =>
+        block.copy(
+          data = block.data.copy(
+            metadata = block.data.metadata.copy(
+              balance_updates = generateBalanceUpdates(2)(randomSeed + idx)
+            )
+          )
+        )
+      }
+
+      whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
+        _ =>
+        val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
+
+        dbUpdatesRows should have size 6 //2 updates x 3 blocks
+
+        /* Convert both the generated blocks data to balance updates table row representation
+         * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
+         * that the conversion itself is correct
+         */
+        import DatabaseConversions._
+        import tech.cryptonomic.conseil.util.Conversion.Syntax._
+        //used as a constraint to read balance updates from block data
+        import tech.cryptonomic.conseil.tezos.BlockBalances._
+        import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+
+        val generatedUpdateRows =
+          generatedBlocks.flatMap(
+            _.data.convertToA[List, Tables.BalanceUpdatesRow]
+          )
+
+        //reset the generated id for matching
+        dbUpdatesRows.map(_.copy(id = 0)) should contain theSameElementsAs generatedUpdateRows
+      }
 
     }
 

@@ -35,7 +35,7 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidPositiveDecimal("1000A")) shouldBe 'empty
     }
 
-    "convert Balance Updates in BlockMetadata to a database row" in {
+    "convert Balance Updates in BlockData to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
       import BlockBalances._
@@ -46,7 +46,7 @@ class DatabaseConversionsTest
       val block = generateSingleBlock(atLevel = 1, atTime = testReferenceTime, balanceUpdates = updates)
 
       //convert
-      val updateRows = block.metadata.convertToA[List, Tables.BalanceUpdatesRow]
+      val updateRows = block.data.convertToA[List, Tables.BalanceUpdatesRow]
 
       //verify
       val up1 :: up2 :: up3 :: Nil = updates
@@ -55,7 +55,7 @@ class DatabaseConversionsTest
         Tables.BalanceUpdatesRow(
           id = 0,
           sourceId = None,
-          sourceHash = Some(block.metadata.hash.value),
+          sourceHash = Some(block.data.hash.value),
           source = "block",
           kind = up1.kind,
           contract = up1.contract.map(_.id),
@@ -67,7 +67,7 @@ class DatabaseConversionsTest
         Tables.BalanceUpdatesRow(
           id = 0,
           sourceId = None,
-          sourceHash = Some(block.metadata.hash.value),
+          sourceHash = Some(block.data.hash.value),
           source = "block",
           kind = up2.kind,
           contract = up2.contract.map(_.id),
@@ -79,7 +79,7 @@ class DatabaseConversionsTest
         Tables.BalanceUpdatesRow(
           id = 0,
           sourceId = None,
-          sourceHash = Some(block.metadata.hash.value),
+          sourceHash = Some(block.data.hash.value),
           source = "block",
           kind = up3.kind,
           contract = up3.contract.map(_.id),
@@ -245,9 +245,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "endorsement"
       level.value shouldBe sampleEndorsement.level
       delegate.value shouldBe sampleEndorsement.metadata.delegate.value
@@ -316,9 +316,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "seed_nonce_revelation"
       level.value shouldBe sampleNonceRevelation.level
       nonce.value shouldBe sampleNonceRevelation.nonce.value
@@ -387,9 +387,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "activate_account"
       pkh.value shouldBe sampleAccountActivation.pkh.value
       secret.value shouldBe sampleAccountActivation.secret.value
@@ -458,9 +458,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "reveal"
       source.value shouldBe sampleReveal.source.id
       sampleReveal.fee match {
@@ -544,9 +544,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "transaction"
       source.value shouldBe sampleTransaction.source.id
       sampleTransaction.fee match {
@@ -633,9 +633,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "origination"
       delegate shouldBe sampleOrigination.delegate.map(_.value)
       source.value shouldBe sampleOrigination.source.id
@@ -722,9 +722,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "delegation"
       delegate shouldBe sampleDelegation.delegate.map(_.value)
       source.value shouldBe sampleDelegation.source.id
@@ -808,9 +808,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "double_endorsement_evidence"
 
       forAll(
@@ -879,9 +879,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "double_baking_evidence"
 
       forAll(
@@ -950,9 +950,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "proposals"
 
       forAll(
@@ -1021,9 +1021,9 @@ class DatabaseConversionsTest
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe block.data.header.timestamp
       kind shouldBe "ballot"
 
       forAll(
