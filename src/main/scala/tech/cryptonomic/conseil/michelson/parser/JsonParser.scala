@@ -34,6 +34,38 @@ class JsonParser {
     override def toMichelsonInstruction = MichelsonInstructionSequence(instructions.map(_.toMichelsonInstruction))
   }
 
+  class ParserError(message: String) extends Throwable(message)
+
+  type Result[T] = Either[Throwable, T]
+
+  case class JsonDocument(code: Seq[JsonSection]) {
+    def toMichelsonSchema: Result[MichelsonSchema] = {
+      for {
+        parameter <- extractType("parameter")
+        storage <- extractType("storage")
+        code <- extractExpression("code")
+      } yield MichelsonSchema(parameter, storage, code)
+    }
+
+    private def extractType(parameter: String): Result[MichelsonType] = {
+      code
+        .collectFirst {
+          case it: JsonTypeSection if it.prim == parameter => it
+        }
+        .flatMap(_.args.flatMap(_.headOption))
+        .map(_.toMichelsonType)
+        .toRight(new ParserError(s"No type $parameter found"))
+    }
+
+    private def extractExpression(parameter: String): Result[MichelsonCode] = {
+      code
+        .collectFirst {
+          case it: ExpressionSection if it.prim == parameter => it.toMichelsonExpression
+        }
+        .toRight(new ParserError(s"No expression $parameter found"))
+    }
+  }
+
   object GenericDerivation {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
@@ -53,38 +85,10 @@ class JsonParser {
     }
   }
 
-  case class Document(code: Seq[JsonSection])
-
-  case class ParsingError(embeddedException: Exception)
-
-  def parse(json: String): Either[ParsingError, MichelsonSchema] = {
+  def parse(json: String): Result[MichelsonSchema] = {
 
     import GenericDerivation._
 
-    for {
-      document <- decode[Document](json).left.map(ParsingError)
-
-      parameter <- extractType(document, "parameter")
-      storage <- extractType(document, "storage")
-      code <- extractExpression(document, "code")
-    } yield MichelsonSchema(parameter, storage, code)
-  }
-
-  private def extractType(document: Document, parameter: String): Either[ParsingError, MichelsonType] = {
-    document.code
-      .collectFirst {
-        case it: JsonTypeSection if it.prim == parameter => it
-      }
-      .flatMap(_.args.flatMap(_.headOption))
-      .map(_.toMichelsonType)
-      .toRight(ParsingError(new RuntimeException(s"No type $parameter found")))
-  }
-
-  private def extractExpression(document: Document, parameter: String): Either[ParsingError, MichelsonCode] = {
-    document.code
-      .collectFirst {
-        case it: ExpressionSection if it.prim == parameter => it.toMichelsonExpression
-      }
-      .toRight(ParsingError(new RuntimeException(s"No expression $parameter found")))
+    decode[JsonDocument](json).flatMap(_.toMichelsonSchema)
   }
 }

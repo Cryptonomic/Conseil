@@ -4,19 +4,27 @@ import tech.cryptonomic.conseil.michelson.dto._
 
 object MichelsonPresenter {
 
-  implicit class MichelsonTypePresenter(val self: MichelsonType) extends AnyVal {
+  implicit class MichelsonSchemaPresenter(val self: MichelsonSchema) extends AnyVal {
     def render(): String = {
-      renderInternal(self)
-    }
+      val parameter = self.parameter.render()
+      val storage = self.storage.render()
+      val code = self.code.render()
 
-    private def renderInternal(michelsonType: MichelsonType): String = michelsonType match {
-      case MichelsonType(name, Seq()) => name
-      case MichelsonType(name, Seq(arg)) => s"($name ${renderInternal(arg)})"
-      case MichelsonType(name, Seq(arg1, arg2)) => s"($name ${renderInternal(arg1)} ${renderInternal(arg2)})"
+      s"""parameter $parameter;
+         |storage $storage;
+         |code { $code }""".stripMargin
     }
   }
 
-  implicit class MichelsonExpressionPresenter(val self: MichelsonCode) extends AnyVal {
+  implicit class MichelsonTypePresenter(val self: MichelsonType) extends AnyVal {
+    def render(): String = self match {
+      case MichelsonType(name, Seq()) => name
+      case MichelsonType(name, Seq(arg)) => s"($name ${arg.render()})"
+      case MichelsonType(name, Seq(arg1, arg2)) => s"($name ${arg1.render()} ${arg2.render()})"
+    }
+  }
+
+  implicit class MichelsonCodePresenter(val self: MichelsonCode) extends AnyVal {
     def render(): String = self.instructions
       .map(_.render())
       .mkString(" ;\n       ")

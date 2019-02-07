@@ -6,21 +6,11 @@ import tech.cryptonomic.conseil.michelson.presenter.MichelsonPresenter._
 class JsonToMichelson {
 
   case class ConversionError(throwable: Throwable) extends Exception
-
   private val parser = new JsonParser()
 
-  def convert(json: String): Either[ConversionError, String] =
-    parser.parse(json) match {
-      case Right(jsonSchema) =>
+  type Result = Either[Throwable, String]
 
-        val parameter = jsonSchema.parameter.render()
-        val storage = jsonSchema.storage.render()
-        val code = jsonSchema.code.render()
-
-        Right(s"""parameter $parameter;
-                |storage $storage;
-                |code { $code }""".stripMargin)
-      case Left(error: Throwable) =>
-        Left(ConversionError(error))
-    }
+  def convert(json: String): Result = parser
+    .parse(json)
+    .map(_.render())
 }
