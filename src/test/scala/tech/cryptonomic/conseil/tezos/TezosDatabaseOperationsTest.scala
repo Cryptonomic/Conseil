@@ -89,7 +89,7 @@ class TezosDatabaseOperationsTest
               row.proto shouldEqual block.data.header.proto
               row.predecessor shouldEqual block.data.header.predecessor.value
               row.timestamp shouldEqual block.data.header.timestamp
-              row.validationPass shouldEqual block.data.header.validationPass
+              row.validationPass shouldEqual block.data.header.validation_pass
               row.fitness shouldEqual block.data.header.fitness.mkString(",")
               row.context.value shouldEqual block.data.header.context
               row.signature shouldEqual block.data.header.signature

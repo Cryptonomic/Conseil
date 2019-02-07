@@ -62,7 +62,7 @@ object DatabaseConversions {
         proto = header.proto,
         predecessor = header.predecessor.value,
         timestamp = header.timestamp,
-        validationPass = header.validationPass,
+        validationPass = header.validation_pass,
         fitness = header.fitness.mkString(","),
         context = Some(header.context), //put in later
         signature = header.signature,

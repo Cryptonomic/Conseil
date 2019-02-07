@@ -77,7 +77,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             proto = 1,
             predecessor = predecessorHash,
             timestamp = new Timestamp(startMillis + level),
-            validationPass = 0,
+            validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
             context = s"context$level",

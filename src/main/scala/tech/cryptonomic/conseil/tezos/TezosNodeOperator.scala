@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.JsonUtil.fromJson
+import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -139,7 +139,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     //parse json, and try to convert to objects, converting failures to a failed `Future`
     //we could later improve by "accumulating" all errors in a single failed future, with `decodeAccumulating`
     def decodeOperations(json: String) =
-      decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(json)).map(_.flatten) match {
+      decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten) match {
         case Left(failure) => Future.failed(failure)
         case Right(results) => Future.successful(results)
       }
@@ -156,9 +156,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(network: String, hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
+    import io.circe.parser.decode
+    import JsonDecoders.Circe.Blocks._
+
     val offsetString = offset.map(_.toString).getOrElse("")
     for {
-      block <- node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString").map(fromJson[BlockData])
+      block <- node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+        decode[BlockData](JS.sanitize(json)) match {
+          case Left(error) => Future.failed(error)
+          case Right(results) => Future.successful(results)
+        }
+      }
       ops <-
         if (block.header.level > 0) getAllOperationsForBlock(network, hash)
         else Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -245,6 +253,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     ): Future[BlockFetchingResults] = {
     import io.circe.parser.decode
     import JsonDecoders.Circe.{ JsonDecoded, handleDecodingErrors }
+    import JsonDecoders.Circe.Blocks._
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
@@ -254,12 +263,16 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     val makeBlocksUrl = (offset: Int) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
     val makeOperationsUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    val jsonToBlockData: ((Int, String)) => BlockData = {
-      case (_, json) => fromJson[BlockData](json)
+    val jsonToBlockData: ((Int, String)) => Future[BlockData] = {
+      case (_, json) =>
+        decode[BlockData](JS.sanitize(json)) match {
+          case Left(error) => Future.failed(error)
+          case Right(results) => Future.successful(results)
+        }
     }
 
     val jsonToOperationGroups: String => JsonDecoded[List[OperationsGroup]] =
-      json => decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(json)).map(_.flatten)
+      json => decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten)
 
     //extracts any formally valid account hash from the passed-in string
     val jsonToAccountInvolved: String => List[AccountId] = {
@@ -285,7 +298,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
-      fetchedBlocksData <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) map (blocksData => blocksData.map(jsonToBlockData))
+      fetchedBlocksData <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) flatMap (blocksData => Future.traverse(blocksData)(jsonToBlockData))
       blockHashes = fetchedBlocksData.filterNot(isGenesis).map(_.hash)
       fetchedOperations <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsConcurrencyLevel)
       fetchedOperationsWithAccounts <- decodeOperations(fetchedOperations)
