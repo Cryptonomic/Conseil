@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
+import java.time.ZonedDateTime
 import scala.util.Random
 
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
@@ -55,7 +56,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly populate a number of blocks based on a level range */
-  def generateBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Block] = {
+  def generateBlocks(toLevel: Int, startAt: ZonedDateTime)(implicit randomSeed: RandomSeed): List[Block] = {
     require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
 
     //custom hash generator with predictable seed
@@ -63,8 +64,6 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     //same for all blocks
     val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
 
     def generateOne(level: Int, predecessorHash: BlockHash): Block =
       Block(
@@ -76,7 +75,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             level = level,
             proto = 1,
             predecessor = predecessorHash,
-            timestamp = new Timestamp(startMillis + level),
+            timestamp = startAt.plusSeconds(level),
             validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
@@ -103,7 +102,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   /** Randomly geneates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
-  def generateSingleBlock(atLevel: Int, atTime: Timestamp, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
+  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
     val generated = generateBlocks(toLevel = atLevel, startAt = atTime)
       .last
 

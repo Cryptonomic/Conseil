@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
 import java.time.Instant
+import java.time.format.DateTimeFormatter
 import scala.util.Try
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
@@ -79,7 +80,6 @@ object JsonDecoders {
     /* decode any json value to its string representation wrapped in a Micheline*/
     implicit val michelineDecoder: Decoder[Micheline] =
       Decoder.decodeJson.map(json => Micheline(json.noSpaces))
-
 
     /* decode a UTC time string to a sql Timestamp */
     implicit val timestampDecoder: Decoder[Timestamp] =

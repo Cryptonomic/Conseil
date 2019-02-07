@@ -53,7 +53,7 @@ object TezosTypes {
     level: Int,
     proto: Int,
     predecessor: BlockHash,
-    timestamp: java.sql.Timestamp,
+    timestamp: java.time.ZonedDateTime,
     validation_pass: Int,
     operations_hash: Option[String],
     fitness: Seq[String],

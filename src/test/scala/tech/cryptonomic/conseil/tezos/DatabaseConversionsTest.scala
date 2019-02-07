@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
 import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.Inspectors._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
@@ -14,12 +15,12 @@ class DatabaseConversionsTest
 
   "The database conversion" should {
 
-    implicit val seed = RandomSeed(testReferenceTime.getTime)
+    implicit val seed = RandomSeed(testReferenceTimestamp.getTime)
 
     val groupHash = OperationHash("operationhash")
 
     //keep level 1, dropping the genesis block
-    val block = generateSingleBlock(atLevel = 1, atTime = testReferenceTime)
+    val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
 
     val sut = DatabaseConversions
 
@@ -43,7 +44,7 @@ class DatabaseConversionsTest
 
       //generate data
       val updates = generateBalanceUpdates(3)
-      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceTime, balanceUpdates = updates)
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = updates)
 
       //convert
       val updateRows = block.data.convertToA[List, Tables.BalanceUpdatesRow]
@@ -247,7 +248,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "endorsement"
       level.value shouldBe sampleEndorsement.level
       delegate.value shouldBe sampleEndorsement.metadata.delegate.value
@@ -318,7 +319,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "seed_nonce_revelation"
       level.value shouldBe sampleNonceRevelation.level
       nonce.value shouldBe sampleNonceRevelation.nonce.value
@@ -389,7 +390,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "activate_account"
       pkh.value shouldBe sampleAccountActivation.pkh.value
       secret.value shouldBe sampleAccountActivation.secret.value
@@ -460,7 +461,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "reveal"
       source.value shouldBe sampleReveal.source.id
       sampleReveal.fee match {
@@ -546,7 +547,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "transaction"
       source.value shouldBe sampleTransaction.source.id
       sampleTransaction.fee match {
@@ -635,7 +636,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "origination"
       delegate shouldBe sampleOrigination.delegate.map(_.value)
       source.value shouldBe sampleOrigination.source.id
@@ -724,7 +725,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "delegation"
       delegate shouldBe sampleDelegation.delegate.map(_.value)
       source.value shouldBe sampleDelegation.source.id
@@ -810,7 +811,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "double_endorsement_evidence"
 
       forAll(
@@ -881,7 +882,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "double_baking_evidence"
 
       forAll(
@@ -952,7 +953,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "proposals"
 
       forAll(
@@ -1023,7 +1024,7 @@ class DatabaseConversionsTest
       operationGroupHash shouldBe groupHash.value
       blockHash shouldBe block.data.hash.value
       blockLevel shouldBe block.data.header.level
-      timestamp shouldBe block.data.header.timestamp
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "ballot"
 
       forAll(

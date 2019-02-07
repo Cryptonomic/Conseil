@@ -39,14 +39,13 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode a timestamp from ISO-8601 string format" in {
-      import java.sql.Timestamp
       import java.time._
       import format.DateTimeFormatter.ISO_INSTANT
 
       val time = Instant.now()
       val timestamp = ISO_INSTANT.format(time)
 
-      val decoded = decode[Timestamp](s""""$timestamp"""") // wrap as a json string
+      val decoded = decode[ZonedDateTime](s""""$timestamp"""") // wrap as a json string
       decoded shouldBe 'right
 
       decoded.right.value.toInstant shouldEqual Instant.parse(timestamp)

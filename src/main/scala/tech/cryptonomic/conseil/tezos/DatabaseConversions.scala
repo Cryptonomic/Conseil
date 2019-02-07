@@ -7,6 +7,11 @@ import tech.cryptonomic.conseil.util.Conversion._
 
 object DatabaseConversions {
 
+  import java.sql.Timestamp
+
+  //BEWARE: implicit conversion!!
+  private implicit def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
+
   //single field conversions
   def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
 
