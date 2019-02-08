@@ -5,12 +5,11 @@ import tech.cryptonomic.conseil.michelson.presenter.MichelsonPresenter._
 
 class JsonToMichelson {
 
-  case class ConversionError(throwable: Throwable) extends Exception
   private val parser = new JsonParser()
 
-  type Result = Either[Throwable, String]
+  type Result[T] = Either[Throwable, T]
 
-  def convert(json: String): Result = parser
+  def convert(json: String): Result[String] = parser
     .parse(json)
     .map(_.render())
 }

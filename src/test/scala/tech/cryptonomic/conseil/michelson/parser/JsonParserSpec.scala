@@ -28,7 +28,9 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |}""").toJson
 
     parser.parse(json).map(_.parameter) should equal(Right(
-      MichelsonType("pair", Seq(MichelsonType("int"), MichelsonType("address")))))
+      MichelsonType("pair", Seq(
+        MichelsonType("int"),
+        MichelsonType("address")))))
   }
 
   it should "parse complex MichelsonType" in {
@@ -56,9 +58,11 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |}""").toJson
 
     parser.parse(json).map(_.parameter) should equal(Right(
-      MichelsonType("contract", Seq(MichelsonType("or", Seq(
-        MichelsonType("option", Seq(MichelsonType("address", Seq()))),
-        MichelsonType("int", Seq())))))))
+      MichelsonType("contract", Seq(
+        MichelsonType("or", Seq(
+          MichelsonType("option", Seq(
+            MichelsonType("address"))),
+          MichelsonType("int")))))))
   }
 
   it should "parse MichelsonCode with only one simple instruction" in {
@@ -82,7 +86,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
       MichelsonCode(Seq(MichelsonSimpleInstruction("NIL", Some(MichelsonType("operation")))))))
   }
 
-  it should "parse MichelsonCode with instruction sequence" in {
+  it should "parse MichelsonCode with instruction sequence (represented in JOSN with double brackets)" in {
     val json = Code(code = """[[{"prim": "DIP"}, {"prim": "SWAP"}]]""").toJson
 
     parser.parse(json).map(_.code) should equal(Right(
@@ -109,9 +113,9 @@ class JsonParserSpec extends FlatSpec with Matchers {
       code = """[{"prim": "DUP"}]""").toJson
 
     parser.parse(json) should equal(Right(MichelsonSchema(
-      MichelsonType("int", List()),
-      MichelsonType("int", List()),
-      MichelsonCode(List(MichelsonSimpleInstruction("DUP"))))))
+      MichelsonType("int"),
+      MichelsonType("int"),
+      MichelsonCode(Seq(MichelsonSimpleInstruction("DUP"))))))
   }
 
   it should "convert complex json to MichelsonSchema" in {
@@ -306,7 +310,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
             MichelsonType("operation"))))))))))
   }
 
-  case class Code(
+  private case class Code(
                    parameter: String = """{"prim": "unit"}""",
                    storage: String = """{"prim": "unit"}""",
                    code: String = """[{"prim": "CDR"}]""") {

@@ -20,8 +20,9 @@ class MichelsonPresenterSpec extends FlatSpec with Matchers {
 
   it should "render complex MichelsonType" in {
     val michelsonType = MichelsonType("contract", Seq(MichelsonType("or", Seq(
-        MichelsonType("option", Seq(MichelsonType("address", Seq()))),
-        MichelsonType("int", Seq())))))
+        MichelsonType("option", Seq(
+          MichelsonType("address"))),
+        MichelsonType("int")))))
 
     michelsonType.render() shouldBe "(contract (or (option address) int))"
   }
@@ -78,7 +79,8 @@ class MichelsonPresenterSpec extends FlatSpec with Matchers {
         MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(Seq(
           MichelsonComplexInstruction("DIP",
             MichelsonInstructionSequence(Seq(MichelsonSimpleInstruction("DUP")))),
-          MichelsonSimpleInstruction("NIL", Some(MichelsonType("operation")))))),
+          MichelsonSimpleInstruction("NIL", Some(
+            MichelsonType("operation")))))),
         MichelsonSimpleInstruction("SWAP")))
     ))
 
