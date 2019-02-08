@@ -148,6 +148,7 @@ object DatabaseUtil {
         case OperationType.eq => sql"= '#${vals.head}'"
         case OperationType.startsWith => sql"LIKE '#${vals.head}%'"
         case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
+        case OperationType.isnull => sql"ISNULL"
       }
       concatenateSqlActions(op, sql" IS #${!inverse}")
     }

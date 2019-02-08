@@ -92,7 +92,7 @@ object DataTypes {
   /** Enumeration of operation types */
   object OperationType extends Enumeration {
     type OperationType = Value
-    val in, between, like, lt, gt, eq, startsWith, endsWith, before, after = Value
+    val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
   }
 
 }
