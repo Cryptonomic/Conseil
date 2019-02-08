@@ -5,7 +5,7 @@ val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
 val slickVersion = "3.2.1"
 val circeVersion = "0.11.0"
-val catsVersion = "1.6.0-RC1"
+val catsVersion = "1.6.0"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
