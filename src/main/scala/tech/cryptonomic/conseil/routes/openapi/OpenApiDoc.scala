@@ -2,12 +2,12 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra.Documentation
 import endpoints.openapi
-import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
+import endpoints.openapi.model._
 import io.circe.Json
 import io.circe.syntax._
 
 object OpenApiDoc
-  extends Endpoints
+    extends Endpoints
     with openapi.Endpoints
     with openapi.JsonSchemaEntities
     with openapi.BasicAuthentication {
@@ -31,4 +31,9 @@ object OpenApiDoc
 
   override implicit def queryResponseSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("any")
 
+  override def queryEndpoint: DocumentedEndpoint = queryEndpoint
+
+  override def blocksEndpoint: DocumentedEndpoint = DocumentedEndpoint("path", PathItem(Map.empty))
+
+  override def blocksHeadEndpoint: DocumentedEndpoint = DocumentedEndpoint("path", PathItem(Map.empty))
 }

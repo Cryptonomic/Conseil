@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{ApiQuery, QueryValidationError}
-import tech.cryptonomic.conseil.routes.openapi.{Endpoints, Validation}
+import tech.cryptonomic.conseil.routes.openapi.{Endpoints, EndpointsDefinition, Validation}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 
@@ -30,7 +30,7 @@ object Data {
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with RouteHandling with DatabaseApiFiltering with JacksonSupport with akkahttp.server.Endpoints
-    with akkahttp.server.JsonSchemaEntities with Endpoints {
+    with akkahttp.server.JsonSchemaEntities with EndpointsDefinition {
 
   import cats.implicits._
 
