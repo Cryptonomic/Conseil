@@ -711,6 +711,59 @@ class TezosDatabaseOperationsTest
     }
 
 
+
+    "get values where context is null" in {
+      val blocksTmp = List(
+        BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",None,Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+        BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
+      )
+      val columns = List("level", "proto", "context", "hash", "operations_hash")
+      val predicates = List(
+        Predicate(
+          field = "context",
+          operation = OperationType.isnull,
+          set = List.empty,
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "context" -> None, "hash" -> Some("R0NpYZuUeF"), "operations_hash" -> None)
+      )
+    }
+
+    "get values where context is NOT null" in {
+      val blocksTmp = List(
+        BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",None,Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+        BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
+      )
+      val columns = List("level", "proto", "context", "hash", "operations_hash")
+      val predicates = List(
+        Predicate(
+          field = "context",
+          operation = OperationType.isnull,
+          set = List.empty,
+          inverse = true
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "context" -> Some("context1"), "hash" -> Some("aQeGrbXCmG"), "operations_hash" -> None)
+      )
+    }
+
     "get null values from the table as none" in {
 
       val columns = List("level", "proto", "protocol", "hash", "operations_hash")
