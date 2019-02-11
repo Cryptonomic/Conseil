@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.{algebra, generic}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.tezos.Tables
 
 trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
 
@@ -20,8 +21,21 @@ trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   implicit def queryOrderingDirectionSchema: JsonSchema[OrderDirection.Value] =
     enumeration(OrderDirection.values.toSeq)(_.toString)
 
+  implicit def timestampSchema: JsonSchema[java.sql.Timestamp]
+
+  implicit def blocksRowSchema: JsonSchema[Tables.BlocksRow] =
+    genericJsonSchema[Tables.BlocksRow]
+
+  implicit def operationGroupsRowSchema: JsonSchema[Tables.OperationGroupsRow] =
+    genericJsonSchema[Tables.OperationGroupsRow]
+
+  implicit def accountsRowSchema: JsonSchema[Tables.AccountsRow] =
+    genericJsonSchema[Tables.AccountsRow]
+
   implicit def anySchema: JsonSchema[Any]
 
   implicit def queryResponseSchema: JsonSchema[List[Map[String, Option[Any]]]]
+
+  implicit def blocksByHashSchema: JsonSchema[Map[String, Any]]
 
 }

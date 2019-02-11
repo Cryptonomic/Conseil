@@ -1,18 +1,21 @@
 package tech.cryptonomic.conseil.routes
 
+import java.sql.Timestamp
+
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import de.heikoseeberger.akkahttpjackson.JacksonSupport
-import endpoints.akkahttp
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import endpoints.algebra.Documentation
+import endpoints.{InvariantFunctor, akkahttp}
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{ApiQuery, QueryValidationError}
-import tech.cryptonomic.conseil.routes.openapi.{Endpoints, EndpointsDefinition, Validation}
-import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryValidationError
+import tech.cryptonomic.conseil.routes.openapi.{Endpoints, QueryStringListsServer, Validation}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, Tables}
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -29,8 +32,8 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with RouteHandling with DatabaseApiFiltering with JacksonSupport with akkahttp.server.Endpoints
-    with akkahttp.server.JsonSchemaEntities with EndpointsDefinition {
+  extends LazyLogging with RouteHandling with DatabaseApiFiltering with FailFastCirceSupport with akkahttp.server.Endpoints
+    with akkahttp.server.JsonSchemaEntities with Endpoints with QueryStringListsServer with Validation {
 
   import cats.implicits._
 
@@ -52,55 +55,90 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       }.left.map(Future.successful).bisequence.map(eitherOptionOps)
   }
 
-  import shapeless._
-  import poly._
-  import shapeless.ops.tuple.FlatMapper
-  import syntax.std.tuple._
-
-  trait LowPriorityFlatten extends Poly1 {
-    implicit def default[T] = at[T](Tuple1(_))
-  }
-  object flatten extends LowPriorityFlatten {
-    implicit def caseTuple[P <: Product](implicit fm: FlatMapper[P, flatten.type]) =
-      at[P](_.flatMap(flatten))
-  }
 
   val blocksRoute: Route = blocksEndpoint.implementedByAsync {
-    case ((platform, network, cc), apiKey) => {
-      val ccc = flatten(cc)
-      val query = (ApiOperations.Filter.readParams _).tupled
-      val sth = query(ccc)
-      val sth2 = sth.toQuery
+    case ((platform, network, filter), _) => {
       optionFutureOps {
         ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
-          queryProtocolPlatform.queryWithPredicates(platform, "blocks", sth2)
+          queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery)
         }
       }
     }
   }
 
-  private def optionFutureOps[M](x: Option[Future[M]]): Future[Option[M]] =
-    Future.sequence(Option.option2Iterable(x)).map(_.headOption)
+  val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
+    case (platform, network, _) => {
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+          ApiOperations.fetchLatestBlock()
+        }
+      }.map(_.flatten)
+    }
+  }
 
-  private def eitherOptionOps[A, B](x: Either[A, Option[B]]): Option[Either[A, B]] = x match {
-    case Left(value) => Some(Left(value))
-    case Right(Some(value)) => Some(Right(value))
-    case Right(None) => None
+  val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
+    case ((platform, network, hash), _) => {
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+          ApiOperations.fetchBlock(BlockHash(hash))
+        }
+      }.map(_.flatten)
+    }
   }
 
 
-//  /** common route builder with platform and network validation */
-//  private def commonRoute(routeBuilder: (String, String) => Route): Route =
-//    pathPrefix(Segment) { platform =>
-//      pathPrefix(Segment) { network =>
-//        validatePlatformAndNetwork(config, platform, network) {
-//          routeBuilder(platform, network)
-//        }
-//      }
-//    }
+  val accountsRoute: Route = accountsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) => {
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
+          queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery)
+        }
+      }
+    }
+  }
 
-  import io.circe._
-  import io.circe.syntax._
+  val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
+    case ((platform, network, accountId), _) =>
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+          ApiOperations.fetchAccount(AccountId(accountId))
+        }
+      }.map(_.flatten)
+  }
+
+
+  val getRoutes: Route = concat(
+    blocksHeadRoute,
+    blockByHashRoute,
+    blocksRoute,
+    accountByIdRoute,
+    accountsRoute
+  )
+
+
+  //              } ~ pathPrefix("operation_groups") {
+  //                pathEnd {
+  //                  completeWithJsonOrNotFound(
+  //                    queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
+  //                  )
+  //                } ~ path(Segment) { operationGroupId =>
+  //                  complete(
+  //                    handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
+  //                  )
+  //                }
+  //              } ~ pathPrefix("operations") {
+  //                path("avgFees") {
+  //                  complete(
+  //                    handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
+  //                  )
+  //                } ~ pathEnd {
+  //                  completeWithJsonOrNotFound(
+  //                    queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
+  //                  )
+  //                }
+  //              }
+  //            }
+  //          }
 
   def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
@@ -109,12 +147,28 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       response(success)
   }
 
+  private def optionFutureOps[M](x: Option[Future[M]]): Future[Option[M]] =
+    Future.sequence(Option.option2Iterable(x)).map(_.headOption)
+
+  import io.circe._
+  import io.circe.syntax._
+
+  private def eitherOptionOps[A, B](x: Either[A, Option[B]]): Option[Either[A, B]] = x match {
+    case Left(value) => Some(Left(value))
+    case Right(Some(value)) => Some(Right(value))
+    case Right(None) => None
+  }
+
   def anyEncoder: Encoder[Any] = (a: Any) => a match {
     case x: java.lang.String => Json.fromString(x)
     case x: java.lang.Integer => Json.fromInt(x)
     case x: java.sql.Timestamp => Json.fromBigInt(x.getTime)
     case x: java.lang.Boolean => Json.fromBoolean(x)
-    case x => Json.fromString(x.toString)
+    case x: scala.collection.immutable.Vector[Tables.OperationGroupsRow] => x.map(_.asJson(operationGroupsRowSchema.encoder)).asJson
+    case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
+    case x =>
+      println(x.getClass.getName)
+      Json.fromString(x.toString)
   }
 
   override implicit def anySchema: JsonSchema[Any] = new JsonSchema[Any] {
@@ -138,4 +192,24 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
 
       override def decoder: Decoder[List[Map[String, Option[Any]]]] = ???
     }
+
+  override implicit def qsInvFunctor: InvariantFunctor[QueryString] = new InvariantFunctor[QueryString] {
+    override def xmap[From, To](f: QueryString[From], map: From => To, contramap: To => From): QueryString[To] = new QueryString[To](
+      f.directive.map(map)
+    )
+  }
+
+  override implicit def blocksByHashSchema: JsonSchema[Map[String, Any]] = new JsonSchema[Map[String, Any]] {
+    override def encoder: Encoder[Map[String, Any]] = (a: Map[String, Any]) => Json.obj(a.map {
+      case (k, v) => (k, v.asJson(anyEncoder))
+    }.toList: _*)
+
+    override def decoder: Decoder[Map[String, Any]] = ???
+  }
+
+  override implicit def timestampSchema: JsonSchema[Timestamp] = new JsonSchema[Timestamp] {
+    override def encoder: Encoder[Timestamp] = (a: Timestamp) => a.getTime.asJson
+
+    override def decoder: Decoder[Timestamp] = ???
+  }
 }

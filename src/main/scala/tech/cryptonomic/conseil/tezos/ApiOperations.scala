@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query, OrderDirection, QueryOrdering}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -144,7 +144,14 @@ object ApiOperations extends DataOperations {
             set = accountDelegates.toList
           )
         ).filter(_.set.nonEmpty),
-        limit = limit.getOrElse(DataTypes.defaultLimitValue)
+        limit = limit.getOrElse(DataTypes.defaultLimitValue),
+        orderBy = sortBy.map { o =>
+          val direction = order match {
+            case Some(value) if value == AscendingSort => OrderDirection.asc
+            case _ => OrderDirection.desc
+          }
+          QueryOrdering(o, direction)
+        }.toList
       )
     }
   }
