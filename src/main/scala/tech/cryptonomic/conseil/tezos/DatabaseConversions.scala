@@ -9,8 +9,8 @@ object DatabaseConversions {
 
   import java.sql.Timestamp
 
-  //BEWARE: implicit conversion!!
-  private implicit def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
+  //adapts from the java timestamp to sql
+  private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
 
   //single field conversions
   def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
@@ -66,7 +66,7 @@ object DatabaseConversions {
         level = header.level,
         proto = header.proto,
         predecessor = header.predecessor.value,
-        timestamp = header.timestamp,
+        timestamp = toSql(header.timestamp),
         validationPass = header.validation_pass,
         fitness = header.fitness.mkString(","),
         context = Some(header.context), //put in later
@@ -117,7 +117,7 @@ object DatabaseConversions {
         slots = Some(metadata.slots).map(concatenateToString),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
       )
   }
 
@@ -131,7 +131,7 @@ object DatabaseConversions {
         nonce = Some(nonce.value),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
       )
   }
 
@@ -145,7 +145,7 @@ object DatabaseConversions {
         secret = Some(secret.value),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -165,7 +165,7 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -187,7 +187,7 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -212,7 +212,7 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -232,7 +232,7 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -251,7 +251,7 @@ object DatabaseConversions {
         kind = kind,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = block.data.header.timestamp
+        timestamp = toSql(block.data.header.timestamp)
       )
   }
 
