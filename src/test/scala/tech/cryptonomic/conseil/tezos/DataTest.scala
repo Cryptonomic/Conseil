@@ -91,7 +91,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   )
   val postRoute: Route = new Data(cfg, fakeQPP)(ec).postRoute
 
-  //val getRoute: Route = new Data(cfg, fakeQPP)(ec).getRoute
+  val getRoute: Route = new Data(cfg, fakeQPP)(ec).getRoutes
 
   "Query protocol" should {
 
@@ -110,16 +110,6 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       }
     }
 
-//    "return 400 BadRequest status code for request with missing fields with POST" in {
-//      val postRequest = HttpRequest(
-//        HttpMethods.POST,
-//        uri = "/v2/data/tezos/alphanet/accounts",
-//        entity = HttpEntity(MediaTypes.`application/json`, malformedJsonStringRequest))
-//      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
-//        status shouldBe StatusCodes.BadRequest
-//      }
-//    }
-
     "return 404 NotFound status code for request for the not supported platform with POST" in {
       val postRequest = HttpRequest(
         HttpMethods.POST,
@@ -130,27 +120,27 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       }
     }
 
-//    "return a correct response with OK status code with GET" in {
-//      val getRequest = HttpRequest(
-//        HttpMethods.GET,
-//        uri = "/tezos/alphanet/accounts"
-//      )
-//
-//      getRequest ~> getRoute ~> check {
-//        val resp = entityAs[String]
-//        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
-//        status shouldBe StatusCodes.OK
-//      }
-//    }
-//
-//    "return 404 NotFound status code for request for the not supported platform with GET" in {
-//      val getRequest = HttpRequest(
-//        HttpMethods.GET,
-//        uri = "/notSupportedPlatform/alphanet/accounts"
-//      )
-//      getRequest ~> getRoute ~> check {
-//        status shouldBe StatusCodes.NotFound
-//      }
-//    }
+    "return a correct response with OK status code with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/tezos/alphanet/accounts"
+      )
+
+      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        val resp = entityAs[String]
+        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+        status shouldBe StatusCodes.OK
+      }
+    }
+
+    "return 404 NotFound status code for request for the not supported platform with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
   }
 }
