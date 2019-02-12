@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.{algebra, generic}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
 
 trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
@@ -31,6 +32,9 @@ trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
 
   implicit def accountsRowSchema: JsonSchema[Tables.AccountsRow] =
     genericJsonSchema[Tables.AccountsRow]
+
+  implicit def avgFeeSchema: JsonSchema[AverageFees] =
+    genericJsonSchema[AverageFees]
 
   implicit def anySchema: JsonSchema[Any]
 

@@ -55,7 +55,6 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
       }.left.map(Future.successful).bisequence.map(eitherOptionOps)
   }
 
-
   val blocksRoute: Route = blocksEndpoint.implementedByAsync {
     case ((platform, network, filter), _) => {
       optionFutureOps {
@@ -86,7 +85,6 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
     }
   }
 
-
   val accountsRoute: Route = accountsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) => {
       optionFutureOps {
@@ -107,38 +105,55 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   }
 
 
+  val operationGroupsRoute: Route = operationGroupsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) => {
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
+          queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
+        }
+      }
+    }
+  }
+
+  val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
+    case ((platform, network, operationGroupId), _) =>
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+          ApiOperations.fetchOperationGroup(operationGroupId)
+        }
+      }.map(_.flatten)
+  }
+
+  val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+          ApiOperations.fetchAverageFees(filter)
+        }
+      }.map(_.flatten)
+  }
+
+  val operationsRoute: Route = operationsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) => {
+      optionFutureOps {
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
+          queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
+        }
+      }
+    }
+  }
+
   val getRoutes: Route = concat(
     blocksHeadRoute,
     blockByHashRoute,
     blocksRoute,
     accountByIdRoute,
-    accountsRoute
+    accountsRoute,
+    operationGroupByIdRoute,
+    operationGroupsRoute,
+    avgFeesRoute,
+    operationsRoute
   )
-
-
-  //              } ~ pathPrefix("operation_groups") {
-  //                pathEnd {
-  //                  completeWithJsonOrNotFound(
-  //                    queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
-  //                  )
-  //                } ~ path(Segment) { operationGroupId =>
-  //                  complete(
-  //                    handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
-  //                  )
-  //                }
-  //              } ~ pathPrefix("operations") {
-  //                path("avgFees") {
-  //                  complete(
-  //                    handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
-  //                  )
-  //                } ~ pathEnd {
-  //                  completeWithJsonOrNotFound(
-  //                    queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
-  //                  )
-  //                }
-  //              }
-  //            }
-  //          }
 
   def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>

@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.routes.openapi
 import endpoints.{InvariantFunctor, algebra}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{ApiQuery, QueryValidationError}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
 
@@ -66,6 +67,41 @@ trait Endpoints
         headers = header("apiKey")),
       response = jsonResponse[Map[String, Any]](docs = Some("Query compatibility endpoint for account")).orNotFound(Some("Not found"))
     )
+
+  def operationGroupsEndpoint =
+    endpoint(
+      request = get(
+        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "operation_groups" /? myQueryStringParams,
+        headers = header("apiKey")),
+      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint for operation groups")).orNotFound(Some("Not found"))
+    )
+
+  def operationGroupByIdEndpoint =
+    endpoint(
+      request = get(
+        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "operation_groups" / segment[String](name = "operationGroupId") ,
+        headers = header("apiKey")),
+      response = jsonResponse[Map[String, Any]](docs = Some("Query compatibility endpoint for operation group")).orNotFound(Some("Not found"))
+    )
+
+  def avgFeesEndpoint =
+    endpoint(
+      request = get(
+        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "operations" / "avgFees" /? myQueryStringParams,
+        headers = header("apiKey")),
+      response = jsonResponse[AverageFees](docs = Some("Query compatibility endpoint for operations")).orNotFound(Some("Not found"))
+    )
+
+  def operationsEndpoint =
+    endpoint(
+      request = get(
+        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "operations" /? myQueryStringParams,
+        headers = header("apiKey")),
+      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint for operations")).orNotFound(Some("Not found"))
+    )
+
+
+
 
   def filterQs = optQs[Int]("limit") &
     qsList[String]("blockIDs") &

@@ -86,7 +86,7 @@ object ApiOperations extends DataOperations {
           Predicate(
             field = "level",
             operation = OperationType.in,
-            set = levels.toList.map(_.toString)
+            set = levels.toList
           ),
           Predicate(
             field = "chain_id",
@@ -101,7 +101,7 @@ object ApiOperations extends DataOperations {
           Predicate(
             field = "level",
             operation = OperationType.in,
-            set = levels.toList.map(_.toString)
+            set = levels.toList
           ),
           Predicate(
             field = "group_id",
@@ -261,15 +261,15 @@ object ApiOperations extends DataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
     } yield operations.map {
         case (opGroup, ops) =>
           Map(
-            'operation_group -> opGroup,
-            'operations -> ops
+            "operation_group" -> opGroup,
+            "operations" -> ops
           )
         }
 
