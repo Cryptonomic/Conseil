@@ -1,10 +1,11 @@
-package tech.cryptonomic.conseil.michelson.presenter
+package tech.cryptonomic.conseil.tezos.michelson.renderer
 
-import tech.cryptonomic.conseil.michelson.dto._
+import tech.cryptonomic.conseil.tezos.michelson.dto._
 
-object MichelsonPresenter {
+/* Implicitly adds render() methods for domain object representing Michelson Schema */
+object MichelsonRenderer {
 
-  implicit class MichelsonSchemaPresenter(val self: MichelsonSchema) extends AnyVal {
+  implicit class MichelsonSchemaRenderer(val self: MichelsonSchema) {
     def render(): String = {
       val parameter = self.parameter.render()
       val storage = self.storage.render()
@@ -16,21 +17,20 @@ object MichelsonPresenter {
     }
   }
 
-  implicit class MichelsonTypePresenter(val self: MichelsonType) extends AnyVal {
+  implicit class MichelsonTypeRenderer(val self: MichelsonType) {
     def render(): String = self match {
-      case MichelsonType(name, Seq()) => name
-      case MichelsonType(name, Seq(arg)) => s"($name ${arg.render()})"
-      case MichelsonType(name, Seq(arg1, arg2)) => s"($name ${arg1.render()} ${arg2.render()})"
+      case MichelsonType(name, List()) => name
+      case MichelsonType(name, args) => s"($name ${args.map(_.render()).mkString(" ")})"
     }
   }
 
-  implicit class MichelsonCodePresenter(val self: MichelsonCode) extends AnyVal {
+  implicit class MichelsonCodeRenderer(val self: MichelsonCode) {
     def render(): String = self.instructions
       .map(_.render())
       .mkString(" ;\n       ")
   }
 
-  implicit class MichelsonInstructionPresenter(val self: MichelsonInstruction) extends AnyVal {
+  implicit class MichelsonInstructionRenderer(val self: MichelsonInstruction) extends AnyVal {
     def render(): String = self match {
       case MichelsonSimpleInstruction(prim, None) => prim
       case MichelsonSimpleInstruction(prim, Some(michelsonType)) => s"$prim ${michelsonType.render()}"
