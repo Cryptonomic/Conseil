@@ -103,20 +103,21 @@ trait TezosDataGeneration extends RandomGenerationKit {
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
   def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
-    val generated = generateBlocks(toLevel = atLevel, startAt = atTime)
-      .last
+    import monocle.macros.GenLens
+    import mouse.any._
 
-    //ouch, how to hurt ourselves with deeply nested case class attributes!
-    generated.copy(
-        data = generated.data.copy(
-          header = generated.data.header.copy(
-            timestamp = atTime
-          ),
-          metadata = generated.data.metadata.copy(
-            balance_updates = balanceUpdates
-          )
-        )
-      )
+    val generated = generateBlocks(toLevel = atLevel, startAt = atTime).last
+
+    val atData = GenLens[Block](_.data)
+    val atHeader = GenLens[BlockData](_.header)
+    val atMetadata = GenLens[BlockData](_.metadata)
+    val atTimestamp = GenLens[BlockHeader](_.timestamp)
+    val atBalances = GenLens[BlockHeaderMetadata](_.balance_updates)
+
+    val updateTimestamp = atData composeLens atHeader composeLens atTimestamp set atTime
+    val updateBalances = atData composeLens atMetadata composeLens atBalances set balanceUpdates
+
+    generated |> updateTimestamp |> updateBalances
   }
 
   def generateBalanceUpdates(howMany: Int)(implicit randomSeed: RandomSeed): List[OperationMetadata.BalanceUpdate] = {

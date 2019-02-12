@@ -6,6 +6,7 @@ val akkaVersion = "2.5.11"
 val slickVersion = "3.2.1"
 val circeVersion = "0.11.0"
 val catsVersion = "1.6.0"
+val monocleVersion = "1.6.0-M1"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -26,6 +27,7 @@ libraryDependencies  ++=  Seq(
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
   "org.typelevel"                   %% "cats-core"                 % catsVersion,
+  "org.typelevel"                   %% "mouse"                     % "0.20",
   "com.kubukoz"                     %% "slick-effect"              % "0.1.0",
   "io.circe"                        %% "circe-core"                % circeVersion,
   "io.circe"                        %% "circe-parser"              % circeVersion,
@@ -41,6 +43,8 @@ libraryDependencies  ++=  Seq(
   "com.github.alanverbner"          %% "bip39"                     % "0.1",
   "com.github.scopt"                %% "scopt"                     % "4.0.0-RC2",
   "io.scalaland"                    %% "chimney"                   % "0.3.0",
+  "com.github.julien-truffaut"      %% "monocle-core"              % monocleVersion,
+  "com.github.julien-truffaut"      %% "monocle-macro"             % monocleVersion,
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
   "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test,
   "org.scalamock"                   %% "scalamock"                 % "4.0.0" % Test,

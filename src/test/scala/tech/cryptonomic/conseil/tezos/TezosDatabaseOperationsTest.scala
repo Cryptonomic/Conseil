@@ -212,18 +212,18 @@ class TezosDatabaseOperationsTest
     }
 
     "write metadata balance updates along with the blocks" in {
+      import monocle.macros.GenLens
+
+      val atData = GenLens[Block](_.data)
+      val atMetadata = GenLens[BlockData](_.metadata)
+      val atBalances = GenLens[BlockHeaderMetadata](_.balance_updates)
+      val blockBalances = atData composeLens atMetadata composeLens atBalances
+
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val basicBlocks = generateBlocks(2, testReferenceDateTime)
       val generatedBlocks = basicBlocks.zipWithIndex.map {
-        case (block, idx) =>
-        block.copy(
-          data = block.data.copy(
-            metadata = block.data.metadata.copy(
-              balance_updates = generateBalanceUpdates(2)(randomSeed + idx)
-            )
-          )
-        )
+        case (block, idx) => blockBalances.set(generateBalanceUpdates(2)(randomSeed + idx))(block)
       }
 
       whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
