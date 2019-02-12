@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
-import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
@@ -16,7 +16,7 @@ import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 
 import scala.concurrent.ExecutionContextExecutor
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with ErrorAccumulatingCirceSupport {
+object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport {
 
   applicationConfiguration match {
     case Right((server, platforms, securityApi, caching)) =>
@@ -50,6 +50,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
               logRequest("Metadata Route", Logging.DebugLevel) {
                 pathPrefix("metadata") {
                   platformDiscovery.route
+                }
+              } ~ logRequest("Data Route", Logging.DebugLevel) {
+                pathPrefix("data") {
+                  data.getRoutes ~ data.postRoute
                 }
               }
             } ~ data.postRoute ~ data.getRoutes
