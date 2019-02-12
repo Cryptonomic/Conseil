@@ -30,9 +30,6 @@ trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   implicit def operationGroupsRowSchema: JsonSchema[Tables.OperationGroupsRow] =
     genericJsonSchema[Tables.OperationGroupsRow]
 
-  implicit def accountsRowSchema: JsonSchema[Tables.AccountsRow] =
-    genericJsonSchema[Tables.AccountsRow]
-
   implicit def avgFeeSchema: JsonSchema[AverageFees] =
     genericJsonSchema[AverageFees]
 
