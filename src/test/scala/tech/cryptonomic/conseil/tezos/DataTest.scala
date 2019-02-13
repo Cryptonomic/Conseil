@@ -120,6 +120,16 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       }
     }
 
+    "return 404 NotFound status code for request for the not supported network with POST" in {
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/tezos/notSupportedNetwork/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
+      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
     "return a correct response with OK status code with GET" in {
       val getRequest = HttpRequest(
         HttpMethods.GET,
@@ -137,6 +147,16 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       val getRequest = HttpRequest(
         HttpMethods.GET,
         uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+    "return 404 NotFound status code for request for the not supported network with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/tezos/notSupportedNetwork/accounts"
       )
       getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
         status shouldBe StatusCodes.NotFound
