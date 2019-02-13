@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
 trait DataEndpoints
   extends algebra.Endpoints
-    with JsonSchemas
+    with DataJsonSchemas
     with EndpointsHelpers {
 
   private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
