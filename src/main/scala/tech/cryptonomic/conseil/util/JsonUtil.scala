@@ -55,6 +55,9 @@ object JsonUtil {
     /** A [[JsonString]] representing a json object with no attributes */
     lazy val emptyObject = JsonString("{}")
 
+    /** add standard cleaning for input json */
+    def sanitize(s: String): String = s.filterNot(Character.isISOControl)
+
   }
 
   private val mapper = new ObjectMapper with ScalaObjectMapper
@@ -70,7 +73,7 @@ object JsonUtil {
     fromJson[Map[String,V]](json)
 
   def fromJson[T: Manifest](json: String): T =
-    mapper.readValue[T](json.filterNot(Character.isISOControl))
+    mapper.readValue[T](JsonString sanitize json)
 
   /** extractor object to read accountIds from a json string, based on the hash format*/
   object AccountIds {

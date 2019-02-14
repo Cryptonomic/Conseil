@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.util.JsonUtil.fromJson
+import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -139,7 +139,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     //parse json, and try to convert to objects, converting failures to a failed `Future`
     //we could later improve by "accumulating" all errors in a single failed future, with `decodeAccumulating`
     def decodeOperations(json: String) =
-      decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(json)).map(_.flatten) match {
+      decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten) match {
         case Left(failure) => Future.failed(failure)
         case Right(results) => Future.successful(results)
       }
@@ -156,9 +156,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(network: String, hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
+    import io.circe.parser.decode
+    import JsonDecoders.Circe.Blocks._
+
     val offsetString = offset.map(_.toString).getOrElse("")
     for {
-      block <- node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString").map(fromJson[BlockMetadata])
+      block <- node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+        decode[BlockData](JS.sanitize(json)) match {
+          case Left(error) => Future.failed(error)
+          case Right(results) => Future.successful(results)
+        }
+      }
       ops <-
         if (block.header.level > 0) getAllOperationsForBlock(network, hash)
         else Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -194,17 +202,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
       blockHead <- getBlockHead(network)
-      headLevel = blockHead.metadata.header.level
-      headHash = blockHead.metadata.hash
+      headLevel = blockHead.data.header.level
+      headHash = blockHead.data.hash
     } yield {
+      val bootstrapping = maxLevel == -1
       if (maxLevel < headLevel) {
         //got something to load
-        if (maxLevel == -1) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+        if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
         val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
           page => getBlocks(network, (headHash, headLevel), page)
         )
-        (pagedResults, headLevel - maxLevel - 1)
+        val minLevel = if (bootstrapping) 1 else maxLevel
+        (pagedResults, headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")
         (Iterator.empty, 0)
@@ -220,8 +230,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
   def getLatestBlocks(network: String, depth: Option[Int] = None): Future[PaginatedBlocksResults] =
     getBlockHead(network).map {
       head =>
-        val headLevel = head.metadata.header.level
-        val headHash = head.metadata.hash
+        val headLevel = head.data.header.level
+        val headHash = head.data.hash
         val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
         val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
           page => getBlocks(network, (headHash, headLevel), page)
@@ -243,6 +253,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     ): Future[BlockFetchingResults] = {
     import io.circe.parser.decode
     import JsonDecoders.Circe.{ JsonDecoded, handleDecodingErrors }
+    import JsonDecoders.Circe.Blocks._
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
@@ -252,12 +263,16 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     val makeBlocksUrl = (offset: Int) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
     val makeOperationsUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    val jsonToBlockMetadata: ((Int, String)) => BlockMetadata = {
-      case (_, json) => fromJson[BlockMetadata](json)
+    val jsonToBlockData: ((Int, String)) => Future[BlockData] = {
+      case (_, json) =>
+        decode[BlockData](JS.sanitize(json)) match {
+          case Left(error) => Future.failed(error)
+          case Right(results) => Future.successful(results)
+        }
     }
 
     val jsonToOperationGroups: String => JsonDecoded[List[OperationsGroup]] =
-      json => decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(json)).map(_.flatten)
+      json => decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten)
 
     //extracts any formally valid account hash from the passed-in string
     val jsonToAccountInvolved: String => List[AccountId] = {
@@ -272,7 +287,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
         jsonToOperationGroups(json).map( groups => (hash, groups, jsonToAccountInvolved(json)))
     }
 
-    val isGenesis = (metadata: BlockMetadata) => metadata.header.level == 0
+    val isGenesis = (data: BlockData) => data.header.level == 0
 
     def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[OperationsGroup], List[AccountId])]] =
       handleDecodingErrors(in, jsonToOperationsAndAccounts) match {
@@ -280,16 +295,16 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
         case Right(results) => Future.successful(results)
       }
 
-    //Gets metadata for the requested offsets and associates the operations and account hashes available involved in said operations
+    //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
-      fetchedBlocksMetadata <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) map (blocksMetadata => blocksMetadata.map(jsonToBlockMetadata))
-      blockHashes = fetchedBlocksMetadata.filterNot(isGenesis).map(_.hash)
+      fetchedBlocksData <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) flatMap (blocksData => Future.traverse(blocksData)(jsonToBlockData))
+      blockHashes = fetchedBlocksData.filterNot(isGenesis).map(_.hash)
       fetchedOperations <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsConcurrencyLevel)
       fetchedOperationsWithAccounts <- decodeOperations(fetchedOperations)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, ops, accounts) => (hash, (ops, accounts))}.toMap
-      fetchedBlocksMetadata.map {
+      fetchedBlocksData.map {
         md =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           (Block(md, ops), accs)
@@ -352,7 +367,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     val payload: Map[String, Any] = fee match {
       case Some(feeAmt) =>
         Map(
-          "branch" -> blockHead.metadata.hash,
+          "branch" -> blockHead.data.hash,
           "source" -> keyStore.publicKeyHash,
           "operations" -> operations,
           "counter" -> (account.counter + 1),
@@ -363,7 +378,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
         )
       case None =>
         Map(
-          "branch" -> blockHead.metadata.header.predecessor,
+          "branch" -> blockHead.data.header.predecessor,
           "operations" -> operations
         )
     }
@@ -415,7 +430,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     forgedOperationGroup: String,
     signedOpGroup: SignedOperationGroup): Future[AppliedOperation] = {
     val payload: Map[String, Any] = Map(
-      "pred_block" -> blockHead.metadata.header.predecessor,
+      "pred_block" -> blockHead.data.header.predecessor,
       "operation_hash" -> operationGroupHash,
       "forged_operation" -> forgedOperationGroup,
       "signature" -> signedOpGroup.signature

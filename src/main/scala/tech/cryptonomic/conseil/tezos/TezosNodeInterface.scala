@@ -6,7 +6,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.Source
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
@@ -238,8 +238,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
       logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
 
       streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
-        .toMat(Sink.collection[(CID, String), List[(CID, String)]])(Keep.right)
-        .run()
+        .runFold(List.empty[(CID, String)])(_ :+ _)
         .andThen {
           case _ => logger.debug("{} - Batch completed", batchId)
         }

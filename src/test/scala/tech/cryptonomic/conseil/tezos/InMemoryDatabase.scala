@@ -54,6 +54,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
     Tables.Blocks,
     Tables.OperationGroups,
     Tables.Operations,
+    Tables.BalanceUpdates,
     Tables.Accounts,
     Tables.Fees,
     Tables.AccountsCheckpoint

@@ -22,8 +22,11 @@ object TezosResponseBuilder {
         "priority": 0,
         "proof_of_work_nonce": "a983c23d0e5233bf",
         "signature": "sigPsHz3864TiJBAMoeZEw2p26Aq9LfYQ4SbFZkkLhYe3k4mStXsHhkCV5wfSc7fGMXdpyLSZjsTdkiUWXrBc1u1T2JSYab9"
+      },
+      "metadata": {
+        "balance_updates": []
       }
-    }""""
+    }"""
 
   val operationsResponse: String =
     """[
