@@ -26,18 +26,18 @@ Deployment
 - JRE (> 8.x)
 - A database supported by Typesafe Slick, e.g. Postgres
 
-## Building, packing and deploying Conseil
+## Building, packaging and deploying Conseil
 
 Run the following command from the root directory of the repository:
 
 ```bash
-sbt clean package
+sbt clean assembly
 ```
 
-This will clean any existing previous artifact, compile the project, and create a `jar` with the runnable application.
+This will clean any existing local artifact, compile the project, and create a "fat JAR" with the runnable application, including all its dependencies.
 ### Deploy
 
-After the package step, check the SBT output for the path of the generated fat JAR file. Copy this file to the desired deployment area.
+After the `assembly` step, check the SBT output for the path of the generated fat JAR file. Copy this file to the desired deployment area.
 
 ### Running Locally
 
@@ -91,7 +91,7 @@ env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "genSchema"
 
 ### Running in production
 
-Build Conseil as a fat JAR file using the 'Package' step above.
+Build Conseil as a fat JAR file using the steps described in the previous sections.
 
 Run this command using a script or as part of a service definition for Conseil:
 
