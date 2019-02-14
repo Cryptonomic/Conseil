@@ -7,8 +7,8 @@ Query API for the Tezos blockchain
 ## Running Conseil
 
 Conseil has two entry points:
-- `src/main/tech/cryptonomic/Conseil/Conseil.scala` runs a server exposing a RESTful API from locally stored blockchain data.
-- `src/main/tech/cryptonomic/Conseil/Lorre.scala` is a background process that loops and synchronize (Tezos) blockchain data to database.
+- `src/main/tech/cryptonomic/Conseil/Conseil.scala` runs a server exposing a RESTful API over blockchain data, stored in its own database.
+- `src/main/tech/cryptonomic/Conseil/Lorre.scala` is a background process that loops and synchronizes (Tezos) blockchain data to database.
 
 ### Warning
 
@@ -27,7 +27,7 @@ Deployment
 - A database supported by Typesafe Slick, e.g. Postgres
 
 ## Building, packaging and deploying Conseil
-
+### Package
 Run the following command from the root directory of the repository:
 
 ```bash
@@ -37,7 +37,7 @@ sbt clean assembly
 This will clean any existing local artifact, compile the project, and create a "fat JAR" with the runnable application, including all its dependencies.
 ### Deploy
 
-After the `assembly` step, check the SBT output for the path of the generated fat JAR file. Copy this file to the desired deployment area.
+After the packaging step, check the SBT output for the path of the generated fat JAR file. Copy this file to the desired deployment area.
 
 ### Running Locally
 
