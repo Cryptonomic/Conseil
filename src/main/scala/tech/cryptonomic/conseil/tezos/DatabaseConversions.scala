@@ -4,10 +4,9 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import tech.cryptonomic.conseil.util.Conversion._
+import java.sql.Timestamp
 
 object DatabaseConversions {
-
-  import java.sql.Timestamp
 
   //adapts from the java timestamp to sql
   private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
