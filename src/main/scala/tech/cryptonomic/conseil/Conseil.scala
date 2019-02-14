@@ -56,7 +56,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
                   data.getRoutes ~ data.postRoute
                 }
               }
-            } ~ data.postRoute ~ data.getRoutes
+            }
           } ~ options {
             // Support for CORS pre-flight checks.
             complete("Supported methods : GET and POST.")
