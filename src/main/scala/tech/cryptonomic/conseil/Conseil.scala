@@ -46,22 +46,19 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
               } ~ pathPrefix("info") {
                 AppInfo.route
               }
-            } ~ pathPrefix("v2") {
+            } ~
               logRequest("Metadata Route", Logging.DebugLevel) {
-                pathPrefix("metadata") {
-                  platformDiscovery.route
-                }
+                platformDiscovery.route
               } ~ logRequest("Data Route", Logging.DebugLevel) {
-                pathPrefix("data") {
-                  data.getRoutes ~ data.postRoute
-                }
-              }
-            } ~ data.postRoute ~ data.getRoutes
-          } ~ options {
-            // Support for CORS pre-flight checks.
-            complete("Supported methods : GET and POST.")
+              data.getRoutes ~ data.postRoute
+
+            }
           }
+        } ~ options {
+          // Support for CORS pre-flight checks.
+          complete("Supported methods : GET and POST.")
         }
+
       } ~ pathPrefix("docs") {
         pathEndOrSingleSlash {
           getFromResource("web/index.html")
@@ -95,7 +92,9 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(errors) =>
+    case Left(errors)
+    =>
     //nothing to do
   }
+
 }

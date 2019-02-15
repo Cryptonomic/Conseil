@@ -8,6 +8,7 @@ import io.circe.syntax._
 
 object OpenApiDoc
   extends DataEndpoints
+  with PlatformDiscoveryEndpoints
     with openapi.Endpoints
     with openapi.JsonSchemaEntities
     with openapi.BasicAuthentication {
@@ -16,7 +17,8 @@ object OpenApiDoc
     openapi.asJson
 
   def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(queryEndpoint, blocksEndpoint, blocksHeadEndpoint, blockByHashEndpoint,
-    accountsEndpoint, accountByIdEndpoint, operationGroupsEndpoint, operationGroupByIdEndpoint, avgFeesEndpoint, operationsEndpoint)
+    accountsEndpoint, accountByIdEndpoint, operationGroupsEndpoint, operationGroupByIdEndpoint, avgFeesEndpoint, operationsEndpoint,
+    platformsEndpoint, networksEndpoint, entitiesEndpoint, attributesEndpoint, attributesValuesEndpoint, attributesValuesWithFilterEndpoint)
 
   def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
     response :+ OpenApiDoc.DocumentedResponse(
