@@ -6,7 +6,7 @@ val akkaVersion = "2.5.11"
 val slickVersion = "3.2.1"
 val circeVersion = "0.11.0"
 val catsVersion = "1.6.0"
-val monocleVersion = "1.6.0-M1"
+val monocleVersion = "1.5.1-cats"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
