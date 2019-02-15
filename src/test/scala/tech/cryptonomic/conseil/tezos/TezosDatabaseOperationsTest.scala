@@ -185,7 +185,7 @@ class TezosDatabaseOperationsTest
             import tech.cryptonomic.conseil.util.Conversion.Syntax._
             //used as a constraint to read balance updates from operations
             import tech.cryptonomic.conseil.tezos.OperationBalances._
-            import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+            import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
 
             val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
             val dbConversion = opRow.convertTo[Tables.OperationsRow]
@@ -212,7 +212,7 @@ class TezosDatabaseOperationsTest
     }
 
     "write metadata balance updates along with the blocks" in {
-      import TezosOptics._
+      import TezosOptics.Blocks._
 
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -235,7 +235,7 @@ class TezosDatabaseOperationsTest
         import tech.cryptonomic.conseil.util.Conversion.Syntax._
         //used as a constraint to read balance updates from block data
         import tech.cryptonomic.conseil.tezos.BlockBalances._
-        import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+        import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
 
         val generatedUpdateRows =
           generatedBlocks.flatMap(

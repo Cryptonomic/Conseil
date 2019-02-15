@@ -4,7 +4,9 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import tech.cryptonomic.conseil.util.Conversion._
+import cats.Show
 import java.sql.Timestamp
+import monocle.Getter
 
 object DatabaseConversions {
 
@@ -271,40 +273,43 @@ object DatabaseConversions {
     * We get back an empty List, where not applicable
     * We define a typeclass/trait that encodes the availability of balance updates, to reuse it for operations as well as blocks
     * @tparam T the source type that contains the balance updates values
-    * @tparam S the SourceDescriptor type for the available `HasBalanceUpdates[T]` instance, used to add the `Show` contraint
-    * @param aux used to search for an instance of the `HasBalanceUpdates` type class for `T` and at the same time expose the `SourceDescriptor` type as `S`
-    * @param show provide a way to convert the `S` descriptor to a string, needed to write it on the `BalanceUpdatesRow`
+    * @tparam Label the source Label type, which has a `Show` contraint, to be representable as a string
+    * @param balances an optic instance that lets extract the Map of tagged updates from the source
+    * @param hashing an optic instance to extract an optional reference hash value
     */
-  implicit def anyToBalanceUpdates[T, S](implicit aux: HasBalanceUpdates.Aux[T, S], show: cats.Show[S]) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
-    import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
+  implicit def anyToBalanceUpdates[T, Label](
+    implicit
+    balances: Getter[T, Map[Label, List[OperationMetadata.BalanceUpdate]]],
+    hashing: Getter[T, Option[String]],
+    showing: Show[Label]
+  ) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
     import cats.syntax.show._
 
     override def convert(from: T) =
-      from.getAllBalanceUpdates.flatMap {
-        case (source, updates) =>
-        updates.map{
-          case OperationMetadata.BalanceUpdate(
-            kind,
-            change,
-            category,
-            contract,
-            delegate,
-            level
-          ) =>
-          Tables.BalanceUpdatesRow(
-            id = 0,
-            source = source.show,
-            sourceHash = from.getHash,
-            kind = kind,
-            contract = contract.map(_.id),
-            change = BigDecimal(change),
-            level = level.map(BigDecimal(_)),
-            delegate = delegate.map(_.value),
-            category = category
-          )
-      }
-    }.toList
-
+      balances.get(from).flatMap {
+        case (tag, updates) =>
+          updates.map {
+            case OperationMetadata.BalanceUpdate(
+              kind,
+              change,
+              category,
+              contract,
+              delegate,
+              level
+            ) =>
+            Tables.BalanceUpdatesRow(
+              id = 0,
+              source = tag.show,
+              sourceHash = hashing.get(from),
+              kind = kind,
+              contract = contract.map(_.id),
+              change = BigDecimal(change),
+              level = level.map(BigDecimal(_)),
+              delegate = delegate.map(_.value),
+              category = category
+            )
+          }
+      }.toList
   }
 
   /** Utility alias when we need to keep related data paired together */
@@ -318,7 +323,7 @@ object DatabaseConversions {
     */
   implicit val blockToOperationTablesData = new Conversion[List, Block, OperationTablesData] {
     import tech.cryptonomic.conseil.util.Conversion.Syntax._
-    import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+    import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
     import tech.cryptonomic.conseil.tezos.OperationBalances._
 
     override def convert(from: Block) =

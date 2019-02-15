@@ -103,7 +103,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
   def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
-    import TezosOptics._
+    import TezosOptics.Blocks._
     import mouse.any._
 
     val generated = generateBlocks(toLevel = atLevel, startAt = atTime).last
