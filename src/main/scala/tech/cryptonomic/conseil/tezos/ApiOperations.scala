@@ -147,7 +147,7 @@ object ApiOperations extends DataOperations {
         limit = limit.getOrElse(DataTypes.defaultLimitValue),
         orderBy = sortBy.map { o =>
           val direction = order match {
-            case Some(value) if value == AscendingSort => OrderDirection.asc
+            case Some(AscendingSort) => OrderDirection.asc
             case _ => OrderDirection.desc
           }
           QueryOrdering(o, direction)

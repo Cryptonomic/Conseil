@@ -1,8 +1,9 @@
 package tech.cryptonomic.conseil.routes.openapi
 
+import cats.Functor
 import endpoints.algebra.Documentation
+import endpoints.openapi
 import endpoints.openapi.model._
-import endpoints.{InvariantFunctor, openapi}
 import io.circe.Json
 import io.circe.syntax._
 
@@ -37,8 +38,8 @@ object OpenApiDoc
     )
   )
 
-  override implicit def qsInvFunctor: InvariantFunctor[QueryString] = new InvariantFunctor[QueryString] {
-    def xmap[From, To](f: OpenApiDoc.DocumentedQueryString, map: From => To, contramap: To => From): OpenApiDoc.DocumentedQueryString = f
+  override implicit def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
+    override def map[From, To](f: OpenApiDoc.DocumentedQueryString)(map: From => To): OpenApiDoc.DocumentedQueryString = f
   }
 
   override implicit def timestampSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("integer")
