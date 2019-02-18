@@ -266,8 +266,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     val jsonToBlockData: ((Int, String)) => Future[BlockData] = {
       case (_, json) =>
         decode[BlockData](JS.sanitize(json)) match {
-          case Left(error) => Future.failed(error)
-          case Right(results) => Future.successful(results)
+          case Left(error) =>
+            logger.error("I fetched a block definition from tezos node that I'm unable to decode: {}", json)
+            Future.failed(error)
+          case Right(results) =>
+            Future.successful(results)
         }
     }
 
