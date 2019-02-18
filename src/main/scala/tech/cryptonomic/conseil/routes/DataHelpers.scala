@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.routes.openapi
+package tech.cryptonomic.conseil.routes
 
 import java.sql.Timestamp
 
@@ -9,10 +9,10 @@ import cats.Functor
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, QueryValidationError}
+import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
 
 import scala.concurrent.{ExecutionContext, Future}
-
 
 trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.server.Endpoints
   with akkahttp.server.JsonSchemaEntities with DataEndpoints {
