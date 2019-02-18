@@ -26,12 +26,15 @@ object TezosNodeOperator {
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
 
+  val isGenesis = (data: BlockData) => data.header.level == 0
+
 }
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   */
 class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext) extends LazyLogging {
+  import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
@@ -168,8 +171,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
         }
       }
       ops <-
-        if (block.header.level > 0) getAllOperationsForBlock(network, hash)
-        else Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+        if (isGenesis(block)) Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+        else getAllOperationsForBlock(network, hash)
     } yield Block(block, ops)
   }
 
@@ -289,8 +292,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       case (hash, json) =>
         jsonToOperationGroups(json).map( groups => (hash, groups, jsonToAccountInvolved(json)))
     }
-
-    val isGenesis = (data: BlockData) => data.header.level == 0
 
     def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[OperationsGroup], List[AccountId])]] =
       handleDecodingErrors(in, jsonToOperationsAndAccounts) match {
