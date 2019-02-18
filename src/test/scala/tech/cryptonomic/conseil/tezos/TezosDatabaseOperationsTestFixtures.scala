@@ -82,7 +82,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = BlockHeaderMetadata(balance_updates = List.empty)
+          metadata = BlockHeaderMetadata(balance_updates = None)
         ),
         operationGroups = List.empty
       )
@@ -113,7 +113,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             timestamp = atTime
           ),
           metadata = generated.data.metadata.copy(
-            balance_updates = balanceUpdates
+            balance_updates = Some(balanceUpdates)
           )
         )
       )

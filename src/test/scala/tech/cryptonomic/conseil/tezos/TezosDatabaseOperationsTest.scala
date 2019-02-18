@@ -220,7 +220,7 @@ class TezosDatabaseOperationsTest
         block.copy(
           data = block.data.copy(
             metadata = block.data.metadata.copy(
-              balance_updates = generateBalanceUpdates(2)(randomSeed + idx)
+              balance_updates = Option(generateBalanceUpdates(2)(randomSeed + idx))
             )
           )
         )
