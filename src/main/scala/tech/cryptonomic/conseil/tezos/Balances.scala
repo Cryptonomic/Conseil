@@ -116,7 +116,7 @@ object BlockBalances {
 
     //the updates might actually be missing from json
     override def getAllBalanceUpdates(data: BlockData)(implicit show: Show[Symbol]) =
-      Map(BLOCK_SOURCE -> Option(data.metadata.balance_updates).getOrElse(List.empty))
+      Map(BLOCK_SOURCE -> data.metadata.balance_updates.getOrElse(List.empty))
 
     override def getHash(data: BlockData) = Option(data.hash.value)
 
