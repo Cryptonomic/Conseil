@@ -11,7 +11,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
@@ -1209,12 +1209,12 @@ class TezosDatabaseOperationsTest
       val tableName = Tables.Blocks.baseTableRow.tableName
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        generatedQuery <- makeQuery(tableName, columns).as[Map[String, Any]]
+        generatedQuery <- makeQuery(tableName, columns).as[AnyMap]
       } yield generatedQuery
 
       val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
       val expectedQueryResult = dbHandler.run(
-        sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true""".as[Map[String, Any]]
+        sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true""".as[AnyMap]
       ).futureValue
       generatedQueryResult shouldBe expectedQueryResult
     }

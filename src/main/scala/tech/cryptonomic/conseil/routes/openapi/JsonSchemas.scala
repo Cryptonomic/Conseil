@@ -37,6 +37,6 @@ trait JsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
 
   implicit def queryResponseSchema: JsonSchema[List[Map[String, Option[Any]]]]
 
-  implicit def blocksByHashSchema: JsonSchema[Map[String, Any]]
+  implicit def blocksByHashSchema: JsonSchema[AnyMap]
 
 }

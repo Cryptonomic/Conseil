@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Route
 import cats.Functor
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
-import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryValidationError
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, QueryValidationError}
 import tech.cryptonomic.conseil.tezos.Tables
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -74,12 +74,12 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
       override def decoder: Decoder[List[Map[String, Option[Any]]]] = ???
     }
 
-  override implicit def blocksByHashSchema: JsonSchema[Map[String, Any]] = new JsonSchema[Map[String, Any]] {
-    override def encoder: Encoder[Map[String, Any]] = (a: Map[String, Any]) => Json.obj(a.map {
+  override implicit def blocksByHashSchema: JsonSchema[AnyMap] = new JsonSchema[AnyMap] {
+    override def encoder: Encoder[AnyMap] = (a: AnyMap) => Json.obj(a.map {
       case (k, v) => (k, v.asJson(anyEncoder))
     }.toList: _*)
 
-    override def decoder: Decoder[Map[String, Any]] = ???
+    override def decoder: Decoder[AnyMap] = ???
   }
 
   override implicit def timestampSchema: JsonSchema[Timestamp] = new JsonSchema[Timestamp] {
