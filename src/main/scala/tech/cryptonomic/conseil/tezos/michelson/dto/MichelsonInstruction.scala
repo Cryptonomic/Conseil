@@ -17,8 +17,8 @@ package tech.cryptonomic.conseil.tezos.michelson.dto
  * */
 sealed trait MichelsonInstruction
 
-/* Class representing a simple Michelson instruction which can by optionally typed */
-case class MichelsonSimpleInstruction(prim: String, michelsonType: Option[MichelsonType] = None) extends MichelsonInstruction
+/* Class representing a simple Michelson instruction which can contains following expressions */
+case class MichelsonSimpleInstruction(prim: String, michelsonExpressions: List[MichelsonExpression] = List.empty) extends MichelsonInstruction
 
 /* Class representing a Michelson instruction with other embedded instructions */
 case class MichelsonComplexInstruction(prim: String, embeddedOperations: MichelsonInstructionSequence) extends MichelsonInstruction
