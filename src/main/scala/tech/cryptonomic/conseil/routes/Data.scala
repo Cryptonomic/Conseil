@@ -6,10 +6,9 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.routes.openapi.DataHelpers
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -25,7 +24,7 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with RouteHandling with DatabaseApiFiltering with DataHelpers {
+  extends LazyLogging with DatabaseApiFiltering with DataHelpers {
 
   import cats.implicits._
 

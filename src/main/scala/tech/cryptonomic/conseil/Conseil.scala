@@ -43,33 +43,35 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
             logRequest("Conseil", Logging.DebugLevel) {
               pathPrefix("tezos") {
                 tezos.route
-              } ~ pathPrefix("info") {
-                AppInfo.route
-              }
+              } ~
+                pathPrefix("info") {
+                  AppInfo.route
+                }
             } ~
-              logRequest("Metadata Route", Logging.DebugLevel) {
-                platformDiscovery.route
-              } ~ logRequest("Data Route", Logging.DebugLevel) {
+            logRequest("Metadata Route", Logging.DebugLevel) {
+              platformDiscovery.route
+            } ~
+            logRequest("Data Route", Logging.DebugLevel) {
               data.getRoutes ~ data.postRoute
-
             }
+          } ~
+          options {
+            // Support for CORS pre-flight checks.
+            complete("Supported methods : GET and POST.")
           }
-        } ~ options {
-          // Support for CORS pre-flight checks.
-          complete("Supported methods : GET and POST.")
         }
-
-      } ~ pathPrefix("docs") {
+      } ~
+      pathPrefix("docs") {
         pathEndOrSingleSlash {
           getFromResource("web/index.html")
         }
       } ~
-        pathPrefix("swagger-ui") {
-          getFromResourceDirectory("web/swagger-ui/")
-        } ~
-        path("openapi.json") {
-          complete(OpenApiDoc.openapiJson)
-        }
+      pathPrefix("swagger-ui") {
+        getFromResourceDirectory("web/swagger-ui/")
+      } ~
+      path("openapi.json") {
+        complete(OpenApiDoc.openapiJson)
+      }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       logger.info(

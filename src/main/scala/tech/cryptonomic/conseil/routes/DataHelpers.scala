@@ -1,17 +1,18 @@
-package tech.cryptonomic.conseil.routes.openapi
+package tech.cryptonomic.conseil.routes
 
 import java.sql.Timestamp
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
+import cats.Functor
+import endpoints.akkahttp
 import endpoints.algebra.Documentation
-import endpoints.{InvariantFunctor, akkahttp}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryValidationError
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, QueryValidationError}
+import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
 
 import scala.concurrent.{ExecutionContext, Future}
-
 
 trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.server.Endpoints
   with akkahttp.server.JsonSchemaEntities with DataEndpoints {
@@ -35,8 +36,8 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     case Right(None) => None
   }
 
-  override implicit def qsInvFunctor: InvariantFunctor[QueryString] = new InvariantFunctor[QueryString] {
-    override def xmap[From, To](f: QueryString[From], map: From => To, contramap: To => From): QueryString[To] = new QueryString[To](
+  override implicit def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
+    override def map[From, To](f: QueryString[From])(map: From => To): QueryString[To] = new QueryString[To](
       f.directive.map(map)
     )
   }
@@ -73,12 +74,12 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
       override def decoder: Decoder[List[Map[String, Option[Any]]]] = ???
     }
 
-  override implicit def blocksByHashSchema: JsonSchema[Map[String, Any]] = new JsonSchema[Map[String, Any]] {
-    override def encoder: Encoder[Map[String, Any]] = (a: Map[String, Any]) => Json.obj(a.map {
+  override implicit def blocksByHashSchema: JsonSchema[AnyMap] = new JsonSchema[AnyMap] {
+    override def encoder: Encoder[AnyMap] = (a: AnyMap) => Json.obj(a.map {
       case (k, v) => (k, v.asJson(anyEncoder))
     }.toList: _*)
 
-    override def decoder: Decoder[Map[String, Any]] = ???
+    override def decoder: Decoder[AnyMap] = ???
   }
 
   override implicit def timestampSchema: JsonSchema[Timestamp] = new JsonSchema[Timestamp] {

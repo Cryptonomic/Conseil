@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -319,13 +320,13 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     * @return           Operation group enriched with a key reveal if necessary
     */
   def handleKeyRevealForOperations(
-    operations: List[Map[String, Any]],
+    operations: List[AnyMap],
     managerKey: ManagerKey,
-    keyStore: KeyStore): List[Map[String, Any]] =
+    keyStore: KeyStore): List[AnyMap] =
     managerKey.key match {
       case Some(_) => operations
       case None =>
-        val revealMap: Map[String, Any] = Map(
+        val revealMap: AnyMap = Map(
           "kind"        -> "reveal",
           "public_key"  -> keyStore.publicKey
         )
@@ -349,7 +350,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     operations: List[Map[String,Any]],
     keyStore: KeyStore,
     fee: Option[Float]): Future[String] = {
-    val payload: Map[String, Any] = fee match {
+    val payload: AnyMap = fee match {
       case Some(feeAmt) =>
         Map(
           "branch" -> blockHead.metadata.hash,
@@ -414,7 +415,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     operationGroupHash: String,
     forgedOperationGroup: String,
     signedOpGroup: SignedOperationGroup): Future[AppliedOperation] = {
-    val payload: Map[String, Any] = Map(
+    val payload: AnyMap = Map(
       "pred_block" -> blockHead.metadata.header.predecessor,
       "operation_hash" -> operationGroupHash,
       "forged_operation" -> forgedOperationGroup,
@@ -434,7 +435,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     * @return               ID of injected operation
     */
   def injectOperation(network: String, signedOpGroup: SignedOperationGroup): Future[String] = {
-    val payload: Map[String, Any] = Map(
+    val payload: AnyMap = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
     )
     node.runAsyncPostQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))

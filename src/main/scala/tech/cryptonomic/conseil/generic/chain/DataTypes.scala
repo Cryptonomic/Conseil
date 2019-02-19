@@ -13,6 +13,8 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 object DataTypes {
   import io.scalaland.chimney.dsl._
 
+  type AnyMap = Map[String, Any]
+
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
 
