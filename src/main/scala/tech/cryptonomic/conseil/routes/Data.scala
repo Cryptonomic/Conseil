@@ -26,7 +26,11 @@ object Data {
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with DatabaseApiFiltering with DataHelpers {
 
-  import cats.implicits._
+  import cats.instances.either._
+  import cats.instances.future._
+  import cats.syntax.bitraverse._
+  import cats.instances.option._
+  import cats.syntax.traverse._
 
   /*
    * reuse the same context as the one for ApiOperations calls
@@ -108,19 +112,18 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
     operationsRoute
   )
 
+
+
+
   private def platformNetworkValidation[A](platform: String, network: String)(operation: Option[Future[A]]): Future[Option[A]] = {
-    optionFutureOps {
-      ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
-        operation
-      }
-    }
+    ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
+      operation
+    }.sequence
   }
 
   private def platformNetworkValidationFlattened[A](platform: String, network: String)(operation: Future[Option[A]]): Future[Option[A]] = {
-    optionFutureOps {
-      ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-        operation
-      }
-    }.map(_.flatten)
+    ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+      operation
+    }.sequence.map(_.flatten)
   }
 }

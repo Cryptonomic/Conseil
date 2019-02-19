@@ -8,7 +8,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
 import tech.cryptonomic.conseil.routes.Data
 
@@ -60,7 +60,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       |}]
     """.stripMargin
 
-  val responseAsMap: List[Map[String, Option[Any]]] = List(
+  val responseAsMap: List[QueryResponse] = List(
     Map(
       "account_id" -> Some("tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1"),
       "spendable" -> Some(true),
@@ -79,7 +79,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   )
 
   val fakeQPO: DataOperations = new DataOperations {
-    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Option[Any]]]] =
+    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
   }
 

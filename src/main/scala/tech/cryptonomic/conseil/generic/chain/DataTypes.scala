@@ -14,6 +14,7 @@ object DataTypes {
   import io.scalaland.chimney.dsl._
 
   type AnyMap = Map[String, Any]
+  type QueryResponse = Map[String, Option[Any]]
 
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000

@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, ApiQuery, QueryValidationError}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, ApiQuery, QueryResponse, QueryValidationError}
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
@@ -15,24 +15,24 @@ trait DataEndpoints
 
   private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
 
-  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], List[Map[String, Option[Any]]]]]] =
+  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], List[QueryResponse]]]] =
     endpoint(
       request = post(url = commonPath / segment[String](name = "entity"),
         entity = jsonRequest[ApiQuery](),
         headers = header("apiKey")),
       response = validated(
-        response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query endpoint")),
+        response = jsonResponse[List[QueryResponse]](docs = Some("Query endpoint")),
         invalidDocs = Some("Can't query - invalid entity!")
       ).orNotFound(Some("Not found")),
       tags = List("Query")
     )
 
-  def blocksEndpoint: Endpoint[((String, String, Filter), String), Option[List[Map[String, Option[Any]]]]] =
+  def blocksEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" /? queryStringFilter,
         headers = header("apiKey")),
-      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint for blocks")).orNotFound(Some("Not found")),
+      response = jsonResponse[List[QueryResponse]](docs = Some("Query compatibility endpoint for blocks")).orNotFound(Some("Not found")),
       tags = List("Blocks")
     )
 
@@ -54,12 +54,12 @@ trait DataEndpoints
       tags = List("Blocks")
     )
 
-  def accountsEndpoint: Endpoint[((String, String, Filter), String), Option[List[Map[String, Option[Any]]]]] =
+  def accountsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
         url = commonPath / "accounts" /? queryStringFilter,
         headers = header("apiKey")),
-      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint for accounts")).orNotFound(Some("Not found")),
+      response = jsonResponse[List[QueryResponse]](docs = Some("Query compatibility endpoint for accounts")).orNotFound(Some("Not found")),
       tags = List("Accounts")
     )
 
@@ -72,12 +72,12 @@ trait DataEndpoints
       tags = List("Accounts")
     )
 
-  def operationGroupsEndpoint: Endpoint[((String, String, Filter), String), Option[List[Map[String, Option[Any]]]]] =
+  def operationGroupsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
         url = commonPath / "operation_groups" /? queryStringFilter,
         headers = header("apiKey")),
-      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint for operation groups")).orNotFound(Some("Not found")),
+      response = jsonResponse[List[QueryResponse]](docs = Some("Query compatibility endpoint for operation groups")).orNotFound(Some("Not found")),
       tags = List("Operation groups")
     )
 
@@ -99,12 +99,12 @@ trait DataEndpoints
       tags = List("Fees")
     )
 
-  def operationsEndpoint: Endpoint[((String, String, Filter), String), Option[List[Map[String, Option[Any]]]]] =
+  def operationsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
         url = commonPath / "operations" /? queryStringFilter,
         headers = header("apiKey")),
-      response = jsonResponse[List[Map[String, Option[Any]]]](docs = Some("Query compatibility endpoint for operations")).orNotFound(Some("Not found")),
+      response = jsonResponse[List[QueryResponse]](docs = Some("Query compatibility endpoint for operations")).orNotFound(Some("Not found")),
       tags = List("Operations")
     )
 
