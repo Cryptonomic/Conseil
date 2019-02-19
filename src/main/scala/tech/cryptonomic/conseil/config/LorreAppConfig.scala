@@ -1,17 +1,17 @@
 package tech.cryptonomic.conseil.config
 
+import tech.cryptonomic.conseil.config.Platforms._
+import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
 import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
 import pureconfig.ConfigReader
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.generic.ProductHint
 import pureconfig.generic.auto._
-import tech.cryptonomic.conseil.config.Platforms._
-import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
+import scopt.{OptionParser, Read}
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
   import LorreAppConfig._
-  import scopt.{OptionParser, Read}
 
   /* used by scopt to parse the depth object */
   implicit private val depthRead: Read[Option[Depth]] = Read.reads {
@@ -60,7 +60,7 @@ trait LorreAppConfig {
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node), nodeRequests, streamingClient, fetching)
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
 
     //something went wrong
     loadedConf.left.foreach {
@@ -80,6 +80,7 @@ object LorreAppConfig {
     tezos: TezosConfiguration,
     nodeRequests: NetworkCallsConfiguration,
     streamingClientPool: HttpStreamingConfiguration,
-    batching: BatchFetchConfiguration
+    batching: BatchFetchConfiguration,
+    verbose: VerboseOutput
   )
 }

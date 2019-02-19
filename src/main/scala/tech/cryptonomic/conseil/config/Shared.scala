@@ -38,3 +38,5 @@ final case class HttpCacheConfiguration(cacheConfig: com.typesafe.config.Config)
 object Natural {
   def unapply(s: String): Option[Int] = util.Try(s.toInt).filter(_ > 0).toOption
 }
+
+final case class VerboseOutput(on: Boolean) extends AnyVal

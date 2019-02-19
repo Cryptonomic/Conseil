@@ -18,8 +18,8 @@ import scala.concurrent.ExecutionContextExecutor
 
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport {
 
-  applicationConfiguration match {
-    case Right((server, platforms, securityApi, caching)) =>
+  loadApplicationConfiguration(args) match {
+    case Right((server, platforms, securityApi, caching, verbose)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
