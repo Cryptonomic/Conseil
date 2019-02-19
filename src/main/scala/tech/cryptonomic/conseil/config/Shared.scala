@@ -33,3 +33,8 @@ final case class SodiumConfiguration(libraryPath: String) extends AnyVal with Pr
 
 /** holds configuration for the akka-http-caching used in metadata endpoint */
 final case class HttpCacheConfiguration(cacheConfig: com.typesafe.config.Config)
+
+/** used to pattern match on natural numbers */
+object Natural {
+  def unapply(s: String): Option[Int] = util.Try(s.toInt).filter(_ > 0).toOption
+}

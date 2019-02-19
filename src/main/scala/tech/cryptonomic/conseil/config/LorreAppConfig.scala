@@ -1,8 +1,9 @@
 package tech.cryptonomic.conseil.config
 
+import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
+import pureconfig.ConfigReader
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.generic.ProductHint
-import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
 import pureconfig.generic.auto._
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
@@ -10,41 +11,50 @@ import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClie
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
   import LorreAppConfig._
+  import scopt.{OptionParser, Read}
 
-  private val argsParser = new scopt.OptionParser[ArgumentsConfig]("lorre") {
-    arg[String]("network").required().action( (x, c) =>
-      c.copy(networks = c.networks :+ x) ).text("which network to use")
-
-    opt[String]("depth")
-      .action((depth, c) => c.copy(d = depth))
-      .text("how many blocks to synchronize starting with head (use -1 or all for everything and 0 or new for only new ones)")
-
-    help("help").text("prints this usage text")
+  /* used by scopt to parse the depth object */
+  implicit private val depthRead: Read[Option[Depth]] = Read.reads {
+    case "-1" | "all" => Some(Everything)
+    case "0"  | "new" => Some(Newest)
+    case Natural(n) => Some(Custom(n))
+    case _ => None
   }
 
-  object Int {
-    def unapply(s: String): Option[Int] = util.Try(s.toInt).toOption
-  }
+  private case class ArgumentsConfig(val depth: Depth = Newest, verbose: Boolean = false, network: String = "")
 
-  private case class ArgumentsConfig(private val d: String = "new", networks: Seq[String] = Seq()) {
+  private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
+    arg[String]("network")
+      .required()
+      .action( (x, c) => c.copy(network = x))
+      .text("which network to use")
 
-    def depth: Depth = {
-      d match {
-        case Int(-1) | "all" => Everything
-        case Int(0)  | "new" => Newest
-        case Int(n) => Custom(n)
-      }
-    }
+    opt[Option[Depth]]('d', "depth")
+      .validate{
+        case Some(depth) => success
+        case None => failure("I failed to parse a valid depth from the arguments")
+      }.action((depth, c) => c.copy(depth = depth.get))
+      .text("how many blocks to synchronize starting with head: use -1 or `all` for everything and 0 or `new` to only get new ones)")
+
+    opt[Unit]('v', "verbose")
+      .action((_, c) => c.copy(verbose = true))
+      .text("print additional configuration info when the application is launched")
+
+    help('h', "help").text("prints this usage text")
   }
 
   /** Reads all configuration upstart, will print all errors encountered during loading */
-  protected def loadApplicationConfiguration(commandLineArgs: Array[String]): Either[ConfigReaderFailures, CombinedConfiguration] = {
+  protected def loadApplicationConfiguration(commandLineArgs: Array[String]): ConfigReader.Result[CombinedConfiguration] = {
+    /** Use the pureconfig convention to handle configuration from the command line */
+    def readArgs(args: Array[String]): ConfigReader.Result[ArgumentsConfig] =
+      argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
+
     //applies convention to uses CamelCase when reading config fields
     implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
     val loadedConf = for {
-      parsedCommandLineArgs <- readArgs(commandLineArgs)
-      (network, depth) = parsedCommandLineArgs
+      args <- readArgs(commandLineArgs)
+      ArgumentsConfig(depth, verbose, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
@@ -60,15 +70,6 @@ trait LorreAppConfig {
     loadedConf
   }
 
-  /** Use the pureconfig convention to handle configuration from the command line */
-  protected def readArgs(args: Array[String]): Either[ConfigReaderFailures, (String, Depth)] = {
-
-    val argumentsConfig = argsParser.parse(args, ArgumentsConfig()).getOrElse(sys.exit(1))
-    val network = argumentsConfig.networks.head
-    val depth = argumentsConfig.depth
-
-    Right(network, depth)
-  }
 }
 
 object LorreAppConfig {
