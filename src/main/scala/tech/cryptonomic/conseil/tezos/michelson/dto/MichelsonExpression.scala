@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos.michelson.dto
 
-trait MichelsonExpression
+sealed trait MichelsonExpression
 
 /*
  * Class representing a type
