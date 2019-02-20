@@ -5,11 +5,14 @@ import cats.syntax.functor._
 import endpoints.algebra
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 
+/** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
 trait EndpointsHelpers extends QueryStringLists with algebra.JsonSchemaEntities with Validation with TupleFlattenHelper {
   import FlattenHigh._
 
+  /** Query string functor adding map operation */
   implicit def qsFunctor: Functor[QueryString]
 
+  /** Query params type alias */
   type QueryParams = (
     Option[Int],
       List[String],
@@ -28,6 +31,7 @@ trait EndpointsHelpers extends QueryStringLists with algebra.JsonSchemaEntities 
       Option[String]
     )
 
+  /** Function for extracting query string with query params */
   def filterQs: QueryString[QueryParams] = {
     val raw =
       optQs[Int]("limit") &
@@ -48,6 +52,7 @@ trait EndpointsHelpers extends QueryStringLists with algebra.JsonSchemaEntities 
     raw map (flatten(_))
   }
 
+  /** Function for mapping query string to Filter */
   val queryStringFilter: QueryString[Filter] =
     filterQs.map(
       (Filter.readParams _).tupled

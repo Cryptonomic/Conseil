@@ -7,14 +7,16 @@ import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
-
+/** Trait containing endpoints definition */
 trait DataEndpoints
   extends algebra.Endpoints
     with JsonSchemas
     with EndpointsHelpers {
 
+  /** Common path among endpoints */
   private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
 
+  /** V2 Query endpoint definition */
   def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], List[QueryResponse]]]] =
     endpoint(
       request = post(url = commonPath / segment[String](name = "entity"),
@@ -27,6 +29,7 @@ trait DataEndpoints
       tags = List("Query")
     )
 
+  /** V2 Blocks endpoint definition */
   def blocksEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
@@ -36,6 +39,7 @@ trait DataEndpoints
       tags = List("Blocks")
     )
 
+  /** V2 Blocks head endpoint definition */
   def blocksHeadEndpoint: Endpoint[(String, String, String), Option[Tables.BlocksRow]] =
     endpoint(
       request = get(
@@ -45,6 +49,7 @@ trait DataEndpoints
       tags = List("Blocks")
     )
 
+  /** V2 Blocks by hash endpoint definition */
   def blockByHashEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
     endpoint(
       request = get(
@@ -54,6 +59,7 @@ trait DataEndpoints
       tags = List("Blocks")
     )
 
+  /** V2 Accounts endpoint definition */
   def accountsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
@@ -63,6 +69,7 @@ trait DataEndpoints
       tags = List("Accounts")
     )
 
+  /** V2 Accounts by ID endpoint definition */
   def accountByIdEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
     endpoint(
       request = get(
@@ -72,6 +79,7 @@ trait DataEndpoints
       tags = List("Accounts")
     )
 
+  /** V2 Operation groupe endpoint definition */
   def operationGroupsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
@@ -81,6 +89,7 @@ trait DataEndpoints
       tags = List("Operation groups")
     )
 
+  /** V2 Operation groups by ID endpoint definition */
   def operationGroupByIdEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
     endpoint(
       request = get(
@@ -90,6 +99,7 @@ trait DataEndpoints
       tags = List("Operation groups")
     )
 
+  /** V2 average fees endpoint definition */
   def avgFeesEndpoint: Endpoint[((String, String, Filter), String), Option[AverageFees]] =
     endpoint(
       request = get(
@@ -99,6 +109,7 @@ trait DataEndpoints
       tags = List("Fees")
     )
 
+  /** V2 Operations endpoint definition */
   def operationsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
