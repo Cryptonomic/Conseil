@@ -175,7 +175,9 @@ conseildb = {
     user = "redacted"
     password = "redacted"
   }
-  numThreads = 10 #please make sure you know what you're doing before changing this
+  #please make sure you know what you're doing before changing these values
+  numThreads = 10
+  maxConnections = 10
 }
 
 #available blockchain platforms
