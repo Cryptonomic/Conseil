@@ -28,7 +28,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val block: Future[TezosTypes.Block] = nodeOp.getBlock("zeronet", BlockHash("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe"))
 
     //then
-    block.futureValue.metadata.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
+    block.futureValue.data.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
   }
 
   "getLatestBlocks" should "should correctly fetch all the blocks if no depth is passed-in" in {

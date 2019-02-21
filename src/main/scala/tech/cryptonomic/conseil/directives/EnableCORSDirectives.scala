@@ -12,7 +12,7 @@ trait EnableCORSDirectives extends RespondWithDirectives {
   )
 
   private val allowedCorsHeaders = List(
-    "X-Requested-With", "content-type", "origin", "accept"
+    "X-Requested-With", "content-type", "origin", "accept", "apiKey"
   )
 
   lazy val enableCORS =

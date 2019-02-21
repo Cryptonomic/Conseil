@@ -24,6 +24,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     "fail to decode json with duplicate fields" in {
       import io.circe.Decoder
       import io.circe.generic.extras.semiauto._
+      implicit val derivationConf = tezosDerivationConfig
 
       case class JsonTest(field: String)
 
@@ -35,6 +36,19 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       val duplicateUndecoded = decode[JsonTest]("""{"field": "test", "inner": {"key": "one", "key": "duplicate"}}""")
       duplicateUndecoded shouldBe 'right
 
+    }
+
+    "decode a timestamp from ISO-8601 string format" in {
+      import java.time._
+      import format.DateTimeFormatter.ISO_INSTANT
+
+      val time = Instant.now()
+      val timestamp = ISO_INSTANT.format(time)
+
+      val decoded = decode[ZonedDateTime](s""""$timestamp"""") // wrap as a json string
+      decoded shouldBe 'right
+
+      decoded.right.value.toInstant shouldEqual Instant.parse(timestamp)
     }
 
     "decode valid json base58check strings into a PublicKey" in {

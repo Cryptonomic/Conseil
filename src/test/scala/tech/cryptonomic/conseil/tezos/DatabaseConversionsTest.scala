@@ -1,9 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
 import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.Inspectors._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.util.{ConversionSyntax, RandomSeed}
+import tech.cryptonomic.conseil.util.{Conversion, RandomSeed}
 
 class DatabaseConversionsTest
   extends WordSpec
@@ -14,12 +15,12 @@ class DatabaseConversionsTest
 
   "The database conversion" should {
 
-    implicit val seed = RandomSeed(testReferenceTime.getTime)
+    implicit val seed = RandomSeed(testReferenceTimestamp.getTime)
 
     val groupHash = OperationHash("operationhash")
 
     //keep level 1, dropping the genesis block
-    val block = generateBlocks(toLevel = 1, startAt = testReferenceTime).drop(1).head
+    val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
 
     val sut = DatabaseConversions
 
@@ -35,8 +36,180 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidPositiveDecimal("1000A")) shouldBe 'empty
     }
 
+    "convert Balance Updates in BlockData to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import BlockBalances._
+      import SymbolSourceDescriptor.Show._
+
+      //generate data
+      val updates = generateBalanceUpdates(3)
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = updates)
+
+      //convert
+      val updateRows = block.data.convertToA[List, Tables.BalanceUpdatesRow]
+
+      //verify
+      val up1 :: up2 :: up3 :: Nil = updates
+
+      updateRows should contain theSameElementsAs List(
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = Some(block.data.hash.value),
+          source = "block",
+          kind = up1.kind,
+          contract = up1.contract.map(_.id),
+          change = BigDecimal(up1.change),
+          level = up1.level.map(BigDecimal(_)),
+          delegate = up1.delegate.map(_.value),
+          category = up1.category
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = Some(block.data.hash.value),
+          source = "block",
+          kind = up2.kind,
+          contract = up2.contract.map(_.id),
+          change = BigDecimal(up2.change),
+          level = up2.level.map(BigDecimal(_)),
+          delegate = up2.delegate.map(_.value),
+          category = up2.category
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = Some(block.data.hash.value),
+          source = "block",
+          kind = up3.kind,
+          contract = up3.contract.map(_.id),
+          change = BigDecimal(up3.change),
+          level = up3.level.map(BigDecimal(_)),
+          delegate = up3.delegate.map(_.value),
+          category = up3.category
+        )
+      )
+    }
+
+    "convert Balance Updates in Operations to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import OperationBalances._
+      import SymbolSourceDescriptor.Show._
+
+      sampleReveal.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation",
+          kind = "contract",
+          contract = Some("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+          change = -10000L,
+          level = None,
+          delegate = None,
+          category = None
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation",
+          kind = "freezer",
+          contract = None,
+          change = 10000L,
+          level = Some(1561),
+          delegate = Some("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889"),
+          category = Some("fees")
+        )
+      )
+    }
+
+    "convert Balance Updates in all nested levels of Operations to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import OperationBalances._
+      import SymbolSourceDescriptor.Show._
+
+      sampleOrigination.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation",
+          kind = "contract",
+          contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+          change = -1441L,
+          level = None,
+          delegate = None,
+          category = None
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation",
+          kind = "freezer",
+          contract = None,
+          change = 1441L,
+          level = Some(1583),
+          delegate = Some("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889"),
+          category = Some("fees")
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation_result",
+          kind = "contract",
+          contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+          change = -46000L,
+          category = None,
+          delegate = None,
+          level = None
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation_result",
+          kind = "contract",
+          contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+          change = -257000L,
+          category = None,
+          delegate = None,
+          level = None
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation_result",
+          kind = "contract",
+          contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+          change = -1000000L,
+          category = None,
+          delegate = None,
+          level = None
+        ),
+        Tables.BalanceUpdatesRow(
+          id = 0,
+          sourceId = None,
+          sourceHash = None,
+          source = "operation_result",
+          kind = "contract",
+          contract = Some("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"),
+          change = 1000000L,
+          category = None,
+          delegate = None,
+          level = None
+        )
+      )
+    }
+
     "convert an Endorsement to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleEndorsement: Operation).convertTo[Tables.OperationsRow]
@@ -66,15 +239,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "endorsement"
       level.value shouldBe sampleEndorsement.level
       delegate.value shouldBe sampleEndorsement.metadata.delegate.value
@@ -98,6 +272,7 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
+        consumedGas ::
         status :: Nil) {
         _ shouldBe 'empty
       }
@@ -105,7 +280,7 @@ class DatabaseConversionsTest
     }
 
     "convert a SeedNonceRevelation to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleNonceRevelation: Operation).convertTo[Tables.OperationsRow]
@@ -135,15 +310,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "seed_nonce_revelation"
       level.value shouldBe sampleNonceRevelation.level
       nonce.value shouldBe sampleNonceRevelation.nonce.value
@@ -167,6 +343,7 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
+        consumedGas ::
         status :: Nil) {
         _ shouldBe 'empty
       }
@@ -174,7 +351,7 @@ class DatabaseConversionsTest
     }
 
     "convert an ActivateAccount to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleAccountActivation: Operation).convertTo[Tables.OperationsRow]
@@ -204,15 +381,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "activate_account"
       pkh.value shouldBe sampleAccountActivation.pkh.value
       secret.value shouldBe sampleAccountActivation.secret.value
@@ -236,6 +414,7 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
+        consumedGas ::
         status :: Nil) {
         _ shouldBe 'empty
       }
@@ -243,7 +422,7 @@ class DatabaseConversionsTest
     }
 
     "convert a Reveal to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleReveal: Operation).convertTo[Tables.OperationsRow]
@@ -273,15 +452,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "reveal"
       source.value shouldBe sampleReveal.source.id
       sampleReveal.fee match {
@@ -302,6 +482,10 @@ class DatabaseConversionsTest
       }
       publicKey.value shouldBe sampleReveal.public_key.value
       status.value shouldBe sampleReveal.metadata.operation_result.status
+      sampleReveal.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -324,7 +508,7 @@ class DatabaseConversionsTest
     }
 
     "convert a Transaction to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleTransaction: Operation).convertTo[Tables.OperationsRow]
@@ -354,15 +538,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "transaction"
       source.value shouldBe sampleTransaction.source.id
       sampleTransaction.fee match {
@@ -388,6 +573,10 @@ class DatabaseConversionsTest
       destination.value shouldBe sampleTransaction.destination.id
       parameters shouldBe sampleTransaction.parameters.map(_.expression)
       status.value shouldBe sampleTransaction.metadata.operation_result.status
+      sampleTransaction.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -408,7 +597,7 @@ class DatabaseConversionsTest
     }
 
     "convert an Origination to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleOrigination: Operation).convertTo[Tables.OperationsRow]
@@ -438,15 +627,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "origination"
       delegate shouldBe sampleOrigination.delegate.map(_.value)
       source.value shouldBe sampleOrigination.source.id
@@ -475,6 +665,10 @@ class DatabaseConversionsTest
       delegatable shouldBe sampleOrigination.delegatable
       script shouldBe sampleOrigination.script.map(_.code.expression)
       status.value shouldBe sampleOrigination.metadata.operation_result.status
+      sampleOrigination.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -492,7 +686,7 @@ class DatabaseConversionsTest
     }
 
     "convert an Delegation to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, sampleDelegation: Operation).convertTo[Tables.OperationsRow]
@@ -522,15 +716,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "delegation"
       delegate shouldBe sampleDelegation.delegate.map(_.value)
       source.value shouldBe sampleDelegation.source.id
@@ -551,6 +746,10 @@ class DatabaseConversionsTest
         case _ => storageLimit shouldBe 'empty
       }
       status.value shouldBe sampleDelegation.metadata.operation_result.status
+      sampleDelegation.metadata.operation_result.consumed_gas match {
+        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
+        case _ => consumedGas shouldBe 'empty
+      }
 
       forAll(
         level ::
@@ -573,7 +772,7 @@ class DatabaseConversionsTest
     }
 
     "convert an DoubleEndorsementEvidence to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, DoubleEndorsementEvidence: Operation).convertTo[Tables.OperationsRow]
@@ -603,15 +802,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "double_endorsement_evidence"
 
       forAll(
@@ -635,14 +835,15 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
     }
 
     "convert an DoubleBakingEvidence to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, DoubleBakingEvidence: Operation).convertTo[Tables.OperationsRow]
@@ -672,15 +873,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "double_baking_evidence"
 
       forAll(
@@ -704,14 +906,15 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
     }
 
     "convert an Proposals to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, Proposals: Operation).convertTo[Tables.OperationsRow]
@@ -741,15 +944,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "proposals"
 
       forAll(
@@ -773,14 +977,15 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
     }
 
     "convert an Ballot to a database row" in {
-      import ConversionSyntax._
+      import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, Ballot: Operation).convertTo[Tables.OperationsRow]
@@ -810,15 +1015,16 @@ class DatabaseConversionsTest
       val delegatable = converted(21)
       val script = converted(22)
       val status = converted(23)
-      val blockHash = converted(24)
-      val blockLevel = converted(25)
-      val timestamp = converted(26)
+      val consumedGas = converted(24)
+      val blockHash = converted(25)
+      val blockLevel = converted(26)
+      val timestamp = converted(27)
 
       operationId shouldBe 0
       operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.metadata.hash.value
-      blockLevel shouldBe block.metadata.header.level
-      timestamp shouldBe block.metadata.header.timestamp
+      blockHash shouldBe block.data.hash.value
+      blockLevel shouldBe block.data.header.level
+      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
       kind shouldBe "ballot"
 
       forAll(
@@ -842,7 +1048,8 @@ class DatabaseConversionsTest
         spendable ::
         delegatable ::
         script ::
-        status :: Nil) {
+        status ::
+        consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 

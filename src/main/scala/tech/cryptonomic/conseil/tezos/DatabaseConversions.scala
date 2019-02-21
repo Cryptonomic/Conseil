@@ -3,15 +3,24 @@ package tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
-import tech.cryptonomic.conseil.util.Conversion.Id
+import tech.cryptonomic.conseil.util.Conversion._
+import java.sql.Timestamp
 
 object DatabaseConversions {
+
+  //adapts from the java timestamp to sql
+  private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
 
   //single field conversions
   def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
 
   def extractBigDecimal(number: PositiveBigNumber): Option[BigDecimal] = number match {
     case PositiveDecimal(value) => Some(value)
+    case _ => None
+  }
+
+  def extractBigDecimal(number: BigNumber): Option[BigDecimal] = number match {
+    case Decimal(value) => Some(value)
     case _ => None
   }
 
@@ -51,19 +60,19 @@ object DatabaseConversions {
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
-      val header = from.metadata.header
+      val header = from.data.header
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
         predecessor = header.predecessor.value,
-        timestamp = header.timestamp,
-        validationPass = header.validationPass,
+        timestamp = toSql(header.timestamp),
+        validationPass = header.validation_pass,
         fitness = header.fitness.mkString(","),
         context = Some(header.context), //put in later
         signature = header.signature,
-        protocol = from.metadata.protocol,
-        chainId = from.metadata.chain_id,
-        hash = from.metadata.hash.value,
+        protocol = from.data.protocol,
+        chainId = from.data.chain_id,
+        hash = from.data.hash.value,
         operationsHash = header.operations_hash
       )
     }
@@ -78,13 +87,13 @@ object DatabaseConversions {
           hash = og.hash.value,
           branch = og.branch.value,
           signature = og.signature.map(_.value),
-          blockId = from.metadata.hash.value
+          blockId = from.data.hash.value
         )
       }
   }
 
   //Cannot directly convert a single operation to a row, because we need the block and operation-group info to build the database row
-  implicit val operationToOperationsRowReader = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
+  implicit val operationToOperationsRow = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
     override def convert(from: (Block, OperationHash, Operation)) =
       (convertEndorsement orElse
       convertNonceRevelation orElse
@@ -105,9 +114,9 @@ object DatabaseConversions {
         level = Some(level),
         delegate = Some(metadata.delegate.value),
         slots = Some(metadata.slots).map(concatenateToString),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
       )
   }
 
@@ -119,9 +128,9 @@ object DatabaseConversions {
         kind = "seed_nonce_revelation",
         level = Some(level),
         nonce = Some(nonce.value),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
       )
   }
 
@@ -133,9 +142,9 @@ object DatabaseConversions {
         kind = "activate_account",
         pkh = Some(pkh.value),
         secret = Some(secret.value),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -152,9 +161,10 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         publicKey = Some(pk.value),
         status = Some(metadata.operation_result.status),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -173,9 +183,10 @@ object DatabaseConversions {
         destination = Some(destination.id),
         parameters = parameters.map(_.expression),
         status = Some(metadata.operation_result.status),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -197,9 +208,10 @@ object DatabaseConversions {
         delegatable = delegatable,
         script = script.map(_.code.expression),
         status = Some(metadata.operation_result.status),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -216,9 +228,10 @@ object DatabaseConversions {
         gasLimit = extractBigDecimal(gas_limit),
         storageLimit = extractBigDecimal(storage_limit),
         status = Some(metadata.operation_result.status),
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
     )
   }
 
@@ -235,19 +248,85 @@ object DatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = kind,
-        blockHash = block.metadata.hash.value,
-        blockLevel = block.metadata.header.level,
-        timestamp = block.metadata.header.timestamp
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp)
       )
   }
 
   implicit val blockToOperationsRow = new Conversion[List, Block, Tables.OperationsRow] {
-    import tech.cryptonomic.conseil.util.ConversionSyntax._
+    import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
     override def convert(from: Block) =
       from.operationGroups.flatMap { group =>
         group.contents.map { op =>
           (from, group.hash, op).convertTo[Tables.OperationsRow]
+        }
+      }
+
+  }
+
+  /** Not all operations have some form of balance updates... we're ignoring some type, like ballots,
+    * thus we can't extract from those anyway.
+    * We get back an empty List, where not applicable
+    * We define a typeclass/trait that encodes the availability of balance updates, to reuse it for operations as well as blocks
+    * @tparam T the source type that contains the balance updates values
+    * @tparam S the SourceDescriptor type for the available `HasBalanceUpdates[T]` instance, used to add the `Show` contraint
+    * @param aux used to search for an instance of the `HasBalanceUpdates` type class for `T` and at the same time expose the `SourceDescriptor` type as `S`
+    * @param show provide a way to convert the `S` descriptor to a string, needed to write it on the `BalanceUpdatesRow`
+    */
+  implicit def anyToBalanceUpdates[T, S](implicit aux: HasBalanceUpdates.Aux[T, S], show: cats.Show[S]) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
+    import tech.cryptonomic.conseil.tezos.HasBalanceUpdates.Syntax._
+    import cats.syntax.show._
+
+    override def convert(from: T) =
+      from.getAllBalanceUpdates.flatMap {
+        case (source, updates) =>
+        updates.map{
+          case OperationMetadata.BalanceUpdate(
+            kind,
+            change,
+            category,
+            contract,
+            delegate,
+            level
+          ) =>
+          Tables.BalanceUpdatesRow(
+            id = 0,
+            source = source.show,
+            sourceHash = from.getHash,
+            kind = kind,
+            contract = contract.map(_.id),
+            change = BigDecimal(change),
+            level = level.map(BigDecimal(_)),
+            delegate = delegate.map(_.value),
+            category = category
+          )
+      }
+    }.toList
+
+  }
+
+  /** Utility alias when we need to keep related data paired together */
+  type OperationTablesData = (Tables.OperationsRow, List[Tables.BalanceUpdatesRow])
+
+  /** Will convert to paired list of operations with related balance updates
+    * with one HUGE CAVEAT: both have only temporary, meaningless, `sourceId`s
+    *
+    * To correctly create the relation on the db, we must first store the operations, get
+    * each generated id, and pass it to the associated balance-updates
+    */
+  implicit val blockToOperationTablesData = new Conversion[List, Block, OperationTablesData] {
+    import tech.cryptonomic.conseil.util.Conversion.Syntax._
+    import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+    import tech.cryptonomic.conseil.tezos.OperationBalances._
+
+    override def convert(from: Block) =
+      from.operationGroups.flatMap { group =>
+        group.contents.map { op =>
+          val operationRow = (from, group.hash, op).convertTo[Tables.OperationsRow]
+          val balanceUpdateRows = op.convertToA[List, Tables.BalanceUpdatesRow]
+          (operationRow, balanceUpdateRows)
         }
       }
 
@@ -280,20 +359,26 @@ object DatabaseConversions {
         delegatable = from.delegatable,
         script = from.script,
         status = from.status,
+        consumedGas = from.consumedGas,
         blockHash = from.blockHash,
         blockLevel = from.blockLevel,
         timestamp = from.timestamp
       )
-}
+  }
 
-  def convertBlockAccountsAssociation(blockHash: BlockHash, blockLevel: Int, ids: List[AccountId]): List[Tables.AccountsCheckpointRow] =
-    ids.map(
-      accountId =>
-        Tables.AccountsCheckpointRow(
-          accountId = accountId.id,
-          blockId = blockHash.value,
-          blockLevel = blockLevel
-        )
-    )
+  implicit val blockAccountsAssociationToCheckpointRow = new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
+    override def convert(from: (BlockHash, Int, List[AccountId])) = {
+      val (blockHash, blockLevel, ids) = from
+      ids.map(
+        accountId =>
+          Tables.AccountsCheckpointRow(
+            accountId = accountId.id,
+            blockId = blockHash.value,
+            blockLevel = blockLevel
+          )
+      )
+    }
+
+  }
 
 }

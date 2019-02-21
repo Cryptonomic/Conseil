@@ -1,18 +1,23 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import scala.util.Try
+import tech.cryptonomic.conseil.tezos.TezosTypes._
+
 /** This expose decoders for json conversions */
 object JsonDecoders {
 
   /** Circe-specific definitions as implicits */
   object Circe {
 
-    import io.circe.Decoder
     import cats.syntax.functor._
+    import io.circe.Decoder
     import io.circe.{ Error, Errors }
     import io.circe.generic.extras._
     import io.circe.generic.extras.semiauto._
     import io.circe.generic.extras.Configuration
-    import tech.cryptonomic.conseil.tezos.TezosTypes._
 
     type JsonDecoded[T] = Either[Error, T]
 
@@ -32,8 +37,8 @@ object JsonDecoders {
 
       lazy val correctlyDecoded: List[Decoded] = results.collect { case Right(dec) => dec }
       val decodingErrors: Option[io.circe.Errors] =
-      NonEmptyList.fromList(results.collect { case Left(decodingError) => decodingError })
-      .map(io.circe.Errors)
+        NonEmptyList.fromList(results.collect { case Left(decodingError) => decodingError })
+          .map(io.circe.Errors)
 
       decodingErrors.fold(ifEmpty = correctlyDecoded.asRight[io.circe.Errors])(_.asLeft[List[Decoded]])
     }
@@ -42,18 +47,18 @@ object JsonDecoders {
     private final case class Base58Check(content: String) extends AnyVal
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
-    private def deriveDecoderFromString[T](validateString: String => Boolean, failedValidation: String, DecodedConstructor: String => T): Decoder[T] =
+    private def deriveDecoderFromString[T](validateString: String => Boolean, failedValidation: String, decodedConstructor: String => T): Decoder[T] =
       Decoder.decodeString
         .map(_.trim)
         .ensure(validateString, failedValidation)
-        .map(DecodedConstructor)
+        .map(decodedConstructor)
 
     /* decode only base58check-encoded strings */
     private implicit val base58CheckDecoder: Decoder[Base58Check] =
       deriveDecoderFromString(
         validateString = isBase58Check,
         failedValidation = "The passed-in json string is not a proper Base58Check encoding",
-        DecodedConstructor = Base58Check
+        decodedConstructor = Base58Check
       )
 
     /* decode only valid nonces */
@@ -61,7 +66,7 @@ object JsonDecoders {
       deriveDecoderFromString(
         validateString = _.forall(_.isLetterOrDigit),
         failedValidation = "The passed-in json string is not a valid nonce",
-        DecodedConstructor = Nonce
+        decodedConstructor = Nonce
       )
 
     /* decode only valid secrets */
@@ -69,12 +74,16 @@ object JsonDecoders {
       deriveDecoderFromString(
         validateString = _.forall(_.isLetterOrDigit),
         failedValidation = "The passed-in json string is not a valid secret",
-        DecodedConstructor = Secret
+        decodedConstructor = Secret
       )
 
     /* decode any json value to its string representation wrapped in a Micheline*/
     implicit val michelineDecoder: Decoder[Micheline] =
       Decoder.decodeJson.map(json => Micheline(json.noSpaces))
+
+    /* decode a UTC time string to a sql Timestamp */
+    implicit val timestampDecoder: Decoder[Timestamp] =
+      Decoder.decodeString.emapTry(ts => Try(Timestamp.from(Instant.parse(ts))))
 
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
@@ -87,6 +96,21 @@ object JsonDecoders {
     implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
+
+    val tezosDerivationConfig: Configuration =
+      Configuration.default.withSnakeCaseConstructorNames
+
+    /* Collects definitions to decode blocks and their components */
+    object Blocks {
+
+      // we need to decode BalanceUpdates
+      import Operations._
+      private implicit val conf = tezosDerivationConfig
+
+      implicit val metadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
+      implicit val headerDecoder: Decoder[BlockHeader] = deriveDecoder
+      implicit val mainDecoder: Decoder[BlockData] = deriveDecoder //remember to add ISO-control filtering
+    }
 
     /*
      * Collects definitions of decoders for the Operations hierarchy.
@@ -136,10 +160,7 @@ object JsonDecoders {
         ).reduceLeft(_ or _)
 
       //use the kind field to distinguish subtypes of the Operation ADT
-      implicit val derivationConfig: Configuration =
-        Configuration.default
-          .withDiscriminator("kind")
-          .withSnakeCaseConstructorNames
+      private implicit val conf = tezosDerivationConfig.withDiscriminator("kind")
 
       //derive all the remaining decoders, sorted to preserve dependencies
       implicit val bigmapdiffDecoder: Decoder[Contract.BigMapDiff] = deriveDecoder

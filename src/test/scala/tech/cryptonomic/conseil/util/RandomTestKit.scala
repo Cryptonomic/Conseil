@@ -11,13 +11,12 @@ case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable 
 
 trait RandomGenerationKit {
 
+  //a stable date time reference if needed
+  lazy val testReferenceDateTime = LocalDate.of(2018, 1, 1).atStartOfDay(ZoneOffset.UTC)
+
   //a stable timestamp reference if needed
-  lazy val testReferenceTime =
-    new Timestamp(
-      LocalDate.of(2018, 1, 1)
-        .atStartOfDay
-        .toEpochSecond(ZoneOffset.UTC)
-    )
+  lazy val testReferenceTimestamp =
+    new Timestamp(testReferenceDateTime.toEpochSecond)
 
   //creates pseudo-random strings of given length, based on an existing [[Random]] generator
   val alphaNumericGenerator = (random: Random) => random.alphanumeric.take(_: Int).mkString

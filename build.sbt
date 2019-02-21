@@ -3,10 +3,10 @@ scalaVersion := "2.12.8"
 
 val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.19"
-val slickVersion = "3.2.1"
+val slickVersion = "3.3.0"
 val circeVersion = "0.11.0"
 val endpointsVersion = "0.8.0"
-
+val catsVersion = "1.6.0"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -25,11 +25,14 @@ libraryDependencies  ++=  Seq(
   "com.typesafe.akka"               %% "akka-stream"               % akkaVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-actor"                % akkaVersion exclude("com.typesafe", "config"),
   "com.typesafe.akka"               %% "akka-http-caching"         % akkaHttpVersion exclude("com.typesafe", "config"),
-  "com.github.pureconfig"           %% "pureconfig"                % "0.10.1",
+  "de.heikoseeberger"               %% "akka-http-jackson"         % "1.22.0",
+  "ch.megard"                       %% "akka-http-cors"            % "0.3.0",
   "org.scalaj"                      %% "scalaj-http"               % "2.3.0",
-  "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
+  "com.github.pureconfig"           %% "pureconfig"                % "0.10.1",
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
+  "org.typelevel"                   %% "cats-core"                 % catsVersion,
+  "com.kubukoz"                     %% "slick-effect"              % "0.1.0",
   "io.circe"                        %% "circe-core"                % circeVersion,
   "io.circe"                        %% "circe-parser"              % circeVersion,
   "io.circe"                        %% "circe-generic"             % circeVersion,
@@ -40,22 +43,21 @@ libraryDependencies  ++=  Seq(
   "org.julienrf"                    %% "endpoints-json-schema-generic" % endpointsVersion,
   "org.julienrf"                    %% "endpoints-akka-http-server" % endpointsVersion,
   "com.chuusai"                     %% "shapeless"                 % "2.3.3",
-  "de.heikoseeberger"               %% "akka-http-jackson"         % "1.23.0",
   "com.typesafe.slick"              %% "slick"                     % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-hikaricp"            % slickVersion exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-codegen"             % slickVersion,
   "org.postgresql"                   % "postgresql"                % "42.1.4",
-  "org.scalamock"                   %% "scalamock"                 % "4.0.0" % Test,
   "com.madgag.spongycastle"          % "core"                      % "1.58.0.0",
   "org.scorexfoundation"            %% "scrypto"                   % "2.0.0",
   "com.muquit.libsodiumjna"          % "libsodium-jna"             % "1.0.4" exclude("org.slf4j", "slf4j-log4j12") exclude("org.slf4j", "slf4j-api"),
   "com.github.alanverbner"          %% "bip39"                     % "0.1",
-  "ch.megard"                       %% "akka-http-cors"            % "0.3.0",
-  "ru.yandex.qatools.embed"          % "postgresql-embedded"       % "2.10" % Test,
-  "com.typesafe.akka"               %% "akka-http-testkit"         % akkaHttpVersion % Test exclude("com.typesafe", "config"),
-  "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test,
   "com.github.scopt"                %% "scopt"                     % "4.0.0-RC2",
-  "io.scalaland"                    %% "chimney"                   % "0.3.0"
+  "io.scalaland"                    %% "chimney"                   % "0.3.0",
+  "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
+  "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test,
+  "org.scalamock"                   %% "scalamock"                 % "4.0.0" % Test,
+  "ru.yandex.qatools.embed"          % "postgresql-embedded"       % "2.10" % Test,
+  "com.typesafe.akka"               %% "akka-http-testkit"         % akkaHttpVersion % Test exclude("com.typesafe", "config")
 )
 
 excludeDependencies ++= Seq(
