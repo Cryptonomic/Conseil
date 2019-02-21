@@ -3,13 +3,16 @@ package tech.cryptonomic.conseil.routes.openapi
 import endpoints.algebra
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes
 
+/** Trait containing platform discovery endpoints definition */
 trait PlatformDiscoveryEndpoints
   extends algebra.Endpoints
     with PlatformDiscoveryJsonSchemas
     with algebra.JsonSchemaEntities {
 
+  /** Common path for metadata endpoints */
   private val commonPath = path / "v2" / "metadata"
 
+  /** Metadata platforms endpoint */
   def platformsEndpoint: Endpoint[String, List[PlatformDiscoveryTypes.Platform]] =
     endpoint(
       request = get(
@@ -19,6 +22,7 @@ trait PlatformDiscoveryEndpoints
       tags = List("Metadata")
     )
 
+  /** Metadata networks endpoint */
   def networksEndpoint: Endpoint[(String, String), Option[List[PlatformDiscoveryTypes.Network]]] =
     endpoint(
       request = get(
@@ -28,6 +32,7 @@ trait PlatformDiscoveryEndpoints
       tags = List("Metadata")
     )
 
+  /** Metadata entities endpoint */
   def entitiesEndpoint: Endpoint[(String, String, String), Option[List[PlatformDiscoveryTypes.Entity]]] =
     endpoint(
       request = get(
@@ -37,6 +42,7 @@ trait PlatformDiscoveryEndpoints
       tags = List("Metadata")
     )
 
+  /** Metadata attributes endpoint */
   def attributesEndpoint: Endpoint[((String, String, String), String), Option[List[PlatformDiscoveryTypes.Attribute]]] =
     endpoint(
       request = get(
@@ -46,6 +52,7 @@ trait PlatformDiscoveryEndpoints
       tags = List("Metadata")
     )
 
+  /** Metadata attributes values endpoint */
   def attributesValuesEndpoint: Endpoint[((String, String, String), String, String), Option[List[String]]] =
     endpoint(
       request = get(
@@ -55,6 +62,7 @@ trait PlatformDiscoveryEndpoints
       tags = List("Metadata")
     )
 
+  /** Metadata attributes values with filter endpoint */
   def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), String), Option[List[String]]] =
     endpoint(
       request = get(

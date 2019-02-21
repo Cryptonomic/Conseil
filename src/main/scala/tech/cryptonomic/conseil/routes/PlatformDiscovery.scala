@@ -16,7 +16,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.CachingDirectives._
 
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
@@ -48,8 +48,10 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** LFU cache */
   private val lfuCache: Cache[Uri, RouteResult] = LfuCache(cachingSettings)
 
+  /** Metadata route implementation for platforms endpoint */
   private val platformsRoute = platformsEndpoint.implementedBy(_ => ConfigUtil.getPlatforms(config))
 
+  /** Metadata route implementation for networks endpoint */
   private val networksRoute = networksEndpoint.implementedBy {
     case (platform, _) =>
       val networks = getNetworks(config, platform)
@@ -57,6 +59,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       else Some(networks)
   }
 
+  /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
     case (platform, network, _) =>
       TezosPlatformDiscoveryOperations.getEntities.map { entities =>
@@ -66,6 +69,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       }
   }
 
+  /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
     case ((platform, network, entity), _) =>
       TezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
@@ -75,6 +79,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       }
   }
 
+  /** Metadata route implementation for attributes values endpoint */
   private val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
     case ((platform, network, entity), attribute, _) =>
       TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
@@ -84,6 +89,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       }
   }
 
+  /** Metadata route implementation for attributes values with filter endpoint */
   private val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
     case (((platform, network, entity), attribute, filter), _) =>
       TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
@@ -93,6 +99,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       }
   }
 
+  /** Concatenated metadata routes with cache */
   val route: Route = cache(lfuCache, requestCacheKeyer) {
     concat(
       platformsRoute,
