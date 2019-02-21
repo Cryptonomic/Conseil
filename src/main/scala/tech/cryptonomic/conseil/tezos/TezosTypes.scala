@@ -41,24 +41,30 @@ object TezosTypes {
   /** a conventional value to get the latest block in the chain */
   final lazy val blockHeadHash = BlockHash("head")
 
-  final case class BlockHeader(
-                        level: Int,
-                        proto: Int,
-                        predecessor: BlockHash,
-                        timestamp: java.sql.Timestamp,
-                        validationPass: Int,
-                        operations_hash: Option[String],
-                        fitness: Seq[String],
-                        context: String,
-                        signature: Option[String]
-                        )
+  final case class BlockData(
+    protocol: String,
+    chain_id: Option[String],
+    hash: BlockHash,
+    header: BlockHeader,
+    metadata: BlockHeaderMetadata
+  )
 
-  final case class BlockMetadata(
-                            protocol: String,
-                            chain_id: Option[String],
-                            hash: BlockHash,
-                            header: BlockHeader
-                  )
+  final case class BlockHeader(
+    level: Int,
+    proto: Int,
+    predecessor: BlockHash,
+    timestamp: java.time.ZonedDateTime,
+    validation_pass: Int,
+    operations_hash: Option[String],
+    fitness: Seq[String],
+    context: String,
+    signature: Option[String]
+  )
+
+
+  final case class BlockHeaderMetadata(
+    balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
+  )
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`
    * all the while accepting `0` as valid
@@ -286,7 +292,7 @@ object TezosTypes {
                   )
 
   final case class Block(
-                    metadata: BlockMetadata,
+                    data: BlockData,
                     operationGroups: List[OperationsGroup]
                   )
 

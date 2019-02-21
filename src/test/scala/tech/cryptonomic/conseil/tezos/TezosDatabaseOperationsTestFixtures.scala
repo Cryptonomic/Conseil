@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
+import java.time.ZonedDateTime
 import scala.util.Random
 
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
@@ -55,7 +56,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly populate a number of blocks based on a level range */
-  def generateBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Block] = {
+  def generateBlocks(toLevel: Int, startAt: ZonedDateTime)(implicit randomSeed: RandomSeed): List[Block] = {
     require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
 
     //custom hash generator with predictable seed
@@ -64,25 +65,25 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //same for all blocks
     val chainHash = generateHash(5)
 
-    val startMillis = startAt.getTime
-
     def generateOne(level: Int, predecessorHash: BlockHash): Block =
       Block(
-        BlockMetadata(
-          "protocol",
-          Some(chainHash),
-          BlockHash(generateHash(10)),
-          BlockHeader(
+        BlockData(
+          protocol = "protocol",
+          chain_id = Some(chainHash),
+          hash = BlockHash(generateHash(10)),
+          header = BlockHeader(
             level = level,
             proto = 1,
             predecessor = predecessorHash,
-            timestamp = new Timestamp(startMillis + level),
-            validationPass = 0,
+            timestamp = startAt.plusSeconds(level),
+            validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
-          )),
+          ),
+          metadata = BlockHeaderMetadata(balance_updates = None)
+        ),
         operationGroups = List.empty
       )
 
@@ -92,12 +93,52 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
       case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.metadata.hash)
+        val currentBlock = generateOne(lvl, chain.head.data.hash)
         currentBlock :: chain
     }.reverse
 
   }
 
+  /** Randomly geneates a single block, for a specific level
+    * WARN the algorithm is linear in the level requested, don't use it with high values
+    */
+  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
+    val generated = generateBlocks(toLevel = atLevel, startAt = atTime)
+      .last
+
+    //ouch, how to hurt ourselves with deeply nested case class attributes!
+    generated.copy(
+        data = generated.data.copy(
+          header = generated.data.header.copy(
+            timestamp = atTime
+          ),
+          metadata = generated.data.metadata.copy(
+            balance_updates = Some(balanceUpdates)
+          )
+        )
+      )
+  }
+
+  def generateBalanceUpdates(howMany: Int)(implicit randomSeed: RandomSeed): List[OperationMetadata.BalanceUpdate] = {
+    require(howMany > 0, "the test can only generate a positive number of balance updates, you asked for a non positive value")
+
+    val randomSource = new Random(randomSeed.seed)
+
+    //custom hash generator with predictable seed
+    val generateAlphaNumeric: Int => String = alphaNumericGenerator(randomSource)
+
+    List.fill(howMany) {
+      OperationMetadata.BalanceUpdate(
+        kind = generateAlphaNumeric(10),
+        change = randomSource.nextLong(),
+        category = Some(generateAlphaNumeric(10)),
+        contract = Some(ContractId(generateAlphaNumeric(10))),
+        delegate = Some(PublicKeyHash(generateAlphaNumeric(10))),
+        level = Some(randomSource.nextInt(100))
+      )
+    }
+
+  }
 
   /* randomly populate a number of blocks based on a level range */
   def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
@@ -146,7 +187,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     OperationsGroup(
       protocol = "protocol",
-      chain_id = block.metadata.chain_id.map(ChainId),
+      chain_id = block.data.chain_id.map(ChainId),
       hash = OperationHash(generateHash(10)),
       branch = BlockHash(generateHash(10)),
       signature = Some(Signature(s"sig${generateHash(10)}")),
@@ -212,7 +253,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly generates a number of account rows for some block */
   def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
+    require(howMany > 0, "the test can only generate a positive number of accounts, you asked for a non positive value")
 
     (1 to howMany).map {
       currentId =>

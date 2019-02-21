@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, BalanceUpdates.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -106,6 +106,53 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table AccountsCheckpoint */
   lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))
+
+  /** Entity class storing rows of table BalanceUpdates
+   *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param source Database column source SqlType(varchar)
+   *  @param sourceId Database column source_id SqlType(int4), Default(None)
+   *  @param sourceHash Database column source_hash SqlType(varchar), Default(None)
+   *  @param kind Database column kind SqlType(varchar)
+   *  @param contract Database column contract SqlType(varchar), Default(None)
+   *  @param change Database column change SqlType(numeric)
+   *  @param level Database column level SqlType(numeric), Default(None)
+   *  @param delegate Database column delegate SqlType(varchar), Default(None)
+   *  @param category Database column category SqlType(varchar), Default(None) */
+  case class BalanceUpdatesRow(id: Int, source: String, sourceId: Option[Int] = None, sourceHash: Option[String] = None, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None)
+  /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
+  implicit def GetResultBalanceUpdatesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[Int]], e3: GR[Option[String]], e4: GR[scala.math.BigDecimal], e5: GR[Option[scala.math.BigDecimal]]): GR[BalanceUpdatesRow] = GR{
+    prs => import prs._
+    BalanceUpdatesRow.tupled((<<[Int], <<[String], <<?[Int], <<?[String], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
+  }
+  /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
+  class BalanceUpdates(_tableTag: Tag) extends profile.api.Table[BalanceUpdatesRow](_tableTag, "balance_updates") {
+    def * = (id, source, sourceId, sourceHash, kind, contract, change, level, delegate, category) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(id), Rep.Some(source), sourceId, sourceHash, Rep.Some(kind), contract, Rep.Some(change), level, delegate, category).shaped.<>({r=>import r._; _1.map(_=> BalanceUpdatesRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6, _7.get, _8, _9, _10)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column id SqlType(serial), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column source SqlType(varchar) */
+    val source: Rep[String] = column[String]("source")
+    /** Database column source_id SqlType(int4), Default(None) */
+    val sourceId: Rep[Option[Int]] = column[Option[Int]]("source_id", O.Default(None))
+    /** Database column source_hash SqlType(varchar), Default(None) */
+    val sourceHash: Rep[Option[String]] = column[Option[String]]("source_hash", O.Default(None))
+    /** Database column kind SqlType(varchar) */
+    val kind: Rep[String] = column[String]("kind")
+    /** Database column contract SqlType(varchar), Default(None) */
+    val contract: Rep[Option[String]] = column[Option[String]]("contract", O.Default(None))
+    /** Database column change SqlType(numeric) */
+    val change: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("change")
+    /** Database column level SqlType(numeric), Default(None) */
+    val level: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("level", O.Default(None))
+    /** Database column delegate SqlType(varchar), Default(None) */
+    val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
+    /** Database column category SqlType(varchar), Default(None) */
+    val category: Rep[Option[String]] = column[Option[String]]("category", O.Default(None))
+  }
+  /** Collection-like TableQuery object for table BalanceUpdates */
+  lazy val BalanceUpdates = new TableQuery(tag => new BalanceUpdates(tag))
 
   /** Entity class storing rows of table Blocks
    *  @param level Database column level SqlType(int4)
@@ -236,19 +283,19 @@ trait Tables {
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
   /** Row type of table Operations */
-  type OperationsRow = HCons[Int,HCons[String,HCons[String,HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[Boolean],HCons[Option[Boolean],HCons[Option[String],HCons[Option[String],HCons[String,HCons[Int,HCons[java.sql.Timestamp,HNil]]]]]]]]]]]]]]]]]]]]]]]]]]]
+  type OperationsRow = HCons[Int,HCons[String,HCons[String,HCons[Option[Int],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[String],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[Option[Boolean],HCons[Option[Boolean],HCons[Option[String],HCons[Option[String],HCons[Option[scala.math.BigDecimal],HCons[String,HCons[Int,HCons[java.sql.Timestamp,HNil]]]]]]]]]]]]]]]]]]]]]]]]]]]]
   /** Constructor for OperationsRow providing default values if available in the database schema. */
-  def OperationsRow(operationId: Int, operationGroupHash: String, kind: String, level: Option[Int] = None, delegate: Option[String] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, source: Option[String] = None, fee: Option[scala.math.BigDecimal] = None, counter: Option[scala.math.BigDecimal] = None, gasLimit: Option[scala.math.BigDecimal] = None, storageLimit: Option[scala.math.BigDecimal] = None, publicKey: Option[String] = None, amount: Option[scala.math.BigDecimal] = None, destination: Option[String] = None, parameters: Option[String] = None, managerPubkey: Option[String] = None, balance: Option[scala.math.BigDecimal] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, script: Option[String] = None, status: Option[String] = None, blockHash: String, blockLevel: Int, timestamp: java.sql.Timestamp): OperationsRow = {
-    operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: status :: blockHash :: blockLevel :: timestamp :: HNil
+  def OperationsRow(operationId: Int, operationGroupHash: String, kind: String, level: Option[Int] = None, delegate: Option[String] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, source: Option[String] = None, fee: Option[scala.math.BigDecimal] = None, counter: Option[scala.math.BigDecimal] = None, gasLimit: Option[scala.math.BigDecimal] = None, storageLimit: Option[scala.math.BigDecimal] = None, publicKey: Option[String] = None, amount: Option[scala.math.BigDecimal] = None, destination: Option[String] = None, parameters: Option[String] = None, managerPubkey: Option[String] = None, balance: Option[scala.math.BigDecimal] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, script: Option[String] = None, status: Option[String] = None, consumedGas: Option[scala.math.BigDecimal] = None, blockHash: String, blockLevel: Int, timestamp: java.sql.Timestamp): OperationsRow = {
+    operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: status :: consumedGas :: blockHash :: blockLevel :: timestamp :: HNil
   }
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[Int]], e3: GR[Option[String]], e4: GR[Option[scala.math.BigDecimal]], e5: GR[Option[Boolean]], e6: GR[java.sql.Timestamp]): GR[OperationsRow] = GR{
     prs => import prs._
-    <<[Int] :: <<[String] :: <<[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[Boolean] :: <<?[Boolean] :: <<?[String] :: <<?[String] :: <<[String] :: <<[Int] :: <<[java.sql.Timestamp] :: HNil
+    <<[Int] :: <<[String] :: <<[String] :: <<?[Int] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[String] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<?[Boolean] :: <<?[Boolean] :: <<?[String] :: <<?[String] :: <<?[scala.math.BigDecimal] :: <<[String] :: <<[Int] :: <<[java.sql.Timestamp] :: HNil
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
-    def * = operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: status :: blockHash :: blockLevel :: timestamp :: HNil
+    def * = operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: status :: consumedGas :: blockHash :: blockLevel :: timestamp :: HNil
 
     /** Database column operation_id SqlType(serial), AutoInc, PrimaryKey */
     val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc, O.PrimaryKey)
@@ -298,6 +345,8 @@ trait Tables {
     val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
     /** Database column status SqlType(varchar), Default(None) */
     val status: Rep[Option[String]] = column[Option[String]]("status", O.Default(None))
+    /** Database column consumed_gas SqlType(numeric), Default(None) */
+    val consumedGas: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("consumed_gas", O.Default(None))
     /** Database column block_hash SqlType(varchar) */
     val blockHash: Rep[String] = column[String]("block_hash")
     /** Database column block_level SqlType(int4) */
