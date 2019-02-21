@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,7 +25,7 @@ class DataPlatform(operationsMap: Map[String, DataOperations]) {
     * @return query result as a option[map]
     * */
   def queryWithPredicates(platform: String, tableName: String, query: Query)
-    (implicit ec: ExecutionContext): Option[Future[List[Map[String, Option[Any]]]]] = {
+    (implicit ec: ExecutionContext): Option[Future[List[QueryResponse]]] = {
     operationsMap.get(platform).map(_.queryWithPredicates(tableName, query))
   }
 }
