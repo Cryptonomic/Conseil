@@ -434,7 +434,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     forgedOperationGroup: String,
     signedOpGroup: SignedOperationGroup): Future[AppliedOperation] = {
     val payload: AnyMap = Map(
-      "pred_block" -> blockHead.metadata.header.predecessor,
+      "pred_block" -> blockHead.data.header.predecessor,
       "operation_hash" -> operationGroupHash,
       "forged_operation" -> forgedOperationGroup,
       "signature" -> signedOpGroup.signature

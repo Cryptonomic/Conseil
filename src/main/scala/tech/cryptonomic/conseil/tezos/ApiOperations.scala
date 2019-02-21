@@ -225,7 +225,7 @@ object ApiOperations extends DataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -235,8 +235,8 @@ object ApiOperations extends DataOperations {
       val (blocks, groups) = paired.unzip
       blocks.headOption.map {
         block => Map(
-          'block -> block,
-          'operation_groups -> groups
+          "block" -> block,
+          "operation_groups" -> groups
         )
       }
     }
@@ -261,15 +261,15 @@ object ApiOperations extends DataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
     } yield operations.map {
         case (opGroup, ops) =>
           Map(
-            'operation_group -> opGroup,
-            'operations -> ops
+            "operation_group" -> opGroup,
+            "operations" -> ops
           )
         }
 
