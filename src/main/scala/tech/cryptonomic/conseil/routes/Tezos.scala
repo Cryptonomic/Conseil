@@ -3,7 +3,9 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import com.typesafe.scalalogging.LazyLogging
+import endpoints.akkahttp
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
+import tech.cryptonomic.conseil.routes.openapi.TezosEndpoints
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos._
@@ -56,7 +58,8 @@ object Tezos {
   * several Api Operations, based on database querying
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with RouteHandling {
+class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with RouteHandling
+  with TezosEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   import Tezos._
 
@@ -66,49 +69,63 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
    */
   override val asyncApiFiltersExecutionContext = apiExecutionContext
 
-  /** expose filtered results through rest endpoints */
-  val route: Route = pathPrefix(Segment) { network =>
-    get {
-      gatherConseilFilter{ filter =>
-        validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
-          pathPrefix("blocks") {
-            pathEnd {
-              completeWithJson(ApiOperations.fetchBlocks(filter))
-            } ~ path("head") {
-                completeWithJson(ApiOperations.fetchLatestBlock())
-            } ~ path(Segment).as(BlockHash) { blockId =>
-                complete(
-                  handleNoneAsNotFound(ApiOperations.fetchBlock(blockId))
-                )
-            }
-          } ~ pathPrefix("accounts") {
-            pathEnd {
-              completeWithJson(ApiOperations.fetchAccounts(filter))
-            } ~ path(Segment).as(AccountId) { accountId =>
-              complete(
-                handleNoneAsNotFound(ApiOperations.fetchAccount(accountId))
-                )
-            }
-          } ~ pathPrefix("operation_groups") {
-            pathEnd {
-              completeWithJson(ApiOperations.fetchOperationGroups(filter))
-            } ~ path(Segment) { operationGroupId =>
-              complete(
-                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
-              )
-            }
-          } ~ pathPrefix("operations") {
-            path("avgFees") {
-                complete(
-                  handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
-                )
-            } ~ pathEnd {
-                completeWithJson(ApiOperations.fetchOperations(filter))
-            }
-          }
-        }
-
-      }
-    }
+  private val blocksRoute = blocksEndpoint.implementedByAsync {
+    case (network, filter, apiKey) =>
+      ApiOperations.fetchBlocks(filter)
   }
+
+  private val blocksHeadRoute = blocksHeadEndpoint.implementedByAsync {
+    case (network, apiKey) =>
+      ApiOperations.fetchLatestBlock()
+  }
+
+  private val blockByHashRoute = blockByHashEndpoint.implementedByAsync {
+    case (network, hash, apiKey) =>
+      ApiOperations.fetchBlock(BlockHash(hash))
+  }
+
+  private val accountsRoute = accountsEndpoint.implementedByAsync {
+    case (network, filter, apiKey) =>
+      ApiOperations.fetchAccounts(filter)
+  }
+
+  private val accountByIdRoute = accountByIdEndpoint.implementedByAsync {
+    case ()
+  }
+
+//  /** expose filtered results through rest endpoints */
+//  val route: Route = pathPrefix(Segment) { network =>
+//    get {
+//      gatherConseilFilter{ filter =>
+//        validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
+//          pathPrefix("accounts") {
+//            pathEnd {
+//              completeWithJson(ApiOperations.fetchAccounts(filter))
+//            } ~ path(Segment).as(AccountId) { accountId =>
+//              complete(
+//                handleNoneAsNotFound(ApiOperations.fetchAccount(accountId))
+//                )
+//            }
+//          } ~ pathPrefix("operation_groups") {
+//            pathEnd {
+//              completeWithJson(ApiOperations.fetchOperationGroups(filter))
+//            } ~ path(Segment) { operationGroupId =>
+//              complete(
+//                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
+//              )
+//            }
+//          } ~ pathPrefix("operations") {
+//            path("avgFees") {
+//                complete(
+//                  handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
+//                )
+//            } ~ pathEnd {
+//                completeWithJson(ApiOperations.fetchOperations(filter))
+//            }
+//          }
+//        }
+//
+//      }
+//    }
+//  }
 }
