@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import cats.{Id, Apply, Monad, Traverse}
+import cats._
 import cats.data.Kleisli
 import cats.syntax.semigroupal._
 import com.typesafe.scalalogging.LazyLogging
@@ -48,6 +48,8 @@ trait TezosNodeMultiFetch[F[_], T[_]] {
 }
 
 object TezosNodeMultiFetch {
+  import cats.syntax.foldable._
+  import cats.syntax.functorFilter._
 
   /* An alias used to define function constraints on the internal dependent types (i.e. `I`, `O`, `J`)
    * which would be otherwise transparent in any function signature
@@ -71,6 +73,21 @@ object TezosNodeMultiFetch {
     def decodeJson = multiFetch.decodeJson.product(additionalDecode)
   }
 
+  /** Combines two multifetch acting on the same inputs to get a pair of the outputs,
+   * considering that the intermediate json should not be the same, as required for `addDecoding`
+   * TODO consider composing with a different function that (,) as to combine more than one with different out shapes
+   */
+  def tupleResults[F[_]: Monad, T[_] : Traverse: FunctorFilter, I, O1, O2, J1, J2](mf1: Aux[F, T, I, O1, J1], mf2: Aux[F, T, I, O2, J2]): Kleisli[F, T[I], T[(I, (O1, O2))]] =
+    (mf1.fetch).product(mf2.fetch).map {
+      case (outs1, outs2) =>
+        outs1.mapFilter {
+          case (in, out1) =>
+            outs2.collectFirst{
+              case (`in`, out2) => (`in`, (out1, out2))
+            }
+        }
+    }
+
   /** Allows to add an additional decoder to a "multi-fetch" instance, by providing an extension method `decodeAlso(additionalDecode)`,
     * subject to `F` having a `cats.Apply` instance
     */
@@ -84,8 +101,7 @@ object TezosNodeMultiFetch {
 
 /** Defines intances of `TezosNodeMultiFetch` for block-related data */
 object BlocksMultiFetchingInstances extends LazyLogging {
-  import scala.concurrent.{Future, ExecutionContext}
-  import cats.instances.future._
+  import scala.concurrent.Future
   import io.circe.parser.decode
 
   /** a fetcher of blocks */
