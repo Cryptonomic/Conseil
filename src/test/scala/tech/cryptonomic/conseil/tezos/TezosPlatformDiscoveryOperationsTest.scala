@@ -113,7 +113,10 @@ class TezosPlatformDiscoveryOperationsTest
           Attributes("protocol", "Protocol", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
           Attributes("chain_id", "Chain id", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
           Attributes("hash", "Hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
-          Attributes("operations_hash", "Operations hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks")
+          Attributes("operations_hash", "Operations hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("period_kind", "Period kind", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attributes("current_expected_quorum", "Current expected quorum", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+          Attributes("active_proposal", "Active proposal", DataType.String, Some(0), KeyType.UniqueKey, "blocks")
         )
     }
 

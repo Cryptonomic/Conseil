@@ -764,7 +764,10 @@ class TezosDatabaseOperationsTest
           "protocol" -> Some("protocol"),
           "predecessor" -> Some("genesis"),
           "chain_id" -> Some("YLBMy"),
-          "level" -> Some(0)
+          "level" -> Some(0),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -778,7 +781,10 @@ class TezosDatabaseOperationsTest
           "protocol" -> Some("protocol"),
           "predecessor" -> Some("R0NpYZuUeF"),
           "chain_id" -> Some("YLBMy"),
-          "level" -> Some(1)
+          "level" -> Some(1),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None
         )
       )
     }
