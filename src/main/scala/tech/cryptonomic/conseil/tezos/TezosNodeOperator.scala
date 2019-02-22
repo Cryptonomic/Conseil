@@ -254,62 +254,31 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     reference: (BlockHash, Int),
     levelRange: Range.Inclusive
     ): Future[BlockFetchingResults] = {
-    import io.circe.parser.decode
-    import JsonDecoders.Circe.{ JsonDecoded, handleDecodingErrors }
-    import JsonDecoders.Circe.Blocks._
-    import JsonDecoders.Circe.Operations._
-    import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
+    import cats.instances.future._
+    import cats.instances.list._
+    import TezosNodeMultiFetch.Syntax._
+    import BlocksMultiFetchingInstances._
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
-    val makeBlocksUrl = (offset: Int) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
-    val makeOperationsUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    val jsonToBlockData: ((Int, String)) => Future[BlockData] = {
-      case (_, json) =>
-        decode[BlockData](JS.sanitize(json)) match {
-          case Left(error) =>
-            logger.error("I fetched a block definition from tezos node that I'm unable to decode: {}", json)
-            Future.failed(error)
-          case Right(results) =>
-            Future.successful(results)
-        }
-    }
-
-    val jsonToOperationGroups: String => JsonDecoded[List[OperationsGroup]] =
-      json => decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten)
-
-    //extracts any formally valid account hash from the passed-in string
-    val jsonToAccountInvolved: String => List[AccountId] = {
-      case JsonUtil.AccountIds(id, ids @ _*) =>
-        (id :: ids.toList).distinct.map(AccountId)
-      case _ => List.empty
-    }
-
-    //from the same json, converts to a list of operations and the involved account ids
-    val jsonToOperationsAndAccounts: ((BlockHash, String)) => JsonDecoded[(BlockHash, List[OperationsGroup], List[AccountId])] = {
-      case (hash, json) =>
-        jsonToOperationGroups(json).map( groups => (hash, groups, jsonToAccountInvolved(json)))
-    }
-
-    def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[OperationsGroup], List[AccountId])]] =
-      handleDecodingErrors(in, jsonToOperationsAndAccounts) match {
-        case Left(failure) => Future.failed(failure.errors.head)
-        case Right(results) => Future.successful(results)
-      }
+    val blockFetcher = blocksMultiFetch(network, node, hashRef, blockOperationsConcurrencyLevel)
+    // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
+    val operationsWithAccountsFetcher =
+      operationGroupMultiFetch(network, node, blockOperationsConcurrencyLevel)
+        .decodeAlso(accountIdsJsonDecode.lift[Future])
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
-      fetchedBlocksData <- node.runBatchedGetQuery(network, offsets, makeBlocksUrl, blockOperationsConcurrencyLevel) flatMap (blocksData => Future.traverse(blocksData)(jsonToBlockData))
-      blockHashes = fetchedBlocksData.filterNot(isGenesis).map(_.hash)
-      fetchedOperations <- node.runBatchedGetQuery(network, blockHashes, makeOperationsUrl, blockOperationsConcurrencyLevel)
-      fetchedOperationsWithAccounts <- decodeOperations(fetchedOperations)
+      fetchedBlocksData <- blockFetcher.fetch.run(offsets)
+      blockHashes = fetchedBlocksData.collect{ case (offset, block) if !isGenesis(block) => block.hash }
+      fetchedOperationsWithAccounts <- operationsWithAccountsFetcher.fetch.run(blockHashes)
     } yield {
-      val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, ops, accounts) => (hash, (ops, accounts))}.toMap
+      val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
       fetchedBlocksData.map {
-        md =>
+        case (offset, md) =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           (Block(md, ops), accs)
       }
