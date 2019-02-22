@@ -73,7 +73,7 @@ trait DataEndpoints
   def accountByIdEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
     endpoint(
       request = get(
-        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "accounts" / segment[String](name = "accountId"),
+        url = commonPath / "accounts" / segment[String](name = "accountId"),
         headers = header("apiKey")),
       response = jsonResponse[AnyMap](docs = Some("Query compatibility endpoint for account")).orNotFound(Some("Not found")),
       tags = List("Accounts")
