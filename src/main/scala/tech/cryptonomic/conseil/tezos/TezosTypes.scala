@@ -293,7 +293,8 @@ object TezosTypes {
 
   final case class Block(
                     data: BlockData,
-                    operationGroups: List[OperationsGroup]
+                    operationGroups: List[OperationsGroup],
+                    proposals: (Option[String], Option[Int], Option[BlockHash])
                   )
 
   final case class ManagerKey(

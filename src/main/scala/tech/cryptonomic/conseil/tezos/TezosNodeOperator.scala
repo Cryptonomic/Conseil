@@ -173,7 +173,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       ops <-
         if (isGenesis(block)) Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
         else getAllOperationsForBlock(network, hash)
-    } yield Block(block, ops)
+    } yield Block(block, ops, (None, None, None))
   }
 
   /**
@@ -269,18 +269,27 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       operationGroupMultiFetch(network, node, blockOperationsConcurrencyLevel)
         .decodeAlso(accountIdsJsonDecode.lift[Future])
 
+    val proposalsStateFetch =
+      TezosNodeMultiFetch.tupledResults(
+        currentPeriodMultiFetch(network, node, blockOperationsConcurrencyLevel),
+        currentQuorumMultiFetch(network, node, blockOperationsConcurrencyLevel),
+        currentProposalMultiFetch(network, node, blockOperationsConcurrencyLevel)
+      )
+
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
       fetchedBlocksData <- blockFetcher.fetch.run(offsets)
       blockHashes = fetchedBlocksData.collect{ case (offset, block) if !isGenesis(block) => block.hash }
       fetchedOperationsWithAccounts <- operationsWithAccountsFetcher.fetch.run(blockHashes)
+      proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
+      val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-          (Block(md, ops), accs)
+          (Block(md, ops, proposalsMap(md.hash)), accs)
       }
     }
   }
