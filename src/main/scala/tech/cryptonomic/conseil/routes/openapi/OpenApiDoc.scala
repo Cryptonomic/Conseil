@@ -11,6 +11,7 @@ import io.circe.syntax._
 object OpenApiDoc extends DataEndpoints
   with PlatformDiscoveryEndpoints
   with TezosEndpoints
+  with AppInfoEndpoint
   with openapi.Endpoints
   with openapi.JsonSchemaEntities
   with openapi.BasicAuthentication {
@@ -24,7 +25,7 @@ object OpenApiDoc extends DataEndpoints
     accountsEndpoint, accountByIdEndpoint, operationGroupsEndpoint, operationGroupByIdEndpoint, avgFeesEndpoint, operationsEndpoint,
     platformsEndpoint, networksEndpoint, entitiesEndpoint, attributesEndpoint, attributesValuesEndpoint, attributesValuesWithFilterEndpoint,
     blocksEndpointV1, blocksHeadEndpointV1, blockByHashEndpointV1, accountsEndpointV1, accountByIdEndpointV1, operationGroupsEndpointV1,
-    operationGroupByIdEndpointV1, avgFeesEndpointV1, operationsEndpointV1
+    operationGroupByIdEndpointV1, avgFeesEndpointV1, operationsEndpointV1, appInfoEndpoint
   )
 
   /** Function for validation definition in documentation */

@@ -42,9 +42,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           validateApiKey { _ =>
             logRequest("Conseil", Logging.DebugLevel) {
               tezos.route ~
-              pathPrefix("info") {
-                AppInfo.route
-              }
+              AppInfo.route
             } ~
             logRequest("Metadata Route", Logging.DebugLevel) {
               platformDiscovery.route
