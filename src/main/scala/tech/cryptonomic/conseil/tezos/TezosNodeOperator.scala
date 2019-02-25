@@ -28,6 +28,18 @@ object TezosNodeOperator {
 
   val isGenesis = (data: BlockData) => data.header.level == 0
 
+  /** Helper to decode json and convert to a possibly failing future result
+    * This is not running any async operation
+    */
+  def decodeToFuture[A: io.circe.Decoder](json: String) = {
+    import io.circe.parser.decode
+
+    decode[A](json) match {
+      case Left(error) => Future.failed(error)
+      case Right(results) => Future.successful(results)
+    }
+  }
+
 }
 
 /**
@@ -40,7 +52,7 @@ object TezosNodeOperator {
 class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext)
   extends LazyLogging
   with BlocksMultiFetchingInstances {
-  import TezosNodeOperator.isGenesis
+  import TezosNodeOperator.{isGenesis, decodeToFuture}
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
   override val multiFetchConcurrency = blockOperationsConcurrencyLevel
@@ -137,23 +149,53 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param blockHash Hash of the block
     * @return          The `Future` list of operations
     */
-  def getAllOperationsForBlock(blockHash: BlockHash): Future[List[OperationsGroup]] = {
-    import io.circe.parser.decode
+  def getAllOperationsForBlock(block: BlockData): Future[List[OperationsGroup]] = {
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
     //parse json, and try to convert to objects, converting failures to a failed `Future`
     //we could later improve by "accumulating" all errors in a single failed future, with `decodeAccumulating`
     def decodeOperations(json: String) =
-      decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten) match {
-        case Left(failure) => Future.failed(failure)
-        case Right(results) => Future.successful(results)
-      }
+      decodeToFuture[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten)
 
-    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/operations")
-      .flatMap(decodeOperations)
+    if (isGenesis(block))
+      Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+    else
+      node.runAsyncGetQuery(network, s"blocks/${block.hash.value}/operations")
+        .flatMap(decodeOperations)
 
   }
+
+  /** Fetches votes information for the block */
+  def getCurrentVotesForBlock(block: BlockData, offset: Option[Int] = None): Future[CurrentVotes] =
+    if (isGenesis(block))
+      Future.successful(CurrentVotes.defaultValue)
+    else {
+      import JsonDecoders.Circe._
+      import cats.instances.future._
+      import cats.syntax.apply._
+
+      val offsetString = offset.map(_.toString).getOrElse("")
+      val hashString = block.hash.value
+
+      val fetchCurrentPeriod =
+        node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_period_kind") flatMap { json =>
+          decodeToFuture[ProposalPeriod.Kind](json)
+        }
+
+      val fetchCurrentQuorum =
+        node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
+          decodeToFuture[Option[Int]](json)
+        }
+
+      val fetchCurrentProposal =
+        node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
+          decodeToFuture[Option[ProtocolId]](json)
+        }
+
+      (fetchCurrentPeriod, fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
+    }
+
 
   /**
     * Fetches a single block from the chain, without waiting for the result
@@ -161,21 +203,21 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
-    import io.circe.parser.decode
     import JsonDecoders.Circe.Blocks._
 
     val offsetString = offset.map(_.toString).getOrElse("")
-    for {
-      block <- node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
-        decode[BlockData](JS.sanitize(json)) match {
-          case Left(error) => Future.failed(error)
-          case Right(results) => Future.successful(results)
-        }
+
+    //starts immediately
+    val fetchBlock =
+      node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+        decodeToFuture[BlockData](JS.sanitize(json))
       }
-      ops <-
-        if (isGenesis(block)) Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
-        else getAllOperationsForBlock(hash)
-    } yield Block(block, ops, (None, None, None))
+
+    for {
+      block <- fetchBlock
+      ops <- getAllOperationsForBlock(block)
+      votes <- getCurrentVotesForBlock(block)
+    } yield Block(block, ops, votes)
   }
 
   /**
@@ -281,12 +323,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
-      val proposalsMap = proposalsState.toMap
+      val proposalsMap = proposalsState.toMap.mapValues((CurrentVotes.apply _).tupled)
       fetchedBlocksData.map {
         case (offset, md) =>
         val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-        val proposals = if (isGenesis(md)) (None, None, None) else proposalsMap(md.hash)
-        (Block(md, ops, proposals), accs)
+        (Block(md, ops, proposalsMap.getOrElse(md.hash, CurrentVotes.defaultValue)), accs)
       }
     }
   }

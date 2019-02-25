@@ -85,7 +85,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
           metadata = BlockHeaderMetadata(balance_updates = None)
         ),
         operationGroups = List.empty,
-        proposals = (None, None, None)
+        votes = CurrentVotes.defaultValue
       )
 
     //we need a block to start

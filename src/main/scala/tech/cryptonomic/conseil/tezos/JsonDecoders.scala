@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
 import java.time.Instant
-import java.time.format.DateTimeFormatter
 import scala.util.Try
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
@@ -85,6 +84,9 @@ object JsonDecoders {
     implicit val timestampDecoder: Decoder[Timestamp] =
       Decoder.decodeString.emapTry(ts => Try(Timestamp.from(Instant.parse(ts))))
 
+    /* decode an enumerated string to a valid ProposalPeriod Kind */
+    implicit val proposalPeriodKindDecoder: Decoder[ProposalPeriod.Kind] =
+      Decoder.decodeString.emapTry(kind => Try(ProposalPeriod.withName(kind)))
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
@@ -95,6 +97,7 @@ object JsonDecoders {
     implicit val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
     implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
+    implicit val protocolIdDecoder: Decoder[ProtocolId] = base58CheckDecoder.map(b58 => ProtocolId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
 
     val tezosDerivationConfig: Configuration =

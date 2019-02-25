@@ -87,10 +87,11 @@ trait BlocksMultiFetchingInstances {
   }
 
   val currentPeriodMultiFetch = new MultiFetchDecoding[Future, List] {
+    import JsonDecoders.Circe._
 
     type Encoded = String
     type In = BlockHash
-    type Out = Option[String]
+    type Out = ProposalPeriod.Kind
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_period_kind"
 
@@ -98,7 +99,7 @@ trait BlocksMultiFetchingInstances {
       Kleisli(hashes => node.runBatchedGetQuery(network, hashes, makeUrl, multiFetchConcurrency))
 
     override val decodeData = Kleisli(
-      json => Future.successful(decode[String](json).toOption)
+      json => Future.fromTry(decode[ProposalPeriod.Kind](json).toTry)
     )
 
   }
@@ -121,10 +122,11 @@ trait BlocksMultiFetchingInstances {
   }
 
   val currentProposalMultiFetch = new MultiFetchDecoding[Future, List] {
+    import JsonDecoders.Circe._
 
     type Encoded = String
     type In = BlockHash
-    type Out = Option[BlockHash]
+    type Out = Option[ProtocolId]
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
 
@@ -132,7 +134,7 @@ trait BlocksMultiFetchingInstances {
       Kleisli(hashes => node.runBatchedGetQuery(network, hashes, makeUrl, multiFetchConcurrency))
 
     override val decodeData = Kleisli(
-      json => Future.successful(decode[String](json).map(BlockHash).toOption)
+      json => Future.successful(decode[ProtocolId](json).toOption)
     )
 
   }

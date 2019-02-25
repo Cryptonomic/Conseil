@@ -61,7 +61,7 @@ object DatabaseConversions {
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
       val header = from.data.header
-      val (periodKind, expectedQuorum, proposal) = from.proposals
+      val CurrentVotes(periodKind, expectedQuorum, proposal) = from.votes
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
@@ -75,9 +75,9 @@ object DatabaseConversions {
         chainId = from.data.chain_id,
         hash = from.data.hash.value,
         operationsHash = header.operations_hash,
-        periodKind = periodKind,
+        periodKind = Some(periodKind.toString),
         currentExpectedQuorum = expectedQuorum,
-        activeProposal = proposal.map(_.value)
+        activeProposal = proposal.map(_.id)
       )
     }
   }
