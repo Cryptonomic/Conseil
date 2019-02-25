@@ -59,9 +59,8 @@ object Tezos {
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
 class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with RouteHandling
-  with TezosEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
+  with TezosEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities with DataHelpers {
 
-  import Tezos._
 
   /*
    * reuse the same context as the one for ApiOperations calls
@@ -69,63 +68,60 @@ class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging 
    */
   override val asyncApiFiltersExecutionContext = apiExecutionContext
 
-  private val blocksRoute = blocksEndpoint.implementedByAsync {
+  private val blocksRoute = blocksEndpointV1.implementedByAsync {
     case (network, filter, apiKey) =>
       ApiOperations.fetchBlocks(filter)
   }
 
-  private val blocksHeadRoute = blocksHeadEndpoint.implementedByAsync {
+  private val blocksHeadRoute = blocksHeadEndpointV1.implementedByAsync {
     case (network, apiKey) =>
       ApiOperations.fetchLatestBlock()
   }
 
-  private val blockByHashRoute = blockByHashEndpoint.implementedByAsync {
+  private val blockByHashRoute = blockByHashEndpointV1.implementedByAsync {
     case (network, hash, apiKey) =>
       ApiOperations.fetchBlock(BlockHash(hash))
   }
 
-  private val accountsRoute = accountsEndpoint.implementedByAsync {
+  private val accountsRoute = accountsEndpointV1.implementedByAsync {
     case (network, filter, apiKey) =>
       ApiOperations.fetchAccounts(filter)
   }
 
-  private val accountByIdRoute = accountByIdEndpoint.implementedByAsync {
-    case ()
+  private val accountByIdRoute = accountByIdEndpointV1.implementedByAsync {
+    case (network, accountId, apiKey) =>
+      ApiOperations.fetchAccount(AccountId(accountId))
   }
 
-//  /** expose filtered results through rest endpoints */
-//  val route: Route = pathPrefix(Segment) { network =>
-//    get {
-//      gatherConseilFilter{ filter =>
-//        validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
-//          pathPrefix("accounts") {
-//            pathEnd {
-//              completeWithJson(ApiOperations.fetchAccounts(filter))
-//            } ~ path(Segment).as(AccountId) { accountId =>
-//              complete(
-//                handleNoneAsNotFound(ApiOperations.fetchAccount(accountId))
-//                )
-//            }
-//          } ~ pathPrefix("operation_groups") {
-//            pathEnd {
-//              completeWithJson(ApiOperations.fetchOperationGroups(filter))
-//            } ~ path(Segment) { operationGroupId =>
-//              complete(
-//                handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
-//              )
-//            }
-//          } ~ pathPrefix("operations") {
-//            path("avgFees") {
-//                complete(
-//                  handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
-//                )
-//            } ~ pathEnd {
-//                completeWithJson(ApiOperations.fetchOperations(filter))
-//            }
-//          }
-//        }
-//
-//      }
-//    }
-//  }
+  private val operationGroupsRoute = operationGroupsEndpointV1.implementedByAsync {
+    case (network, filter, apiKey) =>
+      ApiOperations.fetchOperationGroups(filter)
+  }
+
+  private val operationGroupsByIdRoute = operationGroupByIdEndpointV1.implementedByAsync {
+    case (network, operationGroupId, apiKey) =>
+      ApiOperations.fetchOperationGroup(operationGroupId)
+  }
+
+  private val avgFeesRoute = avgFeesEndpointV1.implementedByAsync {
+    case (network, filter, apiKey) =>
+      ApiOperations.fetchAverageFees(filter)
+  }
+
+  private val operationsRoute = operationsEndpointV1.implementedByAsync {
+    case (network, filter, apiKey) =>
+      ApiOperations.fetchOperations(filter)
+  }
+
+  val route: Route = concat(
+    blocksRoute,
+    blocksHeadRoute,
+    blockByHashRoute,
+    accountsRoute,
+    accountByIdRoute,
+    operationGroupsRoute,
+    operationGroupsByIdRoute,
+    avgFeesRoute,
+    operationsRoute
+  )
 }

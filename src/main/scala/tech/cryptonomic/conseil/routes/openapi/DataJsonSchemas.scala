@@ -2,8 +2,10 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.{algebra, generic}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.tezos.DBTableMapping.Operation
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
+import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 
 /** Trait containing Data endpoints JSON schemas */
 trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
@@ -52,6 +54,12 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   /** AnyMap schema */
   implicit def blocksByHashSchema: JsonSchema[AnyMap]
 
+  /** Operation schema */
+  implicit def operationSchema: JsonSchema[Operation] =
+    genericJsonSchema[Operation]
+
+  /** Accounts row schema */
+  implicit def accountsRowSchema: JsonSchema[AccountsRow] =
+    genericJsonSchema[AccountsRow]
+
 }
-
-

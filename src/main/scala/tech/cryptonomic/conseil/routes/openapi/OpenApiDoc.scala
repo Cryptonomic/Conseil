@@ -8,12 +8,12 @@ import io.circe.Json
 import io.circe.syntax._
 
 /** OpenAPI documentation object */
-object OpenApiDoc
-  extends DataEndpoints
+object OpenApiDoc extends DataEndpoints
   with PlatformDiscoveryEndpoints
-    with openapi.Endpoints
-    with openapi.JsonSchemaEntities
-    with openapi.BasicAuthentication {
+  with TezosEndpoints
+  with openapi.Endpoints
+  with openapi.JsonSchemaEntities
+  with openapi.BasicAuthentication {
 
   /** OpenAPI JSON*/
   def openapiJson: Json =
@@ -22,7 +22,10 @@ object OpenApiDoc
   /** OpenAPI definition */
   def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(queryEndpoint, blocksEndpoint, blocksHeadEndpoint, blockByHashEndpoint,
     accountsEndpoint, accountByIdEndpoint, operationGroupsEndpoint, operationGroupByIdEndpoint, avgFeesEndpoint, operationsEndpoint,
-    platformsEndpoint, networksEndpoint, entitiesEndpoint, attributesEndpoint, attributesValuesEndpoint, attributesValuesWithFilterEndpoint)
+    platformsEndpoint, networksEndpoint, entitiesEndpoint, attributesEndpoint, attributesValuesEndpoint, attributesValuesWithFilterEndpoint,
+    blocksEndpointV1, blocksHeadEndpointV1, blockByHashEndpointV1, accountsEndpointV1, accountByIdEndpointV1, operationGroupsEndpointV1,
+    operationGroupByIdEndpointV1, avgFeesEndpointV1, operationsEndpointV1
+  )
 
   /** Function for validation definition in documentation */
   def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
