@@ -97,6 +97,9 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
+              row.periodKind shouldEqual block.proposals._1
+              row.currentExpectedQuorum shouldEqual block.proposals._2
+              row.activeProposal shouldEqual block.proposals._3.map(_.value)
           }
 
           val dbBlocksAndGroups =

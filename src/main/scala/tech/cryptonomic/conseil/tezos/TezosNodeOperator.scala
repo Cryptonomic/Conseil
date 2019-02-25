@@ -284,8 +284,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
-          val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-          (Block(md, ops, proposalsMap(md.hash)), accs)
+        val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
+        val proposals = if (isGenesis(md)) (None, None, None) else proposalsMap(md.hash)
+        (Block(md, ops, proposals), accs)
       }
     }
   }
