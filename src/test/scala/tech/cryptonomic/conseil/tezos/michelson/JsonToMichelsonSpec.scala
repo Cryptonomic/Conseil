@@ -2,14 +2,14 @@ package tech.cryptonomic.conseil.tezos.michelson
 
 import org.scalatest._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
+import tech.cryptonomic.conseil.tezos.michelson.dto.MichelsonSchema
 
 class JsonToMichelsonSpec extends FlatSpec with Matchers {
 
   "A JsonToMichelson" should "convert json to michelson format" in {
     val json =
       """
-        |{
-        |  "code": [
+        |[
         |      {
         |          "prim": "parameter",
         |          "args": [
@@ -262,9 +262,7 @@ class JsonToMichelsonSpec extends FlatSpec with Matchers {
         |              ]
         |          ]
         |      }
-        |  ]
-        |}
-        |""".stripMargin
+        |  ]""".stripMargin
 
     val result =
       """parameter unit;
@@ -282,6 +280,6 @@ class JsonToMichelsonSpec extends FlatSpec with Matchers {
         |       CONS ;
         |       PAIR }""".stripMargin
 
-    convert(json) should equal(Right(result))
+    convert[MichelsonSchema](json) should equal(Right(result))
   }
 }

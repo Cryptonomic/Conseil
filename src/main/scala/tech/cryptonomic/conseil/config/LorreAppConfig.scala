@@ -81,5 +81,4 @@ object LorreAppConfig {
     streamingClientPool: HttpStreamingConfiguration,
     batching: BatchFetchConfiguration
   )
-
 }

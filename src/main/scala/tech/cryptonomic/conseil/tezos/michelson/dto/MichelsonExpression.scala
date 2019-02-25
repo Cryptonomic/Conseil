@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos.michelson.dto
 
-sealed trait MichelsonExpression
+sealed trait MichelsonExpression extends MichelsonElement
 
 /*
  * Class representing a type

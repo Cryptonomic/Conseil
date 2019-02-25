@@ -11,6 +11,10 @@ object TezosTypes {
     pattern.matcher(s).matches
   }
 
+  implicit lazy val michelineToString: Micheline => String = _.expression
+  implicit lazy val stringToMicheline: String => Micheline = Micheline
+  implicit lazy val optionalStringToMicheline: Option[String] => Option[Micheline] = _.map(Micheline)
+
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
 
@@ -89,7 +93,14 @@ object TezosTypes {
     final case class Contracts(
       storage: Micheline,
       code: Micheline
-    )
+    ) {
+      def map(f: String => Option[String]): Option[Contracts] = {
+        for {
+          transformedStorage <- f(storage)
+          transformedCode <- f(code)
+        } yield Contracts(transformedStorage, transformedCode)
+      }
+    }
   }
 
   /** root of the operation hiearchy */
@@ -250,7 +261,21 @@ object TezosTypes {
     branch: BlockHash,
     contents: List[Operation],
     signature: Option[Signature]
-  )
+  ) {
+    def updateParameters(f: String => Option[String]): OperationsGroup = {
+      copy(contents = contents.map {
+        case transaction: Transaction => transaction.copy(parameters = transaction.parameters.flatMap(f(_)))
+        case it => it
+      })
+    }
+
+    def updateScript(f: String => Option[String]): OperationsGroup = {
+      copy(contents = contents.map {
+        case origination: Origination => origination.copy(script = origination.script.flatMap(_.map(f)))
+        case it => it
+      })
+    }
+  }
 
   final case class AppliedOperationBalanceUpdates(
                                              kind: String,
@@ -283,18 +308,30 @@ object TezosTypes {
                     delegate: AccountDelegate,
                     script: Option[Any],
                     counter: Int
-                    )
+                    ) {
+    def replaceScript(f: Any => Option[String]): Account = {
+      copy(script = script.flatMap(f))
+    }
+  }
 
   final case class BlockAccounts(
                     blockHash: BlockHash,
                     blockLevel: Int,
                     accounts: Map[AccountId, Account] = Map.empty
-                  )
+                  ) {
+    def replaceScript(f: Any => Option[String]): BlockAccounts = {
+      copy(accounts = accounts.mapValues(_.replaceScript(f)))
+    }
+  }
 
   final case class Block(
                     data: BlockData,
                     operationGroups: List[OperationsGroup]
-                  )
+                  ) {
+    def replaceParameters(f: String => Option[String]): Block = {
+      copy(operationGroups = operationGroups.map(_.updateParameters(f)))
+    }
+  }
 
   final case class ManagerKey(
                        manager: String,

@@ -15,7 +15,7 @@ package tech.cryptonomic.conseil.tezos.michelson.dto
  *   | MichelsonComplexInstruction (with embedded MichelsonInstructionSequence as above)
  *   MichelsonInstructionSequence (with two instructions separated with ";": "DIP { ... }" and "SWAP")
  * */
-sealed trait MichelsonInstruction
+sealed trait MichelsonInstruction extends MichelsonElement
 
 /* Class representing a simple Michelson instruction which can contains following expressions */
 case class MichelsonSimpleInstruction(prim: String, michelsonExpressions: List[MichelsonExpression] = List.empty) extends MichelsonInstruction
