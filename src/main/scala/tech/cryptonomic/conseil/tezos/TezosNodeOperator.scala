@@ -32,58 +32,63 @@ object TezosNodeOperator {
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
+  * @param node      Tezos node connection object
+  * @param network   Which Tezos network to go against
+  * @param batchConf configuration for batched download of node data
+  * @param executionContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext) extends LazyLogging {
+class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext)
+  extends LazyLogging
+  with BlocksMultiFetchingInstances {
   import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
+
+  override val multiFetchConcurrency = blockOperationsConcurrencyLevel
+
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
 
   /**
     * Fetches a specific account for a given block.
-    * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block
     * @param accountID  Account ID
     * @return           The account
     */
-  def getAccountForBlock(network: String, blockHash: BlockHash, accountID: AccountId): Future[Account] =
+  def getAccountForBlock(blockHash: BlockHash, accountID: AccountId): Future[Account] =
     node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountID.id}")
       .map(fromJson[Account])
 
   /**
     * Fetches the manager of a specific account for a given block.
-    * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block
     * @param accountID  Account ID
     * @return           The account
     */
-  def getAccountManagerForBlock(network: String, blockHash: BlockHash, accountID: AccountId): Future[ManagerKey] =
+  def getAccountManagerForBlock(blockHash: BlockHash, accountID: AccountId): Future[ManagerKey] =
     node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountID.id}/manager_key")
       .map(fromJson[ManagerKey])
 
   /**
     * Fetches all accounts for a given block.
-    * @param network    Which Tezos network to go against
     * @param blockHash  Hash of given block.
     * @return           Accounts
     */
-  def getAllAccountsForBlock(network: String, blockHash: BlockHash): Future[Map[AccountId, Account]] =
+  def getAllAccountsForBlock(blockHash: BlockHash): Future[Map[AccountId, Account]] =
     for {
       jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
       accountIDs = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
-      accounts <- getAccountsForBlock(network, accountIDs, blockHash)
+      accounts <- getAccountsForBlock(accountIDs, blockHash)
     } yield accounts
 
   /**
     * Fetches the accounts identified by id
     *
-    * @param network    Which Tezos network to go against
     * @param accountIDs the ids
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getAccountsForBlock(network: String, accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] =
+  def getAccountsForBlock(accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] =
     node
     .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountConcurrencyLevel)
     .map(
@@ -99,11 +104,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
 
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
-    * @param network  Which Tezos network to go against
     * @param accountsBlocksIndex a map from unique id to the [latest] block reference
     * @return         Accounts with their corresponding block data
     */
-  def getAccountsForBlocks(network: String, accountsBlocksIndex: Map[AccountId, BlockReference]): Future[List[BlockAccounts]] = {
+  def getAccountsForBlocks(accountsBlocksIndex: Map[AccountId, BlockReference]): Future[List[BlockAccounts]] = {
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
@@ -117,7 +121,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
-    getAccountsForBlock(network, accountsBlocksIndex.keys.toList)
+    getAccountsForBlock(accountsBlocksIndex.keys.toList)
       .andThen {
         case Success(accountsMap) =>
           notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
@@ -130,11 +134,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
 
   /**
     * Fetches operations for a block, without waiting for the result
-    * @param network   Which Tezos network to go against
     * @param blockHash Hash of the block
     * @return          The `Future` list of operations
     */
-  def getAllOperationsForBlock(network: String, blockHash: BlockHash): Future[List[OperationsGroup]] = {
+  def getAllOperationsForBlock(blockHash: BlockHash): Future[List[OperationsGroup]] = {
     import io.circe.parser.decode
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
@@ -154,11 +157,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
 
   /**
     * Fetches a single block from the chain, without waiting for the result
-    * @param network   Which Tezos network to go against
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
-  def getBlock(network: String, hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
+  def getBlock(hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
     import io.circe.parser.decode
     import JsonDecoders.Circe.Blocks._
 
@@ -172,17 +174,16 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       }
       ops <-
         if (isGenesis(block)) Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
-        else getAllOperationsForBlock(network, hash)
+        else getAllOperationsForBlock(hash)
     } yield Block(block, ops, (None, None, None))
   }
 
   /**
     * Gets the block head.
-    * @param network  Which Tezos network to go against
-    * @return         Block head
+    * @return Block head
     */
-  def getBlockHead(network: String): Future[Block]= {
-    getBlock(network, blockHeadHash)
+  def getBlockHead(): Future[Block]= {
+    getBlock(blockHeadHash)
   }
 
   /**
@@ -198,13 +199,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
-    * @param network    Which Tezos network to go against
-    * @return           Blocks and Account hashes involved
+    * @return Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(network: String): Future[PaginatedBlocksResults] =
+  def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
     for {
       maxLevel <- ApiOperations.fetchMaxLevel
-      blockHead <- getBlockHead(network)
+      blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
     } yield {
@@ -214,7 +214,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
         if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
         val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
-          page => getBlocks(network, (headHash, headLevel), page)
+          page => getBlocks((headHash, headLevel), page)
         )
         val minLevel = if (bootstrapping) 1 else maxLevel
         (pagedResults, headLevel - minLevel)
@@ -226,18 +226,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
 
   /**
     * Gets last `depth` blocks.
-    * @param network    Which Tezos network to go against
     * @param depth      Number of latest block to fetch, `None` to get all
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks(network: String, depth: Option[Int] = None): Future[PaginatedBlocksResults] =
-    getBlockHead(network).map {
+  def getLatestBlocks(depth: Option[Int] = None): Future[PaginatedBlocksResults] =
+    getBlockHead().map {
       head =>
         val headLevel = head.data.header.level
         val headHash = head.data.hash
         val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
         val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
-          page => getBlocks(network, (headHash, headLevel), page)
+          page => getBlocks((headHash, headLevel), page)
         )
         (pagedResults, headLevel - minLevel + 1)
     }
@@ -250,30 +249,27 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def getBlocks(
-    network : String,
     reference: (BlockHash, Int),
     levelRange: Range.Inclusive
     ): Future[BlockFetchingResults] = {
     import cats.instances.future._
     import cats.instances.list._
-    import TezosNodeMultiFetch.Syntax._
-    import BlocksMultiFetchingInstances._
+    import tech.cryptonomic.conseil.generic.chain.MultiFetchDecoding
+    import tech.cryptonomic.conseil.generic.chain.MultiFetchDecoding.Syntax._
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
 
-    val blockFetcher = blocksMultiFetch(network, node, hashRef, blockOperationsConcurrencyLevel)
+    val blockFetcher = blocksMultiFetch(hashRef)
     // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
-    val operationsWithAccountsFetcher =
-      operationGroupMultiFetch(network, node, blockOperationsConcurrencyLevel)
-        .decodeAlso(accountIdsJsonDecode.lift[Future])
+    val operationsWithAccountsFetcher = operationGroupMultiFetch.decodeAlso(accountIdsJsonDecode.lift[Future])
 
     val proposalsStateFetch =
-      TezosNodeMultiFetch.tupledResults(
-        currentPeriodMultiFetch(network, node, blockOperationsConcurrencyLevel),
-        currentQuorumMultiFetch(network, node, blockOperationsConcurrencyLevel),
-        currentProposalMultiFetch(network, node, blockOperationsConcurrencyLevel)
+      MultiFetchDecoding.tupledResults(
+        currentPeriodMultiFetch,
+        currentQuorumMultiFetch,
+        currentProposalMultiFetch
       )
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
@@ -299,8 +295,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
 /**
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations
   */
-class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: BatchFetchConfiguration, sodiumConf: SodiumConfiguration)(implicit executionContext: ExecutionContext)
-  extends TezosNodeOperator(node, batchConf)
+class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: String, batchConf: BatchFetchConfiguration, sodiumConf: SodiumConfiguration)(implicit executionContext: ExecutionContext)
+  extends TezosNodeOperator(node, network, batchConf)
   with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
@@ -331,7 +327,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
 
   /**
     * Forge an operation group using the Tezos RPC client.
-    * @param network    Which Tezos network to go against
     * @param blockHead  The block head
     * @param account    The sender's account
     * @param operations The operations being forged as part of this operation group
@@ -340,7 +335,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     * @return           Forged operation bytes (as a hex string)
     */
   def forgeOperations(
-    network: String,
     blockHead: Block,
     account: Account,
     operations: List[Map[String,Any]],
@@ -406,7 +400,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     * @return                     Array of contract handles
     */
   def applyOperation(
-    network: String,
     blockHead: Block,
     operationGroupHash: String,
     forgedOperationGroup: String,
@@ -426,11 +419,10 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
 
   /**
     * Injects an opertion using the Tezos RPC client.
-    * @param network        Which Tezos network to go against
     * @param signedOpGroup  Signed operation group
     * @return               ID of injected operation
     */
-  def injectOperation(network: String, signedOpGroup: SignedOperationGroup): Future[String] = {
+  def injectOperation(signedOpGroup: SignedOperationGroup): Future[String] = {
     val payload: Map[String, Any] = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
     )
@@ -440,28 +432,26 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
 
   /**
     * Master function for creating and sending all supported types of operations.
-    * @param network    Which Tezos network to go against
     * @param operations The operations to create and send
     * @param keyStore   Key pair along with public key hash
     * @param fee        The fee to use
     * @return           The ID of the created operation group
     */
-  def sendOperation(network: String, operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Future[OperationResult] = for {
-    blockHead <- getBlockHead(network)
+  def sendOperation(operations: List[Map[String,Any]], keyStore: KeyStore, fee: Option[Float]): Future[OperationResult] = for {
+    blockHead <- getBlockHead()
     accountId = AccountId(keyStore.publicKeyHash)
-    account <- getAccountForBlock(network, blockHeadHash, accountId)
-    accountManager <- getAccountManagerForBlock(network, blockHeadHash, accountId)
+    account <- getAccountForBlock(blockHeadHash, accountId)
+    accountManager <- getAccountManagerForBlock(blockHeadHash, accountId)
     operationsWithKeyReveal = handleKeyRevealForOperations(operations, accountManager, keyStore)
-    forgedOperationGroup <- forgeOperations(network, blockHead, account, operationsWithKeyReveal, keyStore, fee)
+    forgedOperationGroup <- forgeOperations(blockHead, account, operationsWithKeyReveal, keyStore, fee)
     signedOpGroup <- Future.fromTry(signOperationGroup(forgedOperationGroup, keyStore))
     operationGroupHash <- Future.fromTry(computeOperationHash(signedOpGroup))
-    appliedOp <- applyOperation(network, blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
-    operation <- injectOperation(network, signedOpGroup)
+    appliedOp <- applyOperation(blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
+    operation <- injectOperation(signedOpGroup)
   } yield OperationResult(appliedOp, operation)
 
   /**
     * Creates and sends a transaction operation.
-    * @param network    Which Tezos network to go against
     * @param keyStore   Key pair along with public key hash
     * @param to         Destination public key hash
     * @param amount     Amount to send
@@ -469,7 +459,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     * @return           The ID of the created operation group
     */
   def sendTransactionOperation(
-    network: String,
     keyStore: KeyStore,
     to: String,
     amount: Float,
@@ -482,19 +471,17 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
       "parameters"  -> MichelsonExpression("Unit", List[String]())
     )
     val operations = transactionMap :: Nil
-    sendOperation(network, operations, keyStore, Some(fee))
+    sendOperation(operations, keyStore, Some(fee))
   }
 
   /**
     * Creates and sends a delegation operation.
-    * @param network  Which Tezos network to go against
     * @param keyStore Key pair along with public key hash
     * @param delegate Account ID to delegate to
     * @param fee      Operation fee
     * @return
     */
   def sendDelegationOperation(
-    network: String,
     keyStore: KeyStore,
     delegate: String,
     fee: Float): Future[OperationResult] = {
@@ -503,12 +490,11 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
       "delegate"    -> delegate
     )
     val operations = transactionMap :: Nil
-    sendOperation(network, operations, keyStore, Some(fee))
+    sendOperation(operations, keyStore, Some(fee))
   }
 
   /**
     * Creates and sends an origination operation.
-    * @param network      Which Tezos network to go against
     * @param keyStore     Key pair along with public key hash
     * @param amount       Initial funding amount of new account
     * @param delegate     Account ID to delegate to, blank if none
@@ -518,7 +504,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
     * @return
     */
   def sendOriginationOperation(
-    network: String,
     keyStore: KeyStore,
     amount: Float,
     delegate: String,
@@ -534,7 +519,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, batchConf: B
       "delegate"      -> delegate
     )
     val operations = transactionMap :: Nil
-    sendOperation(network, operations, keyStore, Some(fee))
+    sendOperation(operations, keyStore, Some(fee))
   }
 
   /**

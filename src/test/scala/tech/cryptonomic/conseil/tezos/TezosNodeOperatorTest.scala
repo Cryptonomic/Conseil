@@ -22,10 +22,10 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe~").returns(blockResponse)
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe/operations").returns(operationResponse)
 
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
     //when
-    val block: Future[TezosTypes.Block] = nodeOp.getBlock("zeronet", BlockHash("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe"))
+    val block: Future[TezosTypes.Block] = nodeOp.getBlock(BlockHash("BLockGenesisGenesisGenesisGenesisGenesis385e5hNnQTe"))
 
     //then
     block.futureValue.data.hash shouldBe BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")
@@ -49,10 +49,10 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
         ))
       )
 
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
     //when
-    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks("zeronet")
+    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks()
 
     //then
     val (pages, total) = blockPages.futureValue
@@ -72,10 +72,10 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     (tezosRPCInterface.runBatchedGetQuery[Int] _).when("zeronet", List(0), *, *).returns(Future.successful(List((0, TezosResponseBuilder.batchedGetQueryResponse))))
     (tezosRPCInterface.runBatchedGetQuery[BlockHash] _).when("zeronet", *, *, *).returns(Future.successful(List((BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetQuerySecondCallResponse))))
 
-    val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, config)
+    val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
     //when
-    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks("zeronet", Some(1))
+    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(Some(1))
 
     //then
     val (pages, total) = blockPages.futureValue
