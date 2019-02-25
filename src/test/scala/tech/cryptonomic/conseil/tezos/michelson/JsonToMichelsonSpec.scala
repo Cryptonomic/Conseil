@@ -1,8 +1,6 @@
 package tech.cryptonomic.conseil.tezos.michelson
 
 import org.scalatest._
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.MichelsonSchema
 
 class JsonToMichelsonSpec extends FlatSpec with Matchers {
 
@@ -280,6 +278,6 @@ class JsonToMichelsonSpec extends FlatSpec with Matchers {
         |       CONS ;
         |       PAIR }""".stripMargin
 
-    convert[MichelsonSchema](json) should equal(Right(result))
+    JsonToMichelson.convertSchema(json) should equal(Right(result))
   }
 }

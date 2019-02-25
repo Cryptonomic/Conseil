@@ -6,10 +6,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
-import tech.cryptonomic.conseil.tezos.TezosTypes.BlockAccounts
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.{Result, convertCode, convertInstruction}
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -149,7 +146,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
         blocksWithAccounts => {
 
           val modifiedBlocks = blocksWithAccounts.map {
-            case (block, ids) => (block.replaceParameters(toMichelsonScript), ids)
+            case (block, ids) => (block.replaceParameters((json: Any) => toMichelsonScript(convertInstruction, json)), ids)
             case it => it
           }
 
@@ -203,8 +200,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
   }
 
-  def toMichelsonScript(json: Any): Option[String] = {
-    Some(json).collect { case t: String => convert[MichelsonInstruction](t) } match {
+  type ConversionMethod = String => Result[String]
+
+  def toMichelsonScript(conversion: ConversionMethod, json: Any) = {
+    Some(json).collect { case t: String => conversion(t) } match {
       case Some(Right(value)) => Some(value)
       case Some(Left(t)) =>
         logger.error(s"Error during converting Michelson format: $json", t)
@@ -236,7 +235,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
       modifiedAccountsInfo = accountsInfo
         .map(_
-          .replaceScript(toMichelsonScript))
+          .replaceScript((json: Any) => toMichelsonScript(convertCode, json)))
       _ <- logOutcome(db.run(TezosDb.writeAccounts(modifiedAccountsInfo)))
     } yield checkpoints
 

@@ -178,21 +178,7 @@ object JsonParser {
   }
 
   /* Parses Michelson Expression represented as JSON to domain objects */
-  def parse[T <: MichelsonElement](json: String): Result[T] = {
-    def fsad = {
-      parse2[MichelsonSchema]
-    }
-
-    fsad(json)
-
-    def fdas = {
-      parse2[MichelsonCode](json)
-    }
-
-    fdas
-  }
-
-  private def parse2[T <: MichelsonElement](json: String)(implicit parser: Parser[T]) = {
-    parser.parse(json)
+  def parse[T <: MichelsonElement:Parser](json: String): Result[T] = {
+    implicitly[Parser[T]].parse(json)
   }
 }
