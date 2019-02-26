@@ -48,7 +48,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
               platformDiscovery.route
             } ~
             logRequest("Data Route", Logging.DebugLevel) {
-              data.getRoutes ~ data.postRoute
+              data.getRoute ~ data.postRoute
             }
           } ~
           options {

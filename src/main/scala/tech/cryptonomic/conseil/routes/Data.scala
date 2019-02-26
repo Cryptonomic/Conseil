@@ -120,7 +120,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   }
 
   /** V2 concatenated routes */
-  val getRoutes: Route = concat(
+  val getRoute: Route = concat(
     blocksHeadRoute,
     blockByHashRoute,
     blocksRoute,

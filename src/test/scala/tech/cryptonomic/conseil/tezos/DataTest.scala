@@ -91,7 +91,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   )
   val postRoute: Route = new Data(cfg, fakeQPP)(ec).postRoute
 
-  val getRoute: Route = new Data(cfg, fakeQPP)(ec).getRoutes
+  val getRoute: Route = new Data(cfg, fakeQPP)(ec).getRoute
 
   "Query protocol" should {
 
