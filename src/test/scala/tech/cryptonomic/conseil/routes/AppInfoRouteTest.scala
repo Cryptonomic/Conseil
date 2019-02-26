@@ -18,7 +18,7 @@ class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     val sut = AppInfo.route
 
     "expose an endpoint to get the current application version" in {
-      Get("/info") ~> sut ~> check {
+      Get("/info") ~> addHeader("apiKey", "hooman") ~> sut ~> check {
         status shouldEqual StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
         val info: Map[String, String] = toMap[String](responseAs[String])
