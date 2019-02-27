@@ -218,7 +218,9 @@ class TezosDatabaseOperationsTest
 
       val basicBlocks = generateBlocks(2, testReferenceDateTime)
       val generatedBlocks = basicBlocks.zipWithIndex.map {
-        case (block, idx) => setBalances(generateBalanceUpdates(2)(randomSeed + idx))(block)
+        case (block, idx) =>
+          val randomUpdates = generateBalanceUpdates(2)(randomSeed + idx)
+          setBalances(Some(randomUpdates))(block)
       }
 
       whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {

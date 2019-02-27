@@ -82,7 +82,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = BlockHeaderMetadata(balance_updates = List.empty)
+          metadata = BlockHeaderMetadata(balance_updates = None)
         ),
         operationGroups = List.empty
       )
@@ -102,7 +102,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   /** Randomly geneates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
-  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
+  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: Option[List[OperationMetadata.BalanceUpdate]] = None)(implicit randomSeed: RandomSeed): Block = {
     import TezosOptics.Blocks._
     import mouse.any._
 

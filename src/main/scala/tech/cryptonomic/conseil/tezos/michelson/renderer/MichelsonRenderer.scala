@@ -17,10 +17,12 @@ object MichelsonRenderer {
     }
   }
 
-  implicit class MichelsonTypeRenderer(val self: MichelsonType) {
+  implicit class MichelsonExpressionRenderer(val self: MichelsonExpression) {
     def render(): String = self match {
       case MichelsonType(name, List()) => name
       case MichelsonType(name, args) => s"($name ${args.map(_.render()).mkString(" ")})"
+      case MichelsonIntConstant(constant) => constant.toString
+      case MichelsonStringConstant(constant) => constant
     }
   }
 
@@ -32,8 +34,8 @@ object MichelsonRenderer {
 
   implicit class MichelsonInstructionRenderer(val self: MichelsonInstruction) extends AnyVal {
     def render(): String = self match {
-      case MichelsonSimpleInstruction(prim, None) => prim
-      case MichelsonSimpleInstruction(prim, Some(michelsonType)) => s"$prim ${michelsonType.render()}"
+      case MichelsonSimpleInstruction(prim, List()) => prim
+      case MichelsonSimpleInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
       case MichelsonComplexInstruction(prim, args) => s"$prim ${args.render()}"
       case MichelsonInstructionSequence(args) => s"{ ${args.map(_.render()).mkString(" ; ")} }"
     }

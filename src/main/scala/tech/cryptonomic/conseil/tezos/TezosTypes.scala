@@ -63,7 +63,7 @@ object TezosTypes {
 
 
   final case class BlockHeaderMetadata(
-    balance_updates: List[OperationMetadata.BalanceUpdate]
+    balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
   )
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`

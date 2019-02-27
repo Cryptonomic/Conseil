@@ -21,7 +21,7 @@ object TezosOptics {
     val blockMetadataBalancesL = dataL composeLens metadataL composeLens headerBalancesL
 
     val setTimestamp: ZonedDateTime => Block => Block = dataL composeLens headerL composeLens headerTimestampL set _
-    val setBalances: List[BalanceUpdate] => Block => Block = blockMetadataBalancesL set _
+    val setBalances: Option[List[BalanceUpdate]] => Block => Block = blockMetadataBalancesL set _
   }
 
 }

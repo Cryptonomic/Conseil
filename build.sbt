@@ -3,7 +3,7 @@ scalaVersion := "2.12.8"
 
 val akkaHttpVersion = "10.1.0"
 val akkaVersion = "2.5.11"
-val slickVersion = "3.2.1"
+val slickVersion = "3.3.0"
 val circeVersion = "0.11.0"
 val catsVersion = "1.6.0"
 val monocleVersion = "1.5.1-cats"

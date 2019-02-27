@@ -18,6 +18,14 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     MichelsonType("pair", List(MichelsonType("int"), MichelsonType("address"))).render() shouldBe "(pair int address)"
   }
 
+  it should "render MichelsonType with int constant" in {
+    MichelsonType("some", List(MichelsonIntConstant(12))).render() shouldBe "(some 12)"
+  }
+
+  it should "render MichelsonType with string constant" in {
+    MichelsonType("some", List(MichelsonStringConstant("testValue"))).render() shouldBe "(some testValue)"
+  }
+
   it should "render complex MichelsonType" in {
     val michelsonType = MichelsonType("contract", List(MichelsonType("or", List(
       MichelsonType("option", List(
@@ -41,9 +49,15 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
   }
 
   it should "render MichelsonCode with typed instruction" in {
-    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("NIL", Some(MichelsonType("operation")))))
+    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("NIL", List(MichelsonType("operation")))))
 
     michelsonCode.render() shouldBe "NIL operation"
+  }
+
+  it should "render MichelsonCode with typed instruction with constant" in {
+    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant(0)))))
+
+    michelsonCode.render() shouldBe "PUSH mutez 0"
   }
 
   it should "render MichelsonCode with instruction sequence" in {
@@ -68,7 +82,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     val michelsonExpression = MichelsonCode(List(
       MichelsonSimpleInstruction("CDR"),
       MichelsonSimpleInstruction("DUP"),
-      MichelsonSimpleInstruction("NIL", Some(
+      MichelsonSimpleInstruction("NIL", List(
         MichelsonType("operation"))),
       MichelsonInstructionSequence(List(
         MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
@@ -80,7 +94,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
         MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
           MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
             MichelsonSimpleInstruction("DUP")))),
-          MichelsonSimpleInstruction("NIL", Some(
+          MichelsonSimpleInstruction("NIL", List(
             MichelsonType("operation")))))),
         MichelsonSimpleInstruction("SWAP")))
     ))
