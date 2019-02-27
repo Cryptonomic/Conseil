@@ -185,7 +185,7 @@ class TezosDatabaseOperationsTest
             import tech.cryptonomic.conseil.util.Conversion.Syntax._
             //used as a constraint to read balance updates from operations
             import tech.cryptonomic.conseil.tezos.OperationBalances._
-            import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+            import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
 
             val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
             val dbConversion = opRow.convertTo[Tables.OperationsRow]
@@ -212,18 +212,15 @@ class TezosDatabaseOperationsTest
     }
 
     "write metadata balance updates along with the blocks" in {
+      import TezosOptics.Blocks._
+
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val basicBlocks = generateBlocks(2, testReferenceDateTime)
       val generatedBlocks = basicBlocks.zipWithIndex.map {
         case (block, idx) =>
-        block.copy(
-          data = block.data.copy(
-            metadata = block.data.metadata.copy(
-              balance_updates = Option(generateBalanceUpdates(2)(randomSeed + idx))
-            )
-          )
-        )
+          val randomUpdates = generateBalanceUpdates(2)(randomSeed + idx)
+          setBalances(Some(randomUpdates))(block)
       }
 
       whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
@@ -240,7 +237,7 @@ class TezosDatabaseOperationsTest
         import tech.cryptonomic.conseil.util.Conversion.Syntax._
         //used as a constraint to read balance updates from block data
         import tech.cryptonomic.conseil.tezos.BlockBalances._
-        import tech.cryptonomic.conseil.tezos.SymbolSourceDescriptor.Show._
+        import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
 
         val generatedUpdateRows =
           generatedBlocks.flatMap(

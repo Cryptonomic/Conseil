@@ -102,21 +102,13 @@ trait TezosDataGeneration extends RandomGenerationKit {
   /** Randomly geneates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
-  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
-    val generated = generateBlocks(toLevel = atLevel, startAt = atTime)
-      .last
+  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: Option[List[OperationMetadata.BalanceUpdate]] = None)(implicit randomSeed: RandomSeed): Block = {
+    import TezosOptics.Blocks._
+    import mouse.any._
 
-    //ouch, how to hurt ourselves with deeply nested case class attributes!
-    generated.copy(
-        data = generated.data.copy(
-          header = generated.data.header.copy(
-            timestamp = atTime
-          ),
-          metadata = generated.data.metadata.copy(
-            balance_updates = Some(balanceUpdates)
-          )
-        )
-      )
+    val generated = generateBlocks(toLevel = atLevel, startAt = atTime).last
+
+    generated |> setTimestamp(atTime) |> setBalances(balanceUpdates)
   }
 
   def generateBalanceUpdates(howMany: Int)(implicit randomSeed: RandomSeed): List[OperationMetadata.BalanceUpdate] = {

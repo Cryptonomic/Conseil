@@ -40,11 +40,11 @@ class DatabaseConversionsTest
       import Conversion.Syntax._
       import DatabaseConversions._
       import BlockBalances._
-      import SymbolSourceDescriptor.Show._
+      import SymbolSourceLabels.Show._
 
       //generate data
       val updates = generateBalanceUpdates(3)
-      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = updates)
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = Some(updates))
 
       //convert
       val updateRows = block.data.convertToA[List, Tables.BalanceUpdatesRow]
@@ -96,7 +96,7 @@ class DatabaseConversionsTest
       import Conversion.Syntax._
       import DatabaseConversions._
       import OperationBalances._
-      import SymbolSourceDescriptor.Show._
+      import SymbolSourceLabels.Show._
 
       sampleReveal.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
         Tables.BalanceUpdatesRow(
@@ -130,7 +130,7 @@ class DatabaseConversionsTest
       import Conversion.Syntax._
       import DatabaseConversions._
       import OperationBalances._
-      import SymbolSourceDescriptor.Show._
+      import SymbolSourceLabels.Show._
 
       sampleOrigination.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
         Tables.BalanceUpdatesRow(
