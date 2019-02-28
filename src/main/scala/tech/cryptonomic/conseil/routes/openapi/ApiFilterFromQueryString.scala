@@ -6,7 +6,8 @@ import endpoints.algebra
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-trait EndpointsHelpers extends QueryStringLists with algebra.JsonSchemaEntities with Validation with TupleFlattenHelper {
+trait ApiFilterFromQueryString extends QueryStringLists { self: algebra.JsonSchemaEntities =>
+  import tech.cryptonomic.conseil.routes.openapi.TupleFlattenHelper._
   import FlattenHigh._
 
   /** Query string functor adding map operation */
@@ -32,7 +33,7 @@ trait EndpointsHelpers extends QueryStringLists with algebra.JsonSchemaEntities 
     )
 
   /** Function for extracting query string with query params */
-  def filterQs: QueryString[QueryParams] = {
+  private def filterQs: QueryString[QueryParams] = {
     val raw =
       optQs[Int]("limit") &
         qsList[String]("blockIDs") &
@@ -53,7 +54,7 @@ trait EndpointsHelpers extends QueryStringLists with algebra.JsonSchemaEntities 
   }
 
   /** Function for mapping query string to Filter */
-  val queryStringFilter: QueryString[Filter] =
+  val qsFilter: QueryString[Filter] =
     filterQs.map(
       (Filter.readParams _).tupled
     )

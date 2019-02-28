@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.routes.openapi
 
-/** Helper trait which implements flatten for the tuples using shapeless library
+/** Helper object which implements flatten for the tuples using shapeless library
   * Taken from:
   * https://gist.github.com/travisbrown/3945529
   * */
-trait TupleFlattenHelper {
+object TupleFlattenHelper {
 
   import shapeless._
   import shapeless.ops.hlist.{Prepend, Tupler}

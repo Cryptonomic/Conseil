@@ -21,15 +21,39 @@ object OpenApiDoc extends DataEndpoints
     openapi.asJson
 
   /** OpenAPI definition */
-  def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(queryEndpoint, blocksEndpoint, blocksHeadEndpoint, blockByHashEndpoint,
-    accountsEndpoint, accountByIdEndpoint, operationGroupsEndpoint, operationGroupByIdEndpoint, avgFeesEndpoint, operationsEndpoint,
-    platformsEndpoint, networksEndpoint, entitiesEndpoint, attributesEndpoint, attributesValuesEndpoint, attributesValuesWithFilterEndpoint,
-    blocksEndpointV1, blocksHeadEndpointV1, blockByHashEndpointV1, accountsEndpointV1, accountByIdEndpointV1, operationGroupsEndpointV1,
-    operationGroupByIdEndpointV1, avgFeesEndpointV1, operationsEndpointV1, appInfoEndpoint
+  def openapi: OpenApi = openApi(Info("Conseil API", "0.0.1"))(
+    queryEndpoint,
+    blocksEndpoint,
+    blocksHeadEndpoint,
+    blockByHashEndpoint,
+    accountsEndpoint,
+    accountByIdEndpoint,
+    operationGroupsEndpoint,
+    operationGroupByIdEndpoint,
+    avgFeesEndpoint,
+    operationsEndpoint,
+    platformsEndpoint,
+    networksEndpoint,
+    entitiesEndpoint,
+    attributesEndpoint,
+    attributesValuesEndpoint,
+    attributesValuesWithFilterEndpoint,
+    blocksEndpointV1,
+    blocksHeadEndpointV1,
+    blockByHashEndpointV1,
+    accountsEndpointV1,
+    accountByIdEndpointV1,
+    operationGroupsEndpointV1,
+    operationGroupByIdEndpointV1,
+    avgFeesEndpointV1,
+    operationsEndpointV1,
+    appInfoEndpoint
   )
 
-  /** Function for validation definition in documentation */
-  def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
+  /** Function for validation definition in documentation which appends DocumentedResponse to the list of possible results from the query.
+    * In this case if query fails to validate it will return 400 Bad Request.
+    *  */
+  override def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
     response :+ OpenApiDoc.DocumentedResponse(
       status = 400,
       documentation = invalidDocs.getOrElse(""),

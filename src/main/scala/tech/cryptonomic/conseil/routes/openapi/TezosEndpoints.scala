@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.tezos.DBTableMapping.Operation
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
 
-trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with EndpointsHelpers {
+trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilterFromQueryString with algebra.JsonSchemaEntities {
 
   private val commonPath = path / "tezos" / segment[String](name = "network")
 
@@ -18,7 +18,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with Endpoin
   def blocksEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[Tables.BlocksRow]] =
     endpoint(
       request = get(
-        url = commonPath / "blocks" /? queryStringFilter,
+        url = commonPath / "blocks" /? qsFilter,
         headers = header("apiKey")),
       response = jsonResponse[Seq[BlocksRow]](docs = Some("Endpoint for blocks")),
       tags = List("Blocks")
@@ -48,7 +48,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with Endpoin
   def accountsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[conseil.tezos.Tables.AccountsRow]] =
     endpoint(
       request = get(
-        url = commonPath / "accounts" /? queryStringFilter,
+        url = commonPath / "accounts" /? qsFilter,
         headers = header("apiKey")),
       response = jsonResponse[Seq[AccountsRow]](docs = Some("Endpoint for accounts")),
       tags = List("Accounts")
@@ -68,7 +68,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with Endpoin
   def operationGroupsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[cryptonomic.conseil.tezos.Tables.OperationGroupsRow]] =
     endpoint(
       request = get(
-        url = commonPath / "operation_groups" /? queryStringFilter,
+        url = commonPath / "operation_groups" /? qsFilter,
         headers = header("apiKey")),
       response = jsonResponse[Seq[OperationGroupsRow]](docs = Some("Endpoint for operation groups")),
       tags = List("Operation groups")
@@ -88,7 +88,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with Endpoin
   def avgFeesEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Option[AverageFees]] =
     endpoint(
       request = get(
-        url = commonPath / "operations" / "avgFees" /? queryStringFilter,
+        url = commonPath / "operations" / "avgFees" /? qsFilter,
         headers = header("apiKey")),
       response = jsonResponse[AverageFees](docs = Some("Endpoint for average fees")).orNotFound(Some("Not found")),
       tags = List("Fees")
@@ -98,7 +98,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with Endpoin
   def operationsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[Operation]] =
     endpoint(
       request = get(
-        url = commonPath / "operations" /? queryStringFilter,
+        url = commonPath / "operations" /? qsFilter,
         headers = header("apiKey")),
       response = jsonResponse[Seq[Operation]](docs = Some("Endpoint for operations")),
       tags = List("Operations")

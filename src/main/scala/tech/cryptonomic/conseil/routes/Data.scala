@@ -58,7 +58,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   /** V2 Route implementation for blocks head endpoint */
   val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
-      platformNetworkValidationFlattened(platform, network) {
+      platformNetworkValidation(platform, network) {
         ApiOperations.fetchLatestBlock()
       }
   }
@@ -66,7 +66,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   /** V2 Route implementation for blocks by hash endpoint */
   val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
-      platformNetworkValidationFlattened(platform, network) {
+      platformNetworkValidation(platform, network) {
         ApiOperations.fetchBlock(BlockHash(hash))
       }
   }
@@ -82,7 +82,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   /** V2 Route implementation for account by ID endpoint */
   val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
     case ((platform, network, accountId), _) =>
-      platformNetworkValidationFlattened(platform, network) {
+      platformNetworkValidation(platform, network) {
         ApiOperations.fetchAccount(AccountId(accountId))
       }
   }
@@ -98,7 +98,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   /** V2 Route implementation for operation group by ID endpoint */
   val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
     case ((platform, network, operationGroupId), _) =>
-      platformNetworkValidationFlattened(platform, network) {
+      platformNetworkValidation(platform, network) {
         ApiOperations.fetchOperationGroup(operationGroupId)
       }
   }
@@ -106,7 +106,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   /** V2 Route implementation for average fees endpoint */
   val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
-      platformNetworkValidationFlattened(platform, network) {
+      platformNetworkValidation(platform, network) {
         ApiOperations.fetchAverageFees(filter)
       }
   }
@@ -132,15 +132,8 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
     operationsRoute
   )
 
-  /** Function for validation of the platform and network */
-  private def platformNetworkValidation[A](platform: String, network: String)(operation: Option[Future[A]]): Future[Option[A]] = {
-    ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
-      operation
-    }.sequence
-  }
-
   /** Function for validation of the platform and network with flatten */
-  private def platformNetworkValidationFlattened[A](platform: String, network: String)(operation: Future[Option[A]]): Future[Option[A]] = {
+  private def platformNetworkValidation[A](platform: String, network: String)(operation: => Future[Option[A]]): Future[Option[A]] = {
     ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
       operation
     }.sequence.map(_.flatten)
