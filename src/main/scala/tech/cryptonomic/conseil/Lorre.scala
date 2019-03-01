@@ -53,7 +53,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   }
 
   @tailrec
-  def mainLoop(iteration: Int): Unit = {
+  def mainLoop(iteration: Int, didConnect: Boolean = false): Unit = {
     val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
@@ -70,7 +70,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
+      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no") || didConnect)
         processing
       else
         processing.recover {
@@ -84,7 +84,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       case Newest =>
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
-        mainLoop(iteration + 1)
+        mainLoop(iteration + 1, didConnect = true)
       case _ =>
         logger.info("Synchronization is done")
     }
