@@ -1,9 +1,37 @@
 package tech.cryptonomic.conseil.tezos
 
+import monocle.Optional
+import monocle.macros.GenLens
+import monocle.function.all._
+
 /**
   * Classes used for deserializing Tezos node RPC results.
   */
 object TezosTypes {
+
+  object Lenses {
+    private val accounts = GenLens[BlockAccounts](_.accounts)
+    private val script = GenLens[Account](_.script)
+
+    val scriptLense = accounts composeTraversal each composeLens script
+
+    private val operationGroups = GenLens[Block](_.operationGroups)
+    private val operations = GenLens[OperationsGroup](_.contents)
+
+    def optionalSubType[FROM, TO <: FROM]: Optional[FROM, TO] = Optional.apply[FROM, TO] {
+      case it: TO => Some(it)
+      case _ => None
+    } { it => { _ => it } }
+
+    private val origination: Optional[Operation, Origination] = optionalSubType
+    private val transaction: Optional[Operation, Transaction] = optionalSubType
+
+    private val originationScript = GenLens[Origination](_.script)
+    private val parameters = GenLens[Transaction](_.parameters)
+
+    val parametersLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional origination composeLens originationScript
+    val originationLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional transaction composeLens parameters
+  }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
   lazy val isBase58Check: String => Boolean = (s: String) => {
@@ -94,12 +122,10 @@ object TezosTypes {
       storage: Micheline,
       code: Micheline
     ) {
-      def map(f: String => Option[String]): Option[Contracts] = {
-        for {
-          transformedStorage <- f(storage)
-          transformedCode <- f(code)
-        } yield Contracts(transformedStorage, transformedCode)
-      }
+      def flatMap(storageFunction: String => Option[String], codeFunction: String => Option[String]): Option[Contracts] = for {
+        transformedStorage <- storageFunction(storage)
+        transformedCode <- codeFunction(code)
+      } yield Contracts(transformedStorage, transformedCode)
     }
   }
 
@@ -261,21 +287,7 @@ object TezosTypes {
     branch: BlockHash,
     contents: List[Operation],
     signature: Option[Signature]
-  ) {
-    def updateParameters(f: String => Option[String]): OperationsGroup = {
-      copy(contents = contents.map {
-        case transaction: Transaction => transaction.copy(parameters = transaction.parameters.flatMap(f(_)))
-        case it => it
-      })
-    }
-
-    def updateScript(f: String => Option[String]): OperationsGroup = {
-      copy(contents = contents.map {
-        case origination: Origination => origination.copy(script = origination.script.flatMap(_.map(f)))
-        case it => it
-      })
-    }
-  }
+  )
 
   final case class AppliedOperationBalanceUpdates(
                                              kind: String,
@@ -308,30 +320,18 @@ object TezosTypes {
                     delegate: AccountDelegate,
                     script: Option[Any],
                     counter: Int
-                    ) {
-    def replaceScript(f: Any => Option[String]): Account = {
-      copy(script = script.flatMap(f))
-    }
-  }
+                    )
 
   final case class BlockAccounts(
                     blockHash: BlockHash,
                     blockLevel: Int,
                     accounts: Map[AccountId, Account] = Map.empty
-                  ) {
-    def replaceScript(f: Any => Option[String]): BlockAccounts = {
-      copy(accounts = accounts.mapValues(_.replaceScript(f)))
-    }
-  }
+                  )
 
   final case class Block(
                     data: BlockData,
                     operationGroups: List[OperationsGroup]
-                  ) {
-    def replaceParameters(f: String => Option[String]): Block = {
-      copy(operationGroups = operationGroups.map(_.updateParameters(f)))
-    }
-  }
+                  )
 
   final case class ManagerKey(
                        manager: String,

@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
 import java.time.Instant
-import java.time.format.DateTimeFormatter
 import scala.util.Try
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
