@@ -53,7 +53,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   }
 
   @tailrec
-  def mainLoop(iteration: Int, didConnect: Boolean = false): Unit = {
+  def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
@@ -70,7 +70,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no") || didConnect)
+      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
         processing
       else
         processing.recover {
@@ -84,7 +84,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       case Newest =>
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
-        mainLoop(iteration + 1, didConnect = true)
+        mainLoop(iteration + 1)
       case _ =>
         logger.info("Synchronization is done")
     }
@@ -103,7 +103,27 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     tezosConf.network
   )
 
-  try {mainLoop(0)} finally {shutdown()}
+  /**
+    * Tries to fetch blocks head to verify if connection with Tezos node was successfully established
+    */
+  @tailrec
+  def checkConnection(): Unit = {
+    Try {
+      Await.result(tezosNodeOperator.getBlockHead(tezosConf.network), Duration.Inf)
+    } match {
+      case Failure(e) =>
+        logger.error("Could not connect to the Tezos node", e)
+        Thread.sleep(lorreConf.retryInterval.toMillis)
+        checkConnection()
+      case Success(_) =>
+        logger.info("Successfully connected to the Tezos node")
+    }
+  }
+
+  try {
+    checkConnection()
+    mainLoop(0)
+  } finally {shutdown()}
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.

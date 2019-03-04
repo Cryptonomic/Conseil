@@ -6,6 +6,7 @@ final case class ServerConfiguration(hostname: String, port: Int)
 
 final case class LorreConfiguration(
   sleepInterval: FiniteDuration,
+  retryInterval: FiniteDuration,
   feeUpdateInterval: Int,
   numberOfFeesAveraged: Int
 )
