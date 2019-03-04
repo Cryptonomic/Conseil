@@ -307,12 +307,13 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
     val operationsWithAccountsFetcher = operationGroupMultiFetch.decodeAlso(accountIdsJsonDecode.lift[Future])
 
+    //read the separate parts of voting and merge the results
     val proposalsStateFetch =
-      MultiFetchDecoding.tupledResults(
+      MultiFetchDecoding.mergeResults(
         currentPeriodMultiFetch,
         currentQuorumMultiFetch,
         currentProposalMultiFetch
-      )
+      )(CurrentVotes.apply)
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
@@ -323,7 +324,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
-      val proposalsMap = proposalsState.toMap.mapValues((CurrentVotes.apply _).tupled)
+      val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
         val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
