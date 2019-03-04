@@ -14,20 +14,11 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   val config = BatchFetchConfiguration(1, 1, 500)
 
-  "getBlock" should "should correctly fetch the genesis block" in {
+  "getBlock" should "correctly fetch the genesis block" in {
     //given
     val tezosRPCInterface = stub[TezosRPCInterface]
     val blockResponse = Future.successful(TezosResponseBuilder.genesisBlockResponse)
-    val operationResponse = Future.successful(TezosResponseBuilder.operationsResponse)
-    val votesPeriodKind = Future.successful(TezosResponseBuilder.votesPeriodKind)
-    val votesQuorum = Future.successful(TezosResponseBuilder.votesQuorum)
-    val votesProposal = Future.successful(TezosResponseBuilder.votesProposal)
     (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe~").returns(blockResponse)
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe/operations").returns(operationResponse)
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe/").returns(operationResponse)
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe/votes/current_period_kind").returns(votesPeriodKind)
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe/votes/current_quorum").returns(votesQuorum)
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe/votes/current_proposal").returns(votesProposal)
 
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
@@ -38,11 +29,30 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     block.futureValue.data.hash shouldBe BlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
   }
 
-  "getLatestBlocks" should "should correctly fetch all the blocks if no depth is passed-in" in {
+  "getLatestBlocks" should "correctly fetch all the blocks if no depth is passed-in" in {
     //given
     val tezosRPCInterface = stub[TezosRPCInterface]
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
+    val blockResponse = Future.successful(TezosResponseBuilder.blockResponse)
+    val operationsResponse = Future.successful(TezosResponseBuilder.operationsResponse)
+    val votesPeriodKind = Future.successful(TezosResponseBuilder.votesPeriodKind)
+    val votesQuorum = Future.successful(TezosResponseBuilder.votesQuorum)
+    val votesProposal = Future.successful(TezosResponseBuilder.votesProposal)
+
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/head~")
+      .returns(blockResponse)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations")
+      .returns(operationsResponse)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_period_kind")
+      .returns(votesPeriodKind)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_quorum")
+      .returns(votesQuorum)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_proposal")
+      .returns(votesProposal)
 
     (tezosRPCInterface.runBatchedGetQuery[Any] _)
       .when("zeronet", *, *, *)
@@ -51,10 +61,14 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
           //dirty trick to find the type of input content and provide the appropriate response
           input match {
             case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
-            case (hash: BlockHash) :: tail if command(hash) contains "operations" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetOperationsQueryResponse)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.votesPeriodKind)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.votesQuorum)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.votesProposal)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "operations" =>
+              (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
+              (hash, TezosResponseBuilder.votesPeriodKind)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
+              (hash, TezosResponseBuilder.votesQuorum)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
+              (hash, TezosResponseBuilder.votesProposal)
           }
         ))
       )
@@ -73,23 +87,46 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
 
   }
 
-  "getLatestBlocks" should "should correctly fetch latest blocks" in {
+  "getLatestBlocks" should "correctly fetch latest blocks" in {
     //given
     val tezosRPCInterface = stub[TezosRPCInterface]
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head~").returns(Future.successful(TezosResponseBuilder.blockResponse))
-    (tezosRPCInterface.runAsyncGetQuery _).when("zeronet", "blocks/head/operations").returns(Future.successful(TezosResponseBuilder.operationsResponse))
+    val blockResponse = Future.successful(TezosResponseBuilder.blockResponse)
+    val operationsResponse = Future.successful(TezosResponseBuilder.operationsResponse)
+    val votesPeriodKind = Future.successful(TezosResponseBuilder.votesPeriodKind)
+    val votesQuorum = Future.successful(TezosResponseBuilder.votesQuorum)
+    val votesProposal = Future.successful(TezosResponseBuilder.votesProposal)
 
-    (tezosRPCInterface.runBatchedGetQuery[Int] _).when("zeronet", List(0), *, *).returns(Future.successful(List((0, TezosResponseBuilder.batchedGetBlockQueryResponse))))
-    (tezosRPCInterface.runBatchedGetQuery[BlockHash] _)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/head~")
+      .returns(blockResponse)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations")
+      .returns(operationsResponse)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_period_kind")
+      .returns(votesPeriodKind)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_quorum")
+      .returns(votesQuorum)
+    (tezosRPCInterface.runAsyncGetQuery _)
+      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_proposal")
+      .returns(votesProposal)
+
+    (tezosRPCInterface.runBatchedGetQuery[Any] _)
       .when("zeronet", *, *, *)
       .onCall( (_, input, command, _) =>
         Future.successful(List(
           //dirty trick to find the type of input content and provide the appropriate response
           input match {
-            case (hash: BlockHash) :: tail if command(hash) contains "operations" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.batchedGetOperationsQueryResponse)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.votesPeriodKind)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.votesQuorum)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" => (BlockHash("BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"), TezosResponseBuilder.votesProposal)
+            case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "operations" =>
+              (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
+              (hash, TezosResponseBuilder.votesPeriodKind)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
+              (hash, TezosResponseBuilder.votesQuorum)
+            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>
+              (hash, TezosResponseBuilder.votesProposal)
           }
         ))
       )
