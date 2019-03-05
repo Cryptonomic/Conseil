@@ -148,8 +148,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       results.flatMap {
         blocksWithAccounts => {
 
-          val originationAlter = originationLense.modify(_.flatMap(toMichelsonScript[MichelsonExpression](_)))
-          val parametersAlter = parametersLense.modify(_.flatMap(_.flatMap(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonCode])))
+          val originationAlter = parametersLense.modify(_.flatMap(toMichelsonScript[MichelsonExpression](_)))
+          val parametersAlter = originationLense.modify(_.flatMap(_.flatMap(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonCode])))
 
           val modifiedBlocks = blocksWithAccounts.map {
             case (block, ids) => ((originationAlter compose parametersAlter)(block), ids)

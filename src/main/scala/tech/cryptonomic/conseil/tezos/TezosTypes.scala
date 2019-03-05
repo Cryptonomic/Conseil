@@ -18,19 +18,21 @@ object TezosTypes {
     private val operationGroups = GenLens[Block](_.operationGroups)
     private val operations = GenLens[OperationsGroup](_.contents)
 
-    def optionalSubType[FROM, TO <: FROM]: Optional[FROM, TO] = Optional.apply[FROM, TO] {
-      case it: TO => Some(it)
+    private val origination = Optional.apply[Operation, Origination] {
+      case it: Origination => Some(it)
       case _ => None
     } { it => { _ => it } }
 
-    private val origination: Optional[Operation, Origination] = optionalSubType
-    private val transaction: Optional[Operation, Transaction] = optionalSubType
+    private val transaction = Optional.apply[Operation, Transaction] {
+      case it: Transaction => Some(it)
+      case _ => None
+    } { it => { _ => it } }
 
     private val originationScript = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    val parametersLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional origination composeLens originationScript
-    val originationLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional transaction composeLens parameters
+    val originationLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional origination composeLens originationScript
+    val parametersLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional transaction composeLens parameters
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding

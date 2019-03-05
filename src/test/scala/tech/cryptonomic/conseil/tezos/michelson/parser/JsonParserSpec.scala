@@ -138,39 +138,47 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
   it should "convert simplest json to MichelsonSchema" in {
 
-    val json = """[
-                 |  {
-                 |    "prim": "parameter",
-                 |    "args": [
-                 |      {
-                 |        "prim": "int"
-                 |      }
-                 |    ]
-                 |  },
-                 |  {
-                 |    "prim": "storage",
-                 |    "args": [
-                 |      {
-                 |        "prim": "int"
-                 |      }
-                 |    ]
-                 |  },
-                 |  {
-                 |    "prim": "code",
-                 |    "args": [
-                 |      [
-                 |        {
-                 |          "prim": "DUP"
-                 |        }
-                 |      ]
-                 |    ]
-                 |  }
-                 |]""".stripMargin
+    val json =
+      """[
+        |  {
+        |    "prim": "parameter",
+        |    "args": [
+        |      {
+        |        "prim": "int"
+        |      }
+        |    ]
+        |  },
+        |  {
+        |    "prim": "storage",
+        |    "args": [
+        |      {
+        |        "prim": "int"
+        |      }
+        |    ]
+        |  },
+        |  {
+        |    "prim": "code",
+        |    "args": [
+        |      [
+        |        {
+        |          "prim": "DUP"
+        |        }
+        |      ]
+        |    ]
+        |  }
+        |]""".stripMargin
 
     parse[MichelsonSchema](json) should equal(Right(MichelsonSchema(
       MichelsonType("int"),
       MichelsonType("int"),
       MichelsonCode(List(MichelsonSimpleInstruction("DUP"))))))
+  }
+
+  it should "parse MichelsonCode" in {
+    val json = """[{"prim": "DUP"}]"""
+
+    parse[MichelsonCode](json) should equal(Right(MichelsonCode(
+      List(MichelsonSimpleInstruction("DUP")))))
   }
 
   it should "convert complex json to MichelsonSchema" in {
