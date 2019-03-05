@@ -107,21 +107,21 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     * Tries to fetch blocks head to verify if connection with Tezos node was successfully established
     */
   @tailrec
-  def checkConnection(): Unit = {
+  def checkTezosConnection(): Unit = {
     Try {
-      Await.result(tezosNodeOperator.getBlockHead(tezosConf.network), lorreConf.connectionCheckTimeout)
+      Await.result(tezosNodeOperator.getBlockHead(tezosConf.network), lorreConf.bootupConnectionCheckTimeout)
     } match {
       case Failure(e) =>
-        logger.error("Could not connect to the Tezos node", e)
-        Thread.sleep(lorreConf.retryInterval.toMillis)
-        checkConnection()
+        logger.error("Could not make initial connection to Tezos", e)
+        Thread.sleep(lorreConf.bootupRetryInterval.toMillis)
+        checkTezosConnection()
       case Success(_) =>
-        logger.info("Successfully connected to the Tezos node")
+        logger.info("Successfully made initial connection to Tezos")
     }
   }
 
   try {
-    checkConnection()
+    checkTezosConnection()
     mainLoop(0)
   } finally {shutdown()}
 
