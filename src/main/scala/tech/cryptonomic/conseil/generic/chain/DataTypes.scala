@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
 
@@ -33,6 +34,9 @@ object DataTypes {
   /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]
 
+  /** Class required for OutputType enum serialization */
+  class OutputTypeRef extends TypeReference[OutputType.type]
+
   /** Class representing predicate */
   case class Predicate(
     field: String,
@@ -45,6 +49,7 @@ object DataTypes {
   /** Class required for Ordering enum serialization */
   class QueryOrderingRef extends TypeReference[OrderDirection.type]
 
+  /** Class representing representing query ordering */
   case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
 
   /** Class representing invalid query field */
@@ -58,7 +63,8 @@ object DataTypes {
     fields: List[String] = List.empty,
     predicates: List[Predicate] = List.empty,
     orderBy: List[QueryOrdering] = List.empty,
-    limit: Int = defaultLimitValue
+    limit: Int = defaultLimitValue,
+    output: OutputType = OutputType.json
   )
 
   /** Class representing query got through the REST API */
@@ -66,7 +72,8 @@ object DataTypes {
     fields: Option[List[String]],
     predicates: Option[List[Predicate]],
     orderBy: Option[List[QueryOrdering]],
-    limit: Option[Int]
+    limit: Option[Int],
+    @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType]
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
     def validate(entity: String): Either[List[QueryValidationError], Query] = {
@@ -88,6 +95,13 @@ object DataTypes {
       }
     }
   }
+
+  /** Enumeration for output types */
+  object OutputType extends Enumeration {
+    type OutputType = Value
+    val json, csv = Value
+  }
+
 
   /** Enumeration for order direction */
   object OrderDirection extends Enumeration {
