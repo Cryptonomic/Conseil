@@ -13,6 +13,12 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 object DataTypes {
   import io.scalaland.chimney.dsl._
 
+  /** Type representing Map[String, Any] */
+  type AnyMap = Map[String, Any]
+
+  /** Type representing Map[String, Option[Any]] for query response */
+  type QueryResponse = Map[String, Option[Any]]
+
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
 
@@ -31,7 +37,7 @@ object DataTypes {
   case class Predicate(
     field: String,
     @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
-    set: List[Any],
+    set: List[Any] = List.empty,
     inverse: Boolean = false,
     precision: Option[Int] = None
   )

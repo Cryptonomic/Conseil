@@ -144,7 +144,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attributes]] = {
+  def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attribute]] = {
     ApiOperations.runQuery(makeAttributesList(tableName))
   }
 
@@ -153,7 +153,7 @@ object TezosPlatformDiscoveryOperations {
     * @param  tableName name of the table from which we extract attributes
     * @return list of DBIO queries for attributes
     **/
-  def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attributes]] = {
+  def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attribute]] = {
     DBIO.sequence {
       for {
         (name, table) <- tablesMap
@@ -173,8 +173,8 @@ object TezosPlatformDiscoveryOperations {
   }
 
   /** Makes attributes out of parameters */
-  private def makeAttributes(col: FieldSymbol, distinctCount: Option[Int], overallCount: Option[Int], tableName: String): Attributes =
-    Attributes(
+  private def makeAttributes(col: FieldSymbol, distinctCount: Option[Int], overallCount: Option[Int], tableName: String): Attribute =
+    Attribute(
       name = col.name,
       displayName = makeDisplayName(col.name),
       dataType = mapType(col.tpe),
