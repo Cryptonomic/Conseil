@@ -51,6 +51,9 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   /** Query response schema schema */
   implicit def queryResponseSchema: JsonSchema[List[QueryResponse]]
 
+  /** Query response schema schema */
+  implicit def queryResponseSchemaWithCsv: JsonSchema[Either[List[QueryResponse], List[QueryResponse]]]
+
   /** AnyMap schema */
   implicit def blocksByHashSchema: JsonSchema[AnyMap]
 

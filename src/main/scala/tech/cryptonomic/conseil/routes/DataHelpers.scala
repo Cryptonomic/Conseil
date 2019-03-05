@@ -40,6 +40,24 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     )
   }
 
+  override implicit def queryResponseSchemaWithCsv: JsonSchema[Either[List[QueryResponse], List[QueryResponse]]] =
+    new JsonSchema[Either[List[QueryResponse], List[QueryResponse]]] {
+      override def encoder: Encoder[Either[List[QueryResponse], List[QueryResponse]]] = new Encoder[Either[List[QueryResponse], List[QueryResponse]]] {
+        override def apply(a: Either[List[QueryResponse], List[QueryResponse]]): Json =  a match {
+          case Left(value) => value.asJson
+          case Right(value) =>
+            (value.headOption.map(_.keys.mkString(",")).getOrElse("") :: value.map { xxx =>
+            xxx.values.map {
+              case Some(xx) => xx
+              case None => "null"
+            }.mkString(",")
+          }).mkString("\n").asJson
+        }
+      }
+
+      override def decoder: Decoder[Either[List[QueryResponse], List[QueryResponse]]] = ???
+    }
+
   /** Implementation of JSON encoder for Any */
   def anyEncoder: Encoder[Any] = (a: Any) => a match {
     case x: java.lang.String => Json.fromString(x)

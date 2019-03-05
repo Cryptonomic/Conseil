@@ -6,6 +6,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.ConfigUtil
@@ -41,10 +42,15 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
       apiQuery.validate(entity).map { validQuery =>
-        platformNetworkValidation(platform, network) {
-          queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery)
+      platformNetworkValidation(platform, network) {
+        val sth = queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery)
+        if(validQuery.output == OutputType.csv) {
+          Right(sth)
+        } else {
+          Left(sth)
         }
-      }.left.map(Future.successful).bisequence.map(eitherOptionOps)
+      }
+    }.left.map(Future.successful).bisequence.map(eitherOptionOps)
   }
 
   /** V2 Route implementation for blocks endpoint */

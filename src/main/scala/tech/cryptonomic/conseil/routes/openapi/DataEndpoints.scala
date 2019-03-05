@@ -22,13 +22,13 @@ trait DataEndpoints
     jsonResponse[A](docs = Some(s"Query compatibility endpoint for $endpointName")).orNotFound(Some("Not Found"))
 
   /** V2 Query endpoint definition */
-  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], List[QueryResponse]]]] =
+  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], Either[List[QueryResponse], List[QueryResponse]]]]] =
     endpoint(
       request = post(url = commonPath / segment[String](name = "entity"),
         entity = jsonRequest[ApiQuery](),
         headers = header("apiKey")),
       response = validated(
-        response = jsonResponse[List[QueryResponse]](docs = Some("Query endpoint")),
+        response = jsonResponse[Either[List[QueryResponse], List[QueryResponse]]](docs = Some("Query endpoint")),
         invalidDocs = Some("Can't query - invalid entity!")
       ).orNotFound(Some("Not found")),
       tags = List("Query")
