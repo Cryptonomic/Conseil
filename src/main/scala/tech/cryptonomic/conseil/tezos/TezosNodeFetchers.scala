@@ -139,4 +139,55 @@ trait BlocksDataFetchers {
 
   }
 
+  val proposalsMultiFetch = new DataFetcher[Future, List] {
+    import JsonDecoders.Circe._
+
+    type Encoded = String
+    type In = Block
+    type Out = List[ProtocolId]
+
+    val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
+
+    override val fetchData =
+      Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
+
+    override val decodeData = Kleisli{
+      json => JsonDecoders.Circe.decodeToFuture[List[ProtocolId]](json)
+    }
+  }
+
+  val bakersMultiFetch = new DataFetcher[Future, List] {
+    import JsonDecoders.Circe.Votes._
+
+    type Encoded = String
+    type In = Block
+    type Out = List[Voting.BakerRolls]
+
+    val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
+
+    override val fetchData =
+      Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
+
+    override val decodeData = Kleisli{
+      json => JsonDecoders.Circe.decodeToFuture[List[Voting.BakerRolls]](json)
+    }
+  }
+
+  val ballotsMultiFetch = new DataFetcher[Future, List] {
+    import JsonDecoders.Circe.Votes._
+
+    type Encoded = String
+    type In = Block
+    type Out = List[Voting.Ballot]
+
+    val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
+
+    override val fetchData =
+      Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
+
+    override val decodeData = Kleisli{
+      json => JsonDecoders.Circe.decodeToFuture[List[Voting.Ballot]](json)
+    }
+  }
+
 }

@@ -34,18 +34,6 @@ object TezosNodeOperator {
 
   val isGenesis = (data: BlockData) => data.header.level == 0
 
-  /** Helper to decode json and convert to a possibly failing future result
-    * This is not running any async operation
-    */
-  def decodeToFuture[A: io.circe.Decoder](json: String) = {
-    import io.circe.parser.decode
-
-    decode[A](json) match {
-      case Left(error) => Future.failed(error)
-      case Right(results) => Future.successful(results)
-    }
-  }
-
 }
 
 /**
@@ -58,7 +46,7 @@ object TezosNodeOperator {
 class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext)
   extends LazyLogging
   with BlocksDataFetchers {
-  import TezosNodeOperator.{isGenesis, decodeToFuture}
+  import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
   override val fetchConcurrency = blockOperationsConcurrencyLevel
@@ -66,6 +54,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
+
+  //introduced to simplify signatures
+  type BallotBlock = (Block, List[Voting.Ballot])
+  type BakerBlock = (Block, List[Voting.BakerRolls])
 
   /**
     * Fetches a specific account for a given block.
@@ -155,6 +147,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return          The `Future` list of operations
     */
   def getAllOperationsForBlock(block: BlockData): Future[List[OperationsGroup]] = {
+    import JsonDecoders.Circe.decodeToFuture
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
@@ -201,6 +194,26 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       (fetchCurrentPeriod, fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
+  /** Fetches detailed data for voting associated to the passed-in blocks */
+  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock])] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import cats.syntax.apply._
+
+    //adapt the proposal protocols result to include the block
+    val fetchProposals = proposalsMultiFetch.fetch.map {
+      proposalsList => proposalsList.map {
+        case (block, protocols) => Voting.Proposal(protocols, block)
+      }
+    }
+    val fetchBakers = bakersMultiFetch.fetch
+    val fetchBallots = ballotsMultiFetch.fetch
+
+    /* combine the three kleisli operations to return a tuple of the results
+     * and then run the composition on the input blocks
+     */
+    (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
+  }
 
   /**
     * Fetches a single block from the chain, without waiting for the result
@@ -208,6 +221,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
+    import JsonDecoders.Circe.decodeToFuture
     import JsonDecoders.Circe.Blocks._
 
     val offsetString = offset.map(_.toString).getOrElse("")

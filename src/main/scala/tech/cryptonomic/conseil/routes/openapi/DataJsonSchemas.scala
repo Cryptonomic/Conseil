@@ -2,10 +2,8 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.{algebra, generic}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.tezos.DBTableMapping.Operation
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables
-import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
 /** Trait containing Data endpoints JSON schemas */
 trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
@@ -34,12 +32,12 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   implicit def timestampSchema: JsonSchema[java.sql.Timestamp]
 
   /** Blocks row schema */
-  implicit def blocksRowSchema: JsonSchema[Tables.BlocksRow] =
-    genericJsonSchema[Tables.BlocksRow]
+  implicit def blocksRowSchema: JsonSchema[BlocksRow] =
+    genericJsonSchema[BlocksRow]
 
   /** Operation groups row schema */
-  implicit def operationGroupsRowSchema: JsonSchema[Tables.OperationGroupsRow] =
-    genericJsonSchema[Tables.OperationGroupsRow]
+  implicit def operationGroupsRowSchema: JsonSchema[OperationGroupsRow] =
+    genericJsonSchema[OperationGroupsRow]
 
   /** Average fees schema */
   implicit def avgFeeSchema: JsonSchema[AverageFees] =
@@ -55,8 +53,8 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   implicit def blocksByHashSchema: JsonSchema[AnyMap]
 
   /** Operation schema */
-  implicit def operationSchema: JsonSchema[Operation] =
-    genericJsonSchema[Operation]
+  implicit def operationSchema: JsonSchema[OperationsRow] =
+    genericJsonSchema[OperationsRow]
 
   /** Accounts row schema */
   implicit def accountsRowSchema: JsonSchema[AccountsRow] =

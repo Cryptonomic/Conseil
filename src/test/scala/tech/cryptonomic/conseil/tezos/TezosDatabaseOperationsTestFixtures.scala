@@ -209,9 +209,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* create operations related to a specific group, with random data */
-  def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[DBTableMapping.Operation] =
+  def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
     List.fill(howMany) {
-      DBTableMapping.Operation(
+      Tables.OperationsRow(
         kind = "operation-kind",
         operationGroupHash = group.hash,
         operationId = -1,
@@ -230,7 +230,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     fees.zipWithIndex.map {
       case (fee, index) =>
-        DBTableMapping.Operation(
+        Tables.OperationsRow(
           kind = "kind",
           operationGroupHash = group.hash,
           operationId = -1,
@@ -262,6 +262,71 @@ trait TezosDataGeneration extends RandomGenerationKit {
           balance = 0
         )
     }.toList
+
+  }
+
+  object Voting {
+
+    import tech.cryptonomic.conseil.tezos.TezosTypes.Voting._
+
+    def generateProposals(howMany: Int, forBlock: Block)(implicit randomSeed: RandomSeed) = {
+      require(howMany > 0, "the test can only generate a positive number of proposals, you asked for a non positive value")
+
+      //custom hash generator with predictable seed
+      val randomGen = new Random(randomSeed.seed)
+      val generateHash: Int => String = alphaNumericGenerator(randomGen)
+
+      //prefill the count of protocols for each Proposal (at least one each)
+      val protocolCounts = Array.fill(howMany)(1 + randomGen.nextInt(4))
+
+      List.tabulate(howMany) {
+        current =>
+          val protocols = List.fill(protocolCounts(current))(ProtocolId(generateHash(10)))
+          Proposal(
+            protocols = protocols,
+            block = forBlock
+          )
+      }
+
+    }
+
+    def generateBakers(howMany: Int)(implicit randomSeed: RandomSeed) = {
+      require(howMany > 0, "the test can only generate a positive number of bakers, you asked for a non positive value")
+
+      //custom hash generator with predictable seed
+      val randomGen = new Random(randomSeed.seed)
+      val generateHash: Int => String = alphaNumericGenerator(randomGen)
+
+      //prefill the rolls
+      val rolls = Array.fill(howMany)(randomGen.nextInt(1000))
+
+      List.tabulate(howMany) {
+        current =>
+          BakerRolls(pkh = PublicKeyHash(generateHash(10)), rolls = rolls(current))
+      }
+
+    }
+
+    def generateBallots(howMany: Int)(implicit randomSeed: RandomSeed) = {
+      require(howMany > 0, "the test can only generate a positive number of ballots, you asked for a non positive value")
+
+      val knownVotes = Array("yay", "nay", "pass")
+
+      //custom hash generator with predictable seed
+      val randomGen = new Random(randomSeed.seed)
+      val generateHash: Int => String = alphaNumericGenerator(randomGen)
+      //custom vote chooser
+      val randomVote = () => knownVotes(randomGen.nextInt(knownVotes.size))
+
+      //prefill the votes
+      val votes = Array.fill(howMany)(randomVote())
+
+      List.tabulate(howMany) {
+        current =>
+          Ballot(pkh = PublicKeyHash(generateHash(10)), ballot = Vote(votes(current)))
+      }
+
+    }
 
   }
 
