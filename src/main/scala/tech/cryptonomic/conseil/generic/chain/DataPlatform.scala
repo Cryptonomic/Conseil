@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,7 +16,9 @@ object DataPlatform {
   * */
 
 class DataPlatform(operationsMap: Map[String, DataOperations]) {
-
+  import cats.instances.future._
+  import cats.instances.option._
+  import cats.syntax.traverse._
   /** Interface method for querying with given predicates
     *
     * @param  platform name of the platform which we want to query
@@ -25,7 +27,7 @@ class DataPlatform(operationsMap: Map[String, DataOperations]) {
     * @return query result as a option[map]
     * */
   def queryWithPredicates(platform: String, tableName: String, query: Query)
-    (implicit ec: ExecutionContext): Option[Future[List[Map[String, Option[Any]]]]] = {
-    operationsMap.get(platform).map(_.queryWithPredicates(tableName, query))
+    (implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] = {
+    operationsMap.get(platform).map(_.queryWithPredicates(tableName, query)).sequence
   }
 }

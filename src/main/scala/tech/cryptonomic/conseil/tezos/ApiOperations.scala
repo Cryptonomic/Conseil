@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query, OrderDirection, QueryOrdering, AnyMap, QueryResponse}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -74,7 +74,7 @@ object ApiOperations extends DataOperations {
                    ) {
 
     /** transforms Filter into a Query with a set of predicates */
-    def toQuery: Query = {
+    def toQuery: DataTypes.Query = {
       Query(
         fields = List.empty,
         predicates = List(
@@ -144,7 +144,14 @@ object ApiOperations extends DataOperations {
             set = accountDelegates.toList
           )
         ).filter(_.set.nonEmpty),
-        limit = limit.getOrElse(DataTypes.defaultLimitValue)
+        limit = limit.getOrElse(DataTypes.defaultLimitValue),
+        orderBy = sortBy.map { o =>
+          val direction = order match {
+            case Some(AscendingSort) => OrderDirection.asc
+            case _ => OrderDirection.desc
+          }
+          QueryOrdering(o, direction)
+        }.toList
       )
     }
   }
@@ -218,7 +225,7 @@ object ApiOperations extends DataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -254,7 +261,7 @@ object ApiOperations extends DataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
@@ -312,7 +319,7 @@ object ApiOperations extends DataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return The account with its associated operation groups
     */
-  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[Map[String, Any]]] = {
+  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
     val fetchOperation =
         Tables.Accounts
           .filter(row => row.accountId === account_id.id)
@@ -391,7 +398,7 @@ object ApiOperations extends DataOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Option[Any]]]] = {
+  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] = {
     if (areFieldsValid(tableName, (query.fields ++ query.predicates.map(_.field) ++ query.orderBy.map(_.field)).toSet)) {
       runQuery(
         TezosDatabaseOperations.selectWithPredicates(

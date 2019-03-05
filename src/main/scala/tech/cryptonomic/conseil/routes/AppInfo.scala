@@ -1,29 +1,16 @@
 package tech.cryptonomic.conseil.routes
 
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.marshalling.{PredefinedToEntityMarshallers, ToEntityMarshaller}
-import akka.http.scaladsl.model.MediaTypes
-import akka.http.scaladsl.server.Directives._
-
+import endpoints.akkahttp
 import tech.cryptonomic.conseil.BuildInfo
-import tech.cryptonomic.conseil.util.JsonUtil.{toJson, JsonString}
+import tech.cryptonomic.conseil.routes.openapi.AppInfoEndpoint
 
 /** defines endpoints to expose the currently deployed application information (e.g version, ...) */
-object AppInfo {
+object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** data type collecting relevant information to expose */
   case class Info(application: String, version: String)
 
-  //add the correct content-type for [[JsonUtil]]-converted values
-  implicit private val jsonMarshaller: ToEntityMarshaller[JsonString] =
-    PredefinedToEntityMarshallers.StringMarshaller
-      .compose((_: JsonString).json)
-      .wrap(MediaTypes.`application/json`)(identity _)
-
   /** the endpoints to expose application information through http */
-  val route: Route = pathEnd {
-    get {
-      complete(toJson(Info(application = BuildInfo.name, version = BuildInfo.version)))
-    }
-  }
+  val route: Route = appInfoEndpoint.implementedBy(_ => Info(application = BuildInfo.name, version = BuildInfo.version))
 }

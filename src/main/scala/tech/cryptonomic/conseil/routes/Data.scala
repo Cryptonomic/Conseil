@@ -3,16 +3,14 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import de.heikoseeberger.akkahttpjackson.JacksonSupport
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.generic.chain.DataTypes.ApiQuery
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.util.RouteHandling
+import tech.cryptonomic.conseil.util.ConfigUtil
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
@@ -26,102 +24,118 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with RouteHandling with DatabaseApiFiltering with JacksonSupport {
+  extends LazyLogging with DatabaseApiFiltering with DataHelpers {
 
-  import Tezos._
+  import cats.instances.either._
+  import cats.instances.future._
+  import cats.syntax.bitraverse._
+  import cats.instances.option._
+  import cats.syntax.traverse._
 
   /*
    * reuse the same context as the one for ApiOperations calls
    * as long as it doesn't create issues or performance degradation
    */
   override val asyncApiFiltersExecutionContext: ExecutionContext = apiExecutionContext
-
-  /** Route for the POST query */
-  val postRoute: Route =
-    post {
-      commonRoute { (platform, network) =>
-        pathPrefix(Segment) { ent =>
-          validateEntity(ent) {
-            entity(as[ApiQuery]) { apiQuery: ApiQuery =>
-              validateQueryOrBadRequest(ent, apiQuery) { validatedQuery =>
-                completeWithJsonOrNotFound(queryProtocolPlatform.queryWithPredicates(platform, ent, validatedQuery))
-              }
-            }
-          }
+  /** V2 Route implementation for query endpoint */
+  val postRoute: Route = queryEndpoint.implementedByAsync {
+    case ((platform, network, entity), apiQuery, _) =>
+      apiQuery.validate(entity).map { validQuery =>
+        platformNetworkValidation(platform, network) {
+          queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery)
         }
+      }.left.map(Future.successful).bisequence.map(eitherOptionOps)
+  }
+
+  /** V2 Route implementation for blocks endpoint */
+  val blocksRoute: Route = blocksEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery)
       }
-    }
+  }
 
-  /** Route for the GET query with query parameters filtering */
-  val getRoute: Route =
-    get {
-      commonRoute {
-        (platform, network) =>
-          gatherConseilFilter { filter =>
-            validate(filter.limit.forall(_ <= 10000), "Cannot ask for more than 10000 entries") {
-              pathPrefix("blocks") {
-                pathEnd {
-                  completeWithJsonOrNotFound(
-                    queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery)
-                  )
-                } ~ path("head") {
-                  completeWithJson(
-                    ApiOperations.fetchLatestBlock()
-                  )
-                } ~ path(Segment).as(BlockHash) { blockId =>
-                  complete(
-                    handleNoneAsNotFound(
-                      ApiOperations.fetchBlock(blockId)
-                    )
-                  )
-                }
-              } ~ pathPrefix("accounts") {
-                pathEnd {
-                  completeWithJsonOrNotFound(
-                    queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery)
-                  )
-                } ~ path(Segment).as(AccountId) { accountId =>
-                  complete(
-                    handleNoneAsNotFound(
-                      ApiOperations.fetchAccount(accountId)
-                    )
-                  )
-                }
-              } ~ pathPrefix("operation_groups") {
-                pathEnd {
-                  completeWithJsonOrNotFound(
-                    queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
-                  )
-                } ~ path(Segment) { operationGroupId =>
-                  complete(
-                    handleNoneAsNotFound(ApiOperations.fetchOperationGroup(operationGroupId))
-                  )
-                }
-              } ~ pathPrefix("operations") {
-                path("avgFees") {
-                  complete(
-                    handleNoneAsNotFound(ApiOperations.fetchAverageFees(filter))
-                  )
-                } ~ pathEnd {
-                  completeWithJsonOrNotFound(
-                    queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
-                  )
-                }
-              }
-            }
-          }
-
+  /** V2 Route implementation for blocks head endpoint */
+  val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
+    case (platform, network, _) =>
+      platformNetworkValidation(platform, network) {
+        ApiOperations.fetchLatestBlock()
       }
-    }
+  }
 
-  /** common route builder with platform and network validation */
-  private def commonRoute(routeBuilder: (String, String) => Route): Route =
-    pathPrefix(Segment) { platform =>
-      pathPrefix(Segment) { network =>
-        validatePlatformAndNetwork(config, platform, network) {
-            routeBuilder(platform, network)
-        }
+  /** V2 Route implementation for blocks by hash endpoint */
+  val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
+    case ((platform, network, hash), _) =>
+      platformNetworkValidation(platform, network) {
+        ApiOperations.fetchBlock(BlockHash(hash))
       }
-    }
+  }
 
+  /** V2 Route implementation for accounts endpoint */
+  val accountsRoute: Route = accountsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery)
+      }
+  }
+
+  /** V2 Route implementation for account by ID endpoint */
+  val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
+    case ((platform, network, accountId), _) =>
+      platformNetworkValidation(platform, network) {
+        ApiOperations.fetchAccount(AccountId(accountId))
+      }
+  }
+
+  /** V2 Route implementation for operation groups endpoint */
+  val operationGroupsRoute: Route = operationGroupsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
+      }
+  }
+
+  /** V2 Route implementation for operation group by ID endpoint */
+  val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
+    case ((platform, network, operationGroupId), _) =>
+      platformNetworkValidation(platform, network) {
+        ApiOperations.fetchOperationGroup(operationGroupId)
+      }
+  }
+
+  /** V2 Route implementation for average fees endpoint */
+  val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        ApiOperations.fetchAverageFees(filter)
+      }
+  }
+
+  /** V2 Route implementation for operations endpoint */
+  val operationsRoute: Route = operationsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
+      }
+  }
+
+  /** V2 concatenated routes */
+  val getRoute: Route = concat(
+    blocksHeadRoute,
+    blockByHashRoute,
+    blocksRoute,
+    accountByIdRoute,
+    accountsRoute,
+    operationGroupByIdRoute,
+    operationGroupsRoute,
+    avgFeesRoute,
+    operationsRoute
+  )
+
+  /** Function for validation of the platform and network with flatten */
+  private def platformNetworkValidation[A](platform: String, network: String)(operation: => Future[Option[A]]): Future[Option[A]] = {
+    ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+      operation
+    }.sequence.map(_.flatten)
+  }
 }

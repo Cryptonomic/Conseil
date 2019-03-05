@@ -27,7 +27,7 @@ object PlatformDiscoveryTypes {
   final case class Entity(name: String, displayName: String, count: Int)
 
   /** Case class representing single attribute of given entity from DB */
-  final case class Attributes(
+  final case class Attribute(
     name: String,
     displayName: String,
     @JsonScalaEnumeration(classOf[DataTypeRef]) dataType: DataType,

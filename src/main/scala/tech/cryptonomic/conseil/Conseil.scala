@@ -8,13 +8,15 @@ import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
+import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 
 import scala.concurrent.ExecutionContextExecutor
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig {
+object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport {
 
   applicationConfiguration match {
     case Right((server, platforms, securityApi, caching)) =>
@@ -39,27 +41,32 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         enableCORS {
           validateApiKey { _ =>
             logRequest("Conseil", Logging.DebugLevel) {
-              pathPrefix("tezos") {
-                tezos.route
-              } ~ pathPrefix("info") {
-                AppInfo.route
-              }
-            } ~ pathPrefix("v2") {
-              logRequest("Metadata Route", Logging.DebugLevel) {
-                pathPrefix("metadata") {
-                  platformDiscovery.route
-                }
-              } ~ logRequest("Data Route", Logging.DebugLevel) {
-                pathPrefix("data") {
-                  data.getRoute ~ data.postRoute
-                }
-              }
+              tezos.route ~
+              AppInfo.route
+            } ~
+            logRequest("Metadata Route", Logging.DebugLevel) {
+              platformDiscovery.route
+            } ~
+            logRequest("Data Route", Logging.DebugLevel) {
+              data.getRoute ~ data.postRoute
             }
-          } ~ options {
+          } ~
+          options {
             // Support for CORS pre-flight checks.
             complete("Supported methods : GET and POST.")
           }
         }
+      } ~
+      pathPrefix("docs") {
+        pathEndOrSingleSlash {
+          getFromResource("web/index.html")
+        }
+      } ~
+      pathPrefix("swagger-ui") {
+        getFromResourceDirectory("web/swagger-ui/")
+      } ~
+      path("openapi.json") {
+        complete(OpenApiDoc.openapiJson)
       }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
@@ -83,7 +90,9 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(errors) =>
+    case Left(errors)
+    =>
     //nothing to do
   }
+
 }
