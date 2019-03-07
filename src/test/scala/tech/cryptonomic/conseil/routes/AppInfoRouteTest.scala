@@ -4,7 +4,6 @@ import org.scalatest.{WordSpec, Matchers}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.http.scaladsl.model.{StatusCodes, ContentTypes}
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.Directives._
 
 import tech.cryptonomic.conseil.util.JsonUtil._
 
