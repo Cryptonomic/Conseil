@@ -11,11 +11,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
 object TezosTypes {
 
   object Lenses {
-    private val accounts = GenLens[BlockAccounts](_.accounts)
-    private val script = GenLens[Account](_.script)
-
-    val scriptLense = accounts composeTraversal each composeLens script
-
     private val operationGroups = GenLens[Block](_.operationGroups)
     private val operations = GenLens[OperationsGroup](_.contents)
 

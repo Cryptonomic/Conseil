@@ -4,7 +4,6 @@ import java.time.ZonedDateTime
 
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, Block, BlockAccounts, BlockData, BlockHash, BlockHeader, BlockHeaderMetadata, ContractId, Micheline, OperationHash, OperationResult, OperationsGroup, Origination, PositiveDecimal, PublicKeyHash, ResultMetadata, Transaction}
-import TezosTypes.Lenses.scriptLense
 import TezosTypes.Lenses.parametersLense
 import TezosTypes.Lenses.originationLense
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
@@ -34,17 +33,6 @@ class TezosTypesTest extends WordSpec with Matchers {
       sut.isBase58Check("signiRfcqmbGc6UtW1WzuJNGzRRsDLpafxZZPwwTMntFwup8rTxXEgcLD5UBWkYmMqZECVEr33Xw5sh9NVi45c4FVAXvQSf ") shouldBe false
     }
 
-  }
-
-  "should modify script with monocle's lenses" in {
-    // given
-    val accounts = blockAccounts.copy(accounts = Map(AccountId("_") -> account.copy(script = Some("old_value"))))
-
-    // when
-    val result = scriptLense.modify(_.flatMap(_ => Some("new_value")))(accounts)
-
-    // then
-    result.accounts.values.head.script.head should equal("new_value")
   }
 
   "should modify parameters with monocle's lenses" in {
