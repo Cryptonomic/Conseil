@@ -6,6 +6,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
+import tech.cryptonomic.conseil.config.Platforms
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -16,7 +17,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
+object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig with LorreOutput {
 
   //reads all configuration upstart, will only complete if all values are found
   val config = loadApplicationConfiguration(args)
@@ -24,8 +25,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   //stop if conf is not available
   config.left.foreach { _ => sys.exit(1) }
 
-  //unsafe call, will only be reached if loadedConf is a Right
+  //unsafe call, will only be reached if loadedConf is a Right, otherwise the merge will fail
   val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf, verbose) = config.merge
+  val ignoreProcessFailures = sys.env.get("LORRE_FAILURE_IGNORE")
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -40,6 +42,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
 
+  /** close resources for application stop */
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
     db.close()
@@ -52,8 +55,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     logger.info("All things closed")
   }
 
+  /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
-  def mainLoop(iteration: Int): Unit = {
+  private[this] def checkTezosConnection(): Unit = {
+    Try {
+      Await.result(tezosNodeOperator.getBlockHead(tezosConf.network), lorreConf.bootupConnectionCheckTimeout)
+    } match {
+      case Failure(e) =>
+        logger.error("Could not make initial connection to Tezos", e)
+        Thread.sleep(lorreConf.bootupRetryInterval.toMillis)
+        checkTezosConnection()
+      case Success(_) =>
+        logger.info("Successfully made initial connection to Tezos")
+    }
+  }
+
+  /** The regular loop, once connection with the node is established */
+  @tailrec
+  private[this] def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
@@ -70,7 +89,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
+      if (ignoreProcessFailures.forall(ignore => ignore == "false" || ignore == "no"))
         processing
       else
         processing.recover {
@@ -90,35 +109,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     }
   }
 
-  logger.info("""
-    | =========================***=========================
-    |  Lorre v.{}
-    |  {}
-    | =========================***=========================
-    |
-    |  About to start processing data on the {} network
-    |""".stripMargin,
-    BuildInfo.version,
-    BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
-    tezosConf.network
-  )
-
-  /**
-    * Tries to fetch blocks head to verify if connection with Tezos node was successfully established
-    */
-  @tailrec
-  def checkTezosConnection(): Unit = {
-    Try {
-      Await.result(tezosNodeOperator.getBlockHead(tezosConf.network), lorreConf.bootupConnectionCheckTimeout)
-    } match {
-      case Failure(e) =>
-        logger.error("Could not make initial connection to Tezos", e)
-        Thread.sleep(lorreConf.bootupRetryInterval.toMillis)
-        checkTezosConnection()
-      case Success(_) =>
-        logger.info("Successfully made initial connection to Tezos")
-    }
-  }
+  printMainInfo(tezosConf)
+  if (verbose.on) printConfiguration(Platforms.Tezos, tezosConf, ignoreProcessFailures)
 
   try {
     checkTezosConnection()
@@ -129,7 +121,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     * Additionally stores account references that needs updating, too
     */
-  def processTezosBlocks(): Future[Done] = {
+  private[this] def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
 
     val blockPagesToSynchronize = tezosConf.depth match {
@@ -197,7 +189,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     * NOTE: as the call is now async, it won't stop the application on error as before, so
     * we should evaluate how to handle failed processing
     */
-  def processTezosAccounts(): Future[Done] = {
+  private[this] def processTezosAccounts(): Future[Done] = {
     logger.info("Processing latest Tezos accounts data... no estimate available.")
 
     def logOutcome[A](outcome: Future[A]): Future[A] = outcome.andThen {
