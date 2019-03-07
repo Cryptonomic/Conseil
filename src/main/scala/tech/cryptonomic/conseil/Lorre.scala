@@ -6,17 +6,12 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression}
-import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.Script._
-import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -147,27 +142,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     def processBlocksPage(results: Future[tezosNodeOperator.BlockFetchingResults]): Future[Int] =
       results.flatMap {
         blocksWithAccounts => {
-
-          val originationAlter = parametersLense.modify(_.flatMap(toMichelsonScript[MichelsonExpression](_)))
-          val parametersAlter = originationLense.modify(_.flatMap(_.flatMap(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonCode])))
-
-          val modifiedBlocks = blocksWithAccounts.map {
-            case (block, ids) => ((originationAlter compose parametersAlter)(block), ids)
-            case it => it
-          }
-
           def logOutcome[A](outcome: Future[Option[A]]): Future[Option[A]] = outcome.andThen {
             case Success(accountsCount) =>
-              logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", modifiedBlocks.size, accountsCount.fold("")(" " + _))
+              logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
             case Failure(e) =>
               logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
           }
 
-          logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(modifiedBlocks.toMap)))
-            .map(_ => modifiedBlocks.size)
+          logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)))
+            .map(_ => blocksWithAccounts.size)
         }
       }
-
 
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
@@ -206,18 +191,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
   }
 
-  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any) = {
-    Some(json).collect { case t: String => convert[T](t) } match {
-      case Some(Right(value)) => Some(value)
-      case Some(Left(t)) =>
-        logger.error(s"Error during converting Michelson format: $json", t)
-        None
-      case _ =>
-        logger.error(s"Error during converting Michelson format: $json")
-        None
-    }
-  }
-
   /**
     * Fetches and stores all accounts from the latest blocks stored in the database.
     *
@@ -237,8 +210,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     val saveAccounts = for {
       checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
       accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
-      modifiedAccountsInfo = accountsInfo.map(scriptLense.modify(_.flatMap(toMichelsonScript[MichelsonCode]))(_))
-      _ <- logOutcome(db.run(TezosDb.writeAccounts(modifiedAccountsInfo)))
+      _ <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
     } yield checkpoints
 
     saveAccounts.andThen {

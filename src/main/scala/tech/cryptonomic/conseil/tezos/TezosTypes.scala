@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import monocle.Optional
 import monocle.macros.GenLens
 import monocle.function.all._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -124,10 +125,9 @@ object TezosTypes {
       storage: Micheline,
       code: Micheline
     ) {
-      def flatMap(storageFunction: String => Option[String], codeFunction: String => Option[String]): Option[Contracts] = for {
-        transformedStorage <- storageFunction(storage)
-        transformedCode <- codeFunction(code)
-      } yield Contracts(transformedStorage, transformedCode)
+      // modify object using various functions for storage and for code
+      def map(storageFunction: String => String, codeFunction: String => String): Contracts =
+        copy(storage = storageFunction(storage), code = codeFunction(code))
     }
   }
 

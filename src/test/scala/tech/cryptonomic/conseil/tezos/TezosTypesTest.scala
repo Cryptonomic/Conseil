@@ -63,7 +63,7 @@ class TezosTypesTest extends WordSpec with Matchers {
     val block = Block(blockData, List(operationGroup.copy(contents = List(origination.copy(script = Some(Contracts(Micheline("eXpR1"), Micheline("eXpR2")))), transaction))))
 
     // when
-    val result = originationLense.modify(_.flatMap(_.flatMap(it => Some(it.toUpperCase), it => Some(it.toLowerCase))))(block)
+    val result = originationLense.modify(_.map(_.map(it => it.toUpperCase, it => it.toLowerCase)))(block)
 
     //then
     result.operationGroups.flatMap(_.contents).collect { case it: Origination => it }.head.script.head should equal(Contracts("EXPR1", "expr2"))
