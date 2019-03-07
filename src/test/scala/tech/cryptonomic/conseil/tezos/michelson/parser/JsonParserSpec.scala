@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos.michelson.parser
 
 import org.scalatest._
 import tech.cryptonomic.conseil.tezos.michelson.dto._
-import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.parse
+import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.{ParserError, parse}
 
 class JsonParserSpec extends FlatSpec with Matchers {
 
@@ -179,6 +179,18 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
     parse[MichelsonCode](json) should equal(Right(MichelsonCode(
       List(MichelsonSimpleInstruction("DUP")))))
+  }
+
+  it should "give meaningful error in case of json without parameter section" in {
+    val json = """[{"prim": "storage", "args": []}]"""
+
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No type parameter found")))
+  }
+
+  it should "give meaningful error in case of json without code section" in {
+    val json = """[{"prim": "parameter", "args": [{"prim": "unit"}]}, {"prim": "storage", "args": [{"prim": "unit"}]}]"""
+
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No expression code found")))
   }
 
   it should "convert complex json to MichelsonSchema" in {

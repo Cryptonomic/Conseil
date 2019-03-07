@@ -97,11 +97,11 @@ object JsonParser {
     override def toMichelsonInstruction = MichelsonInstructionSequence(instructions.map(_.toMichelsonInstruction))
   }
 
-  class ParserError(message: String) extends Throwable(message)
+  case class ParserError(message: String) extends Throwable(message)
 
   type Result[T] = Either[Throwable, T]
 
-  case class JsonDocument(code: List[JsonSection]) {
+  case class JsonSchema(code: List[JsonSection]) {
     def toMichelsonSchema: Result[MichelsonSchema] = for {
       parameter <- extractExpression("parameter")
       storage <- extractExpression("storage")
@@ -114,7 +114,7 @@ object JsonParser {
           case it@JsonExpressionSection(`sectionName`, _) => it
         }
         .flatMap(_.toMichelsonExpression)
-        .toRight(new ParserError(s"No type $sectionName found"))
+        .toRight(ParserError(s"No type $sectionName found"))
     }
 
     private def extractCode(sectionName: String): Result[MichelsonCode] = {
@@ -122,7 +122,7 @@ object JsonParser {
         .collectFirst {
           case it@JsonCodeSection(`sectionName`, _) => it.toMichelsonCode
         }
-        .toRight(new ParserError(s"No expression $sectionName found"))
+        .toRight(ParserError(s"No expression $sectionName found"))
     }
   }
 
@@ -169,7 +169,7 @@ object JsonParser {
 
   implicit val michelsonSchemaParser: Parser[MichelsonSchema] = (json: String) => {
     import GenericDerivation._
-    decode[List[JsonSection]](json).map(JsonDocument).flatMap(_.toMichelsonSchema)
+    decode[List[JsonSection]](json).map(JsonSchema).flatMap(_.toMichelsonSchema)
   }
 
   implicit val michelsonCodeParser: Parser[MichelsonCode] = (json: String) => {
