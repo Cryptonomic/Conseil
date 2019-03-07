@@ -8,7 +8,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
 import tech.cryptonomic.conseil.routes.Data
 
@@ -25,7 +25,9 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       |    {
       |      "field": "account_id",
       |      "operation": "in",
-      |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"]}
+      |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"],
+      |      "inverse": false
+      |    }
       |  ]
       |}
       |
@@ -38,7 +40,8 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       |  "predicates": [
       |    {
       |      "operation": "in",
-      |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"]}
+      |      "set": ["tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1", "KT1HanAHcVwEUD86u9Gz96uCeff9WnF283np"]
+      |    }
       |  ]
       |}
       |
@@ -57,7 +60,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       |}]
     """.stripMargin
 
-  val responseAsMap: List[Map[String, Option[Any]]] = List(
+  val responseAsMap: List[QueryResponse] = List(
     Map(
       "account_id" -> Some("tz1aNTQGugcHFYpC4qdtwEYqzEtw9Uqnd2N1"),
       "spendable" -> Some(true),
@@ -76,7 +79,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   )
 
   val fakeQPO: DataOperations = new DataOperations {
-    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Option[Any]]]] =
+    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
   }
 
@@ -96,32 +99,33 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
       val postRequest = HttpRequest(
         HttpMethods.POST,
-        uri = "/tezos/alphanet/accounts",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
+        uri = "/v2/data/tezos/alphanet/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+      )
 
-      postRequest ~> postRoute ~> check {
+      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
         val resp = entityAs[String]
         resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
         status shouldBe StatusCodes.OK
       }
     }
 
-    "return 400 BadRequest status code for request with missing fields with POST" in {
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/tezos/alphanet/accounts",
-        entity = HttpEntity(MediaTypes.`application/json`, malformedJsonStringRequest))
-      postRequest ~> postRoute ~> check {
-        status shouldBe StatusCodes.BadRequest
-      }
-    }
-
     "return 404 NotFound status code for request for the not supported platform with POST" in {
       val postRequest = HttpRequest(
         HttpMethods.POST,
-        uri = "/notSupportedPlatform/alphanet/accounts",
+        uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
         entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
-      postRequest ~> postRoute ~> check {
+      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+    "return 404 NotFound status code for request for the not supported network with POST" in {
+      val postRequest = HttpRequest(
+        HttpMethods.POST,
+        uri = "/v2/data/tezos/notSupportedNetwork/accounts",
+        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
+      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
         status shouldBe StatusCodes.NotFound
       }
     }
@@ -129,10 +133,10 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     "return a correct response with OK status code with GET" in {
       val getRequest = HttpRequest(
         HttpMethods.GET,
-        uri = "/tezos/alphanet/accounts"
+        uri = "/v2/data/tezos/alphanet/accounts"
       )
 
-      getRequest ~> getRoute ~> check {
+      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
         val resp = entityAs[String]
         resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
         status shouldBe StatusCodes.OK
@@ -142,9 +146,19 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     "return 404 NotFound status code for request for the not supported platform with GET" in {
       val getRequest = HttpRequest(
         HttpMethods.GET,
-        uri = "/notSupportedPlatform/alphanet/accounts"
+        uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
       )
-      getRequest ~> getRoute ~> check {
+      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+        status shouldBe StatusCodes.NotFound
+      }
+    }
+
+    "return 404 NotFound status code for request for the not supported network with GET" in {
+      val getRequest = HttpRequest(
+        HttpMethods.GET,
+        uri = "/v2/data/tezos/notSupportedNetwork/accounts"
+      )
+      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
         status shouldBe StatusCodes.NotFound
       }
     }

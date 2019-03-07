@@ -2,14 +2,21 @@ name := "Conseil"
 scalaVersion := "2.12.8"
 
 val akkaHttpVersion = "10.1.0"
-val akkaVersion = "2.5.11"
+val akkaVersion = "2.5.19"
 val slickVersion = "3.3.0"
 val circeVersion = "0.11.0"
+val endpointsVersion = "0.8.0"
 val catsVersion = "1.6.0"
+val monocleVersion = "1.5.1-cats"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
 scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
+
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  Resolver.sonatypeRepo("snapshots")
+)
 
 libraryDependencies  ++=  Seq(
   "ch.qos.logback"                   % "logback-classic"           % "1.2.3",
@@ -26,11 +33,18 @@ libraryDependencies  ++=  Seq(
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
   "org.typelevel"                   %% "cats-core"                 % catsVersion,
+  "org.typelevel"                   %% "mouse"                     % "0.20",
   "com.kubukoz"                     %% "slick-effect"              % "0.1.0",
   "io.circe"                        %% "circe-core"                % circeVersion,
   "io.circe"                        %% "circe-parser"              % circeVersion,
   "io.circe"                        %% "circe-generic"             % circeVersion,
   "io.circe"                        %% "circe-generic-extras"      % circeVersion,
+  "de.heikoseeberger"               %% "akka-http-circe"           % "1.23.0" exclude("com.typesafe.akka", "akka-http"),
+  "org.julienrf"                    %% "endpoints-algebra"         % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-openapi"         % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-json-schema-generic" % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-akka-http-server" % endpointsVersion,
+  "com.chuusai"                     %% "shapeless"                 % "2.3.3",
   "com.typesafe.slick"              %% "slick"                     % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-hikaricp"            % slickVersion exclude("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"              %% "slick-codegen"             % slickVersion,
@@ -41,6 +55,8 @@ libraryDependencies  ++=  Seq(
   "com.github.alanverbner"          %% "bip39"                     % "0.1",
   "com.github.scopt"                %% "scopt"                     % "4.0.0-RC2",
   "io.scalaland"                    %% "chimney"                   % "0.3.0",
+  "com.github.julien-truffaut"      %% "monocle-core"              % monocleVersion,
+  "com.github.julien-truffaut"      %% "monocle-macro"             % monocleVersion,
   "org.scalatest"                   %% "scalatest"                 % "3.0.4" % Test,
   "com.stephenn"                    %% "scalatest-json-jsonassert" % "0.0.3" % Test,
   "org.scalamock"                   %% "scalamock"                 % "4.0.0" % Test,

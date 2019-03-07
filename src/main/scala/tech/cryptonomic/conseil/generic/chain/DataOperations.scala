@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import tech.cryptonomic.conseil.generic.chain.DataTypes.Query
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -14,5 +14,5 @@ trait DataOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[Map[String, Option[Any]]]]
+  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]]
 }

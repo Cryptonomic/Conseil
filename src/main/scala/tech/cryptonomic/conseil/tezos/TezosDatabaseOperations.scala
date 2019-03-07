@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrdering, QueryResponse}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -52,14 +52,17 @@ object TezosDatabaseOperations extends LazyLogging {
     import cats.data.Kleisli
     import cats.instances.list._
     import slickeffect.implicits._
-    import BlockBalances._
-    import SymbolSourceDescriptor.Show._
     import DatabaseConversions.OperationTablesData
+    import SymbolSourceLabels.Show._
+    import tech.cryptonomic.conseil.tezos.BlockBalances._
     import Tables.{BalanceUpdatesRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
     //straightforward Database IO Actions waiting to be just run
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
-    val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap(_.data.convertToA[List, BalanceUpdatesRow])
+    val saveBlocksBalanceUpdatesAction = Tables.BalanceUpdates ++= blocks.flatMap{ block =>
+      block.data.convertToA[List, BalanceUpdatesRow]
+    }
+
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
 
     //a function that takes a row to save and creates an action to do that, returning the new id
@@ -320,12 +323,12 @@ object TezosDatabaseOperations extends LazyLogging {
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
     limit: Int)
-    (implicit ec: ExecutionContext): DBIO[List[Map[String, Option[Any]]]] = {
+    (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
      makeQuery(table, columns)
        .addPredicates(predicates)
        .addOrdering(ordering)
        .addLimit(limit)
-       .as[Map[String, Option[Any]]]
+       .as[QueryResponse]
        .map(_.toList)
   }
 

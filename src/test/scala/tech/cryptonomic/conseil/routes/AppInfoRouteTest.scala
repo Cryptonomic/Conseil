@@ -15,10 +15,10 @@ class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     /* we need to embed in a complete route the fragment to test it
      * (see https://doc.akka.io/docs/akka-http/current/routing-dsl/testkit.html#testing-route-fragments)
      */
-    val sut = pathPrefix("info") { AppInfo.route }
+    val sut = AppInfo.route
 
     "expose an endpoint to get the current application version" in {
-      Get("/info") ~> sut ~> check {
+      Get("/info") ~> addHeader("apiKey", "hooman") ~> sut ~> check {
         status shouldEqual StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
         val info: Map[String, String] = toMap[String](responseAs[String])

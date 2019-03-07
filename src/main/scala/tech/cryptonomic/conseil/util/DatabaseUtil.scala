@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.util
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, QueryOrdering, QueryResponse}
 
 /**
   * Utility functions and members for common database operations.
@@ -49,7 +49,7 @@ object DatabaseUtil {
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
-    implicit val getMap: GetResult[Map[String, Option[Any]]] = GetResult[Map[String, Option[Any]]](positionedResult => {
+    implicit val getMap: GetResult[QueryResponse] = GetResult[QueryResponse](positionedResult => {
       val metadata = positionedResult.rs.getMetaData
       (1 to positionedResult.numColumns).map(i => {
         val columnName = metadata.getColumnName(i).toLowerCase
