@@ -12,7 +12,6 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
   * Classes used for deserializing query.
   */
 object DataTypes {
-
   import io.scalaland.chimney.dsl._
 
   /** Type representing Map[String, Any] */
@@ -104,7 +103,6 @@ object DataTypes {
     val json, csv = Value
   }
 
-
   /** Enumeration for order direction */
   object OrderDirection extends Enumeration {
     type OrderDirection = Value
@@ -116,5 +114,4 @@ object DataTypes {
     type OperationType = Value
     val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
   }
-
 }
