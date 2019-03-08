@@ -7,17 +7,17 @@ import cats.syntax.semigroupal._
 /** Contract for a generic combination of operations that get encoded data (usually json) from
   * some resource (e.g. the tezos node), then converts that to a value, batching multiple requests together.
   * The returned values are tupled with the corresponding input
-  * The interface assumes some kind of higher-order typed effect `F[_]` is part
+  * The interface assumes some kind of higher-order typed effect `Eff[_]` is part
   * of the operation execution, and represents everything parametrically, to leave
   * room for future evolutions of the code protocol.
   * Thus the required implementation is in the form of a `cats.data.Kleisli` type,
-  * parametric on effect `F`, input `In`, output `Out`. As needed, the in/out types are
-  * wrapped in a `T[_]` type constructor that represents multiple values (e.g. a collection type).
+  * parametric on effect `Eff`, input `In`, output `Out`. As needed, the in/out types are
+  * wrapped in a `Coll[_]` type constructor that represents multiple values (e.g. a collection type).
   *
-  * @tparam F the higher-order effect type (e.g. `Try`, `Future`, `IO`, `Either`)
-  * @tparam T a traversable type (used to wrap mutliple requests and corresponding return values)
+  * @tparam Eff the higher-order effect type (e.g. `Try`, `Future`, `IO`, `Either`)
+  * @tparam Coll a traversable type (used to wrap mutliple requests and corresponding return values)
   */
-trait MultiFetchDecoding[F[_], T[_]] {
+trait DataFetcher[Eff[_], Coll[_]] {
   /** the input type, e.g. ids of data */
   type In
   /** the output type, e.g. the decoded block data */
@@ -28,18 +28,18 @@ trait MultiFetchDecoding[F[_], T[_]] {
   /** an effectful function from a collection of inputs `T[In]`
     * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
     */
-  def fetchBatch: Kleisli[F, T[In], T[(In, Encoded)]]
+  def fetchData: Kleisli[Eff, Coll[In], Coll[(In, Encoded)]]
 
   /** an effectful function that decodes the json value to an output `Out` */
-  def decodeData: Kleisli[F, Encoded, Out]
+  def decodeData: Kleisli[Eff, Encoded, Out]
 
   /** using the combination of the provided functions we fetch all data with this general outline:
     * 1. get encoded (e.g. json) values from the node, given a traversable input collection
     * 2. keep the correlation with the input and decode each value (e.g. from json) to a corresponding output
     * 3. return the traversable collection containing paired input and output values, all wrapped in the effect F
     */
-  def fetch(implicit app: Monad[F], tr: Traverse[T]): Kleisli[F, T[In], T[(In, Out)]] =
-    fetchBatch.andThen(json => decodeData.second[In].traverse(json))
+  def fetch(implicit app: Monad[Eff], tr: Traverse[Coll]): Kleisli[Eff, Coll[In], Coll[(In, Out)]] =
+    fetchData.andThen(encoded => decodeData.second[In].traverse(encoded))
 
 }
 
@@ -54,7 +54,7 @@ trait MultiFetchDecoding[F[_], T[_]] {
   * [List of block hashes] -> [Future of pairs (hash, json) that describes operations data]               -> [Future of pairs (hash, List[Operations]) with the ops now decoded]
   *
   * which suggest that we may encode this in a trait that separates the steps with a
-  * - fetchBatch function, that, given a collection of inputs, returns the effectful result
+  * - fetchData function, that, given a collection of inputs, returns the effectful result
       of encoded data (e.g. json), paired with its input value (to preserve correlation)
   * - decodeData function that will decode every single endoded value to a full-blown output scala data type
   *
@@ -62,14 +62,14 @@ trait MultiFetchDecoding[F[_], T[_]] {
   * Using Kleisli enables a plethora of useful methods to call, that will more easily convert a Kleisli arrow to something that accepts different input, or that
   * adds further operations on input or output, or that adds other effects, like traversing or folding a collection of results if the B result type allows that.
   *
-  * This enables us to easily compose the `fetchBatch` function and `decodeData` function to a general `fetch` function, that will use the former to retrieve a list of
+  * This enables us to easily compose the `fetchData` function and `decodeData` function to a general `fetch` function, that will use the former to retrieve a list of
   * encoded values, paired with input, and apply the decoding to each, all the while preserving the correlation with the original input value.
   *
   * In addition to this, we might want to apply multiple decoding steps in parallel, and pair the decoded results with the same inputs
   * Or still we might want to apply more than one fetcher to the same set of inputs, and pair all the results, in a single pass
   * This is where the `addDecoding` and `mergeResults`/`combineResults` combinators comes useful.
   */
-object MultiFetchDecoding {
+object DataFetcher {
   import cats.syntax.foldable._
   import cats.syntax.functorFilter._
 
@@ -79,10 +79,10 @@ object MultiFetchDecoding {
    * Example: the fetcher for tezos blocks might have type `Aux[Future, List, Int, BlockData, String]
    * where the Int is for the offset from a given block, and String is a representation of a json value.
    */
-  private type Aux[F[_], T[_], I, O, E] = MultiFetchDecoding[F, T] {
-      type In = I
-      type Out = O
-      type Encoded = E
+  private type Aux[Eff[_], Coll[_], Input, Output, Encoding] = DataFetcher[Eff, Coll] {
+      type In = Input
+      type Out = Output
+      type Encoded = Encoding
     }
 
   /** Adds an extra decoding operation for every intermediate encoded result, returning both the
@@ -99,28 +99,28 @@ object MultiFetchDecoding {
     * - decodes the json string both as a list of operations and a list of accounts
     * - returns the decodings in a tuple, where each pair of outputs is also paired to the corresponding input hash, i.e. (I -> (O, O2))
     */
-  def addDecoding[F[_]: Apply, T[_], I, O, O2, E](
-    multiFetch: Aux[F,T,I,O,E],
-    additionalDecode: Kleisli[F, E, O2]
-  ) = new MultiFetchDecoding[F, T] {
-    type In = I
-    type Out = (O, O2)
-    type Encoded = E
+  def addDecoding[Eff[_]: Apply, Coll[_], Input, Output, Output2, Encoding](
+    fetcher: Aux[Eff,Coll,Input,Output,Encoding],
+    additionalDecode: Kleisli[Eff, Encoding, Output2]
+  ) = new DataFetcher[Eff, Coll] {
+    type In = Input
+    type Out = (Output, Output2)
+    type Encoded = Encoding
 
-    def fetchBatch = multiFetch.fetchBatch
+    def fetchData = fetcher.fetchData
 
-    def decodeData = multiFetch.decodeData.product(additionalDecode)
+    def decodeData = fetcher.decodeData.product(additionalDecode)
   }
 
-  /** Combines two multifetch acting on the same inputs to get a tuple of the outputs
+  /** Combines two DataFetchers acting on the same inputs to get a tuple of the outputs
     *
     * For an example refer to `mergeResults` taking three arguments, and
     * consider the equivalent case for two.
     */
-  def mergeResults[F[_]: Monad, T[_] : Traverse: FunctorFilter, In, O1, O2, Out, E1, E2](
-    mf1: Aux[F, T, In, O1, E1],
-    mf2: Aux[F, T, In, O2, E2]
-  )(merge: (O1, O2) => Out): Kleisli[F, T[In], T[(In, Out)]] =
+  def mergeResults[Eff[_]: Monad, Coll[_] : Traverse: FunctorFilter, Input, Output1, Output2, Output, Encoding1, Encoding2](
+    mf1: Aux[Eff, Coll, Input, Output1, Encoding1],
+    mf2: Aux[Eff, Coll, Input, Output2, Encoding2]
+  )(merge: (Output1, Output2) => Output): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     combineResults(mf1, mf2) {
       (outs1, outs2) =>
         outs1.mapFilter {
@@ -131,7 +131,7 @@ object MultiFetchDecoding {
         }
     }
 
-  /** Combines three multifetch acting on the same inputs to get a 3-tuple of the outputs and merge them all
+  /** Combines three DataFetchers acting on the same inputs to get a 3-tuple of the outputs and merge them all
     * in a single output value, using a `merge` function of the three
     *
     * Example:
@@ -150,15 +150,15 @@ object MultiFetchDecoding {
     *
     * We tuple the fetchers as in:
     *
-    *      MultiFetchDecoding.mergeResults(currentPeriodMultiFetch, currentQuorumMultiFetch, currentProposalMultiFetch)(CurrentVotes.apply)
+    *      DataFetcher.mergeResults(currentPeriodFetcher, currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
     *
     * and if we run the "fetch" Kleisli on the merged fetchers, passing a `List[BlockHash]` we get a `Future[List[(BlockHash, CurrentVotes)]]
     */
-  def mergeResults[F[_]: Monad, T[_] : Traverse: FunctorFilter, In, O1, O2, O3, Out, E1, E2, E3](
-    mf1: Aux[F, T, In, O1, E1],
-    mf2: Aux[F, T, In, O2, E2],
-    mf3: Aux[F, T, In, O3, E3]
-  )(merge: (O1, O2, O3) => Out = (_: O1, _: O2, _: O3)): Kleisli[F, T[In], T[(In, Out)]] =
+  def mergeResults[Eff[_]: Monad, Coll[_] : Traverse: FunctorFilter, Input, Output1, Output2, Output3, Output, Encoding1, Encoding2, Encoding3](
+    mf1: Aux[Eff, Coll, Input, Output1, Encoding1],
+    mf2: Aux[Eff, Coll, Input, Output2, Encoding2],
+    mf3: Aux[Eff, Coll, Input, Output3, Encoding3]
+  )(merge: (Output1, Output2, Output3) => Output = (_: Output1, _: Output2, _: Output3)): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     combineResults(mf1, mf2, mf3) {
       (outs1, outs2, outs3) =>
         /* here we only traverse a single output collection, assuming that the others will share the same "keys" (i.e. first element in the tuple)
@@ -175,18 +175,18 @@ object MultiFetchDecoding {
         }
     }
 
-  /** Combines two multifetch acting on the same inputs to get an arbitrary combination of the outputs,
+  /** Combines two DataFetchers acting on the same inputs to get an arbitrary combination of the outputs,
     * without requiring the intermediate encoding to be the same, as opposed to `addDecoding`.
     *
     * For an example refer to `combineResults` with three arguments, and consider the equivalent for two.
     */
-  def combineResults[F[_]: Monad, T[_] : Traverse, In, E1, E2, O1, O2, Out](
-    mf1: Aux[F, T, In, O1, E1],
-    mf2: Aux[F, T, In, O2, E2]
-  )(combine: (T[(In, O1)], T[(In, O2)]) => T[(In, Out)]): Kleisli[F, T[In], T[(In, Out)]] =
+  def combineResults[Eff[_]: Monad, Coll[_] : Traverse, Input, Encoding1, Encoding2, Output1, Output2, Output](
+    mf1: Aux[Eff, Coll, Input, Output1, Encoding1],
+    mf2: Aux[Eff, Coll, Input, Output2, Encoding2]
+  )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)]) => Coll[(Input, Output)]): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     (mf1.fetch).product(mf2.fetch).map(combine.tupled)
 
-  /** Combines three multifetch acting on the same inputs to get am arbitrary combination of the outputs,
+  /** Combines three DataFetchers acting on the same inputs to get am arbitrary combination of the outputs,
     * without requiring the intermediate encoding to be the same.
     *
     * Example:
@@ -196,21 +196,26 @@ object MultiFetchDecoding {
     * The difference with merge is that we combine three whole traversables (e.g. Lists), containing the "hash to value" pairs, instead
     * of merging each element with matching input `I` into a single traversable of outputs
     */
-  def combineResults[F[_]: Monad , T[_] : Traverse: FunctorFilter, In, E1, E2, E3, O1, O2, O3, Out](
-    mf1: Aux[F, T, In, O1, E1],
-    mf2: Aux[F, T, In, O2, E2],
-    mf3: Aux[F, T, In, O3, E3]
-  )(combine: (T[(In, O1)], T[(In, O2)], T[(In, O3)]) => T[(In, Out)]): Kleisli[F, T[In], T[(In, Out)]] =
-    Apply[({type L[a] = Kleisli[F, T[In], a]})#L].tuple3(mf1.fetch, mf2.fetch, mf3.fetch).map(combine.tupled)
+  def combineResults[Eff[_]: Monad , Coll[_] : Traverse: FunctorFilter, Input, Encoding1, Encoding2, Encoding3, Output1, Output2, Output3, Output](
+    mf1: Aux[Eff, Coll, Input, Output1, Encoding1],
+    mf2: Aux[Eff, Coll, Input, Output2, Encoding2],
+    mf3: Aux[Eff, Coll, Input, Output3, Encoding3]
+  )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)], Coll[(Input, Output3)]) => Coll[(Input, Output)]): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
+    Apply[({type L[a] = Kleisli[Eff, Coll[Input], a]})#L].tuple3(mf1.fetch, mf2.fetch, mf3.fetch).map(combine.tupled)
 
   /** Allows to add an additional decoder to a "multi-fetch" instance, by providing an extension method `decodeAlso(additionalDecode)`,
-    * subject to `F` having a `cats.Apply` instance.
-    * The result is only syntactic sugar over calling `MultiFetchDecoding.addDecoding`
+    * subject to `Eff` having a `cats.Apply` instance.
+    * The result is only syntactic sugar over calling `DataFetcher.addDecoding`
     */
   object Syntax {
 
-    implicit class MultiFetchOps[F[_], T[_], I, O, E](m: Aux[F, T, I, O, E]) {
-      def decodeAlso[O2](additionalDecode: Kleisli[F, E, O2])(implicit app: Apply[F]): Aux[F, T, I, (O, O2), E] = addDecoding(m, additionalDecode)
+    implicit class DataFetchOps[Eff[_], Coll[_], Input, Output, Encoding](m: Aux[Eff, Coll, Input, Output, Encoding]) {
+      def decodeAlso[Output2](
+        additionalDecode: Kleisli[Eff, Encoding, Output2]
+      )(
+        implicit app: Apply[Eff]
+      ): Aux[Eff, Coll, Input, (Output, Output2), Encoding] =
+        addDecoding(m, additionalDecode)
     }
   }
 

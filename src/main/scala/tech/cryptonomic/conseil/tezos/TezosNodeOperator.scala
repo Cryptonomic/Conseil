@@ -52,11 +52,11 @@ object TezosNodeOperator {
   */
 class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext)
   extends LazyLogging
-  with BlocksMultiFetchingInstances {
+  with BlocksDataFetchers {
   import TezosNodeOperator.{isGenesis, decodeToFuture}
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
-  override val multiFetchConcurrency = blockOperationsConcurrencyLevel
+  override val fetchConcurrency = blockOperationsConcurrencyLevel
 
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
@@ -297,23 +297,23 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     ): Future[BlockFetchingResults] = {
     import cats.instances.future._
     import cats.instances.list._
-    import tech.cryptonomic.conseil.generic.chain.MultiFetchDecoding
-    import tech.cryptonomic.conseil.generic.chain.MultiFetchDecoding.Syntax._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.Syntax._
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
 
-    val blockFetcher = blocksMultiFetch(hashRef)
+    val blockFetcher = blocksFetcher(hashRef)
     // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
-    val operationsWithAccountsFetcher = operationGroupMultiFetch.decodeAlso(accountIdsJsonDecode.lift[Future])
+    val operationsWithAccountsFetcher = operationGroupFetcher.decodeAlso(accountIdsJsonDecode.lift[Future])
 
     //read the separate parts of voting and merge the results
     val proposalsStateFetch =
-      MultiFetchDecoding.mergeResults(
-        currentPeriodMultiFetch,
-        currentQuorumMultiFetch,
-        currentProposalMultiFetch
+      DataFetcher.mergeResults(
+        currentPeriodFetcher,
+        currentQuorumFetcher,
+        currentProposalFetcher
       )(CurrentVotes.apply)
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
