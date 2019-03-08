@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil
 import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -27,7 +28,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   //unsafe call, will only be reached if loadedConf is a Right, otherwise the merge will fail
   val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf, verbose) = config.merge
-  val ignoreProcessFailures = sys.env.get("LORRE_FAILURE_IGNORE")
+  val ignoreProcessFailures = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -109,8 +110,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
   }
 
-  printMainInfo(tezosConf)
-  if (verbose.on) printConfiguration(Platforms.Tezos, tezosConf, ignoreProcessFailures)
+  displayInfo(tezosConf)
+  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
 
   try {
     checkTezosConnection()

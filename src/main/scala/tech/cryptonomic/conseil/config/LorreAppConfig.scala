@@ -13,6 +13,8 @@ import scopt.{OptionParser, Read}
 trait LorreAppConfig {
   import LorreAppConfig._
 
+  final val LORRE_FAILURE_IGNORE_VAR = "LORRE_FAILURE_IGNORE"
+
   /* used by scopt to parse the depth object */
   implicit private val depthRead: Read[Option[Depth]] = Read.reads {
     case "-1" | "all" => Some(Everything)
