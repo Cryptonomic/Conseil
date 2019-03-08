@@ -95,7 +95,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       else
         processing.recover {
           //swallow the error and proceed with the default behaviour
-          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) => ()
+          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) =>
+            logger.error("Failed processing but will keep on going next cycle", f)
         }
 
     Await.result(attemptedProcessing, atMost = Duration.Inf)
