@@ -35,7 +35,7 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     }.getOrElse("")
     val values = queryResponse.map { values =>
       values.values.map {
-        case Some(xx) => xx
+        case Some(value) => value
         case None => "null"
       }.mkString(",")
     }
