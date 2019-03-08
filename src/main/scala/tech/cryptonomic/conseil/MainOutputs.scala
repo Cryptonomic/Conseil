@@ -1,10 +1,60 @@
 package tech.cryptonomic.conseil
 
 import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.config.Platforms._
 
 /** Defines main output for Lorre or Conseil, at startup */
 object MainOutputs {
+
+  /** Defines what to print when starting Conseil */
+  trait ConseilOutput {
+
+    /** we need to have a logger */
+    protected[this] def logger: Logger
+
+    /** Shows the main application info
+      * @param serverConf configuration of the http server
+      */
+    protected[this] def displayInfo(serverConf: ServerConfiguration) =
+      logger.info("""
+        | ==================================***==================================
+        |  Conseil v.{}
+        |  {}
+        | ==================================***==================================
+        |
+        | Server started on {} at port {}
+        | Bonjour...
+        |
+        |""".stripMargin,
+        BuildInfo.version,
+        BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
+        serverConf.hostname,
+        serverConf.port
+      )
+
+    /** Shows details on the current configuration
+    * @param platform the platform used by Lorre
+    * @param platformConf the details on platform-specific configuratoin (e.g. node connection)
+    * @param ignoreFailures env-var name and value read to describe behaviour on common application failure
+    * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
+    */
+    protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): Unit =
+      logger.info("""
+        | ==================================***==================================
+        | Configuration details
+        |
+        | {}
+        | {}
+        |
+        | ==================================***==================================
+        |
+        """.stripMargin,
+        showAvailablePlatforms(platformConfigs),
+        showDatabaseConfiguration
+      )
+
+  }
 
   /** Defines what to print when starting Lorre */
   trait LorreOutput {
@@ -45,7 +95,7 @@ object MainOutputs {
         | Configuration details
         |
         | Connecting to {} {}
-        | {}
+        | on {}
         |
         | Requested depth of synchronization with the chain: {}
         | Environment set to skip failed download of blocks or accounts: {} [†]
@@ -66,9 +116,18 @@ object MainOutputs {
         ignoreFailures._1
       )
 
-
   }
 
+  /* prepare output to display existings platforms and networks */
+  private def showAvailablePlatforms(conf: PlatformsConfiguration): String = conf.platforms.map {
+    case (platform, confs) =>
+      val networks = confs.map(_.network).mkString("\n  - ", "\n  - ", "\n")
+      s"""
+      |  Platform: ${platform.name}$networks
+      """.stripMargin
+  }.mkString("\n")
+
+  /* prepare output to display database access */
   private val showDatabaseConfiguration: String = {
     import com.typesafe.config._
     import java.util.Map.{Entry => JMEntry}
@@ -102,9 +161,9 @@ object MainOutputs {
   /* custom display of each configuration type */
   private val showPlatformConfiguration: PartialFunction[PlatformConfiguration, String] = {
     case TezosConfiguration(_, _, TezosNodeConfiguration(host, port, protocol, prefix)) =>
-      s"on node $protocol://$host:$port/$prefix"
+      s"node $protocol://$host:$port/$prefix"
     case _ =>
-      "on a non-descript platform configuration"
+      "a non-descript platform configuration"
   }
 
 }
