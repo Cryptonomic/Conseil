@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
   * Classes used for deserializing query.
   */
 object DataTypes {
+
   import io.scalaland.chimney.dsl._
 
   /** Type representing Map[String, Any] */
@@ -19,10 +20,8 @@ object DataTypes {
 
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
-
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
-
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
 
@@ -30,6 +29,9 @@ object DataTypes {
   sealed trait QueryValidationError extends Product with Serializable {
     val message: String
   }
+
+  /** Class which contains output type with the response */
+  case class QueryResponseWithOutput(queryResponse: List[QueryResponse], output: OutputType)
 
   /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]

@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.AccountsRow
 
 /** Trait containing Data endpoints JSON schemas */
-trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
+trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
 
   /** API query schema */
   implicit def queryRequestSchema: JsonSchema[ApiQuery] =
@@ -29,6 +29,11 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   /** Query ordering direction schema */
   implicit def queryOrderingDirectionSchema: JsonSchema[OrderDirection.Value] =
     enumeration(OrderDirection.values.toSeq)(_.toString)
+
+  /** Query output schema */
+  implicit def queryOutputSchema: JsonSchema[OutputType.Value] =
+    enumeration(OutputType.values.toSeq)(_.toString)
+
 
   /** Timestamp schema */
   implicit def timestampSchema: JsonSchema[java.sql.Timestamp]
@@ -52,7 +57,7 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas   {
   implicit def queryResponseSchema: JsonSchema[List[QueryResponse]]
 
   /** Query response schema schema */
-  implicit def queryResponseSchemaWithCsv: JsonSchema[Either[List[QueryResponse], List[QueryResponse]]]
+  implicit def queryResponseSchemaWithCsv: JsonSchema[QueryResponseWithOutput]
 
   /** AnyMap schema */
   implicit def blocksByHashSchema: JsonSchema[AnyMap]

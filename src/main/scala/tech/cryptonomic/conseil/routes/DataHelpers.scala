@@ -2,13 +2,13 @@ package tech.cryptonomic.conseil.routes
 
 import java.sql.Timestamp
 
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import cats.Functor
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, QueryResponse, QueryValidationError}
+import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
 
@@ -20,11 +20,26 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
   import io.circe.syntax._
 
   /** Function validating request for the query endpoint */
-  override def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
+  override def validated(response: QueryResponseWithOutput => Route, invalidDocs: Documentation): Either[List[QueryValidationError], QueryResponseWithOutput] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
-    case Right(success) =>
+    case Right(success@QueryResponseWithOutput(_, OutputType.json)) =>
       response(success)
+    case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
+      complete(StatusCodes.OK -> makeCsv(queryResponse))
+  }
+
+  def makeCsv(queryResponse: List[QueryResponse]): String = {
+    val headers = queryResponse.headOption.map { headerList =>
+      headerList.keys.mkString(",")
+    }.getOrElse("")
+    val values = queryResponse.map { values =>
+      values.values.map {
+        case Some(xx) => xx
+        case None => "null"
+      }.mkString(",")
+    }
+    (headers :: values).mkString("\n")
   }
 
   /** Function extracting option out of Right */
@@ -40,22 +55,14 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     )
   }
 
-  override implicit def queryResponseSchemaWithCsv: JsonSchema[Either[List[QueryResponse], List[QueryResponse]]] =
-    new JsonSchema[Either[List[QueryResponse], List[QueryResponse]]] {
-      override def encoder: Encoder[Either[List[QueryResponse], List[QueryResponse]]] = new Encoder[Either[List[QueryResponse], List[QueryResponse]]] {
-        override def apply(a: Either[List[QueryResponse], List[QueryResponse]]): Json =  a match {
-          case Left(value) => value.asJson
-          case Right(value) =>
-            (value.headOption.map(_.keys.mkString(",")).getOrElse("") :: value.map { xxx =>
-            xxx.values.map {
-              case Some(xx) => xx
-              case None => "null"
-            }.mkString(",")
-          }).mkString("\n").asJson
-        }
+  override implicit def queryResponseSchemaWithCsv: JsonSchema[QueryResponseWithOutput] =
+    new JsonSchema[QueryResponseWithOutput] {
+      override def encoder: Encoder[QueryResponseWithOutput] = (a: QueryResponseWithOutput) => a match {
+        case queryResponse =>
+          queryResponse.queryResponse.asJson(queryResponseSchema.encoder)
       }
 
-      override def decoder: Decoder[Either[List[QueryResponse], List[QueryResponse]]] = ???
+      override def decoder: Decoder[QueryResponseWithOutput] = ???
     }
 
   /** Implementation of JSON encoder for Any */
