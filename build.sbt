@@ -33,6 +33,8 @@ libraryDependencies  ++=  Seq(
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
   "org.typelevel"                   %% "cats-core"                 % catsVersion,
+  "com.github.julien-truffaut"      %% "monocle-core"              % monocleVersion,
+  "com.github.julien-truffaut"      %% "monocle-macro"             % monocleVersion,
   "org.typelevel"                   %% "mouse"                     % "0.20",
   "com.kubukoz"                     %% "slick-effect"              % "0.1.0",
   "io.circe"                        %% "circe-core"                % circeVersion,

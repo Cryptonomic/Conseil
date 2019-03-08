@@ -1,15 +1,45 @@
 package tech.cryptonomic.conseil.tezos
 
+import monocle.Optional
+import monocle.macros.GenLens
+import monocle.function.all._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
+
 /**
   * Classes used for deserializing Tezos node RPC results.
   */
 object TezosTypes {
+
+  object Lenses {
+    private val operationGroups = GenLens[Block](_.operationGroups)
+    private val operations = GenLens[OperationsGroup](_.contents)
+
+    private val origination = Optional.apply[Operation, Origination] {
+      case it: Origination => Some(it)
+      case _ => None
+    } { it => { _ => it } }
+
+    private val transaction = Optional.apply[Operation, Transaction] {
+      case it: Transaction => Some(it)
+      case _ => None
+    } { it => { _ => it } }
+
+    private val originationScript = GenLens[Origination](_.script)
+    private val parameters = GenLens[Transaction](_.parameters)
+
+    val originationLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional origination composeLens originationScript
+    val parametersLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional transaction composeLens parameters
+  }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
   lazy val isBase58Check: String => Boolean = (s: String) => {
     val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
     pattern.matcher(s).matches
   }
+
+  implicit lazy val michelineToString: Micheline => String = _.expression
+  implicit lazy val stringToMicheline: String => Micheline = Micheline
+  implicit lazy val optionalStringToMicheline: Option[String] => Option[Micheline] = _.map(Micheline)
 
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
@@ -91,7 +121,11 @@ object TezosTypes {
     final case class Contracts(
       storage: Micheline,
       code: Micheline
-    )
+    ) {
+      // modify object using various functions for storage and for code
+      def map(storageFunction: String => String, codeFunction: String => String): Contracts =
+        copy(storage = storageFunction(storage), code = codeFunction(code))
+    }
   }
 
   /** root of the operation hiearchy */

@@ -6,6 +6,11 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
+import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.{originationLense, parametersLense}
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
+import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression}
+import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -111,9 +116,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
             val accountTry = Try(fromJson[Account](json)).map((id, _))
             accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
             accountTry.toOption
-        }.flatten.toMap
-    )
-
+        }.flatten.toMap)
+    .map(_.mapValues(it => it.copy(script = it.script.map(toMichelsonScript[MichelsonCode]))))
 
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
@@ -316,6 +320,13 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         currentProposalFetcher
       )(CurrentVotes.apply)
 
+      def parseMichelsonScripts(block: Block): Block = {
+        val originationAlter = parametersLense.modify(_.map(toMichelsonScript[MichelsonExpression](_)))
+        val parametersAlter = originationLense.modify(_.map(_.map(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonCode])))
+
+        (originationAlter compose parametersAlter)(block)
+      }
+
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
@@ -328,12 +339,26 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
-        val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-        (Block(md, ops, proposalsMap.getOrElse(md.hash, CurrentVotes.defaultValue)), accs)
+          val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
+          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.defaultValue)
+          (parseMichelsonScripts(Block(md, ops, votes)), accs)
       }
     }
   }
 
+  val UNPARSABLE_CODE_PLACEMENT = "Unparsable code"
+
+  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any) = {
+    Some(json).collect { case t: String => convert[T](t) } match {
+      case Some(Right(value)) => value
+      case Some(Left(t)) =>
+        logger.error(s"Error during converting Michelson format: $json", t)
+        UNPARSABLE_CODE_PLACEMENT
+      case _ =>
+        logger.error(s"Error during converting Michelson format: $json")
+        UNPARSABLE_CODE_PLACEMENT
+    }
+  }
 }
 
 /**
