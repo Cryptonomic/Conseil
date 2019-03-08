@@ -141,8 +141,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     /* will store a single page of block results */
     def processBlocksPage(results: Future[tezosNodeOperator.BlockFetchingResults]): Future[Int] =
       results.flatMap {
-        blocksWithAccounts =>
-
+        blocksWithAccounts => {
           def logOutcome[A](outcome: Future[Option[A]]): Future[Option[A]] = outcome.andThen {
             case Success(accountsCount) =>
               logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
@@ -152,9 +151,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
           logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)))
             .map(_ => blocksWithAccounts.size)
-
+        }
       }
-
 
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
