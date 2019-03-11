@@ -53,7 +53,7 @@ object OpenApiDoc extends DataEndpoints
   /** Function for validation definition in documentation which appends DocumentedResponse to the list of possible results from the query.
     * In this case if query fails to validate it will return 400 Bad Request.
     * */
-  override def validated(response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
+  override def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
     response :+ OpenApiDoc.DocumentedResponse(
       status = 400,
       documentation = invalidDocs.getOrElse(""),
@@ -65,7 +65,7 @@ object OpenApiDoc extends DataEndpoints
       documentation = invalidDocs.getOrElse(""),
       content = Map(
         "application/json" -> MediaType(None),
-        "text/plain" -> MediaType(None)
+        "text/csv" -> MediaType(None)
       )
     )
 
@@ -93,5 +93,5 @@ object OpenApiDoc extends DataEndpoints
   /** Documented JSON schema for blocks by hash */
   override implicit def blocksByHashSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
 
-  override implicit def queryResponseSchemaWithCsv: OpenApiDoc.DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
+  override implicit def queryResponseSchemaWithOutputType: OpenApiDoc.DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
 }

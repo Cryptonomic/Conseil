@@ -5,12 +5,15 @@ import java.sql.Timestamp
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import akka.util.ByteString
 import cats.Functor
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
+import tech.cryptonomic.conseil.util.Conversion
+import tech.cryptonomic.conseil.util.Conversion.Id
 
 /** Trait with helpers needed for data routes */
 trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.server.Endpoints
@@ -18,28 +21,17 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
 
   import io.circe._
   import io.circe.syntax._
+  import tech.cryptonomic.conseil.util.Conversion.Syntax._
+  import tech.cryptonomic.conseil.routes.openapi.CsvConversions._
 
   /** Function validating request for the query endpoint */
-  override def validated(response: QueryResponseWithOutput => Route, invalidDocs: Documentation): Either[List[QueryValidationError], QueryResponseWithOutput] => Route = {
+  override def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
-    case Right(success@QueryResponseWithOutput(_, OutputType.json)) =>
-      response(success)
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
-      complete(StatusCodes.OK -> makeCsv(queryResponse))
-  }
-
-  def makeCsv(queryResponse: List[QueryResponse]): String = {
-    val headers = queryResponse.headOption.map { headerList =>
-      headerList.keys.mkString(",")
-    }.getOrElse("")
-    val values = queryResponse.map { values =>
-      values.values.map {
-        case Some(value) => value
-        case None => "null"
-      }.mkString(",")
-    }
-    (headers :: values).mkString("\n")
+      complete(HttpEntity.Strict(ContentTypes.`text/csv(UTF-8)`, ByteString(queryResponse.convertTo[String])))
+    case Right(success@QueryResponseWithOutput) =>
+      response(success)
   }
 
   /** Function extracting option out of Right */
@@ -55,7 +47,7 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     )
   }
 
-  override implicit def queryResponseSchemaWithCsv: JsonSchema[QueryResponseWithOutput] =
+  override implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
     new JsonSchema[QueryResponseWithOutput] {
       override def encoder: Encoder[QueryResponseWithOutput] = (a: QueryResponseWithOutput) => a match {
         case queryResponse =>

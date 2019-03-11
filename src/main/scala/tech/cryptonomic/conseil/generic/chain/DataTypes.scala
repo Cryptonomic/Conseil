@@ -50,7 +50,7 @@ object DataTypes {
   /** Class required for Ordering enum serialization */
   class QueryOrderingRef extends TypeReference[OrderDirection.type]
 
-  /** Class representing representing query ordering */
+  /** Class representing query ordering */
   case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
 
   /** Class representing invalid query field */
