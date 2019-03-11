@@ -12,8 +12,6 @@ import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
-import tech.cryptonomic.conseil.util.Conversion
-import tech.cryptonomic.conseil.util.Conversion.Id
 
 /** Trait with helpers needed for data routes */
 trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.server.Endpoints
@@ -30,7 +28,7 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
       complete(HttpEntity.Strict(ContentTypes.`text/csv(UTF-8)`, ByteString(queryResponse.convertTo[String])))
-    case Right(success@QueryResponseWithOutput) =>
+    case Right(success) =>
       response(success)
   }
 
