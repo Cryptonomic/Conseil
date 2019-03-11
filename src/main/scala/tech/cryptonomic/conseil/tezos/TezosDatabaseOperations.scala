@@ -40,7 +40,6 @@ object TezosDatabaseOperations extends LazyLogging {
       info =>
         info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
     }).map(_.sum)
-      .transactionally
 
   /**
     * Writes blocks and related operations to a database.
