@@ -32,6 +32,17 @@ object TezosNodeOperator {
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
 
+  /**
+    * Given a contiguous valus range, creates sub-ranges of max the given size
+    * @param pageSize how big a part is allowed to be
+    * @param range a range of contiguous values to partition into (possibly) smaller parts
+    * @return an iterator over the part, which are themselves `Ranges`
+    */
+    def partitionRanges(pageSize: Int)(range: Range.Inclusive): Iterator[Range.Inclusive] =
+      range.grouped(pageSize)
+        .filterNot(_.isEmpty)
+        .map(subRange => subRange.head to subRange.last)
+
 }
 
 /**
@@ -42,6 +53,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
+  type PaginatedAccountResults = (Iterator[Future[List[BlockAccounts]]], Int)
 
   /**
     * Fetches a specific account for a given block.
@@ -79,6 +91,18 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     } yield accounts
 
   /**
+    * Fetches the accounts identified by id, lazily paginating the results
+    *
+    * @param network    Which Tezos network to go against
+    * @param accountIDs the ids
+    * @param blockHash  the block storing the accounts, the head block if not specified
+    * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
+    */
+  def getPaginatedAccountsForBlock(network: String, accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[AccountId, Account]]] =
+    partitionAccountIds(accountIDs).map(ids => getAccountsForBlock(network, ids, blockHash))
+
+
+  /**
     * Fetches the accounts identified by id
     *
     * @param network    Which Tezos network to go against
@@ -105,7 +129,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param accountsBlocksIndex a map from unique id to the [latest] block reference
     * @return         Accounts with their corresponding block data
     */
-  def getAccountsForBlocks(network: String, accountsBlocksIndex: Map[AccountId, BlockReference]): Future[List[BlockAccounts]] = {
+  def getAccountsForBlocks(network: String, accountsBlocksIndex: Map[AccountId, BlockReference]): PaginatedAccountResults = {
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
@@ -119,15 +143,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
-    getAccountsForBlock(network, accountsBlocksIndex.keys.toList)
-      .andThen {
-        case Success(accountsMap) =>
-          notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
-        case Failure(err) =>
-          val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
-          logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
-      }.map(groupByLatestBlock)
+    val pages = getPaginatedAccountsForBlock(network, accountsBlocksIndex.keys.toList) map {
+      futureMap =>
+        futureMap
+         .andThen {
+            case Success(accountsMap) =>
+              notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
+            case Failure(err) =>
+              val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
+              logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
+          }.map(groupByLatestBlock)
+    }
 
+    (pages, accountsBlocksIndex.size)
   }
 
   /**
@@ -193,10 +221,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     * @param pageSize how big a part is allowed to be
     * @return an iterator over the part, which are themselves `Ranges`
     */
-  def partitionBlocksRanges(levels: Range.Inclusive, pageSize: Int = blockPageSize): Iterator[Range.Inclusive] =
-    levels.grouped(pageSize)
-      .filterNot(_.isEmpty)
-      .map(subRange => subRange.head to subRange.last)
+  def partitionBlocksRanges(levels: Range.Inclusive): Iterator[Range.Inclusive] =
+    TezosNodeOperator.partitionRanges(blockPageSize)(levels)
+
+  /**
+    * Given a list of ids, creates sub-lists of max the given size
+    * @param accouuntIDs a list of ids to partition into (possibly) smaller parts
+    * @param pageSize how big a part is allowed to be
+    * @return an iterator over the part, which are themselves ids
+    */
+  def partitionAccountIds(accountsIDs: List[AccountId]): Iterator[List[AccountId]] =
+  TezosNodeOperator.partitionRanges(blockPageSize)(Range.inclusive(0, accountsIDs.size - 1)) map {
+      range => accountsIDs.take(range.end + 1).drop(range.start)
+    }
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
