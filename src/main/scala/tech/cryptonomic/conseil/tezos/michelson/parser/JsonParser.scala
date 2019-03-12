@@ -46,7 +46,7 @@ object JsonParser {
    * type "pair" with two arguments
    *
    * */
-  case class JsonType(prim: String, args: Option[List[JsonType]]) extends JsonExpression {
+  case class JsonType(prim: String, args: Option[List[JsonExpression]]) extends JsonExpression {
     override def toMichelsonExpression = MichelsonType(prim, args.getOrElse(List.empty).map(_.toMichelsonExpression))
   }
 
@@ -57,7 +57,7 @@ object JsonParser {
    *
    * */
   case class JsonIntConstant(int: String) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonIntConstant(int.toInt)
+    override def toMichelsonExpression = MichelsonIntConstant(int.toLong)
   }
 
   /*
@@ -90,7 +90,10 @@ object JsonParser {
   }
 
   case class JsonComplexInstruction(prim: String, args: List[List[JsonInstruction]]) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonComplexInstruction(prim, MichelsonInstructionSequence(args.flatten.map(_.toMichelsonInstruction)))
+    override def toMichelsonInstruction = MichelsonComplexInstruction(prim, args.map {
+      case Nil => MichelsonEmptyInstruction
+      case it => MichelsonInstructionSequence(it.map(_.toMichelsonInstruction))
+    })
   }
 
   case class JsonInstructionSequence(instructions: List[JsonInstruction]) extends JsonInstruction {
@@ -142,7 +145,8 @@ object JsonParser {
 
     implicit val decodeInstruction: Decoder[JsonInstruction] = cursor => {
       lazy val isSequence = (_: HCursor).downArray.succeeded
-      lazy val isComplexInstruction = (_: HCursor).downField("args").downArray.downArray.succeeded
+      lazy val isEmptyArray = (_: Json).asArray.exists(_.isEmpty)
+      lazy val isComplexInstruction = (_: HCursor).downField("args").downArray.find(it => isSequence(it.hcursor) || isEmptyArray(it)).succeeded
 
       if (isSequence(cursor))
         cursor.as[List[JsonInstruction]].map(JsonInstructionSequence)

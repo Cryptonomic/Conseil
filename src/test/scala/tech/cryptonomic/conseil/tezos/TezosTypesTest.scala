@@ -3,10 +3,9 @@ package tech.cryptonomic.conseil.tezos
 import java.time.ZonedDateTime
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, Block, BlockAccounts, BlockData, BlockHash, BlockHeader, BlockHeaderMetadata, ContractId, Micheline, OperationHash, OperationResult, OperationsGroup, Origination, PositiveDecimal, PublicKeyHash, ResultMetadata, Transaction}
-import TezosTypes.Lenses.parametersLense
-import TezosTypes.Lenses.originationLense
+import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.{parametersLens, scriptLens}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 class TezosTypesTest extends WordSpec with Matchers {
 
@@ -40,7 +39,7 @@ class TezosTypesTest extends WordSpec with Matchers {
     val block = Block(blockData, List(operationGroup.copy(contents = List(origination, transaction.copy(parameters = Some(Micheline("micheline script")))))))
 
     // when
-    val result = parametersLense.modify(_.map(_ => Micheline("new micheline script")))(block)
+    val result = parametersLens.modify(_ => Micheline("new micheline script"))(block)
 
     //then
     result.operationGroups.flatMap(_.contents).collect { case it: Transaction => it }.head.parameters.head.expression should equal("new micheline script")
@@ -51,10 +50,10 @@ class TezosTypesTest extends WordSpec with Matchers {
     val block = Block(blockData, List(operationGroup.copy(contents = List(origination.copy(script = Some(Contracts(Micheline("eXpR1"), Micheline("eXpR2")))), transaction))))
 
     // when
-    val result = originationLense.modify(_.map(_.map(it => it.toUpperCase, it => it.toLowerCase)))(block)
+    val result = scriptLens.modify(_.bimap(_.toUpperCase, _.toLowerCase))(block)
 
     //then
-    result.operationGroups.flatMap(_.contents).collect { case it: Origination => it }.head.script.head should equal(Contracts("EXPR1", "expr2"))
+    result.operationGroups.flatMap(_.contents).collect { case it: Origination => it }.head.script.head should equal(Contracts(Micheline("EXPR1"), Micheline("expr2")))
   }
 
   private val blockAccounts = BlockAccounts(BlockHash("_"), 0, Map.empty)

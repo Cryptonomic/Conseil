@@ -6,10 +6,9 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.{originationLense, parametersLense}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.{parametersLens, scriptLens}
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
 
@@ -95,9 +94,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
           case (id, json) =>
             val accountTry = Try(fromJson[Account](json)).map((id, _))
             accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
-            accountTry.toOption
+            accountTry
+              .toOption
+              .map { case (accountId, account) => (accountId, account.copy(script = account.script.map(toMichelsonScript[MichelsonCode]))) }
         }.flatten.toMap)
-    .map(_.mapValues(it => it.copy(script = it.script.map(toMichelsonScript[MichelsonCode]))))
 
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
@@ -298,10 +298,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     val isGenesis = (data: BlockData) => data.header.level == 0
 
     def parseMichelsonScripts(block: Block): Block = {
-      val originationAlter = parametersLense.modify(_.map(toMichelsonScript[MichelsonExpression](_)))
-      val parametersAlter = originationLense.modify(_.map(_.map(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonCode])))
+      val scriptAlter = scriptLens.modify(_.bimap(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonSchema]))
+      val parametersAlter = parametersLens.modify(it => Micheline(toMichelsonScript[MichelsonExpression](it)))
 
-      (originationAlter compose parametersAlter)(block)
+      (scriptAlter compose parametersAlter)(block)
     }
 
     def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[OperationsGroup], List[AccountId])]] =
@@ -327,10 +327,13 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     }
   }
 
-  val UNPARSABLE_CODE_PLACEMENT = "Unparsable code"
+  val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
 
   private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any) = {
-    Some(json).collect { case t: String => convert[T](t) } match {
+    Some(json).collect {
+      case t: String => convert[T](t)
+      case t: Micheline => convert[T](t.expression)
+    } match {
       case Some(Right(value)) => value
       case Some(Left(t)) =>
         logger.error(s"Error during converting Michelson format: $json", t)

@@ -90,8 +90,8 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
     parse[MichelsonInstruction](json) should equal(Right(
       MichelsonInstructionSequence(List(
-        MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
-          MichelsonSimpleInstruction("DUP"))))))))
+        MichelsonComplexInstruction("DIP", List(MichelsonInstructionSequence(List(
+          MichelsonSimpleInstruction("DUP")))))))))
   }
 
   it should "parse MichelsonInstruction typed with int data" in {
@@ -117,7 +117,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
   it should "parse MichelsonInstruction typed with string data" in {
     val json =
-      """[{
+    """[{
         |  "prim": "PUSH",
         |  "args": [
         |    {
@@ -130,16 +130,93 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |}]""".stripMargin
 
     parse[MichelsonInstruction](json) should equal(Right(
+        MichelsonInstructionSequence(List(
+            MichelsonSimpleInstruction("PUSH", List(
+                MichelsonType("mutez"),
+                MichelsonStringConstant("0")))))))
+  }
+
+  it should "parse double embedded MichelsonInstruction" in {
+    val json =
+      """[
+        |  {
+        |    "prim": "IF_NONE",
+        |    "args": [
+        |      [
+        |        [
+        |          {
+        |            "prim": "UNIT"
+        |          },
+        |          {
+        |            "prim": "FAILWITH"
+        |          }
+        |        ]
+        |      ]
+        |    ]
+        |  }
+        |]""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("PUSH", List(
-          MichelsonType("mutez"),
-          MichelsonStringConstant("0")))))))
+        MichelsonComplexInstruction("IF_NONE", List(MichelsonInstructionSequence(List(
+          MichelsonInstructionSequence(List(
+            MichelsonSimpleInstruction("UNIT"),
+            MichelsonSimpleInstruction("FAILWITH")))))))))))
+  }
+
+  it should "parse empty MichelsonInstruction" in {
+    val json =
+      """[
+        |  {
+        |    "prim": "IF_NONE",
+        |    "args": [
+        |      [],
+        |      [
+        |        [
+        |          {
+        |            "prim": "UNIT"
+        |          },
+        |          {
+        |            "prim": "FAILWITH"
+        |          }
+        |        ]
+        |      ],
+        |      []
+        |    ]
+        |  }
+        |]""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonInstructionSequence(List(
+        MichelsonComplexInstruction("IF_NONE", List(
+          MichelsonEmptyInstruction, MichelsonInstructionSequence(List(
+            MichelsonInstructionSequence(List(
+              MichelsonSimpleInstruction("UNIT"),
+              MichelsonSimpleInstruction("FAILWITH"))))),
+          MichelsonEmptyInstruction))))))
+  }
+
+  it should "parse empty MichelsonInstruction when it appears alone" in {
+    val json =
+      """[
+        |  {
+        |    "prim": "IF_NONE",
+        |    "args": [
+        |      []
+        |    ]
+        |  }
+        |]""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonInstructionSequence(List(
+        MichelsonComplexInstruction("IF_NONE", List(
+          MichelsonEmptyInstruction))))))
   }
 
   it should "convert simplest json to MichelsonSchema" in {
 
     val json =
-      """[
+    """[
         |  {
         |    "prim": "parameter",
         |    "args": [
@@ -169,16 +246,16 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |]""".stripMargin
 
     parse[MichelsonSchema](json) should equal(Right(MichelsonSchema(
-      MichelsonType("int"),
-      MichelsonType("int"),
-      MichelsonCode(List(MichelsonSimpleInstruction("DUP"))))))
+        MichelsonType("int"),
+        MichelsonType("int"),
+        MichelsonCode(List(MichelsonSimpleInstruction("DUP"))))))
   }
 
   it should "parse MichelsonCode" in {
     val json = """[{"prim": "DUP"}]"""
 
     parse[MichelsonCode](json) should equal(Right(MichelsonCode(
-      List(MichelsonSimpleInstruction("DUP")))))
+        List(MichelsonSimpleInstruction("DUP")))))
   }
 
   it should "give meaningful error in case of json without parameter section" in {
@@ -348,36 +425,36 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |  ]""".stripMargin
 
     parse[MichelsonSchema](json) should equal(Right(MichelsonSchema(
-      MichelsonType("unit", List()),
+      MichelsonType("unit"),
       MichelsonType("contract", List(
         MichelsonType("or", List(
           MichelsonType("option", List(
-            MichelsonType("address", List()))),
+            MichelsonType("address"))),
           MichelsonType("or", List(
             MichelsonType("pair", List(
               MichelsonType("option", List(
-                MichelsonType("address", List()))),
+                MichelsonType("address"))),
               MichelsonType("option", List(
-                MichelsonType("mutez", List()))))),
+                MichelsonType("mutez"))))),
             MichelsonType("or", List(
-              MichelsonType("mutez", List()),
+              MichelsonType("mutez"),
               MichelsonType("or", List(
                 MichelsonType("pair", List(
                   MichelsonType("option", List(
-                    MichelsonType("address", List()))),
+                    MichelsonType("address"))),
                   MichelsonType("option", List(
-                    MichelsonType("mutez", List()))))),
-                MichelsonType("address", List()))))))))))),
+                    MichelsonType("mutez"))))),
+                MichelsonType("address"))))))))))),
       MichelsonCode(List(
         MichelsonSimpleInstruction("CDR"),
         MichelsonSimpleInstruction("DUP"),
         MichelsonSimpleInstruction("NIL", List(
           MichelsonType("operation"))),
         MichelsonInstructionSequence(List(
-          MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
-            MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
-              MichelsonSimpleInstruction("DUP")))),
-            MichelsonSimpleInstruction("SWAP")))),
+          MichelsonComplexInstruction("DIP", List(MichelsonInstructionSequence(List(
+            MichelsonComplexInstruction("DIP", List(MichelsonInstructionSequence(List(
+              MichelsonSimpleInstruction("DUP"))))),
+            MichelsonSimpleInstruction("SWAP"))))),
           MichelsonSimpleInstruction("SWAP"),
           MichelsonSimpleInstruction("NIL", List(
             MichelsonType("operation"))))))))))

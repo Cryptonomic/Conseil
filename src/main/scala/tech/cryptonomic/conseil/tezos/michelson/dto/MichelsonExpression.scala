@@ -25,7 +25,7 @@ sealed trait MichelsonExpression extends MichelsonElement
 case class MichelsonType(prim: String, args: List[MichelsonExpression] = List.empty) extends MichelsonExpression
 
 /* Class representing an int constant */
-case class MichelsonIntConstant(int: Int) extends MichelsonExpression
+case class MichelsonIntConstant(int: Long) extends MichelsonExpression
 
 /* Class representing a string constant */
 case class MichelsonStringConstant(string: String) extends MichelsonExpression
