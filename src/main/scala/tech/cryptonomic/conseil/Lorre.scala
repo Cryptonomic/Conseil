@@ -188,7 +188,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     * we should evaluate how to handle failed processing
     */
   def processTezosAccounts(): Future[Done] = {
-    logger.info("Processing latest Tezos accounts data... no estimate available.")
+    logger.info("Processing latest Tezos data for updated accounts...")
 
     def processAccountsPage(accountsInfo: Future[List[BlockAccounts]]): Future[Int] =
       accountsInfo.flatMap{
@@ -205,22 +205,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
     val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map {
       checkpoints =>
-      val (pages, total) = tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
-      val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
+        logger.info("I loaded all stored account references and will proceed to fetch updated information from the chain")
+        val (pages, total) = tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
+        val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
 
-        /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
-        * The size and partition of results is driven by the NodeOperator itself, were each page contains a
-        * "thunked" future of the result.
-        * Such future will be actually started only as the page iterator is scanned, one element at the time
-        */
-        pages.foldLeft(0) {
-        (processed, nextPage) =>
-          logProgress(processed + Await.result(processAccountsPage(nextPage), atMost = 5 minutes))
-      }
+          /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
+          * The size and partition of results is driven by the NodeOperator itself, were each page contains a
+          * "thunked" future of the result.
+          * Such future will be actually started only as the page iterator is scanned, one element at the time
+          */
+          pages.foldLeft(0) {
+          (processed, nextPage) =>
+            logProgress(processed + Await.result(processAccountsPage(nextPage), atMost = 5 minutes))
+        }
 
-      checkpoints
+        checkpoints
     }
 
+    logger.info("Selecting all accounts touched in the checkpoint table, this might take a while...")
     saveAccounts.andThen {
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
