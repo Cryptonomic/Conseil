@@ -38,7 +38,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   sys.addShutdownHook(shutdown())
 
   lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), batchingConf)
+  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), tezosConf.network, batchingConf)
 
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
@@ -109,7 +109,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   @tailrec
   def checkTezosConnection(): Unit = {
     Try {
-      Await.result(tezosNodeOperator.getBlockHead(tezosConf.network), lorreConf.bootupConnectionCheckTimeout)
+      Await.result(tezosNodeOperator.getBlockHead(), lorreConf.bootupConnectionCheckTimeout)
     } match {
       case Failure(e) =>
         logger.error("Could not make initial connection to Tezos", e)
@@ -133,9 +133,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     logger.info("Processing Tezos Blocks..")
 
     val blockPagesToSynchronize = tezosConf.depth match {
-      case Newest => tezosNodeOperator.getBlocksNotInDatabase(tezosConf.network)
-      case Everything => tezosNodeOperator.getLatestBlocks(tezosConf.network)
-      case Custom(n) => tezosNodeOperator.getLatestBlocks(tezosConf.network, Some(n))
+      case Newest => tezosNodeOperator.getBlocksNotInDatabase()
+      case Everything => tezosNodeOperator.getLatestBlocks()
+      case Custom(n) => tezosNodeOperator.getLatestBlocks(Some(n))
     }
 
     /* will store a single page of block results */
@@ -209,7 +209,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
 
     val saveAccounts = for {
       checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
-      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(tezosConf.network, checkpoints)
+      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(checkpoints)
       _ <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
     } yield checkpoints
 

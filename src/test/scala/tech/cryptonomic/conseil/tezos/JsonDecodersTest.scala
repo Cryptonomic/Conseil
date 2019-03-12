@@ -131,6 +131,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
+    "decode valid json base58check strings into a ProtocolId" in {
+      val decoded = decode[ProtocolId](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe ProtocolId(validB58Hash)
+    }
+
+    "fail to decode an invalid json base58check strings into a ProtocolId" in {
+      val decoded = decode[ProtocolId](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
     "decode valid json base58check strings into a ScriptId" in {
       val decoded = decode[ScriptId](jsonStringOf(validB58Hash))
       decoded.right.value shouldBe ScriptId(validB58Hash)
@@ -202,6 +212,26 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     "decode invalid json for BigNumber, not representing numbers, as the original string" in {
       val decoded = decode[BigNumber](jsonStringOf("1AA000000000"))
       decoded.right.value shouldBe InvalidDecimal("1AA000000000")
+    }
+
+    "decode all valid voting period kinds to an enumerated value" in {
+      val proposal = decode[ProposalPeriod.Kind](jsonStringOf("proposal"))
+      proposal shouldBe 'right
+      proposal.right.value shouldBe ProposalPeriod.proposal
+      val promotion_vote = decode[ProposalPeriod.Kind](jsonStringOf("promotion_vote"))
+      promotion_vote shouldBe 'right
+      promotion_vote.right.value shouldBe ProposalPeriod.promotion_vote
+      val testing_vote = decode[ProposalPeriod.Kind](jsonStringOf("testing_vote"))
+      testing_vote shouldBe 'right
+      testing_vote.right.value shouldBe ProposalPeriod.testing_vote
+      val testing = decode[ProposalPeriod.Kind](jsonStringOf("testing"))
+      testing shouldBe 'right
+      testing.right.value shouldBe ProposalPeriod.testing
+    }
+
+    "fail to decode an invalid string as a voting period kind" in {
+      val decoded = decode[ProposalPeriod.Kind](jsonStringOf("undefined_period"))
+      decoded shouldBe 'left
     }
 
     "decode valid json into a BigMapDiff value" in new OperationsJsonData {
