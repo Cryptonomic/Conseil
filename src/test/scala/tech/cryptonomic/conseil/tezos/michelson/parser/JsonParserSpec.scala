@@ -196,6 +196,24 @@ class JsonParserSpec extends FlatSpec with Matchers {
           MichelsonEmptyInstruction))))))
   }
 
+  it should "parse empty MichelsonExpression" in {
+    val json =
+      """{
+        |  "prim": "Pair",
+        |  "args": [
+        |    {
+        |      "int": "0"
+        |    },
+        |    []
+        |  ]
+        |}""".stripMargin
+
+    parse[MichelsonExpression](json) should equal(Right(
+      MichelsonType("Pair", List(
+        MichelsonIntConstant(0),
+        MichelsonEmptyExpression))))
+  }
+
   it should "parse empty MichelsonInstruction when it appears alone" in {
     val json =
       """[
@@ -261,13 +279,13 @@ class JsonParserSpec extends FlatSpec with Matchers {
   it should "give meaningful error in case of json without parameter section" in {
     val json = """[{"prim": "storage", "args": []}]"""
 
-    parse[MichelsonSchema](json) should equal(Left(ParserError("No type parameter found")))
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No expression parameter found")))
   }
 
   it should "give meaningful error in case of json without code section" in {
     val json = """[{"prim": "parameter", "args": [{"prim": "unit"}]}, {"prim": "storage", "args": [{"prim": "unit"}]}]"""
 
-    parse[MichelsonSchema](json) should equal(Left(ParserError("No expression code found")))
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No code code found")))
   }
 
   it should "convert complex json to MichelsonSchema" in {

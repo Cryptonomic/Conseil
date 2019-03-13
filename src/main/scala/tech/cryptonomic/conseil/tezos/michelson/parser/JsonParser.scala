@@ -70,6 +70,10 @@ object JsonParser {
     override def toMichelsonExpression = MichelsonStringConstant(string)
   }
 
+  case class JsonEmptyExpression() extends JsonExpression {
+    override def toMichelsonExpression: MichelsonExpression = MichelsonEmptyExpression
+  }
+
   /*
    * Wrapper for instruction
    *
@@ -117,7 +121,7 @@ object JsonParser {
           case it@JsonExpressionSection(`sectionName`, _) => it
         }
         .flatMap(_.toMichelsonExpression)
-        .toRight(ParserError(s"No type $sectionName found"))
+        .toRight(ParserError(s"No expression $sectionName found"))
     }
 
     private def extractCode(sectionName: String): Result[MichelsonCode] = {
@@ -125,22 +129,23 @@ object JsonParser {
         .collectFirst {
           case it@JsonCodeSection(`sectionName`, _) => it.toMichelsonCode
         }
-        .toRight(ParserError(s"No expression $sectionName found"))
+        .toRight(ParserError(s"No code $sectionName found"))
     }
   }
 
   object GenericDerivation {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
-        Decoder[JsonExpressionSection].widen,
         Decoder[JsonCodeSection].widen,
+        Decoder[JsonExpressionSection].widen
       ).reduceLeft(_ or _)
 
     implicit val decodeExpression: Decoder[JsonExpression] =
       List[Decoder[JsonExpression]](
         Decoder[JsonType].widen,
         Decoder[JsonIntConstant].widen,
-        Decoder[JsonStringConstant].widen
+        Decoder[JsonStringConstant].widen,
+        Decoder[JsonEmptyExpression].widen
       ).reduceLeft(_ or _)
 
     implicit val decodeInstruction: Decoder[JsonInstruction] = cursor => {

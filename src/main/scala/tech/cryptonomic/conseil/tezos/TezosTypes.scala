@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import monocle.Prism
+import monocle.{Prism, Traversal}
 import monocle.function.all._
 import monocle.macros.GenLens
 import monocle.std.option._
@@ -14,14 +14,32 @@ object TezosTypes {
     private val operationGroups = GenLens[Block](_.operationGroups)
     private val operations = GenLens[OperationsGroup](_.contents)
 
-    val origination = Prism.partial[Operation, Origination]{case it: Origination => it}(_.asInstanceOf[Operation])
-    val transaction = Prism.partial[Operation, Transaction]{case it: Transaction => it}(_.asInstanceOf[Operation])
+    private val origination = Prism.partial[Operation, Origination]{case it: Origination => it}(identity)
+    private val transaction = Prism.partial[Operation, Transaction]{case it: Transaction => it}(identity)
 
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    val scriptLens = operationGroups composeTraversal each composeLens operations composeTraversal each composePrism origination composeLens script composePrism some
-    val parametersLens = operationGroups composeTraversal each composeLens operations composeTraversal each composePrism transaction composeLens parameters composePrism some
+    private val storage = GenLens[Scripted.Contracts](_.storage)
+    private val code = GenLens[Scripted.Contracts](_.code)
+
+    private val string = GenLens[Micheline](_.expression)
+
+    private val scriptLens: Traversal[Block, Scripted.Contracts] =
+      operationGroups composeTraversal each composeLens
+        operations composeTraversal each composePrism
+        origination composeLens
+        script composePrism some
+
+    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens string
+    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens string
+
+    val parametersLens: Traversal[Block, String] =
+      operationGroups composeTraversal each composeLens
+        operations composeTraversal each composePrism
+        transaction composeLens
+        parameters composePrism some composeLens
+        string
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
@@ -108,11 +126,7 @@ object TezosTypes {
     final case class Contracts(
       storage: Micheline,
       code: Micheline
-    ) {
-      // modify object using various functions for storage and for code
-      def bimap(storageFunction: String => String, codeFunction: String => String): Contracts =
-        copy(storage = Micheline(storageFunction(storage.expression)), code = Micheline(codeFunction(code.expression)))
-    }
+    )
   }
 
   /** root of the operation hiearchy */

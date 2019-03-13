@@ -7,16 +7,20 @@ object MichelsonRenderer {
 
   implicit class MichelsonElementRenderer(val self: MichelsonElement) {
     def render(): String = self match {
+
+      // instructions
       case MichelsonSimpleInstruction(prim, List()) => prim
       case MichelsonSimpleInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
       case MichelsonComplexInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
       case MichelsonInstructionSequence(args) => s"{ ${args.map(_.render()).mkString(" ; ")} }"
       case MichelsonEmptyInstruction => "{}"
 
+      // expressions
       case MichelsonType(name, List()) => name
       case MichelsonType(name, args) => s"($name ${args.map(_.render()).mkString(" ")})"
       case MichelsonIntConstant(constant) => constant.toString
-      case MichelsonStringConstant(constant) => constant
+      case MichelsonStringConstant(constant) => "\"%s\"".format(constant)
+      case MichelsonEmptyExpression => "{}"
 
       case MichelsonCode(instructions) => instructions.map(_.render()).mkString(" ;\n       ")
 

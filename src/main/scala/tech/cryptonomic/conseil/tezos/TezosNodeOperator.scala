@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.{parametersLens, scriptLens}
+import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
@@ -298,10 +298,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
     val isGenesis = (data: BlockData) => data.header.level == 0
 
     def parseMichelsonScripts(block: Block): Block = {
-      val scriptAlter = scriptLens.modify(_.bimap(toMichelsonScript[MichelsonExpression], toMichelsonScript[MichelsonSchema]))
-      val parametersAlter = parametersLens.modify(it => Micheline(toMichelsonScript[MichelsonExpression](it)))
+      val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
+      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonExpression])
 
-      (scriptAlter compose parametersAlter)(block)
+      (codeAlter compose storageAlter compose parametersAlter)(block)
     }
 
     def decodeOperations(in: List[(BlockHash, String)]): Future[List[(BlockHash, List[OperationsGroup], List[AccountId])]] =
@@ -337,10 +338,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, batchConf: BatchFetchConfig
       case Some(Right(value)) => value
       case Some(Left(t)) =>
         logger.error(s"Error during converting Michelson format: $json", t)
-        UNPARSABLE_CODE_PLACEMENT
+        UNPARSABLE_CODE_PLACEMENT + json
       case _ =>
         logger.error(s"Error during converting Michelson format: $json")
-        UNPARSABLE_CODE_PLACEMENT
+        UNPARSABLE_CODE_PLACEMENT + json
     }
   }
 }

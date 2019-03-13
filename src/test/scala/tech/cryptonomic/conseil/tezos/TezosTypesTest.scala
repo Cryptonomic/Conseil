@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.time.ZonedDateTime
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses.{parametersLens, scriptLens}
+import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
@@ -39,21 +39,32 @@ class TezosTypesTest extends WordSpec with Matchers {
     val block = Block(blockData, List(operationGroup.copy(contents = List(origination, transaction.copy(parameters = Some(Micheline("micheline script")))))))
 
     // when
-    val result = parametersLens.modify(_ => Micheline("new micheline script"))(block)
+    val result = parametersLens.modify(_.toUpperCase)(block)
 
     //then
-    result.operationGroups.flatMap(_.contents).collect { case it: Transaction => it }.head.parameters.head.expression should equal("new micheline script")
+    result.operationGroups.flatMap(_.contents).collect { case it: Transaction => it }.head.parameters.head.expression should equal("MICHELINE SCRIPT")
   }
 
-  "should modify origination with monocle's lenses" in {
+  "should modify storage with monocle's lenses" in {
     // given
     val block = Block(blockData, List(operationGroup.copy(contents = List(origination.copy(script = Some(Contracts(Micheline("eXpR1"), Micheline("eXpR2")))), transaction))))
 
     // when
-    val result = scriptLens.modify(_.bimap(_.toUpperCase, _.toLowerCase))(block)
+    val result = storageLens.modify(_.toUpperCase)(block)
 
     //then
-    result.operationGroups.flatMap(_.contents).collect { case it: Origination => it }.head.script.head should equal(Contracts(Micheline("EXPR1"), Micheline("expr2")))
+    result.operationGroups.flatMap(_.contents).collect { case it: Origination => it }.head.script.head should equal(Contracts(Micheline("EXPR1"), Micheline("eXpR2")))
+  }
+
+  "should modify code with monocle's lenses" in {
+    // given
+    val block = Block(blockData, List(operationGroup.copy(contents = List(origination.copy(script = Some(Contracts(Micheline("eXpR1"), Micheline("eXpR2")))), transaction))))
+
+    // when
+    val result = codeLens.modify(_.toLowerCase)(block)
+
+    //then
+    result.operationGroups.flatMap(_.contents).collect { case it: Origination => it }.head.script.head should equal(Contracts(Micheline("eXpR1"), Micheline("expr2")))
   }
 
   private val blockAccounts = BlockAccounts(BlockHash("_"), 0, Map.empty)

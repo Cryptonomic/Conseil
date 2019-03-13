@@ -23,7 +23,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
   }
 
   it should "render MichelsonType with string constant" in {
-    MichelsonType("some", List(MichelsonStringConstant("testValue"))).render() shouldBe "(some testValue)"
+    MichelsonType("some", List(MichelsonStringConstant("testValue"))).render() shouldBe "(some \"testValue\")"
   }
 
   it should "render complex MichelsonType" in {
