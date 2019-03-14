@@ -67,6 +67,8 @@ object TezosTypes {
 
   final case class ChainId(id: String) extends AnyVal
 
+  final case class ProtocolId(id: String) extends AnyVal
+
   final case class Nonce(value: String) extends AnyVal
 
   final case class Secret(value: String) extends AnyVal
@@ -328,9 +330,25 @@ object TezosTypes {
                     accounts: Map[AccountId, Account] = Map.empty
                   )
 
+  object ProposalPeriod extends Enumeration {
+    type Kind = Value
+    val proposal, promotion_vote, testing_vote, testing = Value
+  }
+
+  final case class CurrentVotes(
+    periodKind: ProposalPeriod.Kind,
+    quorum: Option[Int],
+    active: Option[ProtocolId]
+  )
+
+  final object CurrentVotes {
+    val defaultValue = CurrentVotes(periodKind = ProposalPeriod.proposal, quorum = None, active = None)
+  }
+
   final case class Block(
                     data: BlockData,
-                    operationGroups: List[OperationsGroup]
+                    operationGroups: List[OperationsGroup],
+                    votes: CurrentVotes
                   )
 
   final case class ManagerKey(

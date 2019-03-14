@@ -97,6 +97,9 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
+              row.periodKind.value shouldEqual block.votes.periodKind.toString
+              row.currentExpectedQuorum shouldEqual block.votes.quorum
+              row.activeProposal shouldEqual block.votes.active.map(_.id)
           }
 
           val dbBlocksAndGroups =
@@ -761,7 +764,10 @@ class TezosDatabaseOperationsTest
           "protocol" -> Some("protocol"),
           "predecessor" -> Some("genesis"),
           "chain_id" -> Some("YLBMy"),
-          "level" -> Some(0)
+          "level" -> Some(0),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -775,7 +781,10 @@ class TezosDatabaseOperationsTest
           "protocol" -> Some("protocol"),
           "predecessor" -> Some("R0NpYZuUeF"),
           "chain_id" -> Some("YLBMy"),
-          "level" -> Some(1)
+          "level" -> Some(1),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None
         )
       )
     }

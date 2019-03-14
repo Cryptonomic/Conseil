@@ -2,7 +2,40 @@ package tech.cryptonomic.conseil.tezos
 
 object TezosResponseBuilder {
 
-  val blockResponse: String =
+  val votesPeriodKind = """ "proposal" """.trim
+  val votesQuorum = "1000"
+  val votesProposal = "null"
+
+  val genesisBlockResponse: String =
+    """{
+      "chain_id": "NetXgtSLGNJvNye",
+      "hash": "BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe",
+      "header": {
+          "context": "CoVfFHwx43W4TR88ZDuGGHdp5HP2Ak83m2nQKftSTc8AjmXdUV4b",
+          "fitness": [],
+          "level": 0,
+          "operations_hash": "LLoZS2LW3rEi7KYU4ouBQtorua37aWWCtpDmv1n2x3xoKi6sVXLWp",
+          "predecessor": "BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe",
+          "proto": 0,
+          "timestamp": "2018-11-30T15:30:56Z",
+          "validation_pass": 0
+      },
+      "metadata": {
+          "max_block_header_length": 105,
+          "max_operation_data_length": 0,
+          "max_operation_list_length": [],
+          "max_operations_ttl": 0,
+          "next_protocol": "Ps6mwMrF2ER2s51cp9yYpjDcuzQjsc2yAz8bQsRgdaRxw4Fk95H",
+          "protocol": "PrihK96nBAFSxVL1GLJTVhu9YnzkMFiBeuJRPA8NwuZVZCE1L6i",
+          "test_chain_status": {
+              "status": "not_running"
+          }
+      },
+      "operations": [],
+      "protocol": "PrihK96nBAFSxVL1GLJTVhu9YnzkMFiBeuJRPA8NwuZVZCE1L6i"
+    }"""
+
+    val blockResponse: String =
     """{
       "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
       "chain_id": "NetXSzLHKwSumh7",
@@ -298,7 +331,7 @@ object TezosResponseBuilder {
          ]
        ]"""
 
-  val batchedGetQueryResponse: String =
+  val batchedGetBlockQueryResponse: String =
     """{
         "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
         "chain_id": "NetXSzLHKwSumh7",
@@ -690,7 +723,7 @@ object TezosResponseBuilder {
         ]
       }"""
 
-  val batchedGetQuerySecondCallResponse: String =
+  val batchedGetOperationsQueryResponse: String =
     """[
         [
           {
