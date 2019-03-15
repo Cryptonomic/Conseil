@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import monocle.Optional
 import monocle.macros.GenLens
 import monocle.function.all._
-import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
 
 /**
   * Classes used for deserializing Tezos node RPC results.
