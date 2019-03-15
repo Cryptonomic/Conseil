@@ -5,8 +5,9 @@ package tech.cryptonomic.conseil.tezos.michelson.dto
  *
  * Example:
  *
- *   { DIP { DIP { DUP } ; NIL operation } ; SWAP }
- *   | |   | |     |       |                 |
+ *   { DIP { DIP { DUP } ; NIL operation } ; SWAP ; {} }
+ *   | |   | |     |       |                 |      |
+ *   | |   | |     |       |                 |      MichelsonEmptyInstruction
  *   | |   | |     |       |                 MichelsonSimpleInstruction (not typed)
  *   | |   | |     |       MichelsonSimpleInstruction (with type "operation")
  *   | |   | |     MichelsonSimpleInstruction (not typed)
@@ -21,7 +22,10 @@ sealed trait MichelsonInstruction extends MichelsonElement
 case class MichelsonSimpleInstruction(prim: String, michelsonExpressions: List[MichelsonExpression] = List.empty) extends MichelsonInstruction
 
 /* Class representing a Michelson instruction with other embedded instructions */
-case class MichelsonComplexInstruction(prim: String, embeddedOperations: MichelsonInstructionSequence) extends MichelsonInstruction
+case class MichelsonComplexInstruction(prim: String, embeddedOperations: List[MichelsonInstruction] = List.empty) extends MichelsonInstruction
 
 /* Class representing a sequence of Michelson instructions */
-case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction]) extends MichelsonInstruction
+case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty) extends MichelsonInstruction
+
+/* Class representing an empty Michelson instruction */
+case object MichelsonEmptyInstruction extends MichelsonInstruction

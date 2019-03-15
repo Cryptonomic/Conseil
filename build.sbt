@@ -29,7 +29,7 @@ libraryDependencies  ++=  Seq(
   "de.heikoseeberger"               %% "akka-http-jackson"         % "1.22.0",
   "ch.megard"                       %% "akka-http-cors"            % "0.3.0",
   "org.scalaj"                      %% "scalaj-http"               % "2.3.0",
-  "com.github.pureconfig"           %% "pureconfig"                % "0.10.1",
+  "com.github.pureconfig"           %% "pureconfig"                % "0.10.2",
   "com.fasterxml.jackson.core"       % "jackson-databind"          % "2.9.0",
   "com.fasterxml.jackson.module"    %% "jackson-module-scala"      % "2.9.0",
   "org.typelevel"                   %% "cats-core"                 % catsVersion,

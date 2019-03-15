@@ -3,10 +3,9 @@ package tech.cryptonomic.conseil.tezos
 import java.time.ZonedDateTime
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.tezos.TezosTypes._
-import TezosTypes.Lenses.parametersLense
-import TezosTypes.Lenses.originationLense
+import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 class TezosTypesTest extends WordSpec with Matchers {
 
@@ -43,19 +42,19 @@ class TezosTypesTest extends WordSpec with Matchers {
     val block = Block(blockData, modifiedOperations, blockVotes)
 
     // when
-    val result = parametersLense.modify(_.map(_ => Micheline("new micheline script")))(block)
+    val result = parametersLens.modify(_.toUpperCase)(block)
 
-    //then
+    // then
     import org.scalatest.Inspectors._
 
     forAll(result.operationGroups.flatMap(_.contents)) {
-      case op :Transaction =>
-        op.parameters.head.expression shouldEqual "new micheline script"
+      case op: Transaction =>
+        op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
       case _ =>
     }
   }
 
-  "should modify origination with monocle's lenses" in {
+  "should modify storage with monocle's lenses" in {
     // given
     val modifiedOrigination = origination.copy(script = Some(Contracts(storage = Micheline("eXpR1"), code = Micheline("eXpR2"))))
     val modifiedOperations = List(operationGroup.copy(contents = modifiedOrigination :: transaction :: Nil))
@@ -63,14 +62,34 @@ class TezosTypesTest extends WordSpec with Matchers {
     val block = Block(blockData, modifiedOperations, blockVotes)
 
     // when
-    val result = originationLense.modify(_.map(_.map(it => it.toUpperCase, it => it.toLowerCase)))(block)
+    val result = storageLens.modify(_.toUpperCase)(block)
 
     //then
     import org.scalatest.Inspectors._
 
     forAll(result.operationGroups.flatMap(_.contents)) {
       case op: Origination =>
-        op.script.head shouldEqual Contracts("EXPR1", "expr2")
+        op.script.head shouldEqual Contracts(Micheline("EXPR1"), Micheline("eXpR2"))
+      case _ =>
+    }
+  }
+
+  "should modify code with monocle's lenses" in {
+    // given
+    val modifiedOrigination = origination.copy(script = Some(Contracts(storage = Micheline("eXpR1"), code = Micheline("eXpR2"))))
+    val modifiedOperations = List(operationGroup.copy(contents = modifiedOrigination :: transaction :: Nil))
+
+    val block = Block(blockData, modifiedOperations, blockVotes)
+
+    // when
+    val result = codeLens.modify(_.toLowerCase)(block)
+
+    //then
+    import org.scalatest.Inspectors._
+
+    forAll(result.operationGroups.flatMap(_.contents)) {
+      case op: Origination =>
+        op.script.head shouldEqual Contracts(Micheline("eXpR1"), Micheline("expr2"))
       case _ =>
     }
   }
