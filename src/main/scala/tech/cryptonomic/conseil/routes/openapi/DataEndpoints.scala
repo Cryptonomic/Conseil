@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, ApiQuery, QueryResponse, QueryValidationError}
+import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
@@ -18,17 +18,14 @@ trait DataEndpoints
   /** Common path among endpoints */
   private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
 
-  private def compatibilityQuery[A: JsonResponse](endpointName: String): Response[Option[A]] =
-    jsonResponse[A](docs = Some(s"Query compatibility endpoint for $endpointName")).orNotFound(Some("Not Found"))
-
   /** V2 Query endpoint definition */
-  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], List[QueryResponse]]]] =
+  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], QueryResponseWithOutput]]] =
     endpoint(
       request = post(url = commonPath / segment[String](name = "entity"),
         entity = jsonRequest[ApiQuery](),
         headers = header("apiKey")),
       response = validated(
-        response = jsonResponse[List[QueryResponse]](docs = Some("Query endpoint")),
+        response = jsonResponse[QueryResponseWithOutput](docs = Some("Query endpoint")),
         invalidDocs = Some("Can't query - invalid entity!")
       ).orNotFound(Some("Not found")),
       tags = List("Query")
@@ -113,6 +110,10 @@ trait DataEndpoints
       response = compatibilityQuery[AverageFees]("average fees"),
       tags = List("Fees")
     )
+
+  /** Common method for compatibility queries */
+  private def compatibilityQuery[A: JsonResponse](endpointName: String): Response[Option[A]] =
+    jsonResponse[A](docs = Some(s"Query compatibility endpoint for $endpointName")).orNotFound(Some("Not Found"))
 
   /** V2 Operations endpoint definition */
   def operationsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
