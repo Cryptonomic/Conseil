@@ -36,6 +36,16 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidPositiveDecimal("1000A")) shouldBe 'empty
     }
 
+    "correctly convert a bignumber from tezos models to a BigDecimal value" in {
+      sut.extractBigDecimal(Decimal(1000)).value shouldBe BigDecimal(1000)
+      sut.extractBigDecimal(Decimal(0)).value shouldBe BigDecimal(0)
+      sut.extractBigDecimal(Decimal(-1000)).value shouldBe BigDecimal(-1000)
+    }
+
+    "give no result when converting invalid bignumbers from tezos models to a BigDecimal value" in {
+      sut.extractBigDecimal(InvalidDecimal("1000A")) shouldBe 'empty
+    }
+
     "convert Balance Updates in BlockData to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
