@@ -86,7 +86,10 @@ CREATE TABLE public.blocks (
     protocol character varying NOT NULL,
     chain_id character varying,
     hash character varying NOT NULL,
-    operations_hash character varying
+    operations_hash character varying,
+    period_kind character varying,
+    current_expected_quorum integer,
+    active_proposal character varying
 );
 
 
