@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil
 import akka.actor.ActorSystem
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.MainOutputs.LorreOutput
+import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}

@@ -1,6 +1,7 @@
-package tech.cryptonomic.conseil
+package tech.cryptonomic.conseil.io
 
 import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil.BuildInfo
 import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.config.Platforms._
 

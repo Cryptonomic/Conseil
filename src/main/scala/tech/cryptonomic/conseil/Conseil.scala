@@ -9,7 +9,7 @@ import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import tech.cryptonomic.conseil.MainOutputs.ConseilOutput
+import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.routes._
