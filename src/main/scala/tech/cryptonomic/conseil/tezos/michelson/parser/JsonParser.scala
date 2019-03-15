@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos.michelson.parser
 
 import io.circe.parser.decode
 import cats.syntax.functor._
-import io.circe.{HCursor, _}
+import io.circe._
 import io.circe.generic.auto._
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
 
@@ -152,14 +152,13 @@ object JsonParser {
         Decoder[JsonStringConstant].widen
       ).reduceLeft(_ or _)
 
-    private def isSequence = (_: HCursor).downArray.succeeded
+    val decodeInstructionSequence: Decoder[JsonInstructionSequence] = _.as[List[JsonInstruction]].map(JsonInstructionSequence)
 
-    implicit val decodeInstruction: Decoder[JsonInstruction] = cursor => {
-      if (isSequence(cursor))
-        cursor.as[List[JsonInstruction]].map(JsonInstructionSequence)
-      else
-        cursor.as[JsonSimpleInstruction]
-    }
+    implicit val decodeInstruction: Decoder[JsonInstruction] =
+      List[Decoder[JsonInstruction]](
+        decodeInstructionSequence.widen,
+        Decoder[JsonSimpleInstruction].widen
+      ).reduceLeft(_ or _)
 
     implicit def decodeEither[A,B](implicit a: Decoder[A], b: Decoder[B]): Decoder[Either[A,B]] = {
       val left: Decoder[Either[A,B]]= a.map(Left.apply)
