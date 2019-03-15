@@ -17,7 +17,6 @@ object JsonParser {
    * |         JsonTypeSection                JsonType JsonTypeSection              JsonType ExpressionSection          JsonInstruction
    * JsonDocument
    *
-   *
    * We can distinguish which JsonSection it is by looking at its args. JsonTypeSection contains a single sequence, since
    * JsonExpressionSection contains an embedded one.
    *
@@ -45,9 +44,21 @@ object JsonParser {
    * |                         single type "int"
    * type "pair" with two arguments
    *
+   * {"prim": "pair", "args": [{"prim": "int"}, []]}
+   * |                         |                |
+   * |                         |                empty expression
+   * |                         single type "int"
+   * type "pair" with two arguments
+   *
+   * Empty expression is represented as an empty array in JSON. In code is represented as List[String] as a workaround
+   * because circe doesn't support List[Nothing]
+   *
    * */
-  case class JsonType(prim: String, args: Option[List[JsonExpression]]) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonType(prim, args.getOrElse(List.empty).map(_.toMichelsonExpression))
+  case class JsonType(prim: String, args: Option[List[Either[JsonExpression, List[String]]]]) extends JsonExpression {
+    override def toMichelsonExpression = MichelsonType(prim, args.getOrElse(List.empty).map {
+      case Left(it) => it.toMichelsonExpression
+      case Right(_) => MichelsonEmptyExpression
+    })
   }
 
   /*
@@ -70,10 +81,6 @@ object JsonParser {
     override def toMichelsonExpression = MichelsonStringConstant(string)
   }
 
-  case class JsonEmptyExpression() extends JsonExpression {
-    override def toMichelsonExpression: MichelsonExpression = MichelsonEmptyExpression
-  }
-
   /*
    * Wrapper for instruction
    *
@@ -89,15 +96,13 @@ object JsonParser {
     def toMichelsonInstruction: MichelsonInstruction
   }
 
-  case class JsonSimpleInstruction(prim: String, args: Option[List[JsonExpression]] = None) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonSimpleInstruction(prim, args.map(_.map(_.toMichelsonExpression)).getOrElse(List.empty))
-  }
-
-  case class JsonComplexInstruction(prim: String, args: List[List[JsonInstruction]]) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonComplexInstruction(prim, args.map {
-      case Nil => MichelsonEmptyInstruction
-      case it => MichelsonInstructionSequence(it.map(_.toMichelsonInstruction))
-    })
+  case class JsonSimpleInstruction(prim: String, args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None) extends JsonInstruction {
+    override def toMichelsonInstruction = MichelsonSimpleInstruction(prim, args.getOrElse(List.empty)
+      .map {
+        case Left(it) => it.toMichelsonExpression
+        case Right(Nil) => MichelsonEmptyInstruction
+        case Right(it) => MichelsonInstructionSequence(it.map(_.toMichelsonInstruction))
+      })
   }
 
   case class JsonInstructionSequence(instructions: List[JsonInstruction]) extends JsonInstruction {
@@ -144,21 +149,22 @@ object JsonParser {
       List[Decoder[JsonExpression]](
         Decoder[JsonType].widen,
         Decoder[JsonIntConstant].widen,
-        Decoder[JsonStringConstant].widen,
-        Decoder[JsonEmptyExpression].widen
+        Decoder[JsonStringConstant].widen
       ).reduceLeft(_ or _)
 
-    implicit val decodeInstruction: Decoder[JsonInstruction] = cursor => {
-      lazy val isSequence = (_: HCursor).downArray.succeeded
-      lazy val isEmptyArray = (_: Json).asArray.exists(_.isEmpty)
-      lazy val isComplexInstruction = (_: HCursor).downField("args").downArray.find(it => isSequence(it.hcursor) || isEmptyArray(it)).succeeded
+    private def isSequence = (_: HCursor).downArray.succeeded
 
+    implicit val decodeInstruction: Decoder[JsonInstruction] = cursor => {
       if (isSequence(cursor))
         cursor.as[List[JsonInstruction]].map(JsonInstructionSequence)
-      else if (isComplexInstruction(cursor))
-        cursor.as[JsonComplexInstruction]
       else
         cursor.as[JsonSimpleInstruction]
+    }
+
+    implicit def decodeEither[A,B](implicit a: Decoder[A], b: Decoder[B]): Decoder[Either[A,B]] = {
+      val left: Decoder[Either[A,B]]= a.map(Left.apply)
+      val right: Decoder[Either[A,B]]= b.map(Right.apply)
+      left or right
     }
   }
 
@@ -171,19 +177,19 @@ object JsonParser {
     decode[JsonInstruction](_).map(_.toMichelsonInstruction)
   }
 
-  implicit val michelsonExpressionParser: Parser[MichelsonExpression] = (json: String) => {
+  implicit val michelsonExpressionParser: Parser[MichelsonExpression] = {
     import GenericDerivation._
-    decode[JsonExpression](json).map(_.toMichelsonExpression)
+    decode[JsonExpression](_).map(_.toMichelsonExpression)
   }
 
-  implicit val michelsonSchemaParser: Parser[MichelsonSchema] = (json: String) => {
+  implicit val michelsonSchemaParser: Parser[MichelsonSchema] = {
     import GenericDerivation._
-    decode[List[JsonSection]](json).map(JsonSchema).flatMap(_.toMichelsonSchema)
+    decode[List[JsonSection]](_).map(JsonSchema).flatMap(_.toMichelsonSchema)
   }
 
-  implicit val michelsonCodeParser: Parser[MichelsonCode] = (json: String) => {
+  implicit val michelsonCodeParser: Parser[MichelsonCode] = {
     import GenericDerivation._
-    decode[List[JsonInstruction]](json).map(instructions => MichelsonCode(instructions.map(_.toMichelsonInstruction)))
+    decode[List[JsonInstruction]](_).map(instructions => MichelsonCode(instructions.map(_.toMichelsonInstruction)))
   }
 
   /* Parses Michelson Expression represented as JSON to domain objects */

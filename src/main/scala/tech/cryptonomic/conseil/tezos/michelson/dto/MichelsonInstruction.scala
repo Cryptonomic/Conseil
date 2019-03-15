@@ -14,15 +14,12 @@ package tech.cryptonomic.conseil.tezos.michelson.dto
  *   | |   | MichelsonComplexInstruction (with embedded "DUP" instruction as a one element List)
  *   | |   MichelsonInstructionSequence (containing a complex instruction "DIP { ... }" and a simple one "NIL operation" separated with ";")
  *   | MichelsonComplexInstruction (with embedded MichelsonInstructionSequence as above)
- *   MichelsonInstructionSequence (with two instructions separated with ";": "DIP { ... }" and "SWAP")
+ *   MichelsonInstructionSequence (with three instructions separated with ";": "DIP { ... }", "SWAP" and empty instruction)
  * */
 sealed trait MichelsonInstruction extends MichelsonElement
 
 /* Class representing a simple Michelson instruction which can contains following expressions */
-case class MichelsonSimpleInstruction(prim: String, michelsonExpressions: List[MichelsonExpression] = List.empty) extends MichelsonInstruction
-
-/* Class representing a Michelson instruction with other embedded instructions */
-case class MichelsonComplexInstruction(prim: String, embeddedOperations: List[MichelsonInstruction] = List.empty) extends MichelsonInstruction
+case class MichelsonSimpleInstruction(prim: String, embeddedElements: List[MichelsonElement] = List.empty) extends MichelsonInstruction
 
 /* Class representing a sequence of Michelson instructions */
 case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty) extends MichelsonInstruction

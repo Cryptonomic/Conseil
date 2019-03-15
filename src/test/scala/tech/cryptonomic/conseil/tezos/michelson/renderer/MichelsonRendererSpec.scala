@@ -72,7 +72,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
   it should "render MichelsonCode with complex instruction" in {
     val michelsonCode = MichelsonCode(List(
       MichelsonInstructionSequence(List(
-        MichelsonComplexInstruction("DIP", List(MichelsonInstructionSequence(List(
+        MichelsonSimpleInstruction("DIP", List(MichelsonInstructionSequence(List(
           MichelsonSimpleInstruction("DUP")))))))))
 
     michelsonCode.render() shouldBe "{ DIP { DUP } }"
@@ -80,7 +80,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
 
   it should "render MichelsonInstruction with empty embedded instruction" in {
     val michelsonInstruction = MichelsonInstructionSequence(List(
-      MichelsonComplexInstruction("IF_NONE", List(
+      MichelsonSimpleInstruction("IF_NONE", List(
         MichelsonInstructionSequence(List(
           MichelsonInstructionSequence(List(
             MichelsonSimpleInstruction("UNIT"),
@@ -97,17 +97,17 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
       MichelsonSimpleInstruction("NIL", List(
         MichelsonType("operation"))),
       MichelsonInstructionSequence(List(
-        MichelsonComplexInstruction("DIP", List(
+        MichelsonSimpleInstruction("DIP", List(
           MichelsonInstructionSequence(List(
-            MichelsonComplexInstruction("DIP", List(
+            MichelsonSimpleInstruction("DIP", List(
               MichelsonInstructionSequence(List(
                 MichelsonSimpleInstruction("DUP"))))),
             MichelsonSimpleInstruction("SWAP"))))),
         MichelsonSimpleInstruction("SWAP"))),
       MichelsonInstructionSequence(List(
-        MichelsonComplexInstruction("DIP", List(
+        MichelsonSimpleInstruction("DIP", List(
           MichelsonInstructionSequence(List(
-            MichelsonComplexInstruction("DIP", List(MichelsonInstructionSequence(List(
+            MichelsonSimpleInstruction("DIP", List(MichelsonInstructionSequence(List(
               MichelsonSimpleInstruction("DUP"))))),
             MichelsonSimpleInstruction("NIL", List(
               MichelsonType("operation"))))))),

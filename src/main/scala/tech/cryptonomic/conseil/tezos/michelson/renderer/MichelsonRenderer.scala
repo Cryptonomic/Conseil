@@ -11,7 +11,6 @@ object MichelsonRenderer {
       // instructions
       case MichelsonSimpleInstruction(prim, List()) => prim
       case MichelsonSimpleInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
-      case MichelsonComplexInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
       case MichelsonInstructionSequence(args) => s"{ ${args.map(_.render()).mkString(" ; ")} }"
       case MichelsonEmptyInstruction => "{}"
 
