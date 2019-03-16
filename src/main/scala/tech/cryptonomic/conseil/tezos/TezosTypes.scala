@@ -385,4 +385,13 @@ object TezosTypes {
 
   final case class MichelsonExpression(prim: String, args: List[String])
 
+  object Voting {
+
+    final case class Vote(value: String) extends AnyVal
+    final case class Proposal(protocols: List[ProtocolId], block: Block)
+    final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
+    final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
+  }
+
+
 }

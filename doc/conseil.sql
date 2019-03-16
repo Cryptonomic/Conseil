@@ -186,6 +186,41 @@ CREATE TABLE public.accounts_checkpoint (
 
 
 --
+-- Name: proposals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.proposals (
+    protocol_hash character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
+);
+
+
+--
+-- Name: bakers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bakers (
+    pkh character varying NOT NULL,
+    rolls integer NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
+);
+
+
+--
+-- Name: ballots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ballots (
+    pkh character varying NOT NULL,
+    ballot character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
+);
+
+
+--
 -- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -329,6 +364,13 @@ CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint USING btree (block_level);
 
 --
+-- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_proposals_protocol ON public.proposals USING btree (protocol_hash);
+
+
+--
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -336,11 +378,39 @@ ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 --
--- Name: accounts checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts_checkpoint
     ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+
+--
+-- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.proposals
+    ADD CONSTRAINT proposal_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+
+
+--
+-- Name: bakers baker_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bakers
+    ADD CONSTRAINT baker_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+
+
+
+--
+-- Name: ballots ballot_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ballots
+    ADD CONSTRAINT ballot_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
 
 --
 -- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -

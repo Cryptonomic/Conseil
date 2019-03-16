@@ -172,6 +172,21 @@ object TezosDatabaseOperations extends LazyLogging {
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates)).transactionally
   }
 
+  /** Writes proposals to the database*/
+  def writeVotingProposals(proposals: List[Voting.Proposal]): DBIO[Option[Int]] = {
+    Tables.Proposals ++= proposals.flatMap(_.convertToA[List, Tables.ProposalsRow])
+  }
+
+  /** Writes bakers to the database*/
+  def writeVotingBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
+    Tables.Bakers ++= (block, bakers).convertToA[List, Tables.BakersRow]
+  }
+
+  /** Writes ballots to the database*/
+  def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
+    Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
+  }
+
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind                 Operation kind

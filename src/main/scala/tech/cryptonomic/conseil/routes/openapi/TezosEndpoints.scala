@@ -1,21 +1,17 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
-import tech.cryptonomic
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
-import tech.cryptonomic.conseil.tezos
-import tech.cryptonomic.conseil.tezos.{ApiOperations, Tables}
-import tech.cryptonomic.conseil.tezos.DBTableMapping.Operation
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
 trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilterFromQueryString with algebra.JsonSchemaEntities {
 
   private val commonPath = path / "tezos" / segment[String](name = "network")
 
   /** Blocks endpoint definition */
-  def blocksEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[Tables.BlocksRow]] =
+  def blocksEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[BlocksRow]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" /? qsFilter,
@@ -25,7 +21,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Blocks head endpoint definition */
-  def blocksHeadEndpointV1: Endpoint[(String, String), Option[tezos.Tables.BlocksRow]] =
+  def blocksHeadEndpointV1: Endpoint[(String, String), Option[BlocksRow]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" / "head",
@@ -45,7 +41,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Accounts endpoint definition */
-  def accountsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[conseil.tezos.Tables.AccountsRow]] =
+  def accountsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[AccountsRow]] =
     endpoint(
       request = get(
         url = commonPath / "accounts" /? qsFilter,
@@ -65,7 +61,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Operation group endpoint definition */
-  def operationGroupsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[cryptonomic.conseil.tezos.Tables.OperationGroupsRow]] =
+  def operationGroupsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[OperationGroupsRow]] =
     endpoint(
       request = get(
         url = commonPath / "operation_groups" /? qsFilter,
@@ -95,12 +91,12 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Operations endpoint definition */
-  def operationsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[Operation]] =
+  def operationsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[OperationsRow]] =
     endpoint(
       request = get(
         url = commonPath / "operations" /? qsFilter,
         headers = header("apiKey")),
-      response = jsonResponse[Seq[Operation]](docs = Some("Endpoint for operations")),
+      response = jsonResponse[Seq[OperationsRow]](docs = Some("Endpoint for operations")),
       tags = List("Operations")
     )
 
