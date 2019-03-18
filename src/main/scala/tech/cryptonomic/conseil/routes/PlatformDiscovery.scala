@@ -14,7 +14,7 @@ import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.CachingDirectives._
-
+import tech.cryptonomic.conseil.generic.chain.MetadataDiscovery
 
 import scala.concurrent.ExecutionContext
 
@@ -62,7 +62,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
     case (platform, network, _) =>
-      TezosPlatformDiscoveryOperations.getEntities.map { entities =>
+      MetadataDiscovery.getEntities.map { entities =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           entities
         }
@@ -72,8 +72,9 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
     case ((platform, network, entity), _) =>
-      TezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+      //TezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
+      MetadataDiscovery.getAttributes(entity).map { attributes =>
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
           attributes
         }
       }

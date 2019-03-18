@@ -11,6 +11,7 @@ import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.generic.chain.MetadataDiscovery
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 
@@ -32,6 +33,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
+      MetadataDiscovery.preCachedData
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
       lazy val tezos = Tezos(tezosDispatcher)
       lazy val platformDiscovery = PlatformDiscovery(platforms, caching)(tezosDispatcher)
