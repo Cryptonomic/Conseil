@@ -40,7 +40,6 @@ object TezosDatabaseOperations extends LazyLogging {
       info =>
         info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
     }).map(_.sum)
-      .transactionally
 
   /**
     * Writes blocks and related operations to a database.
@@ -143,17 +142,6 @@ object TezosDatabaseOperations extends LazyLogging {
       case Tables.AccountsCheckpointRow(id, blockId, level) => AccountId(id) -> (BlockHash(blockId), level)
     }.toMap
 
-/*     Tables.AccountsCheckpoint.result.map(
-      _.groupBy(_.accountId) //rows by accounts
-        .values //only use the collection of values, ignoring the group key
-        .map {
-          idRows =>
-            //keep only the latest and group by block reference, and rewrap it as map entries
-            val Tables.AccountsCheckpointRow(id, latestBlockId, latestLevel) = idRows.maxBy(_.blockLevel)
-            AccountId(id) -> (BlockHash(latestBlockId), latestLevel)
-        }.toMap
-    )
- */
   /**
     * Writes the blocks data to the database
     * at the same time saving enough information about updated accounts to later fetch those accounts
