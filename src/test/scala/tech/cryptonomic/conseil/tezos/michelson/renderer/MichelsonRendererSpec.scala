@@ -36,26 +36,26 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
   }
 
   it should "render MichelsonCode with only one simple instruction" in {
-    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("CDR")))
+    val michelsonCode = MichelsonCode(List(MichelsonSingleInstruction("CDR")))
 
     michelsonCode.render() shouldBe "CDR"
   }
 
   it should "render MichelsonCode with two simple instructions" in {
-    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("CDR"), MichelsonSimpleInstruction("DUP")))
+    val michelsonCode = MichelsonCode(List(MichelsonSingleInstruction("CDR"), MichelsonSingleInstruction("DUP")))
 
     michelsonCode.render() shouldBe """CDR ;
                                       |       DUP""".stripMargin
   }
 
   it should "render MichelsonCode with typed instruction" in {
-    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("NIL", List(MichelsonType("operation")))))
+    val michelsonCode = MichelsonCode(List(MichelsonSingleInstruction("NIL", List(MichelsonType("operation")))))
 
     michelsonCode.render() shouldBe "NIL operation"
   }
 
   it should "render MichelsonCode with typed instruction with constant" in {
-    val michelsonCode = MichelsonCode(List(MichelsonSimpleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant(0)))))
+    val michelsonCode = MichelsonCode(List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant(0)))))
 
     michelsonCode.render() shouldBe "PUSH mutez 0"
   }
@@ -63,8 +63,8 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
   it should "render MichelsonCode with instruction sequence" in {
     val michelsonCode = MichelsonCode(List(
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("DIP"),
-        MichelsonSimpleInstruction("SWAP")))))
+        MichelsonSingleInstruction("DIP"),
+        MichelsonSingleInstruction("SWAP")))))
 
     michelsonCode.render() shouldBe "{ DIP ; SWAP }"
   }
@@ -72,19 +72,19 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
   it should "render MichelsonCode with complex instruction" in {
     val michelsonCode = MichelsonCode(List(
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("DIP", List(MichelsonInstructionSequence(List(
-          MichelsonSimpleInstruction("DUP")))))))))
+        MichelsonSingleInstruction("DIP", List(MichelsonInstructionSequence(List(
+          MichelsonSingleInstruction("DUP")))))))))
 
     michelsonCode.render() shouldBe "{ DIP { DUP } }"
   }
 
   it should "render MichelsonInstruction with empty embedded instruction" in {
     val michelsonInstruction = MichelsonInstructionSequence(List(
-      MichelsonSimpleInstruction("IF_NONE", List(
+      MichelsonSingleInstruction("IF_NONE", List(
         MichelsonInstructionSequence(List(
           MichelsonInstructionSequence(List(
-            MichelsonSimpleInstruction("UNIT"),
-            MichelsonSimpleInstruction("FAILWITH"))))),
+            MichelsonSingleInstruction("UNIT"),
+            MichelsonSingleInstruction("FAILWITH"))))),
         MichelsonEmptyInstruction))))
 
     michelsonInstruction.render() shouldBe "{ IF_NONE { { UNIT ; FAILWITH } } {} }"
@@ -92,26 +92,26 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
 
   it should "render complex MichelsonCode" in {
     val michelsonExpression = MichelsonCode(List(
-      MichelsonSimpleInstruction("CDR"),
-      MichelsonSimpleInstruction("DUP"),
-      MichelsonSimpleInstruction("NIL", List(
+      MichelsonSingleInstruction("CDR"),
+      MichelsonSingleInstruction("DUP"),
+      MichelsonSingleInstruction("NIL", List(
         MichelsonType("operation"))),
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("DIP", List(
+        MichelsonSingleInstruction("DIP", List(
           MichelsonInstructionSequence(List(
-            MichelsonSimpleInstruction("DIP", List(
+            MichelsonSingleInstruction("DIP", List(
               MichelsonInstructionSequence(List(
-                MichelsonSimpleInstruction("DUP"))))),
-            MichelsonSimpleInstruction("SWAP"))))),
-        MichelsonSimpleInstruction("SWAP"))),
+                MichelsonSingleInstruction("DUP"))))),
+            MichelsonSingleInstruction("SWAP"))))),
+        MichelsonSingleInstruction("SWAP"))),
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("DIP", List(
+        MichelsonSingleInstruction("DIP", List(
           MichelsonInstructionSequence(List(
-            MichelsonSimpleInstruction("DIP", List(MichelsonInstructionSequence(List(
-              MichelsonSimpleInstruction("DUP"))))),
-            MichelsonSimpleInstruction("NIL", List(
+            MichelsonSingleInstruction("DIP", List(MichelsonInstructionSequence(List(
+              MichelsonSingleInstruction("DUP"))))),
+            MichelsonSingleInstruction("NIL", List(
               MichelsonType("operation"))))))),
-        MichelsonSimpleInstruction("SWAP")))
+        MichelsonSingleInstruction("SWAP")))
     ))
 
     michelsonExpression.render() shouldBe

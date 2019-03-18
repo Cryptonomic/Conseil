@@ -8,18 +8,18 @@ package tech.cryptonomic.conseil.tezos.michelson.dto
  *   { DIP { DIP { DUP } ; NIL operation } ; SWAP ; {} }
  *   | |   | |     |       |                 |      |
  *   | |   | |     |       |                 |      MichelsonEmptyInstruction
- *   | |   | |     |       |                 MichelsonSimpleInstruction (not typed)
- *   | |   | |     |       MichelsonSimpleInstruction (with type "operation")
- *   | |   | |     MichelsonSimpleInstruction (not typed)
- *   | |   | MichelsonComplexInstruction (with embedded "DUP" instruction as a one element List)
+ *   | |   | |     |       |                 MichelsonSingleInstruction (not typed)
+ *   | |   | |     |       MichelsonSingleInstruction (with type "operation")
+ *   | |   | |     MichelsonSingleInstruction (not typed)
+ *   | |   | MichelsonSingleInstruction (with embedded "DUP" instruction as a one element List)
  *   | |   MichelsonInstructionSequence (containing a complex instruction "DIP { ... }" and a simple one "NIL operation" separated with ";")
- *   | MichelsonComplexInstruction (with embedded MichelsonInstructionSequence as above)
+ *   | MichelsonSingleInstruction (with embedded MichelsonInstructionSequence as above)
  *   MichelsonInstructionSequence (with three instructions separated with ";": "DIP { ... }", "SWAP" and empty instruction)
  * */
 sealed trait MichelsonInstruction extends MichelsonElement
 
 /* Class representing a simple Michelson instruction which can contains following expressions */
-case class MichelsonSimpleInstruction(prim: String, embeddedElements: List[MichelsonElement] = List.empty) extends MichelsonInstruction
+case class MichelsonSingleInstruction(prim: String, embeddedElements: List[MichelsonElement] = List.empty) extends MichelsonInstruction
 
 /* Class representing a sequence of Michelson instructions */
 case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty) extends MichelsonInstruction

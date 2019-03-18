@@ -6,6 +6,8 @@ import io.circe._
 import io.circe.generic.auto._
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
 
+import scala.collection.immutable.{List, Nil}
+
 /* Parses Michelson Expression represented as JSON to domain objects */
 object JsonParser {
 
@@ -50,11 +52,10 @@ object JsonParser {
    * |                         single type "int"
    * type "pair" with two arguments
    *
-   * Empty expression is represented as an empty array in JSON. In code is represented as List[String] as a workaround
-   * because circe doesn't support List[Nothing]
+   * Empty expression is represented as an empty array in JSON.
    *
    * */
-  case class JsonType(prim: String, args: Option[List[Either[JsonExpression, List[String]]]]) extends JsonExpression {
+  case class JsonType(prim: String, args: Option[List[Either[JsonExpression, Nil.type]]]) extends JsonExpression {
     override def toMichelsonExpression = MichelsonType(prim, args.getOrElse(List.empty).map {
       case Left(it) => it.toMichelsonExpression
       case Right(_) => MichelsonEmptyExpression
@@ -97,11 +98,11 @@ object JsonParser {
   }
 
   case class JsonSimpleInstruction(prim: String, args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonSimpleInstruction(prim, args.getOrElse(List.empty)
+    override def toMichelsonInstruction = MichelsonSingleInstruction(prim, args.getOrElse(List.empty)
       .map {
-        case Left(it) => it.toMichelsonExpression
+        case Left(jsonExpression) => jsonExpression.toMichelsonExpression
         case Right(Nil) => MichelsonEmptyInstruction
-        case Right(it) => MichelsonInstructionSequence(it.map(_.toMichelsonInstruction))
+        case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
       })
   }
 
@@ -160,10 +161,8 @@ object JsonParser {
         Decoder[JsonSimpleInstruction].widen
       ).reduceLeft(_ or _)
 
-    implicit def decodeEither[A,B](implicit a: Decoder[A], b: Decoder[B]): Decoder[Either[A,B]] = {
-      val left: Decoder[Either[A,B]]= a.map(Left.apply)
-      val right: Decoder[Either[A,B]]= b.map(Right.apply)
-      left or right
+    implicit def decodeEither[A,B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A,B]] = {
+      leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
     }
   }
 
