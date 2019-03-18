@@ -9,9 +9,8 @@ object MichelsonRenderer {
     def render(): String = self match {
 
       // instructions
-      case MichelsonSimpleInstruction(prim, List()) => prim
-      case MichelsonSimpleInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
-      case MichelsonComplexInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
+      case MichelsonSingleInstruction(prim, List()) => prim
+      case MichelsonSingleInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
       case MichelsonInstructionSequence(args) => s"{ ${args.map(_.render()).mkString(" ; ")} }"
       case MichelsonEmptyInstruction => "{}"
 

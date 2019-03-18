@@ -104,7 +104,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       responseList =>
         responseList.collect {
           case (id, json) =>
-            val accountTry = Try(fromJson[Account](json)).map((id, _))
+            val accountTry: Try[(AccountId, Account)] = Try(fromJson[Account](json)).map((id, _))
             accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
             accountTry
               .toOption
