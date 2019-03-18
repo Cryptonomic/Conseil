@@ -63,6 +63,7 @@ object DatabaseConversions {
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
       val header = from.data.header
+      val CurrentVotes(periodKind, expectedQuorum, proposal) = from.votes
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
@@ -75,7 +76,10 @@ object DatabaseConversions {
         protocol = from.data.protocol,
         chainId = from.data.chain_id,
         hash = from.data.hash.value,
-        operationsHash = header.operations_hash
+        operationsHash = header.operations_hash,
+        periodKind = Some(periodKind.toString),
+        currentExpectedQuorum = expectedQuorum,
+        activeProposal = proposal.map(_.id)
       )
     }
   }
@@ -337,40 +341,6 @@ object DatabaseConversions {
 
   }
 
-  implicit val tableMappingOperationToRow = new Conversion[Id, DBTableMapping.Operation, Tables.OperationsRow] {
-    override def convert(from: DBTableMapping.Operation) =
-      Tables.OperationsRow(
-        operationId = from.operationId,
-        operationGroupHash = from.operationGroupHash,
-        kind = from.kind,
-        level = from.level,
-        delegate = from.delegate,
-        slots = from.slots,
-        nonce = from.nonce,
-        pkh = from.pkh,
-        secret = from.secret,
-        source = from.source,
-        fee = from.fee,
-        counter = from.counter,
-        gasLimit = from.gasLimit,
-        storageLimit = from.storageLimit,
-        publicKey = from.publicKey,
-        amount = from.amount,
-        destination = from.destination,
-        parameters = from.parameters,
-        managerPubkey = from.managerPubkey,
-        balance = from.balance,
-        spendable = from.spendable,
-        delegatable = from.delegatable,
-        script = from.script,
-        status = from.status,
-        consumedGas = from.consumedGas,
-        blockHash = from.blockHash,
-        blockLevel = from.blockLevel,
-        timestamp = from.timestamp
-      )
-  }
-
   implicit val blockAccountsAssociationToCheckpointRow = new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
     override def convert(from: (BlockHash, Int, List[AccountId])) = {
       val (blockHash, blockLevel, ids) = from
@@ -384,6 +354,56 @@ object DatabaseConversions {
       )
     }
 
+  }
+
+  implicit val proposalToRow = new Conversion[List, Voting.Proposal, Tables.ProposalsRow] {
+    override def convert(from: Voting.Proposal) = {
+      val Voting.Proposal(protocols, block) = from
+      val blockHash = block.data.hash.value
+      val blockLevel = block.data.header.level
+      protocols.map {
+        case ProtocolId(id) =>
+          Tables.ProposalsRow(
+            protocolHash = id,
+            blockId = blockHash,
+            blockLevel = blockLevel
+          )
+      }
+    }
+  }
+
+  implicit val ballotsToRows = new Conversion[List, (Block, List[Voting.Ballot]), Tables.BallotsRow] {
+    override def convert(from: (Block, List[Voting.Ballot])) = {
+      val (block, ballots) = from
+      val blockHash = block.data.hash.value
+      val blockLevel = block.data.header.level
+      ballots.map {
+        case Voting.Ballot(PublicKeyHash(hash), Voting.Vote(vote)) =>
+          Tables.BallotsRow(
+            pkh = hash,
+            ballot = vote,
+            blockId = blockHash,
+            blockLevel = blockLevel
+          )
+      }
+    }
+  }
+
+  implicit val bakersToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.BakersRow] {
+    override def convert(from: (Block, List[Voting.BakerRolls])) = {
+      val (block, bakers) = from
+      val blockHash = block.data.hash.value
+      val blockLevel = block.data.header.level
+      bakers.map {
+        case Voting.BakerRolls(PublicKeyHash(hash), rolls) =>
+          Tables.BakersRow(
+            pkh = hash,
+            rolls = rolls,
+            blockId = blockHash,
+            blockLevel = blockLevel
+          )
+      }
+    }
   }
 
 }

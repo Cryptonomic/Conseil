@@ -36,6 +36,16 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidPositiveDecimal("1000A")) shouldBe 'empty
     }
 
+    "correctly convert a bignumber from tezos models to a BigDecimal value" in {
+      sut.extractBigDecimal(Decimal(1000)).value shouldBe BigDecimal(1000)
+      sut.extractBigDecimal(Decimal(0)).value shouldBe BigDecimal(0)
+      sut.extractBigDecimal(Decimal(-1000)).value shouldBe BigDecimal(-1000)
+    }
+
+    "give no result when converting invalid bignumbers from tezos models to a BigDecimal value" in {
+      sut.extractBigDecimal(InvalidDecimal("1000A")) shouldBe 'empty
+    }
+
     "convert Balance Updates in BlockData to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
@@ -214,66 +224,36 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleEndorsement: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "endorsement"
-      level.value shouldBe sampleEndorsement.level
-      delegate.value shouldBe sampleEndorsement.metadata.delegate.value
-      slots.value shouldBe "[29,27,20,17]"
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "endorsement"
+      converted.level.value shouldBe sampleEndorsement.level
+      converted.delegate.value shouldBe sampleEndorsement.metadata.delegate.value
+      converted.slots.value shouldBe "[29,27,20,17]"
 
       forAll(
-        nonce ::
-        pkh ::
-        secret ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        consumedGas ::
-        status :: Nil) {
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.consumedGas ::
+        converted.status :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -285,66 +265,36 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleNonceRevelation: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "seed_nonce_revelation"
-      level.value shouldBe sampleNonceRevelation.level
-      nonce.value shouldBe sampleNonceRevelation.nonce.value
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "seed_nonce_revelation"
+      converted.level.value shouldBe sampleNonceRevelation.level
+      converted.nonce.value shouldBe sampleNonceRevelation.nonce.value
 
       forAll(
-        delegate ::
-        slots ::
-        pkh ::
-        secret ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        consumedGas ::
-        status :: Nil) {
+        converted.delegate ::
+        converted.slots ::
+        converted.pkh ::
+        converted.secret ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.consumedGas ::
+        converted.status :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -356,66 +306,36 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleAccountActivation: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "activate_account"
-      pkh.value shouldBe sampleAccountActivation.pkh.value
-      secret.value shouldBe sampleAccountActivation.secret.value
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "activate_account"
+      converted.pkh.value shouldBe sampleAccountActivation.pkh.value
+      converted.secret.value shouldBe sampleAccountActivation.secret.value
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        consumedGas ::
-        status :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.consumedGas ::
+        converted.status :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -427,81 +347,51 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleReveal: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "reveal"
-      source.value shouldBe sampleReveal.source.id
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "reveal"
+      converted.source.value shouldBe sampleReveal.source.id
       sampleReveal.fee match {
-        case PositiveDecimal(bignumber) => fee.value shouldBe bignumber
-        case _ => fee shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
+        case _ => converted.fee shouldBe 'empty
       }
       sampleReveal.counter match {
-        case PositiveDecimal(bignumber) => counter.value shouldBe bignumber
-        case _ => counter shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.counter.value shouldBe bignumber
+        case _ => converted.counter shouldBe 'empty
       }
       sampleReveal.gas_limit match {
-        case PositiveDecimal(bignumber) => gasLimit.value shouldBe bignumber
-        case _ => gasLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.gasLimit.value shouldBe bignumber
+        case _ => converted.gasLimit shouldBe 'empty
       }
       sampleReveal.storage_limit match {
-        case PositiveDecimal(bignumber) => storageLimit.value shouldBe bignumber
-        case _ => storageLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.storageLimit.value shouldBe bignumber
+        case _ => converted.storageLimit shouldBe 'empty
       }
-      publicKey.value shouldBe sampleReveal.public_key.value
-      status.value shouldBe sampleReveal.metadata.operation_result.status
+      converted.publicKey.value shouldBe sampleReveal.public_key.value
+      converted.status.value shouldBe sampleReveal.metadata.operation_result.status
       sampleReveal.metadata.operation_result.consumed_gas match {
-        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
-        case _ => consumedGas shouldBe 'empty
+        case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
+        case _ => converted.consumedGas shouldBe 'empty
       }
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -513,84 +403,54 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleTransaction: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "transaction"
-      source.value shouldBe sampleTransaction.source.id
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "transaction"
+      converted.source.value shouldBe sampleTransaction.source.id
       sampleTransaction.fee match {
-        case PositiveDecimal(bignumber) => fee.value shouldBe bignumber
-        case _ => fee shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
+        case _ => converted.fee shouldBe 'empty
       }
       sampleTransaction.counter match {
-        case PositiveDecimal(bignumber) => counter.value shouldBe bignumber
-        case _ => counter shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.counter.value shouldBe bignumber
+        case _ => converted.counter shouldBe 'empty
       }
       sampleTransaction.gas_limit match {
-        case PositiveDecimal(bignumber) => gasLimit.value shouldBe bignumber
-        case _ => gasLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.gasLimit.value shouldBe bignumber
+        case _ => converted.gasLimit shouldBe 'empty
       }
       sampleTransaction.storage_limit match {
-        case PositiveDecimal(bignumber) => storageLimit.value shouldBe bignumber
-        case _ => storageLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.storageLimit.value shouldBe bignumber
+        case _ => converted.storageLimit shouldBe 'empty
       }
       sampleTransaction.amount match {
-        case PositiveDecimal(bignumber) => amount.value shouldBe bignumber
-        case _ => amount shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.amount.value shouldBe bignumber
+        case _ => converted.amount shouldBe 'empty
       }
-      destination.value shouldBe sampleTransaction.destination.id
-      parameters shouldBe sampleTransaction.parameters.map(_.expression)
-      status.value shouldBe sampleTransaction.metadata.operation_result.status
+      converted.destination.value shouldBe sampleTransaction.destination.id
+      converted.parameters shouldBe sampleTransaction.parameters.map(_.expression)
+      converted.status.value shouldBe sampleTransaction.metadata.operation_result.status
       sampleTransaction.metadata.operation_result.consumed_gas match {
-        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
-        case _ => consumedGas shouldBe 'empty
+        case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
+        case _ => converted.consumedGas shouldBe 'empty
       }
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        publicKey ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.publicKey ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -602,84 +462,54 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleOrigination: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "origination"
-      delegate shouldBe sampleOrigination.delegate.map(_.value)
-      source.value shouldBe sampleOrigination.source.id
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "origination"
+      converted.delegate shouldBe sampleOrigination.delegate.map(_.value)
+      converted.source.value shouldBe sampleOrigination.source.id
       sampleOrigination.fee match {
-        case PositiveDecimal(bignumber) => fee.value shouldBe bignumber
-        case _ => fee shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
+        case _ => converted.fee shouldBe 'empty
       }
       sampleOrigination.counter match {
-        case PositiveDecimal(bignumber) => counter.value shouldBe bignumber
-        case _ => counter shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.counter.value shouldBe bignumber
+        case _ => converted.counter shouldBe 'empty
       }
       sampleOrigination.gas_limit match {
-        case PositiveDecimal(bignumber) => gasLimit.value shouldBe bignumber
-        case _ => gasLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.gasLimit.value shouldBe bignumber
+        case _ => converted.gasLimit shouldBe 'empty
       }
       sampleOrigination.storage_limit match {
-        case PositiveDecimal(bignumber) => storageLimit.value shouldBe bignumber
-        case _ => storageLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.storageLimit.value shouldBe bignumber
+        case _ => converted.storageLimit shouldBe 'empty
       }
       sampleOrigination.balance match {
-        case PositiveDecimal(bignumber) => balance.value shouldBe bignumber
-        case _ => balance shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.balance.value shouldBe bignumber
+        case _ => converted.balance shouldBe 'empty
       }
-      managerPubkey.value shouldBe sampleOrigination.manager_pubkey.value
-      spendable shouldBe sampleOrigination.spendable
-      delegatable shouldBe sampleOrigination.delegatable
-      script shouldBe sampleOrigination.script.map(_.code.expression)
-      status.value shouldBe sampleOrigination.metadata.operation_result.status
+      converted.managerPubkey.value shouldBe sampleOrigination.manager_pubkey.value
+      converted.spendable shouldBe sampleOrigination.spendable
+      converted.delegatable shouldBe sampleOrigination.delegatable
+      converted.script shouldBe sampleOrigination.script.map(_.code.expression)
+      converted.status.value shouldBe sampleOrigination.metadata.operation_result.status
       sampleOrigination.metadata.operation_result.consumed_gas match {
-        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
-        case _ => consumedGas shouldBe 'empty
+        case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
+        case _ => converted.consumedGas shouldBe 'empty
       }
 
       forAll(
-        level ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters :: Nil) {
+        converted.level ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -691,81 +521,51 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, sampleDelegation: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "delegation"
-      delegate shouldBe sampleDelegation.delegate.map(_.value)
-      source.value shouldBe sampleDelegation.source.id
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "delegation"
+      converted.delegate shouldBe sampleDelegation.delegate.map(_.value)
+      converted.source.value shouldBe sampleDelegation.source.id
       sampleDelegation.fee match {
-        case PositiveDecimal(bignumber) => fee.value shouldBe bignumber
-        case _ => fee shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
+        case _ => converted.fee shouldBe 'empty
       }
       sampleDelegation.counter match {
-        case PositiveDecimal(bignumber) => counter.value shouldBe bignumber
-        case _ => counter shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.counter.value shouldBe bignumber
+        case _ => converted.counter shouldBe 'empty
       }
       sampleDelegation.gas_limit match {
-        case PositiveDecimal(bignumber) => gasLimit.value shouldBe bignumber
-        case _ => gasLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.gasLimit.value shouldBe bignumber
+        case _ => converted.gasLimit shouldBe 'empty
       }
       sampleDelegation.storage_limit match {
-        case PositiveDecimal(bignumber) => storageLimit.value shouldBe bignumber
-        case _ => storageLimit shouldBe 'empty
+        case PositiveDecimal(bignumber) => converted.storageLimit.value shouldBe bignumber
+        case _ => converted.storageLimit shouldBe 'empty
       }
-      status.value shouldBe sampleDelegation.metadata.operation_result.status
+      converted.status.value shouldBe sampleDelegation.metadata.operation_result.status
       sampleDelegation.metadata.operation_result.consumed_gas match {
-        case Some(Decimal(bignumber)) => consumedGas.value shouldBe bignumber
-        case _ => consumedGas shouldBe 'empty
+        case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
+        case _ => converted.consumedGas shouldBe 'empty
       }
 
       forAll(
-        level ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script :: Nil) {
+        converted.level ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -777,66 +577,36 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, DoubleEndorsementEvidence: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "double_endorsement_evidence"
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "double_endorsement_evidence"
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        status ::
-        consumedGas :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.status ::
+        converted.consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -848,211 +618,182 @@ class DatabaseConversionsTest
 
       val converted = (block, groupHash, DoubleBakingEvidence: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "double_baking_evidence"
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "double_baking_evidence"
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        status ::
-        consumedGas :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.status ::
+        converted.consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
     }
 
-    "convert an Proposals to a database row" in {
+    "convert a Proposals operation to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, Proposals: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "proposals"
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "proposals"
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        status ::
-        consumedGas :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.status ::
+        converted.consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
     }
 
-    "convert an Ballot to a database row" in {
+    "convert a Ballot operation to a database row" in {
       import Conversion.Syntax._
       import DatabaseConversions._
 
       val converted = (block, groupHash, Ballot: Operation).convertTo[Tables.OperationsRow]
 
-      //terrible to look at, but that's what we get from the standard slick's HList representation
-      val operationId = converted(0)
-      val operationGroupHash = converted(1)
-      val kind = converted(2)
-      val level = converted(3)
-      val delegate = converted(4)
-      val slots = converted(5)
-      val nonce = converted(6)
-      val pkh = converted(7)
-      val secret = converted(8)
-      val source = converted(9)
-      val fee = converted(10)
-      val counter = converted(11)
-      val gasLimit = converted(12)
-      val storageLimit = converted(13)
-      val publicKey = converted(14)
-      val amount = converted(15)
-      val destination = converted(16)
-      val parameters = converted(17)
-      val managerPubkey = converted(18)
-      val balance = converted(19)
-      val spendable = converted(20)
-      val delegatable = converted(21)
-      val script = converted(22)
-      val status = converted(23)
-      val consumedGas = converted(24)
-      val blockHash = converted(25)
-      val blockLevel = converted(26)
-      val timestamp = converted(27)
-
-      operationId shouldBe 0
-      operationGroupHash shouldBe groupHash.value
-      blockHash shouldBe block.data.hash.value
-      blockLevel shouldBe block.data.header.level
-      timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-      kind shouldBe "ballot"
+      converted.operationId shouldBe 0
+      converted.operationGroupHash shouldBe groupHash.value
+      converted.blockHash shouldBe block.data.hash.value
+      converted.blockLevel shouldBe block.data.header.level
+      converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+      converted.kind shouldBe "ballot"
 
       forAll(
-        level ::
-        delegate ::
-        slots ::
-        nonce ::
-        pkh ::
-        secret ::
-        source ::
-        fee ::
-        counter ::
-        gasLimit ::
-        storageLimit ::
-        publicKey ::
-        amount ::
-        destination ::
-        parameters ::
-        managerPubkey ::
-        balance ::
-        spendable ::
-        delegatable ::
-        script ::
-        status ::
-        consumedGas :: Nil) {
+        converted.level ::
+        converted.delegate ::
+        converted.slots ::
+        converted.nonce ::
+        converted.pkh ::
+        converted.secret ::
+        converted.source ::
+        converted.fee ::
+        converted.counter ::
+        converted.gasLimit ::
+        converted.storageLimit ::
+        converted.publicKey ::
+        converted.amount ::
+        converted.destination ::
+        converted.parameters ::
+        converted.managerPubkey ::
+        converted.balance ::
+        converted.spendable ::
+        converted.delegatable ::
+        converted.script ::
+        converted.status ::
+        converted.consumedGas :: Nil) {
         _ shouldBe 'empty
       }
 
+    }
+
+    "convert a Voting Proposal to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Proposal
+
+      val sampleProposal = Proposal(protocols = ProtocolId("proto1") :: ProtocolId("proto2") :: Nil, block = block)
+
+      val expected = List(
+        Tables.ProposalsRow(
+          protocolHash = "proto1", blockId = block.data.hash.value, blockLevel = block.data.header.level
+        ),
+        Tables.ProposalsRow(
+          protocolHash = "proto2", blockId = block.data.hash.value, blockLevel = block.data.header.level
+        )
+      )
+
+      val converted = sampleProposal.convertToA[List, Tables.ProposalsRow]
+      converted should have size (sampleProposal.protocols.size)
+
+      converted should contain theSameElementsAs expected
+
+    }
+
+    "convert a Voting Ballot to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.{Ballot, Vote}
+
+      val sampleBallot = Ballot(pkh = PublicKeyHash("key"), ballot = Vote("yay"))
+
+      val converted = (block, List(sampleBallot)).convertToA[List, Tables.BallotsRow]
+      converted should have size 1
+
+      converted should contain only (
+        Tables.BallotsRow(
+          pkh = sampleBallot.pkh.value,
+          ballot = sampleBallot.ballot.value,
+          blockId = block.data.hash.value,
+          blockLevel = block.data.header.level)
+      )
+    }
+
+    "convert a Voting Baker to a database row" in {
+      import Conversion.Syntax._
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
+
+      val sampleBakers = BakerRolls(pkh = PublicKeyHash("key"), rolls = 500)
+
+      val converted = (block, List(sampleBakers)).convertToA[List, Tables.BakersRow]
+      converted should have size 1
+
+      converted should contain only (
+        Tables.BakersRow(
+          pkh = sampleBakers.pkh.value,
+          rolls = sampleBakers.rolls,
+          blockId = block.data.hash.value,
+          blockLevel = block.data.header.level)
+      )
     }
 
   }

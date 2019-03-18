@@ -1,9 +1,9 @@
 package tech.cryptonomic.conseil.tezos
 
-import monocle.Optional
-import monocle.macros.GenLens
+import monocle.{Prism, Traversal}
 import monocle.function.all._
-import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted._
+import monocle.macros.GenLens
+import monocle.std.option._
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -14,21 +14,32 @@ object TezosTypes {
     private val operationGroups = GenLens[Block](_.operationGroups)
     private val operations = GenLens[OperationsGroup](_.contents)
 
-    private val origination = Optional.apply[Operation, Origination] {
-      case it: Origination => Some(it)
-      case _ => None
-    } { it => { _ => it } }
+    private val origination = Prism.partial[Operation, Origination]{case it: Origination => it}(identity)
+    private val transaction = Prism.partial[Operation, Transaction]{case it: Transaction => it}(identity)
 
-    private val transaction = Optional.apply[Operation, Transaction] {
-      case it: Transaction => Some(it)
-      case _ => None
-    } { it => { _ => it } }
-
-    private val originationScript = GenLens[Origination](_.script)
+    private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    val originationLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional origination composeLens originationScript
-    val parametersLense = operationGroups composeTraversal each composeLens operations composeTraversal each composeOptional transaction composeLens parameters
+    private val storage = GenLens[Scripted.Contracts](_.storage)
+    private val code = GenLens[Scripted.Contracts](_.code)
+
+    private val string = GenLens[Micheline](_.expression)
+
+    private val scriptLens: Traversal[Block, Scripted.Contracts] =
+      operationGroups composeTraversal each composeLens
+        operations composeTraversal each composePrism
+        origination composeLens
+        script composePrism some
+
+    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens string
+    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens string
+
+    val parametersLens: Traversal[Block, String] =
+      operationGroups composeTraversal each composeLens
+        operations composeTraversal each composePrism
+        transaction composeLens
+        parameters composePrism some composeLens
+        string
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
@@ -36,10 +47,6 @@ object TezosTypes {
     val pattern = "^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]*$".r.pattern
     pattern.matcher(s).matches
   }
-
-  implicit lazy val michelineToString: Micheline => String = _.expression
-  implicit lazy val stringToMicheline: String => Micheline = Micheline
-  implicit lazy val optionalStringToMicheline: Option[String] => Option[Micheline] = _.map(Micheline)
 
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
@@ -59,6 +66,8 @@ object TezosTypes {
   final case class AccountId(id: String) extends AnyVal
 
   final case class ChainId(id: String) extends AnyVal
+
+  final case class ProtocolId(id: String) extends AnyVal
 
   final case class Nonce(value: String) extends AnyVal
 
@@ -119,11 +128,7 @@ object TezosTypes {
     final case class Contracts(
       storage: Micheline,
       code: Micheline
-    ) {
-      // modify object using various functions for storage and for code
-      def map(storageFunction: String => String, codeFunction: String => String): Contracts =
-        copy(storage = storageFunction(storage), code = codeFunction(code))
-    }
+    )
   }
 
   /** root of the operation hiearchy */
@@ -325,9 +330,25 @@ object TezosTypes {
                     accounts: Map[AccountId, Account] = Map.empty
                   )
 
+  object ProposalPeriod extends Enumeration {
+    type Kind = Value
+    val proposal, promotion_vote, testing_vote, testing = Value
+  }
+
+  final case class CurrentVotes(
+    periodKind: ProposalPeriod.Kind,
+    quorum: Option[Int],
+    active: Option[ProtocolId]
+  )
+
+  final object CurrentVotes {
+    val defaultValue = CurrentVotes(periodKind = ProposalPeriod.proposal, quorum = None, active = None)
+  }
+
   final case class Block(
                     data: BlockData,
-                    operationGroups: List[OperationsGroup]
+                    operationGroups: List[OperationsGroup],
+                    votes: CurrentVotes
                   )
 
   final case class ManagerKey(
@@ -363,5 +384,14 @@ object TezosTypes {
   final case class InjectedOperation(injectedOperation: String)
 
   final case class MichelsonExpression(prim: String, args: List[String])
+
+  object Voting {
+
+    final case class Vote(value: String) extends AnyVal
+    final case class Proposal(protocols: List[ProtocolId], block: Block)
+    final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
+    final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
+  }
+
 
 }

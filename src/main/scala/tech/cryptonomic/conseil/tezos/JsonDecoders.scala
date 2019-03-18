@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.Instant
 import scala.util.Try
+import scala.concurrent.Future
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 /** This expose decoders for json conversions */
@@ -19,6 +20,18 @@ object JsonDecoders {
     import io.circe.generic.extras.Configuration
 
     type JsonDecoded[T] = Either[Error, T]
+
+    /** Helper to decode json and convert to a possibly failing future result
+      * This is not running any async operation
+      */
+    def decodeToFuture[A: io.circe.Decoder](json: String) = {
+      import io.circe.parser.decode
+
+      decode[A](json) match {
+        case Left(error) => Future.failed(error)
+        case Right(results) => Future.successful(results)
+      }
+    }
 
     /** Collects failures in json parsing, when circe is used to decode the objects out of strings
       *
@@ -84,6 +97,9 @@ object JsonDecoders {
     implicit val timestampDecoder: Decoder[Timestamp] =
       Decoder.decodeString.emapTry(ts => Try(Timestamp.from(Instant.parse(ts))))
 
+    /* decode an enumerated string to a valid ProposalPeriod Kind */
+    implicit val proposalPeriodKindDecoder: Decoder[ProposalPeriod.Kind] =
+      Decoder.decodeString.emapTry(kind => Try(ProposalPeriod.withName(kind)))
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
@@ -94,10 +110,35 @@ object JsonDecoders {
     implicit val contractIdDecoder: Decoder[ContractId] = base58CheckDecoder.map(b58 => ContractId(b58.content))
     implicit val accountIdDecoder: Decoder[AccountId] = base58CheckDecoder.map(b58 => AccountId(b58.content))
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
+    implicit val protocolIdDecoder: Decoder[ProtocolId] = base58CheckDecoder.map(b58 => ProtocolId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
 
     val tezosDerivationConfig: Configuration =
-      Configuration.default.withSnakeCaseConstructorNames
+    Configuration.default.withSnakeCaseConstructorNames
+
+    /* Collects definitions to decode voting data and their components */
+    object Votes {
+      import Voting._
+      private implicit val conf = tezosDerivationConfig
+
+      private val admittedVotes = Set("yay", "nay", "pass")
+
+      implicit val ballotVoteDecoder: Decoder[Vote] =
+        deriveDecoderFromString(
+          validateString = admittedVotes,
+          failedValidation = "The passed-in json string is not allowed as a ballot vote",
+          decodedConstructor = Vote
+        )
+
+      implicit val bakerDecoder: Decoder[BakerRolls] = deriveDecoder
+      implicit val ballotDecoder: Decoder[Ballot] = deriveDecoder
+      implicit val bakersDecoder: Decoder[List[BakerRolls]] =
+        Decoder.decodeList[BakerRolls]
+      implicit val ballotsDecoder: Decoder[List[Ballot]] =
+        Decoder.decodeList[Ballot]
+      implicit val protocolIdsDecoder: Decoder[List[ProtocolId]] =
+        Decoder.decodeList[ProtocolId]
+    }
 
     /* Collects definitions to decode blocks and their components */
     object Blocks {
