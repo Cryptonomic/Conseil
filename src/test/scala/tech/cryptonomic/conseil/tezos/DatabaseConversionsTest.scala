@@ -5,6 +5,8 @@ import org.scalatest.{Matchers, WordSpec, OptionValues}
 import org.scalatest.Inspectors._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{Conversion, RandomSeed}
+import Conversion.Syntax._
+import DatabaseConversions._
 
 class DatabaseConversionsTest
   extends WordSpec
@@ -46,9 +48,34 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidDecimal("1000A")) shouldBe 'empty
     }
 
+    "convert a tezos block to a database row" in {
+      val blockRow = block.convertTo[Tables.BlocksRow]
+
+      val header = block.data.header
+      val metadata = block.data.metadata.swap.toOption
+      val CurrentVotes(expectedQuorum, proposal) = block.votes
+
+      blockRow should have(
+        'level (header.level),
+        'proto (header.proto),
+        'predecessor (header.predecessor.value),
+        'timestamp (java.sql.Timestamp.from(header.timestamp.toInstant)),
+        'validationPass (header.validation_pass),
+        'fitness (header.fitness.mkString(",")),
+        'context (Some(header.context)),
+        'signature (header.signature),
+        'protocol (block.data.protocol),
+        'chainId (block.data.chain_id),
+        'hash (block.data.hash.value),
+        'operationsHash (header.operations_hash),
+        'periodKind (metadata.map(_.votingPeriodKind.toString)),
+        'currentExpectedQuorum (expectedQuorum),
+        'activeProposal (proposal.map(_.id)),
+        'baker (metadata.map(_.baker.value))
+      )
+    }
+
     "convert Balance Updates in BlockData to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
       import BlockBalances._
       import SymbolSourceLabels.Show._
 
@@ -103,8 +130,6 @@ class DatabaseConversionsTest
     }
 
     "convert Balance Updates in Operations to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
       import OperationBalances._
       import SymbolSourceLabels.Show._
 
@@ -137,8 +162,6 @@ class DatabaseConversionsTest
     }
 
     "convert Balance Updates in all nested levels of Operations to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
       import OperationBalances._
       import SymbolSourceLabels.Show._
 
@@ -219,8 +242,6 @@ class DatabaseConversionsTest
     }
 
     "convert an Endorsement to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleEndorsement: Operation).convertTo[Tables.OperationsRow]
 
@@ -260,8 +281,6 @@ class DatabaseConversionsTest
     }
 
     "convert a SeedNonceRevelation to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleNonceRevelation: Operation).convertTo[Tables.OperationsRow]
 
@@ -301,8 +320,6 @@ class DatabaseConversionsTest
     }
 
     "convert an ActivateAccount to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleAccountActivation: Operation).convertTo[Tables.OperationsRow]
 
@@ -342,8 +359,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Reveal to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleReveal: Operation).convertTo[Tables.OperationsRow]
 
@@ -398,8 +413,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Transaction to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleTransaction: Operation).convertTo[Tables.OperationsRow]
 
@@ -457,8 +470,6 @@ class DatabaseConversionsTest
     }
 
     "convert an Origination to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleOrigination: Operation).convertTo[Tables.OperationsRow]
 
@@ -516,8 +527,6 @@ class DatabaseConversionsTest
     }
 
     "convert an Delegation to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, sampleDelegation: Operation).convertTo[Tables.OperationsRow]
 
@@ -572,8 +581,6 @@ class DatabaseConversionsTest
     }
 
     "convert an DoubleEndorsementEvidence to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, DoubleEndorsementEvidence: Operation).convertTo[Tables.OperationsRow]
 
@@ -613,8 +620,6 @@ class DatabaseConversionsTest
     }
 
     "convert an DoubleBakingEvidence to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, DoubleBakingEvidence: Operation).convertTo[Tables.OperationsRow]
 
@@ -654,8 +659,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Proposals operation to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, Proposals: Operation).convertTo[Tables.OperationsRow]
 
@@ -695,8 +698,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Ballot operation to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
 
       val converted = (block, groupHash, Ballot: Operation).convertTo[Tables.OperationsRow]
 
@@ -736,8 +737,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Voting Proposal to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
       import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Proposal
 
       val sampleProposal = Proposal(protocols = ProtocolId("proto1") :: ProtocolId("proto2") :: Nil, block = block)
@@ -759,8 +758,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Voting Ballot to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
       import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.{Ballot, Vote}
 
       val sampleBallot = Ballot(pkh = PublicKeyHash("key"), ballot = Vote("yay"))
@@ -778,8 +775,6 @@ class DatabaseConversionsTest
     }
 
     "convert a Voting Baker to a database row" in {
-      import Conversion.Syntax._
-      import DatabaseConversions._
       import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 
       val sampleBakers = BakerRolls(pkh = PublicKeyHash("key"), rolls = 500)

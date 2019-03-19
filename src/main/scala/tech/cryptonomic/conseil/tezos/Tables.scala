@@ -233,18 +233,19 @@ trait Tables {
    *  @param operationsHash Database column operations_hash SqlType(varchar), Default(None)
    *  @param periodKind Database column period_kind SqlType(varchar), Default(None)
    *  @param currentExpectedQuorum Database column current_expected_quorum SqlType(int4), Default(None)
-   *  @param activeProposal Database column active_proposal SqlType(varchar), Default(None) */
-  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None, periodKind: Option[String] = None, currentExpectedQuorum: Option[Int] = None, activeProposal: Option[String] = None)
+   *  @param activeProposal Database column active_proposal SqlType(varchar), Default(None)
+   *  @param baker Database column baker SqlType(varchar), Default(None) */
+  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None, periodKind: Option[String] = None, currentExpectedQuorum: Option[Int] = None, activeProposal: Option[String] = None, baker: Option[String] = None)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]], e4: GR[Option[Int]]): GR[BlocksRow] = GR{
     prs => import prs._
-    BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String]))
+    BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String]))
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
-    def * = (level, proto, predecessor, timestamp, validationPass, fitness, context, signature, protocol, chainId, hash, operationsHash, periodKind, currentExpectedQuorum, activeProposal) <> (BlocksRow.tupled, BlocksRow.unapply)
+    def * = (level, proto, predecessor, timestamp, validationPass, fitness, context, signature, protocol, chainId, hash, operationsHash, periodKind, currentExpectedQuorum, activeProposal, baker) <> (BlocksRow.tupled, BlocksRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(fitness), context, signature, Rep.Some(protocol), chainId, Rep.Some(hash), operationsHash, periodKind, currentExpectedQuorum, activeProposal)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8, _9.get, _10, _11.get, _12, _13, _14, _15)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(fitness), context, signature, Rep.Some(protocol), chainId, Rep.Some(hash), operationsHash, periodKind, currentExpectedQuorum, activeProposal, baker)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8, _9.get, _10, _11.get, _12, _13, _14, _15, _16)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -276,6 +277,8 @@ trait Tables {
     val currentExpectedQuorum: Rep[Option[Int]] = column[Option[Int]]("current_expected_quorum", O.Default(None))
     /** Database column active_proposal SqlType(varchar), Default(None) */
     val activeProposal: Rep[Option[String]] = column[Option[String]]("active_proposal", O.Default(None))
+    /** Database column baker SqlType(varchar), Default(None) */
+    val baker: Rep[Option[String]] = column[Option[String]]("baker", O.Default(None))
 
     /** Uniqueness Index over (hash) (database name blocks_hash_key) */
     val index1 = index("blocks_hash_key", hash, unique=true)

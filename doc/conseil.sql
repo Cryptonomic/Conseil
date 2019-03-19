@@ -89,7 +89,8 @@ CREATE TABLE public.blocks (
     operations_hash character varying,
     period_kind character varying,
     current_expected_quorum integer,
-    active_proposal character varying
+    active_proposal character varying,
+    baker character varying
 );
 
 

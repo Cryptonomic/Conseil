@@ -100,6 +100,7 @@ class TezosDatabaseOperationsTest
               row.periodKind shouldEqual block.data.metadata.swap.toOption.map(_.votingPeriodKind.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
+              row.baker shouldEqual block.data.metadata.swap.toOption.map(_.baker)
           }
 
           val dbBlocksAndGroups =
