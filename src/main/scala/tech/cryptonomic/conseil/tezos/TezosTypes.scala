@@ -85,7 +85,7 @@ object TezosTypes {
     chain_id: Option[String],
     hash: BlockHash,
     header: BlockHeader,
-    metadata: BlockHeaderMetadata
+    metadata: Either[BlockHeaderMetadata, GenesisMetadata.type]
   )
 
   final case class BlockHeader(
@@ -100,10 +100,13 @@ object TezosTypes {
     signature: Option[String]
   )
 
-
   final case class BlockHeaderMetadata(
-    balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
+    balance_updates: List[OperationMetadata.BalanceUpdate],
+    baker: PublicKeyHash,
+    votingPeriodKind: VotingPeriod.Kind
   )
+
+  final case object GenesisMetadata
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`
    * all the while accepting `0` as valid
@@ -330,21 +333,20 @@ object TezosTypes {
                     accounts: Map[AccountId, Account] = Map.empty
                   )
 
-  object ProposalPeriod extends Enumeration {
+  object VotingPeriod extends Enumeration {
     type Kind = Value
     val proposal, promotion_vote, testing_vote, testing = Value
   }
 
-  val defaultProposalPeriod: ProposalPeriod.Kind = ProposalPeriod.proposal
+  val defaultProposalPeriod: VotingPeriod.Kind = VotingPeriod.proposal
 
   final case class CurrentVotes(
-    periodKind: ProposalPeriod.Kind,
     quorum: Option[Int],
     active: Option[ProtocolId]
   )
 
   final object CurrentVotes {
-    val empty = CurrentVotes(periodKind = defaultProposalPeriod, quorum = None, active = None)
+    val empty = CurrentVotes(quorum = None, active = None)
   }
 
   final case class Block(

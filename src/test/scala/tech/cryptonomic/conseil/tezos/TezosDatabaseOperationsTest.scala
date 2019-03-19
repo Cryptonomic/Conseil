@@ -97,7 +97,7 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
-              row.periodKind.value shouldEqual block.votes.periodKind.toString
+              row.periodKind shouldEqual block.data.metadata.swap.toOption.map(_.votingPeriodKind.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
           }
@@ -222,7 +222,7 @@ class TezosDatabaseOperationsTest
       val generatedBlocks = basicBlocks.zipWithIndex.map {
         case (block, idx) =>
           val randomUpdates = generateBalanceUpdates(2)(randomSeed + idx)
-          setBalances(Some(randomUpdates))(block)
+          setBalances(randomUpdates)(block)
       }
 
       whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {

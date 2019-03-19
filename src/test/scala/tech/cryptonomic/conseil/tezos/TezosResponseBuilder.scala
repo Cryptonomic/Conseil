@@ -57,6 +57,7 @@ object TezosResponseBuilder {
         "signature": "sigPsHz3864TiJBAMoeZEw2p26Aq9LfYQ4SbFZkkLhYe3k4mStXsHhkCV5wfSc7fGMXdpyLSZjsTdkiUWXrBc1u1T2JSYab9"
       },
       "metadata": {
+        "baker": "tz1YCABRTa6H8PLKx2EtDWeCGPaKxUhNgv47",
         "balance_updates": []
       }
     }"""

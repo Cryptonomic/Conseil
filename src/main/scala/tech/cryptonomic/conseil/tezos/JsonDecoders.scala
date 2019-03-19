@@ -75,9 +75,9 @@ object JsonDecoders {
     implicit val timestampDecoder: Decoder[Timestamp] =
       Decoder.decodeString.emapTry(ts => Try(Timestamp.from(Instant.parse(ts))))
 
-    /* decode an enumerated string to a valid ProposalPeriod Kind */
-    implicit val proposalPeriodKindDecoder: Decoder[ProposalPeriod.Kind] =
-      Decoder.decodeString.emapTry(kind => Try(ProposalPeriod.withName(kind)))
+    /* decode an enumerated string to a valid VotingPeriod Kind */
+    implicit val votingPeriodKindDecoder: Decoder[VotingPeriod.Kind] =
+      Decoder.decodeString.emapTry(kind => Try(VotingPeriod.withName(kind)))
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
@@ -120,11 +120,15 @@ object JsonDecoders {
 
     /* Collects definitions to decode blocks and their components */
     object Blocks {
-
       // we need to decode BalanceUpdates
       import Operations._
       private implicit val conf = tezosDerivationConfig
 
+
+      implicit def decodeEither[A,B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A,B]] =
+        leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
+
+      implicit val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
       implicit val metadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
       implicit val headerDecoder: Decoder[BlockHeader] = deriveDecoder
       implicit val mainDecoder: Decoder[BlockData] = deriveDecoder //remember to add ISO-control filtering

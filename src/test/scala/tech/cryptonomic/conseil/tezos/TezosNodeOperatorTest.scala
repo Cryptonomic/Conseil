@@ -34,7 +34,6 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val tezosRPCInterface = stub[TezosRPCInterface]
     val blockResponse = Future.successful(TezosResponseBuilder.blockResponse)
     val operationsResponse = Future.successful(TezosResponseBuilder.operationsResponse)
-    val votesPeriodKind = Future.successful(TezosResponseBuilder.votesPeriodKind)
     val votesQuorum = Future.successful(TezosResponseBuilder.votesQuorum)
     val votesProposal = Future.successful(TezosResponseBuilder.votesProposal)
 
@@ -44,9 +43,6 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     (tezosRPCInterface.runAsyncGetQuery _)
       .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations")
       .returns(operationsResponse)
-    (tezosRPCInterface.runAsyncGetQuery _)
-      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_period_kind")
-      .returns(votesPeriodKind)
     (tezosRPCInterface.runAsyncGetQuery _)
       .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_quorum")
       .returns(votesQuorum)
@@ -63,8 +59,6 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
             case (_: Int) :: tail => (0, TezosResponseBuilder.batchedGetBlockQueryResponse)
             case (hash: BlockHash) :: tail if command(hash) endsWith "operations" =>
               (hash, TezosResponseBuilder.batchedGetOperationsQueryResponse)
-            case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_period_kind" =>
-              (hash, TezosResponseBuilder.votesPeriodKind)
             case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_quorum" =>
               (hash, TezosResponseBuilder.votesQuorum)
             case (hash: BlockHash) :: tail if command(hash) endsWith "votes/current_proposal" =>

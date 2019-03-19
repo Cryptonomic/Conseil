@@ -9,19 +9,23 @@ import TezosTypes.OperationMetadata.BalanceUpdate
   */
 object TezosOptics {
 
+  import monocle.Optional
   import monocle.macros.GenLens
+  import monocle.std.either
 
   object Blocks {
+
 
     val dataL = GenLens[Block](_.data)
     val headerL = GenLens[BlockData](_.header)
     val metadataL = GenLens[BlockData](_.metadata)
     val headerTimestampL = GenLens[BlockHeader](_.timestamp)
     val headerBalancesL = GenLens[BlockHeaderMetadata](_.balance_updates)
-    val blockMetadataBalancesL = dataL composeLens metadataL composeLens headerBalancesL
+    val blockMetadataBalancesL: Optional[Block, List[BalanceUpdate]] =
+      dataL composeLens metadataL composePrism either.stdLeft composeLens headerBalancesL
 
     val setTimestamp: ZonedDateTime => Block => Block = dataL composeLens headerL composeLens headerTimestampL set _
-    val setBalances: Option[List[BalanceUpdate]] => Block => Block = blockMetadataBalancesL set _
+    val setBalances: List[BalanceUpdate] => Block => Block = blockMetadataBalancesL set _
   }
 
 }

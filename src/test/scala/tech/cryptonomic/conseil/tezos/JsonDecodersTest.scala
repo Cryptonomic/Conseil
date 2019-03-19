@@ -216,22 +216,22 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode all valid voting period kinds to an enumerated value" in {
-      val proposal = decode[ProposalPeriod.Kind](jsonStringOf("proposal"))
+      val proposal = decode[VotingPeriod.Kind](jsonStringOf("proposal"))
       proposal shouldBe 'right
-      proposal.right.value shouldBe ProposalPeriod.proposal
-      val promotion_vote = decode[ProposalPeriod.Kind](jsonStringOf("promotion_vote"))
+      proposal.right.value shouldBe VotingPeriod.proposal
+      val promotion_vote = decode[VotingPeriod.Kind](jsonStringOf("promotion_vote"))
       promotion_vote shouldBe 'right
-      promotion_vote.right.value shouldBe ProposalPeriod.promotion_vote
-      val testing_vote = decode[ProposalPeriod.Kind](jsonStringOf("testing_vote"))
+      promotion_vote.right.value shouldBe VotingPeriod.promotion_vote
+      val testing_vote = decode[VotingPeriod.Kind](jsonStringOf("testing_vote"))
       testing_vote shouldBe 'right
-      testing_vote.right.value shouldBe ProposalPeriod.testing_vote
-      val testing = decode[ProposalPeriod.Kind](jsonStringOf("testing"))
+      testing_vote.right.value shouldBe VotingPeriod.testing_vote
+      val testing = decode[VotingPeriod.Kind](jsonStringOf("testing"))
       testing shouldBe 'right
-      testing.right.value shouldBe ProposalPeriod.testing
+      testing.right.value shouldBe VotingPeriod.testing
     }
 
     "fail to decode an invalid string as a voting period kind" in {
-      val decoded = decode[ProposalPeriod.Kind](jsonStringOf("undefined_period"))
+      val decoded = decode[VotingPeriod.Kind](jsonStringOf("undefined_period"))
       decoded shouldBe 'left
     }
 

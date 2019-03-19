@@ -54,7 +54,7 @@ class DatabaseConversionsTest
 
       //generate data
       val updates = generateBalanceUpdates(3)
-      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = Some(updates))
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = updates)
 
       //convert
       val updateRows = block.data.convertToA[List, Tables.BalanceUpdatesRow]

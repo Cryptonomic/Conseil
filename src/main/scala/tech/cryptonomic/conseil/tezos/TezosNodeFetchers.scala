@@ -121,40 +121,6 @@ trait BlocksDataFetchers {
 
   }
 
-  /** a fetcher for the current voting period of blocks */
-  val currentPeriodFetcher = new FutureFetcher {
-    import JsonDecoders.Circe._
-
-    type Encoded = String
-    type In = BlockHash
-    type Out = ProposalPeriod.Kind
-
-    val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_period_kind"
-
-    override val fetchData =
-      Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching current voting periods from {}, for blocks {}. The error says {}",
-              network,
-              hashes.map(_.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
-      )
-
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, Out](json)
-          .onError(logWarnOnJsonDecoding(s"I fetched a voting proposal period json from tezos node that I'm unable to decode: $json"))
-          .recover{
-            //we recover parsing failures with a default value, as we have no optionality here to lean on
-            case NonFatal(_) => defaultProposalPeriod
-          }
-    )
-
-  }
-
   /** a fetcher for the current quorum of blocks */
   val currentQuorumFetcher = new FutureFetcher {
 

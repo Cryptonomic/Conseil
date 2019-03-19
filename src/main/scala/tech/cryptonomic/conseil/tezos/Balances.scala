@@ -23,7 +23,7 @@ object SymbolSourceLabels {
   }
 }
 
-/** Provides instances of `HasBalanceUpdates` for the tezos operations' hierarchy
+/** Provides instances of `monocle.Getter` for the tezos operations' hierarchy
   * Simply import this object to have the additinal methods to extract balances from
   * any Operation ADT type
   */
@@ -59,7 +59,7 @@ object OperationBalances {
 
 }
 
-/** Provides instances of `HasBalanceUpdates` for the tezos block data
+/** Provides instances of `monocle.Getter` for the tezos block data
   * Simply import this object to have the additinal methods to extract balances from data.
   */
 object BlockBalances {
@@ -68,7 +68,7 @@ object BlockBalances {
 
   //the updates might actually be missing from json
   implicit val blockBalanceUpdatesGetter = Getter[BlockData, Map[Label, List[BalanceUpdate]]](
-    data => Map(BLOCK_SOURCE -> data.metadata.balance_updates.getOrElse(List.empty))
+    data => Map(BLOCK_SOURCE -> data.metadata.swap.toOption.map(_.balance_updates).getOrElse(List.empty))
   )
 
   implicit val blockBalanceHashGetter = Getter[BlockData, Option[String]](_.hash.value.some)

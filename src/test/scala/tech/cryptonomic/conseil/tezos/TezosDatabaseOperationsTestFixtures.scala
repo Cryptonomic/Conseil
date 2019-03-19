@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.ZonedDateTime
 import scala.util.Random
+import cats.syntax.either._
 
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
@@ -82,7 +83,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = BlockHeaderMetadata(balance_updates = None)
+          metadata = BlockHeaderMetadata(balance_updates = List.empty, baker = PublicKeyHash(generateHash(10)), votingPeriodKind = VotingPeriod.proposal).asLeft
         ),
         operationGroups = List.empty,
         votes = CurrentVotes.empty
@@ -103,7 +104,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   /** Randomly geneates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
-  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: Option[List[OperationMetadata.BalanceUpdate]] = None)(implicit randomSeed: RandomSeed): Block = {
+  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
     import TezosOptics.Blocks._
     import mouse.any._
 
