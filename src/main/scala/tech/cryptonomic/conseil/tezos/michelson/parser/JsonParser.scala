@@ -182,7 +182,10 @@ object JsonParser {
 
   implicit val michelsonSchemaParser: Parser[MichelsonSchema] = {
     import GenericDerivation._
-    decode[List[JsonSection]](_).map(JsonSchema).flatMap(_.toMichelsonSchema)
+    decode[List[JsonSection]](_).flatMap {
+      case Nil => Right(MichelsonSchema.empty)
+      case jsonSections => JsonSchema(jsonSections).toMichelsonSchema
+    }
   }
 
   implicit val michelsonCodeParser: Parser[MichelsonCode] = {

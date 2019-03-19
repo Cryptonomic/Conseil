@@ -90,6 +90,10 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     michelsonInstruction.render() shouldBe "{ IF_NONE { { UNIT ; FAILWITH } } {} }"
   }
 
+  it should "render empty MichelsonSchema" in {
+    MichelsonSchema.empty.render() shouldBe ""
+  }
+
   it should "render complex MichelsonCode" in {
     val michelsonExpression = MichelsonCode(List(
       MichelsonSingleInstruction("CDR"),

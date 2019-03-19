@@ -398,7 +398,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
 
-  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any) = {
+  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any): String = {
     Some(json).collect {
       case t: String => convert[T](t)
       case t: Micheline => convert[T](t.expression)

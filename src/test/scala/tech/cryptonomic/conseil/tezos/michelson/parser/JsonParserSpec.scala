@@ -320,6 +320,12 @@ class JsonParserSpec extends FlatSpec with Matchers {
     parse[MichelsonSchema](json) should equal(Left(ParserError("No code code found")))
   }
 
+  it should "parse empty schema" in {
+    val json = """[]"""
+
+    parse[MichelsonSchema](json) should equal(Right(MichelsonSchema.empty))
+  }
+
   it should "convert complex json to MichelsonSchema" in {
 
     val json =
