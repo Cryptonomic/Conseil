@@ -100,7 +100,7 @@ class TezosDatabaseOperationsTest
               row.periodKind shouldEqual block.data.metadata.swap.toOption.map(_.votingPeriodKind.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
-              row.baker shouldEqual block.data.metadata.swap.toOption.map(_.baker)
+              row.baker shouldEqual block.data.metadata.swap.toOption.map(_.baker.value)
           }
 
           val dbBlocksAndGroups =
@@ -871,7 +871,8 @@ class TezosDatabaseOperationsTest
           "level" -> Some(0),
           "period_kind" -> None,
           "current_expected_quorum" -> None,
-          "active_proposal" -> None
+          "active_proposal" -> None,
+          "baker" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -888,7 +889,8 @@ class TezosDatabaseOperationsTest
           "level" -> Some(1),
           "period_kind" -> None,
           "current_expected_quorum" -> None,
-          "active_proposal" -> None
+          "active_proposal" -> None,
+          "baker" -> None
         )
       )
     }
