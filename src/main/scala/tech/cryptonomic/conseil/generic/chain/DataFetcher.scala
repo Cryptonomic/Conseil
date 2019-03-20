@@ -78,7 +78,7 @@ object DataFetcher {
   /* An alias used to define function constraints on the internal dependent types (i.e. `I`, `O`, `E`)
    * which would be otherwise opaque in any function signature
    *
-   * Example: the fetcher for tezos blocks might have type `Aux[Future, List, Int, BlockData, String]
+   * Example: the fetcher for tezos blocks might have type `Aux[Future, List, Throwable, Int, BlockData, String]
    * where the Int is for the offset from a given block, and String is a representation of a json value.
    */
   private type Aux[Eff[_], Coll[_], Err, Input, Output, Encoding] = DataFetcher[Eff, Coll, Err] {

@@ -108,7 +108,7 @@ trait BlocksDataFetchers {
         decodeLiftingTo[Future, Out](json)
           .onError {
             case err: io.circe.Error =>
-              logger.error(s"I fetched a voting period json from tezos node that I'm unable to decode: $json", err).pure[Future]
+              logger.error(s"I fetched a voting proposal period json from tezos node that I'm unable to decode: $json", err).pure[Future]
           }
     )
 
