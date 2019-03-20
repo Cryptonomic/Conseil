@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.Instant
 import scala.util.Try
-import scala.concurrent.Future
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 /** This expose decoders for json conversions */
@@ -12,6 +11,7 @@ object JsonDecoders {
   /** Circe-specific definitions as implicits */
   object Circe {
 
+    import cats.ApplicativeError
     import cats.syntax.functor._
     import io.circe.Decoder
     import io.circe.{ Error, Errors }
@@ -21,16 +21,17 @@ object JsonDecoders {
 
     type JsonDecoded[T] = Either[Error, T]
 
-    /** Helper to decode json and convert to a possibly failing future result
-      * This is not running any async operation
+    /** Helper to decode json and convert to any effectful result that can
+     *  raise errors, as implied with the type class contraint
+      * This is not necessarily running any async operation
       */
-    def decodeToFuture[A: io.circe.Decoder](json: String) = {
+    def decodeLiftingTo[Eff[_], A: io.circe.Decoder](json: String)(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
       import io.circe.parser.decode
+      import cats.instances.either._
+      import cats.syntax.either._
+      import cats.syntax.bifunctor._
 
-      decode[A](json) match {
-        case Left(error) => Future.failed(error)
-        case Right(results) => Future.successful(results)
-      }
+      decode[A](json).leftWiden[Throwable].raiseOrPure[Eff]
     }
 
     /** Collects failures in json parsing, when circe is used to decode the objects out of strings

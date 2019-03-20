@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
+import scala.concurrent.ExecutionContext
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
@@ -14,6 +15,9 @@ trait BlocksDataFetchers {
   self: LazyLogging =>
   import scala.concurrent.Future
   import io.circe.parser.decode
+  import JsonDecoders.Circe.decodeLiftingTo
+
+  def fetchFutureContext: ExecutionContext
 
   /** the tezos network to connect to */
   def network: String
@@ -22,8 +26,10 @@ trait BlocksDataFetchers {
   /** parallelism in the multiple requests decoding on the RPC interface */
   def fetchConcurrency: Int
 
+  type FutureFetcher = DataFetcher[Future, List, Throwable]
+
   /** a fetcher of blocks */
-  def blocksFetcher(hashRef: BlockHash) = new DataFetcher[Future, List] {
+  def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
     import JsonDecoders.Circe.Blocks._
 
     type Encoded = String
@@ -60,7 +66,7 @@ trait BlocksDataFetchers {
     }
 
   /** a fetcher of operation groups from block hashes */
-  val operationGroupFetcher = new DataFetcher[Future, List] {
+  val operationGroupFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Operations._
 
     type Encoded = String
@@ -86,7 +92,7 @@ trait BlocksDataFetchers {
 
   }
 
-  val currentPeriodFetcher = new DataFetcher[Future, List] {
+  val currentPeriodFetcher = new FutureFetcher {
     import JsonDecoders.Circe._
 
     type Encoded = String
@@ -104,7 +110,7 @@ trait BlocksDataFetchers {
 
   }
 
-  val currentQuorumFetcher = new DataFetcher[Future, List] {
+  val currentQuorumFetcher = new FutureFetcher {
 
     type Encoded = String
     type In = BlockHash
@@ -121,7 +127,7 @@ trait BlocksDataFetchers {
 
   }
 
-  val currentProposalFetcher = new DataFetcher[Future, List] {
+  val currentProposalFetcher = new FutureFetcher {
     import JsonDecoders.Circe._
 
     type Encoded = String
@@ -139,8 +145,10 @@ trait BlocksDataFetchers {
 
   }
 
-  val proposalsMultiFetch = new DataFetcher[Future, List] {
+  val proposalsMultiFetch = new FutureFetcher {
     import JsonDecoders.Circe._
+    import cats.instances.future._
+
 
     type Encoded = String
     type In = Block
@@ -152,12 +160,16 @@ trait BlocksDataFetchers {
       Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli{
-      json => JsonDecoders.Circe.decodeToFuture[List[ProtocolId]](json)
+      json =>
+        implicit val ec: ExecutionContext = fetchFutureContext
+        decodeLiftingTo[Future, List[ProtocolId]](json)
     }
   }
 
-  val bakersMultiFetch = new DataFetcher[Future, List] {
+  val bakersMultiFetch = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
+    import cats.instances.future._
+
 
     type Encoded = String
     type In = Block
@@ -169,12 +181,16 @@ trait BlocksDataFetchers {
       Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli{
-      json => JsonDecoders.Circe.decodeToFuture[List[Voting.BakerRolls]](json)
+      json =>
+        implicit val ec: ExecutionContext = fetchFutureContext
+        decodeLiftingTo[Future, List[Voting.BakerRolls]](json)
     }
   }
 
-  val ballotsMultiFetch = new DataFetcher[Future, List] {
+  val ballotsMultiFetch = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
+    import cats.instances.future._
+
 
     type Encoded = String
     type In = Block
@@ -186,7 +202,9 @@ trait BlocksDataFetchers {
       Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli{
-      json => JsonDecoders.Circe.decodeToFuture[List[Voting.Ballot]](json)
+      json =>
+        implicit val ec: ExecutionContext = fetchFutureContext
+        decodeLiftingTo[Future, List[Voting.Ballot]](json)
     }
   }
 
