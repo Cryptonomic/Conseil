@@ -95,7 +95,7 @@ class TezosTypesTest extends WordSpec with Matchers {
   }
 
   private val blockData = BlockData("_", None, BlockHash("_"), BlockHeader(0, 0, BlockHash("_"), ZonedDateTime.now(), 0, None, Seq.empty, "_", None), BlockHeaderMetadata(None))
-  private val blockVotes = CurrentVotes.defaultValue
+  private val blockVotes = CurrentVotes.empty
   private val operationGroup = OperationsGroup("_", None, OperationHash("_"), BlockHash("_"), List.empty, None)
   private val number = PositiveDecimal(1)
   private val transaction = Transaction(number, number, number, number, number, ContractId("_"), ContractId("_"), None, ResultMetadata(null, List.empty))

@@ -393,7 +393,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       fetchedBlocksData.map {
         case (offset, md) =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.defaultValue)
+          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
           (parseMichelsonScripts(Block(md, ops, votes)), accs)
       }
     }
