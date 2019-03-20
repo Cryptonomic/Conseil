@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
+import scala.concurrent.ExecutionContext
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
@@ -13,7 +14,13 @@ trait BlocksDataFetchers {
   //we require the cabability to log
   self: LazyLogging =>
   import scala.concurrent.Future
+  import cats.instances.future._
+  import cats.syntax.applicativeError._
+  import cats.syntax.applicative._
   import io.circe.parser.decode
+  import JsonDecoders.Circe.decodeLiftingTo
+
+  implicit def fetchFutureContext: ExecutionContext
 
   /** the tezos network to connect to */
   def network: String
@@ -22,8 +29,10 @@ trait BlocksDataFetchers {
   /** parallelism in the multiple requests decoding on the RPC interface */
   def fetchConcurrency: Int
 
+  type FutureFetcher = DataFetcher[Future, List, Throwable]
+
   /** a fetcher of blocks */
-  def blocksFetcher(hashRef: BlockHash) = new DataFetcher[Future, List] {
+  def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
     import JsonDecoders.Circe.Blocks._
 
     type Encoded = String
@@ -39,13 +48,11 @@ trait BlocksDataFetchers {
     // decode with `JsonDecoders`
     override val decodeData = Kleisli {
       json =>
-        decode[BlockData](JsonString.sanitize(json)) match {
-          case Left(error) =>
-            logger.error("I fetched a block definition from tezos node that I'm unable to decode: {}", json)
-            Future.failed(error)
-          case Right(value) =>
-            Future.successful(value)
-        }
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched a block definition from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
 
   }
@@ -60,7 +67,7 @@ trait BlocksDataFetchers {
     }
 
   /** a fetcher of operation groups from block hashes */
-  val operationGroupFetcher = new DataFetcher[Future, List] {
+  val operationGroupFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Operations._
 
     type Encoded = String
@@ -74,19 +81,17 @@ trait BlocksDataFetchers {
 
     override val decodeData = Kleisli(
       json =>
-        decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JsonString.sanitize(json)))
-          .map(_.flatten) match {
-            case Left(error) =>
-              logger.error("I fetched some operations json from tezos node that I'm unable to decode into operation groups: {}", json)
-              Future.failed(error)
-            case Right(value) =>
-              Future.successful(value)
+        decodeLiftingTo[Future, List[Out]](adaptManagerPubkeyField(JsonString.sanitize(json)))
+          .map(_.flatten)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched some operations json from tezos node that I'm unable to decode into operation groups: $json", err).pure[Future]
           }
     )
 
   }
 
-  val currentPeriodFetcher = new DataFetcher[Future, List] {
+  val currentPeriodFetcher = new FutureFetcher {
     import JsonDecoders.Circe._
 
     type Encoded = String
@@ -99,12 +104,17 @@ trait BlocksDataFetchers {
       Kleisli(hashes => node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli(
-      json => Future.fromTry(decode[ProposalPeriod.Kind](json).toTry)
+      json =>
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched a voting proposal period json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     )
 
   }
 
-  val currentQuorumFetcher = new DataFetcher[Future, List] {
+  val currentQuorumFetcher = new FutureFetcher {
 
     type Encoded = String
     type In = BlockHash
@@ -121,7 +131,7 @@ trait BlocksDataFetchers {
 
   }
 
-  val currentProposalFetcher = new DataFetcher[Future, List] {
+  val currentProposalFetcher = new FutureFetcher {
     import JsonDecoders.Circe._
 
     type Encoded = String
@@ -139,8 +149,10 @@ trait BlocksDataFetchers {
 
   }
 
-  val proposalsMultiFetch = new DataFetcher[Future, List] {
+  val proposalsMultiFetch = new FutureFetcher {
     import JsonDecoders.Circe._
+    import cats.instances.future._
+
 
     type Encoded = String
     type In = Block
@@ -152,12 +164,19 @@ trait BlocksDataFetchers {
       Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli{
-      json => JsonDecoders.Circe.decodeToFuture[List[ProtocolId]](json)
+      json =>
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
   }
 
-  val bakersMultiFetch = new DataFetcher[Future, List] {
+  val bakersMultiFetch = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
+    import cats.instances.future._
+
 
     type Encoded = String
     type In = Block
@@ -169,12 +188,19 @@ trait BlocksDataFetchers {
       Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli{
-      json => JsonDecoders.Circe.decodeToFuture[List[Voting.BakerRolls]](json)
+      json =>
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched voting bakers json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
   }
 
-  val ballotsMultiFetch = new DataFetcher[Future, List] {
+  val ballotsMultiFetch = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
+    import cats.instances.future._
+
 
     type Encoded = String
     type In = Block
@@ -186,7 +212,12 @@ trait BlocksDataFetchers {
       Kleisli(blocks => node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli{
-      json => JsonDecoders.Circe.decodeToFuture[List[Voting.Ballot]](json)
+      json =>
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched voting ballots json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
   }
 

@@ -12,6 +12,8 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonEle
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
 
+import cats.instances.future._
+import cats.syntax.applicative._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.util.{Failure, Success, Try}
@@ -53,7 +55,7 @@ object TezosNodeOperator {
   * @param batchConf configuration for batched download of node data
   * @param executionContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext)
+class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit val fetchFutureContext: ExecutionContext)
   extends LazyLogging
   with BlocksDataFetchers {
   import TezosNodeOperator.isGenesis
@@ -174,14 +176,15 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return          The `Future` list of operations
     */
   def getAllOperationsForBlock(block: BlockData): Future[List[OperationsGroup]] = {
-    import JsonDecoders.Circe.decodeToFuture
+    import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Operations._
     import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
     //parse json, and try to convert to objects, converting failures to a failed `Future`
     //we could later improve by "accumulating" all errors in a single failed future, with `decodeAccumulating`
     def decodeOperations(json: String) =
-      decodeToFuture[List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json))).map(_.flatten)
+      decodeLiftingTo[Future, List[List[OperationsGroup]]](adaptManagerPubkeyField(JS.sanitize(json)))
+        .map(_.flatten)
 
     if (isGenesis(block))
       Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -194,10 +197,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   /** Fetches votes information for the block */
   def getCurrentVotesForBlock(block: BlockData, offset: Option[Int] = None): Future[CurrentVotes] =
     if (isGenesis(block))
-      Future.successful(CurrentVotes.defaultValue)
+      CurrentVotes.empty.pure
     else {
       import JsonDecoders.Circe._
-      import cats.instances.future._
       import cats.syntax.apply._
 
       val offsetString = offset.map(_.toString).getOrElse("")
@@ -205,17 +207,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
       val fetchCurrentPeriod =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_period_kind") flatMap { json =>
-          decodeToFuture[ProposalPeriod.Kind](json)
+          decodeLiftingTo[Future, ProposalPeriod.Kind](json)
         }
 
       val fetchCurrentQuorum =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
-          decodeToFuture[Option[Int]](json)
+          decodeLiftingTo[Future, Option[Int]](json)
         }
 
       val fetchCurrentProposal =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
-          decodeToFuture[Option[ProtocolId]](json)
+          decodeLiftingTo[Future, Option[ProtocolId]](json)
         }
 
       (fetchCurrentPeriod, fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
@@ -248,7 +250,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
-    import JsonDecoders.Circe.decodeToFuture
+    import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Blocks._
 
     val offsetString = offset.map(_.toString).getOrElse("")
@@ -256,7 +258,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     //starts immediately
     val fetchBlock =
       node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
-        decodeToFuture[BlockData](JS.sanitize(json))
+        decodeLiftingTo[Future, BlockData](JS.sanitize(json))
       }
 
     for {
@@ -390,7 +392,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       fetchedBlocksData.map {
         case (offset, md) =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.defaultValue)
+          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
           (parseMichelsonScripts(Block(md, ops, votes)), accs)
       }
     }
