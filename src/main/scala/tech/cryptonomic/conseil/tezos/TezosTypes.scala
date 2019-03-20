@@ -333,9 +333,9 @@ object TezosTypes {
   object ProposalPeriod extends Enumeration {
     type Kind = Value
     val proposal, promotion_vote, testing_vote, testing = Value
-
-    val default = proposal
   }
+
+  val defaultProposalPeriod: ProposalPeriod.Kind = ProposalPeriod.proposal
 
   final case class CurrentVotes(
     periodKind: ProposalPeriod.Kind,
@@ -344,7 +344,7 @@ object TezosTypes {
   )
 
   final object CurrentVotes {
-    val empty = CurrentVotes(periodKind = ProposalPeriod.default, quorum = None, active = None)
+    val empty = CurrentVotes(periodKind = defaultProposalPeriod, quorum = None, active = None)
   }
 
   final case class Block(

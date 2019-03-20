@@ -149,7 +149,7 @@ trait BlocksDataFetchers {
           .onError(logWarnOnJsonDecoding(s"I fetched a voting proposal period json from tezos node that I'm unable to decode: $json"))
           .recover{
             //we recover parsing failures with a default value, as we have no optionality here to lean on
-            case NonFatal(_) => ProposalPeriod.default
+            case NonFatal(_) => defaultProposalPeriod
           }
     )
 
