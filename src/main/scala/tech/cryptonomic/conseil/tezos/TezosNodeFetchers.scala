@@ -14,10 +14,13 @@ trait BlocksDataFetchers {
   //we require the cabability to log
   self: LazyLogging =>
   import scala.concurrent.Future
+  import cats.instances.future._
+  import cats.syntax.applicativeError._
+  import cats.syntax.applicative._
   import io.circe.parser.decode
   import JsonDecoders.Circe.decodeLiftingTo
 
-  def fetchFutureContext: ExecutionContext
+  implicit def fetchFutureContext: ExecutionContext
 
   /** the tezos network to connect to */
   def network: String
@@ -45,13 +48,11 @@ trait BlocksDataFetchers {
     // decode with `JsonDecoders`
     override val decodeData = Kleisli {
       json =>
-        decode[BlockData](JsonString.sanitize(json)) match {
-          case Left(error) =>
-            logger.error("I fetched a block definition from tezos node that I'm unable to decode: {}", json)
-            Future.failed(error)
-          case Right(value) =>
-            Future.successful(value)
-        }
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched a block definition from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
 
   }
@@ -80,13 +81,11 @@ trait BlocksDataFetchers {
 
     override val decodeData = Kleisli(
       json =>
-        decode[List[List[OperationsGroup]]](adaptManagerPubkeyField(JsonString.sanitize(json)))
-          .map(_.flatten) match {
-            case Left(error) =>
-              logger.error("I fetched some operations json from tezos node that I'm unable to decode into operation groups: {}", json)
-              Future.failed(error)
-            case Right(value) =>
-              Future.successful(value)
+        decodeLiftingTo[Future, List[Out]](adaptManagerPubkeyField(JsonString.sanitize(json)))
+          .map(_.flatten)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched some operations json from tezos node that I'm unable to decode into operation groups: $json", err).pure[Future]
           }
     )
 
@@ -105,7 +104,12 @@ trait BlocksDataFetchers {
       Kleisli(hashes => node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency))
 
     override val decodeData = Kleisli(
-      json => Future.fromTry(decode[ProposalPeriod.Kind](json).toTry)
+      json =>
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched a voting period json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     )
 
   }
@@ -161,8 +165,11 @@ trait BlocksDataFetchers {
 
     override val decodeData = Kleisli{
       json =>
-        implicit val ec: ExecutionContext = fetchFutureContext
-        decodeLiftingTo[Future, List[ProtocolId]](json)
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
   }
 
@@ -182,8 +189,11 @@ trait BlocksDataFetchers {
 
     override val decodeData = Kleisli{
       json =>
-        implicit val ec: ExecutionContext = fetchFutureContext
-        decodeLiftingTo[Future, List[Voting.BakerRolls]](json)
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched voting bakers json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
   }
 
@@ -203,8 +213,11 @@ trait BlocksDataFetchers {
 
     override val decodeData = Kleisli{
       json =>
-        implicit val ec: ExecutionContext = fetchFutureContext
-        decodeLiftingTo[Future, List[Voting.Ballot]](json)
+        decodeLiftingTo[Future, Out](json)
+          .onError {
+            case err: io.circe.Error =>
+              logger.error(s"I fetched voting ballots json from tezos node that I'm unable to decode: $json", err).pure[Future]
+          }
     }
   }
 

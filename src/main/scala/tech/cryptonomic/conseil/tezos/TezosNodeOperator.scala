@@ -55,14 +55,13 @@ object TezosNodeOperator {
   * @param batchConf configuration for batched download of node data
   * @param executionContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit executionContext: ExecutionContext)
+class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit val fetchFutureContext: ExecutionContext)
   extends LazyLogging
   with BlocksDataFetchers {
   import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
   override val fetchConcurrency = blockOperationsConcurrencyLevel
-  override val fetchFutureContext = executionContext
 
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
