@@ -55,11 +55,16 @@ object JsonParser {
    * Empty expression is represented as an empty array in JSON.
    *
    * */
-  case class JsonType(prim: String, args: Option[List[Either[JsonExpression, Nil.type]]]) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonType(prim, args.getOrElse(List.empty).map {
-      case Left(it) => it.toMichelsonExpression
-      case Right(_) => MichelsonEmptyExpression
-    })
+  case class JsonType(prim: String,
+                      args: Option[List[Either[JsonExpression, Nil.type]]],
+                      annots: Option[List[String]] = None) extends JsonExpression {
+    override def toMichelsonExpression = MichelsonType(
+      prim = prim,
+      args = args.getOrElse(List.empty).map {
+        case Left(jsonExpression) => jsonExpression.toMichelsonExpression
+        case Right(_) => MichelsonEmptyExpression
+      },
+      annots.getOrElse(List.empty))
   }
 
   /*
@@ -97,13 +102,18 @@ object JsonParser {
     def toMichelsonInstruction: MichelsonInstruction
   }
 
-  case class JsonSimpleInstruction(prim: String, args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonSingleInstruction(prim, args.getOrElse(List.empty)
-      .map {
-        case Left(jsonExpression) => jsonExpression.toMichelsonExpression
-        case Right(Nil) => MichelsonEmptyInstruction
-        case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
-      })
+  case class JsonSimpleInstruction(prim: String,
+                                   args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None,
+                                   annots: Option[List[String]] = None) extends JsonInstruction {
+    override def toMichelsonInstruction = MichelsonSingleInstruction(
+      prim = prim,
+      embeddedElements = args.getOrElse(List.empty)
+        .map {
+          case Left(jsonExpression) => jsonExpression.toMichelsonExpression
+          case Right(Nil) => MichelsonEmptyInstruction
+          case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
+        },
+      annotations = annots.getOrElse(List.empty))
   }
 
   case class JsonInstructionSequence(instructions: List[JsonInstruction]) extends JsonInstruction {
