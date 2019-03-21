@@ -8,7 +8,7 @@ import cats.syntax.apply._
 object CollectionOps {
 
   /**
-    * provides common group opearaion for collections of 2-tuples
+    * provides a pretty common grouping opearation for collections of 2-tuples
     * aggregating by the first element of the tuple as a key
     */
   def groupByKey[K, V](pairedSeq: Seq[(K, V)]): Map[K, Seq[V]] =
