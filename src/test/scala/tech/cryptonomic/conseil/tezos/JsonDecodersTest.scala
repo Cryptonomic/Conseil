@@ -22,7 +22,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     /** wrap in quotes to be a valid json string */
     val jsonStringOf = (content: String) => s""""$content""""
 
-    "fail to decode json with duplicate fields" in {
+    "allow decoding json with duplicate fields" in {
       import io.circe.Decoder
       import io.circe.generic.extras.semiauto._
       implicit val derivationConf = tezosDerivationConfig
@@ -36,6 +36,23 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
       val duplicateUndecoded = decode[JsonTest]("""{"field": "test", "inner": {"key": "one", "key": "duplicate"}}""")
       duplicateUndecoded shouldBe 'right
+
+    }
+
+    "decode null fields as empty Options" in {
+      import io.circe.Decoder
+      import io.circe.generic.extras.semiauto._
+      implicit val derivationConf = tezosDerivationConfig
+
+      case class JsonTest(field: Option[String])
+
+      implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+
+      val valueDecoded = decode[JsonTest]("""{"field": "test"}""")
+      valueDecoded.right.value shouldBe JsonTest(Some("test"))
+
+      val nulllDecoded = decode[JsonTest]("""{"field": null}""")
+      nulllDecoded.right.value shouldBe JsonTest(None)
 
     }
 
@@ -254,7 +271,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded.right.value shouldEqual expectedBigMapDiff
     }
 
-    "decode valid json into a Scipted.Cntracts value" in new OperationsJsonData {
+    "decode valid json into a Scipted.Contracts value" in new OperationsJsonData {
       val decoded = decode[Scripted.Contracts](scriptJson)
       decoded.right.value shouldEqual expectedScript
     }
