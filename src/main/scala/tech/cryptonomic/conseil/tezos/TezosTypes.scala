@@ -320,7 +320,7 @@ object TezosTypes {
                     balance: scala.math.BigDecimal,
                     spendable: Boolean,
                     delegate: AccountDelegate,
-                    script: Option[Any],
+                    script: Option[String],
                     counter: Int
                     )
 

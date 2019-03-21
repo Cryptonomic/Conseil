@@ -21,8 +21,11 @@ object MichelsonRenderer {
       case MichelsonStringConstant(constant) => "\"%s\"".format(constant)
       case MichelsonEmptyExpression => "{}"
 
+      // code
       case MichelsonCode(instructions) => instructions.map(_.render()).mkString(" ;\n       ")
 
+      // schema
+      case MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(Nil)) => ""
       case MichelsonSchema(parameter, storage, code) => s"""parameter ${parameter.render()};
                                                            |storage ${storage.render()};
                                                            |code { ${code.render()} }""".stripMargin
