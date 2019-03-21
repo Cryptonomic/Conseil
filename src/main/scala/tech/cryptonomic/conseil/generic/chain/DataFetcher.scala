@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.generic.chain
 
 import cats._
 import cats.data.Kleisli
+import cats.syntax.applicativeError._
 import cats.syntax.semigroupal._
 
 /** Contract for a generic combination of operations that get encoded data (usually json) from
@@ -34,6 +35,12 @@ trait DataFetcher[Eff[_], Coll[_], Err] {
   /** an effectful function that decodes the json value to an output `Out` */
   def decodeData: Kleisli[Eff, Encoded, Out]
 
+  /** override this function to run a side-effect if the data fetching step fails */
+  def onDataFetchError: Err => Unit = Function.const(())
+
+  /** override this function to run a side-effect if the decoding step fails */
+  def onDecodingError: Err => Unit = Function.const(())
+
   /** using the combination of the provided functions we fetch all data with this general outline:
     * 1. get encoded (e.g. json) values from the node, given a traversable input collection
     * 2. keep the correlation with the input and decode each value (e.g. from json) to a corresponding output
@@ -41,7 +48,13 @@ trait DataFetcher[Eff[_], Coll[_], Err] {
     * The resulting effect will also encode a possible failure in virtue of the implicit MonadError instance that is provided
     */
   def fetch(implicit app: MonadError[Eff, Err], tr: Traverse[Coll]): Kleisli[Eff, Coll[In], Coll[(In, Out)]] =
-    fetchData.andThen(encoded => decodeData.second[In].traverse(encoded))
+    fetchData.onError { case err => Kleisli.pure(onDataFetchError(err)) }
+      .andThen( encoded =>
+        decodeData
+          .onError { case err => Kleisli.pure(onDecodingError(err)) }
+          .second[In]         //only decodes the second element of the tuple (the encoded value) and pass the first on (the input)
+          .traverse(encoded)  //operates on a whole traverable Coll and wraps the resulting collection in a single Effect wrapper
+      )
 
 }
 

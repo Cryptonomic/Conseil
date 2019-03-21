@@ -335,6 +335,8 @@ object TezosTypes {
     val proposal, promotion_vote, testing_vote, testing = Value
   }
 
+  val defaultProposalPeriod: ProposalPeriod.Kind = ProposalPeriod.proposal
+
   final case class CurrentVotes(
     periodKind: ProposalPeriod.Kind,
     quorum: Option[Int],
@@ -342,7 +344,7 @@ object TezosTypes {
   )
 
   final object CurrentVotes {
-    val empty = CurrentVotes(periodKind = ProposalPeriod.proposal, quorum = None, active = None)
+    val empty = CurrentVotes(periodKind = defaultProposalPeriod, quorum = None, active = None)
   }
 
   final case class Block(
