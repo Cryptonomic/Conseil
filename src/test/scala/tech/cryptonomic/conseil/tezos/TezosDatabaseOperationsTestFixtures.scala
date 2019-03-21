@@ -83,7 +83,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = BlockHeaderMetadata(balance_updates = List.empty, baker = PublicKeyHash(generateHash(10)), votingPeriodKind = VotingPeriod.proposal).asLeft
+          metadata = BlockHeaderMetadata(
+            balance_updates = List.empty,
+            baker = PublicKeyHash(generateHash(10)),
+            votingPeriodKind = VotingPeriod.proposal,
+            nonceHash = Some(NonceHash(generateHash(10)))
+          ).asLeft
         ),
         operationGroups = List.empty,
         votes = CurrentVotes.empty

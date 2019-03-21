@@ -71,6 +71,8 @@ object TezosTypes {
 
   final case class Nonce(value: String) extends AnyVal
 
+  final case class NonceHash(value: String) extends AnyVal
+
   final case class Secret(value: String) extends AnyVal
 
   final case class Micheline(expression: String) extends AnyVal
@@ -102,6 +104,7 @@ object TezosTypes {
 
   final case class BlockHeaderMetadata(
     balance_updates: List[OperationMetadata.BalanceUpdate],
+    nonceHash: Option[NonceHash],
     baker: PublicKeyHash,
     votingPeriodKind: VotingPeriod.Kind
   )
@@ -338,7 +341,7 @@ object TezosTypes {
     val proposal, promotion_vote, testing_vote, testing = Value
   }
 
-  val defaultProposalPeriod: VotingPeriod.Kind = VotingPeriod.proposal
+  val defaultVotingPeriod: VotingPeriod.Kind = VotingPeriod.proposal
 
   final case class CurrentVotes(
     quorum: Option[Int],

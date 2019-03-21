@@ -117,7 +117,8 @@ class TezosPlatformDiscoveryOperationsTest
           Attribute("period_kind", "Period kind", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
           Attribute("current_expected_quorum", "Current expected quorum", DataType.Int, None, KeyType.UniqueKey, "blocks"),
           Attribute("active_proposal", "Active proposal", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
-          Attribute("baker", "Baker", DataType.String, Some(0), KeyType.UniqueKey, "blocks")
+          Attribute("baker", "Baker", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
+          Attribute("nonce_hash", "Nonce hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks")
         )
     }
 

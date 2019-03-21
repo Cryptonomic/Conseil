@@ -81,7 +81,8 @@ object DatabaseConversions {
         periodKind = metadata.map(_.votingPeriodKind.toString),
         currentExpectedQuorum = expectedQuorum,
         activeProposal = proposal.map(_.id),
-        baker = metadata.map(_.baker.value)
+        baker = metadata.map(_.baker.value),
+        nonceHash = metadata.flatMap(_.nonceHash.map(_.value))
       )
     }
   }

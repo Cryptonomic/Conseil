@@ -90,6 +90,7 @@ object JsonDecoders {
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
     implicit val protocolIdDecoder: Decoder[ProtocolId] = base58CheckDecoder.map(b58 => ProtocolId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
+    implicit val nonceHashDecoder: Decoder[NonceHash] = base58CheckDecoder.map(b58 => NonceHash(b58.content))
 
     val tezosDerivationConfig: Configuration =
     Configuration.default.withSnakeCaseConstructorNames

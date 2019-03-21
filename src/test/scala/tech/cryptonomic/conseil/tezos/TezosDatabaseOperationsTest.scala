@@ -872,7 +872,8 @@ class TezosDatabaseOperationsTest
           "period_kind" -> None,
           "current_expected_quorum" -> None,
           "active_proposal" -> None,
-          "baker" -> None
+          "baker" -> None,
+          "nonce_hash" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -890,7 +891,8 @@ class TezosDatabaseOperationsTest
           "period_kind" -> None,
           "current_expected_quorum" -> None,
           "active_proposal" -> None,
-          "baker" -> None
+          "baker" -> None,
+          "nonce_hash" -> None
         )
       )
     }
