@@ -9,14 +9,14 @@ object MichelsonRenderer {
     def render(): String = self match {
 
       // instructions
-      case MichelsonSingleInstruction(prim, List()) => prim
-      case MichelsonSingleInstruction(prim, args) => s"$prim ${args.map(_.render()).mkString(" ")}"
+      case MichelsonSingleInstruction(prim, List(), List()) => prim
+      case MichelsonSingleInstruction(prim, args, annotations) => s"$prim ${(annotations ++ args.map(_.render())).mkString(" ")}"
       case MichelsonInstructionSequence(args) => s"{ ${args.map(_.render()).mkString(" ; ")} }"
       case MichelsonEmptyInstruction => "{}"
 
       // expressions
-      case MichelsonType(name, List()) => name
-      case MichelsonType(name, args) => s"($name ${args.map(_.render()).mkString(" ")})"
+      case MichelsonType(name, List(), List()) => name
+      case MichelsonType(name, args, annotations) => s"($name ${(annotations ++ args.map(_.render())).mkString(" ")})"
       case MichelsonIntConstant(constant) => constant.toString
       case MichelsonStringConstant(constant) => "\"%s\"".format(constant)
       case MichelsonEmptyExpression => "{}"

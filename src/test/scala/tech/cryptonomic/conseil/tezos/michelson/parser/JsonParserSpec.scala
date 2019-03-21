@@ -64,6 +64,19 @@ class JsonParserSpec extends FlatSpec with Matchers {
           MichelsonType("int")))))))
   }
 
+  it should "parse MichelsonType with annotation" in {
+    val json =
+      """{
+        |  "prim": "int",
+        |  "annots": [
+        |    ":p"
+        |  ]
+        |}""".stripMargin
+
+    parse[MichelsonExpression](json) should equal(Right(
+      MichelsonType(prim = "int", annotations = List(":p"))))
+  }
+
   it should "parse MichelsonInstruction with only one simple instruction" in {
     val json = """{"prim": "DUP"}"""
 
@@ -83,6 +96,13 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
     parse[MichelsonInstruction](json) should equal(Right(
       MichelsonSingleInstruction("NIL", List(MichelsonType("operation")))))
+  }
+
+  it should "parse MichelsonInstruction with annotation" in {
+    val json = """{"prim": "CAR", "annots": ["@pointcolor"]}"""
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonSingleInstruction(prim = "CAR", annotations = List("@pointcolor"))))
   }
 
   it should "parse complex MichelsonInstruction" in {

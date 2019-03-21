@@ -26,6 +26,17 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     MichelsonType("some", List(MichelsonStringConstant("testValue"))).render() shouldBe "(some \"testValue\")"
   }
 
+  it should "render MichelsonType with annotation" in {
+    val michelsonType = MichelsonType(
+      prim = "pair",
+      args = List(
+        MichelsonType("int", annotations = List("%x")),
+        MichelsonType("int", annotations = List("%y"))),
+      annotations = List(":point"))
+
+    michelsonType.render() shouldBe "(pair :point (int %x) (int %y))"
+  }
+
   it should "render complex MichelsonType" in {
     val michelsonType = MichelsonType("contract", List(MichelsonType("or", List(
       MichelsonType("option", List(
@@ -92,6 +103,12 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
 
   it should "render empty MichelsonSchema" in {
     MichelsonSchema.empty.render() shouldBe ""
+  }
+
+  it should "render MichelsonInstruction with an annotation" in {
+    val michelsonInstruction = MichelsonSingleInstruction(prim = "CAR", annotations = List("@pointcolor"))
+
+    michelsonInstruction.render() shouldBe "CAR @pointcolor"
   }
 
   it should "render complex MichelsonCode" in {

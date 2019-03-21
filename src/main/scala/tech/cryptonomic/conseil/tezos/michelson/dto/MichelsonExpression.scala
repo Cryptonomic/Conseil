@@ -14,7 +14,7 @@ sealed trait MichelsonExpression extends MichelsonElement
  *   (contract (or (option address) int))
  *    |        |    |               |
  *    |        |    |               single type "int"
- *    |        |    type "option" with one argument "adress"
+ *    |        |    type "option" with one argument "address"
  *    |        type "or" with two arguments: "option address" and "int"
  *    type "contract" with one complex argument
  *
@@ -32,7 +32,7 @@ sealed trait MichelsonExpression extends MichelsonElement
  *
  *    MichelsonType("pair", List(MichelsonIntConstant(0), MichelsonEmptyExpression))
  * */
-case class MichelsonType(prim: String, args: List[MichelsonExpression] = List.empty) extends MichelsonExpression
+case class MichelsonType(prim: String, args: List[MichelsonExpression] = List.empty, annotations: List[String] = List.empty) extends MichelsonExpression
 
 /* Class representing an int constant */
 case class MichelsonIntConstant(int: Long) extends MichelsonExpression
