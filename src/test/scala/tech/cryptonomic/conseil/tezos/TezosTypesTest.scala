@@ -96,7 +96,15 @@ class TezosTypesTest extends WordSpec with Matchers {
   }
 
 
-  private val blockMetadata = BlockHeaderMetadata(balance_updates = List.empty, baker = PublicKeyHash("_"), voting_period_kind = defaultVotingPeriod, nonce_hash = None, consumed_gas = PositiveDecimal(0))
+  private val blockMetadata =
+    BlockHeaderMetadata(
+      balance_updates = List.empty,
+      baker = PublicKeyHash("_"),
+      voting_period_kind = defaultVotingPeriod,
+      nonce_hash = None,
+      consumed_gas = PositiveDecimal(0),
+      level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, false)
+    )
   private val blockData = BlockData("_", None, BlockHash("_"), BlockHeader(0, 0, BlockHash("_"), ZonedDateTime.now(), 0, None, Seq.empty, "_", None), blockMetadata.asLeft)
   private val blockVotes = CurrentVotes.empty
   private val operationGroup = OperationsGroup("_", None, OperationHash("_"), BlockHash("_"), List.empty, None)

@@ -130,6 +130,7 @@ object JsonDecoders {
         leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
 
       implicit val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
+      implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveDecoder
       implicit val metadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
       implicit val headerDecoder: Decoder[BlockHeader] = deriveDecoder
       implicit val mainDecoder: Decoder[BlockData] = deriveDecoder //remember to add ISO-control filtering

@@ -22,7 +22,7 @@ class DatabaseConversionsTest
     val groupHash = OperationHash("operationhash")
 
     //keep level 1, dropping the genesis block
-    val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+    val (genesis :: block :: Nil) = generateBlocks(toLevel = 1, startAt = testReferenceDateTime)
 
     val sut = DatabaseConversions
 
@@ -48,6 +48,47 @@ class DatabaseConversionsTest
       sut.extractBigDecimal(InvalidDecimal("1000A")) shouldBe 'empty
     }
 
+    "convert a tezos genesis block to a database row" in {
+      val converted = genesis.convertTo[Tables.BlocksRow]
+
+      val header = genesis.data.header
+      val CurrentVotes(expectedQuorum, proposal) = genesis.votes
+
+      converted should have(
+        'level (header.level),
+        'proto (header.proto),
+        'predecessor (header.predecessor.value),
+        'timestamp (java.sql.Timestamp.from(header.timestamp.toInstant)),
+        'validationPass (header.validation_pass),
+        'fitness (header.fitness.mkString(",")),
+        'context (Some(header.context)),
+        'signature (header.signature),
+        'protocol (genesis.data.protocol),
+        'chainId (genesis.data.chain_id),
+        'hash (genesis.data.hash.value),
+        'operationsHash (header.operations_hash),
+        'currentExpectedQuorum (expectedQuorum),
+        'activeProposal (proposal.map(_.id))
+      )
+
+      //no metadata expected
+      forAll(
+        converted.periodKind ::
+        converted.baker ::
+        converted.nonceHash ::
+        converted.consumedGas ::
+        converted.metaLevel ::
+        converted.metaLevelPosition ::
+        converted.metaCycle ::
+        converted.metaCyclePosition ::
+        converted.metaVotingPeriod ::
+        converted.metaVotingPeriodPosition ::
+        converted.metaCommitment :: Nil) {
+        _ shouldBe 'empty
+      }
+
+    }
+
     "convert a tezos block to a database row" in {
       val converted = block.convertTo[Tables.BlocksRow]
 
@@ -68,11 +109,18 @@ class DatabaseConversionsTest
         'chainId (block.data.chain_id),
         'hash (block.data.hash.value),
         'operationsHash (header.operations_hash),
-        'periodKind (metadata.map(_.voting_period_kind.toString)),
         'currentExpectedQuorum (expectedQuorum),
         'activeProposal (proposal.map(_.id)),
+        'periodKind (metadata.map(_.voting_period_kind.toString)),
         'baker (metadata.map(_.baker.value)),
-        'nonceHash (metadata.flatMap(_.nonce_hash.map(_.value)))
+        'nonceHash (metadata.flatMap(_.nonce_hash.map(_.value))),
+        'metaLevel (metadata.map(_.level.level)),
+        'metaLevelPosition (metadata.map(_.level.level_position)),
+        'metaCycle (metadata.map(_.level.cycle)),
+        'metaCyclePosition (metadata.map(_.level.cycle_position)),
+        'metaVotingPeriod (metadata.map(_.level.voting_period)),
+        'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
+        'metaCommitment (metadata.map(_.level.expected_commitment))
       )
 
       metadata.map(_.consumed_gas) match {

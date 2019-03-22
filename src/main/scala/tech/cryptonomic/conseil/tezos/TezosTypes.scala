@@ -107,7 +107,18 @@ object TezosTypes {
     nonce_hash: Option[NonceHash],
     consumed_gas: PositiveBigNumber,
     baker: PublicKeyHash,
-    voting_period_kind: VotingPeriod.Kind
+    voting_period_kind: VotingPeriod.Kind,
+    level: BlockHeaderMetadataLevel
+  )
+
+  final case class BlockHeaderMetadataLevel(
+    level: Int,
+    level_position: Int,
+    cycle: Int,
+    cycle_position: Int,
+    voting_period: Int,
+    voting_period_position: Int,
+    expected_commitment: Boolean
   )
 
   final case object GenesisMetadata

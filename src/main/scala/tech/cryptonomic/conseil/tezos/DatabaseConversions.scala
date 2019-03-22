@@ -83,7 +83,14 @@ object DatabaseConversions {
         activeProposal = proposal.map(_.id),
         baker = metadata.map(_.baker.value),
         nonceHash = metadata.flatMap(_.nonce_hash.map(_.value)),
-        consumedGas = metadata.flatMap(md => extractBigDecimal(md.consumed_gas))
+        consumedGas = metadata.flatMap(md => extractBigDecimal(md.consumed_gas)),
+        metaLevel = metadata.map(_.level.level),
+        metaLevelPosition = metadata.map(_.level.level_position),
+        metaCycle = metadata.map(_.level.cycle),
+        metaCyclePosition = metadata.map(_.level.cycle_position),
+        metaVotingPeriod = metadata.map(_.level.voting_period),
+        metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
+        metaCommitment = metadata.map(_.level.expected_commitment)
       )
     }
   }

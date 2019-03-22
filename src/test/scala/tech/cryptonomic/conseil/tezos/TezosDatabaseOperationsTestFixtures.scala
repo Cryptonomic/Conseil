@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.ZonedDateTime
 import scala.util.Random
-import cats.syntax.either._
 
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
@@ -66,6 +65,20 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //same for all blocks
     val chainHash = generateHash(5)
 
+    //fix a seed generator and provides a generation function
+    val randomMetadataLevel = {
+      val rnd = new Random(randomSeed.seed)
+      () => BlockHeaderMetadataLevel(
+        level = rnd.nextInt(),
+        level_position = rnd.nextInt(),
+        cycle = rnd.nextInt(),
+        cycle_position = rnd.nextInt(),
+        voting_period = rnd.nextInt(),
+        voting_period_position = rnd.nextInt(),
+        expected_commitment = rnd.nextBoolean()
+      )
+    }
+
     def generateOne(level: Int, predecessorHash: BlockHash, genesis: Boolean = false): Block =
       Block(
         BlockData(
@@ -90,7 +103,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
               baker = PublicKeyHash(generateHash(10)),
               voting_period_kind = VotingPeriod.proposal,
               nonce_hash = Some(NonceHash(generateHash(10))),
-              consumed_gas = PositiveDecimal(0)
+              consumed_gas = PositiveDecimal(0),
+              level = randomMetadataLevel()
             ),
             right = GenesisMetadata
           )

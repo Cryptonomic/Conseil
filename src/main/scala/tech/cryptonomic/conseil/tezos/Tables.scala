@@ -236,18 +236,25 @@ trait Tables {
    *  @param activeProposal Database column active_proposal SqlType(varchar), Default(None)
    *  @param baker Database column baker SqlType(varchar), Default(None)
    *  @param nonceHash Database column nonce_hash SqlType(varchar), Default(None)
-   *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None) */
-  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None, periodKind: Option[String] = None, currentExpectedQuorum: Option[Int] = None, activeProposal: Option[String] = None, baker: Option[String] = None, nonceHash: Option[String] = None, consumedGas: Option[scala.math.BigDecimal] = None)
+   *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
+   *  @param metaLevel Database column meta_level SqlType(int4), Default(None)
+   *  @param metaLevelPosition Database column meta_level_position SqlType(int4), Default(None)
+   *  @param metaCycle Database column meta_cycle SqlType(int4), Default(None)
+   *  @param metaCyclePosition Database column meta_cycle_position SqlType(int4), Default(None)
+   *  @param metaVotingPeriod Database column meta_voting_period SqlType(int4), Default(None)
+   *  @param metaVotingPeriodPosition Database column meta_voting_period_position SqlType(int4), Default(None)
+   *  @param metaCommitment Database column meta_commitment SqlType(bool), Default(None) */
+  case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None, periodKind: Option[String] = None, currentExpectedQuorum: Option[Int] = None, activeProposal: Option[String] = None, baker: Option[String] = None, nonceHash: Option[String] = None, consumedGas: Option[scala.math.BigDecimal] = None, metaLevel: Option[Int] = None, metaLevelPosition: Option[Int] = None, metaCycle: Option[Int] = None, metaCyclePosition: Option[Int] = None, metaVotingPeriod: Option[Int] = None, metaVotingPeriodPosition: Option[Int] = None, metaCommitment: Option[Boolean] = None)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
-  implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]], e4: GR[Option[Int]], e5: GR[Option[scala.math.BigDecimal]]): GR[BlocksRow] = GR{
+  implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]], e4: GR[Option[Int]], e5: GR[Option[scala.math.BigDecimal]], e6: GR[Option[Boolean]]): GR[BlocksRow] = GR{
     prs => import prs._
-    BlocksRow.tupled((<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal]))
+    BlocksRow(<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Boolean])
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
-    def * = (level, proto, predecessor, timestamp, validationPass, fitness, context, signature, protocol, chainId, hash, operationsHash, periodKind, currentExpectedQuorum, activeProposal, baker, nonceHash, consumedGas) <> (BlocksRow.tupled, BlocksRow.unapply)
+    def * = (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: metaCommitment :: HNil).mapTo[BlocksRow]
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(level), Rep.Some(proto), Rep.Some(predecessor), Rep.Some(timestamp), Rep.Some(validationPass), Rep.Some(fitness), context, signature, Rep.Some(protocol), chainId, Rep.Some(hash), operationsHash, periodKind, currentExpectedQuorum, activeProposal, baker, nonceHash, consumedGas)).shaped.<>({r=>import r._; _1.map(_=> BlocksRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8, _9.get, _10, _11.get, _12, _13, _14, _15, _16, _17, _18)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(validationPass) :: Rep.Some(fitness) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: metaCommitment :: HNil).shaped.<>(r => BlocksRow(r(0).asInstanceOf[Option[Int]].get, r(1).asInstanceOf[Option[Int]].get, r(2).asInstanceOf[Option[String]].get, r(3).asInstanceOf[Option[java.sql.Timestamp]].get, r(4).asInstanceOf[Option[Int]].get, r(5).asInstanceOf[Option[String]].get, r(6).asInstanceOf[Option[String]], r(7).asInstanceOf[Option[String]], r(8).asInstanceOf[Option[String]].get, r(9).asInstanceOf[Option[String]], r(10).asInstanceOf[Option[String]].get, r(11).asInstanceOf[Option[String]], r(12).asInstanceOf[Option[String]], r(13).asInstanceOf[Option[Int]], r(14).asInstanceOf[Option[String]], r(15).asInstanceOf[Option[String]], r(16).asInstanceOf[Option[String]], r(17).asInstanceOf[Option[scala.math.BigDecimal]], r(18).asInstanceOf[Option[Int]], r(19).asInstanceOf[Option[Int]], r(20).asInstanceOf[Option[Int]], r(21).asInstanceOf[Option[Int]], r(22).asInstanceOf[Option[Int]], r(23).asInstanceOf[Option[Int]], r(24).asInstanceOf[Option[Boolean]]), (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -285,11 +292,25 @@ trait Tables {
     val nonceHash: Rep[Option[String]] = column[Option[String]]("nonce_hash", O.Default(None))
     /** Database column consumed_gas SqlType(numeric), Default(None) */
     val consumedGas: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("consumed_gas", O.Default(None))
+    /** Database column meta_level SqlType(int4), Default(None) */
+    val metaLevel: Rep[Option[Int]] = column[Option[Int]]("meta_level", O.Default(None))
+    /** Database column meta_level_position SqlType(int4), Default(None) */
+    val metaLevelPosition: Rep[Option[Int]] = column[Option[Int]]("meta_level_position", O.Default(None))
+    /** Database column meta_cycle SqlType(int4), Default(None) */
+    val metaCycle: Rep[Option[Int]] = column[Option[Int]]("meta_cycle", O.Default(None))
+    /** Database column meta_cycle_position SqlType(int4), Default(None) */
+    val metaCyclePosition: Rep[Option[Int]] = column[Option[Int]]("meta_cycle_position", O.Default(None))
+    /** Database column meta_voting_period SqlType(int4), Default(None) */
+    val metaVotingPeriod: Rep[Option[Int]] = column[Option[Int]]("meta_voting_period", O.Default(None))
+    /** Database column meta_voting_period_position SqlType(int4), Default(None) */
+    val metaVotingPeriodPosition: Rep[Option[Int]] = column[Option[Int]]("meta_voting_period_position", O.Default(None))
+    /** Database column meta_commitment SqlType(bool), Default(None) */
+    val metaCommitment: Rep[Option[Boolean]] = column[Option[Boolean]]("meta_commitment", O.Default(None))
 
     /** Uniqueness Index over (hash) (database name blocks_hash_key) */
-    val index1 = index("blocks_hash_key", hash, unique=true)
+    val index1 = index("blocks_hash_key", hash :: HNil, unique=true)
     /** Index over (level) (database name ix_blocks_level) */
-    val index2 = index("ix_blocks_level", level)
+    val index2 = index("ix_blocks_level", level :: HNil)
   }
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))

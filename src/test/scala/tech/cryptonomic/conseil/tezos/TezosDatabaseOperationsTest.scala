@@ -880,7 +880,14 @@ class TezosDatabaseOperationsTest
           "active_proposal" -> None,
           "baker" -> None,
           "nonce_hash" -> None,
-          "consumed_gas" -> None
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "meta_commitment" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -900,7 +907,14 @@ class TezosDatabaseOperationsTest
           "active_proposal" -> None,
           "baker" -> None,
           "nonce_hash" -> None,
-          "consumed_gas" -> None
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "meta_commitment" -> None
         )
       )
     }
