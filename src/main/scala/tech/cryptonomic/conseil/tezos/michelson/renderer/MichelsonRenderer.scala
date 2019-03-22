@@ -9,20 +9,27 @@ object MichelsonRenderer {
     def render(): String = self match {
 
       // instructions
-      case MichelsonSingleInstruction(prim, List(), List()) => prim
-      case MichelsonSingleInstruction(prim, args, annotations) => s"$prim ${(annotations ++ args.map(_.render())).mkString(" ")}"
+      case MichelsonSingleInstruction(name, List(sequence1: MichelsonInstructionSequence, sequence2: MichelsonInstructionSequence), _) => {
+        val indent = " " * (name.length + 1)
+        val embeddedIndent = " " * (name.length + 3)
+
+        s"""$name { ${sequence1.instructions.render(embeddedIndent)} }
+           |$indent{ ${sequence2.instructions.render(embeddedIndent)} }""".stripMargin
+      }
+      case MichelsonSingleInstruction(name, Nil, Nil) => name
+      case MichelsonSingleInstruction(name, args, annotations) => s"$name ${(annotations ++ args.map(_.render())).mkString(" ")}"
       case MichelsonInstructionSequence(args) => s"{ ${args.map(_.render()).mkString(" ; ")} }"
       case MichelsonEmptyInstruction => "{}"
 
       // expressions
-      case MichelsonType(name, List(), List()) => name
+      case MichelsonType(name, Nil, Nil) => name
       case MichelsonType(name, args, annotations) => s"($name ${(annotations ++ args.map(_.render())).mkString(" ")})"
       case MichelsonIntConstant(constant) => constant.toString
       case MichelsonStringConstant(constant) => "\"%s\"".format(constant)
       case MichelsonEmptyExpression => "{}"
 
       // code
-      case MichelsonCode(instructions) => instructions.map(_.render()).mkString(" ;\n       ")
+      case MichelsonCode(instructions) => instructions.render(indent = 7)
 
       // schema
       case MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(Nil)) => ""
@@ -30,5 +37,15 @@ object MichelsonRenderer {
                                                            |storage ${storage.render()};
                                                            |code { ${code.render()} }""".stripMargin
     }
+  }
+
+  implicit private class MichelsonInstructionsRenderer(val self: List[MichelsonInstruction]) {
+    def render(indent: Int): String = self.render(" " * indent)
+
+    def render(indent: String): String = self
+      .map(_.render())
+      .mkString(" ;\n")
+      .lines
+      .mkString("\n" + indent)
   }
 }
