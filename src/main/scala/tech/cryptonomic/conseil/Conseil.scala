@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.generic.chain.MetadataDiscovery
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -33,10 +34,12 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-      MetadataDiscovery.preCachedData
+      TezosPlatformDiscoveryOperations(executionContext)
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
       lazy val tezos = Tezos(tezosDispatcher)
-      lazy val platformDiscovery = PlatformDiscovery(platforms, caching)(tezosDispatcher)
+      lazy val tezosPlatformDiscoveryOperations = TezosPlatformDiscoveryOperations(executionContext)
+      tezosPlatformDiscoveryOperations.init()
+      lazy val platformDiscovery = PlatformDiscovery(platforms, caching, tezosPlatformDiscoveryOperations)(tezosDispatcher)
       lazy val data = Data(platforms)(tezosDispatcher)
 
       val route = cors() {

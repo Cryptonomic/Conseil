@@ -46,7 +46,7 @@ trait RouteHandling {
     * @param fieldQuery field query before validation
     * @return Either validated query or bad request if validation failed
     */
-  protected def validateQueryOrBadRequest(entity: String, fieldQuery: ApiQuery): Directive1[Query] = Directive { inner =>
+  protected def validateQueryOrBadRequest(entity: String, fieldQuery: ApiQuery)(implicit ec: ExecutionContext): Directive1[Query] = Directive { inner =>
     fieldQuery.validate(entity) match {
       case Right(value) => inner(Tuple1(value))
       case Left(errors) => complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
@@ -83,8 +83,8 @@ trait RouteHandling {
   }
 
   /** validates entity if it exists */
-  protected def validateEntity(entity: String): Directive0 = {
-    if (TezosPlatformDiscoveryOperations.isEntityValid(entity)) {
+  protected def validateEntity(entity: String)(implicit ec: ExecutionContext): Directive0 = {
+    if (TezosPlatformDiscoveryOperations(ec).isEntityValid(entity)) {
       pass
     } else {
       complete(StatusCodes.NotFound)
@@ -92,8 +92,8 @@ trait RouteHandling {
   }
 
   /** validates attribute if it exists in the given entity */
-  protected def validateAttributes(entity: String, attribute: String): Directive0 = {
-    if (TezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)) {
+  protected def validateAttributes(entity: String, attribute: String)(implicit ec: ExecutionContext): Directive0 = {
+    if (TezosPlatformDiscoveryOperations(ec).isAttributeValid(entity, attribute)) {
       pass
     } else {
       complete(StatusCodes.NotFound)

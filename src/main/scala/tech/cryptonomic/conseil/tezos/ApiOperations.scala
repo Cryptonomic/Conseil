@@ -4,7 +4,6 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query, OrderDirection, QueryOrdering, AnyMap, QueryResponse}
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -399,7 +398,7 @@ object ApiOperations extends DataOperations {
     * @return query result as a map
     * */
   override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] = {
-    if (areFieldsValid(tableName, (query.fields ++ query.predicates.map(_.field) ++ query.orderBy.map(_.field)).toSet)) {
+    if (TezosPlatformDiscoveryOperations(ec).areFieldsValid(tableName, (query.fields ++ query.predicates.map(_.field) ++ query.orderBy.map(_.field)).toSet)) {
       runQuery(
         TezosDatabaseOperations.selectWithPredicates(
           tableName,
@@ -415,9 +414,9 @@ object ApiOperations extends DataOperations {
   }
 
   /** Sanitizes predicate values so query is safe from SQL injection */
-  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
+  def sanitizePredicates(predicates: List[Predicate])(implicit ec: ExecutionContext): List[Predicate] = {
     predicates.map { predicate =>
-      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
+      predicate.copy(set = predicate.set.map(field => TezosPlatformDiscoveryOperations(ec).sanitizeForSql(field.toString)))
     }
   }
 }

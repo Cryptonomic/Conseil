@@ -6,6 +6,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationT
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
+import scala.concurrent.ExecutionContext
+
 
 /**
   * Classes used for deserializing query.
@@ -69,17 +71,17 @@ object DataTypes {
     limit: Option[Int]
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
-    def validate(entity: String): Either[List[QueryValidationError], Query] = {
+    def validate(entity: String)(implicit ec: ExecutionContext): Either[List[QueryValidationError], Query] = {
       val query = Query().patchWith(this)
 
       val invalidQueryFields = query
         .fields
-        .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
+        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
         .map(InvalidQueryField)
       val invalidPredicateFields = query
         .predicates
         .map(_.field)
-        .filterNot(field => TezosPlatformDiscoveryOperations.areFieldsValid(entity, Set(field)))
+        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
         .map(InvalidPredicateField)
 
       invalidPredicateFields ::: invalidQueryFields match {

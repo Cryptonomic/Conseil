@@ -13,15 +13,14 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.directives.CachingDirectives._
 import tech.cryptonomic.conseil.generic.chain.MetadataDiscovery
 
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(platforms: PlatformsConfiguration, caching: HttpCacheConfiguration)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
-    new PlatformDiscovery(platforms, caching)(apiExecutionContext)
+  def apply(platforms: PlatformsConfiguration, caching: HttpCacheConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+    new PlatformDiscovery(platforms, caching, tezosPlatformDiscoveryOperations)(apiExecutionContext)
 }
 
 /**
@@ -30,7 +29,7 @@ object PlatformDiscovery {
   * @param config              configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfiguration)(implicit apiExecutionContext: ExecutionContext)
+class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with RouteHandling with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** default caching settings */
@@ -62,7 +61,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
     case (platform, network, _) =>
-      MetadataDiscovery.getEntities.map { entities =>
+      tezosPlatformDiscoveryOperations.getEntities.map { entities =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           entities
         }
@@ -72,9 +71,8 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
     case ((platform, network, entity), _) =>
-      //TezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
-      MetadataDiscovery.getAttributes(entity).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
+      tezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           attributes
         }
       }
@@ -83,7 +81,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes values endpoint */
   private val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
     case ((platform, network, entity), attribute, _) =>
-      TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
+      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           attributes
         }
@@ -93,7 +91,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes values with filter endpoint */
   private val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
     case (((platform, network, entity), attribute, filter), _) =>
-      TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
+      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           attributes
         }
@@ -101,7 +99,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   }
 
   /** Concatenated metadata routes with cache */
-  val route: Route = cache(lfuCache, requestCacheKeyer) {
+  val route: Route =
     concat(
       platformsRoute,
       networksRoute,
@@ -110,5 +108,4 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       attributesValuesRoute,
       attributesValuesWithFilterRoute
     )
-  }
 }
