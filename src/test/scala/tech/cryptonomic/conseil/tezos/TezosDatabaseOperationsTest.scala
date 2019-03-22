@@ -313,7 +313,7 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       //generate data
-      val blocks = generateBlockRows(2, testReferenceTimestamp)
+      val blocks @ (last :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
       val account = generateAccountRows(1, blocks.head).head
 
       val populate =
@@ -326,10 +326,10 @@ class TezosDatabaseOperationsTest
 
       //prepare new accounts
       val accountChanges = 2
-      val (hashUpdate, levelUpdate) = (blocks(1).hash, blocks(1).level)
+      val (hashUpdate, levelUpdate) = (first.hash, first.level)
       val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
 
-      //check for same identifier
+      //double-check for the identifier existence
       accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
 
       //do the updates
