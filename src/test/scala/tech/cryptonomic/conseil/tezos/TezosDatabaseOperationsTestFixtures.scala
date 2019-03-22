@@ -66,7 +66,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //same for all blocks
     val chainHash = generateHash(5)
 
-    def generateOne(level: Int, predecessorHash: BlockHash): Block =
+    def generateOne(level: Int, predecessorHash: BlockHash, genesis: Boolean = false): Block =
       Block(
         BlockData(
           protocol = "protocol",
@@ -83,19 +83,24 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = BlockHeaderMetadata(
-            balance_updates = List.empty,
-            baker = PublicKeyHash(generateHash(10)),
-            votingPeriodKind = VotingPeriod.proposal,
-            nonceHash = Some(NonceHash(generateHash(10)))
-          ).asLeft
+          metadata = Either.cond(
+            genesis,
+            left = BlockHeaderMetadata(
+              balance_updates = List.empty,
+              baker = PublicKeyHash(generateHash(10)),
+              voting_period_kind = VotingPeriod.proposal,
+              nonce_hash = Some(NonceHash(generateHash(10))),
+              consumed_gas = PositiveDecimal(0)
+            ),
+            right = GenesisMetadata
+          )
         ),
         operationGroups = List.empty,
         votes = CurrentVotes.empty
       )
 
     //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"))
+    val genesis = generateOne(0, BlockHash("genesis"), true)
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
@@ -163,11 +168,18 @@ trait TezosDataGeneration extends RandomGenerationKit {
       context = Some(s"context$level"),
       signature = Some(s"sig${generateHash(10)}"),
       chainId = Some(chainHash),
-      hash = generateHash(10)
+      hash = generateHash(10),
+      operationsHash = Some(generateHash(10)),
+      periodKind = Some("period_kind"),
+      currentExpectedQuorum = Some(1000),
+      activeProposal = None,
+      baker = Some(generateHash(10)),
+      nonceHash = Some(generateHash(10)),
+      consumedGas = Some(0)
     )
 
-    //we need somewhere to start with
-    val genesis = generateOne(0, "genesis")
+      //we need somewhere to start with
+    val genesis = generateOne(0,"genesis")
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {

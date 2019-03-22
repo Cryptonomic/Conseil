@@ -91,7 +91,8 @@ CREATE TABLE public.blocks (
     current_expected_quorum integer,
     active_proposal character varying,
     baker character varying,
-    nonce_hash character varying
+    nonce_hash character varying,
+    consumed_gas numeric
 );
 
 

@@ -85,6 +85,8 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocks zip generatedBlocks) {
             case (row, block) =>
+              val metadata = block.data.metadata.swap.toOption
+
               row.level shouldEqual block.data.header.level
               row.proto shouldEqual block.data.header.proto
               row.predecessor shouldEqual block.data.header.predecessor.value
@@ -97,10 +99,14 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
-              row.periodKind shouldEqual block.data.metadata.swap.toOption.map(_.votingPeriodKind.toString)
+              row.periodKind shouldEqual metadata.map(_.voting_period_kind.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
-              row.baker shouldEqual block.data.metadata.swap.toOption.map(_.baker.value)
+              row.baker shouldEqual metadata.map(_.baker.value)
+              row.consumedGas shouldEqual metadata.map(_.consumed_gas).flatMap {
+                case PositiveDecimal(value) => Some(value)
+                case _ => None
+              }
           }
 
           val dbBlocksAndGroups =
@@ -230,7 +236,7 @@ class TezosDatabaseOperationsTest
         _ =>
         val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
 
-        dbUpdatesRows should have size 6 //2 updates x 3 blocks
+        dbUpdatesRows should have size 4 //2 updates x 2 blocks, not considering genesis which has no balances
 
         /* Convert both the generated blocks data to balance updates table row representation
          * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
@@ -873,7 +879,8 @@ class TezosDatabaseOperationsTest
           "current_expected_quorum" -> None,
           "active_proposal" -> None,
           "baker" -> None,
-          "nonce_hash" -> None
+          "nonce_hash" -> None,
+          "consumed_gas" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -892,7 +899,8 @@ class TezosDatabaseOperationsTest
           "current_expected_quorum" -> None,
           "active_proposal" -> None,
           "baker" -> None,
-          "nonce_hash" -> None
+          "nonce_hash" -> None,
+          "consumed_gas" -> None
         )
       )
     }

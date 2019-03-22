@@ -49,13 +49,13 @@ class DatabaseConversionsTest
     }
 
     "convert a tezos block to a database row" in {
-      val blockRow = block.convertTo[Tables.BlocksRow]
+      val converted = block.convertTo[Tables.BlocksRow]
 
       val header = block.data.header
       val metadata = block.data.metadata.swap.toOption
       val CurrentVotes(expectedQuorum, proposal) = block.votes
 
-      blockRow should have(
+      converted should have(
         'level (header.level),
         'proto (header.proto),
         'predecessor (header.predecessor.value),
@@ -68,12 +68,18 @@ class DatabaseConversionsTest
         'chainId (block.data.chain_id),
         'hash (block.data.hash.value),
         'operationsHash (header.operations_hash),
-        'periodKind (metadata.map(_.votingPeriodKind.toString)),
+        'periodKind (metadata.map(_.voting_period_kind.toString)),
         'currentExpectedQuorum (expectedQuorum),
         'activeProposal (proposal.map(_.id)),
         'baker (metadata.map(_.baker.value)),
-        'nonceHash (metadata.flatMap(_.nonceHash.map(_.value)))
+        'nonceHash (metadata.flatMap(_.nonce_hash.map(_.value)))
       )
+
+      metadata.map(_.consumed_gas) match {
+        case Some(PositiveDecimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
+        case _ => converted.consumedGas shouldBe 'empty
+      }
+
     }
 
     "convert Balance Updates in BlockData to a database row" in {

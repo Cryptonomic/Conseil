@@ -104,9 +104,10 @@ object TezosTypes {
 
   final case class BlockHeaderMetadata(
     balance_updates: List[OperationMetadata.BalanceUpdate],
-    nonceHash: Option[NonceHash],
+    nonce_hash: Option[NonceHash],
+    consumed_gas: PositiveBigNumber,
     baker: PublicKeyHash,
-    votingPeriodKind: VotingPeriod.Kind
+    voting_period_kind: VotingPeriod.Kind
   )
 
   final case object GenesisMetadata
