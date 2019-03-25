@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import java.sql.Timestamp
-import java.time.Instant
 import scala.util.Try
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
@@ -71,10 +69,6 @@ object JsonDecoders {
     implicit val michelineDecoder: Decoder[Micheline] =
       Decoder.decodeJson.map(json => Micheline(json.noSpaces))
 
-    /* decode a UTC time string to a sql Timestamp */
-    implicit val timestampDecoder: Decoder[Timestamp] =
-      Decoder.decodeString.emapTry(ts => Try(Timestamp.from(Instant.parse(ts))))
-
     /* decode an enumerated string to a valid VotingPeriod Kind */
     implicit val votingPeriodKindDecoder: Decoder[VotingPeriod.Kind] =
       Decoder.decodeString.emapTry(kind => Try(VotingPeriod.withName(kind)))
@@ -124,10 +118,6 @@ object JsonDecoders {
       // we need to decode BalanceUpdates
       import Operations._
       private implicit val conf = tezosDerivationConfig
-
-
-      implicit def decodeEither[A,B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A,B]] =
-        leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
 
       val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveDecoder

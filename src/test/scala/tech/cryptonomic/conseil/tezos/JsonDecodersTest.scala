@@ -179,6 +179,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
+    "decode valid json base58check strings into a NonceHash" in {
+      val decoded = decode[NonceHash](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe NonceHash(validB58Hash)
+    }
+
+    "fail to decode an invalid json base58check strings into a NonceHash" in {
+      val decoded = decode[NonceHash](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
     "decode valid json alphanumneric strings into a Secret" in {
       val decoded = decode[Secret](jsonStringOf(alphanumneric))
       decoded.right.value shouldBe Secret(alphanumneric)
