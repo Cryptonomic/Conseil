@@ -96,18 +96,16 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = Either.cond(
-            genesis,
-            left = BlockHeaderMetadata(
+          metadata =
+            if (genesis) GenesisMetadata
+            else BlockHeaderMetadata(
               balance_updates = List.empty,
               baker = PublicKeyHash(generateHash(10)),
               voting_period_kind = VotingPeriod.proposal,
               nonce_hash = Some(NonceHash(generateHash(10))),
               consumed_gas = PositiveDecimal(0),
               level = randomMetadataLevel()
-            ),
-            right = GenesisMetadata
-          )
+            )
         ),
         operationGroups = List.empty,
         votes = CurrentVotes.empty

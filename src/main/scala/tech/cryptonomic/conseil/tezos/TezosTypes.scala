@@ -87,7 +87,7 @@ object TezosTypes {
     chain_id: Option[String],
     hash: BlockHash,
     header: BlockHeader,
-    metadata: Either[BlockHeaderMetadata, GenesisMetadata.type]
+    metadata: BlockMetadata
   )
 
   final case class BlockHeader(
@@ -102,6 +102,10 @@ object TezosTypes {
     signature: Option[String]
   )
 
+  sealed trait BlockMetadata extends Product with Serializable
+
+  final case object GenesisMetadata extends BlockMetadata
+
   final case class BlockHeaderMetadata(
     balance_updates: List[OperationMetadata.BalanceUpdate],
     nonce_hash: Option[NonceHash],
@@ -109,7 +113,7 @@ object TezosTypes {
     baker: PublicKeyHash,
     voting_period_kind: VotingPeriod.Kind,
     level: BlockHeaderMetadataLevel
-  )
+  ) extends BlockMetadata
 
   final case class BlockHeaderMetadataLevel(
     level: Int,
@@ -121,7 +125,10 @@ object TezosTypes {
     expected_commitment: Boolean
   )
 
-  final case object GenesisMetadata
+  /** only accepts standard block metadata, discarding the genesis metadata */
+  def discardGenesis: PartialFunction[BlockMetadata, BlockHeaderMetadata] = {
+    case md: BlockHeaderMetadata => md
+  }
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`
    * all the while accepting `0` as valid

@@ -63,7 +63,7 @@ object DatabaseConversions {
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
       val header = from.data.header
-      val metadata = from.data.metadata.swap.toOption
+      val metadata = discardGenesis.lift(from.data.metadata)
       val CurrentVotes(expectedQuorum, proposal) = from.votes
       Tables.BlocksRow(
         level = header.level,

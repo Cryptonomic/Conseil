@@ -129,9 +129,10 @@ object JsonDecoders {
       implicit def decodeEither[A,B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A,B]] =
         leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
 
-      implicit val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
+      val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveDecoder
-      implicit val metadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
+      val blockMetadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
+      implicit val metadataDecoder: Decoder[BlockMetadata] = blockMetadataDecoder.widen or genesisMetadataDecoder.widen
       implicit val headerDecoder: Decoder[BlockHeader] = deriveDecoder
       implicit val mainDecoder: Decoder[BlockData] = deriveDecoder //remember to add ISO-control filtering
     }

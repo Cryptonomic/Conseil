@@ -93,7 +93,7 @@ class DatabaseConversionsTest
       val converted = block.convertTo[Tables.BlocksRow]
 
       val header = block.data.header
-      val metadata = block.data.metadata.swap.toOption
+      val metadata = discardGenesis.lift(block.data.metadata)
       val CurrentVotes(expectedQuorum, proposal) = block.votes
 
       converted should have(
