@@ -11,7 +11,7 @@ object MichelsonRenderer {
       // instructions
       case MichelsonSingleInstruction(name, List(sequence1: MichelsonInstructionSequence, sequence2: MichelsonInstructionSequence), _) => {
         val indent = " " * (name.length + 1)
-        val embeddedIndent = " " * (name.length + 3)
+        val embeddedIndent = indent + " " * 2
 
         s"""$name { ${sequence1.instructions.render(embeddedIndent)} }
            |$indent{ ${sequence2.instructions.render(embeddedIndent)} }""".stripMargin

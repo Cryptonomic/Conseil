@@ -118,6 +118,33 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
         |   { UNIT }""".stripMargin
   }
 
+  it should "render MichelsonInstruction with embedded IF-s" in {
+    val michelsonInstruction =
+      MichelsonSingleInstruction("IF", List(
+        MichelsonInstructionSequence(List(
+          MichelsonSingleInstruction("PUSH", List(
+            MichelsonType("string"),
+            MichelsonStringConstant("The image bid contract is now closed"))),
+          MichelsonSingleInstruction("FAILWITH"))),
+        MichelsonInstructionSequence(List(
+          MichelsonSingleInstruction("IF", List(
+            MichelsonInstructionSequence(List(
+              MichelsonSingleInstruction("PUSH", List(
+                MichelsonType("string"),
+                MichelsonStringConstant("The image bid contract is now closed"))),
+              MichelsonSingleInstruction("FAILWITH"))),
+            MichelsonInstructionSequence(List(
+              MichelsonSingleInstruction("UNIT")))))
+        ))))
+
+    michelsonInstruction.render() shouldBe
+      """IF { PUSH string "The image bid contract is now closed" ;
+        |     FAILWITH }
+        |   { IF { PUSH string "The image bid contract is now closed" ;
+        |          FAILWITH }
+        |        { UNIT } }""".stripMargin
+  }
+
   it should "render empty MichelsonSchema" in {
     MichelsonSchema.empty.render() shouldBe ""
   }
