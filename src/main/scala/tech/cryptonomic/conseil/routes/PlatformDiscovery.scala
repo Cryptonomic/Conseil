@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
 import akka.http.scaladsl.server.Directives._
-import tech.cryptonomic.conseil.generic.chain.MetadataDiscovery
 
 import scala.concurrent.ExecutionContext
 
@@ -72,7 +71,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   private val attributesRoute = attributesEndpoint.implementedByAsync {
     case ((platform, network, entity), _) =>
       tezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
           attributes
         }
       }

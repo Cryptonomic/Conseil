@@ -158,21 +158,21 @@ class TezosPlatformDiscoveryOperations(implicit executionContext: ExecutionConte
 //    result.unsafeToFuture()
 //  }
 
-  def getAttributes(tableName: String): Future[Option[List[Attribute]]] = {
-    attributesCache.read.flatMap { entitiesMap =>
-      entitiesMap.get(tableName).map { case (last, attributes) =>
-        if (last + timeout.toMillis > now) {
-          IO.pure(attributes)
-        } else {
-          IO.fromFuture(IO(getPartialAttributes(tableName, attributes))).flatMap { updatedAttributes =>
-            attributesCache.take.flatMap { _ =>
-              attributesCache.put(entitiesMap.updated(tableName, now -> updatedAttributes)).map(_ => updatedAttributes)
-            }
-          }
-        }
-      }.sequence
-    }.unsafeToFuture()
-  }
+//  def getAttributes(tableName: String): Future[Option[List[Attribute]]] = {
+//    attributesCache.read.flatMap { entitiesMap =>
+//      entitiesMap.get(tableName).map { case (last, attributes) =>
+//        if (last + timeout.toMillis > now) {
+//          IO.pure(attributes)
+//        } else {
+//          IO.fromFuture(IO(getPartialAttributes(tableName, attributes))).flatMap { updatedAttributes =>
+//            attributesCache.take.flatMap { _ =>
+//              attributesCache.put(entitiesMap.updated(tableName, now -> updatedAttributes)).map(_ => updatedAttributes)
+//            }
+//          }
+//        }
+//      }.sequence
+//    }.unsafeToFuture()
+//  }
 
   def getPartialAttributes(tableName: String, columns: List[Attribute]): Future[List[Attribute]] = {
     ApiOperations.runQuery(getPartialAttributesQuery(tableName, columns))
@@ -192,8 +192,6 @@ class TezosPlatformDiscoveryOperations(implicit executionContext: ExecutionConte
       }
     }
   }
-
-
 
 
   /**
@@ -327,44 +325,56 @@ class TezosPlatformDiscoveryOperations(implicit executionContext: ExecutionConte
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  def getTableAttributes(tableName: String): Future[List[Attribute]] = {
-    ApiOperations.runQuery(makeAttributesList(tableName))
-  }
-
-  /** Makes list of DB actions to be executed for extracting attributes
-    *
-    * @param  tableName name of the table from which we extract attributes
-    * @return list of DBIO queries for attributes
-    **/
-  def makeAttributesList(tableName: String): DBIO[List[Attribute]] = {
-    DBIO.sequence {
-      for {
-        (name, table) <- tablesMap
-        if name == tableName
-        col <- table.baseTableRow.create_*
-      } yield {
-        if(canQueryType(PlatformDiscoveryTypes.mapType(col.tpe))) {
-          for {
-            overallCnt <- TezosDb.countRows(table)
-            distinctCnt <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
-          } yield makeAttributes(col, Some(distinctCnt), Some(overallCnt), tableName)
+  def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] = {
+    attributesCache.read.flatMap { entitiesMap =>
+      entitiesMap.get(tableName).map { case (last, attributes) =>
+        if (last + timeout.toMillis > now) {
+          IO.pure(attributes)
         } else {
-          DBIO.successful(makeAttributes(col, None, None, tableName))
+          IO.fromFuture(IO(getPartialAttributes(tableName, attributes))).flatMap { updatedAttributes =>
+            attributesCache.take.flatMap { _ =>
+              attributesCache.put(entitiesMap.updated(tableName, now -> updatedAttributes)).map(_ => updatedAttributes)
+            }
+          }
         }
-      }
-    }
+      }.sequence
+    }.unsafeToFuture()
   }
 
-  /** Makes attributes out of parameters */
-  private def makeAttributes(col: FieldSymbol, distinctCount: Option[Int], overallCount: Option[Int], tableName: String): Attribute =
-    Attribute(
-      name = col.name,
-      displayName = makeDisplayName(col.name),
-      dataType = PlatformDiscoveryTypes.mapType(col.tpe),
-      cardinality = distinctCount,
-      keyType = if (distinctCount == overallCount) KeyType.UniqueKey else KeyType.NonKey,
-      entity = tableName
-    )
+//  /** Makes list of DB actions to be executed for extracting attributes
+//    *
+//    * @param  tableName name of the table from which we extract attributes
+//    * @return list of DBIO queries for attributes
+//    **/
+//  def makeAttributesList(tableName: String): DBIO[List[Attribute]] = {
+//    DBIO.sequence {
+//      for {
+//        (name, table) <- tablesMap
+//        if name == tableName
+//        col <- table.baseTableRow.create_*
+//      } yield {
+//        if(canQueryType(PlatformDiscoveryTypes.mapType(col.tpe))) {
+//          for {
+//            overallCnt <- TezosDb.countRows(table)
+//            distinctCnt <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
+//          } yield makeAttributes(col, Some(distinctCnt), Some(overallCnt), tableName)
+//        } else {
+//          DBIO.successful(makeAttributes(col, None, None, tableName))
+//        }
+//      }
+//    }
+//  }
+//
+//  /** Makes attributes out of parameters */
+//  private def makeAttributes(col: FieldSymbol, distinctCount: Option[Int], overallCount: Option[Int], tableName: String): Attribute =
+//    Attribute(
+//      name = col.name,
+//      displayName = makeDisplayName(col.name),
+//      dataType = PlatformDiscoveryTypes.mapType(col.tpe),
+//      cardinality = distinctCount,
+//      keyType = if (distinctCount == overallCount) KeyType.UniqueKey else KeyType.NonKey,
+//      entity = tableName
+//    )
 
   /** Makes displayName out of name */
   private def makeDisplayName(name: String): String = {
