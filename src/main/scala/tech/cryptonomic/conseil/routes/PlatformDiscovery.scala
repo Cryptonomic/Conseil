@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
-import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
+import tech.cryptonomic.conseil.util.ConfigUtil
 import akka.http.scaladsl.server.Directives._
 
 import scala.concurrent.ExecutionContext
@@ -29,7 +29,7 @@ object PlatformDiscovery {
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
 class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with RouteHandling with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
+  extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** default caching settings */
   private val defaultCachingSettings: CachingSettings = CachingSettings(caching.cacheConfig)

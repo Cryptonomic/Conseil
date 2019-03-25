@@ -74,17 +74,21 @@ object DataTypes {
     def validate(entity: String)(implicit ec: ExecutionContext): Either[List[QueryValidationError], Query] = {
       val query = Query().patchWith(this)
 
-      val invalidQueryFields = query
-        .fields
-        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
-        .map(InvalidQueryField)
-      val invalidPredicateFields = query
-        .predicates
-        .map(_.field)
-        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
-        .map(InvalidPredicateField)
+//      val invalidQueryFields = query
+//        .fields
+//        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
+//        .map(InvalidQueryField)
+//      val invalidPredicateFields = query
+//        .predicates
+//        .map(_.field)
+//        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
+//        .map(InvalidPredicateField)
+//      val invalidOrderFields = query.orderBy.map(_.field)
+//      TezosPlatformDiscoveryOperations
 
-      invalidPredicateFields ::: invalidQueryFields match {
+
+      //invalidPredicateFields ::: invalidQueryFields
+      List.empty match {
         case Nil => Right(query)
         case wrongFields => Left(wrongFields)
       }
