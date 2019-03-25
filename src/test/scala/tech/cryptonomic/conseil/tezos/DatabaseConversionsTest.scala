@@ -83,7 +83,7 @@ class DatabaseConversionsTest
         converted.metaCyclePosition ::
         converted.metaVotingPeriod ::
         converted.metaVotingPeriodPosition ::
-        converted.metaCommitment :: Nil) {
+        converted.expectedCommitment :: Nil) {
         _ shouldBe 'empty
       }
 
@@ -120,7 +120,7 @@ class DatabaseConversionsTest
         'metaCyclePosition (metadata.map(_.level.cycle_position)),
         'metaVotingPeriod (metadata.map(_.level.voting_period)),
         'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
-        'metaCommitment (metadata.map(_.level.expected_commitment))
+        'expectedCommitment (metadata.map(_.level.expected_commitment))
       )
 
       metadata.map(_.consumed_gas) match {

@@ -99,7 +99,7 @@ CREATE TABLE public.blocks (
     meta_cycle_position integer,
     meta_voting_period integer,
     meta_voting_period_position integer,
-    meta_commitment boolean
+    expected_commitment boolean
 );
 
 

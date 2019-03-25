@@ -126,7 +126,7 @@ class TezosPlatformDiscoveryOperationsTest
           Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.UniqueKey, "blocks"),
           Attribute("meta_voting_period", "Meta voting period", DataType.Int, None, KeyType.UniqueKey, "blocks"),
           Attribute("meta_voting_period_position", "Meta voting period position", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-          Attribute("meta_commitment", "Meta commitment", DataType.Boolean, Some(0), KeyType.UniqueKey, "blocks")
+          Attribute("expected_commitment", "Expected commitment", DataType.Boolean, Some(0), KeyType.UniqueKey, "blocks")
         )
     }
 
