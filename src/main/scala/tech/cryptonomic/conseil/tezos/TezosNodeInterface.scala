@@ -120,7 +120,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
       val responseBodyFuture = response.entity.toStrict(requestConfig.GETResponseEntityTimeout).map(_.data.utf8String)
       val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
       logger.debug(s"Query result: $responseBody")
-      responseBody
+      JsonString sanitize responseBody
     }
   }
 
@@ -132,11 +132,11 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
     for {
       response <- Http(system).singleRequest(request)
       strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
-    } yield strict.data.utf8String
+    } yield (JsonString sanitize strict.data.utf8String)
 
   }
 
-  override def runPostQuery(network: String, command: String, payload: Option[JsonString]= None): Try[String] = withRejectionControl {
+  override def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] = withRejectionControl {
     Try {
       val url = translateCommandToUrl(command)
       logger.debug("Querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
@@ -153,7 +153,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
       val responseBodyFuture = response.entity.toStrict(requestConfig.POSTResponseEntityTimeout).map(_.data).map(_.utf8String)
       val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
       logger.debug(s"Query result: $responseBody")
-      responseBody
+      JsonString sanitize responseBody
 
     }
   }
@@ -173,7 +173,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
     } yield {
       val responseBody = strict.data.utf8String
       logger.debug("Query results: {}", responseBody)
-      responseBody
+      JsonString sanitize responseBody
     }
   }
 
@@ -226,7 +226,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
               .flatten
               .map(entity => (entity, id))
         }
-        .map{case (content: HttpEntity.Strict, id) => (id, content.data.utf8String)}
+        .map{case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String)}
   }
 
   override def runBatchedGetQuery[CID](
