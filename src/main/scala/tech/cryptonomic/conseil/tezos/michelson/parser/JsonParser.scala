@@ -60,8 +60,8 @@ object JsonParser {
                       args: Option[List[Either[JsonExpression, Nil.type]]],
                       annots: Option[List[String]] = None) extends JsonExpression {
     override def toMichelsonExpression = MichelsonType(
-      prim = prim,
-      args = args.getOrElse(List.empty).map {
+      prim,
+      args.getOrElse(List.empty).map {
         case Left(jsonExpression) => jsonExpression.toMichelsonExpression
         case Right(_) => MichelsonEmptyExpression
       },
@@ -107,14 +107,14 @@ object JsonParser {
                                    args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None,
                                    annots: Option[List[String]] = None) extends JsonInstruction {
     override def toMichelsonInstruction = MichelsonSingleInstruction(
-      prim = prim,
+      name = prim,
+      annotations = annots.getOrElse(List.empty),
       embeddedElements = args.getOrElse(List.empty)
         .map {
           case Left(jsonExpression) => jsonExpression.toMichelsonExpression
           case Right(Nil) => MichelsonEmptyInstruction
           case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
-        },
-      annotations = annots.getOrElse(List.empty))
+        })
   }
 
   case class JsonInstructionSequence(instructions: List[JsonInstruction]) extends JsonInstruction {

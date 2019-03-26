@@ -102,7 +102,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
     val json = """{"prim": "CAR", "annots": ["@pointcolor"]}"""
 
     parse[MichelsonInstruction](json) should equal(Right(
-      MichelsonSingleInstruction(prim = "CAR", annotations = List("@pointcolor"))))
+      MichelsonSingleInstruction("CAR", annotations = List("@pointcolor"))))
   }
 
   it should "parse complex MichelsonInstruction" in {
