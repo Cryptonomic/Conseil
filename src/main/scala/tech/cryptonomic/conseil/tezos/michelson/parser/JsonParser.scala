@@ -4,6 +4,7 @@ import io.circe.parser.decode
 import cats.syntax.functor._
 import io.circe._
 import io.circe.generic.auto._
+import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
 
 import scala.collection.immutable.{List, Nil}
@@ -205,6 +206,6 @@ object JsonParser {
 
   /* Parses Michelson Expression represented as JSON to domain objects */
   def parse[T <: MichelsonElement:Parser](json: String): Result[T] = {
-    implicitly[Parser[T]].parse(json)
+    implicitly[Parser[T]].parse(JsonString sanitize json)
   }
 }
