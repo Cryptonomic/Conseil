@@ -313,7 +313,7 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       //generate data
-      val blocks @ (last :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
+      val blocks @ (second :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
       val account = generateAccountRows(1, blocks.head).head
 
       val populate =
