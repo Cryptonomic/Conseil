@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.time.ZonedDateTime
 
 import org.scalatest.{Matchers, WordSpec}
+import cats.syntax.either._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes._
@@ -94,7 +95,30 @@ class TezosTypesTest extends WordSpec with Matchers {
     }
   }
 
-  private val blockData = BlockData("_", None, BlockHash("_"), BlockHeader(0, 0, BlockHash("_"), ZonedDateTime.now(), 0, None, Seq.empty, "_", None), BlockHeaderMetadata(None))
+  private val blockData =
+    BlockData(
+      protocol = "_",
+      chain_id = None,
+      hash = BlockHash("_"),
+      header = BlockHeader(
+        level = 0,
+        proto = 0,
+        predecessor = BlockHash("_"),
+        timestamp = ZonedDateTime.now(),
+        validation_pass = 0,
+        operations_hash = None,
+        fitness = Seq.empty,
+        context = "_",
+        signature = None),
+      metadata = BlockHeaderMetadata(
+        balance_updates = List.empty,
+        baker = PublicKeyHash("_"),
+        voting_period_kind = defaultVotingPeriod,
+        nonce_hash = None,
+        consumed_gas = PositiveDecimal(0),
+        level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, false)
+      )
+    )
   private val blockVotes = CurrentVotes.empty
   private val operationGroup = OperationsGroup("_", None, OperationHash("_"), BlockHash("_"), List.empty, None)
   private val number = PositiveDecimal(1)

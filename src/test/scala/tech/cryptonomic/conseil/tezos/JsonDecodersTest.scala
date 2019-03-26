@@ -22,7 +22,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     /** wrap in quotes to be a valid json string */
     val jsonStringOf = (content: String) => s""""$content""""
 
-    "fail to decode json with duplicate fields" in {
+    "allow decoding json with duplicate fields" in {
       import io.circe.Decoder
       import io.circe.generic.extras.semiauto._
       implicit val derivationConf = tezosDerivationConfig
@@ -36,6 +36,23 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
 
       val duplicateUndecoded = decode[JsonTest]("""{"field": "test", "inner": {"key": "one", "key": "duplicate"}}""")
       duplicateUndecoded shouldBe 'right
+
+    }
+
+    "decode null fields as empty Options" in {
+      import io.circe.Decoder
+      import io.circe.generic.extras.semiauto._
+      implicit val derivationConf = tezosDerivationConfig
+
+      case class JsonTest(field: Option[String])
+
+      implicit val testDecoder: Decoder[JsonTest] = deriveDecoder
+
+      val valueDecoded = decode[JsonTest]("""{"field": "test"}""")
+      valueDecoded.right.value shouldBe JsonTest(Some("test"))
+
+      val nulllDecoded = decode[JsonTest]("""{"field": null}""")
+      nulllDecoded.right.value shouldBe JsonTest(None)
 
     }
 
@@ -162,6 +179,16 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded shouldBe 'left
     }
 
+    "decode valid json base58check strings into a NonceHash" in {
+      val decoded = decode[NonceHash](jsonStringOf(validB58Hash))
+      decoded.right.value shouldBe NonceHash(validB58Hash)
+    }
+
+    "fail to decode an invalid json base58check strings into a NonceHash" in {
+      val decoded = decode[NonceHash](jsonStringOf(invalidB58Hash))
+      decoded shouldBe 'left
+    }
+
     "decode valid json alphanumneric strings into a Secret" in {
       val decoded = decode[Secret](jsonStringOf(alphanumneric))
       decoded.right.value shouldBe Secret(alphanumneric)
@@ -216,22 +243,22 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
     }
 
     "decode all valid voting period kinds to an enumerated value" in {
-      val proposal = decode[ProposalPeriod.Kind](jsonStringOf("proposal"))
+      val proposal = decode[VotingPeriod.Kind](jsonStringOf("proposal"))
       proposal shouldBe 'right
-      proposal.right.value shouldBe ProposalPeriod.proposal
-      val promotion_vote = decode[ProposalPeriod.Kind](jsonStringOf("promotion_vote"))
+      proposal.right.value shouldBe VotingPeriod.proposal
+      val promotion_vote = decode[VotingPeriod.Kind](jsonStringOf("promotion_vote"))
       promotion_vote shouldBe 'right
-      promotion_vote.right.value shouldBe ProposalPeriod.promotion_vote
-      val testing_vote = decode[ProposalPeriod.Kind](jsonStringOf("testing_vote"))
+      promotion_vote.right.value shouldBe VotingPeriod.promotion_vote
+      val testing_vote = decode[VotingPeriod.Kind](jsonStringOf("testing_vote"))
       testing_vote shouldBe 'right
-      testing_vote.right.value shouldBe ProposalPeriod.testing_vote
-      val testing = decode[ProposalPeriod.Kind](jsonStringOf("testing"))
+      testing_vote.right.value shouldBe VotingPeriod.testing_vote
+      val testing = decode[VotingPeriod.Kind](jsonStringOf("testing"))
       testing shouldBe 'right
-      testing.right.value shouldBe ProposalPeriod.testing
+      testing.right.value shouldBe VotingPeriod.testing
     }
 
     "fail to decode an invalid string as a voting period kind" in {
-      val decoded = decode[ProposalPeriod.Kind](jsonStringOf("undefined_period"))
+      val decoded = decode[VotingPeriod.Kind](jsonStringOf("undefined_period"))
       decoded shouldBe 'left
     }
 
@@ -254,7 +281,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       decoded.right.value shouldEqual expectedBigMapDiff
     }
 
-    "decode valid json into a Scipted.Cntracts value" in new OperationsJsonData {
+    "decode valid json into a Scipted.Contracts value" in new OperationsJsonData {
       val decoded = decode[Scripted.Contracts](scriptJson)
       decoded.right.value shouldEqual expectedScript
     }

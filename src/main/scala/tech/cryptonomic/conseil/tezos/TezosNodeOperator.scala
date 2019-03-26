@@ -205,11 +205,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       val offsetString = offset.map(_.toString).getOrElse("")
       val hashString = block.hash.value
 
-      val fetchCurrentPeriod =
-        node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_period_kind") flatMap { json =>
-          decodeLiftingTo[Future, ProposalPeriod.Kind](json)
-        }
-
       val fetchCurrentQuorum =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
           decodeLiftingTo[Future, Option[Int]](json)
@@ -220,7 +215,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
           decodeLiftingTo[Future, Option[ProtocolId]](json)
         }
 
-      (fetchCurrentPeriod, fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
+      (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
@@ -366,7 +361,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     //read the separate parts of voting and merge the results
     val proposalsStateFetch =
       DataFetcher.mergeResults(
-        currentPeriodFetcher,
         currentQuorumFetcher,
         currentProposalFetcher
       )(CurrentVotes.apply)

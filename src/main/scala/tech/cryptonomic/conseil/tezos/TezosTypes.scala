@@ -71,6 +71,8 @@ object TezosTypes {
 
   final case class Nonce(value: String) extends AnyVal
 
+  final case class NonceHash(value: String) extends AnyVal
+
   final case class Secret(value: String) extends AnyVal
 
   final case class Micheline(expression: String) extends AnyVal
@@ -85,7 +87,7 @@ object TezosTypes {
     chain_id: Option[String],
     hash: BlockHash,
     header: BlockHeader,
-    metadata: BlockHeaderMetadata
+    metadata: BlockMetadata
   )
 
   final case class BlockHeader(
@@ -100,10 +102,33 @@ object TezosTypes {
     signature: Option[String]
   )
 
+  sealed trait BlockMetadata extends Product with Serializable
+
+  final case object GenesisMetadata extends BlockMetadata
 
   final case class BlockHeaderMetadata(
-    balance_updates: Option[List[OperationMetadata.BalanceUpdate]]
+    balance_updates: List[OperationMetadata.BalanceUpdate],
+    nonce_hash: Option[NonceHash],
+    consumed_gas: PositiveBigNumber,
+    baker: PublicKeyHash,
+    voting_period_kind: VotingPeriod.Kind,
+    level: BlockHeaderMetadataLevel
+  ) extends BlockMetadata
+
+  final case class BlockHeaderMetadataLevel(
+    level: Int,
+    level_position: Int,
+    cycle: Int,
+    cycle_position: Int,
+    voting_period: Int,
+    voting_period_position: Int,
+    expected_commitment: Boolean
   )
+
+  /** only accepts standard block metadata, discarding the genesis metadata */
+  def discardGenesis: PartialFunction[BlockMetadata, BlockHeaderMetadata] = {
+    case md: BlockHeaderMetadata => md
+  }
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`
    * all the while accepting `0` as valid
@@ -330,21 +355,20 @@ object TezosTypes {
                     accounts: Map[AccountId, Account] = Map.empty
                   )
 
-  object ProposalPeriod extends Enumeration {
+  object VotingPeriod extends Enumeration {
     type Kind = Value
     val proposal, promotion_vote, testing_vote, testing = Value
   }
 
-  val defaultProposalPeriod: ProposalPeriod.Kind = ProposalPeriod.proposal
+  val defaultVotingPeriod: VotingPeriod.Kind = VotingPeriod.proposal
 
   final case class CurrentVotes(
-    periodKind: ProposalPeriod.Kind,
     quorum: Option[Int],
     active: Option[ProtocolId]
   )
 
   final object CurrentVotes {
-    val empty = CurrentVotes(periodKind = defaultProposalPeriod, quorum = None, active = None)
+    val empty = CurrentVotes(quorum = None, active = None)
   }
 
   final case class Block(

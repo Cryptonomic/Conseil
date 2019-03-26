@@ -63,7 +63,8 @@ object DatabaseConversions {
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
       val header = from.data.header
-      val CurrentVotes(periodKind, expectedQuorum, proposal) = from.votes
+      val metadata = discardGenesis.lift(from.data.metadata)
+      val CurrentVotes(expectedQuorum, proposal) = from.votes
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
@@ -77,9 +78,19 @@ object DatabaseConversions {
         chainId = from.data.chain_id,
         hash = from.data.hash.value,
         operationsHash = header.operations_hash,
-        periodKind = Some(periodKind.toString),
+        periodKind = metadata.map(_.voting_period_kind.toString),
         currentExpectedQuorum = expectedQuorum,
-        activeProposal = proposal.map(_.id)
+        activeProposal = proposal.map(_.id),
+        baker = metadata.map(_.baker.value),
+        nonceHash = metadata.flatMap(_.nonce_hash.map(_.value)),
+        consumedGas = metadata.flatMap(md => extractBigDecimal(md.consumed_gas)),
+        metaLevel = metadata.map(_.level.level),
+        metaLevelPosition = metadata.map(_.level.level_position),
+        metaCycle = metadata.map(_.level.cycle),
+        metaCyclePosition = metadata.map(_.level.cycle_position),
+        metaVotingPeriod = metadata.map(_.level.voting_period),
+        metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
+        expectedCommitment = metadata.map(_.level.expected_commitment)
       )
     }
   }

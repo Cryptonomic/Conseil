@@ -89,7 +89,17 @@ CREATE TABLE public.blocks (
     operations_hash character varying,
     period_kind character varying,
     current_expected_quorum integer,
-    active_proposal character varying
+    active_proposal character varying,
+    baker character varying,
+    nonce_hash character varying,
+    consumed_gas numeric,
+    meta_level integer,
+    meta_level_position integer,
+    meta_cycle integer,
+    meta_cycle_position integer,
+    meta_voting_period integer,
+    meta_voting_period_position integer,
+    expected_commitment boolean
 );
 
 

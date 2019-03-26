@@ -85,6 +85,8 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocks zip generatedBlocks) {
             case (row, block) =>
+              val metadata = discardGenesis.lift(block.data.metadata)
+
               row.level shouldEqual block.data.header.level
               row.proto shouldEqual block.data.header.proto
               row.predecessor shouldEqual block.data.header.predecessor.value
@@ -97,9 +99,14 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
-              row.periodKind.value shouldEqual block.votes.periodKind.toString
+              row.periodKind shouldEqual metadata.map(_.voting_period_kind.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
+              row.baker shouldEqual metadata.map(_.baker.value)
+              row.consumedGas shouldEqual metadata.map(_.consumed_gas).flatMap {
+                case PositiveDecimal(value) => Some(value)
+                case _ => None
+              }
           }
 
           val dbBlocksAndGroups =
@@ -222,14 +229,14 @@ class TezosDatabaseOperationsTest
       val generatedBlocks = basicBlocks.zipWithIndex.map {
         case (block, idx) =>
           val randomUpdates = generateBalanceUpdates(2)(randomSeed + idx)
-          setBalances(Some(randomUpdates))(block)
+          setBalances(randomUpdates)(block)
       }
 
       whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
         _ =>
         val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
 
-        dbUpdatesRows should have size 6 //2 updates x 3 blocks
+        dbUpdatesRows should have size 4 //2 updates x 2 blocks, not considering genesis which has no balances
 
         /* Convert both the generated blocks data to balance updates table row representation
          * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
@@ -306,7 +313,7 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       //generate data
-      val blocks = generateBlockRows(2, testReferenceTimestamp)
+      val blocks @ (second :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
       val account = generateAccountRows(1, blocks.head).head
 
       val populate =
@@ -319,10 +326,10 @@ class TezosDatabaseOperationsTest
 
       //prepare new accounts
       val accountChanges = 2
-      val (hashUpdate, levelUpdate) = (blocks(1).hash, blocks(1).level)
+      val (hashUpdate, levelUpdate) = (first.hash, first.level)
       val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
 
-      //check for same identifier
+      //double-check for the identifier existence
       accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
 
       //do the updates
@@ -870,7 +877,17 @@ class TezosDatabaseOperationsTest
           "level" -> Some(0),
           "period_kind" -> None,
           "current_expected_quorum" -> None,
-          "active_proposal" -> None
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -887,7 +904,17 @@ class TezosDatabaseOperationsTest
           "level" -> Some(1),
           "period_kind" -> None,
           "current_expected_quorum" -> None,
-          "active_proposal" -> None
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None
         )
       )
     }

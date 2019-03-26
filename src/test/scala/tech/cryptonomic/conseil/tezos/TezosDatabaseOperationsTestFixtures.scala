@@ -65,7 +65,21 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //same for all blocks
     val chainHash = generateHash(5)
 
-    def generateOne(level: Int, predecessorHash: BlockHash): Block =
+    //fix a seed generator and provides a generation function
+    val randomMetadataLevel = {
+      val rnd = new Random(randomSeed.seed)
+      () => BlockHeaderMetadataLevel(
+        level = rnd.nextInt(),
+        level_position = rnd.nextInt(),
+        cycle = rnd.nextInt(),
+        cycle_position = rnd.nextInt(),
+        voting_period = rnd.nextInt(),
+        voting_period_position = rnd.nextInt(),
+        expected_commitment = rnd.nextBoolean()
+      )
+    }
+
+    def generateOne(level: Int, predecessorHash: BlockHash, genesis: Boolean = false): Block =
       Block(
         BlockData(
           protocol = "protocol",
@@ -82,14 +96,23 @@ trait TezosDataGeneration extends RandomGenerationKit {
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
-          metadata = BlockHeaderMetadata(balance_updates = None)
+          metadata =
+            if (genesis) GenesisMetadata
+            else BlockHeaderMetadata(
+              balance_updates = List.empty,
+              baker = PublicKeyHash(generateHash(10)),
+              voting_period_kind = VotingPeriod.proposal,
+              nonce_hash = Some(NonceHash(generateHash(10))),
+              consumed_gas = PositiveDecimal(0),
+              level = randomMetadataLevel()
+            )
         ),
         operationGroups = List.empty,
         votes = CurrentVotes.empty
       )
 
     //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"))
+    val genesis = generateOne(0, BlockHash("genesis"), true)
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
@@ -103,7 +126,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   /** Randomly geneates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
-  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: Option[List[OperationMetadata.BalanceUpdate]] = None)(implicit randomSeed: RandomSeed): Block = {
+  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
     import TezosOptics.Blocks._
     import mouse.any._
 
@@ -157,11 +180,18 @@ trait TezosDataGeneration extends RandomGenerationKit {
       context = Some(s"context$level"),
       signature = Some(s"sig${generateHash(10)}"),
       chainId = Some(chainHash),
-      hash = generateHash(10)
+      hash = generateHash(10),
+      operationsHash = Some(generateHash(10)),
+      periodKind = Some("period_kind"),
+      currentExpectedQuorum = Some(1000),
+      activeProposal = None,
+      baker = Some(generateHash(10)),
+      nonceHash = Some(generateHash(10)),
+      consumedGas = Some(0)
     )
 
-    //we need somewhere to start with
-    val genesis = generateOne(0, "genesis")
+      //we need somewhere to start with
+    val genesis = generateOne(0,"genesis")
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel).foldLeft(List(genesis)) {
