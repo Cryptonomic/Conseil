@@ -126,13 +126,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
+    import TezosOptics.Accounts.optionalScript
+
+    /*tries decoding but simply returns the input unchanged on failure*/
+    def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
 
     accountFetcher(blockHash).fetch
       .run(accountIds)
       .map(
         indexedAccounts =>
           indexedAccounts.collect {
-            case (accountId, Some(account)) => accountId -> account.copy(script = account.script.map(toMichelsonScript[MichelsonCode]))
+            case (accountId, Some(account)) => accountId -> optionalScript.modify(parseScript)(account)
           }.toMap
     )
   }
