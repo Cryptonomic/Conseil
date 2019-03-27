@@ -56,7 +56,7 @@ object JsonUtil {
     lazy val emptyObject = JsonString("{}")
 
     /** add standard cleaning for input json */
-    def sanitize(s: String): String = s.filterNot(_.isControl)
+    def sanitize(s: String): String = s.filterNot(_.isControl).replaceAll("\\\\", "backslash")
 
   }
 
