@@ -133,16 +133,16 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("period_kind", "Period kind", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("current_expected_quorum", "Current expected quorum", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
             Attribute("active_proposal", "Active proposal", DataType.String, Some(0), KeyType.NonKey, "blocks"),
-            Attribute("baker", "Baker", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
-            Attribute("nonce_hash", "Nonce hash", DataType.String, Some(0), KeyType.UniqueKey, "blocks"),
-            Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.UniqueKey, "blocks"),
-            Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-            Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-            Attribute("meta_cycle", "Meta cycle", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-            Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-            Attribute("meta_voting_period", "Meta voting period", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-            Attribute("meta_voting_period_position", "Meta voting period position", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-            Attribute("expected_commitment", "Expected commitment", DataType.Boolean, Some(0), KeyType.UniqueKey, "blocks")
+            Attribute("baker", "Baker", DataType.String, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("nonce_hash", "Nonce hash", DataType.String, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("consumed_gas", "Consumed gas", DataType.Decimal, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("meta_level", "Meta level", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("meta_level_position", "Meta level position", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("meta_cycle", "Meta cycle", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("meta_voting_period", "Meta voting period", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("meta_voting_period_position", "Meta voting period position", DataType.Int, Some(0), KeyType.NonKey, "blocks"),
+            Attribute("expected_commitment", "Expected commitment", DataType.Boolean, Some(0), KeyType.NonKey, "blocks")
           )
         )
     }

@@ -2,8 +2,6 @@ package tech.cryptonomic.conseil.util
 
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.config.Platforms._
-import tech.cryptonomic.conseil.config.{HttpCacheConfiguration, HttpStreamingConfiguration}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.util.Try
