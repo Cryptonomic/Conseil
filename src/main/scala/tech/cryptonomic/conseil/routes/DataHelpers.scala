@@ -2,13 +2,14 @@ package tech.cryptonomic.conseil.routes
 
 import java.sql.Timestamp
 
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import akka.util.ByteString
 import cats.Functor
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, QueryResponse, QueryValidationError}
+import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
 
@@ -18,11 +19,15 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
 
   import io.circe._
   import io.circe.syntax._
+  import tech.cryptonomic.conseil.util.Conversion.Syntax._
+  import tech.cryptonomic.conseil.routes.openapi.CsvConversions._
 
   /** Function validating request for the query endpoint */
   override def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
+    case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
+      complete(HttpEntity.Strict(ContentTypes.`text/csv(UTF-8)`, ByteString(queryResponse.convertTo[String])))
     case Right(success) =>
       response(success)
   }
@@ -40,6 +45,16 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     )
   }
 
+  override implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
+    new JsonSchema[QueryResponseWithOutput] {
+      override def encoder: Encoder[QueryResponseWithOutput] = (a: QueryResponseWithOutput) => a match {
+        case queryResponse =>
+          queryResponse.queryResponse.asJson(queryResponseSchema.encoder)
+      }
+
+      override def decoder: Decoder[QueryResponseWithOutput] = ???
+    }
+
   /** Implementation of JSON encoder for Any */
   def anyEncoder: Encoder[Any] = (a: Any) => a match {
     case x: java.lang.String => Json.fromString(x)
@@ -48,6 +63,7 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     case x: java.lang.Boolean => Json.fromBoolean(x)
     case x: scala.collection.immutable.Vector[Tables.OperationGroupsRow] => x.map(_.asJson(operationGroupsRowSchema.encoder)).asJson
     case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
+    case x: java.math.BigDecimal => Json.fromBigDecimal(x)
     case x => Json.fromString(x.toString)
   }
 

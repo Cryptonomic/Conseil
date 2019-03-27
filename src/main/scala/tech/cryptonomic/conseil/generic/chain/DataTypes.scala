@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,10 +21,8 @@ object DataTypes {
 
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
-
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
-
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
 
@@ -32,8 +31,14 @@ object DataTypes {
     val message: String
   }
 
+  /** Class which contains output type with the response */
+  case class QueryResponseWithOutput(queryResponse: List[QueryResponse], output: OutputType)
+
   /** Class required for OperationType enum serialization */
   class OperationTypeRef extends TypeReference[OperationType.type]
+
+  /** Class required for OutputType enum serialization */
+  class OutputTypeRef extends TypeReference[OutputType.type]
 
   /** Class representing predicate */
   case class Predicate(
@@ -47,6 +52,7 @@ object DataTypes {
   /** Class required for Ordering enum serialization */
   class QueryOrderingRef extends TypeReference[OrderDirection.type]
 
+  /** Class representing query ordering */
   case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
 
   /** Class representing invalid query field */
@@ -63,7 +69,8 @@ object DataTypes {
     fields: List[String] = List.empty,
     predicates: List[Predicate] = List.empty,
     orderBy: List[QueryOrdering] = List.empty,
-    limit: Int = defaultLimitValue
+    limit: Int = defaultLimitValue,
+    output: OutputType = OutputType.json
   )
 
   /** Class representing query got through the REST API */
@@ -71,7 +78,8 @@ object DataTypes {
     fields: Option[List[String]],
     predicates: Option[List[Predicate]],
     orderBy: Option[List[QueryOrdering]],
-    limit: Option[Int]
+    limit: Option[Int],
+    @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType]
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
@@ -113,6 +121,12 @@ object DataTypes {
     }
   }
 
+  /** Enumeration for output types */
+  object OutputType extends Enumeration {
+    type OutputType = Value
+    val json, csv = Value
+  }
+
   /** Enumeration for order direction */
   object OrderDirection extends Enumeration {
     type OrderDirection = Value
@@ -124,5 +138,4 @@ object DataTypes {
     type OperationType = Value
     val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
   }
-
 }

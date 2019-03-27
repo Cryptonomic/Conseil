@@ -53,6 +53,22 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
       }
     }
 
+    "sanitize unwanted input, by removing any ISO control char from the json string" in {
+      //include the most prominent control chars
+      val invalid: String =
+        (Set(0x00 to 0x1F: _*) + 0x7F ++ Set(0x80 to 0x9F: _*))
+          .map(_.toChar)
+          .foldLeft("")(_ + _)
+
+      //double check
+      invalid should have size 65
+
+      forAll(invalid)(_.isControl)
+
+      (JsonString sanitize invalid) shouldBe 'empty
+
+    }
+
     "convert a simple map to json" in {
       val result = JsonUtil.toJson(Map("key1" -> "value1", "key2" -> "value2")).json
       result should matchJson("""{"key1": "value1", "key2": "value2"}""")

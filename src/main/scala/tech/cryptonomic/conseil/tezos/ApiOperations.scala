@@ -290,7 +290,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
     * @return List of operations
     */
-  def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, DBTableMapping.Operation]): Future[Seq[DBTableMapping.Operation]] =
+  def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow]): Future[Seq[Tables.OperationsRow]] =
     apiFilters(filter)
 
   /**

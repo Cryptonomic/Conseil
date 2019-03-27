@@ -64,25 +64,45 @@ class JsonParserSpec extends FlatSpec with Matchers {
           MichelsonType("int")))))))
   }
 
+  it should "parse MichelsonType with annotation" in {
+    val json =
+      """{
+        |  "prim": "int",
+        |  "annots": [
+        |    ":p"
+        |  ]
+        |}""".stripMargin
+
+    parse[MichelsonExpression](json) should equal(Right(
+      MichelsonType(prim = "int", annotations = List(":p"))))
+  }
+
   it should "parse MichelsonInstruction with only one simple instruction" in {
     val json = """{"prim": "DUP"}"""
 
     parse[MichelsonInstruction](json) should equal(Right(
-      MichelsonSimpleInstruction("DUP")))
+      MichelsonSingleInstruction("DUP")))
   }
 
   it should "parse MichelsonInstructionSequence" in {
     val json = """[{"prim": "CDR"}, {"prim": "DUP"}]"""
 
     parse[MichelsonInstruction](json) should equal(Right(
-      MichelsonInstructionSequence(List(MichelsonSimpleInstruction("CDR"), MichelsonSimpleInstruction("DUP")))))
+      MichelsonInstructionSequence(List(MichelsonSingleInstruction("CDR"), MichelsonSingleInstruction("DUP")))))
   }
 
   it should "parse typed MichelsonInstruction" in {
     val json = """{"prim": "NIL", "args": [{"prim": "operation"}]}"""
 
     parse[MichelsonInstruction](json) should equal(Right(
-      MichelsonSimpleInstruction("NIL", List(MichelsonType("operation")))))
+      MichelsonSingleInstruction("NIL", List(MichelsonType("operation")))))
+  }
+
+  it should "parse MichelsonInstruction with annotation" in {
+    val json = """{"prim": "CAR", "annots": ["@pointcolor"]}"""
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonSingleInstruction("CAR", annotations = List("@pointcolor"))))
   }
 
   it should "parse complex MichelsonInstruction" in {
@@ -90,8 +110,8 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
     parse[MichelsonInstruction](json) should equal(Right(
       MichelsonInstructionSequence(List(
-        MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
-          MichelsonSimpleInstruction("DUP"))))))))
+        MichelsonSingleInstruction("DIP", List(MichelsonInstructionSequence(List(
+          MichelsonSingleInstruction("DUP")))))))))
   }
 
   it should "parse MichelsonInstruction typed with int data" in {
@@ -110,14 +130,14 @@ class JsonParserSpec extends FlatSpec with Matchers {
 
     parse[MichelsonInstruction](json) should equal(Right(
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("PUSH", List(
+        MichelsonSingleInstruction("PUSH", List(
           MichelsonType("mutez"),
           MichelsonIntConstant(0)))))))
   }
 
   it should "parse MichelsonInstruction typed with string data" in {
     val json =
-      """[{
+    """[{
         |  "prim": "PUSH",
         |  "args": [
         |    {
@@ -130,16 +150,143 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |}]""".stripMargin
 
     parse[MichelsonInstruction](json) should equal(Right(
+        MichelsonInstructionSequence(List(
+            MichelsonSingleInstruction("PUSH", List(
+                MichelsonType("mutez"),
+                MichelsonStringConstant("0")))))))
+  }
+
+  it should "parse double embedded MichelsonInstruction" in {
+    val json =
+      """[
+        |  {
+        |    "prim": "IF_NONE",
+        |    "args": [
+        |      [
+        |        [
+        |          {
+        |            "prim": "UNIT"
+        |          },
+        |          {
+        |            "prim": "FAILWITH"
+        |          }
+        |        ]
+        |      ]
+        |    ]
+        |  }
+        |]""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
       MichelsonInstructionSequence(List(
-        MichelsonSimpleInstruction("PUSH", List(
-          MichelsonType("mutez"),
-          MichelsonStringConstant("0")))))))
+        MichelsonSingleInstruction("IF_NONE", List(MichelsonInstructionSequence(List(
+          MichelsonInstructionSequence(List(
+            MichelsonSingleInstruction("UNIT"),
+            MichelsonSingleInstruction("FAILWITH")))))))))))
+  }
+
+  it should "parse empty MichelsonInstruction" in {
+    val json =
+      """[
+        |  {
+        |    "prim": "IF_NONE",
+        |    "args": [
+        |      [],
+        |      [
+        |        [
+        |          {
+        |            "prim": "UNIT"
+        |          },
+        |          {
+        |            "prim": "FAILWITH"
+        |          }
+        |        ]
+        |      ],
+        |      []
+        |    ]
+        |  }
+        |]""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonInstructionSequence(List(
+        MichelsonSingleInstruction("IF_NONE", List(
+          MichelsonEmptyInstruction, MichelsonInstructionSequence(List(
+            MichelsonInstructionSequence(List(
+              MichelsonSingleInstruction("UNIT"),
+              MichelsonSingleInstruction("FAILWITH"))))),
+          MichelsonEmptyInstruction))))))
+  }
+
+  it should "parse empty MichelsonInstruction when it appears alone" in {
+    val json =
+      """[
+        |  {
+        |    "prim": "IF_NONE",
+        |    "args": [
+        |      []
+        |    ]
+        |  }
+        |]""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonInstructionSequence(List(
+        MichelsonSingleInstruction("IF_NONE", List(
+          MichelsonEmptyInstruction))))))
+  }
+
+  it should "parse empty MichelsonExpression" in {
+    val json =
+      """{
+        |  "prim": "Pair",
+        |  "args": [
+        |    {
+        |      "int": "0"
+        |    },
+        |    []
+        |  ]
+        |}""".stripMargin
+
+    parse[MichelsonExpression](json) should equal(Right(
+      MichelsonType("Pair", List(
+        MichelsonIntConstant(0),
+        MichelsonEmptyExpression))))
+  }
+
+  it should "parse LAMBDA MichelsonInstruction" in {
+    val json =
+      """{
+        |  "prim": "LAMBDA",
+        |  "args": [
+        |    {
+        |      "prim": "address"
+        |    },
+        |    {
+        |      "prim": "contract",
+        |      "args": [
+        |        {
+        |          "prim": "unit"
+        |        }
+        |      ]
+        |    },
+        |    [
+        |      {
+        |        "prim": "DUP"
+        |      }
+        |    ]
+        |  ]
+        |}""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonSingleInstruction("LAMBDA", List(
+        MichelsonType("address"),
+        MichelsonType("contract", List(
+          MichelsonType("unit"))), MichelsonInstructionSequence(List(
+        MichelsonSingleInstruction("DUP")))))))
   }
 
   it should "convert simplest json to MichelsonSchema" in {
 
     val json =
-      """[
+    """[
         |  {
         |    "prim": "parameter",
         |    "args": [
@@ -169,217 +316,223 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |]""".stripMargin
 
     parse[MichelsonSchema](json) should equal(Right(MichelsonSchema(
-      MichelsonType("int"),
-      MichelsonType("int"),
-      MichelsonCode(List(MichelsonSimpleInstruction("DUP"))))))
+        MichelsonType("int"),
+        MichelsonType("int"),
+        MichelsonCode(List(MichelsonSingleInstruction("DUP"))))))
   }
 
   it should "parse MichelsonCode" in {
     val json = """[{"prim": "DUP"}]"""
 
     parse[MichelsonCode](json) should equal(Right(MichelsonCode(
-      List(MichelsonSimpleInstruction("DUP")))))
+        List(MichelsonSingleInstruction("DUP")))))
   }
 
   it should "give meaningful error in case of json without parameter section" in {
     val json = """[{"prim": "storage", "args": []}]"""
 
-    parse[MichelsonSchema](json) should equal(Left(ParserError("No type parameter found")))
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No expression parameter found")))
   }
 
   it should "give meaningful error in case of json without code section" in {
     val json = """[{"prim": "parameter", "args": [{"prim": "unit"}]}, {"prim": "storage", "args": [{"prim": "unit"}]}]"""
 
-    parse[MichelsonSchema](json) should equal(Left(ParserError("No expression code found")))
+    parse[MichelsonSchema](json) should equal(Left(ParserError("No code code found")))
+  }
+
+  it should "parse empty schema" in {
+    val json = """[]"""
+
+    parse[MichelsonSchema](json) should equal(Right(MichelsonSchema.empty))
   }
 
   it should "convert complex json to MichelsonSchema" in {
 
     val json =
       """[
+        |  {
+        |    "prim": "parameter",
+        |    "args": [
         |      {
-        |          "prim": "parameter",
-        |          "args": [
-        |              {
-        |                  "prim": "unit"
-        |              }
-        |          ]
-        |      },
+        |        "prim": "unit"
+        |      }
+        |    ]
+        |  },
+        |  {
+        |    "prim": "storage",
+        |    "args": [
         |      {
-        |          "prim": "storage",
-        |          "args": [
+        |        "prim": "contract",
+        |        "args": [
+        |          {
+        |            "prim": "or",
+        |            "args": [
         |              {
-        |                  "prim": "contract",
-        |                  "args": [
+        |                "prim": "option",
+        |                "args": [
+        |                  {
+        |                    "prim": "address"
+        |                  }
+        |                ]
+        |              },
+        |              {
+        |                "prim": "or",
+        |                "args": [
+        |                  {
+        |                    "prim": "pair",
+        |                    "args": [
         |                      {
-        |                          "prim": "or",
-        |                          "args": [
+        |                        "prim": "option",
+        |                        "args": [
+        |                          {
+        |                            "prim": "address"
+        |                          }
+        |                        ]
+        |                      },
+        |                      {
+        |                        "prim": "option",
+        |                        "args": [
+        |                          {
+        |                            "prim": "mutez"
+        |                          }
+        |                        ]
+        |                      }
+        |                    ]
+        |                  },
+        |                  {
+        |                    "prim": "or",
+        |                    "args": [
+        |                      {
+        |                        "prim": "mutez"
+        |                      },
+        |                      {
+        |                        "prim": "or",
+        |                        "args": [
+        |                          {
+        |                            "prim": "pair",
+        |                            "args": [
         |                              {
-        |                                  "prim": "option",
-        |                                  "args": [
-        |                                      {
-        |                                          "prim": "address"
-        |                                      }
-        |                                  ]
+        |                                "prim": "option",
+        |                                "args": [
+        |                                  {
+        |                                    "prim": "address"
+        |                                  }
+        |                                ]
         |                              },
         |                              {
-        |                                  "prim": "or",
-        |                                  "args": [
-        |                                      {
-        |                                          "prim": "pair",
-        |                                          "args": [
-        |                                              {
-        |                                                  "prim": "option",
-        |                                                  "args": [
-        |                                                      {
-        |                                                          "prim": "address"
-        |                                                      }
-        |                                                  ]
-        |                                              },
-        |                                              {
-        |                                                  "prim": "option",
-        |                                                  "args": [
-        |                                                      {
-        |                                                          "prim": "mutez"
-        |                                                      }
-        |                                                  ]
-        |                                              }
-        |                                          ]
-        |                                      },
-        |                                      {
-        |                                          "prim": "or",
-        |                                          "args": [
-        |                                              {
-        |                                                  "prim": "mutez"
-        |                                              },
-        |                                              {
-        |                                                  "prim": "or",
-        |                                                  "args": [
-        |                                                      {
-        |                                                          "prim": "pair",
-        |                                                          "args": [
-        |                                                              {
-        |                                                                  "prim": "option",
-        |                                                                  "args": [
-        |                                                                      {
-        |                                                                          "prim": "address"
-        |                                                                      }
-        |                                                                  ]
-        |                                                              },
-        |                                                              {
-        |                                                                  "prim": "option",
-        |                                                                  "args": [
-        |                                                                      {
-        |                                                                          "prim": "mutez"
-        |                                                                      }
-        |                                                                  ]
-        |                                                              }
-        |                                                          ]
-        |                                                      },
-        |                                                      {
-        |                                                          "prim": "address"
-        |                                                      }
-        |                                                  ]
-        |                                              }
-        |                                          ]
-        |                                      }
-        |                                  ]
-        |                              }
-        |                          ]
-        |                      }
-        |                  ]
-        |              }
-        |          ]
-        |      },
-        |      {
-        |          "prim": "code",
-        |          "args": [
-        |              [
-        |                  {
-        |                      "prim": "CDR"
-        |                  },
-        |                  {
-        |                      "prim": "DUP"
-        |                  },
-        |                  {
-        |                      "prim": "NIL",
-        |                      "args": [
-        |                          {
-        |                              "prim": "operation"
-        |                          }
-        |                      ]
-        |                  },
-        |                  [
-        |                      {
-        |                          "prim": "DIP",
-        |                          "args": [
-        |                              [
+        |                                "prim": "option",
+        |                                "args": [
         |                                  {
-        |                                      "prim": "DIP",
-        |                                      "args": [
-        |                                          [
-        |                                              {
-        |                                                  "prim": "DUP"
-        |                                              }
-        |                                          ]
-        |                                      ]
-        |                                  },
-        |                                  {
-        |                                      "prim": "SWAP"
+        |                                    "prim": "mutez"
         |                                  }
-        |                              ]
-        |                          ]
-        |                      },
-        |                      {
-        |                          "prim": "SWAP"
-        |                      },
-        |                      {
-        |                          "prim": "NIL",
-        |                          "args": [
-        |                              {
-        |                                  "prim": "operation"
+        |                                ]
         |                              }
-        |                          ]
+        |                            ]
+        |                          },
+        |                          {
+        |                            "prim": "address"
+        |                          }
+        |                        ]
         |                      }
-        |                  ]
-        |              ]
-        |          ]
+        |                    ]
+        |                  }
+        |                ]
+        |              }
+        |            ]
+        |          }
+        |        ]
         |      }
-        |  ]""".stripMargin
+        |    ]
+        |  },
+        |  {
+        |    "prim": "code",
+        |    "args": [
+        |      [
+        |        {
+        |          "prim": "CDR"
+        |        },
+        |        {
+        |          "prim": "DUP"
+        |        },
+        |        {
+        |          "prim": "NIL",
+        |          "args": [
+        |            {
+        |              "prim": "operation"
+        |            }
+        |          ]
+        |        },
+        |        [
+        |          {
+        |            "prim": "DIP",
+        |            "args": [
+        |              [
+        |                {
+        |                  "prim": "DIP",
+        |                  "args": [
+        |                    [
+        |                      {
+        |                        "prim": "DUP"
+        |                      }
+        |                    ]
+        |                  ]
+        |                },
+        |                {
+        |                  "prim": "SWAP"
+        |                }
+        |              ]
+        |            ]
+        |          },
+        |          {
+        |            "prim": "SWAP"
+        |          },
+        |          {
+        |            "prim": "NIL",
+        |            "args": [
+        |              {
+        |                "prim": "operation"
+        |              }
+        |            ]
+        |          }
+        |        ]
+        |      ]
+        |    ]
+        |  }
+        |]""".stripMargin
 
     parse[MichelsonSchema](json) should equal(Right(MichelsonSchema(
-      MichelsonType("unit", List()),
+      MichelsonType("unit"),
       MichelsonType("contract", List(
         MichelsonType("or", List(
           MichelsonType("option", List(
-            MichelsonType("address", List()))),
+            MichelsonType("address"))),
           MichelsonType("or", List(
             MichelsonType("pair", List(
               MichelsonType("option", List(
-                MichelsonType("address", List()))),
+                MichelsonType("address"))),
               MichelsonType("option", List(
-                MichelsonType("mutez", List()))))),
+                MichelsonType("mutez"))))),
             MichelsonType("or", List(
-              MichelsonType("mutez", List()),
+              MichelsonType("mutez"),
               MichelsonType("or", List(
                 MichelsonType("pair", List(
                   MichelsonType("option", List(
-                    MichelsonType("address", List()))),
+                    MichelsonType("address"))),
                   MichelsonType("option", List(
-                    MichelsonType("mutez", List()))))),
-                MichelsonType("address", List()))))))))))),
+                    MichelsonType("mutez"))))),
+                MichelsonType("address"))))))))))),
       MichelsonCode(List(
-        MichelsonSimpleInstruction("CDR"),
-        MichelsonSimpleInstruction("DUP"),
-        MichelsonSimpleInstruction("NIL", List(
+        MichelsonSingleInstruction("CDR"),
+        MichelsonSingleInstruction("DUP"),
+        MichelsonSingleInstruction("NIL", List(
           MichelsonType("operation"))),
         MichelsonInstructionSequence(List(
-          MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
-            MichelsonComplexInstruction("DIP", MichelsonInstructionSequence(List(
-              MichelsonSimpleInstruction("DUP")))),
-            MichelsonSimpleInstruction("SWAP")))),
-          MichelsonSimpleInstruction("SWAP"),
-          MichelsonSimpleInstruction("NIL", List(
+          MichelsonSingleInstruction("DIP", List(MichelsonInstructionSequence(List(
+            MichelsonSingleInstruction("DIP", List(MichelsonInstructionSequence(List(
+              MichelsonSingleInstruction("DUP"))))),
+            MichelsonSingleInstruction("SWAP"))))),
+          MichelsonSingleInstruction("SWAP"),
+          MichelsonSingleInstruction("NIL", List(
             MichelsonType("operation"))))))))))
   }
 }

@@ -7,6 +7,8 @@ import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
+import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
@@ -29,8 +31,8 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
 
   import cats.instances.either._
   import cats.instances.future._
-  import cats.syntax.bitraverse._
   import cats.instances.option._
+  import cats.syntax.bitraverse._
   import cats.syntax.traverse._
 
   /*
@@ -41,13 +43,18 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
-      apiQuery.validate(entity, tezosPlatformDiscoveryOperations).flatMap { validationResult =>
-        validationResult.map { validQuery =>
-          platformNetworkValidation(platform, network) {
-            queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery)
+      apiQuery.validate(entity).map { validQuery =>
+        platformNetworkValidation(platform, network) {
+          queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
+            queryResponseOpt.map { queryResponses =>
+              QueryResponseWithOutput(
+                queryResponses,
+                validQuery.output
+              )
+            }
           }
-        }.left.map(Future.successful).bisequence.map(eitherOptionOps)
-      }
+        }
+      }.left.map(Future.successful).bisequence.map(eitherOptionOps)
   }
 
   /** V2 Route implementation for blocks endpoint */

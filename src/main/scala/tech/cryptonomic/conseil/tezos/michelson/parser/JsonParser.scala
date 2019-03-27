@@ -2,9 +2,12 @@ package tech.cryptonomic.conseil.tezos.michelson.parser
 
 import io.circe.parser.decode
 import cats.syntax.functor._
-import io.circe.{HCursor, _}
+import io.circe._
 import io.circe.generic.auto._
+import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
+
+import scala.collection.immutable.{List, Nil}
 
 /* Parses Michelson Expression represented as JSON to domain objects */
 object JsonParser {
@@ -16,7 +19,6 @@ object JsonParser {
    * |         |                              |        |                            |        |                          |
    * |         JsonTypeSection                JsonType JsonTypeSection              JsonType ExpressionSection          JsonInstruction
    * JsonDocument
-   *
    *
    * We can distinguish which JsonSection it is by looking at its args. JsonTypeSection contains a single sequence, since
    * JsonExpressionSection contains an embedded one.
@@ -45,9 +47,25 @@ object JsonParser {
    * |                         single type "int"
    * type "pair" with two arguments
    *
+   * {"prim": "pair", "args": [{"prim": "int"}, []]}
+   * |                         |                |
+   * |                         |                empty expression
+   * |                         single type "int"
+   * type "pair" with two arguments
+   *
+   * Empty expression is represented as an empty array in JSON.
+   *
    * */
-  case class JsonType(prim: String, args: Option[List[JsonType]]) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonType(prim, args.getOrElse(List.empty).map(_.toMichelsonExpression))
+  case class JsonType(prim: String,
+                      args: Option[List[Either[JsonExpression, Nil.type]]],
+                      annots: Option[List[String]] = None) extends JsonExpression {
+    override def toMichelsonExpression = MichelsonType(
+      prim,
+      args.getOrElse(List.empty).map {
+        case Left(jsonExpression) => jsonExpression.toMichelsonExpression
+        case Right(_) => MichelsonEmptyExpression
+      },
+      annots.getOrElse(List.empty))
   }
 
   /*
@@ -57,7 +75,7 @@ object JsonParser {
    *
    * */
   case class JsonIntConstant(int: String) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonIntConstant(int.toInt)
+    override def toMichelsonExpression = MichelsonIntConstant(int.toLong)
   }
 
   /*
@@ -85,12 +103,18 @@ object JsonParser {
     def toMichelsonInstruction: MichelsonInstruction
   }
 
-  case class JsonSimpleInstruction(prim: String, args: Option[List[JsonExpression]] = None) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonSimpleInstruction(prim, args.map(_.map(_.toMichelsonExpression)).getOrElse(List.empty))
-  }
-
-  case class JsonComplexInstruction(prim: String, args: List[List[JsonInstruction]]) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonComplexInstruction(prim, MichelsonInstructionSequence(args.flatten.map(_.toMichelsonInstruction)))
+  case class JsonSimpleInstruction(prim: String,
+                                   args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None,
+                                   annots: Option[List[String]] = None) extends JsonInstruction {
+    override def toMichelsonInstruction = MichelsonSingleInstruction(
+      name = prim,
+      annotations = annots.getOrElse(List.empty),
+      embeddedElements = args.getOrElse(List.empty)
+        .map {
+          case Left(jsonExpression) => jsonExpression.toMichelsonExpression
+          case Right(Nil) => MichelsonEmptyInstruction
+          case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
+        })
   }
 
   case class JsonInstructionSequence(instructions: List[JsonInstruction]) extends JsonInstruction {
@@ -114,7 +138,7 @@ object JsonParser {
           case it@JsonExpressionSection(`sectionName`, _) => it
         }
         .flatMap(_.toMichelsonExpression)
-        .toRight(ParserError(s"No type $sectionName found"))
+        .toRight(ParserError(s"No expression $sectionName found"))
     }
 
     private def extractCode(sectionName: String): Result[MichelsonCode] = {
@@ -122,15 +146,15 @@ object JsonParser {
         .collectFirst {
           case it@JsonCodeSection(`sectionName`, _) => it.toMichelsonCode
         }
-        .toRight(ParserError(s"No expression $sectionName found"))
+        .toRight(ParserError(s"No code $sectionName found"))
     }
   }
 
   object GenericDerivation {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
-        Decoder[JsonExpressionSection].widen,
         Decoder[JsonCodeSection].widen,
+        Decoder[JsonExpressionSection].widen
       ).reduceLeft(_ or _)
 
     implicit val decodeExpression: Decoder[JsonExpression] =
@@ -140,16 +164,16 @@ object JsonParser {
         Decoder[JsonStringConstant].widen
       ).reduceLeft(_ or _)
 
-    implicit val decodeInstruction: Decoder[JsonInstruction] = cursor => {
-      lazy val isSequence = (_: HCursor).downArray.succeeded
-      lazy val isComplexInstruction = (_: HCursor).downField("args").downArray.downArray.succeeded
+    val decodeInstructionSequence: Decoder[JsonInstructionSequence] = _.as[List[JsonInstruction]].map(JsonInstructionSequence)
 
-      if (isSequence(cursor))
-        cursor.as[List[JsonInstruction]].map(JsonInstructionSequence)
-      else if (isComplexInstruction(cursor))
-        cursor.as[JsonComplexInstruction]
-      else
-        cursor.as[JsonSimpleInstruction]
+    implicit val decodeInstruction: Decoder[JsonInstruction] =
+      List[Decoder[JsonInstruction]](
+        decodeInstructionSequence.widen,
+        Decoder[JsonSimpleInstruction].widen
+      ).reduceLeft(_ or _)
+
+    implicit def decodeEither[A,B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A,B]] = {
+      leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
     }
   }
 
@@ -162,23 +186,26 @@ object JsonParser {
     decode[JsonInstruction](_).map(_.toMichelsonInstruction)
   }
 
-  implicit val michelsonExpressionParser: Parser[MichelsonExpression] = (json: String) => {
+  implicit val michelsonExpressionParser: Parser[MichelsonExpression] = {
     import GenericDerivation._
-    decode[JsonExpression](json).map(_.toMichelsonExpression)
+    decode[JsonExpression](_).map(_.toMichelsonExpression)
   }
 
-  implicit val michelsonSchemaParser: Parser[MichelsonSchema] = (json: String) => {
+  implicit val michelsonSchemaParser: Parser[MichelsonSchema] = {
     import GenericDerivation._
-    decode[List[JsonSection]](json).map(JsonSchema).flatMap(_.toMichelsonSchema)
+    decode[List[JsonSection]](_).flatMap {
+      case Nil => Right(MichelsonSchema.empty)
+      case jsonSections => JsonSchema(jsonSections).toMichelsonSchema
+    }
   }
 
-  implicit val michelsonCodeParser: Parser[MichelsonCode] = (json: String) => {
+  implicit val michelsonCodeParser: Parser[MichelsonCode] = {
     import GenericDerivation._
-    decode[List[JsonInstruction]](json).map(instructions => MichelsonCode(instructions.map(_.toMichelsonInstruction)))
+    decode[List[JsonInstruction]](_).map(instructions => MichelsonCode(instructions.map(_.toMichelsonInstruction)))
   }
 
   /* Parses Michelson Expression represented as JSON to domain objects */
   def parse[T <: MichelsonElement:Parser](json: String): Result[T] = {
-    implicitly[Parser[T]].parse(json)
+    implicitly[Parser[T]].parse(JsonString sanitize json)
   }
 }

@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import java.sql.Timestamp
-import java.time.Instant
 import scala.util.Try
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
@@ -11,35 +9,26 @@ object JsonDecoders {
   /** Circe-specific definitions as implicits */
   object Circe {
 
+    import cats.ApplicativeError
     import cats.syntax.functor._
     import io.circe.Decoder
-    import io.circe.{ Error, Errors }
     import io.circe.generic.extras._
     import io.circe.generic.extras.semiauto._
     import io.circe.generic.extras.Configuration
 
     type JsonDecoded[T] = Either[Error, T]
 
-    /** Collects failures in json parsing, when circe is used to decode the objects out of strings
-      *
-      * @param jsonResults a list of generic input data that internally has some json string
-      * @param decoding the operation that converts a single generic Encoded value to a possibly failed Decoded type
-      * @tparam Encoded a json string, possibly with additional data, e.g. the original request correlation-id for our tezos-rpc
-      * @tparam Decoded the type of the final result of correctly decoding the input json
-      * @return an `Either` with all `io.circe.Errors` aggregated on the `Left` if there's any, or a `Right` with all the decoded results
+    /** Helper to decode json and convert to any effectful result that can
+     *  raise errors, as implied with the type class contraint
+      * This is not necessarily running any async operation
       */
-    def handleDecodingErrors[Encoded, Decoded](jsonResults: List[Encoded], decoding: Encoded => Either[Error, Decoded]): Either[Errors, List[Decoded]] = {
-      import cats.data._
+    def decodeLiftingTo[Eff[_], A: io.circe.Decoder](json: String)(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
+      import io.circe.parser.decode
+      import cats.instances.either._
       import cats.syntax.either._
+      import cats.syntax.bifunctor._
 
-      val results = jsonResults.map(decoding)
-
-      lazy val correctlyDecoded: List[Decoded] = results.collect { case Right(dec) => dec }
-      val decodingErrors: Option[io.circe.Errors] =
-        NonEmptyList.fromList(results.collect { case Left(decodingError) => decodingError })
-          .map(io.circe.Errors)
-
-      decodingErrors.fold(ifEmpty = correctlyDecoded.asRight[io.circe.Errors])(_.asLeft[List[Decoded]])
+      decode[A](json).leftWiden[Throwable].raiseOrPure[Eff]
     }
 
     /* local definition of a base-58-check string wrapper, to allow parsing validation */
@@ -80,13 +69,9 @@ object JsonDecoders {
     implicit val michelineDecoder: Decoder[Micheline] =
       Decoder.decodeJson.map(json => Micheline(json.noSpaces))
 
-    /* decode a UTC time string to a sql Timestamp */
-    implicit val timestampDecoder: Decoder[Timestamp] =
-      Decoder.decodeString.emapTry(ts => Try(Timestamp.from(Instant.parse(ts))))
-
-    /* decode an enumerated string to a valid ProposalPeriod Kind */
-    implicit val proposalPeriodKindDecoder: Decoder[ProposalPeriod.Kind] =
-      Decoder.decodeString.emapTry(kind => Try(ProposalPeriod.withName(kind)))
+    /* decode an enumerated string to a valid VotingPeriod Kind */
+    implicit val votingPeriodKindDecoder: Decoder[VotingPeriod.Kind] =
+      Decoder.decodeString.emapTry(kind => Try(VotingPeriod.withName(kind)))
 
     // The following are all b58check-encoded wrappers, that use the generic decoder to guarantee correct encoding of the internal string
     implicit val publicKeyDecoder: Decoder[PublicKey] = base58CheckDecoder.map(b58 => PublicKey(b58.content))
@@ -99,18 +84,45 @@ object JsonDecoders {
     implicit val chainIdDecoder: Decoder[ChainId] = base58CheckDecoder.map(b58 => ChainId(b58.content))
     implicit val protocolIdDecoder: Decoder[ProtocolId] = base58CheckDecoder.map(b58 => ProtocolId(b58.content))
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
+    implicit val nonceHashDecoder: Decoder[NonceHash] = base58CheckDecoder.map(b58 => NonceHash(b58.content))
 
     val tezosDerivationConfig: Configuration =
-      Configuration.default.withSnakeCaseConstructorNames
+    Configuration.default.withSnakeCaseConstructorNames
+
+    /* Collects definitions to decode voting data and their components */
+    object Votes {
+      import Voting._
+      private implicit val conf = tezosDerivationConfig
+
+      private val admittedVotes = Set("yay", "nay", "pass")
+
+      implicit val ballotVoteDecoder: Decoder[Vote] =
+        deriveDecoderFromString(
+          validateString = admittedVotes,
+          failedValidation = "The passed-in json string is not allowed as a ballot vote",
+          decodedConstructor = Vote
+        )
+
+      implicit val bakerDecoder: Decoder[BakerRolls] = deriveDecoder
+      implicit val ballotDecoder: Decoder[Ballot] = deriveDecoder
+      implicit val bakersDecoder: Decoder[List[BakerRolls]] =
+        Decoder.decodeList[BakerRolls]
+      implicit val ballotsDecoder: Decoder[List[Ballot]] =
+        Decoder.decodeList[Ballot]
+      implicit val protocolIdsDecoder: Decoder[List[ProtocolId]] =
+        Decoder.decodeList[ProtocolId]
+    }
 
     /* Collects definitions to decode blocks and their components */
     object Blocks {
-
       // we need to decode BalanceUpdates
       import Operations._
       private implicit val conf = tezosDerivationConfig
 
-      implicit val metadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
+      val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
+      implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveDecoder
+      val blockMetadataDecoder: Decoder[BlockHeaderMetadata] = deriveDecoder
+      implicit val metadataDecoder: Decoder[BlockMetadata] = blockMetadataDecoder.widen or genesisMetadataDecoder.widen
       implicit val headerDecoder: Decoder[BlockHeader] = deriveDecoder
       implicit val mainDecoder: Decoder[BlockData] = deriveDecoder //remember to add ISO-control filtering
     }

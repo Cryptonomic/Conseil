@@ -145,9 +145,9 @@ There's currently no need to have a database running to run the test-suite.
 
 ## Custom Configurations
 
-Conseil uses [Typesafe Config](https://github.com/lightbend/config) for managing its configurations (including database access via [Slick](http://slick.lightbend.com/doc/3.2.0/database.html)). Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which "inherits" from `src/main/resources/application.conf` for production or `src/main/resources/developer.conf` for local development.
+Conseil uses [Typesafe Config](https://github.com/lightbend/config) for managing its configurations (including database access via [Slick](http://slick.lightbend.com/doc/3.2.0/database.html)). Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which "inherits" from the default `src/main/resources/reference.conf` for production or `src/main/resources/developer.conf` for local development.
 
-The parent configuration can be defined in the custom file using the `include` directive.
+In the latter case, parent configuration can be defined in the custom file using the `include` directive.
 
 ### In Production
 You can store the custom configuration anywhere and pass it to the runtime with the ` -Dconfig.file={path to custom config file}` command line option, as shown in the previous sections.
@@ -202,7 +202,7 @@ security.apiKeys.keys: [key1, key2, ...]
 
 Such keys will be checked by the server when connecting via Http endpoints to Conseil, matching a required http-header with key `apiKey`.
 
-The production configuration can override the default and directly `include "application"` without resorting to the dev conf.
+The production configuration can override the default without resorting to inclusion of the dev conf.
 
 ---
 For additional extra fine-grained configuration you can refer to [this appendix](doc/extra-custom-config.md)

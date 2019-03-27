@@ -2,10 +2,14 @@ package tech.cryptonomic.conseil
 
 import akka.actor.ActorSystem
 import akka.Done
+import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{TezosTypes, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockAccounts
+import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
+import tech.cryptonomic.conseil.config.Platforms
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -16,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
+object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig with LorreOutput {
 
   //reads all configuration upstart, will only complete if all values are found
   val config = loadApplicationConfiguration(args)
@@ -24,8 +28,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   //stop if conf is not available
   config.left.foreach { _ => sys.exit(1) }
 
-  //unsafe call, will only be reached if loadedConf is a Right
-  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf) = config.merge
+  //unsafe call, will only be reached if loadedConf is a Right, otherwise the merge will fail
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf, verbose) = config.merge
+  val ignoreProcessFailures = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
@@ -40,6 +45,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), tezosConf.network, batchingConf)
 
+  /** close resources for application stop */
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
     db.close()
@@ -52,8 +58,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     logger.info("All things closed")
   }
 
+  /** Tries to fetch blocks head to verify if connection with Tezos node was successfully established */
   @tailrec
-  def mainLoop(iteration: Int): Unit = {
+  private[this] def checkTezosConnection(): Unit = {
+    Try {
+      Await.result(tezosNodeOperator.getBlockHead(), lorreConf.bootupConnectionCheckTimeout)
+    } match {
+      case Failure(e) =>
+        logger.error("Could not make initial connection to Tezos", e)
+        Thread.sleep(lorreConf.bootupRetryInterval.toMillis)
+        checkTezosConnection()
+      case Success(_) =>
+        logger.info("Successfully made initial connection to Tezos")
+    }
+  }
+
+  /** The regular loop, once connection with the node is established */
+  @tailrec
+  private[this] def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
@@ -70,12 +92,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (sys.env.get("LORRE_FAILURE_IGNORE").forall(ignore => ignore == "false" || ignore == "no"))
+      if (ignoreProcessFailures.forall(ignore => ignore == "false" || ignore == "no"))
         processing
       else
         processing.recover {
           //swallow the error and proceed with the default behaviour
-          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) => ()
+          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) =>
+            logger.error("Failed processing but will keep on going next cycle", f)
         }
 
     Await.result(attemptedProcessing, atMost = Duration.Inf)
@@ -90,35 +113,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     }
   }
 
-  logger.info("""
-    | =========================***=========================
-    |  Lorre v.{}
-    |  {}
-    | =========================***=========================
-    |
-    |  About to start processing data on the {} network
-    |""".stripMargin,
-    BuildInfo.version,
-    BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
-    tezosConf.network
-  )
-
-  /**
-    * Tries to fetch blocks head to verify if connection with Tezos node was successfully established
-    */
-  @tailrec
-  def checkTezosConnection(): Unit = {
-    Try {
-      Await.result(tezosNodeOperator.getBlockHead(), lorreConf.bootupConnectionCheckTimeout)
-    } match {
-      case Failure(e) =>
-        logger.error("Could not make initial connection to Tezos", e)
-        Thread.sleep(lorreConf.bootupRetryInterval.toMillis)
-        checkTezosConnection()
-      case Success(_) =>
-        logger.info("Successfully made initial connection to Tezos")
-    }
-  }
+  displayInfo(tezosConf)
+  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
 
   try {
     checkTezosConnection()
@@ -129,7 +125,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.
     * Additionally stores account references that needs updating, too
     */
-  def processTezosBlocks(): Future[Done] = {
+  private[this] def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
 
     val blockPagesToSynchronize = tezosConf.depth match {
@@ -141,44 +137,45 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
     /* will store a single page of block results */
     def processBlocksPage(results: Future[tezosNodeOperator.BlockFetchingResults]): Future[Int] =
       results.flatMap {
-        blocksWithAccounts => {
-          def logOutcome[A](outcome: Future[Option[A]]): Future[Option[A]] = outcome.andThen {
+        blocksWithAccounts =>
+
+          def logBlockOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
             case Success(accountsCount) =>
               logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
             case Failure(e) =>
-              logger.error(s"Could not write blocks or accounts checkpoints to the database because $e")
+              logger.error("Could not write blocks or accounts checkpoints to the database.", e)
           }
 
-          logOutcome(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)))
-            .map(_ => blocksWithAccounts.size)
-        }
+          def logVotingOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
+            case Success(votesCount) =>
+              logger.info("Wrote{} voting data records to the database", votesCount.fold("")(" " + _))
+            case Failure(e) =>
+              logger.error("Could not write voting data to the database", e)
+          }
+
+          for {
+            _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)) andThen logBlockOutcome
+            _ <- processVotesForBlocks(blocksWithAccounts.map{case (block, _) => block}) andThen logVotingOutcome
+          } yield blocksWithAccounts.size
+
       }
 
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
       case (pages, total) => Future.fromTry(Try {
-        val start = System.nanoTime()
-
-        def logProgress(processed: Int) = {
-          val elapsed = System.nanoTime() - start
-          val progress = processed.toDouble/total
-          logger.info("Completed processing {}% of total requested blocks", "%.2f".format(progress * 100))
-
-          val etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
-          if (processed < total && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
-
-          processed
-        }
+        //custom progress tracking for blocks
+        val logProgress = logProcessingProgress(entityName = "block", totalToProcess = total, processStartNanos = System.nanoTime()) _
 
         /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
-        * The size and partition of results is driven by the NodeOperator itself, were each page contains a
+        * The size and partition of results is driven by the NodeOperator itself, where each page contains a
         * "thunked" future of the result.
         * Such future will be actually started only as the page iterator is scanned, one element at the time
         */
         pages.foldLeft(0) {
           (processed, nextPage) =>
-            //wait for each page to load, before looking at the next and implicitly start the new computation
-            logProgress(processed + Await.result(processBlocksPage(nextPage), atMost = 5 minutes))
+            //wait for each page to load, before looking at the next, thus  starting the new computation
+            val justDone = Await.result(processBlocksPage(nextPage), atMost = 5.minutes)
+            processed + justDone <| logProgress
         }
       })
     } transform {
@@ -192,27 +189,89 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
   }
 
   /**
+    * Fetches voting data for the blocks and stores any relevant
+    * result into the appropriate database table
+    */
+  def processVotesForBlocks(blocks: List[TezosTypes.Block]): Future[Option[Int]] = {
+    import cats.syntax.traverse._
+    import cats.syntax.foldable._
+    import cats.syntax.semigroup._
+    import cats.instances.list._
+    import cats.instances.option._
+    import cats.instances.int._
+    import slickeffect.implicits._
+
+
+    tezosNodeOperator.getVotingDetails(blocks).flatMap {
+      case (proposals, bakersBlocks, ballotsBlocks) =>
+        //this is a single list
+        val writeProposal = TezosDb.writeVotingProposals(proposals)
+        //this is a nested list, each block with many baker rolls
+        val writeBakers = bakersBlocks.traverse {
+          case (block, bakers) => TezosDb.writeVotingBakers(bakers, block)
+        }
+        //this is a nested list, each block with many ballot votes
+        val writeBallots = ballotsBlocks.traverse {
+          case (block, ballots) => TezosDb.writeVotingBallots(ballots, block)
+        }
+
+        /* combineAll reduce List[Option[Int]] => Option[Int] by summing all ints present
+        * |+| is shorthand syntax to sum Option[Int] together using Int's sums
+         * Any None in the operands will make the whole operation collapse in a None result
+         */
+        for {
+          storedProposals <- db.run(writeProposal)
+          storedBakers <- db.run(writeBakers).map(_.combineAll)
+          storedBallots <-  db.run(writeBallots).map(_.combineAll)
+        } yield storedProposals |+| storedBakers |+| storedBallots
+    }
+  }
+
+  /**
     * Fetches and stores all accounts from the latest blocks stored in the database.
     *
     * NOTE: as the call is now async, it won't stop the application on error as before, so
     * we should evaluate how to handle failed processing
     */
-  def processTezosAccounts(): Future[Done] = {
-    logger.info("Processing latest Tezos accounts data... no estimate available.")
+  private[this] def processTezosAccounts(): Future[Done] = {
+    logger.info("Processing latest Tezos data for updated accounts...")
 
-    def logOutcome[A](outcome: Future[A]): Future[A] = outcome.andThen {
+    def logOutcome[A]: PartialFunction[Try[A], Unit] = {
       case Success(rows) =>
         logger.info("{} accounts were touched on the database.", rows)
       case Failure(e) =>
         logger.error("Could not write accounts to the database")
     }
 
-    val saveAccounts = for {
-      checkpoints <- db.run(TezosDb.getLatestAccountsFromCheckpoint)
-      accountsInfo <- tezosNodeOperator.getAccountsForBlocks(checkpoints)
-      _ <- logOutcome(db.run(TezosDb.writeAccounts(accountsInfo)))
-    } yield checkpoints
+    def processAccountsPage(accountsInfo: Future[List[BlockAccounts]]): Future[Int] =
+      accountsInfo.flatMap{
+        info =>
+          db.run(TezosDb.writeAccounts(info)) andThen logOutcome
+      }
 
+    val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map {
+      checkpoints =>
+        logger.info("I loaded all stored account references and will proceed to fetch updated information from the chain")
+        val (pages, total) = tezosNodeOperator.getAccountsForBlocks(checkpoints)
+        //custom progress tracking for accounts
+        val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
+
+          /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
+          * The size and partition of results is driven by the NodeOperator itself, were each page contains a
+          * "thunked" future of the result.
+          * Such future will be actually started only as the page iterator is scanned, one element at the time
+          */
+          pages.foldLeft(0) {
+          (processed, nextPage) =>
+            //wait for each page to load, before looking at the next, thus  starting the new computation
+            val justDone = Await.result(processAccountsPage(nextPage), atMost = 5.minutes)
+            processed + justDone <| logProgress
+        }
+
+        checkpoints
+    }
+
+    logger.info("Selecting all accounts touched in the checkpoint table, this might take a while...")
     saveAccounts.andThen {
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
@@ -228,5 +287,23 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig {
       case success => Success(Done)
     }
   }
+
+  /** Keeps track of time passed between different partial checkpoints of some entity processing
+    * Designed to be partially applied to set properties of the whole process once, and then only compute partial completion
+    *
+    * @param entityName a string that will be logged to identify what kind of resource is being processed
+    * @param totalToProcess how many entities there were in the first place
+    * @param processStartNanos a nano-time from jvm monotonic time, used to identify when the whole processing operation began
+    * @param processed how many entities were processed at the current checkpoint
+    */
+  private[this] def logProcessingProgress(entityName: String, totalToProcess: Int, processStartNanos: Long)(processed: Int): Unit = {
+    val elapsed = System.nanoTime() - processStartNanos
+    val progress = processed.toDouble/totalToProcess
+    logger.info("Completed processing {}% of total requested {}s", "%.2f".format(progress * 100), entityName)
+
+    val etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
+    if (processed < totalToProcess && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
+  }
+
 
 }

@@ -11,6 +11,7 @@ import cats.effect.concurrent.MVar
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
+import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
@@ -21,10 +22,10 @@ import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOper
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport {
+object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
 
-  applicationConfiguration match {
-    case Right((server, platforms, securityApi)) =>
+  loadApplicationConfiguration(args) match {
+    case Right((server, platforms, securityApi, verbose)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
@@ -87,18 +88,8 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
-      logger.info(
-        """
-          | =========================***=========================
-          |  Conseil v.{}
-          |  {}
-          | =========================***=========================
-          |
-          |  Bonjour...
-          |""".stripMargin,
-        BuildInfo.version,
-        BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]")
-      )
+      displayInfo(server)
+      if (verbose.on) displayConfiguration(platforms)
 
       sys.addShutdownHook {
         bindingFuture

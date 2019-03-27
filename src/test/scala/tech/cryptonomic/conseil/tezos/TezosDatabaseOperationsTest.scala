@@ -85,6 +85,8 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocks zip generatedBlocks) {
             case (row, block) =>
+              val metadata = discardGenesis.lift(block.data.metadata)
+
               row.level shouldEqual block.data.header.level
               row.proto shouldEqual block.data.header.proto
               row.predecessor shouldEqual block.data.header.predecessor.value
@@ -97,9 +99,14 @@ class TezosDatabaseOperationsTest
               row.chainId shouldEqual block.data.chain_id
               row.hash shouldEqual block.data.hash.value
               row.operationsHash shouldEqual block.data.header.operations_hash
-              row.periodKind.value shouldEqual block.votes.periodKind.toString
+              row.periodKind shouldEqual metadata.map(_.voting_period_kind.toString)
               row.currentExpectedQuorum shouldEqual block.votes.quorum
               row.activeProposal shouldEqual block.votes.active.map(_.id)
+              row.baker shouldEqual metadata.map(_.baker.value)
+              row.consumedGas shouldEqual metadata.map(_.consumed_gas).flatMap {
+                case PositiveDecimal(value) => Some(value)
+                case _ => None
+              }
           }
 
           val dbBlocksAndGroups =
@@ -132,7 +139,7 @@ class TezosDatabaseOperationsTest
              val query = for {
               o <- Tables.Operations
               g <- o.operationGroupsFk
-            } yield (g, o.mapTo[DBTableMapping.Operation])
+            } yield (g, o)
             query.result
            }.futureValue
 
@@ -180,7 +187,7 @@ class TezosDatabaseOperationsTest
 
             val operation = operationMatch.value
 
-            /* Convert both the generated and loaded operations to a tables row representation
+            /* Convert both the generated operation to a tables row representation
              * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
              * that the conversion itself is correct
              */
@@ -191,9 +198,8 @@ class TezosDatabaseOperationsTest
             import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
 
             val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
-            val dbConversion = opRow.convertTo[Tables.OperationsRow]
             //skip the id, to take into account that it's only generated on save
-            generatedConversion.tail shouldEqual dbConversion.tail
+            generatedConversion shouldEqual opRow.copy(operationId = 0)
 
             /* check stored balance updates */
             //convert and set the real stored operation id
@@ -223,14 +229,14 @@ class TezosDatabaseOperationsTest
       val generatedBlocks = basicBlocks.zipWithIndex.map {
         case (block, idx) =>
           val randomUpdates = generateBalanceUpdates(2)(randomSeed + idx)
-          setBalances(Some(randomUpdates))(block)
+          setBalances(randomUpdates)(block)
       }
 
       whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
         _ =>
         val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
 
-        dbUpdatesRows should have size 6 //2 updates x 3 blocks
+        dbUpdatesRows should have size 4 //2 updates x 2 blocks, not considering genesis which has no balances
 
         /* Convert both the generated blocks data to balance updates table row representation
          * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
@@ -307,7 +313,7 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       //generate data
-      val blocks = generateBlockRows(2, testReferenceTimestamp)
+      val blocks @ (second :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
       val account = generateAccountRows(1, blocks.head).head
 
       val populate =
@@ -320,10 +326,10 @@ class TezosDatabaseOperationsTest
 
       //prepare new accounts
       val accountChanges = 2
-      val (hashUpdate, levelUpdate) = (blocks(1).hash, blocks(1).level)
+      val (hashUpdate, levelUpdate) = (first.hash, first.level)
       val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
 
-      //check for same identifier
+      //double-check for the identifier existence
       accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
 
       //do the updates
@@ -546,18 +552,15 @@ class TezosDatabaseOperationsTest
       val populateAndFetch = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
         result <- sut.operationsForGroup(group.hash)
       } yield (result, ids)
 
       val (Some((groupRow, operationRows)), operationIds) = dbHandler.run(populateAndFetch).futureValue
 
-      //we now have only a generic HList repr. so columns are accessed by position
-      val operationId: Tables.OperationsRow => Int = _.apply(0)
-
       groupRow.hash shouldEqual group.hash
       operationRows should have size ops.size
-      operationRows.map(operationId).toList should contain theSameElementsAs operationIds
+      operationRows.map(_.operationId).toList should contain theSameElementsAs operationIds
 
     }
 
@@ -580,7 +583,7 @@ class TezosDatabaseOperationsTest
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -618,7 +621,7 @@ class TezosDatabaseOperationsTest
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -653,7 +656,7 @@ class TezosDatabaseOperationsTest
       val populate = for {
         _ <- Tables.Blocks += block
         _ <- Tables.OperationGroups += group
-        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops.map(_.convertTo[Tables.OperationsRow])
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
       } yield ids
 
       dbHandler.run(populate).futureValue should have size (fees.size)
@@ -673,6 +676,113 @@ class TezosDatabaseOperationsTest
       val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
+
+    }
+
+    "write voting proposal" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+      val proposals = Voting.generateProposals(howMany = 3, forBlock = block)
+
+      //write
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
+        written <- sut.writeVotingProposals(proposals)
+        rows <- Tables.Proposals.result
+      } yield (written, rows)
+
+      val (stored, dbProposals) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      //expectations
+      val expectedWrites = proposals.map(_.protocols.size).sum
+      stored.value shouldEqual expectedWrites
+      dbProposals should have size expectedWrites
+
+      import org.scalatest.Inspectors._
+
+      val allProtocols = proposals.flatMap(_.protocols)
+
+      forAll(dbProposals) {
+        proposalRow =>
+          allProtocols should contain (ProtocolId(proposalRow.protocolHash))
+          proposalRow.blockId shouldBe block.data.hash.value
+          proposalRow.blockLevel shouldBe block.data.header.level
+      }
+
+    }
+
+    "write voting bakers" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+      val bakers = Voting.generateBakers(howMany = 3)
+
+      //write
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
+        written <- sut.writeVotingBakers(bakers, block)
+        rows <- Tables.Bakers.result
+      } yield (written, rows)
+
+      val (stored, dbBakers) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      //expectations
+      stored.value shouldEqual bakers.size
+      dbBakers should have size bakers.size
+
+      import org.scalatest.Inspectors._
+
+      forAll(dbBakers) {
+        bakerRow =>
+          val generated = bakers.find(_.pkh.value == bakerRow.pkh).value
+          bakerRow.rolls shouldEqual generated.rolls
+          bakerRow.blockId shouldBe block.data.hash.value
+          bakerRow.blockLevel shouldBe block.data.header.level
+      }
+
+    }
+
+    "write voting ballots" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+      val ballots = Voting.generateBallots(howMany = 3)
+
+      //write
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
+        written <- sut.writeVotingBallots(ballots, block)
+        rows <- Tables.Ballots.result
+      } yield (written, rows)
+
+      val (stored, dbBallots) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      //expectations
+      stored.value shouldEqual ballots.size
+      dbBallots should have size ballots.size
+
+      import org.scalatest.Inspectors._
+
+      forAll(dbBallots) {
+        ballotRow =>
+          val generated = ballots.find(_.pkh.value == ballotRow.pkh).value
+          ballotRow.ballot shouldEqual generated.ballot.value
+          ballotRow.blockId shouldBe block.data.hash.value
+          ballotRow.blockLevel shouldBe block.data.header.level
+      }
 
     }
 
@@ -767,7 +877,17 @@ class TezosDatabaseOperationsTest
           "level" -> Some(0),
           "period_kind" -> None,
           "current_expected_quorum" -> None,
-          "active_proposal" -> None
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None
         ),
         Map(
           "operations_hash" -> None,
@@ -784,7 +904,17 @@ class TezosDatabaseOperationsTest
           "level" -> Some(1),
           "period_kind" -> None,
           "current_expected_quorum" -> None,
-          "active_proposal" -> None
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None
         )
       )
     }
