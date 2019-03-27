@@ -262,10 +262,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           * Such future will be actually started only as the page iterator is scanned, one element at the time
           */
           pages.foldLeft(0) {
-          (processed, nextPage) =>
-            //wait for each page to load, before looking at the next, thus  starting the new computation
-            val justDone = Await.result(processAccountsPage(nextPage), atMost = 5.minutes)
-            processed + justDone <| logProgress
+            (processed, nextPage) =>
+              //wait for each page to load, before looking at the next, thus  starting the new computation
+              val justDone = Await.result(processAccountsPage(nextPage), atMost = 5.minutes)
+              processed + justDone <| logProgress
         }
 
         checkpoints
