@@ -19,6 +19,7 @@ import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.ExecutionContextExecutor
+import scala.util.{Failure, Success}
 
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport {
 
@@ -45,7 +46,11 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       val entitiesCache = MVar[IO].empty[(Long, List[Entity])].unsafeRunSync()
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, server.cacheTTL)(executionContext)
-      tezosPlatformDiscoveryOperations.init()
+
+      tezosPlatformDiscoveryOperations.init().onComplete {
+        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
+        case Success(_) => logger.info("Pre-caching successful!")
+      }
       lazy val platformDiscovery = PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
