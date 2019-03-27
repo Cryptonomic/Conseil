@@ -145,16 +145,6 @@ object ConfigUtil {
       loadConfigForEntryPath(namespace, "akka.http.host-connection-pool").map(HttpStreamingConfiguration)
     }
 
-    /**
-      * Reads a specific entry in the configuration file, to create a valid akka-http caching configuration
-      *
-      * @param namespace the path where the custom configuration will be searched-for
-      */
-    def loadAkkaCacheConfig(namespace: String): Either[ConfigReaderFailures, HttpCacheConfiguration] = {
-      // this is where akka searches for the config entry for host connection pool
-      loadConfigForEntryPath(namespace, "akka.http.caching.lfu-cache").map(HttpCacheConfiguration)
-    }
-
     private def loadConfigForEntryPath(namespace: String, referenceEntryPath: String): Either[ConfigReaderFailures, Config] = {
       //read a conseil-specific entry into the expected path for the config
       def loadValidatedConfig(rootConfig: Config): Either[ConfigReaderFailures, Config] =

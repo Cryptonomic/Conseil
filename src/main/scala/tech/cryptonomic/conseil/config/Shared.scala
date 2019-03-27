@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.config
 
 import scala.concurrent.duration.FiniteDuration
 
-final case class ServerConfiguration(hostname: String, port: Int)
+final case class ServerConfiguration(hostname: String, port: Int, cacheTTL: FiniteDuration)
 
 final case class LorreConfiguration(
   sleepInterval: FiniteDuration,

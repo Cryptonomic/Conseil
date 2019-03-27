@@ -17,8 +17,7 @@ trait ConseilAppConfig {
       server <- loadConfig[ServerConfiguration](namespace = "conseil")
       platforms <- loadConfig[PlatformsConfiguration](namespace = "platforms")
       securityApi <- Security()
-      caching <- loadAkkaCacheConfig("akka.http.caching.lfu-cache")
-    } yield (server, platforms, securityApi, caching)
+    } yield (server, platforms, securityApi)
 
     //something went wrong
     loadedConf.left.foreach {

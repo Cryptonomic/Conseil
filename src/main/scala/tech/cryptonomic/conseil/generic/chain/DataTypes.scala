@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationT
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 
 /**
@@ -55,6 +55,9 @@ object DataTypes {
   /** Class representing invalid predicate field */
   case class InvalidPredicateField(message: String) extends QueryValidationError
 
+  /** Class representing invalid order by field */
+  case class InvalidOrderByField(message: String) extends QueryValidationError
+
   /** Class representing query */
   case class Query(
     fields: List[String] = List.empty,
@@ -71,26 +74,41 @@ object DataTypes {
     limit: Option[Int]
   ) {
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
-    def validate(entity: String)(implicit ec: ExecutionContext): Either[List[QueryValidationError], Query] = {
+    def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
+    Future[Either[List[QueryValidationError], Query]] = {
+      import cats.implicits._
+
       val query = Query().patchWith(this)
 
-//      val invalidQueryFields = query
-//        .fields
-//        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
-//        .map(InvalidQueryField)
-//      val invalidPredicateFields = query
-//        .predicates
-//        .map(_.field)
-//        .filterNot(field => TezosPlatformDiscoveryOperations(ec).areFieldsValid(entity, Set(field)))
-//        .map(InvalidPredicateField)
-//      val invalidOrderFields = query.orderBy.map(_.field)
-//      TezosPlatformDiscoveryOperations
+      val invalidQueryFields = query
+        .fields
+        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
+        .sequence
+        .map(_.filterNot(_._1).map(fieldPair => InvalidQueryField(fieldPair._2)))
 
+      val invalidPredicateFields = query
+        .predicates
+        .map(_.field)
+        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
+        .sequence
+        .map(_.filterNot(_._1).map(fieldPair => InvalidPredicateField(fieldPair._2)))
 
-      //invalidPredicateFields ::: invalidQueryFields
-      List.empty match {
-        case Nil => Right(query)
-        case wrongFields => Left(wrongFields)
+      val invalidOrderByFields = query
+        .orderBy
+        .map(_.field)
+        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
+        .sequence
+        .map(_.filterNot(_._1).map(fieldPair => InvalidPredicateField(fieldPair._2)))
+
+      for {
+        invQF <- invalidQueryFields
+        invPF <- invalidPredicateFields
+        invODBF <- invalidOrderByFields
+      } yield {
+        invQF ::: invPF ::: invODBF match {
+          case Nil => Right(query)
+          case wrongFields => Left(wrongFields)
+        }
       }
     }
   }

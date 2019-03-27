@@ -89,14 +89,17 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
     )
   )
-  val postRoute: Route = new Data(cfg, fakeQPP)(ec).postRoute
 
-  val getRoute: Route = new Data(cfg, fakeQPP)(ec).getRoute
+  val tezosPlatformDiscoveryOperationsStub = stub[TezosPlatformDiscoveryOperations]
+
+  val postRoute: Route = new Data(cfg, fakeQPP, tezosPlatformDiscoveryOperationsStub)(ec).postRoute
+
+  val getRoute: Route = new Data(cfg, fakeQPP, tezosPlatformDiscoveryOperationsStub)(ec).getRoute
 
   "Query protocol" should {
 
     "return a correct response with OK status code with POST" in {
-
+      (tezosPlatformDiscoveryOperationsStub.areFieldsValid _).when(*, *).returns(Future.successful(true))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/alphanet/accounts",
@@ -111,6 +114,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     }
 
     "return 404 NotFound status code for request for the not supported platform with POST" in {
+      (tezosPlatformDiscoveryOperationsStub.areFieldsValid _).when(*, *).returns(Future.successful(true))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
@@ -121,6 +125,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     }
 
     "return 404 NotFound status code for request for the not supported network with POST" in {
+      (tezosPlatformDiscoveryOperationsStub.areFieldsValid _).when(*, *).returns(Future.successful(true))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/notSupportedNetwork/accounts",

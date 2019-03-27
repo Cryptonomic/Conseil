@@ -6,7 +6,7 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
@@ -14,7 +14,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration)(implicit ec: ExecutionContext): Data = new Data(config, DataPlatform())
+  def apply(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext): Data =
+    new Data(config, DataPlatform(), tezosPlatformDiscoveryOperations)
 }
 
 /**
@@ -23,8 +24,8 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with DatabaseApiFiltering with DataHelpers {
+class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)
+  (implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with DataHelpers {
 
   import cats.instances.either._
   import cats.instances.future._
@@ -40,11 +41,13 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform)(
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
-      apiQuery.validate(entity).map { validQuery =>
-        platformNetworkValidation(platform, network) {
-          queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery)
-        }
-      }.left.map(Future.successful).bisequence.map(eitherOptionOps)
+      apiQuery.validate(entity, tezosPlatformDiscoveryOperations).flatMap { validationResult =>
+        validationResult.map { validQuery =>
+          platformNetworkValidation(platform, network) {
+            queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery)
+          }
+        }.left.map(Future.successful).bisequence.map(eitherOptionOps)
+      }
   }
 
   /** V2 Route implementation for blocks endpoint */

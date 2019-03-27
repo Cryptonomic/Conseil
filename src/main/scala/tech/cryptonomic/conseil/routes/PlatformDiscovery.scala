@@ -1,25 +1,21 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.caching.LfuCache
-import akka.http.caching.scaladsl.{Cache, CachingSettings}
-import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
-import tech.cryptonomic.conseil.config.HttpCacheConfiguration
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 import tech.cryptonomic.conseil.util.ConfigUtil
-import akka.http.scaladsl.server.Directives._
+import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(platforms: PlatformsConfiguration, caching: HttpCacheConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
-    new PlatformDiscovery(platforms, caching, tezosPlatformDiscoveryOperations)(apiExecutionContext)
+  def apply(platforms: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+    new PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(apiExecutionContext)
 }
 
 /**
@@ -28,23 +24,8 @@ object PlatformDiscovery {
   * @param config              configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
+class PlatformDiscovery(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
-
-  /** default caching settings */
-  private val defaultCachingSettings: CachingSettings = CachingSettings(caching.cacheConfig)
-
-  /** simple partial function for filtering */
-  private val requestCacheKeyer: PartialFunction[RequestContext, Uri] = {
-    case r: RequestContext => r.request.uri
-  }
-
-  /** LFU caching settings */
-  private val cachingSettings: CachingSettings =
-    defaultCachingSettings.withLfuCacheSettings(defaultCachingSettings.lfuCacheSettings)
-
-  /** LFU cache */
-  private val lfuCache: Cache[Uri, RouteResult] = LfuCache(cachingSettings)
 
   /** Metadata route implementation for platforms endpoint */
   private val platformsRoute = platformsEndpoint.implementedBy(_ => ConfigUtil.getPlatforms(config))

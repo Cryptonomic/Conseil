@@ -6,11 +6,14 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
+import cats.effect.{ContextShift, IO}
+import cats.effect.concurrent.MVar
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
@@ -20,7 +23,7 @@ import scala.concurrent.ExecutionContextExecutor
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport {
 
   applicationConfiguration match {
-    case Right((server, platforms, securityApi, caching)) =>
+    case Right((server, platforms, securityApi)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
@@ -35,10 +38,16 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
       lazy val tezos = Tezos(tezosDispatcher)
-      lazy val tezosPlatformDiscoveryOperations = TezosPlatformDiscoveryOperations(ApiOperations)(executionContext)
+
+      // This part is a temporary middle ground between current implementation and moving code to use IO
+      implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
+      val attributesCache = MVar[IO].empty[Map[String, (Long, List[Attribute])]].unsafeRunSync()
+      val entitiesCache = MVar[IO].empty[(Long, List[Entity])].unsafeRunSync()
+      lazy val tezosPlatformDiscoveryOperations =
+        TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, server.cacheTTL)(executionContext)
       tezosPlatformDiscoveryOperations.init()
-      lazy val platformDiscovery = PlatformDiscovery(platforms, caching, tezosPlatformDiscoveryOperations)(tezosDispatcher)
-      lazy val data = Data(platforms)(tezosDispatcher)
+      lazy val platformDiscovery = PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
+      lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
       val route = cors() {
         enableCORS {
