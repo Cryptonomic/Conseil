@@ -2,13 +2,12 @@ package tech.cryptonomic.conseil.tezos
 
 import java.time.ZonedDateTime
 
-import org.scalatest.{Matchers, WordSpec}
-import cats.syntax.either._
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
-class TezosTypesTest extends WordSpec with Matchers {
+class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
   val sut = TezosTypes
 
@@ -35,93 +34,154 @@ class TezosTypesTest extends WordSpec with Matchers {
 
   }
 
-  "should modify parameters with monocle's lenses" in {
-    // given
-    val modifiedTransaction = transaction.copy(parameters = Some(Micheline("micheline script")))
-    val modifiedOperations = List(operationGroup.copy(contents = origination :: modifiedTransaction :: Nil))
+  "The lenses for tezos types" should {
 
-    val block = Block(blockData, modifiedOperations, blockVotes)
-
-    // when
-    val result = parametersLens.modify(_.toUpperCase)(block)
-
-    // then
-    import org.scalatest.Inspectors._
-
-    forAll(result.operationGroups.flatMap(_.contents)) {
-      case op: Transaction =>
-        op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
-      case _ =>
-    }
-  }
-
-  "should modify storage with monocle's lenses" in {
-    // given
-    val modifiedOrigination = origination.copy(script = Some(Contracts(storage = Micheline("eXpR1"), code = Micheline("eXpR2"))))
-    val modifiedOperations = List(operationGroup.copy(contents = modifiedOrigination :: transaction :: Nil))
-
-    val block = Block(blockData, modifiedOperations, blockVotes)
-
-    // when
-    val result = storageLens.modify(_.toUpperCase)(block)
-
-    //then
-    import org.scalatest.Inspectors._
-
-    forAll(result.operationGroups.flatMap(_.contents)) {
-      case op: Origination =>
-        op.script.head shouldEqual Contracts(Micheline("EXPR1"), Micheline("eXpR2"))
-      case _ =>
-    }
-  }
-
-  "should modify code with monocle's lenses" in {
-    // given
-    val modifiedOrigination = origination.copy(script = Some(Contracts(storage = Micheline("eXpR1"), code = Micheline("eXpR2"))))
-    val modifiedOperations = List(operationGroup.copy(contents = modifiedOrigination :: transaction :: Nil))
-
-    val block = Block(blockData, modifiedOperations, blockVotes)
-
-    // when
-    val result = codeLens.modify(_.toLowerCase)(block)
-
-    //then
-    import org.scalatest.Inspectors._
-
-    forAll(result.operationGroups.flatMap(_.contents)) {
-      case op: Origination =>
-        op.script.head shouldEqual Contracts(Micheline("eXpR1"), Micheline("expr2"))
-      case _ =>
-    }
-  }
-
-  private val blockData =
-    BlockData(
-      protocol = "_",
-      chain_id = None,
-      hash = BlockHash("_"),
-      header = BlockHeader(
-        level = 0,
-        proto = 0,
-        predecessor = BlockHash("_"),
-        timestamp = ZonedDateTime.now(),
-        validation_pass = 0,
-        operations_hash = None,
-        fitness = Seq.empty,
-        context = "_",
-        signature = None),
-      metadata = BlockHeaderMetadata(
-        balance_updates = List.empty,
-        baker = PublicKeyHash("_"),
-        voting_period_kind = defaultVotingPeriod,
-        nonce_hash = None,
-        consumed_gas = PositiveDecimal(0),
-        level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, false)
+    val blockData =
+      BlockData(
+        protocol = "_",
+        chain_id = None,
+        hash = BlockHash("_"),
+        header = BlockHeader(
+          level = 0,
+          proto = 0,
+          predecessor = BlockHash("_"),
+          timestamp = ZonedDateTime.now(),
+          validation_pass = 0,
+          operations_hash = None,
+          fitness = Seq.empty,
+          context = "_",
+          signature = None),
+        metadata = BlockHeaderMetadata(
+          balance_updates = List.empty,
+          baker = PublicKeyHash("_"),
+          voting_period_kind = defaultVotingPeriod,
+          nonce_hash = None,
+          consumed_gas = PositiveDecimal(0),
+          level = BlockHeaderMetadataLevel(0, 0, 0, 0, 0, 0, false)
+        )
       )
-    )
-  private val blockVotes = CurrentVotes.empty
-  private val operationGroup = OperationsGroup("_", None, OperationHash("_"), BlockHash("_"), List.empty, None)
-  private val number = PositiveDecimal(1)
-  private val transaction = Transaction(number, number, number, number, number, ContractId("_"), ContractId("_"), None, ResultMetadata(null, List.empty))
-  private val origination = Origination(number, number, ContractId("_"), number, number, number, PublicKeyHash("_"), None, None, None, None, ResultMetadata(null, List.empty))
+    val blockVotes = CurrentVotes.empty
+    val operationGroup = OperationsGroup("_", None, OperationHash("_"), BlockHash("_"), List.empty, None)
+    val number = PositiveDecimal(1)
+    val transaction = Transaction(number, number, number, number, number, ContractId("_"), ContractId("_"), None, ResultMetadata(null, List.empty))
+    val origination = Origination(number, number, ContractId("_"), number, number, number, PublicKeyHash("_"), None, None, None, None, ResultMetadata(null, List.empty))
+
+    "modify parameters with monocle's lenses" in {
+      // given
+      val modifiedTransaction = transaction.copy(parameters = Some(Micheline("micheline script")))
+      val modifiedOperations = List(operationGroup.copy(contents = origination :: modifiedTransaction :: Nil))
+
+      val block = Block(blockData, modifiedOperations, blockVotes)
+
+      // when
+      val result = parametersLens.modify(_.toUpperCase)(block)
+
+      // then
+      import org.scalatest.Inspectors._
+
+      forAll(result.operationGroups.flatMap(_.contents)) {
+        case op: Transaction =>
+          op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
+        case _ =>
+      }
+    }
+
+    "modify storage with monocle's lenses" in {
+      // given
+      val modifiedOrigination = origination.copy(script = Some(Contracts(storage = Micheline("eXpR1"), code = Micheline("eXpR2"))))
+      val modifiedOperations = List(operationGroup.copy(contents = modifiedOrigination :: transaction :: Nil))
+
+      val block = Block(blockData, modifiedOperations, blockVotes)
+
+      // when
+      val result = storageLens.modify(_.toUpperCase)(block)
+
+      //then
+      import org.scalatest.Inspectors._
+
+      forAll(result.operationGroups.flatMap(_.contents)) {
+        case op: Origination =>
+          op.script.head shouldEqual Contracts(Micheline("EXPR1"), Micheline("eXpR2"))
+        case _ =>
+      }
+    }
+
+    "modify code with monocle's lenses" in {
+      // given
+      val modifiedOrigination = origination.copy(script = Some(Contracts(storage = Micheline("eXpR1"), code = Micheline("eXpR2"))))
+      val modifiedOperations = List(operationGroup.copy(contents = modifiedOrigination :: transaction :: Nil))
+
+      val block = Block(blockData, modifiedOperations, blockVotes)
+
+      // when
+      val result = codeLens.modify(_.toLowerCase)(block)
+
+      //then
+      import org.scalatest.Inspectors._
+
+      forAll(result.operationGroups.flatMap(_.contents)) {
+        case op: Origination =>
+          op.script.head shouldEqual Contracts(Micheline("eXpR1"), Micheline("expr2"))
+        case _ =>
+      }
+    }
+
+  }
+
+  "The TezosOptics" should {
+
+    "allow to read existing code within an account" in {
+      val sut = TezosOptics.Accounts
+      val account = Account(
+        manager = PublicKeyHash("_"),
+        balance = 0L,
+        spendable = false,
+        delegate = AccountDelegate(
+          setable = false,
+          value = None
+        ),
+        script = Some(AccountScript(code = "Some code here")),
+        counter = 0
+      )
+
+      sut.optionalScriptCode.getOption(account).value shouldBe "Some code here"
+    }
+
+    "read None if there's no script in an account" in {
+      val sut = TezosOptics.Accounts
+      val account = Account(
+        manager = PublicKeyHash("_"),
+        balance = 0L,
+        spendable = false,
+        delegate = AccountDelegate(
+          setable = false,
+          value = None
+        ),
+        script = None,
+        counter = 0
+      )
+
+      sut.optionalScriptCode.getOption(account) shouldBe 'empty
+    }
+
+    "allow to update an existing script within an account" in {
+      val sut = TezosOptics.Accounts
+      val account = Account(
+        manager = PublicKeyHash("_"),
+        balance = 0L,
+        spendable = false,
+        delegate = AccountDelegate(
+          setable = false,
+          value = None
+        ),
+        script = Some(AccountScript(code = "Some code here")),
+        counter = 0
+      )
+
+      val updated = sut.optionalScriptCode.modify(old => old + "; new code")(account)
+      updated.script.value shouldBe AccountScript("Some code here; new code")
+    }
+
+  }
+
 }

@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
@@ -15,7 +15,6 @@ import TezosTypes._
 trait BlocksDataFetchers {
   //we require the cabability to log
   self: LazyLogging =>
-  import scala.concurrent.Future
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
@@ -37,6 +36,7 @@ trait BlocksDataFetchers {
     case t =>
       logger.error("Something unexpected failed while decoding json", t).pure[Future]
   }
+
   /* reduces repetion in error handling, used when the failure is expected to be recovered */
   private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
     case decodingError: io.circe.Error =>
@@ -287,6 +287,71 @@ trait BlocksDataFetchers {
           .recover{
             //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
+          }
+    }
+  }
+
+}
+
+/** Defines intances of `DataFetcher` for accounts-related data */
+trait AccountsDataFetchers {
+  //we require the cabability to log
+  self: LazyLogging =>
+  import cats.instances.future._
+  import cats.syntax.applicativeError._
+  import cats.syntax.applicative._
+  import JsonDecoders.Circe.decodeLiftingTo
+
+  implicit def fetchFutureContext: ExecutionContext
+
+  /* reduces repetion in error handling */
+  private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
+    case decodingError: io.circe.Error =>
+      logger.warn(message, decodingError).pure[Future]
+    case t =>
+      logger.error("Something unexpected failed while decoding json", t).pure[Future]
+  }
+
+  /** the tezos network to connect to */
+  def network: String
+  /** the tezos interface to query */
+  def node: TezosRPCInterface
+  /** parallelism in the multiple requests decoding on the RPC interface */
+  def accountsFetchConcurrency: Int
+
+  //common type alias to simplify signatures
+  private type FutureFetcher = DataFetcher[Future, List, Throwable]
+
+  def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+    import JsonDecoders.Circe.Accounts._
+
+    type Encoded = String
+    type In = AccountId
+    type Out = Option[Account]
+
+    val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
+
+    override val fetchData = Kleisli(
+      ids =>
+        node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency)
+          .onError {
+            case err =>
+              logger.error("I encountered problems while fetching account data from {}, for ids {}. The error says {}",
+                network,
+                ids.map(_.id).mkString(", "),
+                err.getMessage
+              ).pure[Future]
+          }
+      )
+
+    override def decodeData = Kleisli {
+      json =>
+        decodeLiftingTo[Future, Account](json)
+          .map(Some(_))
+          .onError(logWarnOnJsonDecoding(s"I fetched an account json from tezos node that I'm unable to decode: $json"))
+          .recover{
+            //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+            case NonFatal(_) => Option.empty
           }
     }
   }

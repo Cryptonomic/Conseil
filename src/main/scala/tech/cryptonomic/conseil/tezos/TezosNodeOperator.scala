@@ -57,11 +57,13 @@ object TezosNodeOperator {
   */
 class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit val fetchFutureContext: ExecutionContext)
   extends LazyLogging
-  with BlocksDataFetchers {
+  with BlocksDataFetchers
+  with AccountsDataFetchers {
   import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
   override val fetchConcurrency = blockOperationsConcurrencyLevel
+  override val accountsFetchConcurrency = accountConcurrencyLevel
 
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
@@ -75,21 +77,21 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   /**
     * Fetches a specific account for a given block.
     * @param blockHash  Hash of given block
-    * @param accountID  Account ID
+    * @param accountId  Account ID
     * @return           The account
     */
-  def getAccountForBlock(blockHash: BlockHash, accountID: AccountId): Future[Account] =
-    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountID.id}")
+  def getAccountForBlock(blockHash: BlockHash, accountId: AccountId): Future[Account] =
+    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
       .map(fromJson[Account])
 
   /**
     * Fetches the manager of a specific account for a given block.
     * @param blockHash  Hash of given block
-    * @param accountID  Account ID
+    * @param accountId  Account ID
     * @return           The account
     */
-  def getAccountManagerForBlock(blockHash: BlockHash, accountID: AccountId): Future[ManagerKey] =
-    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountID.id}/manager_key")
+  def getAccountManagerForBlock(blockHash: BlockHash, accountId: AccountId): Future[ManagerKey] =
+    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}/manager_key")
       .map(fromJson[ManagerKey])
 
   /**
@@ -100,42 +102,44 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getAllAccountsForBlock(blockHash: BlockHash): Future[Map[AccountId, Account]] =
     for {
       jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
-      accountIDs = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
-      accounts <- getAccountsForBlock(accountIDs, blockHash)
+      accountIds = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
+      accounts <- getAccountsForBlock(accountIds, blockHash)
     } yield accounts
 
   /**
     * Fetches the accounts identified by id, lazily paginating the results
     *
-    * @param accountIDs the ids
+    * @param accountIds the ids
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getPaginatedAccountsForBlock(accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[AccountId, Account]]] =
-    partitionAccountIds(accountIDs).map(ids => getAccountsForBlock(ids, blockHash))
-
+  def getPaginatedAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[AccountId, Account]]] =
+    partitionAccountIds(accountIds).map(ids => getAccountsForBlock(ids, blockHash))
 
   /**
     * Fetches the accounts identified by id
     *
-    * @param accountIDs the ids
+    * @param accountIds the ids
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getAccountsForBlock(accountIDs: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] =
-    node
-    .runBatchedGetQuery(network, accountIDs, (id: AccountId) => s"blocks/${blockHash.value}/context/contracts/${id.id}", accountConcurrencyLevel)
-    .map(
-      responseList =>
-        responseList.collect {
-          case (id, json) =>
-            val accountTry: Try[(AccountId, Account)] = Try(fromJson[Account](json)).map((id, _))
-            accountTry.failed.foreach(_ => logger.error("Failed to convert json to an Account for id {}. The content was {}.", id, json))
-            accountTry
-              .toOption
-              .map { case (accountId, account) => (accountId, account.copy(script = account.script.map(toMichelsonScript[MichelsonCode]))) }
-        }.flatten.toMap)
+  def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import TezosOptics.Accounts.optionalScriptCode
 
+    /*tries decoding but simply returns the input unchanged on failure*/
+    def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
+
+    accountFetcher(blockHash).fetch
+      .run(accountIds)
+      .map(
+        indexedAccounts =>
+          indexedAccounts.collect {
+            case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
+          }.toMap
+    )
+  }
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param accountsBlocksIndex a map from unique id to the [latest] block reference

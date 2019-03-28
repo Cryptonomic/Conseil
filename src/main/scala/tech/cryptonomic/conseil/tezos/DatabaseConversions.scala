@@ -47,12 +47,12 @@ object DatabaseConversions {
         Tables.AccountsRow(
           accountId = id.id,
           blockId = hash.value,
-          manager = manager,
+          manager = manager.value,
           spendable = spendable,
           delegateSetable = delegate.setable,
-          delegateValue = delegate.value,
+          delegateValue = delegate.value.map(_.value),
           counter = counter,
-          script = script.map(_.toString),
+          script = script.map(_.code.toString),
           balance = balance,
           blockLevel = level
         )

@@ -1,12 +1,16 @@
 package tech.cryptonomic.conseil.tezos
 
-import org.scalatest.{WordSpec, Matchers, EitherValues}
+import org.scalatest.{WordSpec, Matchers, EitherValues, OptionValues}
 import TezosTypes._
 import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
-class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
+class JsonDecodersTest extends WordSpec
+  with Matchers
+  with EitherValues
+  with OptionValues {
 
   import JsonDecoders.Circe._
+  import JsonDecoders.Circe.Accounts._
   import JsonDecoders.Circe.Operations._
   import JsonDecoders.Circe.Votes._
   import io.circe.parser.decode
@@ -418,6 +422,21 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues {
       failedBallot shouldBe 'left
     }
 
+    "decode accounts" in new AccountsJsonData {
+      val decoded = decode[Account](accountJson)
+      decoded shouldBe 'right
+
+      val account = decoded.right.value
+      account shouldEqual expectedAccount
+    }
+
+    "decode account scripts as wrapped and unparsed text, instead of a json object" in new AccountsJsonData {
+      val decoded = decode[Account](accountScriptedJson)
+      decoded shouldBe 'right
+
+      val account = decoded.right.value
+      account.script.value shouldEqual expectedScript
+    }
   }
 
 }
