@@ -54,7 +54,7 @@ class TezosPlatformDiscoveryOperations(
     } yield {
       columns.map { cols =>
         cols.head.table.name -> (0L, cols.map { col =>
-          makeAttributes(col, Some(0), primaryKeys, indexes)
+          makeAttributes(col, 0, primaryKeys, indexes)
         }.toList)
       }
     }
@@ -89,12 +89,12 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Makes attributes out of parameters */
-  private def makeAttributes(col: MColumn, count: Option[Int], primaryKeys: Vector[Vector[MPrimaryKey]], indexes: Vector[Vector[MIndexInfo]]): Attribute =
+  private def makeAttributes(col: MColumn, count: Int, primaryKeys: Vector[Vector[MPrimaryKey]], indexes: Vector[Vector[MIndexInfo]]): Attribute =
     Attribute(
       name = col.name,
       displayName = makeDisplayName(col.name),
       dataType = mapType(col.typeName),
-      cardinality = count,
+      cardinality = if(canQueryType(mapType(col.typeName))) Some(count) else None,
       keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
       entity = col.table.name
     )

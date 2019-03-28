@@ -78,7 +78,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, tezosPlatformDiscoveryOp
       }
   }
 
-  /** Concatenated metadata routes with cache */
+  /** Concatenated metadata routes */
   val route: Route =
     concat(
       platformsRoute,

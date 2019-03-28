@@ -92,21 +92,21 @@ object DataTypes {
         .fields
         .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
         .sequence
-        .map(_.filterNot(_._1).map(fieldPair => InvalidQueryField(fieldPair._2)))
+        .map(_.filterNot { case (isValid, _) => isValid }.map { case (_, fieldName) => InvalidQueryField(fieldName) })
 
       val invalidPredicateFields = query
         .predicates
         .map(_.field)
         .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
         .sequence
-        .map(_.filterNot(_._1).map(fieldPair => InvalidPredicateField(fieldPair._2)))
+        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidPredicateField(fieldName) })
 
       val invalidOrderByFields = query
         .orderBy
         .map(_.field)
         .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
         .sequence
-        .map(_.filterNot(_._1).map(fieldPair => InvalidPredicateField(fieldPair._2)))
+        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidOrderByField(fieldName) })
 
       for {
         invQF <- invalidQueryFields
