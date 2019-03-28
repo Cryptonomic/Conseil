@@ -36,11 +36,12 @@ object TezosOptics {
   object Accounts {
 
     //basic building blocks to reach into the account's structure
-    val accountScript = GenLens[Account](_.script)
-    val scriptCode = GenLens[AccountScript](_.code)
+    private val accountScript = GenLens[Account](_.script)
 
-    private val optionalScript =
+    val optionalScript =
       Optional[Account, AccountScript](accountScript.get)(script => accountScript.set(Some(script)))
+
+    val scriptCode = GenLens[AccountScript](_.code)
 
     /** an optional lens allowing to reach into the script code field of an account*/
     val optionalScriptCode = optionalScript composeLens scriptCode
