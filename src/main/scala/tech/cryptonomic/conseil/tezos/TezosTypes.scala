@@ -10,6 +10,7 @@ import monocle.std.option._
   */
 object TezosTypes {
 
+  /*Reminder: we might want to move this to TezosOptics object*/
   object Lenses {
     private val operationGroups = GenLens[Block](_.operationGroups)
     private val operations = GenLens[OperationsGroup](_.contents)
@@ -326,34 +327,37 @@ object TezosTypes {
                                            )
 
   final case class AppliedOperationResultStatus(
-                                   status: String,
-                                   errors: Option[List[String]],
-                                   storage: Option[Any],
-                                   balanceUpdates: Option[AppliedOperationBalanceUpdates],
-                                   originatedContracts: Option[String],
-                                   consumedGas: Option[Int],
-                                   storageSizeDiff: Option[Int]
-                                   )
+    status: String,
+    errors: Option[List[String]],
+    storage: Option[Any],
+    balanceUpdates: Option[AppliedOperationBalanceUpdates],
+    originatedContracts: Option[String],
+    consumedGas: Option[Int],
+    storageSizeDiff: Option[Int]
+  )
 
   final case class AccountDelegate(
-                            setable: Boolean,
-                            value: Option[String]
-                            )
+    setable: Boolean,
+    value: Option[PublicKeyHash]
+  )
+
+  //represents unparsed micheline json
+  final case class AccountScript(code: String) extends AnyVal
 
   final case class Account(
-                    manager: String,
-                    balance: scala.math.BigDecimal,
-                    spendable: Boolean,
-                    delegate: AccountDelegate,
-                    script: Option[String],
-                    counter: Int
-                    )
+    manager: PublicKeyHash,
+    balance: scala.math.BigDecimal,
+    spendable: Boolean,
+    delegate: AccountDelegate,
+    script: Option[AccountScript],
+    counter: Int
+  )
 
   final case class BlockAccounts(
-                    blockHash: BlockHash,
-                    blockLevel: Int,
-                    accounts: Map[AccountId, Account] = Map.empty
-                  )
+      blockHash: BlockHash,
+      blockLevel: Int,
+      accounts: Map[AccountId, Account] = Map.empty
+  )
 
   object VotingPeriod extends Enumeration {
     type Kind = Value

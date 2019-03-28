@@ -196,6 +196,16 @@ object JsonDecoders {
 
     }
 
+    /* Collects definitions to decode accounts and their components */
+    object Accounts {
+      private implicit val conf = tezosDerivationConfig
+
+      implicit val scriptDecoder: Decoder[AccountScript] =
+        Decoder.decodeJson.map(json => AccountScript(json.noSpaces))
+      implicit val delegateDecoder: Decoder[AccountDelegate] = deriveDecoder
+      implicit val accountDecoder: Decoder[Account] = deriveDecoder
+    }
+
   }
 
 

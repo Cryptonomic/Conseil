@@ -4,7 +4,6 @@ import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
@@ -37,6 +36,7 @@ trait BlocksDataFetchers {
     case t =>
       logger.error("Something unexpected failed while decoding json", t).pure[Future]
   }
+
   /* reduces repetion in error handling, used when the failure is expected to be recovered */
   private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
     case decodingError: io.circe.Error =>
@@ -300,9 +300,17 @@ trait AccountsDataFetchers {
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
-  import tech.cryptonomic.conseil.util.JsonUtil.fromJson
+  import JsonDecoders.Circe.decodeLiftingTo
 
   implicit def fetchFutureContext: ExecutionContext
+
+  /* reduces repetion in error handling */
+  private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
+    case decodingError: io.circe.Error =>
+      logger.warn(message, decodingError).pure[Future]
+    case t =>
+      logger.error("Something unexpected failed while decoding json", t).pure[Future]
+  }
 
   /** the tezos network to connect to */
   def network: String
@@ -315,6 +323,8 @@ trait AccountsDataFetchers {
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
   def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+    import JsonDecoders.Circe.Accounts._
+
     type Encoded = String
     type In = AccountId
     type Out = Option[Account]
@@ -336,9 +346,13 @@ trait AccountsDataFetchers {
 
     override def decodeData = Kleisli {
       json =>
-        val parsed = Try(fromJson[Account](json))
-        parsed.failed.foreach(err => logger.error(s"I fetched account json from tezos node that I'm unable to decode: $json", err))
-        parsed.toOption.pure[Future]
+        decodeLiftingTo[Future, Account](json)
+          .map(Some(_))
+          .onError(logWarnOnJsonDecoding(s"I fetched an account json from tezos node that I'm unable to decode: $json"))
+          .recover{
+            //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+            case NonFatal(_) => Option.empty
+          }
     }
   }
 

@@ -2,6 +2,69 @@ package tech.cryptonomic.conseil.tezos
 
 import TezosTypes._
 
+/* defines example tezos json definitions of accounts and typed counterparts used in the tests */
+trait AccountsJsonData {
+  val accountJson =
+    """{
+    |  "balance": "2921522468",
+    |  "counter": "0",
+    |  "delegate": {
+    |      "setable": false,
+    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
+    |  },
+    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
+    |  "spendable": true
+    |}""".stripMargin
+
+  val expectedAccount =
+    Account(
+      manager = PublicKeyHash("tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY"),
+      balance = 2921522468L,
+      spendable = true,
+      delegate = AccountDelegate(
+        setable = false,
+        value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+      ),
+      script = None,
+      counter = 0
+    )
+
+  val scriptJson =
+    """{
+    |  "code": [
+    |      {
+    |          "prim": "parameter",
+    |          "args": [
+    |              {
+    |                  "prim": "string"
+    |              }
+    |          ]
+    |      }
+    |  ],
+    |  "storage": {
+    |      "string": "hello"
+    |  }
+    |}""".stripMargin
+
+  val expectedScript = AccountScript(
+    """{"code":[{"prim":"parameter","args":[{"prim":"string"}]}],"storage":{"string":"hello"}}"""
+  )
+
+  val accountScriptedJson =
+   s"""{
+    |  "balance": "2921522468",
+    |  "counter": "0",
+    |  "delegate": {
+    |      "setable": false,
+    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
+    |  },
+    |  "script": $scriptJson,
+    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
+    |  "spendable": true
+    |}""".stripMargin
+
+}
+
 /* defines example tezos json definitions of operations and typed counterparts used in the tests */
 trait OperationsJsonData {
   import OperationMetadata.BalanceUpdate

@@ -42,11 +42,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
       currentId =>
         (AccountId(String valueOf currentId),
           Account(
-            manager = "manager",
+            manager = PublicKeyHash("manager"),
             balance = rnd.nextInt,
             spendable = true,
-            delegate = AccountDelegate(setable = false, value = Some("delegate-value")),
-            script = Some("script"),
+            delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
+            script = Some(AccountScript("script")),
             counter = currentId
           )
         )

@@ -285,12 +285,12 @@ class TezosDatabaseOperationsTest
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
-          row.manager shouldEqual account.manager
+          row.manager shouldEqual account.manager.value
           row.spendable shouldEqual account.spendable
           row.delegateSetable shouldEqual account.delegate.setable
-          row.delegateValue shouldEqual account.delegate.value
+          row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.toString)
+          row.script shouldEqual account.script.map(_.code.toString)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual block.level
       }
@@ -314,7 +314,7 @@ class TezosDatabaseOperationsTest
 
       //generate data
       val blocks @ (second :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
-      val account = generateAccountRows(1, blocks.head).head
+      val account = generateAccountRows(1, first).head
 
       val populate =
         DBIO.seq(
@@ -326,7 +326,7 @@ class TezosDatabaseOperationsTest
 
       //prepare new accounts
       val accountChanges = 2
-      val (hashUpdate, levelUpdate) = (first.hash, first.level)
+      val (hashUpdate, levelUpdate) = (second.hash, second.level)
       val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
 
       //double-check for the identifier existence
@@ -353,12 +353,12 @@ class TezosDatabaseOperationsTest
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual hashUpdate
-          row.manager shouldEqual account.manager
+          row.manager shouldEqual account.manager.value
           row.spendable shouldEqual account.spendable
           row.delegateSetable shouldEqual account.delegate.setable
-          row.delegateValue shouldEqual account.delegate.value
+          row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.toString)
+          row.script shouldEqual account.script.map(_.code.toString)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual levelUpdate
       }
