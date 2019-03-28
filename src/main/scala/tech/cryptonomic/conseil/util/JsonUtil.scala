@@ -56,7 +56,7 @@ object JsonUtil {
     lazy val emptyObject = JsonString("{}")
 
     /** add standard cleaning for input json */
-    def sanitize(s: String): String = s.filterNot(_.isControl).replaceAll("""\\u[[a-zA-Z0-9]]{1,4}""", "[REDACTED_BY_CONSEIL]")
+    def sanitize(s: String): String = s.filterNot(_.isControl).replaceAll("""\\u[a-fA-F0-9]{1,4}""", "REDACTED_BY_CONSEIL")
 
   }
 
