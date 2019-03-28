@@ -71,7 +71,7 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
 
     "sanitize unwanted input, by removing any string-encoded ISO control chars from the json string" in {
       val invalid: String = "demo\\u0000"
-      (JsonString sanitize invalid) shouldBe "demo[REDACTED_BY_CONSEIL]"
+      (JsonString sanitize invalid) shouldBe "demoREDACTED_BY_CONSEIL"
 
     }
 
