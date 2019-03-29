@@ -69,26 +69,14 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
 
     }
 
-    "sanitize unwanted input, by removing any string-encoded ISO control chars from the json string" in {
-      val invalid = Set(
-        "demo\\u0",
-        "demo\\u00",
-        "demo\\u000",
-        "demo\\u0000",
-      )
+    "sanitize unwanted input, by removing any string-encoded unicode chars from the json string" in {
 
-      forAll(invalid)(JsonString.sanitize(_) shouldBe "demoREDACTED_BY_CONSEIL")
+      val invalid_control = """demo\\u0000"""
+      JsonString.sanitize(invalid_control) shouldBe "demou0000"
+
+      val invalid_hangul = """\\ucd5c\\ub3d9\\ud6c8"""
+      JsonString.sanitize(invalid_hangul) shouldBe "ucd5cub3d9ud6c8"
     }
-
-    "not sanitize char sequences that only resemble ISO control chars from the json string" in {
-      val valid = "demo\\uGO"
-      val trailing = "demo\\u0000F"
-
-      JsonString sanitize valid shouldEqual valid
-      //preserve the extra char
-      JsonString sanitize trailing shouldBe "demoREDACTED_BY_CONSEILF"
-    }
-
 
     "convert a simple map to json" in {
       val result = JsonUtil.toJson(Map("key1" -> "value1", "key2" -> "value2")).json
