@@ -18,7 +18,8 @@ object MainOutputs {
       * @param serverConf configuration of the http server
       */
     protected[this] def displayInfo(serverConf: ServerConfiguration) =
-      logger.info("""
+      logger.info(
+        """
         | ==================================***==================================
         |  Conseil v.{}
         |  {}
@@ -35,13 +36,14 @@ object MainOutputs {
       )
 
     /** Shows details on the current configuration
-    * @param platform the platform used by Lorre
-    * @param platformConf the details on platform-specific configuratoin (e.g. node connection)
-    * @param ignoreFailures env-var name and value read to describe behaviour on common application failure
-    * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
-    */
+      * @param platform the platform used by Lorre
+      * @param platformConf the details on platform-specific configuratoin (e.g. node connection)
+      * @param ignoreFailures env-var name and value read to describe behaviour on common application failure
+      * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
+      */
     protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): Unit =
-      logger.info("""
+      logger.info(
+        """
         | ==================================***==================================
         | Configuration details
         |
@@ -67,7 +69,8 @@ object MainOutputs {
       * @param platformConf custom configuration for the used chain
       */
     protected[this] def displayInfo(platformConf: PlatformConfiguration) =
-      logger.info("""
+      logger.info(
+        """
         | ==================================***==================================
         |  Lorre v.{}
         |  {}
@@ -88,10 +91,12 @@ object MainOutputs {
       * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
       */
     protected[this] def displayConfiguration[C <: PlatformConfiguration](
-      platform: BlockchainPlatform,
-      platformConf: C,
-      ignoreFailures: (String, Option[String])): Unit =
-      logger.info("""
+        platform: BlockchainPlatform,
+        platformConf: C,
+        ignoreFailures: (String, Option[String])
+    ): Unit =
+      logger.info(
+        """
         | ==================================***==================================
         | Configuration details
         |
@@ -120,13 +125,14 @@ object MainOutputs {
   }
 
   /* prepare output to display existings platforms and networks */
-  private def showAvailablePlatforms(conf: PlatformsConfiguration): String = conf.platforms.map {
-    case (platform, confs) =>
-      val networks = confs.map(_.network).mkString("\n  - ", "\n  - ", "\n")
-      s"""
+  private def showAvailablePlatforms(conf: PlatformsConfiguration): String =
+    conf.platforms.map {
+      case (platform, confs) =>
+        val networks = confs.map(_.network).mkString("\n  - ", "\n  - ", "\n")
+        s"""
       |  Platform: ${platform.name}$networks
       """.stripMargin
-  }.mkString("\n")
+    }.mkString("\n")
 
   /* prepare output to display database access */
   private val showDatabaseConfiguration: String = {
@@ -152,10 +158,9 @@ object MainOutputs {
     val dbConf = ConfigFactory.load.getConfig("conseildb").resolve()
 
     //the meat of the method
-    dbConf.entrySet.asScala.map {
-      entry =>
-        val (key, value) = renderValues(entry)
-        s" - ${key} = ${value}"
+    dbConf.entrySet.asScala.map { entry =>
+      val (key, value) = renderValues(entry)
+      s" - ${key} = ${value}"
     }.mkString("Database configuration:\n\n", "\n", "\n")
   }
 

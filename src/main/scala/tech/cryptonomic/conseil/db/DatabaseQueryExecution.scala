@@ -22,96 +22,83 @@ object DatabaseQueryExecution {
   sealed trait JoinedTables
 
   final case class BlocksOperationGroupsOperationsAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups, Tables.Operations, Tables.Accounts),
-      (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
+      join: Query[
+        (Tables.Blocks, Tables.OperationGroups, Tables.Operations, Tables.Accounts),
+        (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
+        Seq
+      ]
   ) extends JoinedTables
 
   final case class BlocksOperationGroupsOperations(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups, Tables.Operations),
-      (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow),
-      Seq]
+      join: Query[
+        (Tables.Blocks, Tables.OperationGroups, Tables.Operations),
+        (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.OperationsRow),
+        Seq
+      ]
   ) extends JoinedTables
 
   final case class BlocksOperationGroupsAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups, Tables.Accounts),
-      (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.AccountsRow),
-      Seq]
+      join: Query[
+        (Tables.Blocks, Tables.OperationGroups, Tables.Accounts),
+        (Tables.BlocksRow, Tables.OperationGroupsRow, Tables.AccountsRow),
+        Seq
+      ]
   ) extends JoinedTables
 
   final case class BlocksOperationGroups(
-    join: Query[
-      (Tables.Blocks, Tables.OperationGroups),
-      (Tables.BlocksRow, Tables.OperationGroupsRow),
-      Seq]
+      join: Query[(Tables.Blocks, Tables.OperationGroups), (Tables.BlocksRow, Tables.OperationGroupsRow), Seq]
   ) extends JoinedTables
 
   final case class BlocksOperationsAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.Operations, Tables.Accounts),
-      (Tables.BlocksRow, Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
+      join: Query[
+        (Tables.Blocks, Tables.Operations, Tables.Accounts),
+        (Tables.BlocksRow, Tables.OperationsRow, Tables.AccountsRow),
+        Seq
+      ]
   ) extends JoinedTables
 
   final case class BlocksOperations(
-    join: Query[
-      (Tables.Blocks, Tables.Operations),
-      (Tables.BlocksRow, Tables.OperationsRow),
-      Seq]
+      join: Query[(Tables.Blocks, Tables.Operations), (Tables.BlocksRow, Tables.OperationsRow), Seq]
   ) extends JoinedTables
 
   final case class BlocksAccounts(
-    join: Query[
-      (Tables.Blocks, Tables.Accounts),
-      (Tables.BlocksRow, Tables.AccountsRow),
-      Seq]
+      join: Query[(Tables.Blocks, Tables.Accounts), (Tables.BlocksRow, Tables.AccountsRow), Seq]
   ) extends JoinedTables
 
   final case class Blocks(
-    join: Query[Tables.Blocks, Tables.BlocksRow, Seq]
+      join: Query[Tables.Blocks, Tables.BlocksRow, Seq]
   ) extends JoinedTables
 
   final case class OperationGroupsOperationsAccounts(
-    join: Query[
-      (Tables.OperationGroups, Tables.Operations, Tables.Accounts),
-      (Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
+      join: Query[
+        (Tables.OperationGroups, Tables.Operations, Tables.Accounts),
+        (Tables.OperationGroupsRow, Tables.OperationsRow, Tables.AccountsRow),
+        Seq
+      ]
   ) extends JoinedTables
 
   final case class OperationGroupsOperations(
-    join: Query[
-      (Tables.OperationGroups, Tables.Operations),
-      (Tables.OperationGroupsRow, Tables.OperationsRow),
-      Seq]
+      join: Query[(Tables.OperationGroups, Tables.Operations), (Tables.OperationGroupsRow, Tables.OperationsRow), Seq]
   ) extends JoinedTables
 
   final case class OperationGroupsAccounts(
-    join: Query[
-      (Tables.OperationGroups, Tables.Accounts),
-      (Tables.OperationGroupsRow, Tables.AccountsRow),
-      Seq]
+      join: Query[(Tables.OperationGroups, Tables.Accounts), (Tables.OperationGroupsRow, Tables.AccountsRow), Seq]
   ) extends JoinedTables
 
   final case class OperationGroups(
-    join: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]
+      join: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]
   ) extends JoinedTables
 
   final case class OperationsAccounts(
-    join: Query[
-      (Tables.Operations, Tables.Accounts),
-      (Tables.OperationsRow, Tables.AccountsRow),
-      Seq]
+      join: Query[(Tables.Operations, Tables.Accounts), (Tables.OperationsRow, Tables.AccountsRow), Seq]
   ) extends JoinedTables
 
   final case class Operations(
-    join: Query[Tables.Operations, Tables.OperationsRow, Seq]
+      join: Query[Tables.Operations, Tables.OperationsRow, Seq]
   ) extends JoinedTables
 
   final case class Accounts(
-    join: Query[Tables.Accounts, Tables.AccountsRow, Seq]
+      join: Query[Tables.Accounts, Tables.AccountsRow, Seq]
   ) extends JoinedTables
 
   final case object EmptyJoin extends JoinedTables
@@ -126,15 +113,16 @@ object DatabaseQueryExecution {
 
   final case class BlocksAction(action: Query[Tables.Blocks, Tables.BlocksRow, Seq]) extends Action
 
-  final case class OperationGroupsAction(action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq]) extends Action
+  final case class OperationGroupsAction(action: Query[Tables.OperationGroups, Tables.OperationGroupsRow, Seq])
+      extends Action
 
   final case class AccountsAction(action: Query[Tables.Accounts, Tables.AccountsRow, Seq]) extends Action
 
   final case class TableSelection(
-    blocks: Boolean,
-    operationGroups: Boolean,
-    operations: Boolean,
-    accounts: Boolean
+      blocks: Boolean,
+      operationGroups: Boolean,
+      operations: Boolean,
+      accounts: Boolean
   )
 
   /** A collection of functions to get pre-filtered queries */
@@ -168,7 +156,9 @@ object DatabaseQueryExecution {
       filter.operationDestinations.isEmpty.bind || o.destination.getOrElse("").inSet(filter.operationDestinations)
 
     def filterOperationParticipants(filter: Filter, o: Tables.Operations): Rep[Boolean] =
-      filter.operationParticipants.isEmpty.bind || o.destination.getOrElse(o.source.getOrElse("")).inSet(filter.operationParticipants)
+      filter.operationParticipants.isEmpty.bind || o.destination
+          .getOrElse(o.source.getOrElse(""))
+          .inSet(filter.operationParticipants)
 
     def filterAccountIDs(filter: Filter, a: Tables.Accounts): Rep[Boolean] =
       filter.accountIDs.isEmpty.bind || a.accountId.inSet(filter.accountIDs)
@@ -187,34 +177,35 @@ object DatabaseQueryExecution {
 
     /** gets filtered accounts */
     val filteredAccounts = (appliedFilters: Filter) =>
-      Tables.Accounts.filter(account =>
-        filterAccountIDs(appliedFilters, account) &&
-        filterAccountDelegates(appliedFilters, account) &&
-        filterAccountManagers(appliedFilters, account)
+      Tables.Accounts.filter(
+        account =>
+          filterAccountIDs(appliedFilters, account) &&
+            filterAccountDelegates(appliedFilters, account) &&
+            filterAccountManagers(appliedFilters, account)
       )
 
     /** gets filtered operation groups */
     val filteredOpGroups = (appliedFilters: Filter) =>
-      Tables.OperationGroups.filter(opGroup =>
-      filterOperationIDs(appliedFilters, opGroup)
-      )
+      Tables.OperationGroups.filter(opGroup => filterOperationIDs(appliedFilters, opGroup))
 
     /** gets filtered operations */
     val filteredOps = (appliedFilters: Filter) =>
-      Tables.Operations.filter(op =>
-        filterOperationKinds(appliedFilters, op) &&
-        filterOperationDestinations(appliedFilters, op) &&
-        filterOperationSources(appliedFilters, op) &&
-        filterOperationParticipants(appliedFilters, op)
+      Tables.Operations.filter(
+        op =>
+          filterOperationKinds(appliedFilters, op) &&
+            filterOperationDestinations(appliedFilters, op) &&
+            filterOperationSources(appliedFilters, op) &&
+            filterOperationParticipants(appliedFilters, op)
       )
 
     /** gets filtered blocks */
     val filteredBlocks = (appliedFilters: Filter) =>
-      Tables.Blocks.filter(block =>
-        filterBlockIDs(appliedFilters, block) &&
-        filterBlockLevels(appliedFilters, block) &&
-        filterChainIDs(appliedFilters, block) &&
-        filterProtocols(appliedFilters, block)
+      Tables.Blocks.filter(
+        block =>
+          filterBlockIDs(appliedFilters, block) &&
+            filterBlockLevels(appliedFilters, block) &&
+            filterChainIDs(appliedFilters, block) &&
+            filterProtocols(appliedFilters, block)
       )
   }
 
@@ -258,9 +249,9 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
     * @return          The actual results
     */
   protected def executeQuery(
-    limit: Int,
-    sortBy: Option[String],
-    sortOrder: Option[Sorting]
+      limit: Int,
+      sortBy: Option[String],
+      sortOrder: Option[Sorting]
   ): JoinedTables => F[Seq[OUT]]
 
   /**
@@ -270,21 +261,26 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
     * @param s        Which tables the filter acts upon
     * @return         One of the available joins defined through the `JoinedTables` ADT
     */
-  protected def prepareJoins(f: Filter)(s: TableSelection): JoinedTables = {
+  protected def prepareJoins(f: Filter)(s: TableSelection): JoinedTables =
     s match {
       case TableSelection(true, true, true, true) =>
         BlocksOperationGroupsOperationsAccounts(
           filteredBlocks(f)
-            .join(filteredOpGroups(f)).on(_.hash === _.blockId)
-            .join(filteredOps(f)).on(_._2.hash === _.operationGroupHash)
-            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
+            .join(filteredOpGroups(f))
+            .on(_.hash === _.blockId)
+            .join(filteredOps(f))
+            .on(_._2.hash === _.operationGroupHash)
+            .join(filteredAccounts(f))
+            .on(_._2.source === _.accountId)
             .map(unwrapQuadJoin)
         )
       case TableSelection(true, true, true, false) =>
         BlocksOperationGroupsOperations(
           filteredBlocks(f)
-            .join(filteredOpGroups(f)).on(_.hash === _.blockId)
-            .join(filteredOps(f)).on(_._2.hash === _.operationGroupHash)
+            .join(filteredOpGroups(f))
+            .on(_.hash === _.blockId)
+            .join(filteredOps(f))
+            .on(_._2.hash === _.operationGroupHash)
             .map(unwrapTripleJoin)
         )
       case TableSelection(true, true, false, true) =>
@@ -293,17 +289,18 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         BlocksOperationGroups(
           filteredBlocks(f).join(filteredOpGroups(f)).on(_.hash === _.blockId)
         )
-      case TableSelection(true, false, true, true)
-           | TableSelection(true, false, true, false)
-           | TableSelection(true, false, false, true) =>
+      case TableSelection(true, false, true, true) | TableSelection(true, false, true, false) |
+          TableSelection(true, false, false, true) =>
         EmptyJoin
       case TableSelection(true, false, false, false) =>
         Blocks(filteredBlocks(f))
       case TableSelection(false, true, true, true) =>
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
-            .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
+            .join(filteredOps(f))
+            .on(_.hash === _.operationGroupHash)
+            .join(filteredAccounts(f))
+            .on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, true, true, false) =>
@@ -313,8 +310,10 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
       case TableSelection(false, true, false, true) =>
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
-            .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
+            .join(filteredOps(f))
+            .on(_.hash === _.operationGroupHash)
+            .join(filteredAccounts(f))
+            .on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, true, false, false) =>
@@ -322,8 +321,10 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
       case TableSelection(false, false, true, true) =>
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
-            .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
+            .join(filteredOps(f))
+            .on(_.hash === _.operationGroupHash)
+            .join(filteredAccounts(f))
+            .on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, false, true, false) =>
@@ -334,7 +335,6 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         EmptyJoin
     }
 
-  }
 }
 
 /** Collects utilities to simplify sorting operations */
@@ -351,7 +351,7 @@ trait ActionSorting[A <: DatabaseQueryExecution.Action] {
   protected def sortingOn[T](col: ColumnOrdered[T], order: Option[Sorting]): ColumnOrdered[T] =
     order match {
       case Some(AscendingSort) => col.asc
-      case _ => col.desc
+      case _                   => col.desc
     }
 
   /**
@@ -383,15 +383,17 @@ trait DatabaseApiFiltering {
    * If none exists the call returns a failed DBIO
    */
   private[this] def ensuringBlocksExist[R](dbOperation: => DBIO[R]): DBIO[R] =
-      TezosDatabaseOperations.doBlocksExist().flatMap {
-        blocksStored =>
-          if(blocksStored) dbOperation
-          else DBIO.failed(new NoSuchElementException("No block data is currently available"))
+    TezosDatabaseOperations
+      .doBlocksExist()
+      .flatMap { blocksStored =>
+        if (blocksStored) dbOperation
+        else DBIO.failed(new NoSuchElementException("No block data is currently available"))
       }(asyncApiFiltersExecutionContext)
 
-
   /** an instance to execute filtering and sorting for blocks, asynchronously */
-  implicit object BlocksFiltering extends DatabaseQueryExecution[Future, Tables.BlocksRow] with ActionSorting[BlocksAction] {
+  implicit object BlocksFiltering
+      extends DatabaseQueryExecution[Future, Tables.BlocksRow]
+      with ActionSorting[BlocksAction] {
 
     // Blocks need to be fetched, other tables needed if user asks for them via the filter
     override protected def select(filter: Filter): TableSelection =
@@ -403,7 +405,7 @@ trait DatabaseApiFiltering {
       )
 
     private[this] val extractActionFromJoins = (joinedTables: JoinedTables) =>
-        //there will be some action only if the joined tables have the expected shape
+      //there will be some action only if the joined tables have the expected shape
       PartialFunction.condOpt(joinedTables) {
         case Blocks(blocks) => blocks
 
@@ -419,55 +421,62 @@ trait DatabaseApiFiltering {
       * or with `IllegalArgumentException` if the filter parameters where not correctly defined
       */
     override protected def executeQuery(
-      limit: Int,
-      sortBy: Option[String],
-      sortOrder: Option[Sorting],
+        limit: Int,
+        sortBy: Option[String],
+        sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.BlocksRow]] =
       extractActionFromJoins andThen {
-        case Some(validAction) =>
-          ensuringBlocksExist {
-            val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(validAction))
-            sortedAction.distinct
-              .take(limit)
-              .result
-          }
-        case _ =>
-          //when the joins didn't have the expected shape
-          DBIO.failed(new IllegalArgumentException("You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind."))
-      } andThen (dbHandle.run)
+          case Some(validAction) =>
+            ensuringBlocksExist {
+              val BlocksAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, BlocksAction(validAction))
+              sortedAction.distinct
+                .take(limit)
+                .result
+            }
+          case _ =>
+            //when the joins didn't have the expected shape
+            DBIO.failed(
+              new IllegalArgumentException(
+                "You can only filter blocks by block ID, level, chain ID, protocol, operation ID, operation source, or inner and outer operation kind."
+              )
+            )
+        } andThen (dbHandle.run)
 
     override def fetchSortedAction(
-      sortBy: Option[String],
-      order: Option[Sorting],
-      action: BlocksAction): BlocksAction = {
+        sortBy: Option[String],
+        order: Option[Sorting],
+        action: BlocksAction
+    ): BlocksAction = {
 
-        val column = sortBy.map(_.toLowerCase).map {
-          case "level" => t: Tables.Blocks => sortingOn(t.level, order)
-          case "proto" => t: Tables.Blocks => sortingOn(t.proto, order)
-          case "predecessor" => t: Tables.Blocks => sortingOn(t.predecessor, order)
-          case "timestamp" => t: Tables.Blocks => sortingOn(t.timestamp, order)
+      val column = sortBy.map(_.toLowerCase).map {
+          case "level"           => t: Tables.Blocks => sortingOn(t.level, order)
+          case "proto"           => t: Tables.Blocks => sortingOn(t.proto, order)
+          case "predecessor"     => t: Tables.Blocks => sortingOn(t.predecessor, order)
+          case "timestamp"       => t: Tables.Blocks => sortingOn(t.timestamp, order)
           case "validation_pass" => t: Tables.Blocks => sortingOn(t.validationPass, order)
-          case "fitness" => t: Tables.Blocks => sortingOn(t.fitness, order)
-          case "context" => t: Tables.Blocks => sortingOn(t.context, order)
-          case "signature" => t: Tables.Blocks => sortingOn(t.signature, order)
-          case "protocol" => t: Tables.Blocks => sortingOn(t.protocol, order)
-          case "chain_id" => t: Tables.Blocks => sortingOn(t.chainId, order)
-          case "hash" => t: Tables.Blocks => sortingOn(t.hash, order)
+          case "fitness"         => t: Tables.Blocks => sortingOn(t.fitness, order)
+          case "context"         => t: Tables.Blocks => sortingOn(t.context, order)
+          case "signature"       => t: Tables.Blocks => sortingOn(t.signature, order)
+          case "protocol"        => t: Tables.Blocks => sortingOn(t.protocol, order)
+          case "chain_id"        => t: Tables.Blocks => sortingOn(t.chainId, order)
+          case "hash"            => t: Tables.Blocks => sortingOn(t.hash, order)
           case "operations_hash" => t: Tables.Blocks => sortingOn(t.operationsHash, order)
-        } getOrElse {
-          t: Tables.Blocks => sortingOn(t.level, order)
-        }
+        } getOrElse { t: Tables.Blocks =>
+            sortingOn(t.level, order)
+          }
 
-        action.copy(
-          action = action.action.sortBy(column)
-        )
+      action.copy(
+        action = action.action.sortBy(column)
+      )
 
     }
 
   }
 
   /** an instance to execute filtering and sorting for accounts, asynchronously */
-  implicit object AccountsFiltering extends DatabaseQueryExecution[Future, Tables.AccountsRow] with ActionSorting[AccountsAction] {
+  implicit object AccountsFiltering
+      extends DatabaseQueryExecution[Future, Tables.AccountsRow]
+      with ActionSorting[AccountsAction] {
 
     override protected def select(filter: Filter): TableSelection =
       TableSelection(
@@ -494,52 +503,59 @@ trait DatabaseApiFiltering {
       * or with `IllegalArgumentException` if the filter parameters where not correctly defined
       */
     override protected def executeQuery(
-      limit: Int,
-      sortBy: Option[String],
-      sortOrder: Option[Sorting]
+        limit: Int,
+        sortBy: Option[String],
+        sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.AccountsRow]] =
       extractActionFromJoins andThen {
-        case Some(validAction) =>
-          ensuringBlocksExist {
-            val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(validAction))
-            sortedAction.distinct
-              .take(limit)
-              .result
-          }
-        case _ =>
-          //when the joins didn't have the expected shape
-          DBIO.failed(new IllegalArgumentException("You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind."))
-      } andThen (dbHandle.run)
+          case Some(validAction) =>
+            ensuringBlocksExist {
+              val AccountsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, AccountsAction(validAction))
+              sortedAction.distinct
+                .take(limit)
+                .result
+            }
+          case _ =>
+            //when the joins didn't have the expected shape
+            DBIO.failed(
+              new IllegalArgumentException(
+                "You can only filter accounts by operation ID, operation source, account ID, account manager, account delegate, or inner and outer operation kind."
+              )
+            )
+        } andThen (dbHandle.run)
 
     override def fetchSortedAction(
-      sortBy: Option[String],
-      order: Option[Sorting],
-      action: AccountsAction): AccountsAction = {
+        sortBy: Option[String],
+        order: Option[Sorting],
+        action: AccountsAction
+    ): AccountsAction = {
 
-        val column = sortBy.map(_.toLowerCase).map {
-          case "account_id" => t: Tables.Accounts => sortingOn(t.accountId, order)
-          case "block_id" => t: Tables.Accounts => sortingOn(t.blockId, order)
-          case "manager" => t: Tables.Accounts => sortingOn(t.manager, order)
-          case "spendable" => t: Tables.Accounts => sortingOn(t.spendable, order)
+      val column = sortBy.map(_.toLowerCase).map {
+          case "account_id"       => t: Tables.Accounts => sortingOn(t.accountId, order)
+          case "block_id"         => t: Tables.Accounts => sortingOn(t.blockId, order)
+          case "manager"          => t: Tables.Accounts => sortingOn(t.manager, order)
+          case "spendable"        => t: Tables.Accounts => sortingOn(t.spendable, order)
           case "delegate_setable" => t: Tables.Accounts => sortingOn(t.delegateSetable, order)
-          case "delegate_value" => t: Tables.Accounts => sortingOn(t.delegateValue, order)
-          case "counter" => t: Tables.Accounts => sortingOn(t.counter, order)
-          case "script" => t: Tables.Accounts => sortingOn(t.script, order)
-          case "balance" => t: Tables.Accounts => sortingOn(t.balance, order)
-        } getOrElse {
-          t: Tables.Accounts => sortingOn(t.accountId, order)
-        }
+          case "delegate_value"   => t: Tables.Accounts => sortingOn(t.delegateValue, order)
+          case "counter"          => t: Tables.Accounts => sortingOn(t.counter, order)
+          case "script"           => t: Tables.Accounts => sortingOn(t.script, order)
+          case "balance"          => t: Tables.Accounts => sortingOn(t.balance, order)
+        } getOrElse { t: Tables.Accounts =>
+            sortingOn(t.accountId, order)
+          }
 
-        action.copy(
-          action = action.action.sortBy(column)
-        )
+      action.copy(
+        action = action.action.sortBy(column)
+      )
 
     }
 
   }
 
   /** an instance to execute filtering and sorting for operation groups, asynchronously */
-  implicit object OperationGroupsFiltering extends DatabaseQueryExecution[Future, Tables.OperationGroupsRow] with ActionSorting[OperationGroupsAction] {
+  implicit object OperationGroupsFiltering
+      extends DatabaseQueryExecution[Future, Tables.OperationGroupsRow]
+      with ActionSorting[OperationGroupsAction] {
 
     override def select(f: Filter): TableSelection =
       TableSelection(
@@ -576,38 +592,42 @@ trait DatabaseApiFiltering {
 
     /** will fail the `Future` with `NoSuchElementException` if no block is in the chain */
     override protected def executeQuery(
-      limit: Int,
-      sortBy: Option[String],
-      sortOrder: Option[Sorting]
+        limit: Int,
+        sortBy: Option[String],
+        sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.OperationGroupsRow]] =
       extractActionFromJoins andThen {
-        case Some(validAction) =>
-          ensuringBlocksExist {
-            val OperationGroupsAction(sortedAction) = fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(validAction))
-            sortedAction.distinct
-              .take(limit)
-              .result
-          }
-        case _ =>
-          //when the joins didn't have the expected shape
-          DBIO.failed(new IllegalStateException("This exception should never be reached, but is included for completeness."))
-      } andThen(dbHandle.run)
+          case Some(validAction) =>
+            ensuringBlocksExist {
+              val OperationGroupsAction(sortedAction) =
+                fetchSortedAction(sortBy, sortOrder, OperationGroupsAction(validAction))
+              sortedAction.distinct
+                .take(limit)
+                .result
+            }
+          case _ =>
+            //when the joins didn't have the expected shape
+            DBIO.failed(
+              new IllegalStateException("This exception should never be reached, but is included for completeness.")
+            )
+        } andThen (dbHandle.run)
 
     override def fetchSortedAction(
-      sortBy: Option[String],
-      order: Option[Sorting],
-      action: OperationGroupsAction): OperationGroupsAction = {
+        sortBy: Option[String],
+        order: Option[Sorting],
+        action: OperationGroupsAction
+    ): OperationGroupsAction = {
 
       val column = sortBy.map(_.toLowerCase).map {
-        case "protocol" => t: Tables.OperationGroups => sortingOn(t.protocol, order)
-        case "chain_id" => t: Tables.OperationGroups => sortingOn(t.chainId, order)
-        case "hash" => t: Tables.OperationGroups => sortingOn(t.hash, order)
-        case "branch" => t: Tables.OperationGroups => sortingOn(t.branch, order)
-        case "signature" => t: Tables.OperationGroups => sortingOn(t.signature, order)
-        case "block_id" => t: Tables.OperationGroups => sortingOn(t.blockId, order)
-      } getOrElse {
-        t: Tables.OperationGroups => sortingOn(t.hash, order)
-      }
+          case "protocol"  => t: Tables.OperationGroups => sortingOn(t.protocol, order)
+          case "chain_id"  => t: Tables.OperationGroups => sortingOn(t.chainId, order)
+          case "hash"      => t: Tables.OperationGroups => sortingOn(t.hash, order)
+          case "branch"    => t: Tables.OperationGroups => sortingOn(t.branch, order)
+          case "signature" => t: Tables.OperationGroups => sortingOn(t.signature, order)
+          case "block_id"  => t: Tables.OperationGroups => sortingOn(t.blockId, order)
+        } getOrElse { t: Tables.OperationGroups =>
+            sortingOn(t.hash, order)
+          }
 
       action.copy(
         action = action.action.sortBy(column)
@@ -636,22 +656,24 @@ trait DatabaseApiFiltering {
 
     /** will fail the `Future` with `NoSuchElementException` if no block is in the chain */
     override protected def executeQuery(
-      limit: Int,
-      sortBy: Option[String],
-      sortOrder: Option[Sorting]
+        limit: Int,
+        sortBy: Option[String],
+        sortOrder: Option[Sorting]
     ): JoinedTables => Future[Seq[Tables.OperationsRow]] =
       extractActionFromJoins andThen {
-        case Some(validAction) =>
-          ensuringBlocksExist {
-            validAction.distinct
-              .sortBy(_.blockLevel.desc)
-              .take(limit)
-              .result
-          }
-        case _ =>
-          //when the joins didn't have the expected shape
-          DBIO.failed(new IllegalStateException("This exception should never be reached, but is included for completeness."))
-      } andThen(dbHandle.run)
+          case Some(validAction) =>
+            ensuringBlocksExist {
+              validAction.distinct
+                .sortBy(_.blockLevel.desc)
+                .take(limit)
+                .result
+            }
+          case _ =>
+            //when the joins didn't have the expected shape
+            DBIO.failed(
+              new IllegalStateException("This exception should never be reached, but is included for completeness.")
+            )
+        } andThen (dbHandle.run)
 
   }
 
@@ -664,7 +686,7 @@ trait DatabaseApiFiltering {
 
       val action =
         Tables.Fees
-          .filter (
+          .filter(
             fee => Queries.filterOperationKindsForFees(filter, fee)
           )
           .distinct

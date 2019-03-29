@@ -16,7 +16,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext): Data =
+  def apply(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(
+      implicit ec: ExecutionContext
+  ): Data =
     new Data(config, DataPlatform(), tezosPlatformDiscoveryOperations)
 }
 
@@ -26,8 +28,14 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)
-  (implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with DataHelpers {
+class Data(
+    config: PlatformsConfiguration,
+    queryProtocolPlatform: DataPlatform,
+    tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
+)(implicit apiExecutionContext: ExecutionContext)
+    extends LazyLogging
+    with DatabaseApiFiltering
+    with DataHelpers {
 
   import cats.instances.either._
   import cats.instances.future._
@@ -40,6 +48,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
    * as long as it doesn't create issues or performance degradation
    */
   override val asyncApiFiltersExecutionContext: ExecutionContext = apiExecutionContext
+
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
@@ -145,9 +154,15 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   )
 
   /** Function for validation of the platform and network with flatten */
-  private def platformNetworkValidation[A](platform: String, network: String)(operation: => Future[Option[A]]): Future[Option[A]] = {
-    ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-      operation
-    }.sequence.map(_.flatten)
-  }
+  private def platformNetworkValidation[A](platform: String, network: String)(
+      operation: => Future[Option[A]]
+  ): Future[Option[A]] =
+    ConfigUtil
+      .getNetworks(config, platform)
+      .find(_.network == network)
+      .map { _ =>
+        operation
+      }
+      .sequence
+      .map(_.flatten)
 }

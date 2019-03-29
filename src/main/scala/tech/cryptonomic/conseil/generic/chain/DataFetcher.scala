@@ -20,10 +20,13 @@ import cats.syntax.semigroupal._
   * @tparam Err the expected type of possible errors that the Eff-wrapped operations might raise
   */
 trait DataFetcher[Eff[_], Coll[_], Err] {
+
   /** the input type, e.g. ids of data */
   type In
+
   /** the output type, e.g. the decoded block data */
   type Out
+
   /** the encoded representation type used e.g. some Json representation */
   type Encoded
 
@@ -49,11 +52,11 @@ trait DataFetcher[Eff[_], Coll[_], Err] {
     */
   def fetch(implicit app: MonadError[Eff, Err], tr: Traverse[Coll]): Kleisli[Eff, Coll[In], Coll[(In, Out)]] =
     fetchData.onError { case err => Kleisli.pure(onDataFetchError(err)) }
-      .andThen( encoded =>
-        decodeData
-          .onError { case err => Kleisli.pure(onDecodingError(err)) }
-          .second[In]         //only decodes the second element of the tuple (the encoded value) and pass the first on (the input)
-          .traverse(encoded)  //operates on a whole traverable Coll and wraps the resulting collection in a single Effect wrapper
+      .andThen(
+        encoded =>
+          decodeData.onError { case err => Kleisli.pure(onDecodingError(err)) }
+            .second[In] //only decodes the second element of the tuple (the encoded value) and pass the first on (the input)
+            .traverse(encoded) //operates on a whole traverable Coll and wraps the resulting collection in a single Effect wrapper
       )
 
 }
@@ -95,10 +98,10 @@ object DataFetcher {
    * where the Int is for the offset from a given block, and String is a representation of a json value.
    */
   private type Aux[Eff[_], Coll[_], Err, Input, Output, Encoding] = DataFetcher[Eff, Coll, Err] {
-      type In = Input
-      type Out = Output
-      type Encoded = Encoding
-    }
+    type In = Input
+    type Out = Output
+    type Encoded = Encoding
+  }
 
   /** Adds an extra decoding operation for every intermediate encoded result, returning both the
     * original output `O` and the new decoded output `O2` as a tuple
@@ -115,8 +118,8 @@ object DataFetcher {
     * - returns the decodings in a tuple, where each pair of outputs is also paired to the corresponding input hash, i.e. (I -> (O, O2))
     */
   def addDecoding[Eff[_]: Apply, Coll[_], Err, Input, Output, Output2, Encoding](
-    fetcher: Aux[Eff, Coll, Err, Input, Output, Encoding],
-    additionalDecode: Kleisli[Eff, Encoding, Output2]
+      fetcher: Aux[Eff, Coll, Err, Input, Output, Encoding],
+      additionalDecode: Kleisli[Eff, Encoding, Output2]
   ) = new DataFetcher[Eff, Coll, Err] {
     type In = Input
     type Out = (Output, Output2)
@@ -132,20 +135,19 @@ object DataFetcher {
     * For an example refer to `mergeResults` taking three arguments, and
     * consider the equivalent case for two.
     */
-  def mergeResults[Eff[_]: Monad, Coll[_] : Traverse: FunctorFilter, Err, Input, Output1, Output2, Output, Encoding1, Encoding2](
-    mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
-    mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
+  def mergeResults[Eff[_]: Monad, Coll[_]: Traverse: FunctorFilter, Err, Input, Output1, Output2, Output, Encoding1, Encoding2](
+      mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
+      mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
   )(merge: (Output1, Output2) => Output)(
-    implicit appErr: MonadError[Eff, Err]
+      implicit appErr: MonadError[Eff, Err]
   ): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
-    combineResults(mf1, mf2) {
-      (outs1, outs2) =>
-        outs1.mapFilter {
-          case (in, out1) =>
-            outs2.collectFirst{
-              case (`in`, out2) => (`in`, merge(out1, out2))
-            }
-        }
+    combineResults(mf1, mf2) { (outs1, outs2) =>
+      outs1.mapFilter {
+        case (in, out1) =>
+          outs2.collectFirst {
+            case (`in`, out2) => (`in`, merge(out1, out2))
+          }
+      }
     }
 
   /** Combines three DataFetchers acting on the same inputs to get a 3-tuple of the outputs and merge them all
@@ -171,27 +173,26 @@ object DataFetcher {
     *
     * and if we run the "fetch" Kleisli on the merged fetchers, passing a `List[BlockHash]` we get a `Future[List[(BlockHash, CurrentVotes)]]
     */
-  def mergeResults[Eff[_]: Monad, Coll[_] : Traverse: FunctorFilter, Err, Input, Output1, Output2, Output3, Output, Encoding1, Encoding2, Encoding3](
-    mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
-    mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2],
-    mf3: Aux[Eff, Coll, Err, Input, Output3, Encoding3]
+  def mergeResults[Eff[_]: Monad, Coll[_]: Traverse: FunctorFilter, Err, Input, Output1, Output2, Output3, Output, Encoding1, Encoding2, Encoding3](
+      mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
+      mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2],
+      mf3: Aux[Eff, Coll, Err, Input, Output3, Encoding3]
   )(merge: (Output1, Output2, Output3) => Output = (_: Output1, _: Output2, _: Output3))(
-    implicit appErr: MonadError[Eff, Err]
+      implicit appErr: MonadError[Eff, Err]
   ): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
-    combineResults(mf1, mf2, mf3) {
-      (outs1, outs2, outs3) =>
-        /* here we only traverse a single output collection, assuming that the others will share the same "keys" (i.e. first element in the tuple)
-         * and using them as maps for faster match, instead of doing a linear search each time.
-         * We take advantage of the generic conversion from Traverse to list and then to a scala Map
-         */
-        val (lookup2, lookup3) = (outs2.toList.toMap, outs3.toList.toMap)
-        outs1.mapFilter {
-          case (in, out1) =>
-            for {
-              out2 <- lookup2.get(in)
-              out3 <- lookup3.get(in)
-            } yield (in, merge(out1, out2, out3))
-        }
+    combineResults(mf1, mf2, mf3) { (outs1, outs2, outs3) =>
+      /* here we only traverse a single output collection, assuming that the others will share the same "keys" (i.e. first element in the tuple)
+       * and using them as maps for faster match, instead of doing a linear search each time.
+       * We take advantage of the generic conversion from Traverse to list and then to a scala Map
+       */
+      val (lookup2, lookup3) = (outs2.toList.toMap, outs3.toList.toMap)
+      outs1.mapFilter {
+        case (in, out1) =>
+          for {
+            out2 <- lookup2.get(in)
+            out3 <- lookup3.get(in)
+          } yield (in, merge(out1, out2, out3))
+      }
     }
 
   /** Combines two DataFetchers acting on the same inputs to get an arbitrary combination of the outputs,
@@ -199,11 +200,11 @@ object DataFetcher {
     *
     * For an example refer to `combineResults` with three arguments, and consider the equivalent for two.
     */
-  def combineResults[Eff[_]: Monad, Coll[_] : Traverse, Err, Input, Encoding1, Encoding2, Output1, Output2, Output](
-    mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
-    mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
+  def combineResults[Eff[_]: Monad, Coll[_]: Traverse, Err, Input, Encoding1, Encoding2, Output1, Output2, Output](
+      mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
+      mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
   )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)]) => Coll[(Input, Output)])(
-    implicit appErr: MonadError[Eff, Err]
+      implicit appErr: MonadError[Eff, Err]
   ): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     (mf1.fetch).product(mf2.fetch).map(combine.tupled)
 
@@ -217,14 +218,14 @@ object DataFetcher {
     * The difference with merge is that we combine three whole traversables (e.g. Lists), containing the "hash to value" pairs, instead
     * of merging each element with matching input `I` into a single traversable of outputs
     */
-  def combineResults[Eff[_]: Monad , Coll[_] : Traverse: FunctorFilter, Err, Input, Encoding1, Encoding2, Encoding3, Output1, Output2, Output3, Output](
-    mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
-    mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2],
-    mf3: Aux[Eff, Coll, Err, Input, Output3, Encoding3]
+  def combineResults[Eff[_]: Monad, Coll[_]: Traverse: FunctorFilter, Err, Input, Encoding1, Encoding2, Encoding3, Output1, Output2, Output3, Output](
+      mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
+      mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2],
+      mf3: Aux[Eff, Coll, Err, Input, Output3, Encoding3]
   )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)], Coll[(Input, Output3)]) => Coll[(Input, Output)])(
-    implicit appErr: MonadError[Eff, Err]
+      implicit appErr: MonadError[Eff, Err]
   ): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
-    Apply[({type L[a] = Kleisli[Eff, Coll[Input], a]})#L].tuple3(mf1.fetch, mf2.fetch, mf3.fetch).map(combine.tupled)
+    Apply[({ type L[a] = Kleisli[Eff, Coll[Input], a] })#L].tuple3(mf1.fetch, mf2.fetch, mf3.fetch).map(combine.tupled)
 
   /** Allows to add an additional decoder to a "multi-fetch" instance, by providing an extension method `decodeAlso(additionalDecode)`,
     * subject to `Eff` having a `cats.Apply` instance.
@@ -232,11 +233,13 @@ object DataFetcher {
     */
   object Syntax {
 
-    implicit class DataFetchOps[Eff[_], Coll[_], Err, Input, Output, Encoding](m: Aux[Eff, Coll, Err, Input, Output, Encoding]) {
+    implicit class DataFetchOps[Eff[_], Coll[_], Err, Input, Output, Encoding](
+        m: Aux[Eff, Coll, Err, Input, Output, Encoding]
+    ) {
       def decodeAlso[Output2](
-        additionalDecode: Kleisli[Eff, Encoding, Output2]
+          additionalDecode: Kleisli[Eff, Encoding, Output2]
       )(
-        implicit app: Apply[Eff]
+          implicit app: Apply[Eff]
       ): Aux[Eff, Coll, Err, Input, (Output, Output2), Encoding] =
         addDecoding(m, additionalDecode)
     }

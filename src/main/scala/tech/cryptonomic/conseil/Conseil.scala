@@ -22,11 +22,16 @@ import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOper
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
+object Conseil
+    extends App
+    with LazyLogging
+    with EnableCORSDirectives
+    with ConseilAppConfig
+    with FailFastCirceSupport
+    with ConseilOutput {
 
   loadApplicationConfiguration(args) match {
     case Right((server, platforms, securityApi, verbose)) =>
-
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
           provide(apiKey)
@@ -46,46 +51,48 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       val attributesCache = MVar[IO].empty[Map[String, (Long, List[Attribute])]].unsafeRunSync()
       val entitiesCache = MVar[IO].empty[(Long, List[Entity])].unsafeRunSync()
       lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, server.cacheTTL)(executionContext)
+        TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, server.cacheTTL)(
+          executionContext
+        )
 
       tezosPlatformDiscoveryOperations.init().onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
-        case Success(_) => logger.info("Pre-caching successful!")
+        case Success(_)         => logger.info("Pre-caching successful!")
       }
       lazy val platformDiscovery = PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
       val route = cors() {
-        enableCORS {
-          validateApiKey { _ =>
-            logRequest("Conseil", Logging.DebugLevel) {
-              tezos.route ~
-              AppInfo.route
+          enableCORS {
+            validateApiKey { _ =>
+              logRequest("Conseil", Logging.DebugLevel) {
+                tezos.route ~
+                  AppInfo.route
+              } ~
+                logRequest("Metadata Route", Logging.DebugLevel) {
+                  platformDiscovery.route
+                } ~
+                logRequest("Data Route", Logging.DebugLevel) {
+                  data.getRoute ~ data.postRoute
+                }
             } ~
-            logRequest("Metadata Route", Logging.DebugLevel) {
-              platformDiscovery.route
-            } ~
-            logRequest("Data Route", Logging.DebugLevel) {
-              data.getRoute ~ data.postRoute
-            }
-          } ~
-          options {
-            // Support for CORS pre-flight checks.
-            complete("Supported methods : GET and POST.")
+              options {
+                // Support for CORS pre-flight checks.
+                complete("Supported methods : GET and POST.")
+              }
           }
-        }
-      } ~
-      pathPrefix("docs") {
-        pathEndOrSingleSlash {
-          getFromResource("web/index.html")
-        }
-      } ~
-      pathPrefix("swagger-ui") {
-        getFromResourceDirectory("web/swagger-ui/")
-      } ~
-      path("openapi.json") {
-        complete(OpenApiDoc.openapiJson)
-      }
+        } ~
+            pathPrefix("docs") {
+              pathEndOrSingleSlash {
+                getFromResource("web/index.html")
+              }
+            } ~
+            pathPrefix("swagger-ui") {
+              getFromResourceDirectory("web/swagger-ui/")
+            } ~
+            path("openapi.json") {
+              complete(OpenApiDoc.openapiJson)
+            }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       displayInfo(server)
@@ -98,8 +105,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(errors)
-    =>
+    case Left(errors) =>
     //nothing to do
   }
 

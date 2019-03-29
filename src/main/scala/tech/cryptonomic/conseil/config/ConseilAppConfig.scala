@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.config
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.config.Security._
 import pureconfig.generic.auto._
-import pureconfig.{ConfigReader, loadConfig}
+import pureconfig.{loadConfig, ConfigReader}
 import pureconfig.error.ConfigReaderFailures
 import scopt.OptionParser
 
@@ -11,6 +11,7 @@ import scopt.OptionParser
 trait ConseilAppConfig {
 
   type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, VerboseOutput)
+
   /** Lazily reads all configuration upstart, will print all errors encountered during loading */
   private val argsParser = new OptionParser[VerboseOutput]("conseil") {
     opt[Unit]('v', "verbose")
@@ -38,9 +39,8 @@ trait ConseilAppConfig {
     } yield (server, platforms, securityApi, verbose)
 
     //something went wrong
-    loadedConf.left.foreach {
-      failures =>
-        printConfigurationError(context = "Conseil application", failures.toList.mkString("\n\n"))
+    loadedConf.left.foreach { failures =>
+      printConfigurationError(context = "Conseil application", failures.toList.mkString("\n\n"))
     }
     loadedConf
 

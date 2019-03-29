@@ -14,8 +14,8 @@ object CollectionOps {
   def groupByKey[K, V](pairedSeq: Seq[(K, V)]): Map[K, Seq[V]] =
     pairedSeq.groupBy {
       case (k, v) => k
-    }.mapValues {
-      pairs => pairs.map {
+    }.mapValues { pairs =>
+      pairs.map {
         case (k, vs) => vs
       }
     }
@@ -28,14 +28,12 @@ object CollectionOps {
   /**
     * allows to apply a function on collection boundaries, if they're available
     */
-  def applyOnBounds[T, R, Coll[A] <: TraversableLike[A, _]](list: Coll[T])(function: (T, T) => R): Option[R] = {
+  def applyOnBounds[T, R, Coll[A] <: TraversableLike[A, _]](list: Coll[T])(function: (T, T) => R): Option[R] =
     function.pure[Option].ap2(list.headOption, list.lastOption)
-  }
 
   /** allows operating on collecition boundaries as an extension method */
   implicit class BoundedAppication[T, R, Coll[A] <: TraversableLike[A, _]](list: Coll[T]) {
     def onBounds(f: (T, T) => R): Option[R] = applyOnBounds(list)(f)
   }
-
 
 }

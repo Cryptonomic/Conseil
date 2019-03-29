@@ -42,10 +42,10 @@ object Tezos {
     "publicKey".as[String],
     "privateKey".as[String],
     "publicKeyHash".as[String]
-  ).tflatMap{
+  ).tflatMap {
     case (publicKey, privateKey, publicKeyHash) =>
-    val keyStore = KeyStore(publicKey = publicKey, privateKey = privateKey, publicKeyHash = publicKeyHash)
-    provide(keyStore)
+      val keyStore = KeyStore(publicKey = publicKey, privateKey = privateKey, publicKeyHash = publicKeyHash)
+      provide(keyStore)
   }
 
 }
@@ -57,9 +57,13 @@ object Tezos {
   * several Api Operations, based on database querying
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class Tezos(implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering
-  with TezosEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities with DataHelpers {
-
+class Tezos(implicit apiExecutionContext: ExecutionContext)
+    extends LazyLogging
+    with DatabaseApiFiltering
+    with TezosEndpoints
+    with akkahttp.server.Endpoints
+    with akkahttp.server.JsonSchemaEntities
+    with DataHelpers {
 
   /*
    * reuse the same context as the one for ApiOperations calls

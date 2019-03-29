@@ -32,7 +32,6 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
   implicit def queryOutputSchema: JsonSchema[OutputType.Value] =
     enumeration(OutputType.values.toSeq)(_.toString)
 
-
   /** Timestamp schema */
   implicit def timestampSchema: JsonSchema[java.sql.Timestamp]
 

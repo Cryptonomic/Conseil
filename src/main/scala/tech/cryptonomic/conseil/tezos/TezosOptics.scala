@@ -22,13 +22,13 @@ object TezosOptics {
     val metadataType = GenPrism[BlockMetadata, BlockHeaderMetadata]
     val metadataBalances = GenLens[BlockHeaderMetadata](_.balance_updates)
 
-
     /** An optional lens allowing to reach into balances for blocks' metadata */
     val blockBalances: Optional[Block, List[BalanceUpdate]] =
       blockData composeLens metadata composePrism metadataType composeLens metadataBalances
 
     /** a function to set the header timestamp for a block, returning the modified block */
     val setTimestamp: ZonedDateTime => Block => Block = blockData composeLens dataHeader composeLens headerTimestamp set _
+
     /** a function to set metadata balance updates in a block, returning the modified block */
     val setBalances: List[BalanceUpdate] => Block => Block = blockBalances set _
   }

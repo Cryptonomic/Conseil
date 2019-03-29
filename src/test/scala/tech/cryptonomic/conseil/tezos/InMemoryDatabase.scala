@@ -19,10 +19,13 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
 
   /** how to name the database schema for the test */
   protected val databaseName = "conseil-test"
+
   /** port to use, try to avoid conflicting usage */
   protected val databasePort = 5433
+
   /** here are temp files for the embedded process, can wipe out if needed */
   protected val cachedRuntimePath = Paths.get("test-postgres-path")
+
   /** defines configuration for a randomly named embedded instance */
   protected val confString =
     s"""conseildb = {
@@ -50,7 +53,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   lazy val dbHandler: Database = Database.forConfig("conseildb", config = ConfigFactory.parseString(confString))
 
   //keep in mind that this is sorted to preserve key consistency
-  protected val allTables= Seq(
+  protected val allTables = Seq(
     Tables.Blocks,
     Tables.OperationGroups,
     Tables.Operations,
@@ -85,7 +88,8 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
       EmbeddedPostgres.DEFAULT_USER,
       EmbeddedPostgres.DEFAULT_PASSWORD,
       pgInitParams.asJava,
-      pgConfigs.asJava)
+      pgConfigs.asJava
+    )
     Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
 

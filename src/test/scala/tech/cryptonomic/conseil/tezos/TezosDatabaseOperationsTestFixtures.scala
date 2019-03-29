@@ -17,39 +17,40 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val rnd = new Random(randomSeed.seed)
 
-    (1 to howMany).map {
-      current =>
-        val low = rnd.nextInt(10)
-        val medium = rnd.nextInt(10) + 10
-        val high = rnd.nextInt(10) + 20
-        AverageFees(
-          low = low,
-          medium = medium,
-          high = high,
-          timestamp = new Timestamp(startAt.getTime + current),
-          kind = "kind"
-        )
+    (1 to howMany).map { current =>
+      val low = rnd.nextInt(10)
+      val medium = rnd.nextInt(10) + 10
+      val high = rnd.nextInt(10) + 20
+      AverageFees(
+        low = low,
+        medium = medium,
+        high = high,
+        timestamp = new Timestamp(startAt.getTime + current),
+        kind = "kind"
+      )
     }.toList
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
+  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(
+      implicit randomSeed: RandomSeed
+  ): BlockAccounts = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
 
-    val accounts = (1 to howMany).map {
-      currentId =>
-        (AccountId(String valueOf currentId),
-          Account(
-            manager = PublicKeyHash("manager"),
-            balance = rnd.nextInt,
-            spendable = true,
-            delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
-            script = Some(AccountScript("script")),
-            counter = currentId
-          )
+    val accounts = (1 to howMany).map { currentId =>
+      (
+        AccountId(String valueOf currentId),
+        Account(
+          manager = PublicKeyHash("manager"),
+          balance = rnd.nextInt,
+          spendable = true,
+          delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
+          script = Some(AccountScript("script")),
+          counter = currentId
         )
+      )
     }.toMap
 
     BlockAccounts(blockHash, blockLevel, accounts)
@@ -57,7 +58,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly populate a number of blocks based on a level range */
   def generateBlocks(toLevel: Int, startAt: ZonedDateTime)(implicit randomSeed: RandomSeed): List[Block] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
+    require(
+      toLevel > 0,
+      "the test can generate blocks up to a positive chain level, you asked for a non positive value"
+    )
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
@@ -68,15 +72,16 @@ trait TezosDataGeneration extends RandomGenerationKit {
     //fix a seed generator and provides a generation function
     val randomMetadataLevel = {
       val rnd = new Random(randomSeed.seed)
-      () => BlockHeaderMetadataLevel(
-        level = rnd.nextInt(),
-        level_position = rnd.nextInt(),
-        cycle = rnd.nextInt(),
-        cycle_position = rnd.nextInt(),
-        voting_period = rnd.nextInt(),
-        voting_period_position = rnd.nextInt(),
-        expected_commitment = rnd.nextBoolean()
-      )
+      () =>
+        BlockHeaderMetadataLevel(
+          level = rnd.nextInt(),
+          level_position = rnd.nextInt(),
+          cycle = rnd.nextInt(),
+          cycle_position = rnd.nextInt(),
+          voting_period = rnd.nextInt(),
+          voting_period_position = rnd.nextInt(),
+          expected_commitment = rnd.nextBoolean()
+        )
     }
 
     def generateOne(level: Int, predecessorHash: BlockHash, genesis: Boolean = false): Block =
@@ -98,14 +103,15 @@ trait TezosDataGeneration extends RandomGenerationKit {
           ),
           metadata =
             if (genesis) GenesisMetadata
-            else BlockHeaderMetadata(
-              balance_updates = List.empty,
-              baker = PublicKeyHash(generateHash(10)),
-              voting_period_kind = VotingPeriod.proposal,
-              nonce_hash = Some(NonceHash(generateHash(10))),
-              consumed_gas = PositiveDecimal(0),
-              level = randomMetadataLevel()
-            )
+            else
+              BlockHeaderMetadata(
+                balance_updates = List.empty,
+                baker = PublicKeyHash(generateHash(10)),
+                voting_period_kind = VotingPeriod.proposal,
+                nonce_hash = Some(NonceHash(generateHash(10))),
+                consumed_gas = PositiveDecimal(0),
+                level = randomMetadataLevel()
+              )
         ),
         operationGroups = List.empty,
         votes = CurrentVotes.empty
@@ -115,18 +121,24 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val genesis = generateOne(0, BlockHash("genesis"), true)
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.data.hash)
-        currentBlock :: chain
-    }.reverse
+    (1 to toLevel)
+      .foldLeft(List(genesis)) {
+        case (chain, lvl) =>
+          val currentBlock = generateOne(lvl, chain.head.data.hash)
+          currentBlock :: chain
+      }
+      .reverse
 
   }
 
   /** Randomly geneates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
-  def generateSingleBlock(atLevel: Int, atTime: ZonedDateTime, balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty)(implicit randomSeed: RandomSeed): Block = {
+  def generateSingleBlock(
+      atLevel: Int,
+      atTime: ZonedDateTime,
+      balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty
+  )(implicit randomSeed: RandomSeed): Block = {
     import TezosOptics.Blocks._
     import mouse.any._
 
@@ -136,7 +148,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   def generateBalanceUpdates(howMany: Int)(implicit randomSeed: RandomSeed): List[OperationMetadata.BalanceUpdate] = {
-    require(howMany > 0, "the test can only generate a positive number of balance updates, you asked for a non positive value")
+    require(
+      howMany > 0,
+      "the test can only generate a positive number of balance updates, you asked for a non positive value"
+    )
 
     val randomSource = new Random(randomSeed.seed)
 
@@ -158,7 +173,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly populate a number of blocks based on a level range */
   def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
+    require(
+      toLevel > 0,
+      "the test can generate blocks up to a positive chain level, you asked for a non positive value"
+    )
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
@@ -170,40 +188,44 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     def generateOne(level: Int, predecessorHash: String): BlocksRow =
       BlocksRow(
-      level = level,
-      proto = 1,
-      predecessor = predecessorHash,
-      timestamp = new Timestamp(startMillis + level),
-      validationPass = 0,
-      fitness = "fitness",
-      protocol = "protocol",
-      context = Some(s"context$level"),
-      signature = Some(s"sig${generateHash(10)}"),
-      chainId = Some(chainHash),
-      hash = generateHash(10),
-      operationsHash = Some(generateHash(10)),
-      periodKind = Some("period_kind"),
-      currentExpectedQuorum = Some(1000),
-      activeProposal = None,
-      baker = Some(generateHash(10)),
-      nonceHash = Some(generateHash(10)),
-      consumedGas = Some(0)
-    )
+        level = level,
+        proto = 1,
+        predecessor = predecessorHash,
+        timestamp = new Timestamp(startMillis + level),
+        validationPass = 0,
+        fitness = "fitness",
+        protocol = "protocol",
+        context = Some(s"context$level"),
+        signature = Some(s"sig${generateHash(10)}"),
+        chainId = Some(chainHash),
+        hash = generateHash(10),
+        operationsHash = Some(generateHash(10)),
+        periodKind = Some("period_kind"),
+        currentExpectedQuorum = Some(1000),
+        activeProposal = None,
+        baker = Some(generateHash(10)),
+        nonceHash = Some(generateHash(10)),
+        consumedGas = Some(0)
+      )
 
-      //we need somewhere to start with
-    val genesis = generateOne(0,"genesis")
+    //we need somewhere to start with
+    val genesis = generateOne(0, "genesis")
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.hash)
-        currentBlock :: chain
-    }.reverse
+    (1 to toLevel)
+      .foldLeft(List(genesis)) {
+        case (chain, lvl) =>
+          val currentBlock = generateOne(lvl, chain.head.hash)
+          currentBlock :: chain
+      }
+      .reverse
 
   }
 
   /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  def generateOperationGroup(block: Block, generateOperations: Boolean)(implicit randomSeed: RandomSeed): OperationsGroup = {
+  def generateOperationGroup(block: Block, generateOperations: Boolean)(
+      implicit randomSeed: RandomSeed
+  ): OperationsGroup = {
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
@@ -219,27 +241,35 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* create an empty operation group for each block passed in, using random values */
-  def generateOperationGroupRows(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
+  def generateOperationGroupRows(
+      blocks: BlocksRow*
+  )(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
     require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
 
     //custom hash generator with predictable seed
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
-    blocks.map(
-      block =>
-        Tables.OperationGroupsRow(
-          protocol = "protocol",
-          chainId = block.chainId,
-          hash = generateHash(10),
-          branch = generateHash(10),
-          signature = Some(s"sig${generateHash(10)}"),
-          blockId = block.hash
-        )
-    ).toList
+    blocks
+      .map(
+        block =>
+          Tables.OperationGroupsRow(
+            protocol = "protocol",
+            chainId = block.chainId,
+            hash = generateHash(10),
+            branch = generateHash(10),
+            signature = Some(s"sig${generateHash(10)}"),
+            blockId = block.hash
+          )
+      )
+      .toList
   }
 
   /* create operations related to a specific group, with random data */
-  def generateOperationsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
+  def generateOperationsForGroup(
+      block: BlocksRow,
+      group: OperationGroupsRow,
+      howMany: Int = 3
+  ): List[Tables.OperationsRow] =
     List.fill(howMany) {
       Tables.OperationsRow(
         kind = "operation-kind",
@@ -253,11 +283,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     }
 
   /* create operation rows to hold the given fees */
-  def wrapFeesWithOperations(
-    fees: Seq[Option[BigDecimal]],
-    block: BlocksRow,
-    group: OperationGroupsRow) = {
-
+  def wrapFeesWithOperations(fees: Seq[Option[BigDecimal]], block: BlocksRow, group: OperationGroupsRow) =
     fees.zipWithIndex.map {
       case (fee, index) =>
         Tables.OperationsRow(
@@ -272,25 +298,22 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }
 
-  }
-
   /* randomly generates a number of account rows for some block */
   def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
     require(howMany > 0, "the test can only generate a positive number of accounts, you asked for a non positive value")
 
-    (1 to howMany).map {
-      currentId =>
-        AccountsRow(
-          accountId = String valueOf currentId,
-          blockId = block.hash,
-          manager = "manager",
-          spendable = true,
-          delegateSetable = false,
-          delegateValue = None,
-          counter = 0,
-          script = None,
-          balance = 0
-        )
+    (1 to howMany).map { currentId =>
+      AccountsRow(
+        accountId = String valueOf currentId,
+        blockId = block.hash,
+        manager = "manager",
+        spendable = true,
+        delegateSetable = false,
+        delegateValue = None,
+        counter = 0,
+        script = None,
+        balance = 0
+      )
     }.toList
 
   }
@@ -300,7 +323,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
     import tech.cryptonomic.conseil.tezos.TezosTypes.Voting._
 
     def generateProposals(howMany: Int, forBlock: Block)(implicit randomSeed: RandomSeed) = {
-      require(howMany > 0, "the test can only generate a positive number of proposals, you asked for a non positive value")
+      require(
+        howMany > 0,
+        "the test can only generate a positive number of proposals, you asked for a non positive value"
+      )
 
       //custom hash generator with predictable seed
       val randomGen = new Random(randomSeed.seed)
@@ -309,13 +335,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
       //prefill the count of protocols for each Proposal (at least one each)
       val protocolCounts = Array.fill(howMany)(1 + randomGen.nextInt(4))
 
-      List.tabulate(howMany) {
-        current =>
-          val protocols = List.fill(protocolCounts(current))(ProtocolId(generateHash(10)))
-          Proposal(
-            protocols = protocols,
-            block = forBlock
-          )
+      List.tabulate(howMany) { current =>
+        val protocols = List.fill(protocolCounts(current))(ProtocolId(generateHash(10)))
+        Proposal(
+          protocols = protocols,
+          block = forBlock
+        )
       }
 
     }
@@ -330,15 +355,17 @@ trait TezosDataGeneration extends RandomGenerationKit {
       //prefill the rolls
       val rolls = Array.fill(howMany)(randomGen.nextInt(1000))
 
-      List.tabulate(howMany) {
-        current =>
-          BakerRolls(pkh = PublicKeyHash(generateHash(10)), rolls = rolls(current))
+      List.tabulate(howMany) { current =>
+        BakerRolls(pkh = PublicKeyHash(generateHash(10)), rolls = rolls(current))
       }
 
     }
 
     def generateBallots(howMany: Int)(implicit randomSeed: RandomSeed) = {
-      require(howMany > 0, "the test can only generate a positive number of ballots, you asked for a non positive value")
+      require(
+        howMany > 0,
+        "the test can only generate a positive number of ballots, you asked for a non positive value"
+      )
 
       val knownVotes = Array("yay", "nay", "pass")
 
@@ -351,9 +378,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       //prefill the votes
       val votes = Array.fill(howMany)(randomVote())
 
-      List.tabulate(howMany) {
-        current =>
-          Ballot(pkh = PublicKeyHash(generateHash(10)), ballot = Vote(votes(current)))
+      List.tabulate(howMany) { current =>
+        Ballot(pkh = PublicKeyHash(generateHash(10)), ballot = Vote(votes(current)))
       }
 
     }
@@ -366,7 +392,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleScriptedContract =
       Scripted.Contracts(
-        code = Micheline("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
+        code = Micheline(
+          """[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""
+        ),
         storage = Micheline("""{"string":"hello"}""")
       )
 
@@ -374,7 +402,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       Endorsement(
         level = 182308,
         metadata = EndorsementMetadata(
-          slots =List(29, 27, 20, 17),
+          slots = List(29, 27, 20, 17),
           delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
           balance_updates = List(
             BalanceUpdate(
@@ -449,33 +477,31 @@ trait TezosDataGeneration extends RandomGenerationKit {
         gas_limit = PositiveDecimal(10000),
         storage_limit = PositiveDecimal(257),
         public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
-        metadata =
-          ResultMetadata[OperationResult.Reveal](
-            balance_updates = List(
-              BalanceUpdate(
-                kind = "contract",
-                contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
-                change = -10000L,
-                category = None,
-                delegate = None,
-                level = None
-              ),
-              BalanceUpdate(
-                kind = "freezer",
-                category = Some("fees"),
-                delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-                level = Some(1561),
-                change = 10000L,
-                contract = None
-              )
+        metadata = ResultMetadata[OperationResult.Reveal](
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
+              change = -10000L,
+              category = None,
+              delegate = None,
+              level = None
             ),
-            operation_result =
-              OperationResult.Reveal(
-                status = "applied",
-                consumed_gas = Some(Decimal(10000)),
-                errors = None
-              )
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1561),
+              change = 10000L,
+              contract = None
+            )
+          ),
+          operation_result = OperationResult.Reveal(
+            status = "applied",
+            consumed_gas = Some(Decimal(10000)),
+            errors = None
           )
+        )
       )
 
     val sampleTransaction =
@@ -507,91 +533,91 @@ trait TezosDataGeneration extends RandomGenerationKit {
               contract = None
             )
           ),
-          operation_result =
-            OperationResult.Transaction(
-              status = "applied",
-              storage = Some(Micheline("""{"string":"world"}""")),
-              consumed_gas = Some(Decimal(11375)),
-              storage_size = Some(Decimal(46)),
-              allocated_destination_contract = None,
-              balance_updates = None,
-              big_map_diff = None,
-              originated_contracts = None,
-              paid_storage_size_diff = None,
-              errors = None
-            )
-        )
-    )
-
-  val sampleOrigination =
-    Origination(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
-      fee = PositiveDecimal(1441),
-      counter = PositiveDecimal(407941),
-      gas_limit = PositiveDecimal(11362),
-      storage_limit = PositiveDecimal(323),
-      manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
-      balance = PositiveDecimal(1000000),
-      spendable = Some(false),
-      delegatable = Some(false),
-      delegate = None,
-      script = Some(sampleScriptedContract),
-      metadata = ResultMetadata(
-        balance_updates = List(
-          BalanceUpdate(
-            kind = "contract",
-            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-            change = -1441L,
-            category = None,
-            delegate = None,
-            level = None
-          ),
-          BalanceUpdate(
-            kind = "freezer",
-            category = Some("fees"),
-            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-            level = Some(1583),
-            change = 1441L,
-            contract = None
-          )
-        ),
-        operation_result =
-          OperationResult.Origination(
+          operation_result = OperationResult.Transaction(
             status = "applied",
-            balance_updates = Some(List(
-              BalanceUpdate(
-                kind = "contract",
-                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                change = -46000L,
-                category = None,
-                delegate = None,
-                level = None
-              ),
-              BalanceUpdate(
-                kind = "contract",
-                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                change = -257000L,
-                category = None,
-                delegate = None,
-                level = None
-              ),
-              BalanceUpdate(
-                kind = "contract",
-                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-                change = -1000000L,
-                category = None,
-                delegate = None,
-                level = None
-              ),
-              BalanceUpdate(
-                kind = "contract",
-                contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
-                change = 1000000L,
-                category = None,
-                delegate = None,
-                level = None
+            storage = Some(Micheline("""{"string":"world"}""")),
+            consumed_gas = Some(Decimal(11375)),
+            storage_size = Some(Decimal(46)),
+            allocated_destination_contract = None,
+            balance_updates = None,
+            big_map_diff = None,
+            originated_contracts = None,
+            paid_storage_size_diff = None,
+            errors = None
+          )
+        )
+      )
+
+    val sampleOrigination =
+      Origination(
+        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        fee = PositiveDecimal(1441),
+        counter = PositiveDecimal(407941),
+        gas_limit = PositiveDecimal(11362),
+        storage_limit = PositiveDecimal(323),
+        manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        balance = PositiveDecimal(1000000),
+        spendable = Some(false),
+        delegatable = Some(false),
+        delegate = None,
+        script = Some(sampleScriptedContract),
+        metadata = ResultMetadata(
+          balance_updates = List(
+            BalanceUpdate(
+              kind = "contract",
+              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+              change = -1441L,
+              category = None,
+              delegate = None,
+              level = None
+            ),
+            BalanceUpdate(
+              kind = "freezer",
+              category = Some("fees"),
+              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+              level = Some(1583),
+              change = 1441L,
+              contract = None
+            )
+          ),
+          operation_result = OperationResult.Origination(
+            status = "applied",
+            balance_updates = Some(
+              List(
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                  change = -46000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                  change = -257000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                  change = -1000000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                ),
+                BalanceUpdate(
+                  kind = "contract",
+                  contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
+                  change = 1000000L,
+                  category = None,
+                  delegate = None,
+                  level = None
+                )
               )
-            )),
+            ),
             originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
             consumed_gas = Some(Decimal(11262)),
             storage_size = Some(Decimal(46)),
@@ -628,18 +654,17 @@ trait TezosDataGeneration extends RandomGenerationKit {
               contract = None
             )
           ),
-          operation_result =
-            OperationResult.Delegation(
-              status = "applied",
-              consumed_gas = Some(Decimal(10000)),
-              errors = None
-            )
+          operation_result = OperationResult.Delegation(
+            status = "applied",
+            consumed_gas = Some(Decimal(10000)),
+            errors = None
+          )
         )
       )
 
     val sampleOperations =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-        DoubleEndorsementEvidence :: DoubleBakingEvidence :: Proposals :: Ballot :: Nil
+          DoubleEndorsementEvidence :: DoubleBakingEvidence :: Proposals :: Ballot :: Nil
 
   }
 

@@ -14,7 +14,9 @@ import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(platforms: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+  def apply(platforms: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(
+      implicit apiExecutionContext: ExecutionContext
+  ): PlatformDiscovery =
     new PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(apiExecutionContext)
 }
 
@@ -24,8 +26,14 @@ object PlatformDiscovery {
   * @param config              configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
+class PlatformDiscovery(
+    config: PlatformsConfiguration,
+    tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
+)(implicit apiExecutionContext: ExecutionContext)
+    extends LazyLogging
+    with PlatformDiscoveryEndpoints
+    with akkahttp.server.Endpoints
+    with akkahttp.server.JsonSchemaEntities {
 
   /** Metadata route implementation for platforms endpoint */
   private val platformsRoute = platformsEndpoint.implementedBy(_ => ConfigUtil.getPlatforms(config))

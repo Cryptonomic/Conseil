@@ -18,7 +18,7 @@ object CsvConversions {
     val values = from.map { values =>
       values.values.map {
         case Some(value) => value
-        case None => "null"
+        case None        => "null"
       }.mkString(",")
     }
     (headers :: values).mkString("\n")

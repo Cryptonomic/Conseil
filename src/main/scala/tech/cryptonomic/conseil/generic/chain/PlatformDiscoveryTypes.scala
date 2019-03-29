@@ -27,12 +27,12 @@ object PlatformDiscoveryTypes {
 
   /** Case class representing single attribute of given entity from DB */
   final case class Attribute(
-    name: String,
-    displayName: String,
-    @JsonScalaEnumeration(classOf[DataTypeRef]) dataType: DataType,
-    cardinality: Option[Int],
-    @JsonScalaEnumeration(classOf[KeyTypeRef]) keyType: KeyType,
-    entity: String
+      name: String,
+      displayName: String,
+      @JsonScalaEnumeration(classOf[DataTypeRef]) dataType: DataType,
+      cardinality: Option[Int],
+      @JsonScalaEnumeration(classOf[KeyTypeRef]) keyType: KeyType,
+      entity: String
   )
 
   /** Enumeration of data types */

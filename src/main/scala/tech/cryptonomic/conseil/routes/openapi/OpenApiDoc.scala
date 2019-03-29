@@ -8,13 +8,14 @@ import io.circe.Json
 import io.circe.syntax._
 
 /** OpenAPI documentation object */
-object OpenApiDoc extends DataEndpoints
-  with PlatformDiscoveryEndpoints
-  with TezosEndpoints
-  with AppInfoEndpoint
-  with openapi.Endpoints
-  with openapi.JsonSchemaEntities
-  with openapi.BasicAuthentication {
+object OpenApiDoc
+    extends DataEndpoints
+    with PlatformDiscoveryEndpoints
+    with TezosEndpoints
+    with AppInfoEndpoint
+    with openapi.Endpoints
+    with openapi.JsonSchemaEntities
+    with openapi.BasicAuthentication {
 
   /** OpenAPI JSON */
   def openapiJson: Json =
@@ -53,45 +54,53 @@ object OpenApiDoc extends DataEndpoints
   /** Function for validation definition in documentation which appends DocumentedResponse to the list of possible results from the query.
     * In this case if query fails to validate it will return 400 Bad Request.
     * */
-  override def validated[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
+  override def validated[A](
+      response: List[OpenApiDoc.DocumentedResponse],
+      invalidDocs: Documentation
+  ): List[OpenApiDoc.DocumentedResponse] =
     response :+ OpenApiDoc.DocumentedResponse(
-      status = 400,
-      documentation = invalidDocs.getOrElse(""),
-      content = Map(
-        "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString)))
-      )
-    ) :+ OpenApiDoc.DocumentedResponse(
-      status = 200,
-      documentation = invalidDocs.getOrElse(""),
-      content = Map(
-        "application/json" -> MediaType(None),
-        "text/csv" -> MediaType(None)
-      )
-    )
+          status = 400,
+          documentation = invalidDocs.getOrElse(""),
+          content = Map(
+            "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString)))
+          )
+        ) :+ OpenApiDoc.DocumentedResponse(
+          status = 200,
+          documentation = invalidDocs.getOrElse(""),
+          content = Map(
+            "application/json" -> MediaType(None),
+            "text/csv" -> MediaType(None)
+          )
+        )
 
   /** Documented JSON schema for Any */
-  override implicit def anySchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
+  implicit override def anySchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
 
   /** Documented JSON schema for query response */
-  override implicit def queryResponseSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
+  implicit override def queryResponseSchema: DocumentedJsonSchema =
+    DocumentedJsonSchema.Primitive("Any - not yet supported")
 
   /** Documented query string for query string list */
-  override def qsList[A: QueryStringParam](name: String, docs: Option[String]): DocumentedQueryString = DocumentedQueryString(
-    List(
-      DocumentedParameter(name, required = false, docs, Schema.Array(implicitly[QueryStringParam[A]]))
+  override def qsList[A: QueryStringParam](name: String, docs: Option[String]): DocumentedQueryString =
+    DocumentedQueryString(
+      List(
+        DocumentedParameter(name, required = false, docs, Schema.Array(implicitly[QueryStringParam[A]]))
+      )
     )
-  )
 
   /** Documented query string for functor */
-  override implicit def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
-    override def map[From, To](f: OpenApiDoc.DocumentedQueryString)(map: From => To): OpenApiDoc.DocumentedQueryString = f
+  implicit override def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
+    override def map[From, To](f: OpenApiDoc.DocumentedQueryString)(map: From => To): OpenApiDoc.DocumentedQueryString =
+      f
   }
 
   /** Documented JSON schema for timestamp */
-  override implicit def timestampSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("integer")
+  implicit override def timestampSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("integer")
 
   /** Documented JSON schema for blocks by hash */
-  override implicit def blocksByHashSchema: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
+  implicit override def blocksByHashSchema: DocumentedJsonSchema =
+    DocumentedJsonSchema.Primitive("Any - not yet supported")
 
-  override implicit def queryResponseSchemaWithOutputType: OpenApiDoc.DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
+  implicit override def queryResponseSchemaWithOutputType: OpenApiDoc.DocumentedJsonSchema =
+    DocumentedJsonSchema.Primitive("Any - not yet supported")
 }

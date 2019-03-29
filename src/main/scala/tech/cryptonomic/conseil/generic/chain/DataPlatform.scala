@@ -14,11 +14,11 @@ object DataPlatform {
   *
   * @param operationsMap map of platformName -> QueryProtocolOperations
   * */
-
 class DataPlatform(operationsMap: Map[String, DataOperations]) {
   import cats.instances.future._
   import cats.instances.option._
   import cats.syntax.traverse._
+
   /** Interface method for querying with given predicates
     *
     * @param  platform name of the platform which we want to query
@@ -26,8 +26,8 @@ class DataPlatform(operationsMap: Map[String, DataOperations]) {
     * @param  query     query predicates and fields
     * @return query result as a option[map]
     * */
-  def queryWithPredicates(platform: String, tableName: String, query: Query)
-    (implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] = {
+  def queryWithPredicates(platform: String, tableName: String, query: Query)(
+      implicit ec: ExecutionContext
+  ): Future[Option[List[QueryResponse]]] =
     operationsMap.get(platform).map(_.queryWithPredicates(tableName, query)).sequence
-  }
 }

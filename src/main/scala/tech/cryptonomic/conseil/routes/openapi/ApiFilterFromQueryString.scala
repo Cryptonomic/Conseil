@@ -15,7 +15,7 @@ trait ApiFilterFromQueryString extends QueryStringLists { self: algebra.JsonSche
 
   /** Query params type alias */
   type QueryParams = (
-    Option[Int],
+      Option[Int],
       List[String],
       List[Int],
       List[String],
@@ -30,26 +30,26 @@ trait ApiFilterFromQueryString extends QueryStringLists { self: algebra.JsonSche
       List[String],
       Option[String],
       Option[String]
-    )
+  )
 
   /** Function for extracting query string with query params */
   private def filterQs: QueryString[QueryParams] = {
     val raw =
       optQs[Int]("limit") &
-        qsList[String]("blockIDs") &
-        qsList[Int]("levels") &
-        qsList[String]("chainIDs") &
-        qsList[String]("protocols") &
-        qsList[String]("operationGroupIDs") &
-        qsList[String]("operationSources") &
-        qsList[String]("operationDestinations") &
-        qsList[String]("operationParticipants") &
-        qsList[String]("operationKinds") &
-        qsList[String]("accountIDs") &
-        qsList[String]("accountManagers") &
-        qsList[String]("accountDelegates") &
-        optQs[String]("sortBy") &
-        optQs[String]("order")
+          qsList[String]("blockIDs") &
+          qsList[Int]("levels") &
+          qsList[String]("chainIDs") &
+          qsList[String]("protocols") &
+          qsList[String]("operationGroupIDs") &
+          qsList[String]("operationSources") &
+          qsList[String]("operationDestinations") &
+          qsList[String]("operationParticipants") &
+          qsList[String]("operationKinds") &
+          qsList[String]("accountIDs") &
+          qsList[String]("accountManagers") &
+          qsList[String]("accountDelegates") &
+          optQs[String]("sortBy") &
+          optQs[String]("order")
     raw map (flatten(_))
   }
 

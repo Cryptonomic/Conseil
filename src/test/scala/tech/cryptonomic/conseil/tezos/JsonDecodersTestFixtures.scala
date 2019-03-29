@@ -51,7 +51,7 @@ trait AccountsJsonData {
   )
 
   val accountScriptedJson =
-   s"""{
+    s"""{
     |  "balance": "2921522468",
     |  "counter": "0",
     |  "delegate": {
@@ -99,7 +99,9 @@ trait OperationsJsonData {
     |  ]
     |}""".stripMargin
 
-  val expectedMicheline = Micheline("""{"prim":"code","args":[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]}""")
+  val expectedMicheline = Micheline(
+    """{"prim":"code","args":[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]}"""
+  )
 
   val bigmapdiffJson =
     s"""{
@@ -162,7 +164,9 @@ trait OperationsJsonData {
 
   val expectedScript =
     Scripted.Contracts(
-      code = Micheline("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
+      code = Micheline(
+        """[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""
+      ),
       storage = Micheline("""{"string":"hello"}""")
     )
 
@@ -206,7 +210,7 @@ trait OperationsJsonData {
     Endorsement(
       level = 182308,
       metadata = EndorsementMetadata(
-        slots =List(29, 27, 20, 17),
+        slots = List(29, 27, 20, 17),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
         balance_updates = List(
           BalanceUpdate(
@@ -359,33 +363,31 @@ trait OperationsJsonData {
       gas_limit = PositiveDecimal(10000),
       storage_limit = PositiveDecimal(257),
       public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
-      metadata =
-        ResultMetadata[OperationResult.Reveal](
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
-              change = -10000L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-              level = Some(1561),
-              change = 10000L,
-              contract = None
-            )
+      metadata = ResultMetadata[OperationResult.Reveal](
+        balance_updates = List(
+          BalanceUpdate(
+            kind = "contract",
+            contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
+            change = -10000L,
+            category = None,
+            delegate = None,
+            level = None
           ),
-          operation_result =
-            OperationResult.Reveal(
-              status = "applied",
-              consumed_gas = Some(Decimal(10000)),
-              errors = None
-            )
+          BalanceUpdate(
+            kind = "freezer",
+            category = Some("fees"),
+            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+            level = Some(1561),
+            change = 10000L,
+            contract = None
+          )
+        ),
+        operation_result = OperationResult.Reveal(
+          status = "applied",
+          consumed_gas = Some(Decimal(10000)),
+          errors = None
         )
+      )
     )
 
   //used to check if internal errors are correctly decoded
@@ -433,33 +435,31 @@ trait OperationsJsonData {
       gas_limit = PositiveDecimal(100),
       storage_limit = PositiveDecimal(0),
       public_key = PublicKey("edpkuuNeGwDGBBGNdp7eEDUnb3tJKfhyxoo9A8GkDbdHEaPYYG8MJj"),
-      metadata =
-        ResultMetadata(
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf")),
-              change = -1300L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")),
-              level = Some(1567),
-              change = 1300L,
-              contract = None
-            )
+      metadata = ResultMetadata(
+        balance_updates = List(
+          BalanceUpdate(
+            kind = "contract",
+            contract = Some(ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf")),
+            change = -1300L,
+            category = None,
+            delegate = None,
+            level = None
           ),
-          operation_result =
-            OperationResult.Reveal(
-              status = "failed",
-              errors = Some(List(Error("""{"kind":"temporary","id":"proto.alpha.gas_exhausted.operation"}"""))),
-              consumed_gas = None
-            )
+          BalanceUpdate(
+            kind = "freezer",
+            category = Some("fees"),
+            delegate = Some(PublicKeyHash("tz1Ke2h7sDdakHJQh8WX4Z372du1KChsksyU")),
+            level = Some(1567),
+            change = 1300L,
+            contract = None
+          )
+        ),
+        operation_result = OperationResult.Reveal(
+          status = "failed",
+          errors = Some(List(Error("""{"kind":"temporary","id":"proto.alpha.gas_exhausted.operation"}"""))),
+          consumed_gas = None
         )
+      )
     )
 
   val transactionJson =
@@ -530,21 +530,20 @@ trait OperationsJsonData {
             contract = None
           )
         ),
-        operation_result =
-          OperationResult.Transaction(
-            status = "applied",
-            storage = Some(Micheline("""{"string":"world"}""")),
-            consumed_gas = Some(Decimal(11375)),
-            storage_size = Some(Decimal(46)),
-            allocated_destination_contract = None,
-            balance_updates = None,
-            big_map_diff = None,
-            originated_contracts = None,
-            paid_storage_size_diff = None,
-            errors = None
-          )
+        operation_result = OperationResult.Transaction(
+          status = "applied",
+          storage = Some(Micheline("""{"string":"world"}""")),
+          consumed_gas = Some(Decimal(11375)),
+          storage_size = Some(Decimal(46)),
+          allocated_destination_contract = None,
+          balance_updates = None,
+          big_map_diff = None,
+          originated_contracts = None,
+          paid_storage_size_diff = None,
+          errors = None
+        )
       )
-  )
+    )
 
   val originationJson =
     s"""{
@@ -640,10 +639,10 @@ trait OperationsJsonData {
             contract = None
           )
         ),
-        operation_result =
-          OperationResult.Origination(
-            status = "applied",
-            balance_updates = Some(List(
+        operation_result = OperationResult.Origination(
+          status = "applied",
+          balance_updates = Some(
+            List(
               BalanceUpdate(
                 kind = "contract",
                 contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
@@ -676,19 +675,20 @@ trait OperationsJsonData {
                 delegate = None,
                 level = None
               )
-            )),
-            originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
-            consumed_gas = Some(Decimal(11262)),
-            storage_size = Some(Decimal(46)),
-            paid_storage_size_diff = Some(Decimal(46)),
-            errors = None
-          )
+            )
+          ),
+          originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
+          consumed_gas = Some(Decimal(11262)),
+          storage_size = Some(Decimal(46)),
+          paid_storage_size_diff = Some(Decimal(46)),
+          errors = None
         )
       )
+    )
 
-    // uses an inconsistent field name for managerPubkey
-    val alphanetOriginationJson =
-      s"""{
+  // uses an inconsistent field name for managerPubkey
+  val alphanetOriginationJson =
+    s"""{
       |  "kind": "origination",
       |  "source": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
       |  "fee": "1441",
@@ -807,12 +807,11 @@ trait OperationsJsonData {
             contract = None
           )
         ),
-        operation_result =
-          OperationResult.Delegation(
-            status = "applied",
-            consumed_gas = Some(Decimal(10000)),
-            errors = None
-          )
+        operation_result = OperationResult.Delegation(
+          status = "applied",
+          consumed_gas = Some(Decimal(10000)),
+          errors = None
+        )
       )
     )
 
@@ -840,7 +839,9 @@ trait OperationsJsonData {
       chain_id = Some(ChainId("NetXSzLHKwSumh7")),
       hash = OperationHash("oobQTfjxVhEhbtWg3n51YDAfYr9HmXPpGVTqGhxiorsq4jAc53n"),
       branch = BlockHash("BKs7LZjCLcPczh52nR3DdcqAFg2VKF89ZkW47UTPFCuBfMe7wpy"),
-      signature = Some(Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")),
+      signature = Some(
+        Signature("sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9")
+      ),
       contents = List(
         expectedEndorsement,
         expectedNonceRevelation,
@@ -848,7 +849,8 @@ trait OperationsJsonData {
         expectedFailedReveal,
         expectedTransaction,
         expectedOrigination,
-        expectedDelegation)
+        expectedDelegation
+      )
     )
 
 }

@@ -6,8 +6,8 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.MichelsonSchema
 class JsonToMichelsonSpec extends FlatSpec with Matchers {
 
   "A JsonToMichelson" should "convert json to michelson format" in {
-    val json =
-      """
+      val json =
+        """
         |[
         |  {
         |    "prim": "parameter",
@@ -433,8 +433,8 @@ class JsonToMichelsonSpec extends FlatSpec with Matchers {
         |  }
         |]""".stripMargin
 
-    val result =
-      """parameter key_hash;
+      val result =
+        """parameter key_hash;
         |storage (pair key_hash timestamp);
         |code { DUP ;
         |       DIP { CDR } ;
@@ -489,6 +489,6 @@ class JsonToMichelsonSpec extends FlatSpec with Matchers {
         |            PAIR } ;
         |       DIP { DROP ; DROP } }""".stripMargin
 
-    JsonToMichelson.convert[MichelsonSchema](json) should equal(Right(result))
-  }
+      JsonToMichelson.convert[MichelsonSchema](json) should equal(Right(result))
+    }
 }

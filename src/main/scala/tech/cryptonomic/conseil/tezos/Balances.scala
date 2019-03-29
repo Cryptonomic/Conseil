@@ -68,12 +68,13 @@ object BlockBalances {
 
   //the updates might actually be missing from json
   implicit val blockBalanceUpdatesGetter = Getter[BlockData, Map[Label, List[BalanceUpdate]]](
-    data => Map(
-      BLOCK_SOURCE -> (data.metadata match {
-        case GenesisMetadata => List.empty
-        case BlockHeaderMetadata(balance_updates, _, _, _, _, _) => balance_updates
-      })
-    )
+    data =>
+      Map(
+        BLOCK_SOURCE -> (data.metadata match {
+              case GenesisMetadata                                     => List.empty
+              case BlockHeaderMetadata(balance_updates, _, _, _, _, _) => balance_updates
+            })
+      )
   )
 
   implicit val blockBalanceHashGetter = Getter[BlockData, Option[String]](_.hash.value.some)

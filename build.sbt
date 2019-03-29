@@ -18,18 +18,18 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots")
 )
 
-libraryDependencies  ++=  Seq(
-  "ch.qos.logback"                % "logback-classic"               % "1.2.3",
-  "com.typesafe"                  % "config"                        % "1.3.2",
+libraryDependencies ++= Seq(
+  "ch.qos.logback"               % "logback-classic"                % "1.2.3",
+  "com.typesafe"                 % "config"                         % "1.3.2",
   "com.typesafe.scala-logging"   %% "scala-logging"                 % "3.7.2",
-  "com.typesafe.akka"            %% "akka-http"                     % akkaHttpVersion exclude("com.typesafe", "config"),
-  "com.typesafe.akka"            %% "akka-stream"                   % akkaVersion exclude("com.typesafe", "config"),
-  "com.typesafe.akka"            %% "akka-actor"                    % akkaVersion exclude("com.typesafe", "config"),
+  "com.typesafe.akka"            %% "akka-http"                     % akkaHttpVersion exclude ("com.typesafe", "config"),
+  "com.typesafe.akka"            %% "akka-stream"                   % akkaVersion exclude ("com.typesafe", "config"),
+  "com.typesafe.akka"            %% "akka-actor"                    % akkaVersion exclude ("com.typesafe", "config"),
   "de.heikoseeberger"            %% "akka-http-jackson"             % "1.22.0",
   "ch.megard"                    %% "akka-http-cors"                % "0.3.0",
   "org.scalaj"                   %% "scalaj-http"                   % "2.3.0",
   "com.github.pureconfig"        %% "pureconfig"                    % "0.10.2",
-  "com.fasterxml.jackson.core"    % "jackson-databind"              % "2.9.0",
+  "com.fasterxml.jackson.core"   % "jackson-databind"               % "2.9.0",
   "com.fasterxml.jackson.module" %% "jackson-module-scala"          % "2.9.0",
   "org.typelevel"                %% "cats-core"                     % catsVersion,
   "com.github.julien-truffaut"   %% "monocle-core"                  % monocleVersion,
@@ -40,19 +40,19 @@ libraryDependencies  ++=  Seq(
   "io.circe"                     %% "circe-parser"                  % circeVersion,
   "io.circe"                     %% "circe-generic"                 % circeVersion,
   "io.circe"                     %% "circe-generic-extras"          % circeVersion,
-  "de.heikoseeberger"            %% "akka-http-circe"               % "1.23.0" exclude("com.typesafe.akka", "akka-http"),
+  "de.heikoseeberger"            %% "akka-http-circe"               % "1.23.0" exclude ("com.typesafe.akka", "akka-http"),
   "org.julienrf"                 %% "endpoints-algebra"             % endpointsVersion,
   "org.julienrf"                 %% "endpoints-openapi"             % endpointsVersion,
   "org.julienrf"                 %% "endpoints-json-schema-generic" % endpointsVersion,
   "org.julienrf"                 %% "endpoints-akka-http-server"    % endpointsVersion,
   "com.chuusai"                  %% "shapeless"                     % "2.3.3",
-  "com.typesafe.slick"           %% "slick"                         % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
-  "com.typesafe.slick"           %% "slick-hikaricp"                % slickVersion exclude("org.slf4j", "slf4j-api"),
+  "com.typesafe.slick"           %% "slick"                         % slickVersion exclude ("org.reactivestreams", "reactive-streams") exclude ("com.typesafe", "config") exclude ("org.slf4j", "slf4j-api"),
+  "com.typesafe.slick"           %% "slick-hikaricp"                % slickVersion exclude ("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"           %% "slick-codegen"                 % slickVersion,
-  "org.postgresql"                % "postgresql"                    % "42.1.4",
-  "com.madgag.spongycastle"       % "core"                          % "1.58.0.0",
+  "org.postgresql"               % "postgresql"                     % "42.1.4",
+  "com.madgag.spongycastle"      % "core"                           % "1.58.0.0",
   "org.scorexfoundation"         %% "scrypto"                       % "2.0.0",
-  "com.muquit.libsodiumjna"       % "libsodium-jna"                 % "1.0.4" exclude("org.slf4j", "slf4j-log4j12") exclude("org.slf4j", "slf4j-api"),
+  "com.muquit.libsodiumjna"      % "libsodium-jna"                  % "1.0.4" exclude ("org.slf4j", "slf4j-log4j12") exclude ("org.slf4j", "slf4j-api"),
   "com.github.alanverbner"       %% "bip39"                         % "0.1",
   "com.github.scopt"             %% "scopt"                         % "4.0.0-RC2",
   "io.scalaland"                 %% "chimney"                       % "0.3.0",
@@ -61,8 +61,8 @@ libraryDependencies  ++=  Seq(
   "org.scalatest"                %% "scalatest"                     % "3.0.4" % Test,
   "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
   "org.scalamock"                %% "scalamock"                     % "4.0.0" % Test,
-  "ru.yandex.qatools.embed"       % "postgresql-embedded"           % "2.10" % Test,
-  "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude("com.typesafe", "config")
+  "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % Test,
+  "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude ("com.typesafe", "config")
 )
 
 excludeDependencies ++= Seq(
@@ -80,7 +80,7 @@ fork in runConseil := true
 javaOptions in runConseil ++= Seq("-Xms512M", "-Xmx4096M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runConseil := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed
-  runInputTask(Runtime, "tech.cryptonomic.conseil.Conseil", args:_*).toTask("")
+  runInputTask(Runtime, "tech.cryptonomic.conseil.Conseil", args: _*).toTask("")
 }.evaluated
 
 lazy val runLorre = inputKey[Unit]("A lorre run task.")
@@ -88,7 +88,7 @@ fork in runLorre := true
 javaOptions ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runLorre := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed
-  runInputTask(Runtime, "tech.cryptonomic.conseil.Lorre", args:_*).toTask("")
+  runInputTask(Runtime, "tech.cryptonomic.conseil.Lorre", args: _*).toTask("")
 }.evaluated
 
 lazy val genSchema = taskKey[Unit]("A schema generating task.")
@@ -119,7 +119,7 @@ git.useGitDescribe := true
 
 //defines how to extract the version from git tagging
 git.gitTagToVersionNumber := { tag: String =>
-  if(Versioning.releasePattern.findAllIn(tag).nonEmpty)
+  if (Versioning.releasePattern.findAllIn(tag).nonEmpty)
     Some(Versioning.generate(major = majorVersion, date = java.time.LocalDate.now, tag = tag))
   else
     None
@@ -134,21 +134,20 @@ lazy val gitTagCommand =
   Command.command(
     name = "gitTag",
     briefHelp = "will run the git tag command based on conseil versioning policy",
-    detail =
-    """ A command to call the "git tag" commands (from sbt-git) with custom args.
+    detail = """ A command to call the "git tag" commands (from sbt-git) with custom args.
       | Allows any automated environment (e.g. jenkins, travis) to call
       | "sbt gitTag" when a new release has been just published, bumping the versioning tag,
       | ready for pushing to the git repo.
       | In turn, sbt will pick the newly-minted tag for the new version definition.
-    """.stripMargin) {
-      state =>
-        val extracted = Project.extract(state)
-        val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
-        //we might want to check out only for non-snapshots?
-        println(s"About to tag the new release as '$tag'")
-        //we might want to read the message from the env or from a local file
-        val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
-        Command.process(command, state2)
+    """.stripMargin
+  ) { state =>
+    val extracted = Project.extract(state)
+    val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
+    //we might want to check out only for non-snapshots?
+    println(s"About to tag the new release as '$tag'")
+    //we might want to read the message from the env or from a local file
+    val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
+    Command.process(command, state2)
   }
 
 ThisBuild / commands += gitTagCommand
@@ -183,6 +182,8 @@ licenses := List("gpl-3.0" -> new URL("https://www.gnu.org/licenses/gpl-3.0.txt"
 homepage := Some(url("https://cryptonomic.tech/"))
 
 // Remove all additional repository other than Maven Central from POM
-pomIncludeRepository := { _ => false }
+pomIncludeRepository := { _ =>
+  false
+}
 publishMavenStyle := true
 publishTo := sonatypePublishTo.value

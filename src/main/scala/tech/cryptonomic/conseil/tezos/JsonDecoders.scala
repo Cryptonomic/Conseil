@@ -19,10 +19,12 @@ object JsonDecoders {
     type JsonDecoded[T] = Either[Error, T]
 
     /** Helper to decode json and convert to any effectful result that can
-     *  raise errors, as implied with the type class contraint
+      *  raise errors, as implied with the type class contraint
       * This is not necessarily running any async operation
       */
-    def decodeLiftingTo[Eff[_], A: io.circe.Decoder](json: String)(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
+    def decodeLiftingTo[Eff[_], A: io.circe.Decoder](
+        json: String
+    )(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
       import io.circe.parser.decode
       import cats.instances.either._
       import cats.syntax.either._
@@ -32,17 +34,21 @@ object JsonDecoders {
     }
 
     /* local definition of a base-58-check string wrapper, to allow parsing validation */
-    private final case class Base58Check(content: String) extends AnyVal
+    final private case class Base58Check(content: String) extends AnyVal
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
-    private def deriveDecoderFromString[T](validateString: String => Boolean, failedValidation: String, decodedConstructor: String => T): Decoder[T] =
+    private def deriveDecoderFromString[T](
+        validateString: String => Boolean,
+        failedValidation: String,
+        decodedConstructor: String => T
+    ): Decoder[T] =
       Decoder.decodeString
         .map(_.trim)
         .ensure(validateString, failedValidation)
         .map(decodedConstructor)
 
     /* decode only base58check-encoded strings */
-    private implicit val base58CheckDecoder: Decoder[Base58Check] =
+    implicit private val base58CheckDecoder: Decoder[Base58Check] =
       deriveDecoderFromString(
         validateString = isBase58Check,
         failedValidation = "The passed-in json string is not a proper Base58Check encoding",
@@ -87,12 +93,12 @@ object JsonDecoders {
     implicit val nonceHashDecoder: Decoder[NonceHash] = base58CheckDecoder.map(b58 => NonceHash(b58.content))
 
     val tezosDerivationConfig: Configuration =
-    Configuration.default.withSnakeCaseConstructorNames
+      Configuration.default.withSnakeCaseConstructorNames
 
     /* Collects definitions to decode voting data and their components */
     object Votes {
       import Voting._
-      private implicit val conf = tezosDerivationConfig
+      implicit private val conf = tezosDerivationConfig
 
       private val admittedVotes = Set("yay", "nay", "pass")
 
@@ -117,7 +123,7 @@ object JsonDecoders {
     object Blocks {
       // we need to decode BalanceUpdates
       import Operations._
-      private implicit val conf = tezosDerivationConfig
+      implicit private val conf = tezosDerivationConfig
 
       val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveDecoder
@@ -138,25 +144,25 @@ object JsonDecoders {
         Decoder.decodeJson.map(json => OperationResult.Error(json.noSpaces))
 
       /* try decoding a number */
-      private implicit val bignumDecoder: Decoder[Decimal] =
+      implicit private val bignumDecoder: Decoder[Decimal] =
         Decoder.decodeString
           .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
           .map(Decimal)
 
       /* try decoding a positive number */
-      private implicit val positiveBignumDecoder: Decoder[PositiveDecimal] =
+      implicit private val positiveBignumDecoder: Decoder[PositiveDecimal] =
         Decoder.decodeString
           .emapTry(jsonString => scala.util.Try(BigDecimal(jsonString)))
           .ensure(_ >= 0, "The passed-in json string is not a non-negative number")
           .map(PositiveDecimal)
 
       /* read any string and wrap it */
-      private implicit val invalidBignumDecoder: Decoder[InvalidDecimal] =
+      implicit private val invalidBignumDecoder: Decoder[InvalidDecimal] =
         Decoder.decodeString
           .map(InvalidDecimal)
 
       /* read any string and wrap it */
-      private implicit val invalidPositiveBignumDecoder: Decoder[InvalidPositiveDecimal] =
+      implicit private val invalidPositiveBignumDecoder: Decoder[InvalidPositiveDecimal] =
         Decoder.decodeString
           .map(InvalidPositiveDecimal)
 
@@ -175,7 +181,7 @@ object JsonDecoders {
         ).reduceLeft(_ or _)
 
       //use the kind field to distinguish subtypes of the Operation ADT
-      private implicit val conf = tezosDerivationConfig.withDiscriminator("kind")
+      implicit private val conf = tezosDerivationConfig.withDiscriminator("kind")
 
       //derive all the remaining decoders, sorted to preserve dependencies
       implicit val bigmapdiffDecoder: Decoder[Contract.BigMapDiff] = deriveDecoder
@@ -198,7 +204,7 @@ object JsonDecoders {
 
     /* Collects definitions to decode accounts and their components */
     object Accounts {
-      private implicit val conf = tezosDerivationConfig
+      implicit private val conf = tezosDerivationConfig
 
       implicit val scriptDecoder: Decoder[AccountScript] =
         Decoder.decodeJson.map(json => AccountScript(json.noSpaces))
@@ -207,6 +213,5 @@ object JsonDecoders {
     }
 
   }
-
 
 }

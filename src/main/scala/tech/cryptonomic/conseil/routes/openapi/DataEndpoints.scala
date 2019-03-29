@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
 /** Trait containing endpoints definition */
 trait DataEndpoints
-  extends algebra.Endpoints
+    extends algebra.Endpoints
     with DataJsonSchemas
     with ApiFilterFromQueryString
     with algebra.JsonSchemaEntities
@@ -19,11 +19,15 @@ trait DataEndpoints
   private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
 
   /** V2 Query endpoint definition */
-  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[Either[List[QueryValidationError], QueryResponseWithOutput]]] =
+  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, String), Option[
+    Either[List[QueryValidationError], QueryResponseWithOutput]
+  ]] =
     endpoint(
-      request = post(url = commonPath / segment[String](name = "entity"),
+      request = post(
+        url = commonPath / segment[String](name = "entity"),
         entity = jsonRequest[ApiQuery](),
-        headers = header("apiKey")),
+        headers = header("apiKey")
+      ),
       response = validated(
         response = jsonResponse[QueryResponseWithOutput](docs = Some("Query endpoint")),
         invalidDocs = Some("Can't query - invalid entity!")
@@ -34,9 +38,7 @@ trait DataEndpoints
   /** V2 Blocks endpoint definition */
   def blocksEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(
-        url = commonPath / "blocks" /? qsFilter,
-        headers = header("apiKey")),
+      request = get(url = commonPath / "blocks" /? qsFilter, headers = header("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("blocks"),
       tags = List("Blocks")
     )
@@ -44,9 +46,7 @@ trait DataEndpoints
   /** V2 Blocks head endpoint definition */
   def blocksHeadEndpoint: Endpoint[(String, String, String), Option[Tables.BlocksRow]] =
     endpoint(
-      request = get(
-        url = commonPath / "blocks" / "head",
-        headers = header("apiKey")),
+      request = get(url = commonPath / "blocks" / "head", headers = header("apiKey")),
       response = compatibilityQuery[BlocksRow]("blocks head"),
       tags = List("Blocks")
     )
@@ -54,9 +54,7 @@ trait DataEndpoints
   /** V2 Blocks by hash endpoint definition */
   def blockByHashEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
     endpoint(
-      request = get(
-        url = commonPath / "blocks" / segment[String](name = "hash"),
-        headers = header("apiKey")),
+      request = get(url = commonPath / "blocks" / segment[String](name = "hash"), headers = header("apiKey")),
       response = compatibilityQuery[AnyMap]("block by hash"),
       tags = List("Blocks")
     )
@@ -64,9 +62,7 @@ trait DataEndpoints
   /** V2 Accounts endpoint definition */
   def accountsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(
-        url = commonPath / "accounts" /? qsFilter,
-        headers = header("apiKey")),
+      request = get(url = commonPath / "accounts" /? qsFilter, headers = header("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("accounts"),
       tags = List("Accounts")
     )
@@ -75,8 +71,11 @@ trait DataEndpoints
   def accountByIdEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
     endpoint(
       request = get(
-        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "accounts" / segment[String](name = "accountId"),
-        headers = header("apiKey")),
+        url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "accounts" / segment[
+                String
+              ](name = "accountId"),
+        headers = header("apiKey")
+      ),
       response = compatibilityQuery[AnyMap]("account"),
       tags = List("Accounts")
     )
@@ -84,9 +83,7 @@ trait DataEndpoints
   /** V2 Operation groups endpoint definition */
   def operationGroupsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(
-        url = commonPath / "operation_groups" /? qsFilter,
-        headers = header("apiKey")),
+      request = get(url = commonPath / "operation_groups" /? qsFilter, headers = header("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("operation groups"),
       tags = List("Operation groups")
     )
@@ -96,7 +93,8 @@ trait DataEndpoints
     endpoint(
       request = get(
         url = commonPath / "operation_groups" / segment[String](name = "operationGroupId"),
-        headers = header("apiKey")),
+        headers = header("apiKey")
+      ),
       response = compatibilityQuery[AnyMap]("operation group"),
       tags = List("Operation groups")
     )
@@ -104,9 +102,7 @@ trait DataEndpoints
   /** V2 average fees endpoint definition */
   def avgFeesEndpoint: Endpoint[((String, String, Filter), String), Option[AverageFees]] =
     endpoint(
-      request = get(
-        url = commonPath / "operations" / "avgFees" /? qsFilter,
-        headers = header("apiKey")),
+      request = get(url = commonPath / "operations" / "avgFees" /? qsFilter, headers = header("apiKey")),
       response = compatibilityQuery[AverageFees]("average fees"),
       tags = List("Fees")
     )
@@ -118,9 +114,7 @@ trait DataEndpoints
   /** V2 Operations endpoint definition */
   def operationsEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
-      request = get(
-        url = commonPath / "operations" /? qsFilter,
-        headers = header("apiKey")),
+      request = get(url = commonPath / "operations" /? qsFilter, headers = header("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("operations"),
       tags = List("Operations")
     )

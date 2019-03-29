@@ -9,7 +9,6 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
 /**
   * Classes used for deserializing query.
   */
@@ -21,8 +20,10 @@ object DataTypes {
 
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
+
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
+
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
 
@@ -42,11 +43,11 @@ object DataTypes {
 
   /** Class representing predicate */
   case class Predicate(
-    field: String,
-    @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
-    set: List[Any] = List.empty,
-    inverse: Boolean = false,
-    precision: Option[Int] = None
+      field: String,
+      @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
+      set: List[Any] = List.empty,
+      inverse: Boolean = false,
+      precision: Option[Int] = None
   )
 
   /** Class required for Ordering enum serialization */
@@ -66,47 +67,48 @@ object DataTypes {
 
   /** Class representing query */
   case class Query(
-    fields: List[String] = List.empty,
-    predicates: List[Predicate] = List.empty,
-    orderBy: List[QueryOrdering] = List.empty,
-    limit: Int = defaultLimitValue,
-    output: OutputType = OutputType.json
+      fields: List[String] = List.empty,
+      predicates: List[Predicate] = List.empty,
+      orderBy: List[QueryOrdering] = List.empty,
+      limit: Int = defaultLimitValue,
+      output: OutputType = OutputType.json
   )
 
   /** Class representing query got through the REST API */
   case class ApiQuery(
-    fields: Option[List[String]],
-    predicates: Option[List[Predicate]],
-    orderBy: Option[List[QueryOrdering]],
-    limit: Option[Int],
-    @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType]
+      fields: Option[List[String]],
+      predicates: Option[List[Predicate]],
+      orderBy: Option[List[QueryOrdering]],
+      limit: Option[Int],
+      @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType]
   ) {
+
     /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
-    def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
-    Future[Either[List[QueryValidationError], Query]] = {
+    def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(
+        implicit ec: ExecutionContext
+    ): Future[Either[List[QueryValidationError], Query]] = {
       import cats.implicits._
 
       val query = Query().patchWith(this)
 
-      val invalidQueryFields = query
-        .fields
+      val invalidQueryFields = query.fields
         .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
         .sequence
         .map(_.filterNot { case (isValid, _) => isValid }.map { case (_, fieldName) => InvalidQueryField(fieldName) })
 
-      val invalidPredicateFields = query
-        .predicates
+      val invalidPredicateFields = query.predicates
         .map(_.field)
         .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
         .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidPredicateField(fieldName) })
+        .map(_.filterNot { case (isValid, _) => isValid }.map {
+          case (_, fieldName) => InvalidPredicateField(fieldName)
+        })
 
-      val invalidOrderByFields = query
-        .orderBy
+      val invalidOrderByFields = query.orderBy
         .map(_.field)
         .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
         .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidOrderByField(fieldName) })
+        .map(_.filterNot { case (isValid, _) => isValid }.map { case (_, fieldName) => InvalidOrderByField(fieldName) })
 
       for {
         invQF <- invalidQueryFields
@@ -114,7 +116,7 @@ object DataTypes {
         invODBF <- invalidOrderByFields
       } yield {
         invQF ::: invPF ::: invODBF match {
-          case Nil => Right(query)
+          case Nil         => Right(query)
           case wrongFields => Left(wrongFields)
         }
       }

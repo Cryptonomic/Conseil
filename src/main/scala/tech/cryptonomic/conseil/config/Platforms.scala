@@ -7,8 +7,10 @@ object Platforms extends LazyLogging {
 
   /** a trait defining existing platforms */
   sealed trait BlockchainPlatform extends Product with Serializable {
+
     /** a name usually used in configurations to identify the platforrm */
     def name: String
+
     /** the type of underlying configuration, specific for the platform */
     type ConfigurationType <: PlatformConfiguration
   }
@@ -23,6 +25,7 @@ object Platforms extends LazyLogging {
   }
 
   object BlockchainPlatform {
+
     /** maps a generic string to a typed BlockchainPlatform */
     def fromString(s: String) = s match {
       case "tezos" => Tezos
@@ -39,10 +42,10 @@ object Platforms extends LazyLogging {
 
   /** configurations to describe a tezos node */
   final case class TezosNodeConfiguration(
-    hostname: String,
-    port: Int,
-    protocol: String,
-    pathPrefix: String = ""
+      hostname: String,
+      port: Int,
+      protocol: String,
+      pathPrefix: String = ""
   )
 
   /** generic trait for any platform configuration, where each instance corresponds to a network available on that chain */
@@ -52,9 +55,11 @@ object Platforms extends LazyLogging {
   }
 
   /** collects all config related to a tezos network */
-  final case class TezosConfiguration(network: String, depth: Depth = Newest, nodeConfig: TezosNodeConfiguration) extends PlatformConfiguration
+  final case class TezosConfiguration(network: String, depth: Depth = Newest, nodeConfig: TezosNodeConfiguration)
+      extends PlatformConfiguration
 
   /** unexpected or yet to define platform */
-  final case class UnknownPlatformConfiguration(network: String = "", depth: Depth = Newest) extends PlatformConfiguration
+  final case class UnknownPlatformConfiguration(network: String = "", depth: Depth = Newest)
+      extends PlatformConfiguration
 
 }
