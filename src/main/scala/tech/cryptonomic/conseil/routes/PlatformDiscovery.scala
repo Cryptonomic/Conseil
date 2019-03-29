@@ -1,27 +1,21 @@
 package tech.cryptonomic.conseil.routes
 
-import akka.http.caching.LfuCache
-import akka.http.caching.scaladsl.{Cache, CachingSettings}
-import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
-import tech.cryptonomic.conseil.config.HttpCacheConfiguration
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.util.ConfigUtil
 import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
-import tech.cryptonomic.conseil.util.{ConfigUtil, RouteHandling}
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.directives.CachingDirectives._
-
 
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(platforms: PlatformsConfiguration, caching: HttpCacheConfiguration)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
-    new PlatformDiscovery(platforms, caching)(apiExecutionContext)
+  def apply(platforms: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+    new PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(apiExecutionContext)
 }
 
 /**
@@ -30,23 +24,8 @@ object PlatformDiscovery {
   * @param config              configuration object
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfiguration)(implicit apiExecutionContext: ExecutionContext)
-  extends LazyLogging with RouteHandling with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
-
-  /** default caching settings */
-  private val defaultCachingSettings: CachingSettings = CachingSettings(caching.cacheConfig)
-
-  /** simple partial function for filtering */
-  private val requestCacheKeyer: PartialFunction[RequestContext, Uri] = {
-    case r: RequestContext => r.request.uri
-  }
-
-  /** LFU caching settings */
-  private val cachingSettings: CachingSettings =
-    defaultCachingSettings.withLfuCacheSettings(defaultCachingSettings.lfuCacheSettings)
-
-  /** LFU cache */
-  private val lfuCache: Cache[Uri, RouteResult] = LfuCache(cachingSettings)
+class PlatformDiscovery(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
+  extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** Metadata route implementation for platforms endpoint */
   private val platformsRoute = platformsEndpoint.implementedBy(_ => ConfigUtil.getPlatforms(config))
@@ -62,7 +41,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
     case (platform, network, _) =>
-      TezosPlatformDiscoveryOperations.getEntities.map { entities =>
+      tezosPlatformDiscoveryOperations.getEntities.map { entities =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           entities
         }
@@ -72,8 +51,8 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
     case ((platform, network, entity), _) =>
-      TezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
+      tezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
+        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
           attributes
         }
       }
@@ -82,7 +61,7 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes values endpoint */
   private val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
     case ((platform, network, entity), attribute, _) =>
-      TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
+      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           attributes
         }
@@ -92,15 +71,15 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
   /** Metadata route implementation for attributes values with filter endpoint */
   private val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
     case (((platform, network, entity), attribute, filter), _) =>
-      TezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
+      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
         ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
           attributes
         }
       }
   }
 
-  /** Concatenated metadata routes with cache */
-  val route: Route = cache(lfuCache, requestCacheKeyer) {
+  /** Concatenated metadata routes */
+  val route: Route =
     concat(
       platformsRoute,
       networksRoute,
@@ -109,5 +88,4 @@ class PlatformDiscovery(config: PlatformsConfiguration, caching: HttpCacheConfig
       attributesValuesRoute,
       attributesValuesWithFilterRoute
     )
-  }
 }

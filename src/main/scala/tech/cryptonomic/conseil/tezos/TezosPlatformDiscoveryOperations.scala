@@ -1,35 +1,194 @@
 package tech.cryptonomic.conseil.tezos
 
-import slick.ast.FieldSymbol
-import slick.jdbc.PostgresProfile.api._
+import cats.effect.IO
+import cats.effect.concurrent.MVar
+import slick.dbio.{DBIO, DBIOAction}
+import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
+import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
-
+/** Companion object providing apply method implementation */
 object TezosPlatformDiscoveryOperations {
+  def apply(metadataOperations: MetadataOperations,
+    attributesCache: MVar[IO, Map[String, (Long, List[Attribute])]],
+    entitiesCache: MVar[IO, (Long, List[Entity])],
+    cacheTTL: FiniteDuration)
+    (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
+    new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, cacheTTL)
+}
 
-  private val tables = List(Tables.Blocks, Tables.Accounts, Tables.OperationGroups, Tables.Operations, Tables.Fees)
-  private val tablesMap = tables.map(table => table.baseTableRow.tableName -> table)
+/** Class providing the implementation of the metadata calls with caching */
+class TezosPlatformDiscoveryOperations(
+  metadataOperations: MetadataOperations,
+  attributesCache: MVar[IO, Map[String, (Long, List[Attribute])]],
+  entitiesCache: MVar[IO, (Long, List[Entity])],
+  cacheTTL: FiniteDuration)
+  (implicit executionContext: ExecutionContext) {
+
+  import cats.effect._
+  import cats.implicits._
+
+  /** Method for initializing values of the cache */
+  def init(): Future[Unit] = {
+    val result = for {
+      ent <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
+      _ <- entitiesCache.put(ent)
+      attr <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes)))
+      _ <- attributesCache.put(attr)
+    } yield ()
+
+    result.unsafeToFuture()
+  }
+
+  /** Pre-caching attributes without cardinality */
+  private def preCacheAttributes: DBIO[Map[String, (Long, List[Attribute])]] = {
+    val result = for {
+      tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
+      columns <- getColumns(tables)
+      indexes <- getIndexes(tables)
+      primaryKeys <- getPrimaryKeys(tables)
+    } yield {
+      columns.map { cols =>
+        cols.head.table.name -> (0L, cols.map { col =>
+          makeAttributes(col, 0, primaryKeys, indexes)
+        }.toList)
+      }
+    }
+    result.map(_.toMap)
+  }
+
+  /** MTable query for getting columns from the DB */
+  private def getColumns(tables: Vector[MTable]): DBIO[Vector[Vector[MColumn]]] = {
+    DBIOAction.sequence {
+      tables.map { table =>
+        table.getColumns
+      }
+    }
+  }
+
+  /** MTable query for getting indexes from the DB */
+  private def getIndexes(tables: Vector[MTable]): DBIO[Vector[Vector[MIndexInfo]]] = {
+    DBIOAction.sequence {
+      tables.map { table =>
+        table.getIndexInfo()
+      }
+    }
+  }
+
+  /** MTable query for getting primary keys from the DB */
+  private def getPrimaryKeys(tables: Vector[MTable]): DBIO[Vector[Vector[MPrimaryKey]]] = {
+    DBIOAction.sequence {
+      tables.map { table =>
+        table.getPrimaryKeys
+      }
+    }
+  }
+
+  /** Makes attributes out of parameters */
+  private def makeAttributes(col: MColumn, count: Int, primaryKeys: Vector[Vector[MPrimaryKey]], indexes: Vector[Vector[MIndexInfo]]): Attribute =
+    Attribute(
+      name = col.name,
+      displayName = makeDisplayName(col.name),
+      dataType = mapType(col.typeName),
+      cardinality = if(canQueryType(mapType(col.typeName))) Some(count) else None,
+      keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
+      entity = col.table.name
+    )
+
+  /** Maps type from DB to type used in query */
+  private def mapType(tpe: String): DataType = {
+    tpe match {
+      case "timestamp" => DataType.DateTime
+      case "varchar" => DataType.String
+      case "int4" | "serial" => DataType.Int
+      case "numeric" => DataType.Decimal
+      case "bool" => DataType.Boolean
+      case _ => DataType.String
+    }
+  }
+
+  /** Checks if given MColumn has primary key */
+  private def isKey(column: MColumn, keys: Vector[Vector[MPrimaryKey]]): Boolean = {
+    keys
+      .filter(_.forall(_.table == column.table))
+      .flatten
+      .exists(_.column == column.name)
+  }
+
+  /** Checks if given MColumn has index */
+  private def isIndex(column: MColumn, index: Vector[Vector[MIndexInfo]]): Boolean = {
+    index
+      .filter(_.forall(_.table == column.table))
+      .flatten
+      .exists(_.column.contains(column.name))
+  }
+
+  /** Checks if attribute is valid for given entity
+    *
+    * @param tableName  name of the table(entity) which needs to be checked
+    * @param columnName name of the column(attribute) which needs to be checked
+    * @return boolean which tells us if attribute is valid for given entity
+    */
+  def isAttributeValid(tableName: String, columnName: String): Future[Boolean] = {
+    attributesCache.read.map { attributesMap =>
+      attributesMap.get(tableName).exists { case (_, attributes) =>
+        attributes.exists(_.name == columnName)
+      }
+    }.unsafeToFuture()
+  }
 
   /**
     * Extracts entities in the DB for the given network
     *
     * @return list of entities as a Future
     */
-  def getEntities(implicit ec: ExecutionContext): Future[List[Entity]] = {
-    ApiOperations.countAll.map(createEntities)
+  def getEntities: Future[List[Entity]] = {
+    val result = for {
+      entities <- entitiesCache.read
+      res <- if (entities._1 + cacheTTL.toMillis > now) {
+        IO.pure(entities._2)
+      } else {
+        for {
+          updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
+          _ <- entitiesCache.take
+          _ <- entitiesCache.put(updatedEntities)
+        } yield updatedEntities._2
+      }
+    } yield res
+    result.unsafeToFuture()
   }
 
-  /** creates entities out of provided data */
-  private def createEntities(counts: Map[String, Int]): List[Entity] = {
+  /** Method querying slick metadata tables for entities */
+  private def preCacheEntities: DBIO[(Long, List[Entity])] = {
     for {
-      (tableName, _) <- tablesMap
-      tableCount <- counts.get(tableName)
-    } yield Entity(tableName, makeDisplayName(tableName), tableCount)
+      tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
+      counts <- getTablesCount(tables)
+    } yield now -> (tables.map(_.name.name) zip counts).map {
+      case (name, count) =>
+        Entity(name, makeDisplayName(name), count)
+    }.toList
   }
+
+  /** Query for counting rows in the table */
+  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] = {
+    DBIOAction.sequence {
+      tables.map { table =>
+        TezosDatabaseOperations.countRows(table.name.name)
+      }
+    }
+  }
+
+  /** Makes displayName out of name */
+  private def makeDisplayName(name: String): String = {
+    name.capitalize.replace("_", " ")
+  }
+
+  /** Returns current time in milliseconds */
+  private def now: Long = System.currentTimeMillis()
 
   /** Makes list of possible string values of the attributes
     *
@@ -38,29 +197,12 @@ object TezosPlatformDiscoveryOperations {
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
     * */
-  def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None)
-    (implicit ec: ExecutionContext): Future[List[String]] = {
-    val res = verifyAttributesAndGetQueries(tableName, attribute, withFilter)
-    ApiOperations.runQuery(res)
-  }
-
-  /** Makes list of DBIO actions to get possible string values of the attributes
-    *
-    * @param  tableName  name of the table from which we extract attributes
-    * @param  attribute  name of the attribute
-    * @param  withFilter optional parameter which can filter attributes
-    * @return list of DBIO actions to get matching attributes
-    * */
-  def verifyAttributesAndGetQueries(tableName: String, attribute: String, withFilter: Option[String])
-    (implicit ec: ExecutionContext): DBIO[List[String]] = {
-    DBIO.sequence {
-      for {
-        (name, table) <- tablesMap
-        if name == tableName
-        col <- table.baseTableRow.create_*
-        if col.name == attribute
-      } yield makeAttributesQuery(name, col, withFilter)
-    }.map(_.flatten)
+  def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None): Future[List[String]] = {
+    for {
+      attrOpt <- attributesCache.read.map(_.get(tableName)
+        .flatMap(_._2.find(_.name == attribute))).unsafeToFuture()
+      result <- attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence
+    } yield result.flatten
   }
 
   /** Makes list of possible string values of the attributes
@@ -70,16 +212,17 @@ object TezosPlatformDiscoveryOperations {
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
     * */
-  private def makeAttributesQuery(tableName: String, column: FieldSymbol, withFilter: Option[String])
-    (implicit ec: ExecutionContext): DBIO[List[String]] = {
+  private def makeAttributesQuery(tableName: String, column: String, withFilter: Option[String]): Future[List[String]] = {
     for {
-      distinctCount <- TezosDb.countDistinct(tableName, column.name)
-      if canQueryType(mapType(column.tpe)) && isLowCardinality(distinctCount)
+      attribute <- attributesCache.read
+        .map(_.get(tableName)
+          .flatMap(_._2.find(_.name == column))).unsafeToFuture()
+      if attribute.exists(attr => canQueryType(attr.dataType)) && isLowCardinality(attribute.flatMap(_.cardinality))
       distinctSelect <- withFilter match {
         case Some(filter) =>
-          TezosDatabaseOperations.selectDistinctLike(tableName, column.name, sanitizeForSql(filter))
+          metadataOperations.runQuery(TezosDatabaseOperations.selectDistinctLike(tableName, column, ApiOperations.sanitizeForSql(filter)))
         case None =>
-          TezosDatabaseOperations.selectDistinct(tableName, column.name)
+          metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))
       }
     } yield distinctSelect
   }
@@ -92,50 +235,19 @@ object TezosPlatformDiscoveryOperations {
   }
 
   /** Checks if cardinality of the column is not too high so it should not be queried */
-  private def isLowCardinality(distinctCount: Int): Boolean = {
+  private def isLowCardinality(distinctCount: Option[Int]): Boolean = {
     // reasonable value which I thought of for now
     val maxCount = 1000
-    distinctCount < maxCount
-  }
-
-  /** Sanitizes string to be viable to paste into plain SQL */
-  def sanitizeForSql(str: String): String = {
-    val supportedCharacters = Set('_', '.', '+', ':', '-')
-    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+    distinctCount.getOrElse(maxCount) < maxCount
   }
 
   /** Checks if columns exist for the given table */
-  def areFieldsValid(tableName: String, fields: Set[String]): Boolean = {
-    tablesMap.exists {
-      case (name, table) =>
-        val cols = table.baseTableRow.create_*.map(_.name).toSet
-        name == tableName && fields.subsetOf(cols)
-    }
-  }
-
-
-  /** Checks if entity is valid
-    *
-    * @param tableName name of the table(entity) which needs to be checked
-    * @return boolean which tells us if entity is valid
-    */
-  def isEntityValid(tableName: String): Boolean = {
-    tablesMap.map(_._1).contains(tableName)
-  }
-
-  /** Checks if attribute is valid for given entity
-    *
-    * @param tableName  name of the table(entity) which needs to be checked
-    * @param columnName name of the column(attribute) which needs to be checked
-    * @return boolean which tells us if attribute is valid for given entity
-    */
-  def isAttributeValid(tableName: String, columnName: String): Boolean = {
-    {
-      for {
-        (_, table) <- tablesMap.find(_._1 == tableName)
-        column <- table.baseTableRow.create_*.find(_.name == columnName)
-      } yield column
-    }.isDefined
+  def areFieldsValid(tableName: String, fields: Set[String]): Future[Boolean] = {
+    attributesCache.read.map { cache =>
+      cache.get(tableName).exists { case (_, attributes) =>
+        fields.subsetOf(attributes.map(_.name).toSet)
+      }
+    }.unsafeToFuture()
   }
 
   /**
@@ -144,48 +256,41 @@ object TezosPlatformDiscoveryOperations {
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  def getTableAttributes(tableName: String)(implicit ec: ExecutionContext): Future[List[Attribute]] = {
-    ApiOperations.runQuery(makeAttributesList(tableName))
+  def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] = {
+    attributesCache.read.flatMap { entitiesMap =>
+      entitiesMap.get(tableName).map { case (last, attributes) =>
+        if (last + cacheTTL.toMillis > now) {
+          IO.pure(attributes)
+        } else {
+          for {
+            updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
+            _ <- attributesCache.take
+            _ <- attributesCache.put(entitiesMap.updated(tableName, now -> updatedAttributes))
+          } yield updatedAttributes
+        }
+      }.sequence
+    }.unsafeToFuture()
   }
 
-  /** Makes list of DB actions to be executed for extracting attributes
-    *
-    * @param  tableName name of the table from which we extract attributes
-    * @return list of DBIO queries for attributes
-    **/
-  def makeAttributesList(tableName: String)(implicit ec: ExecutionContext): DBIO[List[Attribute]] = {
-    DBIO.sequence {
-      for {
-        (name, table) <- tablesMap
-        if name == tableName
-        col <- table.baseTableRow.create_*
-      } yield {
-        if(canQueryType(mapType(col.tpe))) {
-          for {
-            overallCnt <- TezosDb.countRows(table)
-            distinctCnt <- TezosDb.countDistinct(table.baseTableRow.tableName, col.name)
-          } yield makeAttributes(col, Some(distinctCnt), Some(overallCnt), tableName)
+  /** Runs query and attributes with updated counts */
+  private def getUpdatedAttributes(tableName: String, columns: List[Attribute]): Future[List[Attribute]] = {
+    metadataOperations.runQuery(getUpdatedAttributesQuery(tableName, columns))
+  }
+
+  /** Query for returning partial attributes with updated counts */
+  private def getUpdatedAttributesQuery(tableName: String, columns: List[Attribute]): DBIO[List[Attribute]] = {
+    DBIOAction.sequence {
+      columns.map { column =>
+        if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
+          TezosDatabaseOperations.countDistinct(tableName, column.name)
+            .map { count =>
+              column.copy(cardinality = Some(count))
+            }
         } else {
-          DBIO.successful(makeAttributes(col, None, None, tableName))
+          DBIOAction.successful(column)
         }
       }
     }
-  }
-
-  /** Makes attributes out of parameters */
-  private def makeAttributes(col: FieldSymbol, distinctCount: Option[Int], overallCount: Option[Int], tableName: String): Attribute =
-    Attribute(
-      name = col.name,
-      displayName = makeDisplayName(col.name),
-      dataType = mapType(col.tpe),
-      cardinality = distinctCount,
-      keyType = if (distinctCount == overallCount) KeyType.UniqueKey else KeyType.NonKey,
-      entity = tableName
-    )
-
-  /** Makes displayName out of name */
-  private def makeDisplayName(name: String): String = {
-    name.capitalize.replace("_", " ")
   }
 
 }

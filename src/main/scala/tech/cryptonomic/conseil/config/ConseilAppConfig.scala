@@ -10,7 +10,7 @@ import scopt.OptionParser
 /** wraps all configuration needed to run Conseil */
 trait ConseilAppConfig {
 
-  type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, HttpCacheConfiguration, VerboseOutput)
+  type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, VerboseOutput)
   /** Lazily reads all configuration upstart, will print all errors encountered during loading */
   private val argsParser = new OptionParser[VerboseOutput]("conseil") {
     opt[Unit]('v', "verbose")
@@ -35,8 +35,7 @@ trait ConseilAppConfig {
       server <- loadConfig[ServerConfiguration](namespace = "conseil")
       platforms <- loadConfig[PlatformsConfiguration](namespace = "platforms")
       securityApi <- Security()
-      caching <- loadAkkaCacheConfig("akka.http.caching.lfu-cache")
-    } yield (server, platforms, securityApi, caching, verbose)
+    } yield (server, platforms, securityApi, verbose)
 
     //something went wrong
     loadedConf.left.foreach {

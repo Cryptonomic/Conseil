@@ -1,10 +1,9 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes}
+import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query, OrderDirection, QueryOrdering, AnyMap, QueryResponse}
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{areFieldsValid, sanitizeForSql}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, OperationType, OrderDirection, Predicate, Query, QueryOrdering, QueryResponse}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -14,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database.
   */
-object ApiOperations extends DataOperations {
+object ApiOperations extends DataOperations with MetadataOperations {
 
   lazy val dbHandle: Database = DatabaseUtil.db
 
@@ -399,19 +398,15 @@ object ApiOperations extends DataOperations {
     * @return query result as a map
     * */
   override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] = {
-    if (areFieldsValid(tableName, (query.fields ++ query.predicates.map(_.field) ++ query.orderBy.map(_.field)).toSet)) {
-      runQuery(
-        TezosDatabaseOperations.selectWithPredicates(
-          tableName,
-          query.fields,
-          sanitizePredicates(query.predicates),
-          query.orderBy,
-          Math.min(query.limit, DataTypes.maxLimitValue)
-        )
+    runQuery(
+      TezosDatabaseOperations.selectWithPredicates(
+        tableName,
+        query.fields,
+        sanitizePredicates(query.predicates),
+        query.orderBy,
+        Math.min(query.limit, DataTypes.maxLimitValue)
       )
-    } else {
-      Future.successful(List.empty)
-    }
+    )
   }
 
   /** Sanitizes predicate values so query is safe from SQL injection */
@@ -420,5 +415,12 @@ object ApiOperations extends DataOperations {
       predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
     }
   }
+
+  /** Sanitizes string to be viable to paste into plain SQL */
+  def sanitizeForSql(str: String): String = {
+    val supportedCharacters = Set('_', '.', '+', ':', '-')
+    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+  }
+
 }
 

@@ -2,8 +2,6 @@ package tech.cryptonomic.conseil.util
 
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.config.Platforms._
-import tech.cryptonomic.conseil.config.{HttpCacheConfiguration, HttpStreamingConfiguration}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.util.Try
@@ -143,16 +141,6 @@ object ConfigUtil {
     def loadAkkaStreamingClientConfig(namespace: String): Either[ConfigReaderFailures, HttpStreamingConfiguration] = {
       // this is where akka searches for the config entry for host connection pool
       loadConfigForEntryPath(namespace, "akka.http.host-connection-pool").map(HttpStreamingConfiguration)
-    }
-
-    /**
-      * Reads a specific entry in the configuration file, to create a valid akka-http caching configuration
-      *
-      * @param namespace the path where the custom configuration will be searched-for
-      */
-    def loadAkkaCacheConfig(namespace: String): Either[ConfigReaderFailures, HttpCacheConfiguration] = {
-      // this is where akka searches for the config entry for host connection pool
-      loadConfigForEntryPath(namespace, "akka.http.caching.lfu-cache").map(HttpCacheConfiguration)
     }
 
     private def loadConfigForEntryPath(namespace: String, referenceEntryPath: String): Either[ConfigReaderFailures, Config] = {

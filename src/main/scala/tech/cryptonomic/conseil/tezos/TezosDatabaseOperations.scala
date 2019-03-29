@@ -276,6 +276,14 @@ object TezosDatabaseOperations extends LazyLogging {
   def countRows(table: TableQuery[_]): DBIO[Int] =
     table.length.result
 
+  /**
+    * Counts number of rows in the given table
+    * @param table  slick table
+    * @return       amount of rows in the table
+    */
+  def countRows(table: String)(implicit ec: ExecutionContext): DBIO[Int] =
+    sql"""SELECT COUNT(*) FROM #$table""".as[Int].map(_.head)
+
   // Slick does not allow count operations on arbitrary column names
   /**
     * Counts number of distinct elements by given table and column
