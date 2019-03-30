@@ -61,9 +61,11 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
     case x: java.lang.Integer => Json.fromInt(x)
     case x: java.sql.Timestamp => Json.fromLong(x.getTime)
     case x: java.lang.Boolean => Json.fromBoolean(x)
-    case x: scala.collection.immutable.Vector[Tables.OperationGroupsRow] => x.map(_.asJson(operationGroupsRowSchema.encoder)).asJson
+    case x: scala.collection.immutable.Vector[Any] => x.map(_.asJson(anyEncoder)).asJson //Due to type erasure, a recursive call is made here.
     case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
     case x: Tables.AccountsRow => x.asJson(accountsRowSchema.encoder)
+    case x: Tables.OperationGroupsRow => x.asJson(operationGroupsRowSchema.encoder)
+    case x: Tables.OperationsRow => x.asJson(operationsRowSchema.encoder)
     case x: java.math.BigDecimal => Json.fromBigDecimal(x)
     case x => Json.fromString(x.toString)
   }

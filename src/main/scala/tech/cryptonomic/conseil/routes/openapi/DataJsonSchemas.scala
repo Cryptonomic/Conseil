@@ -44,6 +44,10 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
   implicit def operationGroupsRowSchema: JsonSchema[OperationGroupsRow] =
     genericJsonSchema[OperationGroupsRow]
 
+  /** Operation groups row schema */
+  implicit def operationsRowSchema: JsonSchema[OperationsRow] =
+    genericJsonSchema[OperationsRow]
+
   /** Average fees schema */
   implicit def avgFeeSchema: JsonSchema[AverageFees] =
     genericJsonSchema[AverageFees]

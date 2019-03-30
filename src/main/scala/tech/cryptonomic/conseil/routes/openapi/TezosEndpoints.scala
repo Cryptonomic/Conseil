@@ -80,15 +80,10 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
       tags = List("Operation groups")
     )
 
-  /** Average fees endpoint definition */
-  def avgFeesEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Option[AverageFees]] =
-    endpoint(
-      request = get(
-        url = commonPath / "operations" / "avgFees" /? qsFilter,
-        headers = header("apiKey")),
-      response = jsonResponse[AverageFees](docs = Some("Endpoint for average fees")).orNotFound(Some("Not found")),
-      tags = List("Fees")
-    )
+  /** Operation groups row schema */
+  /** Pasted here because somehow it is not being pulled in from DataJsonSchemas at all. */
+  override implicit def operationsRowSchema: JsonSchema[OperationsRow] =
+    genericJsonSchema[OperationsRow]
 
   /** Operations endpoint definition */
   def operationsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[OperationsRow]] =
@@ -100,4 +95,13 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
       tags = List("Operations")
     )
 
+  /** Average fees endpoint definition */
+  def avgFeesEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Option[AverageFees]] =
+    endpoint(
+      request = get(
+        url = commonPath / "operations" / "avgFees" /? qsFilter,
+        headers = header("apiKey")),
+      response = jsonResponse[AverageFees](docs = Some("Endpoint for average fees")).orNotFound(Some("Not found")),
+      tags = List("Fees")
+    )
 }
