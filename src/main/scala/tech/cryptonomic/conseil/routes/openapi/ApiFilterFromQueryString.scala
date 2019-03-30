@@ -36,19 +36,19 @@ trait ApiFilterFromQueryString extends QueryStringLists { self: algebra.JsonSche
   private def filterQs: QueryString[QueryParams] = {
     val raw =
       optQs[Int]("limit") &
-        qsList[String]("blockIDs") &
-        qsList[Int]("levels") &
-        qsList[String]("chainIDs") &
-        qsList[String]("protocols") &
-        qsList[String]("operationGroupIDs") &
-        qsList[String]("operationSources") &
-        qsList[String]("operationDestinations") &
-        qsList[String]("operationParticipants") &
-        qsList[String]("operationKinds") &
-        qsList[String]("accountIDs") &
-        qsList[String]("accountManagers") &
-        qsList[String]("accountDelegates") &
-        optQs[String]("sortBy") &
+        qsList[String]("block_id") &
+        qsList[Int]("block_level") &
+        qsList[String]("block_netid") &
+        qsList[String]("block_protocol") &
+        qsList[String]("operation_id") &
+        qsList[String]("operation_source") &
+        qsList[String]("operation_destination") &
+        qsList[String]("operation_participant") &
+        qsList[String]("operation_kind") &
+        qsList[String]("account_id") &
+        qsList[String]("account_manager") &
+        qsList[String]("account_delegate") &
+        optQs[String]("sort_by") &
         optQs[String]("order")
     raw map (flatten(_))
   }
