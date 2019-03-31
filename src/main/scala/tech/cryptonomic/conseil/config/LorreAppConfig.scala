@@ -23,13 +23,17 @@ trait LorreAppConfig {
     case _ => None
   }
 
-  private case class ArgumentsConfig(val depth: Depth = Newest, verbose: Boolean = false, network: String = "")
+  private case class ArgumentsConfig(depth: Depth = Newest, verbose: Boolean = false, headHash: Option[String] = None, network: String = "")
 
   private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
     arg[String]("network")
       .required()
       .action( (x, c) => c.copy(network = x))
       .text("which network to use")
+
+    opt[Option[String]]("headHash")
+      .action( (x, c) => c.copy(headHash = x))
+      .text("from which block to start. Default to actual head")
 
     opt[Option[Depth]]('d', "depth")
       .validate{
@@ -56,13 +60,13 @@ trait LorreAppConfig {
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
-      ArgumentsConfig(depth, verbose, network) = args
+      ArgumentsConfig(depth, verbose, headHash, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node, headHash), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
 
     //something went wrong
     loadedConf.left.foreach {
