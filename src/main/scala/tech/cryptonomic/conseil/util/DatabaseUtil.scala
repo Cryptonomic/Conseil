@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.util
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, QueryOrdering, QueryResponse}
+import tech.cryptonomic.conseil.generic.chain.DataTypes._
 
 /**
   * Utility functions and members for common database operations.
@@ -113,7 +113,7 @@ object DatabaseUtil {
       * @param columns columns which are selected from teh table
       * @return SQLAction with basic query
       */
-    def makeQuery(table: String, columns: List[String]): SQLActionBuilder = {
+    def makeQuery(table: String, columns: List[String], aggregation: Option[Aggregation]): SQLActionBuilder = {
       val cols = if (columns.isEmpty) "*" else columns.mkString(",")
       sql"""SELECT #$cols FROM #$table WHERE true """
     }
@@ -136,6 +136,7 @@ object DatabaseUtil {
     def makeLimit(limit: Int): SQLActionBuilder = {
       sql""" LIMIT $limit"""
     }
+
 
     /** maps operation type to SQL operation */
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {

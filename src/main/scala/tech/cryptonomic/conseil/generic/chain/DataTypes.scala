@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.generic.chain
 
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
@@ -70,8 +71,26 @@ object DataTypes {
     predicates: List[Predicate] = List.empty,
     orderBy: List[QueryOrdering] = List.empty,
     limit: Int = defaultLimitValue,
-    output: OutputType = OutputType.json
+    output: OutputType = OutputType.json,
+    aggregation: Option[Aggregation] = None
   )
+
+
+//  {
+//    "fields": [],
+//    ...
+//    "aggregation": {
+//      "field": "",
+//      "function": "[sum|count|max|min|avg]",
+//      "predicate": {
+//      "operation": "operation",
+//      "set": [],
+//      "inverse": false,
+//      "precision": 2
+//    }
+//    }
+//  }
+  case class Aggregation(field: String, function: AggregationType, predicate: Option[Predicate] = None)
 
   /** Class representing query got through the REST API */
   case class ApiQuery(
@@ -79,9 +98,10 @@ object DataTypes {
     predicates: Option[List[Predicate]],
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
-    @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType]
+    @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType],
+    aggregation: Option[Aggregation]
   ) {
-    /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
+    /** Method which validates query fields */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
       import cats.implicits._
@@ -137,5 +157,11 @@ object DataTypes {
   object OperationType extends Enumeration {
     type OperationType = Value
     val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
+  }
+
+  /** Enumeration of aggregation functions */
+  object AggregationType extends Enumeration {
+    type AggregationType = Value
+    val sum, count, max, min, avg = Value
   }
 }
