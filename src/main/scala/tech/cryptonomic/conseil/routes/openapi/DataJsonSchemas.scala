@@ -60,8 +60,8 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
   /** AnyMap schema */
   implicit def blocksByHashSchema: JsonSchema[AnyMap]
 
-  /** Operation schema */
-  implicit def operationSchema: JsonSchema[OperationsRow] =
+  /** Operation row schema */
+  implicit def operationsRowSchema: JsonSchema[OperationsRow] =
     genericJsonSchema[OperationsRow]
 
   /** Accounts row schema */
