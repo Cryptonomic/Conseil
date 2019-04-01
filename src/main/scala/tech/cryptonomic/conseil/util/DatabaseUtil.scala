@@ -95,7 +95,11 @@ object DatabaseUtil {
 
       def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
         val columnsWithoutAggregation = columns.filterNot(aggregation.map(_.field).contains(_))
-        concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
+        if(columnsWithoutAggregation.isEmpty) {
+          action
+        } else {
+          concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
+        }
       }
     }
 
@@ -152,13 +156,14 @@ object DatabaseUtil {
 
     /** Prepares group by parameters
       *
-      * @param limit list of ordering parameters
-      * @return SQLAction with ordering
+      * @param columns list of columns to be grouped
+      * @return SQLAction with group by
       */
     def makeGroupBy(columns: List[String]): SQLActionBuilder = {
       sql""" GROUP BY #${columns.mkString(",")}"""
     }
 
+    /** maps aggregation operation to the SQL function*/
     private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String = {
       aggregationType match {
         case AggregationType.sum => s"SUM($column)"
