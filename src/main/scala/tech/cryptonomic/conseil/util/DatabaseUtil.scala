@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.util
 
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 
@@ -91,6 +92,11 @@ object DatabaseUtil {
       def addLimit(limit: Int): SQLActionBuilder = {
         concatenateSqlActions(action, makeLimit(limit))
       }
+
+      def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
+        val columnsWithoutAggregation = columns.filterNot(aggregation.map(_.field).contains(_))
+        concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
+      }
     }
 
     /** Prepares predicates and transforms them into SQLActionBuilders
@@ -114,7 +120,14 @@ object DatabaseUtil {
       * @return SQLAction with basic query
       */
     def makeQuery(table: String, columns: List[String], aggregation: Option[Aggregation]): SQLActionBuilder = {
-      val cols = if (columns.isEmpty) "*" else columns.mkString(",")
+
+      val aggr = columns.foldLeft(List.empty[String]) {
+        case (acc, column) if aggregation.map(_.field).contains(column) => mapAggregationToSQL(aggregation.get.function, column) :: acc
+        case (acc, column) => s"$column" :: acc
+      }
+
+      val cols = if (aggr.isEmpty) "*" else aggr.mkString(",")
+
       sql"""SELECT #$cols FROM #$table WHERE true """
     }
 
@@ -137,6 +150,24 @@ object DatabaseUtil {
       sql""" LIMIT $limit"""
     }
 
+    /** Prepares group by parameters
+      *
+      * @param limit list of ordering parameters
+      * @return SQLAction with ordering
+      */
+    def makeGroupBy(columns: List[String]): SQLActionBuilder = {
+      sql""" GROUP BY #${columns.mkString(",")}"""
+    }
+
+    private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String = {
+      aggregationType match {
+        case AggregationType.sum => s"SUM($column)"
+        case AggregationType.count => s"COUNT($column)"
+        case AggregationType.max => s"MAX($column)"
+        case AggregationType.min => s"MIN($column)"
+        case AggregationType.avg => s"AVG($column)"
+      }
+    }
 
     /** maps operation type to SQL operation */
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {

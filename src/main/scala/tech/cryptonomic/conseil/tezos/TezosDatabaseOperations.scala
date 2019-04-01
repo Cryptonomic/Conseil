@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Predicate, QueryOrdering, QueryResponse}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, Predicate, QueryOrdering, QueryResponse}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -325,6 +325,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param columns        list of column names
     * @param predicates     list of predicates for query to be filtered with
     * @param ordering       list of ordering conditions for the query
+    * @param aggregation    optional aggregation
     * @param limit          max number of rows fetched
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
@@ -333,10 +334,12 @@ object TezosDatabaseOperations extends LazyLogging {
     columns: List[String],
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
-    limit: Int)
+    limit: Int,
+    aggregation: Option[Aggregation] = None)
     (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
-     makeQuery(table, columns)
-       .addPredicates(predicates)
+     makeQuery(table, columns, aggregation)
+       .addPredicates(aggregation.flatMap(_.getPredicate).toList ::: predicates)
+       .addGroupBy(aggregation, columns)
        .addOrdering(ordering)
        .addLimit(limit)
        .as[QueryResponse]

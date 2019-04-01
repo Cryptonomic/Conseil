@@ -861,7 +861,7 @@ class TezosDatabaseOperationsTest
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
-      result shouldBe List(
+      result shouldBe allElementsOf(List(
         Map(
           "operations_hash" -> None,
           "timestamp" -> Some(new Timestamp(0)),
@@ -916,6 +916,7 @@ class TezosDatabaseOperationsTest
           "meta_voting_period_position" -> None,
           "expected_commitment" -> None
         )
+      )
       )
     }
 
@@ -983,10 +984,10 @@ class TezosDatabaseOperationsTest
       } yield found
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
-      result shouldBe List(
+      result shouldBe allElementsOf(List(
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"), "operations_hash" -> None),
         Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"), "operations_hash" -> None)
-      )
+      ))
     }
 
     "get map from a block table" in {
@@ -1471,7 +1472,7 @@ class TezosDatabaseOperationsTest
       val tableName = Tables.Blocks.baseTableRow.tableName
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocksTmp
-        generatedQuery <- makeQuery(tableName, columns).as[AnyMap]
+        generatedQuery <- makeQuery(tableName, columns, None).as[AnyMap]
       } yield generatedQuery
 
       val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
