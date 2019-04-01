@@ -89,6 +89,16 @@ object JsonParser {
   }
 
   /*
+   * Wrapper for bytes constant
+   *
+   * {"bytes": "0500"}
+   *
+   * */
+  case class JsonBytesConstant(bytes: String) extends JsonExpression {
+    override def toMichelsonExpression = MichelsonBytesConstant(bytes)
+  }
+
+  /*
    * Wrapper for instruction
    *
    * [{"prim": "DIP", "args": [[{"prim": "DUP"}]]}, [{"prim": "DIP", "args": [[{"prim": "NIL", "args": [{"prim": "operation"}]}]]}]]
@@ -161,7 +171,8 @@ object JsonParser {
       List[Decoder[JsonExpression]](
         Decoder[JsonType].widen,
         Decoder[JsonIntConstant].widen,
-        Decoder[JsonStringConstant].widen
+        Decoder[JsonStringConstant].widen,
+        Decoder[JsonBytesConstant].widen
       ).reduceLeft(_ or _)
 
     val decodeInstructionSequence: Decoder[JsonInstructionSequence] = _.as[List[JsonInstruction]].map(JsonInstructionSequence)
