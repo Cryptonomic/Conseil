@@ -80,11 +80,6 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
       tags = List("Operation groups")
     )
 
-  /** Operation groups row schema */
-  /** Pasted here because somehow it is not being pulled in from DataJsonSchemas at all. */
-  override implicit def operationsRowSchema: JsonSchema[OperationsRow] =
-    genericJsonSchema[OperationsRow]
-
   /** Operations endpoint definition */
   def operationsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[OperationsRow]] =
     endpoint(
