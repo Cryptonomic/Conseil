@@ -26,6 +26,7 @@ object MichelsonRenderer {
       case MichelsonType(name, args, annotations) => s"($name ${(annotations ++ args.map(_.render())).mkString(" ")})"
       case MichelsonIntConstant(constant) => constant.toString
       case MichelsonStringConstant(constant) => "\"%s\"".format(constant)
+      case MichelsonBytesConstant(constant) => s"0x$constant"
       case MichelsonEmptyExpression => "{}"
 
       // code

@@ -26,6 +26,10 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     MichelsonType("some", List(MichelsonStringConstant("testValue"))).render() shouldBe "(some \"testValue\")"
   }
 
+  it should "render MichelsonType with bytes constant" in {
+    MichelsonType("some", List(MichelsonBytesConstant("0500"))).render() shouldBe "(some 0x0500)"
+  }
+
   it should "render MichelsonType with annotation" in {
     val michelsonType = MichelsonType(
       prim = "pair",

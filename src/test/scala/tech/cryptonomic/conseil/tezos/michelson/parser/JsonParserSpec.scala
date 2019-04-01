@@ -156,6 +156,26 @@ class JsonParserSpec extends FlatSpec with Matchers {
                 MichelsonStringConstant("0")))))))
   }
 
+  it should "parse MichelsonInstruction typed with bytes data" in {
+    val json =
+      """{
+        |  "prim": "PUSH",
+        |  "args": [
+        |    {
+        |      "prim": "bytes"
+        |    },
+        |    {
+        |      "bytes": "0500"
+        |    }
+        |  ]
+        |}""".stripMargin
+
+    parse[MichelsonInstruction](json) should equal(Right(
+      MichelsonSingleInstruction("PUSH", List(
+        MichelsonType("bytes"),
+        MichelsonBytesConstant("0500")))))
+  }
+
   it should "parse double embedded MichelsonInstruction" in {
     val json =
       """[
