@@ -1598,7 +1598,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "aggregate test for count" in {
+    "should aggregation with COUNT function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1622,7 +1622,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "aggregate test for max" in {
+    "should aggregation with MAX function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1646,7 +1646,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "aggregate test for min" in {
+    "should aggregation with MIN function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1670,7 +1670,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "aggregate test for sum" in {
+    "should aggregation with SUM function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
