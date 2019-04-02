@@ -4,6 +4,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.Aggregat
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -54,8 +56,11 @@ object DataTypes {
   /** Class representing invalid order by field */
   case class InvalidOrderByField(message: String) extends QueryValidationError
 
-  /** Class representing invalid order by field */
+  /** Class representing invalid aggregation field */
   case class InvalidAggregationField(message: String) extends QueryValidationError
+
+  /** Class representing invalid field type used in aggregation */
+  case class InvalidAggregationFieldForType(message: String) extends QueryValidationError
 
   /** Class representing query */
   case class Query(
@@ -67,6 +72,7 @@ object DataTypes {
     aggregation: Option[Aggregation] = None
   )
 
+  /** Class representing predicate used in aggregation */
   case class AggregationPredicate(
     operation: OperationType,
     set: List[Any] = List.empty,
@@ -74,7 +80,9 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
+  /** Class representing aggregation */
   case class Aggregation(field: String, function: AggregationType, predicate: Option[AggregationPredicate]) {
+    /** Method extracting predicate from aggregation */
     def getPredicate: Option[Predicate] = {
       predicate.map(_.into[Predicate].withFieldConst(_.field, field).transform)
     }
@@ -98,45 +106,57 @@ object DataTypes {
 
       val invalidQueryFields = query
         .fields
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map { case (_, fieldName) => InvalidQueryField(fieldName) })
+        .traverse(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
+        .map(_.collect { case (false, fieldName) => InvalidQueryField(fieldName) })
 
       val invalidPredicateFields = query
         .predicates
-        .map(_.field)
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidPredicateField(fieldName) })
+        .traverse(predicate => tezosPlatformDiscovery.areFieldsValid(entity, Set(predicate.field)).map(_ -> predicate.field))
+        .map(_.collect { case (false, fieldName) => InvalidPredicateField(fieldName) })
 
       val invalidOrderByFields = query
         .orderBy
-        .map(_.field)
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidOrderByField(fieldName) })
-
+        .traverse(ordering => tezosPlatformDiscovery.areFieldsValid(entity, Set(ordering.field)).map(_ -> ordering.field))
+        .map(_.collect { case (false, fieldName) => InvalidOrderByField(fieldName) })
 
       val invalidAggregationFields = query
         .aggregation
         .toList
-        .map(_.field)
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidAggregationField(fieldName) })
+        .traverse(aggregation => tezosPlatformDiscovery.areFieldsValid(entity, Set(aggregation.field)).map(_ -> aggregation.field))
+        .map(_.collect { case (false, fieldName) => InvalidAggregationField(fieldName) })
+
+       val invalidTypeAggregationField = query
+         .aggregation
+         .traverse { aggregation =>
+           tezosPlatformDiscovery.getTableAttributesWithoutCounts(entity).map { attributesOpt =>
+             attributesOpt.flatMap { attributes =>
+               attributes
+                 .find(_.name == aggregation.field)
+                 .map(attribute => canBeAggregated(attribute.dataType) -> aggregation.field)
+             }
+           }
+         }
+         .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
 
       for {
         invQF <- invalidQueryFields
         invPF <- invalidPredicateFields
         invODBF <- invalidOrderByFields
         invAF <- invalidAggregationFields
+        invTAF <- invalidTypeAggregationField
       } yield {
-        invQF ::: invPF ::: invODBF ::: invAF match {
+        invQF ::: invPF ::: invODBF ::: invAF ::: invTAF match {
           case Nil => Right(query)
           case wrongFields => Left(wrongFields)
         }
       }
     }
+  }
+
+  /** Method checks if type can be aggregated */
+  private def canBeAggregated(tpe: DataType): Boolean = {
+    val typesToAggregate = Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)
+    typesToAggregate.contains(tpe)
   }
 
   /** Enumeration for output types */

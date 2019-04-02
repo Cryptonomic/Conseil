@@ -10,7 +10,7 @@ import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
@@ -1595,6 +1595,102 @@ class TezosDatabaseOperationsTest
         Map("level" -> Some(2), "proto" -> Some(2)),
         Map("level" -> Some(0), "proto" -> Some(1)),
         Map("level" -> Some(1), "proto" -> Some(1))
+      )
+    }
+
+    "aggregate test for count" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.count, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(Tables.Fees.baseTableRow.tableName, List("low", "medium", "high"), List.empty, List.empty, 3, aggregate)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "count" -> Some(1), "low" -> Some(0)),
+        Map("high" -> Some(4), "count" -> Some(2), "low" -> Some(0))
+      )
+    }
+
+    "aggregate test for max" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.max, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(Tables.Fees.baseTableRow.tableName, List("low", "medium", "high"), List.empty, List.empty, 3, aggregate)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "max" -> Some(4), "low" -> Some(0)),
+        Map("high" -> Some(4), "max" -> Some(3), "low" -> Some(0))
+      )
+    }
+
+    "aggregate test for min" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.min, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(Tables.Fees.baseTableRow.tableName, List("low", "medium", "high"), List.empty, List.empty, 3, aggregate)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "min" -> Some(4), "low" -> Some(0)),
+        Map("high" -> Some(4), "min" -> Some(2), "low" -> Some(0))
+      )
+    }
+
+    "aggregate test for sum" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.sum, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(Tables.Fees.baseTableRow.tableName, List("low", "medium", "high"), List.empty, List.empty, 3, aggregate)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "sum" -> Some(4), "low" -> Some(0)),
+        Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0))
       )
     }
   }

@@ -251,6 +251,20 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /**
+    * Extracts attributes in the DB for the given table name without updating counts
+    *
+    * @param  tableName name of the table from which we extract attributes
+    * @return list of attributes as a Future
+    */
+  def getTableAttributesWithoutCounts(tableName: String): Future[Option[List[Attribute]]] = {
+    attributesCache.read.map { entitiesMap =>
+      entitiesMap.get(tableName).map {
+        case (_, attributes) => attributes
+      }
+    }.unsafeToFuture()
+  }
+
+  /**
     * Extracts attributes in the DB for the given table name
     *
     * @param  tableName name of the table from which we extract attributes
