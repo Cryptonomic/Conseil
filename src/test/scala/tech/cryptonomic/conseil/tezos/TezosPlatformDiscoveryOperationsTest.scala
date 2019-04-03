@@ -35,7 +35,7 @@ class TezosPlatformDiscoveryOperationsTest
     "return list with one element" in {
       val config = PlatformsConfiguration(
         platforms = Map(
-          Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+          Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
         )
       )
 
@@ -48,12 +48,10 @@ class TezosPlatformDiscoveryOperationsTest
           Tezos -> List(
             TezosConfiguration(
               "alphanet",
-              Newest,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
             ),
             TezosConfiguration(
               "alphanet-staging",
-              Newest,
               TezosNodeConfiguration(protocol = "https", hostname = "nautilus.cryptonomic.tech", port = 8732, pathPrefix = "tezos/alphanet/")
             )
           )

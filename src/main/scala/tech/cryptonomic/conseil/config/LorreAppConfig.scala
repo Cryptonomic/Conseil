@@ -5,7 +5,7 @@ import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClie
 import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
 import pureconfig.ConfigReader
 import pureconfig.error.ConfigReaderFailures
-import pureconfig.generic.ProductHint
+import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
 import scopt.{OptionParser, Read}
 
@@ -31,7 +31,7 @@ trait LorreAppConfig {
       .action( (x, c) => c.copy(network = x))
       .text("which network to use")
 
-    opt[Option[String]]("headHash")
+    opt[Option[String]]('h', "headHash")
       .action( (x, c) => c.copy(headHash = x))
       .text("from which block to start. Default to actual head")
 
@@ -57,16 +57,17 @@ trait LorreAppConfig {
 
     //applies convention to uses CamelCase when reading config fields
     implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+    implicit val seasonHint = new EnumCoproductHint[Depth]
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
       ArgumentsConfig(depth, verbose, headHash, network) = args
-      lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
+      lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node, headHash), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
 
     //something went wrong
     loadedConf.left.foreach {

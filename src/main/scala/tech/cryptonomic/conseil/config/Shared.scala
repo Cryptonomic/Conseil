@@ -9,7 +9,9 @@ final case class LorreConfiguration(
   bootupRetryInterval: FiniteDuration,
   bootupConnectionCheckTimeout: FiniteDuration,
   feeUpdateInterval: Int,
-  numberOfFeesAveraged: Int
+  numberOfFeesAveraged: Int,
+  depth: Depth,
+  headHash: Option[String]
 )
 
 final case class BatchFetchConfiguration(

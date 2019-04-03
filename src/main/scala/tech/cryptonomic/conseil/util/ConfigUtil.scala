@@ -99,7 +99,7 @@ object ConfigUtil {
                 .left.map(ExceptionThrown)
                 .flatMap(readAndFailWithFailureReason[TezosNodeConfiguration])
                 //creates the whole config entry
-                .map(TezosConfiguration(network, Newest, _))
+                .map(TezosConfiguration(network, _))
           }
           foldReadResults(parsed) {
             _.toList
