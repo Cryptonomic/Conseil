@@ -303,7 +303,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return       distinct elements in given column as a list
     */
   def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
-    sql"""SELECT DISTINCT #$column FROM #$table""".as[String].map(_.toList)
+    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column IS NOT NULL""".as[String].map(_.toList)
   }
 
   /**
@@ -315,7 +315,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return               distinct elements in given column as a list
     */
   def selectDistinctLike(table: String, column: String, matchingString: String)(implicit ec: ExecutionContext): DBIO[List[String]] = {
-    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%'""".as[String].map(_.toList)
+    sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL""".as[String].map(_.toList)
   }
 
   /**
