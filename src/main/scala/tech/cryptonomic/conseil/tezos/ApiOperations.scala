@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AnyMap, OperationType, OrderDirection, Predicate, Query, QueryOrdering, QueryResponse}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, Query, QueryOrdering, QueryResponse}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -200,6 +200,10 @@ object ApiOperations extends DataOperations with MetadataOperations {
 
   }
 
+  case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
+  case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
+  case class AccountResult(account: Tables.AccountsRow)
+
   /**
     * Fetches the level of the most recent block stored in the database.
     *
@@ -224,7 +228,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -233,9 +237,9 @@ object ApiOperations extends DataOperations with MetadataOperations {
     dbHandle.run(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
       blocks.headOption.map {
-        block => Map(
-          "block" -> block,
-          "operation_groups" -> groups
+        block => BlockResult(
+          block = block,
+          operation_groups = groups
         )
       }
     }
@@ -260,15 +264,15 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
     } yield operations.map {
         case (opGroup, ops) =>
-          Map(
-            "operation_group" -> opGroup,
-            "operations" -> ops
+          OperationGroupResult(
+            operation_group = opGroup,
+            operations = ops
           )
         }
 
@@ -318,7 +322,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return The account with its associated operation groups
     */
-  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AnyMap]] = {
+  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
         Tables.Accounts
           .filter(row => row.accountId === account_id.id)
@@ -327,9 +331,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
 
     dbHandle.run(fetchOperation).map{
       accounts =>
-        accounts.headOption.map { account =>
-          Map("account" -> account)
-        }
+        accounts.headOption.map(AccountResult(_))
     }
   }
 

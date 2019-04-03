@@ -16,9 +16,6 @@ import scala.concurrent.{ExecutionContext, Future}
 object DataTypes {
   import io.scalaland.chimney.dsl._
 
-  /** Type representing Map[String, Any] */
-  type AnyMap = Map[String, Any]
-
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
   /** Default value of limit parameter */

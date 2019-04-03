@@ -1,13 +1,14 @@
 name := "Conseil"
 scalaVersion := "2.12.8"
 
-val akkaHttpVersion = "10.1.0"
-val akkaVersion = "2.5.19"
+val akkaVersion = "2.5.21"
+val akkaHttpVersion = "10.1.8"
+val akkaHttpJsonVersion = "1.25.2"
 val slickVersion = "3.3.0"
-val circeVersion = "0.11.0"
-val endpointsVersion = "0.8.0"
 val catsVersion = "1.6.0"
 val monocleVersion = "1.5.1-cats"
+val endpointsVersion = "0.9.0"
+val circeVersion = "0.11.1"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -19,50 +20,52 @@ resolvers ++= Seq(
 )
 
 libraryDependencies  ++=  Seq(
-  "ch.qos.logback"                % "logback-classic"               % "1.2.3",
-  "com.typesafe"                  % "config"                        % "1.3.2",
-  "com.typesafe.scala-logging"   %% "scala-logging"                 % "3.7.2",
-  "com.typesafe.akka"            %% "akka-http"                     % akkaHttpVersion exclude("com.typesafe", "config"),
-  "com.typesafe.akka"            %% "akka-stream"                   % akkaVersion exclude("com.typesafe", "config"),
-  "com.typesafe.akka"            %% "akka-actor"                    % akkaVersion exclude("com.typesafe", "config"),
-  "de.heikoseeberger"            %% "akka-http-jackson"             % "1.22.0",
-  "ch.megard"                    %% "akka-http-cors"                % "0.3.0",
-  "org.scalaj"                   %% "scalaj-http"                   % "2.3.0",
-  "com.github.pureconfig"        %% "pureconfig"                    % "0.10.2",
-  "com.fasterxml.jackson.core"    % "jackson-databind"              % "2.9.0",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala"          % "2.9.0",
-  "org.typelevel"                %% "cats-core"                     % catsVersion,
-  "com.github.julien-truffaut"   %% "monocle-core"                  % monocleVersion,
-  "com.github.julien-truffaut"   %% "monocle-macro"                 % monocleVersion,
-  "org.typelevel"                %% "mouse"                         % "0.20",
-  "com.kubukoz"                  %% "slick-effect"                  % "0.1.0",
-  "io.circe"                     %% "circe-core"                    % circeVersion,
-  "io.circe"                     %% "circe-parser"                  % circeVersion,
-  "io.circe"                     %% "circe-generic"                 % circeVersion,
-  "io.circe"                     %% "circe-generic-extras"          % circeVersion,
-  "de.heikoseeberger"            %% "akka-http-circe"               % "1.23.0" exclude("com.typesafe.akka", "akka-http"),
-  "org.julienrf"                 %% "endpoints-algebra"             % endpointsVersion,
-  "org.julienrf"                 %% "endpoints-openapi"             % endpointsVersion,
-  "org.julienrf"                 %% "endpoints-json-schema-generic" % endpointsVersion,
-  "org.julienrf"                 %% "endpoints-akka-http-server"    % endpointsVersion,
-  "com.chuusai"                  %% "shapeless"                     % "2.3.3",
-  "com.typesafe.slick"           %% "slick"                         % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
-  "com.typesafe.slick"           %% "slick-hikaricp"                % slickVersion exclude("org.slf4j", "slf4j-api"),
-  "com.typesafe.slick"           %% "slick-codegen"                 % slickVersion,
-  "org.postgresql"                % "postgresql"                    % "42.1.4",
-  "com.madgag.spongycastle"       % "core"                          % "1.58.0.0",
-  "org.scorexfoundation"         %% "scrypto"                       % "2.0.0",
-  "com.muquit.libsodiumjna"       % "libsodium-jna"                 % "1.0.4" exclude("org.slf4j", "slf4j-log4j12") exclude("org.slf4j", "slf4j-api"),
-  "com.github.alanverbner"       %% "bip39"                         % "0.1",
-  "com.github.scopt"             %% "scopt"                         % "4.0.0-RC2",
-  "io.scalaland"                 %% "chimney"                       % "0.3.0",
-  "com.github.julien-truffaut"   %% "monocle-core"                  % monocleVersion,
-  "com.github.julien-truffaut"   %% "monocle-macro"                 % monocleVersion,
-  "org.scalatest"                %% "scalatest"                     % "3.0.4" % Test,
-  "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
-  "org.scalamock"                %% "scalamock"                     % "4.0.0" % Test,
-  "ru.yandex.qatools.embed"       % "postgresql-embedded"           % "2.10" % Test,
-  "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude("com.typesafe", "config")
+  "ch.qos.logback"                   % "logback-classic"               % "1.2.3",
+  "com.typesafe"                     % "config"                        % "1.3.3",
+  "com.typesafe.scala-logging"      %% "scala-logging"                 % "3.7.2",
+  "com.typesafe.akka"               %% "akka-actor"                    % akkaVersion exclude("com.typesafe", "config"),
+  "com.typesafe.akka"               %% "akka-stream"                   % akkaVersion exclude("com.typesafe", "config"),
+  "com.typesafe.akka"               %% "akka-http"                     % akkaHttpVersion exclude("com.typesafe", "config"),
+  "com.typesafe.akka"               %% "akka-http-caching"             % akkaHttpVersion exclude("com.typesafe", "config"),
+  "de.heikoseeberger"               %% "akka-http-circe"               % akkaHttpJsonVersion exclude("com.typesafe.akka", "akka-http"),
+  "de.heikoseeberger"               %% "akka-http-jackson"             % akkaHttpJsonVersion exclude("com.fasterxml.jackson.core","jackson-databind") exclude("com.typesafe.akka", "akka-http"),
+  "ch.megard"                       %% "akka-http-cors"                % "0.3.4" exclude("com.typesafe.akka", "akka-http"),
+  "org.scalaj"                      %% "scalaj-http"                   % "2.4.1",
+  "com.github.pureconfig"           %% "pureconfig"                    % "0.10.2",
+  "com.fasterxml.jackson.core"       % "jackson-databind"              % "2.9.6" exclude("com.fasterxml.jackson.core", "jackson-annotations"),
+  "com.fasterxml.jackson.module"    %% "jackson-module-scala"          % "2.9.6",
+  "com.chuusai"                     %% "shapeless"                     % "2.3.3",
+  "org.typelevel"                   %% "cats-core"                     % catsVersion,
+  "org.typelevel"                   %% "mouse"                         % "0.20",
+  "com.github.julien-truffaut"      %% "monocle-core"                  % monocleVersion exclude("org.typelevel.cats", "cats-core"),
+  "com.github.julien-truffaut"      %% "monocle-macro"                 % monocleVersion exclude("org.typelevel.cats", "cats-core") exclude("org.typelevel.cats", "cats-macros"),
+  "org.julienrf"                    %% "endpoints-algebra"             % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-openapi"             % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-json-schema-generic" % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-json-schema-circe"   % endpointsVersion,
+  "org.julienrf"                    %% "endpoints-akka-http-server"    % endpointsVersion,
+  "org.postgresql"                   % "postgresql"                    % "42.1.4",
+  "io.circe"                        %% "circe-core"                    % circeVersion,
+  "io.circe"                        %% "circe-parser"                  % circeVersion,
+  "io.circe"                        %% "circe-generic"                 % circeVersion,
+  "io.circe"                        %% "circe-generic-extras"          % circeVersion,
+  "com.typesafe.slick"              %% "slick"                         % slickVersion exclude("org.reactivestreams", "reactive-streams") exclude("com.typesafe", "config") exclude("org.slf4j", "slf4j-api"),
+  "com.typesafe.slick"              %% "slick-hikaricp"                % slickVersion exclude("org.slf4j", "slf4j-api"),
+  "com.typesafe.slick"              %% "slick-codegen"                 % slickVersion,
+  "com.kubukoz"                     %% "slick-effect"                  % "0.1.0" exclude("com.typesafe.slick", "slick"),
+  "org.postgresql"                   % "postgresql"                    % "42.1.4",
+  "com.github.scopt"                %% "scopt"                         % "4.0.0-RC2",
+  "io.scalaland"                    %% "chimney"                       % "0.3.1",
+  "com.madgag.spongycastle"          % "core"                          % "1.58.0.0",
+  "org.scorexfoundation"            %% "scrypto"                       % "2.0.0",
+  "com.muquit.libsodiumjna"          % "libsodium-jna"                 % "1.0.4" exclude("org.slf4j", "slf4j-log4j12") exclude("org.slf4j", "slf4j-api"),
+  "com.github.alanverbner"          %% "bip39"                         % "0.1",
+  "com.typesafe.akka"               %% "akka-testkit"                  % akkaVersion % Test exclude("com.typesafe", "config"),
+  "com.typesafe.akka"               %% "akka-http-testkit"             % akkaHttpVersion % Test exclude("com.typesafe", "config"),
+  "org.scalatest"                   %% "scalatest"                     % "3.0.5" % Test,
+  "com.stephenn"                    %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
+  "org.scalamock"                   %% "scalamock"                     % "4.0.0" % Test,
+  "ru.yandex.qatools.embed"          % "postgresql-embedded"           % "2.10" % Test
 )
 
 excludeDependencies ++= Seq(

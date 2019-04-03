@@ -1,12 +1,13 @@
 package tech.cryptonomic.conseil.routes.openapi
 
-import endpoints.{algebra, generic}
+import endpoints.generic
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.ApiOperations.{BlockResult, OperationGroupResult, AccountResult}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
 /** Trait containing Data endpoints JSON schemas */
-trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
+trait DataJsonSchemas extends generic.JsonSchemas {
 
   /** API query schema */
   implicit def queryRequestSchema: JsonSchema[ApiQuery] =
@@ -32,9 +33,14 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
   implicit def queryOutputSchema: JsonSchema[OutputType.Value] =
     enumeration(OutputType.values.toSeq)(_.toString)
 
-
   /** Timestamp schema */
-  implicit def timestampSchema: JsonSchema[java.sql.Timestamp]
+  implicit def timestampSchema: JsonSchema[java.sql.Timestamp] = {
+    xmapJsonSchema[Long, java.sql.Timestamp](
+      implicitly[JsonSchema[Long]],
+      millisFromEpoch => new java.sql.Timestamp(millisFromEpoch),
+      ts => ts.getTime
+    )
+  }
 
   /** Blocks row schema */
   implicit def blocksRowSchema: JsonSchema[BlocksRow] =
@@ -57,15 +63,24 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
   /** Query response schema with output type */
   implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput]
 
-  /** AnyMap schema */
-  implicit def blocksByHashSchema: JsonSchema[AnyMap]
-
   /** Operation row schema */
-  implicit def operationsRowSchema: JsonSchema[OperationsRow] =
+  implicit def operationRowSchema: JsonSchema[OperationsRow] =
     genericJsonSchema[OperationsRow]
 
   /** Accounts row schema */
   implicit def accountsRowSchema: JsonSchema[AccountsRow] =
     genericJsonSchema[AccountsRow]
+
+  /** api operation results schema for blocks */
+  implicit def blockResultSchema: JsonSchema[BlockResult] =
+    genericJsonSchema[BlockResult]
+
+  /** api operation results schema for operation groups */
+  implicit def operationGroupResultSchema: JsonSchema[OperationGroupResult] =
+    genericJsonSchema[OperationGroupResult]
+
+  /** api operation results schema for accounts */
+  implicit def accountResultSchema: JsonSchema[AccountResult] =
+    genericJsonSchema[AccountResult]
 
 }

@@ -83,9 +83,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       pathPrefix("swagger-ui") {
         getFromResourceDirectory("web/swagger-ui/")
       } ~
-      path("openapi.json") {
-        complete(OpenApiDoc.openapiJson)
-      }
+      Docs.route
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       displayInfo(server)

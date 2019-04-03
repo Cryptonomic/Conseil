@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.routes.openapi
 
-import endpoints.{algebra, generic}
+import endpoints.generic
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 
 /** Trait containing metadata endpoints JSON schemas */
-trait PlatformDiscoveryJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
+trait PlatformDiscoveryJsonSchemas extends generic.JsonSchemas {
 
   /** Platform JSON schema */
   implicit def platformSchema: JsonSchema[Platform] =

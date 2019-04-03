@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.ApiOperations.{Filter, BlockResult, OperationGroupResult, AccountResult}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
@@ -52,12 +52,12 @@ trait DataEndpoints
     )
 
   /** V2 Blocks by hash endpoint definition */
-  def blockByHashEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
+  def blockByHashEndpoint: Endpoint[((String, String, String), String), Option[BlockResult]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" / segment[String](name = "hash"),
         headers = header("apiKey")),
-      response = compatibilityQuery[AnyMap]("block by hash"),
+      response = compatibilityQuery[BlockResult]("block by hash"),
       tags = List("Blocks")
     )
 
@@ -72,12 +72,12 @@ trait DataEndpoints
     )
 
   /** V2 Accounts by ID endpoint definition */
-  def accountByIdEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
+  def accountByIdEndpoint: Endpoint[((String, String, String), String), Option[AccountResult]] =
     endpoint(
       request = get(
         url = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network") / "accounts" / segment[String](name = "accountId"),
         headers = header("apiKey")),
-      response = compatibilityQuery[AnyMap]("account"),
+      response = compatibilityQuery[AccountResult]("account"),
       tags = List("Accounts")
     )
 
@@ -92,12 +92,12 @@ trait DataEndpoints
     )
 
   /** V2 Operation groups by ID endpoint definition */
-  def operationGroupByIdEndpoint: Endpoint[((String, String, String), String), Option[AnyMap]] =
+  def operationGroupByIdEndpoint: Endpoint[((String, String, String), String), Option[OperationGroupResult]] =
     endpoint(
       request = get(
         url = commonPath / "operation_groups" / segment[String](name = "operationGroupId"),
         headers = header("apiKey")),
-      response = compatibilityQuery[AnyMap]("operation group"),
+      response = compatibilityQuery[OperationGroupResult]("operation group"),
       tags = List("Operation groups")
     )
 
