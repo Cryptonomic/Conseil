@@ -146,7 +146,7 @@ object DataTypes {
   )
 
   /** Class representing aggregation */
-  case class Aggregation(field: String, function: AggregationType, predicate: Option[AggregationPredicate]) {
+  case class Aggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[AggregationPredicate] = None) {
     /** Method extracting predicate from aggregation */
     def getPredicate: Option[Predicate] = {
       predicate.map(_.into[Predicate].withFieldConst(_.field, field).transform)
