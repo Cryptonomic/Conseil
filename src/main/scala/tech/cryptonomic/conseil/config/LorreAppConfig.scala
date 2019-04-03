@@ -2,12 +2,12 @@ package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
-import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
-import pureconfig.ConfigReader
+import pureconfig.{CamelCase, ConfigFieldMapping, ConfigReader, loadConfig}
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
 import scopt.{OptionParser, Read}
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -23,7 +23,10 @@ trait LorreAppConfig {
     case _ => None
   }
 
-  private case class ArgumentsConfig(depth: Depth = Newest, verbose: Boolean = false, headHash: Option[String] = None, network: String = "")
+  /* used by scopt to parse the depth object */
+  implicit private val blockHashRead: Read[BlockHash] = Read.reads(BlockHash)
+
+  private case class ArgumentsConfig(depth: Depth = Newest, verbose: Boolean = false, headHash: Option[BlockHash] = None, network: String = "")
 
   private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
     arg[String]("network")
@@ -31,7 +34,7 @@ trait LorreAppConfig {
       .action( (x, c) => c.copy(network = x))
       .text("which network to use")
 
-    opt[Option[String]]('h', "headHash")
+    opt[Option[BlockHash]]('h', "headHash")
       .action( (x, c) => c.copy(headHash = x))
       .text("from which block to start. Default to actual head")
 

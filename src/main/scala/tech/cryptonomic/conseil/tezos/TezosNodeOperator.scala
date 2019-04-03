@@ -329,9 +329,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param headHash   Hash of a block from which to start, None to start from a real head
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[String] = None): Future[PaginatedBlocksResults] = {
+  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[BlockHash] = None): Future[PaginatedBlocksResults] = {
     headHash
-      .map(it => getBlock(BlockHash(it)))
+      .map(getBlock(_))
       .getOrElse(getBlockHead())
       .map {
         head =>
