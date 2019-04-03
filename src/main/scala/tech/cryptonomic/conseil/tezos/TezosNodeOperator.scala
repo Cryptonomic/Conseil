@@ -334,9 +334,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       .map(getBlock(_))
       .getOrElse(getBlockHead())
       .map {
-        head =>
-          val headLevel = head.data.header.level
-          val headHash = head.data.hash
+        maxHead =>
+          val headLevel = maxHead.data.header.level
+          val headHash = maxHead.data.hash
           val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
           val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
             page => getBlocks((headHash, headLevel), page)

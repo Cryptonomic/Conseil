@@ -148,19 +148,19 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val votesProposal = Future.successful(TezosResponseBuilder.votesProposal)
 
     (tezosRPCInterface.runAsyncGetQuery _)
-      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~")
+      .when("zeronet", "blocks/BMB9MF19hpLsnLQfiJYKPdDaikv5DuWJeWamx1yHoihk5QTqJw8~")
       .returns(blockResponse)
     (tezosRPCInterface.runAsyncGetQuery _)
-      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations")
+      .when("zeronet", "blocks/BMB9MF19hpLsnLQfiJYKPdDaikv5DuWJeWamx1yHoihk5QTqJw8/operations")
       .returns(operationsResponse)
     (tezosRPCInterface.runAsyncGetQuery _)
-      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_period_kind")
+      .when("zeronet", "blocks/BMB9MF19hpLsnLQfiJYKPdDaikv5DuWJeWamx1yHoihk5QTqJw8~/votes/current_period_kind")
       .returns(votesPeriodKind)
     (tezosRPCInterface.runAsyncGetQuery _)
-      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_quorum")
+      .when("zeronet", "blocks/BMB9MF19hpLsnLQfiJYKPdDaikv5DuWJeWamx1yHoihk5QTqJw8~/votes/current_quorum")
       .returns(votesQuorum)
     (tezosRPCInterface.runAsyncGetQuery _)
-      .when("zeronet", "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/votes/current_proposal")
+      .when("zeronet", "blocks/BMB9MF19hpLsnLQfiJYKPdDaikv5DuWJeWamx1yHoihk5QTqJw8~/votes/current_proposal")
       .returns(votesProposal)
 
     (tezosRPCInterface.runBatchedGetQuery[Any] _)
@@ -185,7 +185,7 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
     val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
     //when
-    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(Some(1), Some("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c"))
+    val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(Some(1), Some(BlockHash("BMB9MF19hpLsnLQfiJYKPdDaikv5DuWJeWamx1yHoihk5QTqJw8")))
 
     //then
     val (pages, total) = blockPages.futureValue
