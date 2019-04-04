@@ -331,7 +331,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
 
     dbHandle.run(fetchOperation).map{
       accounts =>
-        accounts.headOption.map(AccountResult(_))
+        accounts.headOption.map(AccountResult)
     }
   }
 
