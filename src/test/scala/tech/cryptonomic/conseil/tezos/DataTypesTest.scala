@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
   "DataTypes" should {
     "validate correct query field" in {
-      (tpdo.areFieldsValid _).when("test", Set("valid")).returns(Future.successful(true))
+      (tpdo.isAttributeValid _).when("test", "valid").returns(Future.successful(true))
 
       val query = ApiQuery(
         fields = Some(List("valid")),
@@ -33,7 +33,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
     }
 
     "return error with incorrect query fields" in {
-      (tpdo.areFieldsValid _).when("test", Set("invalid")).returns(Future.successful(false))
+      (tpdo.isAttributeValid _).when("test", "invalid").returns(Future.successful(false))
 
       val query = ApiQuery(
         fields = Some(List("invalid")),
@@ -50,7 +50,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
     }
 
     "validate correct predicate field" in {
-      (tpdo.areFieldsValid _).when("test", Set("valid")).returns(Future.successful(true))
+      (tpdo.isAttributeValid _).when("test", "valid").returns(Future.successful(true))
 
       val query = ApiQuery(
         fields = None,
@@ -67,7 +67,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
     }
 
     "return error with incorrect predicate fields" in {
-      (tpdo.areFieldsValid _).when("test", Set("invalid")).returns(Future.successful(false))
+      (tpdo.isAttributeValid _).when("test", "invalid").returns(Future.successful(false))
 
       val query = ApiQuery(
         fields = None,
@@ -84,7 +84,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
     }
 
     "validate correct orderBy field" in {
-      (tpdo.areFieldsValid _).when("test", Set("valid")).returns(Future.successful(true))
+      (tpdo.isAttributeValid _).when("test", "valid").returns(Future.successful(true))
 
       val query = ApiQuery(
         fields = None,
@@ -101,7 +101,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
     }
 
     "return error with incorrect orderBy fields" in {
-      (tpdo.areFieldsValid _).when("test", Set("invalid")).returns(Future.successful(false))
+      (tpdo.isAttributeValid _).when("test", "invalid").returns(Future.successful(false))
 
       val query = ApiQuery(
         fields = None,
@@ -127,8 +127,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
         entity = "test"
       )
 
-      (tpdo.areFieldsValid _).when("test", Set("valid")).returns(Future.successful(true))
-      (tpdo.getTableAttributesWithoutCounts _).when("test").returns(Future.successful(Some(List(attribute))))
+      (tpdo.isAttributeValid _).when("test", "valid").returns(Future.successful(true))
+      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
 
       val query = ApiQuery(
         fields = Some(List("valid")),
@@ -154,8 +154,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
         entity = "test"
       )
 
-      (tpdo.areFieldsValid _).when("test", Set("invalid")).returns(Future.successful(true))
-      (tpdo.getTableAttributesWithoutCounts _).when("test").returns(Future.successful(Some(List(attribute))))
+      (tpdo.isAttributeValid _).when("test", "invalid").returns(Future.successful(true))
+      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
 
       val query = ApiQuery(
         fields = Some(List("invalid")),
@@ -171,7 +171,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
       result.futureValue.left.get shouldBe List(InvalidAggregationFieldForType("invalid"))
     }
 
-    "return two errors with incorrect aggregation field and with field that does not exist in query fields" in {
+    "return two errors when we try to aggregate on non-aggregating field type and with field that does not exist in query fields" in {
       val attribute = Attribute(
         name = "invalid",
         displayName = "Invalid",
@@ -180,9 +180,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
         keyType = KeyType.NonKey,
         entity = "test"
       )
-      (tpdo.areFieldsValid _).when("test", Set("valid")).returns(Future.successful(true)) once()
-      (tpdo.areFieldsValid _).when("test", Set("invalid")).returns(Future.successful(false)) once()
-      (tpdo.getTableAttributesWithoutCounts _).when("test").returns(Future.successful(Some(List(attribute))))
+      (tpdo.isAttributeValid _).when("test", "valid").returns(Future.successful(true)) once()
+      (tpdo.isAttributeValid _).when("test", "invalid").returns(Future.successful(false)) once()
+      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
 
       val query = ApiQuery(
         fields = Some(List("valid")),
@@ -195,7 +195,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val result = query.validate("test", tpdo)
 
-      result.futureValue.left.get should contain allElementsOf List(InvalidAggregationField("invalid"), InvalidAggregationFieldForType("invalid"))
+      result.futureValue.left.get should contain theSameElementsAs List(InvalidAggregationField("invalid"), InvalidAggregationFieldForType("invalid"))
     }
   }
 

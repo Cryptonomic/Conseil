@@ -100,7 +100,7 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
-        val columnsWithoutAggregation = columns.filterNot(aggregation.map(_.field).contains(_))
+        val columnsWithoutAggregation = columns.filterNot(col => aggregation.exists(_.field == col))
         if(columnsWithoutAggregation.isEmpty) {
           action
         } else {
@@ -132,7 +132,7 @@ object DatabaseUtil {
       */
     def makeQuery(table: String, columns: List[String], aggregation: Option[Aggregation]): SQLActionBuilder = {
       val aggr = columns.foldLeft(List.empty[String]) {
-        case (acc, column) if aggregation.map(_.field).contains(column) => mapAggregationToSQL(aggregation.get.function, column) :: acc
+        case (acc, column) if aggregation.exists(_.field == column) => mapAggregationToSQL(aggregation.get.function, column) :: acc
         case (acc, column) => s"$column" :: acc
       }
       val cols = if (aggr.isEmpty) "*" else aggr.mkString(",")

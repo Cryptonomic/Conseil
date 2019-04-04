@@ -334,8 +334,8 @@ object TezosDatabaseOperations extends LazyLogging {
     columns: List[String],
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
-    limit: Int,
-    aggregation: Option[Aggregation] = None)
+    aggregation: Option[Aggregation] = None,
+    limit: Int)
     (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
      makeQuery(table, columns, aggregation)
        .addPredicates(aggregation.flatMap(_.getPredicate).toList ::: predicates)

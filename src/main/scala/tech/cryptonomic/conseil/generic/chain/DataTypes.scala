@@ -24,49 +24,29 @@ object DataTypes {
 
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
+  /** Method checks if type can be aggregated */
+  lazy val canBeAggregated: DataType => Boolean = Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
 
-  /** Helper method for finding invalid fields in query */
-  private def findInvalidQueryFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
-    (implicit ec: ExecutionContext): Future[List[InvalidQueryField]] = {
-    query
-      .fields
-      .traverse(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-      .map(_.collect { case (false, fieldName) => InvalidQueryField(fieldName) })
+  /** Helper method for finding fields used in query that don't exist in the database */
+  private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
+    (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {
+    val fields = query.fields.map("query" -> _) ::: query.predicates.map("predicate" -> _.field) :::
+      query.orderBy.map("orderBy" -> _.field) ::: query.aggregation.map("aggregation" -> _.field).toList
 
-  }
-
-  /** Helper method for finding invalid fields in predicate */
-  private def findInvalidPredicateFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
-    (implicit ec: ExecutionContext): Future[List[InvalidPredicateField]] = {
-    query
-      .predicates
-      .traverse(predicate => tezosPlatformDiscovery.areFieldsValid(entity, Set(predicate.field)).map(_ -> predicate.field))
-      .map(_.collect { case (false, fieldName) => InvalidPredicateField(fieldName) })
-
-  }
-
-  /** Helper method for finding invalid fields in orderBy */
-  private def findInvalidOrderByFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
-    (implicit ec: ExecutionContext): Future[List[InvalidOrderByField]] = {
-    query
-      .orderBy
-      .traverse(ordering => tezosPlatformDiscovery.areFieldsValid(entity, Set(ordering.field)).map(_ -> ordering.field))
-      .map(_.collect { case (false, fieldName) => InvalidOrderByField(fieldName) })
-
-  }
-
-  /** Helper method for finding invalid fields in aggregation */
-  private def findInvalidAggregationFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
-    (implicit ec: ExecutionContext): Future[List[InvalidAggregationField]] = {
-    query
-      .aggregation
-      .toList
-      .traverse(aggregation => tezosPlatformDiscovery.areFieldsValid(entity, Set(aggregation.field)).map(_ -> aggregation.field))
-      .map(_.collect { case (false, fieldName) => InvalidAggregationField(fieldName) })
+    fields.traverse {
+      case (source, field) => tezosPlatformDiscovery.isAttributeValid(entity, field).map((_, source, field))
+    }.map {
+      _.collect {
+        case (false, "query", field) => InvalidQueryField(field)
+        case (false, "predicate", field) => InvalidPredicateField(field)
+        case (false, "orderBy", field) => InvalidOrderByField(field)
+        case (false, "aggregation", field) => InvalidAggregationField(field)
+      }
+    }
   }
 
   /** Helper method for finding fields with invalid types in aggregation */
@@ -75,7 +55,7 @@ object DataTypes {
     query
       .aggregation
       .traverse { aggregation =>
-        tezosPlatformDiscovery.getTableAttributesWithoutCounts(entity).map { attributesOpt =>
+        tezosPlatformDiscovery.getTableAttributesWithoutUpdatingCache(entity).map { attributesOpt =>
           attributesOpt.flatMap { attributes =>
             attributes
               .find(_.name == aggregation.field)
@@ -84,12 +64,6 @@ object DataTypes {
         }
       }
       .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
-  }
-
-  /** Method checks if type can be aggregated */
-  private def canBeAggregated(tpe: DataType): Boolean = {
-    val typesToAggregate = Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)
-    typesToAggregate.contains(tpe)
   }
 
   /** Trait representing query validation errors */
@@ -168,20 +142,14 @@ object DataTypes {
 
       val query = Query().patchWith(this)
 
-      val invalidQueryFields = findInvalidQueryFields(query, entity, tezosPlatformDiscovery)
-      val invalidPredicateFields = findInvalidPredicateFields(query, entity, tezosPlatformDiscovery)
-      val invalidOrderByFields = findInvalidOrderByFields(query, entity, tezosPlatformDiscovery)
-      val invalidAggregationFields = findInvalidAggregationFields(query, entity, tezosPlatformDiscovery)
+      val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
       val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)
 
       for {
-        invQF <- invalidQueryFields
-        invPF <- invalidPredicateFields
-        invODBF <- invalidOrderByFields
-        invAF <- invalidAggregationFields
-        invTAF <- invalidTypeAggregationField
+        invalidNonExistingFields <- nonExistingFields
+        invalidAggregationFieldForTypes <- invalidTypeAggregationField
       } yield {
-        invQF ::: invPF ::: invODBF ::: invAF ::: invTAF match {
+        invalidNonExistingFields ::: invalidAggregationFieldForTypes match {
           case Nil => Right(query)
           case wrongFields => Left(wrongFields)
         }

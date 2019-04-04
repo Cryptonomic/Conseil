@@ -404,8 +404,8 @@ object ApiOperations extends DataOperations with MetadataOperations {
         query.fields,
         sanitizePredicates(query.predicates),
         query.orderBy,
-        Math.min(query.limit, DataTypes.maxLimitValue),
-        query.aggregation
+        query.aggregation,
+        Math.min(query.limit, DataTypes.maxLimitValue)
       )
     )
   }
