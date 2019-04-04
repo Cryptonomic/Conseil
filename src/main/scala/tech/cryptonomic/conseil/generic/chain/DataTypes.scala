@@ -34,17 +34,19 @@ object DataTypes {
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
     (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {
-    val fields = query.fields.map("query" -> _) ::: query.predicates.map("predicate" -> _.field) :::
-      query.orderBy.map("orderBy" -> _.field) ::: query.aggregation.map("aggregation" -> _.field).toList
+    val fields = query.fields.map('query -> _) :::
+      query.predicates.map('predicate -> _.field) :::
+      query.orderBy.map('orderBy -> _.field) :::
+      query.aggregation.map('aggregation -> _.field).toList
 
     fields.traverse {
       case (source, field) => tezosPlatformDiscovery.isAttributeValid(entity, field).map((_, source, field))
     }.map {
       _.collect {
-        case (false, "query", field) => InvalidQueryField(field)
-        case (false, "predicate", field) => InvalidPredicateField(field)
-        case (false, "orderBy", field) => InvalidOrderByField(field)
-        case (false, "aggregation", field) => InvalidAggregationField(field)
+        case (false, 'query, field) => InvalidQueryField(field)
+        case (false, 'predicate, field) => InvalidPredicateField(field)
+        case (false, 'orderBy, field) => InvalidOrderByField(field)
+        case (false, 'aggregation, field) => InvalidAggregationField(field)
       }
     }
   }
