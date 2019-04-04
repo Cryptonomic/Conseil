@@ -16,6 +16,7 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object TezosNodeOperator {
@@ -398,17 +399,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
 
-  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any): String = {
+  private def toMichelsonScript[T <: MichelsonElement](json: Any)(implicit parser: Parser[T], tag: ClassTag[T]): String = {
     Some(json).collect {
       case t: String => convert[T](t)
       case t: Micheline => convert[T](t.expression)
     } match {
       case Some(Right(value)) => value
       case Some(Left(t)) =>
-        logger.error(s"Error during converting Michelson format: $json", t)
+        logger.error(s"Error during converting Michelson format to (${tag.runtimeClass}): $json", t)
         UNPARSABLE_CODE_PLACEMENT + json
       case _ =>
-        logger.error(s"Error during converting Michelson format: $json")
+        logger.error(s"Error during converting Michelson format to (${tag.runtimeClass}): $json")
         UNPARSABLE_CODE_PLACEMENT + json
     }
   }

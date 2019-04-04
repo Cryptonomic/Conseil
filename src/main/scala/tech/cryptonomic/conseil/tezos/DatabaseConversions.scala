@@ -224,6 +224,7 @@ object DatabaseConversions {
         spendable = spendable,
         delegatable = delegatable,
         script = script.map(_.code.expression),
+        storage = script.map(_.storage.expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
