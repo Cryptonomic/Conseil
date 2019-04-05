@@ -75,11 +75,11 @@ object DatabaseUtil {
         * @param ordering list of QueryOrdering to add
         * @return new SQLActionBuilder containing ordering statements
         */
-      def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
+      def addOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
         val queryOrdering = if (ordering.isEmpty) {
           List.empty
         } else {
-          List(makeOrdering(ordering))
+          List(makeOrdering(ordering, aggregation))
         }
         concatenateSqlActions(action, queryOrdering:_*)
       }
@@ -100,11 +100,10 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
-        val columnsWithoutAggregation = columns.filterNot(col => aggregation.exists(_.field == col))
-        if(columnsWithoutAggregation.isEmpty) {
-          action
-        } else {
-          concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
+        aggregation.fold(action) {
+          aggregates =>
+            val cols = columns.filterNot(_ == aggregates.field)
+          concatenateSqlActions(action, makeGroupBy(cols))
         }
       }
     }
@@ -144,8 +143,14 @@ object DatabaseUtil {
       * @param ordering list of ordering parameters
       * @return SQLAction with ordering
       */
-    def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-      val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
+    def makeOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
+      val orderingBy = ordering.map {
+        ord =>
+          val ordField =
+            if (aggregation.exists(_.field == ord.field)) mapAggregationToSQL(aggregation.get.function, aggregation.get.field)
+        else ord.field
+        s"$ordField ${ord.direction}"
+      }.mkString(",")
       sql""" ORDER BY #$orderingBy"""
     }
 

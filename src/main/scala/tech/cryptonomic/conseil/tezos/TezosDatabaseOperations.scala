@@ -340,7 +340,7 @@ object TezosDatabaseOperations extends LazyLogging {
      makeQuery(table, columns, aggregation)
        .addPredicates(aggregation.flatMap(_.getPredicate).toList ::: predicates)
        .addGroupBy(aggregation, columns)
-       .addOrdering(ordering)
+       .addOrdering(ordering, aggregation)
        .addLimit(limit)
        .as[QueryResponse]
        .map(_.toList)

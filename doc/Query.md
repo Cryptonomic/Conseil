@@ -32,6 +32,16 @@ curl -vvv --request POST \
       "direction": "asc"                // direction to order by, asc or desc
     }
   ],
+  "aggregation": {
+    "field": "",                             // field to be aggregated                                                                                          
+    "function": "[sum|count|max|min|avg]",   // aggregating function
+    "predicate": {                           // predicate to be used on the aggregated field
+      "operation": "operation",
+      "set": [],
+      "inverse": false,
+      "precision": 2 
+    }
+  },  
   "limit": 100
 }
 ```
@@ -417,4 +427,78 @@ curl --request POST \
 ```
 400 - Bad Request
 Errors: InvalidPredicateField(counterxd),InvalidQueryField(spendableble),InvalidQueryField(balantines)
+```
+
+{
+### Aggregation support
+
+Please keep in mind that field used in the aggregation must appear in the `"fields":[]`
+
+#### Example request
+```
+curl -X POST "http://localhost:1337/v2/data/tezos/alphanet/accounts" \
+-H "accept: application/json" \
+-H "apiKey: hooman" \
+-H "Content-Type: application/json" \
+-d '
+{
+	"fields": ["delegate_value", "balance"],
+	"predicates": [],
+	"orderBy": [{
+		"field": "balance",
+		"direction": "desc"
+	}],
+	"aggregation": {
+		"field": "balance",
+		"function": "sum"
+	},
+	"limit": 10
+}
+'
+```
+
+#### Example response
+```
+[
+  {
+    "sum": 8629648858579,
+    "delegate_value": "tz3WXYtyDUNL91qfiCJtVUX746QpNv5i5ve5"
+  },
+  {
+    "sum": 8551658377806,
+    "delegate_value": "tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB"
+  },
+  {
+    "sum": 6128708169688,
+    "delegate_value": "tz1eopTNAL3RXU8wQQdgzoanbZesyb3BFzfM"
+  },
+  {
+    "sum": 3821414940574,
+    "delegate_value": null
+  },
+  {
+    "sum": 3529906868787,
+    "delegate_value": "tz3NdTPb3Ax2rVW2Kq9QEdzfYFkRwhrQRPhX"
+  },
+  {
+    "sum": 3039534128201,
+    "delegate_value": "tz1YCABRTa6H8PLKx2EtDWeCGPaKxUhNgv47"
+  },
+  {
+    "sum": 2083015784585,
+    "delegate_value": "tz1RwsXfM8k6ckB7Rk8NX3z3vQARNLVkTyRa"
+  },
+  {
+    "sum": 1597822388653,
+    "delegate_value": "tz1Vi4XPxnKqjN2aS13TY6aAjZvnqmvx8TgH"
+  },
+  {
+    "sum": 1039065581278,
+    "delegate_value": "tz1db53osfzRqqgQeLtBt4kcFcQoXJwPJJ5G"
+  },
+  {
+    "sum": 1020961346007,
+    "delegate_value": "tz1aWXP237BLwNHJcCD4b3DutCevhqq2T1Z9"
+  }
+]
 ```

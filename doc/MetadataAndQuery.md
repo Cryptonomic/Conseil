@@ -36,6 +36,16 @@ curl -vvv --request POST \
       "direction": "asc"                // direction to order by, asc or desc
     }
   ],
+  "aggregation": {
+    "field": "",                           // field to be aggregated
+    "function": "[sum|count|max|min|avg]", // aggregating function
+    "predicate": {                         // predicate to be used on the aggregated field
+      "operation": "operation",
+      "set": [],
+      "inverse": false,
+      "precision": 2 
+    }
+  },
   "limit": 100
 }
 ```
