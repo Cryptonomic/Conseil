@@ -4,10 +4,10 @@ Query interface is using `POST` for passing the query
 
 #### Example query
 ```
-curl -vvv --request POST 
-  --url '{{protocol}}://{{hostname}}:{{port}}/v2/data/{{platform}}/{{network}}/{{entity}}' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url '{{protocol}}://{{hostname}}:{{port}}/v2/data/{{platform}}/{{network}}/{{entity}}' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d @'query.file.json'
 ```
 
@@ -52,10 +52,10 @@ curl -vvv --request POST
 #### example request
 
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -110,10 +110,10 @@ curl -vvv --request POST
 #### Example request
 
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -163,10 +163,10 @@ curl -vvv --request POST
 #### Example request
 
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -201,10 +201,10 @@ curl -vvv --request POST
 #### Example request
 
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -258,10 +258,10 @@ curl -vvv --request POST
 
 #### Example request
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -320,10 +320,10 @@ curl -vvv --request POST
 #### Example request
 
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -359,10 +359,10 @@ curl -vvv --request POST
 #### Example request
 
 ```
-curl -vvv --request POST 
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl -vvv --request POST \
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/blocks' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["level", "timestamp", "protocol", "hash"],
 "predicates": [
@@ -398,10 +398,10 @@ curl -vvv --request POST
 
 #### Example request
 ```
-curl --request POST      
-  --url 'http://localhost:1337/v2/data/tezos/alphanet/accounts' 
-  --header 'Content-Type: application/json' 
-  --header 'apiKey: hooman' 
+curl --request POST \     
+  --url 'http://localhost:1337/v2/data/tezos/alphanet/accounts' \
+  --header 'Content-Type: application/json' \
+  --header 'apiKey: hooman' \
   -d '{
 "fields": ["account_id", "spendableble", "counter", "balantines"],
 "predicates": [
@@ -436,10 +436,10 @@ Please keep in mind that field used in the aggregation must appear in the `"fiel
 
 #### Example request
 ```
-curl -X POST "http://localhost:1337/v2/data/tezos/alphanet/accounts" 
--H "accept: application/json" 
--H "apiKey: hooman" 
--H "Content-Type: application/json" 
+curl -X POST "http://localhost:1337/v2/data/tezos/alphanet/accounts" \
+-H "accept: application/json" \
+-H "apiKey: hooman" \
+-H "Content-Type: application/json" \
 -d '
 {
 	"fields": ["delegate_value", "balance"],
