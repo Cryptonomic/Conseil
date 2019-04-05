@@ -100,11 +100,10 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
-        val columnsWithoutAggregation = columns.filterNot(col => aggregation.exists(_.field == col))
-        if(aggregation.isEmpty) {
-          action
-        } else {
-          concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
+        aggregation.fold(action) {
+          aggregates =>
+            val cols = columns.filterNot(_ == aggregates.field)
+          concatenateSqlActions(action, makeGroupBy(cols))
         }
       }
     }
@@ -145,11 +144,13 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
-      val aggregatedOrdering = ordering.map {
-        case ord if aggregation.map(_.field).contains(ord.field) => ord.copy(field = mapAggregationToSQL(aggregation.get.function, aggregation.get.field))
-        case x => x
-      }
-      val orderingBy = aggregatedOrdering.map(x => s"${x.field} ${x.direction}").mkString(",")
+      val orderingBy = ordering.map {
+        ord =>
+          val ordField =
+            if (aggregation.exists(_.field == ord.field)) mapAggregationToSQL(aggregation.get.function, aggregation.get.field)
+        else ord.field
+        s"$ordField ${ord.direction}"
+      }.mkString(",")
       sql""" ORDER BY #$orderingBy"""
     }
 
