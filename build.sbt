@@ -20,6 +20,7 @@ resolvers ++= Seq(
 
 libraryDependencies  ++=  Seq(
   "ch.qos.logback"                % "logback-classic"               % "1.2.3",
+  "net.logstash.logback"          % "logstash-logback-encoder"      % "5.3",
   "com.typesafe"                  % "config"                        % "1.3.2",
   "com.typesafe.scala-logging"   %% "scala-logging"                 % "3.7.2",
   "com.typesafe.akka"            %% "akka-http"                     % akkaHttpVersion exclude("com.typesafe", "config"),

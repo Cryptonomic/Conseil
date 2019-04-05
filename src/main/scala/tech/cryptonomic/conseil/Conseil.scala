@@ -4,13 +4,16 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.directives.{BasicDirectives, ExecutionDirectives}
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
 import cats.effect.concurrent.MVar
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
+import org.slf4j.MDC
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
@@ -19,7 +22,8 @@ import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, duration}
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success}
 
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
@@ -55,23 +59,62 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       lazy val platformDiscovery = PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
+//      def xxx: Directive0 = {
+//        extract{ r =>
+//
+//        }
+//      }
+
+      def recordResponseValues = BasicDirectives.extractRequestContext.flatMap { ctx =>
+        val requestStartTime = System.nanoTime()
+        BasicDirectives.mapResponse { resp =>
+          val result = record(requestStartTime)
+
+          MDC.put("responseTime", result.toMillis.toString)
+          MDC.put("path", ctx.request.uri.path.toString())
+          MDC.put("apiKey", ctx.request.headers.find(_.is("apiKey")).map(_.toString()).getOrElse(""))
+          MDC.put("responseCode",  resp.status.value)
+          logger.debug("HTTP request")
+          MDC.clear()
+          resp
+        }
+      }
+
+//      private def responseTimeRecordingExceptionHandler(endpoint: String, requestStartTime: Long) = ExceptionHandler {
+//  case NonFatal(e) =>
+//  record(endpoint, requestStartTime)
+//
+//    // Rethrow the exception to allow proper handling
+//    // from handlers higher ip in the hierarchy
+//  throw e
+//  }
+      def record(requestStartTime: Long): Duration = {
+        val requestEndTime = System.nanoTime()
+        val total = new FiniteDuration(requestEndTime - requestStartTime, duration.NANOSECONDS)
+
+        total
+      }
+
+
       val route = cors() {
         enableCORS {
-          validateApiKey { _ =>
-            logRequest("Conseil", Logging.DebugLevel) {
-              tezos.route ~
-              AppInfo.route
+          recordResponseValues {
+            validateApiKey { _ =>
+              logRequest("Conseil", Logging.DebugLevel) {
+                tezos.route ~
+                  AppInfo.route
+              } ~
+                logRequest("Metadata Route", Logging.DebugLevel) {
+                  platformDiscovery.route
+                } ~
+                logRequest("Data Route", Logging.DebugLevel) {
+                  data.getRoute ~ data.postRoute
+                }
             } ~
-            logRequest("Metadata Route", Logging.DebugLevel) {
-              platformDiscovery.route
-            } ~
-            logRequest("Data Route", Logging.DebugLevel) {
-              data.getRoute ~ data.postRoute
-            }
-          } ~
-          options {
-            // Support for CORS pre-flight checks.
-            complete("Supported methods : GET and POST.")
+              options {
+                // Support for CORS pre-flight checks.
+                complete("Supported methods : GET and POST.")
+              }
           }
         }
       } ~
