@@ -79,7 +79,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
-      _ <- processTezosAccounts()
       _ <-
         if (iteration % lorreConf.feeUpdateInterval == 0)
           FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
@@ -126,6 +125,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * Additionally stores account references that needs updating, too
     */
   private[this] def processTezosBlocks(): Future[Done] = {
+    import cats.instances.future._
+    import cats.syntax.apply._
+
     logger.info("Processing Tezos Blocks..")
 
     val blockPagesToSynchronize = lorreConf.depth match {
@@ -174,7 +176,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         pages.foldLeft(0) {
           (processed, nextPage) =>
             //wait for each page to load, before looking at the next, thus  starting the new computation
-            val justDone = Await.result(processBlocksPage(nextPage), atMost = 5.minutes)
+            val justDone = Await.result(
+              processBlocksPage(nextPage) <* processTezosAccounts(),
+              atMost = 5.minutes)
             processed + justDone <| logProgress
         }
       })
@@ -251,7 +255,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map {
       checkpoints =>
-        logger.info("I loaded all stored account references and will proceed to fetch updated information from the chain")
+        logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain")
         val (pages, total) = tezosNodeOperator.getAccountsForBlocks(checkpoints)
         //custom progress tracking for accounts
         val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
@@ -271,7 +275,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         checkpoints
     }
 
-    logger.info("Selecting all accounts touched in the checkpoint table, this might take a while...")
+    logger.debug("Selecting all accounts touched in the checkpoint table, this might take a while...")
     saveAccounts.andThen {
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
