@@ -128,17 +128,22 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import cats.instances.future._
     import cats.instances.list._
     import TezosOptics.Accounts.optionalScriptCode
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+
+    implicit val fetcherInstance = accountFetcher(blockHash)
 
     /*tries decoding but simply returns the input unchanged on failure*/
     def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
 
-    accountFetcher(blockHash).fetch
-      .run(accountIds)
-      .map(
-        indexedAccounts =>
-          indexedAccounts.collect {
-            case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
-          }.toMap
+
+    val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
+      fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
+
+    fetchedAccounts.map(
+      indexedAccounts =>
+        indexedAccounts.collect {
+          case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
+        }.toMap
     )
   }
   /**
@@ -200,7 +205,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   }
 
   /** Fetches votes information for the block */
-  def getCurrentVotesForBlock(block: BlockData, offset: Option[Int] = None): Future[CurrentVotes] =
+  def getCurrentVotesForBlock(block: BlockData, offset: Option[Offset] = None): Future[CurrentVotes] =
     if (isGenesis(block))
       CurrentVotes.empty.pure
     else {
@@ -228,15 +233,23 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     //adapt the proposal protocols result to include the block
-    val fetchProposals = proposalsMultiFetch.fetch.map {
-      proposalsList => proposalsList.map {
-        case (block, protocols) => Voting.Proposal(protocols, block)
-      }
-    }
-    val fetchBakers = bakersMultiFetch.fetch
-    val fetchBallots = ballotsMultiFetch.fetch
+    val fetchProposals =
+      fetch[Block, List[ProtocolId], Future, List, Throwable]
+        .map {
+          proposalsList => proposalsList.map {
+            case (block, protocols) => Voting.Proposal(protocols, block)
+          }
+        }
+
+    val fetchBakers =
+      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
+
+    val fetchBallots =
+      fetch[Block, List[Voting.Ballot], Future, List, Throwable]
+
 
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input blocks
@@ -249,7 +262,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
-  def getBlock(hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
+  def getBlock(hash: BlockHash, offset: Option[Offset] = None): Future[Block] = {
     import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Blocks._
 
@@ -357,23 +370,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     ): Future[BlockFetchingResults] = {
     import cats.instances.future._
     import cats.instances.list._
-    import tech.cryptonomic.conseil.generic.chain.DataFetcher
-    import tech.cryptonomic.conseil.generic.chain.DataFetcher.Syntax._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
 
-    val blockFetcher = blocksFetcher(hashRef)
-    // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
-    val operationsWithAccountsFetcher = operationGroupFetcher.decodeAlso(accountIdsJsonDecode.lift[Future])
+    implicit val blockFetcher = blocksFetcher(hashRef)
 
     //read the separate parts of voting and merge the results
     val proposalsStateFetch =
-      DataFetcher.mergeResults(
-        currentQuorumFetcher,
-        currentProposalFetcher
-      )(CurrentVotes.apply)
+      fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
     def parseMichelsonScripts(block: Block): Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
@@ -386,9 +393,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
-      fetchedBlocksData <- blockFetcher.fetch.run(offsets)
+      fetchedBlocksData <- fetch[Offset, BlockData, Future, List, Throwable].run(offsets)
       blockHashes = fetchedBlocksData.collect{ case (offset, block) if !isGenesis(block) => block.hash }
-      fetchedOperationsWithAccounts <- operationsWithAccountsFetcher.fetch.run(blockHashes)
+      fetchedOperationsWithAccounts <- fetch[BlockHash, (List[OperationsGroup], List[AccountId]), Future, List, Throwable].run(blockHashes)
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
@@ -402,7 +409,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     }
   }
 
-  val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
+  private val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
 
   private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any)(implicit tag: ClassTag[T]): String = {
     Some(json).collect {
