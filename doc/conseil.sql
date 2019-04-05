@@ -33,6 +33,8 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 -- Name: truncate_tables(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
+DROP FUNCTION IF EXISTS public.truncate_tables(username character varying);
+
 CREATE FUNCTION public.truncate_tables(username character varying) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -158,6 +160,7 @@ CREATE TABLE public.operations (
     spendable boolean,
     delegatable boolean,
     script character varying,
+    storage character varying,
     status character varying,
     consumed_gas numeric,
     block_hash character varying NOT NULL,

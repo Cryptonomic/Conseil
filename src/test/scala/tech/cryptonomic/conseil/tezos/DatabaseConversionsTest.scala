@@ -560,6 +560,7 @@ class DatabaseConversionsTest
       converted.spendable shouldBe sampleOrigination.spendable
       converted.delegatable shouldBe sampleOrigination.delegatable
       converted.script shouldBe sampleOrigination.script.map(_.code.expression)
+      converted.storage shouldBe sampleOrigination.script.map(_.storage.expression)
       converted.status.value shouldBe sampleOrigination.metadata.operation_result.status
       sampleOrigination.metadata.operation_result.consumed_gas match {
         case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber

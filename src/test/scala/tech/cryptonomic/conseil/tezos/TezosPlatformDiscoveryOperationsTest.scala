@@ -173,6 +173,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("spendable", "Spendable", DataType.Boolean, Some(0), KeyType.NonKey, "operations"),
             Attribute("delegatable", "Delegatable", DataType.Boolean, Some(0), KeyType.NonKey, "operations"),
             Attribute("script", "Script", DataType.String, Some(0), KeyType.NonKey, "operations"),
+            Attribute("storage", "Storage", DataType.String, Some(0), KeyType.NonKey, "operations"),
             Attribute("status", "Status", DataType.String, Some(0), KeyType.NonKey, "operations"),
             Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("block_hash", "Block hash", DataType.String, Some(0), KeyType.NonKey, "operations"),
