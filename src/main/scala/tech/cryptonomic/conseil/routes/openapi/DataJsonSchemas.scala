@@ -32,6 +32,17 @@ trait DataJsonSchemas extends algebra.JsonSchemas with generic.JsonSchemas {
   implicit def queryOutputSchema: JsonSchema[OutputType.Value] =
     enumeration(OutputType.values.toSeq)(_.toString)
 
+  /** Query aggregation schema */
+  implicit lazy val queryAggregationSchema: JsonSchema[Aggregation] =
+    genericJsonSchema[Aggregation]
+
+  /** Query aggregation schema */
+  implicit lazy val queryAggregationPredicateSchema: JsonSchema[AggregationPredicate] =
+    genericJsonSchema[AggregationPredicate]
+
+  /** Query aggregation type schema */
+  implicit lazy val queryAggregationTypeSchema: JsonSchema[AggregationType.Value] =
+    enumeration(AggregationType.values.toSeq)(_.toString)
 
   /** Timestamp schema */
   implicit def timestampSchema: JsonSchema[java.sql.Timestamp]

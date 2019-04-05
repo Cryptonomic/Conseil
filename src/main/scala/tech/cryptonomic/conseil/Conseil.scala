@@ -14,9 +14,9 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -43,8 +43,8 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
       implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
-      val attributesCache = MVar[IO].empty[Map[String, (Long, List[Attribute])]].unsafeRunSync()
-      val entitiesCache = MVar[IO].empty[(Long, List[Entity])].unsafeRunSync()
+      val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
+      val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, server.cacheTTL)(executionContext)
 
