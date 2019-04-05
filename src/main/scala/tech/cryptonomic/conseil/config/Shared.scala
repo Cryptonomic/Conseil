@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.config
 
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+
 import scala.concurrent.duration.FiniteDuration
 
 final case class ServerConfiguration(hostname: String, port: Int, cacheTTL: FiniteDuration)
@@ -9,7 +11,9 @@ final case class LorreConfiguration(
   bootupRetryInterval: FiniteDuration,
   bootupConnectionCheckTimeout: FiniteDuration,
   feeUpdateInterval: Int,
-  numberOfFeesAveraged: Int
+  numberOfFeesAveraged: Int,
+  depth: Depth,
+  headHash: Option[BlockHash]
 )
 
 final case class BatchFetchConfiguration(

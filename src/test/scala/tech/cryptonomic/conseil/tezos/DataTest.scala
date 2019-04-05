@@ -86,7 +86,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   val fakeQPP: DataPlatform = new DataPlatform(Map("tezos" -> fakeQPO))
   val cfg = PlatformsConfiguration(
     platforms = Map(
-      Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+      Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
     )
   )
 

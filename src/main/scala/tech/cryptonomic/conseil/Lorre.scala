@@ -103,7 +103,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     Await.result(attemptedProcessing, atMost = Duration.Inf)
 
-    tezosConf.depth match {
+    lorreConf.depth match {
       case Newest =>
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
@@ -128,10 +128,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processTezosBlocks(): Future[Done] = {
     logger.info("Processing Tezos Blocks..")
 
-    val blockPagesToSynchronize = tezosConf.depth match {
+    val blockPagesToSynchronize = lorreConf.depth match {
       case Newest => tezosNodeOperator.getBlocksNotInDatabase()
       case Everything => tezosNodeOperator.getLatestBlocks()
-      case Custom(n) => tezosNodeOperator.getLatestBlocks(Some(n))
+      case Custom(n) => tezosNodeOperator.getLatestBlocks(Some(n), lorreConf.headHash)
     }
 
     /* will store a single page of block results */

@@ -48,11 +48,10 @@ object Platforms extends LazyLogging {
   /** generic trait for any platform configuration, where each instance corresponds to a network available on that chain */
   sealed trait PlatformConfiguration extends Product with Serializable {
     def network: String
-    def depth: Depth
   }
 
   /** collects all config related to a tezos network */
-  final case class TezosConfiguration(network: String, depth: Depth = Newest, nodeConfig: TezosNodeConfiguration) extends PlatformConfiguration
+  final case class TezosConfiguration(network: String, nodeConfig: TezosNodeConfiguration) extends PlatformConfiguration
 
   /** unexpected or yet to define platform */
   final case class UnknownPlatformConfiguration(network: String = "", depth: Depth = Newest) extends PlatformConfiguration
