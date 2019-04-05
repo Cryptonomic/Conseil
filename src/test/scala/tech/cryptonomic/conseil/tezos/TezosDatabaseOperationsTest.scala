@@ -1465,6 +1465,8 @@ class TezosDatabaseOperationsTest
     }
 
     "return the same results for the same query" in {
+      type AnyMap = Map[String, Any]
+
       import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
       val columns = List("level", "proto", "protocol", "hash")
       val tableName = Tables.Blocks.baseTableRow.tableName

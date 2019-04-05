@@ -1,21 +1,22 @@
 package tech.cryptonomic.conseil.routes
 
-import java.sql.Timestamp
-
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import cats.Functor
-import endpoints.akkahttp
+import endpoints.akkahttp.server
 import endpoints.algebra.Documentation
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, QueryStringListsServer, Validation}
+import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
 
 /** Trait with helpers needed for data routes */
-trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.server.Endpoints
-  with akkahttp.server.JsonSchemaEntities with DataEndpoints {
+trait DataHelpers
+  extends Validation
+  with server.Endpoints
+  with server.JsonSchemaEntities
+  with DataEndpoints {
 
   import io.circe._
   import io.circe.syntax._
@@ -94,19 +95,4 @@ trait DataHelpers extends QueryStringListsServer with Validation with akkahttp.s
       override def decoder: Decoder[List[QueryResponse]] = ???
     }
 
-  /** Blocks by hash JSON schema implementation */
-  override implicit def blocksByHashSchema: JsonSchema[AnyMap] = new JsonSchema[AnyMap] {
-    override def encoder: Encoder[AnyMap] = (a: AnyMap) => Json.obj(a.map {
-      case (k, v) => (k, v.asJson(anyEncoder))
-    }.toList: _*)
-
-    override def decoder: Decoder[AnyMap] = ???
-  }
-
-  /** Timestamp JSON schema implementation */
-  override implicit def timestampSchema: JsonSchema[Timestamp] = new JsonSchema[Timestamp] {
-    override def encoder: Encoder[Timestamp] = (a: Timestamp) => a.getTime.asJson
-
-    override def decoder: Decoder[Timestamp] = ???
-  }
 }

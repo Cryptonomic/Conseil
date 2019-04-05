@@ -10,7 +10,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
-import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
 
 import cats.instances.future._
 import cats.syntax.applicative._
@@ -429,6 +428,9 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
 
+  /** Type representing Map[String, Any] */
+  type AnyMap = Map[String, Any]
+
   //used in subsequent operations using Sodium
   SodiumLibrary.setLibraryPath(sodiumConf.libraryPath)
 
@@ -465,7 +467,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
   def forgeOperations(
     blockHead: Block,
     account: Account,
-    operations: List[Map[String,Any]],
+    operations: List[AnyMap],
     keyStore: KeyStore,
     fee: Option[Float]): Future[String] = {
     val payload: AnyMap = fee match {

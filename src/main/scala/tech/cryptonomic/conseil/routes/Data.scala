@@ -40,6 +40,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
    * as long as it doesn't create issues or performance degradation
    */
   override val asyncApiFiltersExecutionContext: ExecutionContext = apiExecutionContext
+
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
