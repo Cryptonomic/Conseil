@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
-import monocle.{Prism, Traversal}
+import monocle.Traversal
 import monocle.function.all._
-import monocle.macros.GenLens
+import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
 
 /**
@@ -15,8 +15,8 @@ object TezosTypes {
     private val operationGroups = GenLens[Block](_.operationGroups)
     private val operations = GenLens[OperationsGroup](_.contents)
 
-    private val origination = Prism.partial[Operation, Origination]{case it: Origination => it}(identity)
-    private val transaction = Prism.partial[Operation, Transaction]{case it: Transaction => it}(identity)
+    private val origination = GenPrism[Operation, Origination]
+    private val transaction = GenPrism[Operation, Transaction]
 
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)

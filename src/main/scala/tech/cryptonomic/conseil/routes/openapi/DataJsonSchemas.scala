@@ -33,14 +33,25 @@ trait DataJsonSchemas extends generic.JsonSchemas {
   implicit lazy val queryOutputSchema: JsonSchema[OutputType.Value] =
     enumeration(OutputType.values.toSeq)(_.toString)
 
+  /** Query aggregation schema */
+  implicit lazy val queryAggregationSchema: JsonSchema[Aggregation] =
+    genericJsonSchema[Aggregation]
+
+  /** Query aggregation schema */
+  implicit lazy val queryAggregationPredicateSchema: JsonSchema[AggregationPredicate] =
+    genericJsonSchema[AggregationPredicate]
+
+  /** Query aggregation type schema */
+  implicit lazy val queryAggregationTypeSchema: JsonSchema[AggregationType.Value] =
+    enumeration(AggregationType.values.toSeq)(_.toString)
+
   /** Timestamp schema */
-  implicit lazy val timestampSchema: JsonSchema[java.sql.Timestamp] = {
+  implicit lazy val timestampSchema: JsonSchema[java.sql.Timestamp] =
     xmapJsonSchema[Long, java.sql.Timestamp](
       implicitly[JsonSchema[Long]],
       millisFromEpoch => new java.sql.Timestamp(millisFromEpoch),
       ts => ts.getTime
     )
-  }
 
   /** Blocks row schema */
   implicit lazy val blocksRowSchema: JsonSchema[BlocksRow] =

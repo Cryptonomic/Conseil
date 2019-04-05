@@ -111,7 +111,6 @@ object MainOutputs {
         platform.name,
         platformConf.network,
         showPlatformConfiguration(platformConf),
-        platformConf.depth,
         ignoreFailures._2.getOrElse("yes"),
         showDatabaseConfiguration,
         ignoreFailures._1
@@ -161,7 +160,7 @@ object MainOutputs {
 
   /* custom display of each configuration type */
   private val showPlatformConfiguration: PartialFunction[PlatformConfiguration, String] = {
-    case TezosConfiguration(_, _, TezosNodeConfiguration(host, port, protocol, prefix)) =>
+    case TezosConfiguration(_, TezosNodeConfiguration(host, port, protocol, prefix)) =>
       s"node $protocol://$host:$port/$prefix"
     case _ =>
       "a non-descript platform configuration"

@@ -7,15 +7,20 @@ import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply method implementation */
 object TezosPlatformDiscoveryOperations {
+
+  type AttributesCache = Map[String, (Long, List[Attribute])]
+  type EntitiesCache = (Long, List[Entity])
+
   def apply(metadataOperations: MetadataOperations,
-    attributesCache: MVar[IO, Map[String, (Long, List[Attribute])]],
-    entitiesCache: MVar[IO, (Long, List[Entity])],
+    attributesCache: MVar[IO, AttributesCache],
+    entitiesCache: MVar[IO, EntitiesCache],
     cacheTTL: FiniteDuration)
     (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, cacheTTL)
@@ -24,8 +29,8 @@ object TezosPlatformDiscoveryOperations {
 /** Class providing the implementation of the metadata calls with caching */
 class TezosPlatformDiscoveryOperations(
   metadataOperations: MetadataOperations,
-  attributesCache: MVar[IO, Map[String, (Long, List[Attribute])]],
-  entitiesCache: MVar[IO, (Long, List[Entity])],
+  attributesCache: MVar[IO, AttributesCache],
+  entitiesCache: MVar[IO, EntitiesCache],
   cacheTTL: FiniteDuration)
   (implicit executionContext: ExecutionContext) {
 
@@ -45,7 +50,7 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Pre-caching attributes without cardinality */
-  private def preCacheAttributes: DBIO[Map[String, (Long, List[Attribute])]] = {
+  private def preCacheAttributes: DBIO[AttributesCache] = {
     val result = for {
       tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
       columns <- getColumns(tables)
@@ -163,7 +168,7 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Method querying slick metadata tables for entities */
-  private def preCacheEntities: DBIO[(Long, List[Entity])] = {
+  private def preCacheEntities: DBIO[EntitiesCache] = {
     for {
       tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
       counts <- getTablesCount(tables)
@@ -241,11 +246,16 @@ class TezosPlatformDiscoveryOperations(
     distinctCount.getOrElse(maxCount) < maxCount
   }
 
-  /** Checks if columns exist for the given table */
-  def areFieldsValid(tableName: String, fields: Set[String]): Future[Boolean] = {
-    attributesCache.read.map { cache =>
-      cache.get(tableName).exists { case (_, attributes) =>
-        fields.subsetOf(attributes.map(_.name).toSet)
+  /**
+    * Extracts attributes in the DB for the given table name without updating counts
+    *
+    * @param  tableName name of the table from which we extract attributes
+    * @return list of attributes as a Future
+    */
+  def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] = {
+    attributesCache.read.map { entitiesMap =>
+      entitiesMap.get(tableName).map {
+        case (_, attributes) => attributes
       }
     }.unsafeToFuture()
   }

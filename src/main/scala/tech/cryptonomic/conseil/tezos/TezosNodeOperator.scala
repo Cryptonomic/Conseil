@@ -49,10 +49,11 @@ object TezosNodeOperator {
 
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
-  * @param node      Tezos node connection object
-  * @param network   Which Tezos network to go against
-  * @param batchConf configuration for batched download of node data
-  * @param executionContext thread context for async operations
+  *
+  * @param node               Tezos node connection object
+  * @param network            Which Tezos network to go against
+  * @param batchConf          configuration for batched download of node data
+  * @param fetchFutureContext thread context for async operations
   */
 class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit val fetchFutureContext: ExecutionContext)
   extends LazyLogging
@@ -324,19 +325,24 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   /**
     * Gets last `depth` blocks.
     * @param depth      Number of latest block to fetch, `None` to get all
+    * @param headHash   Hash of a block from which to start, None to start from a real head
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks(depth: Option[Int] = None): Future[PaginatedBlocksResults] =
-    getBlockHead().map {
-      head =>
-        val headLevel = head.data.header.level
-        val headHash = head.data.hash
-        val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
-        val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
-          page => getBlocks((headHash, headLevel), page)
-        )
-        (pagedResults, headLevel - minLevel + 1)
-    }
+  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[BlockHash] = None): Future[PaginatedBlocksResults] = {
+    headHash
+      .map(getBlock(_))
+      .getOrElse(getBlockHead())
+      .map {
+        maxHead =>
+          val headLevel = maxHead.data.header.level
+          val headHash = maxHead.data.hash
+          val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
+          val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
+            page => getBlocks((headHash, headLevel), page)
+          )
+          (pagedResults, headLevel - minLevel + 1)
+      }
+  }
 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.

@@ -2,12 +2,12 @@ package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
-import pureconfig.{CamelCase, ConfigFieldMapping, loadConfig}
-import pureconfig.ConfigReader
+import pureconfig.{CamelCase, ConfigFieldMapping, ConfigReader, loadConfig}
 import pureconfig.error.ConfigReaderFailures
-import pureconfig.generic.ProductHint
+import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
 import scopt.{OptionParser, Read}
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -23,13 +23,20 @@ trait LorreAppConfig {
     case _ => None
   }
 
-  private case class ArgumentsConfig(val depth: Depth = Newest, verbose: Boolean = false, network: String = "")
+  /* used by scopt to parse the depth object */
+  implicit private val blockHashRead: Read[BlockHash] = Read.reads(BlockHash)
+
+  private case class ArgumentsConfig(depth: Depth = Newest, verbose: Boolean = false, headHash: Option[BlockHash] = None, network: String = "")
 
   private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
     arg[String]("network")
       .required()
       .action( (x, c) => c.copy(network = x))
       .text("which network to use")
+
+    opt[Option[BlockHash]]('h', "headHash")
+      .action( (x, c) => c.copy(headHash = x))
+      .text("from which block to start. Default to actual head")
 
     opt[Option[Depth]]('d', "depth")
       .validate{
@@ -53,16 +60,17 @@ trait LorreAppConfig {
 
     //applies convention to uses CamelCase when reading config fields
     implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+    implicit val seasonHint = new EnumCoproductHint[Depth]
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
-      ArgumentsConfig(depth, verbose, network) = args
-      lorre <- loadConfig[LorreConfiguration](namespace = "lorre")
+      ArgumentsConfig(depth, verbose, headHash, network) = args
+      lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
-    } yield CombinedConfiguration(lorre, TezosConfiguration(network, depth, node), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
+    } yield CombinedConfiguration(lorre, TezosConfiguration(network, node), nodeRequests, streamingClient, fetching, VerboseOutput(verbose))
 
     //something went wrong
     loadedConf.left.foreach {

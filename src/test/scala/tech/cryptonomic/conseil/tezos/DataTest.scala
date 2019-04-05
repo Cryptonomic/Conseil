@@ -86,7 +86,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   val fakeQPP: DataPlatform = new DataPlatform(Map("tezos" -> fakeQPO))
   val cfg = PlatformsConfiguration(
     platforms = Map(
-      Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+      Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
     )
   )
 
@@ -99,7 +99,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   "Query protocol" should {
 
     "return a correct response with OK status code with POST" in {
-      (tezosPlatformDiscoveryOperationsStub.areFieldsValid _).when(*, *).returns(Future.successful(true))
+      (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/alphanet/accounts",
@@ -114,7 +114,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     }
 
     "return 404 NotFound status code for request for the not supported platform with POST" in {
-      (tezosPlatformDiscoveryOperationsStub.areFieldsValid _).when(*, *).returns(Future.successful(true))
+      (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
@@ -125,7 +125,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     }
 
     "return 404 NotFound status code for request for the not supported network with POST" in {
-      (tezosPlatformDiscoveryOperationsStub.areFieldsValid _).when(*, *).returns(Future.successful(true))
+      (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/notSupportedNetwork/accounts",

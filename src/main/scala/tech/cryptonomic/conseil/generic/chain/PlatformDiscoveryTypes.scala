@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.KeyType
 
@@ -9,12 +7,6 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.Key
   * Classes used for Platform routes
   */
 object PlatformDiscoveryTypes {
-
-  /** Class required for DataType enum serialization */
-  class DataTypeRef extends TypeReference[DataType.type]
-
-  /** Class required for KeyType enum serialization */
-  class KeyTypeRef extends TypeReference[KeyType.type]
 
   /** Case class representing network */
   final case class Platform(name: String, displayName: String)
@@ -29,9 +21,9 @@ object PlatformDiscoveryTypes {
   final case class Attribute(
     name: String,
     displayName: String,
-    @JsonScalaEnumeration(classOf[DataTypeRef]) dataType: DataType,
+    dataType: DataType,
     cardinality: Option[Int],
-    @JsonScalaEnumeration(classOf[KeyTypeRef]) keyType: KeyType,
+    keyType: KeyType,
     entity: String
   )
 

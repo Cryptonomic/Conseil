@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
@@ -39,8 +40,8 @@ class TezosPlatformDiscoveryOperationsTest
     override def runQuery[A](action: dbio.DBIO[A]) = dbHandler.run(action)
   }
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
-  val attributesCache = MVar[IO].empty[Map[String, (Long, List[Attribute])]].unsafeRunSync()
-  val entitiesCache = MVar[IO].empty[(Long, List[Entity])].unsafeRunSync()
+  val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
+  val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
   val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, 10 seconds)
 
   override def beforeAll(): Unit = {
@@ -52,7 +53,7 @@ class TezosPlatformDiscoveryOperationsTest
     "return list with one element" in {
       val config = PlatformsConfiguration(
         platforms = Map(
-          Tezos -> List(TezosConfiguration("alphanet", Newest, TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+          Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
         )
       )
 
@@ -65,12 +66,10 @@ class TezosPlatformDiscoveryOperationsTest
           Tezos -> List(
             TezosConfiguration(
               "alphanet",
-              Newest,
               TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
             ),
             TezosConfiguration(
               "alphanet-staging",
-              Newest,
               TezosNodeConfiguration(protocol = "https", hostname = "nautilus.cryptonomic.tech", port = 8732, pathPrefix = "tezos/alphanet/")
             )
           )
@@ -253,13 +252,11 @@ class TezosPlatformDiscoveryOperationsTest
     }
 
     "should validate correctly fields" in {
-      sut.areFieldsValid("fees", Set("low", "medium", "high", "timestamp", "kind")).futureValue shouldBe true
+      sut.isAttributeValid("fees", "low").futureValue shouldBe true
     }
-    "should validate correctly fields when only some of them are selected" in {
-      sut.areFieldsValid("fees", Set("low", "medium", "kind")).futureValue shouldBe true
-    }
+
     "should return false when there will be field not existing in the DB" in {
-      sut.areFieldsValid("fees", Set("low", "medium", "kind", "WRONG")).futureValue shouldBe false
+      sut.isAttributeValid("fees", "WRONG").futureValue shouldBe false
     }
 
   }

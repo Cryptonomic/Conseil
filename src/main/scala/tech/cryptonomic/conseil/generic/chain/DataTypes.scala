@@ -1,10 +1,11 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -14,14 +15,55 @@ import scala.concurrent.{ExecutionContext, Future}
   * Classes used for deserializing query.
   */
 object DataTypes {
+
+  import cats.implicits._
   import io.scalaland.chimney.dsl._
 
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
+  /** Method checks if type can be aggregated */
+  lazy val canBeAggregated: DataType => Boolean = Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
+
+  /** Helper method for finding fields used in query that don't exist in the database */
+  private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
+    (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {
+    val fields = query.fields.map('query -> _) :::
+      query.predicates.map('predicate -> _.field) :::
+      query.orderBy.map('orderBy -> _.field) :::
+      query.aggregation.map('aggregation -> _.field).toList
+
+    fields.traverse {
+      case (source, field) => tezosPlatformDiscovery.isAttributeValid(entity, field).map((_, source, field))
+    }.map {
+      _.collect {
+        case (false, 'query, field) => InvalidQueryField(field)
+        case (false, 'predicate, field) => InvalidPredicateField(field)
+        case (false, 'orderBy, field) => InvalidOrderByField(field)
+        case (false, 'aggregation, field) => InvalidAggregationField(field)
+      }
+    }
+  }
+
+  /** Helper method for finding fields with invalid types in aggregation */
+  private def findInvalidAggregationTypeFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
+    (implicit ec: ExecutionContext): Future[List[InvalidAggregationFieldForType]] = {
+    query
+      .aggregation
+      .traverse { aggregation =>
+        tezosPlatformDiscovery.getTableAttributesWithoutUpdatingCache(entity).map { attributesOpt =>
+          attributesOpt.flatMap { attributes =>
+            attributes
+              .find(_.name == aggregation.field)
+              .map(attribute => canBeAggregated(attribute.dataType) -> aggregation.field)
+          }
+        }
+      }
+      .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
+  }
 
   /** Trait representing query validation errors */
   sealed trait QueryValidationError extends Product with Serializable {
@@ -31,26 +73,17 @@ object DataTypes {
   /** Class which contains output type with the response */
   case class QueryResponseWithOutput(queryResponse: List[QueryResponse], output: OutputType)
 
-  /** Class required for OperationType enum serialization */
-  class OperationTypeRef extends TypeReference[OperationType.type]
-
-  /** Class required for OutputType enum serialization */
-  class OutputTypeRef extends TypeReference[OutputType.type]
-
   /** Class representing predicate */
   case class Predicate(
     field: String,
-    @JsonScalaEnumeration(classOf[OperationTypeRef]) operation: OperationType,
+    operation: OperationType,
     set: List[Any] = List.empty,
     inverse: Boolean = false,
     precision: Option[Int] = None
   )
 
-  /** Class required for Ordering enum serialization */
-  class QueryOrderingRef extends TypeReference[OrderDirection.type]
-
   /** Class representing query ordering */
-  case class QueryOrdering(field: String, @JsonScalaEnumeration(classOf[QueryOrderingRef]) direction: OrderDirection)
+  case class QueryOrdering(field: String, direction: OrderDirection)
 
   /** Class representing invalid query field */
   case class InvalidQueryField(message: String) extends QueryValidationError
@@ -61,14 +94,37 @@ object DataTypes {
   /** Class representing invalid order by field */
   case class InvalidOrderByField(message: String) extends QueryValidationError
 
+  /** Class representing invalid aggregation field */
+  case class InvalidAggregationField(message: String) extends QueryValidationError
+
+  /** Class representing invalid field type used in aggregation */
+  case class InvalidAggregationFieldForType(message: String) extends QueryValidationError
+
   /** Class representing query */
   case class Query(
     fields: List[String] = List.empty,
     predicates: List[Predicate] = List.empty,
     orderBy: List[QueryOrdering] = List.empty,
     limit: Int = defaultLimitValue,
-    output: OutputType = OutputType.json
+    output: OutputType = OutputType.json,
+    aggregation: Option[Aggregation] = None
   )
+
+  /** Class representing predicate used in aggregation */
+  case class AggregationPredicate(
+    operation: OperationType,
+    set: List[Any] = List.empty,
+    inverse: Boolean = false,
+    precision: Option[Int] = None
+  )
+
+  /** Class representing aggregation */
+  case class Aggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[AggregationPredicate] = None) {
+    /** Method extracting predicate from aggregation */
+    def getPredicate: Option[Predicate] = {
+      predicate.map(_.into[Predicate].withFieldConst(_.field, field).transform)
+    }
+  }
 
   /** Class representing query got through the REST API */
   case class ApiQuery(
@@ -76,41 +132,23 @@ object DataTypes {
     predicates: Option[List[Predicate]],
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
-    @JsonScalaEnumeration(classOf[OutputTypeRef]) output: Option[OutputType]
+    output: Option[OutputType],
+    aggregation: Option[Aggregation] = None
   ) {
-    /** Method which validates query fields, as jackson runs on top of runtime reflection so NPE can happen if fields are missing */
+    /** Method which validates query fields */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
-      import cats.implicits._
 
       val query = Query().patchWith(this)
 
-      val invalidQueryFields = query
-        .fields
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map { case (_, fieldName) => InvalidQueryField(fieldName) })
-
-      val invalidPredicateFields = query
-        .predicates
-        .map(_.field)
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidPredicateField(fieldName) })
-
-      val invalidOrderByFields = query
-        .orderBy
-        .map(_.field)
-        .map(field => tezosPlatformDiscovery.areFieldsValid(entity, Set(field)).map(_ -> field))
-        .sequence
-        .map(_.filterNot { case (isValid, _) => isValid }.map{ case (_, fieldName) => InvalidOrderByField(fieldName) })
+      val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
+      val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)
 
       for {
-        invQF <- invalidQueryFields
-        invPF <- invalidPredicateFields
-        invODBF <- invalidOrderByFields
+        invalidNonExistingFields <- nonExistingFields
+        invalidAggregationFieldForTypes <- invalidTypeAggregationField
       } yield {
-        invQF ::: invPF ::: invODBF match {
+        invalidNonExistingFields ::: invalidAggregationFieldForTypes match {
           case Nil => Right(query)
           case wrongFields => Left(wrongFields)
         }
@@ -135,4 +173,11 @@ object DataTypes {
     type OperationType = Value
     val in, between, like, lt, gt, eq, startsWith, endsWith, before, after, isnull = Value
   }
+
+  /** Enumeration of aggregation functions */
+  object AggregationType extends Enumeration {
+    type AggregationType = Value
+    val sum, count, max, min, avg = Value
+  }
+
 }
