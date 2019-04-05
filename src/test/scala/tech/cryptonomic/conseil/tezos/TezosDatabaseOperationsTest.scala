@@ -1600,7 +1600,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with COUNT function" in {
+    "should aggregate with COUNT function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1630,7 +1630,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with MAX function" in {
+    "should aggregate with MAX function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1660,7 +1660,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with MIN function" in {
+    "should aggregate with MIN function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1690,7 +1690,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with SUM function" in {
+    "should aggregate with SUM function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1719,6 +1719,64 @@ class TezosDatabaseOperationsTest
         Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0))
       )
     }
+
+    "should aggregate with SUM function and order by SUM()" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.sum, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("medium", OrderDirection.desc)),
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0)),
+        Map("high" -> Some(8), "sum" -> Some(4), "low" -> Some(0))
+      )
+    }
+
+    "should order correctly by the field not existing in query)" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 3, new Timestamp(2), "kind")
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("high", OrderDirection.desc)),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("medium" -> Some(4), "low" -> Some(0)), // high = Some(8)
+        Map("medium" -> Some(2), "low" -> Some(0)), // high = Some(4)
+        Map("medium" -> Some(3), "low" -> Some(0)), // high = Some(3)
+      )
+    }
+
   }
 
  }

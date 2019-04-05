@@ -75,11 +75,11 @@ object DatabaseUtil {
         * @param ordering list of QueryOrdering to add
         * @return new SQLActionBuilder containing ordering statements
         */
-      def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
+      def addOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
         val queryOrdering = if (ordering.isEmpty) {
           List.empty
         } else {
-          List(makeOrdering(ordering))
+          List(makeOrdering(ordering, aggregation))
         }
         concatenateSqlActions(action, queryOrdering:_*)
       }
@@ -101,7 +101,7 @@ object DatabaseUtil {
         */
       def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
         val columnsWithoutAggregation = columns.filterNot(col => aggregation.exists(_.field == col))
-        if(columnsWithoutAggregation.isEmpty) {
+        if(aggregation.isEmpty) {
           action
         } else {
           concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
@@ -144,8 +144,12 @@ object DatabaseUtil {
       * @param ordering list of ordering parameters
       * @return SQLAction with ordering
       */
-    def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-      val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
+    def makeOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
+      val aggregatedOrdering = ordering.map {
+        case ord if aggregation.map(_.field).contains(ord.field) => ord.copy(field = mapAggregationToSQL(aggregation.get.function, aggregation.get.field))
+        case x => x
+      }
+      val orderingBy = aggregatedOrdering.map(x => s"${x.field} ${x.direction}").mkString(",")
       sql""" ORDER BY #$orderingBy"""
     }
 
