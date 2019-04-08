@@ -4,7 +4,8 @@ Description of endpoints with example usages. Probably all of those request will
 
 ## Query interface
 
-Query interface is using `POST` for passing the query
+Query interface is using `POST` for passing the query. Keep in mind that `DateTime` fields are represented as Unix timestamps in milliseconds.
+
 
 #### Example query
 ```

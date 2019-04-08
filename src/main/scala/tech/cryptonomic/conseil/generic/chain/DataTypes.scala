@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.generic.chain
 
+import java.sql.Timestamp
+
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
@@ -19,19 +21,29 @@ object DataTypes {
   import cats.implicits._
   import io.scalaland.chimney.dsl._
 
+
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
-  /** Method checks if type can be aggregated */
-  def canBeAggregated(dataType:DataType, aggregationType: AggregationType): Boolean = {
-      if(aggregationType != AggregationType.count) {
-        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
-      } else true
-  }
-
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
   /** Max value of limit parameter */
   val maxLimitValue: Int = 100000
+
+  /** Replaces timestamp represented as Long in predicates with one understood by the SQL */
+  private def replaceTimestampInPredicates(entity: String, query: Query, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)
+    (implicit executionContext: ExecutionContext): Future[Query] = {
+    query.predicates.map { predicate =>
+      tezosPlatformDiscoveryOperations.getTableAttributesWithoutUpdatingCache(entity).map { maybeAttributes =>
+        maybeAttributes.flatMap { attributes =>
+          attributes.find(_.name == predicate.field).map {
+            case attribute if attribute.dataType == DataType.DateTime =>
+              predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toInstant.toString))
+            case _ => predicate
+          }
+        }.toList
+      }
+    }.sequence.map(pred => query.copy(predicates = pred.flatten))
+  }
 
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
@@ -68,6 +80,13 @@ object DataTypes {
         }
       }
       .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
+  }
+
+  /** Method checks if type can be aggregated */
+  def canBeAggregated(dataType: DataType, aggregationType: AggregationType): Boolean = {
+    if (aggregationType != AggregationType.count) {
+      Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
+    } else true
   }
 
   /** Trait representing query validation errors */
@@ -149,15 +168,16 @@ object DataTypes {
       val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
       val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)
 
-      for {
+      val result = for {
         invalidNonExistingFields <- nonExistingFields
         invalidAggregationFieldForTypes <- invalidTypeAggregationField
       } yield {
         invalidNonExistingFields ::: invalidAggregationFieldForTypes match {
-          case Nil => Right(query)
-          case wrongFields => Left(wrongFields)
+          case Nil => Right(replaceTimestampInPredicates(entity, query, tezosPlatformDiscovery))
+          case wrongFields => Left(Future.successful(wrongFields))
         }
       }
+      result.map(_.bisequence).flatten
     }
   }
 
