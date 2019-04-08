@@ -22,7 +22,12 @@ object DataTypes {
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
   /** Method checks if type can be aggregated */
-  lazy val canBeAggregated: DataType => Boolean = Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)
+  def canBeAggregated(dataType:DataType, aggregationType: AggregationType): Boolean = {
+      if(aggregationType != AggregationType.count) {
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
+      } else true
+  }
+
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
   /** Max value of limit parameter */
@@ -58,7 +63,7 @@ object DataTypes {
           attributesOpt.flatMap { attributes =>
             attributes
               .find(_.name == aggregation.field)
-              .map(attribute => canBeAggregated(attribute.dataType) -> aggregation.field)
+              .map(attribute => canBeAggregated(attribute.dataType, aggregation.function) -> aggregation.field)
           }
         }
       }

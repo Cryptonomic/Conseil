@@ -197,6 +197,33 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       result.futureValue.left.get should contain theSameElementsAs List(InvalidAggregationField("invalid"), InvalidAggregationFieldForType("invalid"))
     }
+
+    "correctly validate aggregation when COUNT function is used" in {
+      val attribute = Attribute(
+        name = "valid",
+        displayName = "Valid",
+        dataType = DataType.String, // only COUNT function can be used on types other than numeric and DateTime
+        cardinality = None,
+        keyType = KeyType.NonKey,
+        entity = "test"
+      )
+
+      (tpdo.isAttributeValid _).when("test", "valid").returns(Future.successful(true))
+      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
+
+      val query = ApiQuery(
+        fields = Some(List("valid")),
+        predicates = None,
+        orderBy = None,
+        limit = None,
+        output = None,
+        aggregation = Some(Aggregation(field = "valid", function = AggregationType.count))
+      )
+
+      val result = query.validate("test", tpdo)
+
+      result.futureValue.right.get shouldBe Query(fields = List("valid"), aggregation = Some(Aggregation(field = "valid", function = AggregationType.count)))
+    }
   }
 
 }
