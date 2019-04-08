@@ -216,7 +216,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
       result.futureValue.left.get should contain theSameElementsAs List(InvalidAggregationField("invalid"), InvalidAggregationFieldForType("invalid"))
     }
 
-    "correctly validate aggregation when COUNT function is used" in {
+    "successfully validates aggregation for any dataType when COUNT function is used" in {
       val attribute = Attribute(
         name = "valid",
         displayName = "Valid",
@@ -267,7 +267,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val result = query.validate("test", tpdo)
 
-      result.futureValue.right.get shouldBe Query(predicates = List(Predicate(field = "valid", operation = OperationType.in, set = List("1973-11-29T21:33:09Z"))))
+      result.futureValue.right.get shouldBe Query(predicates = List(Predicate(field = "valid", operation = OperationType.in, set = List("1973-11-29T22:33:09.000+01:00"))))
     }
   }
 

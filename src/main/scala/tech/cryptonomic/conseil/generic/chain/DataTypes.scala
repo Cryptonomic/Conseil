@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import java.sql.Timestamp
+import java.util.Date
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -37,7 +37,7 @@ object DataTypes {
         maybeAttributes.flatMap { attributes =>
           attributes.find(_.name == predicate.field).map {
             case attribute if attribute.dataType == DataType.DateTime =>
-              predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toInstant.toString))
+              predicate.copy(set = predicate.set.map(x => dateToIso(new Date(x.toString.toLong))))
             case _ => predicate
           }
         }.toList
@@ -75,7 +75,7 @@ object DataTypes {
           attributesOpt.flatMap { attributes =>
             attributes
               .find(_.name == aggregation.field)
-              .map(attribute => canBeAggregated(attribute.dataType, aggregation.function) -> aggregation.field)
+              .map(attribute => canBeAggregated(attribute.dataType)(aggregation.function) -> aggregation.field)
           }
         }
       }
@@ -83,7 +83,7 @@ object DataTypes {
   }
 
   /** Method checks if type can be aggregated */
-  def canBeAggregated(dataType: DataType, aggregationType: AggregationType): Boolean = {
+  lazy val canBeAggregated: DataType => AggregationType => Boolean = { dataType => aggregationType =>
     if (aggregationType != AggregationType.count) {
       Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
     } else true
@@ -168,17 +168,26 @@ object DataTypes {
       val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
       val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)
 
-      val result = for {
+      for {
         invalidNonExistingFields <- nonExistingFields
         invalidAggregationFieldForTypes <- invalidTypeAggregationField
+        updatedQuery <- replaceTimestampInPredicates(entity, query, tezosPlatformDiscovery)
       } yield {
         invalidNonExistingFields ::: invalidAggregationFieldForTypes match {
-          case Nil => Right(replaceTimestampInPredicates(entity, query, tezosPlatformDiscovery))
-          case wrongFields => Left(Future.successful(wrongFields))
+          case Nil => Right(updatedQuery)
+          case wrongFields => Left(wrongFields)
         }
       }
-      result.map(_.bisequence).flatten
+
     }
+  }
+
+  private def dateToIso(date: Date): String = {
+    import java.text.SimpleDateFormat
+    import java.util.TimeZone
+    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    sdf.setTimeZone(TimeZone.getTimeZone("CET"))
+    sdf.format(date)
   }
 
   /** Enumeration for output types */
