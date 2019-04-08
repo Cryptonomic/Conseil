@@ -19,7 +19,9 @@ final case class LorreConfiguration(
 final case class BatchFetchConfiguration(
   accountConcurrencyLevel: Int,
   blockOperationsConcurrencyLevel: Int,
-  blockPageSize: Int
+  blockPageSize: Int,
+  blockPageProcessingTimeout: FiniteDuration,
+  accountPageProcessingTimeout: FiniteDuration
 )
 
 /** configurations related to a chain-node network calls */
