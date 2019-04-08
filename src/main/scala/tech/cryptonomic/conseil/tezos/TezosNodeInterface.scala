@@ -23,6 +23,10 @@ object ShutdownComplete extends ShutdownComplete
   * Interface into the Tezos blockchain.
   */
 trait TezosRPCInterface {
+  type ElementBatchFailureHandler[CID] = (CID, Throwable) => Unit
+
+  protected def ignoreFailures[CID]: ElementBatchFailureHandler[CID] =
+    (_: CID, _: Throwable) => ()
 
   /**
     * Runs all needed RPC calls against the configured Tezos node using HTTP GET
@@ -30,14 +34,17 @@ trait TezosRPCInterface {
     * @param ids  correlation ids for each request to send
     * @param mapToCommand  extract a tezos command (uri fragment) from the id
     * @param concurrencyLevel the concurrency in processing the responses
-    * @param ID a type that will be used to correlate each request with the response
+    * @param handleFailure a function performing some side-effect when each single element fails to be retrieved
+    * @tparam ID a type that will be used to correlate each request with the response
     * @return pairing of the correlation id with the string http response content
     */
   def runBatchedGetQuery[ID](
     network: String,
     ids: List[ID],
     mapToCommand: ID => String,
-    concurrencyLevel: Int): Future[List[(ID, String)]]
+    concurrencyLevel: Int,
+    handleFailure: => ElementBatchFailureHandler[ID] = ignoreFailures[ID]
+  ): Future[List[(ID, String)]]
 
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
@@ -212,36 +219,43 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
     network: String,
     ids: List[CID],
     mapToCommand: CID => String,
-    concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
-      val convertIdToUrl = mapToCommand andThen translateCommandToUrl
-      //we need to thread the id all through the streaming http stages
-      val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
-      val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
+    concurrencyLevel: Int,
+    handleFailure: => ElementBatchFailureHandler[CID]
+  ): Source[(CID, String), akka.NotUsed] = withRejectionControl {
+    val convertIdToUrl = mapToCommand andThen translateCommandToUrl
+    //we need to thread the id all through the streaming http stages
+    val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
+    val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
 
-      uris.map(toRequest)
-        .via(getHostPoolFlow)
-        .mapAsyncUnordered(concurrencyLevel) {
-          case (tried, id) =>
-            Future.fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
-              .flatten
-              .map(entity => (entity, id))
-        }
-        .map{case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String)}
+    uris.map(toRequest)
+      .via(getHostPoolFlow)
+      .mapAsyncUnordered(concurrencyLevel) {
+        case (tried, id) =>
+          Future.fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
+            .flatten
+            .map(entity => (entity, id))
+            .andThen {
+              case Failure(error) => handleFailure(id, error)
+            }
+      }
+      .map{case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String)}
   }
 
   override def runBatchedGetQuery[CID](
     network: String,
     ids: List[CID],
     mapToCommand: CID => String,
-    concurrencyLevel: Int): Future[List[(CID, String)]] = {
-      val batchId = java.util.UUID.randomUUID()
-      logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
+    concurrencyLevel: Int,
+    handleFailure: => ElementBatchFailureHandler[CID]
+  ): Future[List[(CID, String)]] = {
+    val batchId = java.util.UUID.randomUUID()
+    logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
 
-      streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
-        .runFold(List.empty[(CID, String)])(_ :+ _)
-        .andThen {
-          case _ => logger.debug("{} - Batch completed", batchId)
-        }
-    }
+    streamedGetQuery(network, ids, mapToCommand, concurrencyLevel, handleFailure)
+      .runFold(List.empty[(CID, String)])(_ :+ _)
+      .andThen {
+        case _ => logger.debug("{} - Batch completed", batchId)
+      }
+  }
 
 }

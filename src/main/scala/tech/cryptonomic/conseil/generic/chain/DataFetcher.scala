@@ -2,8 +2,6 @@ package tech.cryptonomic.conseil.generic.chain
 
 import cats._
 import cats.data.Kleisli
-import cats.syntax.applicativeError._
-import cats.syntax.semigroupal._
 
 /** Contract for a generic combination of operations that get encoded data (usually json) from
   * some resource (e.g. the tezos node), then converts that to a value, batching multiple requests together.
@@ -71,7 +69,9 @@ trait DataFetcher[Eff[_], Coll[_], Err] {
   */
 object DataFetcher {
   import cats.syntax.foldable._
+  import cats.syntax.applicativeError._
   import cats.syntax.functorFilter._
+  import cats.syntax.semigroupal._
 
   /** using the combination of the provided fetcher functions we fetch all data with this general outline:
     * 1. get encoded (e.g. json) values from the node, given a traversable input collection

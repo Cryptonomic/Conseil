@@ -51,8 +51,8 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       .returns(votesProposal)
 
     (tezosRPCInterface.runBatchedGetQuery[Any] _)
-      .when("zeronet", *, *, *)
-      .onCall( (_, input, command, _) =>
+      .when("zeronet", *, *, *, *)
+      .onCall((_, input, command, _, _) =>
         Future.successful(List(
           //dirty trick to find the type of input content and provide the appropriate response
           input match {
@@ -107,8 +107,8 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       .returns(votesProposal)
 
     (tezosRPCInterface.runBatchedGetQuery[Any] _)
-      .when("zeronet", *, *, *)
-      .onCall((_, input, command, _) =>
+      .when("zeronet", *, *, *, *)
+      .onCall((_, input, command, _, _) =>
         Future.successful(List(
           //dirty trick to find the type of input content and provide the appropriate response
           input match {
@@ -164,8 +164,8 @@ class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with
       .returns(votesProposal)
 
     (tezosRPCInterface.runBatchedGetQuery[Any] _)
-      .when("zeronet", *, *, *)
-      .onCall((_, input, command, _) =>
+      .when("zeronet", *, *, *, *)
+      .onCall((_, input, command, _, _) =>
         Future.successful(List(
           //dirty trick to find the type of input content and provide the appropriate response
           input match {

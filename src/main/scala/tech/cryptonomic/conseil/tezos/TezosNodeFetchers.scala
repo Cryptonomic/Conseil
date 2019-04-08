@@ -8,7 +8,6 @@ import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
-import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
 
 /** Defines intances of `DataFetcher` for block-related data */
@@ -60,18 +59,17 @@ trait BlocksDataFetchers {
 
     def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
+    lazy val failureHandler = (offset: Offset, error: Throwable) =>
+      logger.error("I encountered problems while fetching block data from {}, for offset reference {} . The error says {}",
+        network,
+        s"${hashRef.value}~${String.valueOf(offset)}",
+        error.getMessage
+      )
+
     //fetch a future stream of values
     override val fetchData =
       Kleisli(offsets =>
-        node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching blocks data from {}, for offsets {} from the {}. The error says {}",
-              network,
-              offsets.onBounds((first, last) => s"$first to $last").getOrElse("unspecified"),
-              hashRef,
-              err.getMessage
-            ).pure[Future]
-          }
+        node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency, failureHandler)
       )
 
     // decode with `JsonDecoders`
@@ -102,16 +100,16 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
+    lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
+      logger.error("I encountered problems while fetching baker operations from {}, for block {}. The error says {}",
+        network,
+        hash.value,
+        error.getMessage
+      )
+
     override val fetchData =
       Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching operations from {}, for blocks {}. The error says {}",
-              network,
-              hashes.map(_.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
+        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency, failureHandler)
       )
 
     override val decodeData = Kleisli(
@@ -137,16 +135,16 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
 
+    lazy val failureHandler =  (hash: BlockHash, error: Throwable) =>
+      logger.error("I encountered problems while fetching quorums from {}, for block {}. The error says {}",
+        network,
+        hash.value,
+        error.getMessage
+      )
+
     override val fetchData =
       Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching quorums from {}, for blocks {}. The error says {}",
-              network,
-              hashes.map(_.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
+        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency, failureHandler)
       )
 
     override val decodeData = Kleisli(
@@ -170,16 +168,16 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
 
+    lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
+      logger.error("I encountered problems while fetching current proposals from {}, for block {}. The error says {}",
+        network,
+        hash.value,
+        error.getMessage
+      )
+
     override val fetchData =
       Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching current proposals from {}, for blocks {}. The error says {}",
-              network,
-              hashes.map(_.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
+        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency, failureHandler)
       )
 
     override val decodeData = Kleisli(
@@ -204,16 +202,17 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
 
+    lazy val failureHandler = (block: Block, error: Throwable) =>
+      logger.error("I encountered problems while fetching proposals details from {}, for block {} at level {}. The error says {}",
+        network,
+        block.data.hash.value,
+        block.data.header.level,
+        error.getMessage
+      )
+
     override val fetchData =
       Kleisli(blocks =>
-        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching proposals details from {}, for blocks {}. The error says {}",
-              network,
-              blocks.map(_.data.hash.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency, failureHandler)
       )
 
     override val decodeData = Kleisli{
@@ -239,16 +238,17 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
 
+    lazy val failureHandler = (block: Block, error: Throwable) =>
+      logger.error("I encountered problems while fetching baker rolls from {}, for block {} at level {}. The error says {}",
+        network,
+        block.data.hash.value,
+        block.data.header.level,
+        error.getMessage
+      )
+
     override val fetchData =
       Kleisli(blocks =>
-        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching baker rolls from {}, for blocks {}. The error says {}",
-              network,
-              blocks.map(_.data.hash.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency, failureHandler)
       )
 
     override val decodeData = Kleisli{
@@ -274,17 +274,19 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
 
+    lazy val failureHandler = (block: Block, error: Throwable) =>
+      logger.error("I encountered problems while fetching ballot votes from {}, for block {} at level {}. The error says {}",
+        network,
+        block.data.hash.value,
+        block.data.header.level,
+        error.getMessage
+      )
+
+
     override val fetchData =
       Kleisli(blocks =>
-        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency)
-          .onError { case err =>
-            logger.error("I encountered problems while fetching ballot votes from {}, for blocks {}. The error says {}",
-              network,
-              blocks.map(_.data.hash.value).mkString(", "),
-              err.getMessage
-            ).pure[Future]
-          }
-    )
+        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency, failureHandler)
+      )
 
     override val decodeData = Kleisli{
       json =>
@@ -337,17 +339,17 @@ trait AccountsDataFetchers {
 
     val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
 
-    override val fetchData = Kleisli(
-      ids =>
-        node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency)
-          .onError {
-            case err =>
-              logger.error("I encountered problems while fetching account data from {}, for ids {}. The error says {}",
-                network,
-                ids.map(_.id).mkString(", "),
-                err.getMessage
-              ).pure[Future]
-          }
+    lazy val failureHandler = (id: AccountId, error: Throwable) =>
+      logger.error("I encountered problems while fetching account data from {}, for id {}. The error says {}",
+        network,
+        id.id,
+        error.getMessage
+      )
+
+
+    override def fetchData =
+      Kleisli(ids =>
+        node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency, failureHandler)
       )
 
     override def decodeData = Kleisli {
