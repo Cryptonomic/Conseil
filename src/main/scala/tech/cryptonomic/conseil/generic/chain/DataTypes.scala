@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import java.util.Date
+import java.time.{Instant, ZoneOffset}
+import java.time.format.DateTimeFormatter.ISO_INSTANT
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -37,7 +38,7 @@ object DataTypes {
         maybeAttributes.flatMap { attributes =>
           attributes.find(_.name == predicate.field).map {
             case attribute if attribute.dataType == DataType.DateTime =>
-              predicate.copy(set = predicate.set.map(x => dateToIso(new Date(x.toString.toLong))))
+              predicate.copy(set = predicate.set.map(x => formatToIso(x.toString.toLong)))
             case _ => predicate
           }
         }.toList
@@ -182,13 +183,11 @@ object DataTypes {
     }
   }
 
-  private def dateToIso(date: Date): String = {
-    import java.text.SimpleDateFormat
-    import java.util.TimeZone
-    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-    sdf.setTimeZone(TimeZone.getTimeZone("CET"))
-    sdf.format(date)
-  }
+  /** Method formatting millis to ISO format */
+  def formatToIso(epochMillis: Long): String =
+    Instant.ofEpochMilli(epochMillis)
+      .atZone(ZoneOffset.UTC)
+      .format(ISO_INSTANT)
 
   /** Enumeration for output types */
   object OutputType extends Enumeration {
