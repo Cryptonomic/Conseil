@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import java.time.{Instant, ZoneOffset}
 import java.time.format.DateTimeFormatter.ISO_INSTANT
+import java.time.{Instant, ZoneOffset}
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -25,6 +25,14 @@ object DataTypes {
 
   /** Type representing Map[String, Option[Any]] for query response */
   type QueryResponse = Map[String, Option[Any]]
+  /** Method checks if type can be aggregated */
+  lazy val canBeAggregated: DataType => AggregationType => Boolean = {
+    dataType => {
+      case AggregationType.count => true
+      case AggregationType.max | AggregationType.min => Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
+      case AggregationType.avg | AggregationType.sum => Set(DataType.Decimal, DataType.Int, DataType.LargeInt)(dataType)
+    }
+  }
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
   /** Max value of limit parameter */
@@ -45,6 +53,12 @@ object DataTypes {
       }
     }.sequence.map(pred => query.copy(predicates = pred.flatten))
   }
+
+  /** Method formatting millis to ISO format */
+  def formatToIso(epochMillis: Long): String =
+    Instant.ofEpochMilli(epochMillis)
+      .atZone(ZoneOffset.UTC)
+      .format(ISO_INSTANT)
 
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
@@ -81,13 +95,6 @@ object DataTypes {
         }
       }
       .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
-  }
-
-  /** Method checks if type can be aggregated */
-  lazy val canBeAggregated: DataType => AggregationType => Boolean = { dataType => aggregationType =>
-    if (aggregationType != AggregationType.count) {
-      Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
-    } else true
   }
 
   /** Trait representing query validation errors */
@@ -182,12 +189,6 @@ object DataTypes {
 
     }
   }
-
-  /** Method formatting millis to ISO format */
-  def formatToIso(epochMillis: Long): String =
-    Instant.ofEpochMilli(epochMillis)
-      .atZone(ZoneOffset.UTC)
-      .format(ISO_INSTANT)
 
   /** Enumeration for output types */
   object OutputType extends Enumeration {
