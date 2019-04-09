@@ -280,7 +280,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
         val processed = Some(checkpoints.keySet)
-        db.run(TezosDb.cleanAccountsCheckpoint(processed))
+        logger.debug("Cleaning checkpointed accounts..")
+        Await.result(db.run(TezosDb.cleanAccountsCheckpoint(processed)), atMost = batchingConf.accountPageProcessingTimeout)
+        logger.debug("Done cleaning checkpointed accounts.")
       case _ =>
         ()
     }.transform {
