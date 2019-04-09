@@ -213,10 +213,16 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
     ids: List[CID],
     mapToCommand: CID => String,
     concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
+
       val convertIdToUrl = mapToCommand andThen translateCommandToUrl
+
       //we need to thread the id all through the streaming http stages
       val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
-      val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => (HttpRequest(uri = Uri(url)), id) }
+
+      val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => {
+        logger.debug("Will query: " + url)
+        (HttpRequest(uri = Uri(url)), id)}
+      }
 
       uris.map(toRequest)
         .via(getHostPoolFlow)
