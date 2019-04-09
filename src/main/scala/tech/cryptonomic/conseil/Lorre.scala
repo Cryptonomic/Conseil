@@ -178,7 +178,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             //wait for each page to load, before looking at the next, thus  starting the new computation
             val justDone = Await.result(
               processBlocksPage(nextPage) <* processTezosAccounts(),
-              atMost = 5.minutes)
+              atMost = batchingConf.blockPageProcessingTimeout)
             processed + justDone <| logProgress
         }
       })
@@ -268,7 +268,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           pages.foldLeft(0) {
             (processed, nextPage) =>
               //wait for each page to load, before looking at the next, thus  starting the new computation
-              val justDone = Await.result(processAccountsPage(nextPage), atMost = 5.minutes)
+              val justDone = Await.result(processAccountsPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
               processed + justDone <| logProgress
         }
 
