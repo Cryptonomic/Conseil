@@ -1,8 +1,6 @@
 package tech.cryptonomic.conseil.generic.chain
 
 import java.sql.Timestamp
-import java.time.format.DateTimeFormatter
-import java.time.ZoneOffset
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -47,7 +45,7 @@ object DataTypes {
         maybeAttributes.flatMap { attributes =>
           attributes.find(_.name == predicate.field).map {
             case attribute if attribute.dataType == DataType.DateTime =>
-              predicate.copy(set = predicate.set.map(x => formatToIso(x.toString.toLong)))
+              predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toString))
             case _ => predicate
           }
         }.toList
@@ -55,10 +53,6 @@ object DataTypes {
     }.sequence.map(pred => query.copy(predicates = pred.flatten))
   }
 
-  /** Method formatting millis to ISO format */
-  def formatToIso(epochMillis: Long): String = {
-    DateTimeFormatter.ISO_INSTANT.format(new Timestamp(epochMillis).toInstant)
-  }
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
     (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {

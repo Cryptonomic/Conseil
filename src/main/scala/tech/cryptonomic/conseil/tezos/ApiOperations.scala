@@ -421,7 +421,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
-    val supportedCharacters = Set('_', '.', '+', ':', '-')
+    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
     str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
   }
 

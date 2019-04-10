@@ -1,8 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
@@ -1810,8 +1808,8 @@ class TezosDatabaseOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-      result.map(_.values.map(_.map(_.asInstanceOf[Timestamp]))) shouldBe List(
-        List(Some(new Timestamp(2)))
+      result.flatMap(_.values.map(_.map(_.asInstanceOf[Timestamp]))) shouldBe List(
+        Some(new Timestamp(2))
       )
     }
 
