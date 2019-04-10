@@ -22,7 +22,7 @@ object TezosRemoteInstances {
       tezosConfig: TezosConfiguration,
       requestConfig: NetworkCallsConfiguration,
       streamingConfig: HttpStreamingConfiguration
-    )(implicit system: ActorSystem) {
+    )(implicit val system: ActorSystem) {
 
       object ShutdownComplete extends ShutdownComplete
       private val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
@@ -58,14 +58,15 @@ object TezosRemoteInstances {
 
       type JustString[CallId] = Const[String, CallId]
 
-      implicit def futuresInstance(implicit context: RemoteContext, system: ActorSystem) =
+      implicit def futuresInstance(implicit context: RemoteContext) =
         new RemoteRpc[Future, Id, JustString] {
           import context._
 
           private val logger = Logger("Akka.Futures.RemoteRpc")
 
-          implicit val materializer = ActorMaterializer()
+          implicit val system = context.system
           implicit val dispatcher = system.dispatcher
+          implicit val materializer = ActorMaterializer()
 
           type CallConfig = Any
           type PostPayload = JsonString
@@ -134,14 +135,16 @@ object TezosRemoteInstances {
       }
 
 
-      implicit def streamsInstance(implicit context: RemoteContext, system: ActorSystem, mat: ActorMaterializer) =
+      implicit def streamsInstance(implicit context: RemoteContext) =
         new RemoteRpc[StreamSource, StreamSource, TaggedString] {
           import context._
           import context.tezosConfig.nodeConfig
 
           private val logger = Logger("Akka.Streams.RemoteRpc")
 
+          implicit val system = context.system
           implicit val dispatcher = system.dispatcher
+          implicit val materializer = ActorMaterializer()
 
           type PostPayload = Nothing
           type CallConfig = ConcurrencyLevel

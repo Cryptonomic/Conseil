@@ -69,12 +69,12 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
   with BlocksDataFetchers
   with AccountsDataFetchers {
   import TezosNodeOperator.isGenesis
-  import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
+  import batchConf.blockPageSize
 
   override implicit val actorMaterializer = ActorMaterializer()
 
-  override val fetchConcurrency = blockOperationsConcurrencyLevel
-  override val accountsFetchConcurrency = accountConcurrencyLevel
+  override val fetchConcurrency = batchConf.blockOperationsConcurrencyLevel
+  override val accountsFetchConcurrency = batchConf.accountConcurrencyLevel
 
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
