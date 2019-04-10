@@ -1790,8 +1790,8 @@ class TezosDatabaseOperationsTest
         field = "timestamp",
         operation = OperationType.between,
         set = List(
-          DataTypes.formatToIso(1),
-          DataTypes.formatToIso(3)
+          new Timestamp(1),
+          new Timestamp(3)
         )
       )
 
