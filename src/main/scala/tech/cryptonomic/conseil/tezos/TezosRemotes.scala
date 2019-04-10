@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.generic.chain.RemoteRpc
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 
 
-object TezosRemotesInstances {
+object TezosRemoteInstances {
 
   object Akka {
     import com.typesafe.scalalogging.Logger
@@ -18,8 +18,8 @@ object TezosRemotesInstances {
     import akka.http.scaladsl.Http
     import akka.http.scaladsl.model._
 
-    case class TezosNodeInterface(
-      config: TezosConfiguration,
+    case class RemoteContext(
+      tezosConfig: TezosConfiguration,
       requestConfig: NetworkCallsConfiguration,
       streamingConfig: HttpStreamingConfiguration
     )(implicit system: ActorSystem) {
@@ -28,11 +28,11 @@ object TezosRemotesInstances {
       private val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
 
       def translateCommandToUrl(command: String): String = {
-        import config.nodeConfig._
+        import tezosConfig.nodeConfig._
         s"$protocol://$hostname:$port/${pathPrefix}chains/main/$command"
       }
 
-      def shutdown() = {
+      def shutdown(): Future[ShutdownComplete] = {
         rejectingCalls.compareAndSet(false, true)
         Http(system).shutdownAllConnectionPools().map(_ => this.ShutdownComplete)(system.dispatcher)
       }
@@ -58,9 +58,9 @@ object TezosRemotesInstances {
 
       type JustString[CallId] = Const[String, CallId]
 
-      implicit def remote(tezosInterface: TezosNodeInterface)(implicit system: ActorSystem) =
+      implicit def futuresInstance(implicit context: RemoteContext, system: ActorSystem) =
         new RemoteRpc[Future, Id, JustString] {
-          import tezosInterface.{translateCommandToUrl, withRejectionControl}
+          import context._
 
           private val logger = Logger("Akka.Futures.RemoteRpc")
 
@@ -78,11 +78,11 @@ object TezosRemotesInstances {
 
             val url = (commandMap andThen translateCommandToUrl)(request)
             val httpRequest = HttpRequest(HttpMethods.GET, url)
-            logger.debug("Async querying URL {} for platform Tezos and network {}", url, tezosInterface.config.network)
+            logger.debug("Async querying URL {} for platform Tezos and network {}", url, tezosConfig.network)
 
             for {
               response <- Http(system).singleRequest(httpRequest)
-              strict <- response.entity.toStrict(tezosInterface.requestConfig.GETResponseEntityTimeout)
+              strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
             } yield Const(JsonString sanitize strict.data.utf8String)
 
           }
@@ -95,7 +95,7 @@ object TezosRemotesInstances {
           ): Future[JustString[CallId]] = withRejectionControl {
 
             val url = (commandMap andThen translateCommandToUrl)(request)
-            logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, tezosInterface.config.network, payload)
+            logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, tezosConfig.network, payload)
             val postedData = payload.getOrElse(JsonString.emptyObject)
             val httpRequest = HttpRequest(
               HttpMethods.POST,
@@ -105,7 +105,7 @@ object TezosRemotesInstances {
 
             for {
               response <- Http(system).singleRequest(httpRequest)
-              strict <- response.entity.toStrict(tezosInterface.requestConfig.POSTResponseEntityTimeout)
+              strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
             } yield {
               val responseBody = strict.data.utf8String
               logger.debug("Query results: {}", responseBody)
@@ -115,7 +115,16 @@ object TezosRemotesInstances {
         }
     }
 
+    object Streams {
+
+      type ConcurrencyLevel = Int
+      type StreamSource[A] = Source[A, akka.NotUsed]
+      type TaggedString[CallId] = (CallId, String)
+
+    }
+
     trait Streams {
+      import Streams._
       import akka.http.scaladsl.settings.ConnectionPoolSettings
 
       //might be actually unlawful, but we won't use it for append, only for empty
@@ -124,19 +133,14 @@ object TezosRemotesInstances {
         override def empty: StreamSource[T] = Source.empty[T]
       }
 
-      type ConcurrencyLevel = Int
-      type StreamSource[A] = Source[A, akka.NotUsed]
-      type TaggedString[CallId] = (CallId, String)
 
-
-      implicit def remote(tezosInterface: TezosNodeInterface)(implicit system: ActorSystem) =
+      implicit def streamsInstance(implicit context: RemoteContext, system: ActorSystem, mat: ActorMaterializer) =
         new RemoteRpc[StreamSource, StreamSource, TaggedString] {
-          import tezosInterface.{translateCommandToUrl, withRejectionControl}
-          import tezosInterface.config.nodeConfig
+          import context._
+          import context.tezosConfig.nodeConfig
 
           private val logger = Logger("Akka.Streams.RemoteRpc")
 
-          implicit val materializer = ActorMaterializer()
           implicit val dispatcher = system.dispatcher
 
           type PostPayload = Nothing
@@ -156,7 +160,7 @@ object TezosRemotesInstances {
               .mapAsyncUnordered(callConfig) {
                 case (tried, id) =>
                   Future.fromTry(tried)
-                    .flatMap(_.entity.toStrict(tezosInterface.requestConfig.GETResponseEntityTimeout))
+                    .flatMap(_.entity.toStrict(requestConfig.GETResponseEntityTimeout))
                     .map(content => id -> JsonString.sanitize(content.data.utf8String))
               }
           }
@@ -170,7 +174,7 @@ object TezosRemotesInstances {
             ???
 
           /* Connection pool settings customized for streaming requests */
-          private val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(tezosInterface.streamingConfig.pool)
+          private val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(streamingConfig.pool)
 
           /* creates a connections pool based on the host network */
           private[this] def getHostPoolFlow[T] = {

@@ -4,7 +4,8 @@ import akka.actor.ActorSystem
 import akka.Done
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{TezosTypes, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{TezosTypes, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockAccounts
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -35,6 +36,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
+  implicit val nodeContext = RemoteContext(tezosConf, callsConf, streamingClientConf)
 
   //how long to wait for graceful shutdown of system components
   val shutdownWait = 10.seconds
@@ -43,15 +45,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   sys.addShutdownHook(shutdown())
 
   lazy val db = DatabaseUtil.db
-  val tezosNodeOperator = new TezosNodeOperator(new TezosNodeInterface(tezosConf, callsConf, streamingClientConf), tezosConf.network, batchingConf)
+  val tezosNodeOperator = new TezosNodeOperator(tezosConf.network, batchingConf)
 
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
     db.close()
     val nodeShutdown =
-      tezosNodeOperator.node
-        .shutdown()
+      nodeContext.shutdown()
         .flatMap((_: ShutdownComplete) => system.terminate())
 
     Await.result(nodeShutdown, shutdownWait)

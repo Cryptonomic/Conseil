@@ -5,7 +5,11 @@ import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import tech.cryptonomic.conseil.generic.chain.DataFetcher
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Source
+import tech.cryptonomic.conseil.generic.chain.{DataFetcher, RemoteRpc}
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
 import TezosTypes._
@@ -13,18 +17,18 @@ import TezosTypes._
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
   //we require the cabability to log
-  self: LazyLogging =>
+  self: LazyLogging with TezosRemoteInstances.Akka.Streams =>
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
   import JsonDecoders.Circe.decodeLiftingTo
+  import TezosRemoteInstances.Akka.Streams.StreamSource
 
+  implicit def system: ActorSystem
+  implicit def tezosContext: RemoteContext
   implicit def fetchFutureContext: ExecutionContext
+  implicit def actorMaterializer: ActorMaterializer
 
-  /** the tezos network to connect to */
-  def network: String
-  /** the tezos interface to query */
-  def node: TezosRPCInterface
   /** parallelism in the multiple requests decoding on the RPC interface */
   def fetchConcurrency: Int
 
@@ -59,18 +63,20 @@ trait BlocksDataFetchers {
 
     def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
-    lazy val failureHandler = (offset: Offset, error: Throwable) =>
-      logger.error("I encountered problems while fetching block data from {}, for offset reference {} . The error says {}",
-        network,
-        s"${hashRef.value}~${String.valueOf(offset)}",
-        error.getMessage
-      )
+    // lazy val failureHandler = (offset: Offset, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching block data from {}, for offset reference {} . The error says {}",
+    //     network,
+    //     s"${hashRef.value}~${String.valueOf(offset)}",
+    //     error.getMessage
+    //   )
 
     //fetch a future stream of values
-    override val fetchData =
-      Kleisli(offsets =>
-        node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      offsets =>
+        val inStream: StreamSource[In] = Source(offsets)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     // decode with `JsonDecoders`
     override val decodeData = Kleisli {
@@ -100,17 +106,19 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
-      logger.error("I encountered problems while fetching baker operations from {}, for block {}. The error says {}",
-        network,
-        hash.value,
-        error.getMessage
-      )
+    // lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching baker operations from {}, for block {}. The error says {}",
+    //     network,
+    //     hash.value,
+    //     error.getMessage
+    //   )
 
-    override val fetchData =
-      Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      hashes =>
+        val inStream: StreamSource[In] = Source(hashes)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     override val decodeData = Kleisli(
       json =>
@@ -135,17 +143,19 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
 
-    lazy val failureHandler =  (hash: BlockHash, error: Throwable) =>
-      logger.error("I encountered problems while fetching quorums from {}, for block {}. The error says {}",
-        network,
-        hash.value,
-        error.getMessage
-      )
+    // lazy val failureHandler =  (hash: BlockHash, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching quorums from {}, for block {}. The error says {}",
+    //     network,
+    //     hash.value,
+    //     error.getMessage
+    //   )
 
-    override val fetchData =
-      Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      hashes =>
+        val inStream: StreamSource[In] = Source(hashes)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     override val decodeData = Kleisli(
       json =>
@@ -168,17 +178,19 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
 
-    lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
-      logger.error("I encountered problems while fetching current proposals from {}, for block {}. The error says {}",
-        network,
-        hash.value,
-        error.getMessage
-      )
+    // lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching current proposals from {}, for block {}. The error says {}",
+    //     network,
+    //     hash.value,
+    //     error.getMessage
+    //   )
 
-    override val fetchData =
-      Kleisli(hashes =>
-        node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      hashes =>
+        val inStream: StreamSource[In] = Source(hashes)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     override val decodeData = Kleisli(
       json =>
@@ -202,18 +214,20 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
 
-    lazy val failureHandler = (block: Block, error: Throwable) =>
-      logger.error("I encountered problems while fetching proposals details from {}, for block {} at level {}. The error says {}",
-        network,
-        block.data.hash.value,
-        block.data.header.level,
-        error.getMessage
-      )
+    // lazy val failureHandler = (block: Block, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching proposals details from {}, for block {} at level {}. The error says {}",
+    //     network,
+    //     block.data.hash.value,
+    //     block.data.header.level,
+    //     error.getMessage
+    //   )
 
-    override val fetchData =
-      Kleisli(blocks =>
-        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      blocks =>
+        val inStream: StreamSource[In] = Source(blocks)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     override val decodeData = Kleisli{
       json =>
@@ -238,18 +252,20 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
 
-    lazy val failureHandler = (block: Block, error: Throwable) =>
-      logger.error("I encountered problems while fetching baker rolls from {}, for block {} at level {}. The error says {}",
-        network,
-        block.data.hash.value,
-        block.data.header.level,
-        error.getMessage
-      )
+    // lazy val failureHandler = (block: Block, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching baker rolls from {}, for block {} at level {}. The error says {}",
+    //     network,
+    //     block.data.hash.value,
+    //     block.data.header.level,
+    //     error.getMessage
+    //   )
 
-    override val fetchData =
-      Kleisli(blocks =>
-        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      blocks =>
+        val inStream: StreamSource[In] = Source(blocks)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     override val decodeData = Kleisli{
       json =>
@@ -274,19 +290,21 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
 
-    lazy val failureHandler = (block: Block, error: Throwable) =>
-      logger.error("I encountered problems while fetching ballot votes from {}, for block {} at level {}. The error says {}",
-        network,
-        block.data.hash.value,
-        block.data.header.level,
-        error.getMessage
-      )
+    // lazy val failureHandler = (block: Block, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching ballot votes from {}, for block {} at level {}. The error says {}",
+    //     network,
+    //     block.data.hash.value,
+    //     block.data.header.level,
+    //     error.getMessage
+    //   )
 
 
-    override val fetchData =
-      Kleisli(blocks =>
-        node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency, failureHandler)
-      )
+    override val fetchData = Kleisli {
+      blocks =>
+        val inStream: StreamSource[In] = Source(blocks)
+        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+    }
 
     override val decodeData = Kleisli{
       json =>
@@ -304,13 +322,17 @@ trait BlocksDataFetchers {
 /** Defines intances of `DataFetcher` for accounts-related data */
 trait AccountsDataFetchers {
   //we require the cabability to log
-  self: LazyLogging =>
+  self: LazyLogging with TezosRemoteInstances.Akka.Streams =>
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
   import JsonDecoders.Circe.decodeLiftingTo
+  import TezosRemoteInstances.Akka.Streams.StreamSource
 
+  implicit def system: ActorSystem
+  implicit def tezosContext: RemoteContext
   implicit def fetchFutureContext: ExecutionContext
+  implicit def actorMaterializer: ActorMaterializer
 
   /* reduces repetion in error handling */
   private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
@@ -320,10 +342,6 @@ trait AccountsDataFetchers {
       logger.error("Something unexpected failed while decoding json", t).pure[Future]
   }
 
-  /** the tezos network to connect to */
-  def network: String
-  /** the tezos interface to query */
-  def node: TezosRPCInterface
   /** parallelism in the multiple requests decoding on the RPC interface */
   def accountsFetchConcurrency: Int
 
@@ -339,18 +357,19 @@ trait AccountsDataFetchers {
 
     val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
 
-    lazy val failureHandler = (id: AccountId, error: Throwable) =>
-      logger.error("I encountered problems while fetching account data from {}, for id {}. The error says {}",
-        network,
-        id.id,
-        error.getMessage
-      )
+    // lazy val failureHandler = (id: AccountId, error: Throwable) =>
+    //   logger.error("I encountered problems while fetching account data from {}, for id {}. The error says {}",
+    //     network,
+    //     id.id,
+    //     error.getMessage
+    //   )
 
-
-    override def fetchData =
-      Kleisli(ids =>
-        node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency, failureHandler)
-      )
+    override def fetchData = Kleisli {
+      ids =>
+        val inStream: StreamSource[In] = Source(ids)
+        RemoteRpc.runGet(accountsFetchConcurrency, inStream, makeUrl)
+          .runFold(List.empty[(In, String)])(_ :+ _)
+      }
 
     override def decodeData = Kleisli {
       json =>

@@ -20,6 +20,8 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots")
 )
 
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.0")
+
 libraryDependencies  ++=  Seq(
   "ch.qos.logback"                   % "logback-classic"               % "1.2.3",
   "com.typesafe"                     % "config"                        % "1.3.3",

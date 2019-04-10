@@ -1,11 +1,15 @@
 package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.TezosTypes._
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import tech.cryptonomic.conseil.generic.chain.RemoteRpc
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
@@ -51,17 +55,23 @@ object TezosNodeOperator {
 /**
   * Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database.
   *
-  * @param node               Tezos node connection object
   * @param network            Which Tezos network to go against
   * @param batchConf          configuration for batched download of node data
+  * @param tezosContext       tezos node connection definitions, as per akka remote rpc
+  * @param system             actor system, needed to run the akka remote rpc calls
   * @param fetchFutureContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(implicit val fetchFutureContext: ExecutionContext)
+class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
+  (implicit val tezosContext: RemoteContext, val system: ActorSystem, val fetchFutureContext: ExecutionContext)
   extends LazyLogging
+  with TezosRemoteInstances.Akka.Futures
+  with TezosRemoteInstances.Akka.Streams
   with BlocksDataFetchers
   with AccountsDataFetchers {
   import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
+
+  override implicit val actorMaterializer = ActorMaterializer()
 
   override val fetchConcurrency = blockOperationsConcurrencyLevel
   override val accountsFetchConcurrency = accountConcurrencyLevel
@@ -82,7 +92,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return           The account
     */
   def getAccountForBlock(blockHash: BlockHash, accountId: AccountId): Future[Account] =
-    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
+    RemoteRpc.runGet(s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
       .map(fromJson[Account])
 
   /**
@@ -92,7 +102,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return           The account
     */
   def getAccountManagerForBlock(blockHash: BlockHash, accountId: AccountId): Future[ManagerKey] =
-    node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}/manager_key")
+    RemoteRpc.runGet(s"blocks/${blockHash.value}/context/contracts/${accountId.id}/manager_key")
       .map(fromJson[ManagerKey])
 
   /**
@@ -102,7 +112,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   def getAllAccountsForBlock(blockHash: BlockHash): Future[Map[AccountId, Account]] =
     for {
-      jsonEncodedAccounts <- node.runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts")
+      jsonEncodedAccounts <- RemoteRpc.runGet(s"blocks/${blockHash.value}/context/contracts")
       accountIds = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
       accounts <- getAccountsForBlock(accountIds, blockHash)
     } yield accounts
@@ -199,7 +209,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     if (isGenesis(block))
       Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
     else
-      node.runAsyncGetQuery(network, s"blocks/${block.hash.value}/operations")
+      RemoteRpc.runGet(s"blocks/${block.hash.value}/operations")
         .flatMap(decodeOperations)
 
   }
@@ -216,12 +226,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       val hashString = block.hash.value
 
       val fetchCurrentQuorum =
-        node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
+        RemoteRpc.runGet(s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
           decodeLiftingTo[Future, Option[Int]](json)
         }
 
       val fetchCurrentProposal =
-        node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
+        RemoteRpc.runGet(s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
           decodeLiftingTo[Future, Option[ProtocolId]](json)
         }
 
@@ -270,7 +280,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //starts immediately
     val fetchBlock =
-      node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+      RemoteRpc.runGet(s"blocks/${hash.value}~$offsetString") flatMap { json =>
         decodeLiftingTo[Future, BlockData](JS.sanitize(json))
       }
 
@@ -430,8 +440,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 /**
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations
   */
-class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: String, batchConf: BatchFetchConfiguration, sodiumConf: SodiumConfiguration)(implicit executionContext: ExecutionContext)
-  extends TezosNodeOperator(node, network, batchConf)
+class TezosNodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, sodiumConf: SodiumConfiguration)(implicit override  val tezosContext: RemoteContext, system: ActorSystem, executionContext: ExecutionContext)
+  extends TezosNodeOperator(network, batchConf)
   with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
@@ -496,7 +506,8 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
           "operations" -> operations
         )
     }
-    node.runAsyncPostQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
+
+    RemoteRpc.runPost("/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .map(json => fromJson[ForgedOperation](json).operation)
   }
 
@@ -547,7 +558,8 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
       "forged_operation" -> forgedOperationGroup,
       "signature" -> signedOpGroup.signature
     )
-    node.runAsyncPostQuery(network, "/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
+
+    RemoteRpc.runPost("/blocks/head/proto/helpers/apply_operation", Some(JsonUtil.toJson(payload)))
       .map { result =>
         logger.debug(s"Result of operation application: $result")
         JsonUtil.fromJson[AppliedOperation](result)
@@ -563,7 +575,8 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
     val payload: AnyMap = Map(
       "signedOperationContents" -> signedOpGroup.bytes.map("%02X" format _).mkString
     )
-    node.runAsyncPostQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
+
+    RemoteRpc.runPost("/inject_operation", Some(JsonUtil.toJson(payload)))
       .map(result => fromJson[InjectedOperation](result).injectedOperation)
   }
 
