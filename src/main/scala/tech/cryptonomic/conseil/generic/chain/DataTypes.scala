@@ -57,11 +57,7 @@ object DataTypes {
 
   /** Method formatting millis to ISO format */
   def formatToIso(epochMillis: Long): String = {
-    // time needs to be adjusted with toLocalDateTime
-    new Timestamp(epochMillis)
-      .toLocalDateTime
-      .atZone(ZoneOffset.UTC)
-      .format(DateTimeFormatter.ISO_INSTANT)
+    DateTimeFormatter.ISO_INSTANT.format(new Timestamp(epochMillis).toInstant)
   }
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
