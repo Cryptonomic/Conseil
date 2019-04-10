@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
@@ -8,6 +10,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
@@ -1774,6 +1777,41 @@ class TezosDatabaseOperationsTest
         Map("medium" -> Some(4), "low" -> Some(0)), // high = Some(8)
         Map("medium" -> Some(2), "low" -> Some(0)), // high = Some(4)
         Map("medium" -> Some(3), "low" -> Some(0)), // high = Some(3)
+      )
+    }
+
+
+    "should correctly check use between in the timestamps" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(2), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(4), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "timestamp",
+        operation = OperationType.between,
+        set = List(
+          DataTypes.formatToIso(1),
+          DataTypes.formatToIso(3)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("timestamp"),
+          predicates = List(predicate),
+          ordering = List.empty,
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result.map(_.values.map(_.map(_.asInstanceOf[Timestamp]))) shouldBe List(
+        List(Some(new Timestamp(2)))
       )
     }
 

@@ -186,7 +186,7 @@ object DatabaseUtil {
     /** maps operation type to SQL operation */
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
       val op = operation match {
-        case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
+        case OperationType.between => sql"BETWEEN '#${vals.head}' AND '#${vals(1)}'"
         case OperationType.in => concatenateSqlActions(sql"IN ", insertValuesIntoSqlAction(vals))
         case OperationType.like => sql"LIKE '%#${vals.head}%'"
         case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"

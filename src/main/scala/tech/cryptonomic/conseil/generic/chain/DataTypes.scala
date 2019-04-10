@@ -1,7 +1,8 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import java.time.format.DateTimeFormatter.ISO_INSTANT
-import java.time.{Instant, ZoneOffset}
+import java.sql.Timestamp
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -55,11 +56,13 @@ object DataTypes {
   }
 
   /** Method formatting millis to ISO format */
-  def formatToIso(epochMillis: Long): String =
-    Instant.ofEpochMilli(epochMillis)
+  def formatToIso(epochMillis: Long): String = {
+    // time needs to be adjusted with toLocalDateTime
+    new Timestamp(epochMillis)
+      .toLocalDateTime
       .atZone(ZoneOffset.UTC)
-      .format(ISO_INSTANT)
-
+      .format(DateTimeFormatter.ISO_INSTANT)
+  }
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
     (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {
