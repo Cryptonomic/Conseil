@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
+
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
@@ -267,7 +269,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val result = query.validate("test", tpdo)
 
-      result.futureValue.right.get shouldBe Query(predicates = List(Predicate(field = "valid", operation = OperationType.in, set = List("1973-11-29T21:33:09Z"))))
+      result.futureValue.right.get shouldBe Query(predicates = List(Predicate(field = "valid", operation = OperationType.in, set = List(new Timestamp(123456789000L).toString))))
     }
   }
 
