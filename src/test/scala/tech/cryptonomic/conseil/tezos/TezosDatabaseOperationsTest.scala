@@ -1778,7 +1778,6 @@ class TezosDatabaseOperationsTest
       )
     }
 
-
     "should correctly check use between in the timestamps" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
