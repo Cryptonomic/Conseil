@@ -1813,6 +1813,36 @@ class TezosDatabaseOperationsTest
       )
     }
 
+    "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
+      val feesTmp = List(
+        FeesRow(0, 0, 0, new Timestamp(0), "kind"),
+        FeesRow(0, 0, 10, new Timestamp(3), "kind"),
+        FeesRow(0, 0, 2, new Timestamp(1), "kind"),
+        FeesRow(0, 0, 30, new Timestamp(2), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "high",
+        operation = OperationType.between,
+        set = List(1,3)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("high"),
+          predicates = List(predicate),
+          ordering = List(),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(Map("high" -> Some(2)))
+    }
+
   }
 
  }
