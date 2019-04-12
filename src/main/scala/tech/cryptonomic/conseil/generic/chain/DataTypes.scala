@@ -97,6 +97,17 @@ object DataTypes {
       .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
   }
 
+  /** Trait representing attribute validation errors */
+  sealed trait AttributesValidationError extends Product with Serializable {
+    val message: String
+  }
+
+  /** Attribute shouldn't be queried because it is a high cardinality field */
+  case class HighCardinalityAttribute(message: String) extends AttributesValidationError
+
+  /** Attribute shouldn't be queried because it is of a type that we forbid to query */
+  case class InvalidAttributeDataType(message: String) extends AttributesValidationError
+
   /** Trait representing query validation errors */
   sealed trait QueryValidationError extends Product with Serializable {
     val message: String

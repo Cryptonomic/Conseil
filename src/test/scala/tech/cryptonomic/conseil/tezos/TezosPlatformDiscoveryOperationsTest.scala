@@ -11,6 +11,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
 import tech.cryptonomic.conseil.config.Newest
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
@@ -209,17 +210,17 @@ class TezosPlatformDiscoveryOperationsTest
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
       metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
-      sut.listAttributeValues("fees", "kind", None).futureValue shouldBe List("example1")
+      sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
     }
 
-    "returns a failed future when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
+    "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
-      intercept[NoSuchElementException] {
-        throw sut.listAttributeValues("fees", "medium", None).failed.futureValue
-      }
+
+      sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(InvalidAttributeDataType("medium"), HighCardinalityAttribute("medium"))
+
     }
 
     "return empty list when trying to sql inject" in {
@@ -231,7 +232,7 @@ class TezosPlatformDiscoveryOperationsTest
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
 
-      sut.listAttributeValues("fees", "kind", maliciousFilter).futureValue shouldBe List.empty
+      sut.listAttributeValues("fees", "kind", maliciousFilter).futureValue.right.get shouldBe List.empty
 
       dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
 
@@ -242,13 +243,13 @@ class TezosPlatformDiscoveryOperationsTest
         AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
       )
 
-      sut.listAttributeValues("fees", "kind", Some("1")).futureValue shouldBe List.empty
+      sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
 
-      sut.listAttributeValues("fees", "kind", None).futureValue should contain theSameElementsAs List("example1", "example2")
-      sut.listAttributeValues("fees", "kind", Some("ex")).futureValue should contain theSameElementsAs List("example1", "example2")
-      sut.listAttributeValues("fees", "kind", Some("ample")).futureValue should contain theSameElementsAs List("example1", "example2")
-      sut.listAttributeValues("fees", "kind", Some("1")).futureValue shouldBe List("example1")
+      sut.listAttributeValues("fees", "kind", None).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
+      sut.listAttributeValues("fees", "kind", Some("ex")).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
+      sut.listAttributeValues("fees", "kind", Some("ample")).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
+      sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List("example1")
 
     }
 
