@@ -79,6 +79,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def mainLoop(iteration: Int): Unit = {
     val noOp = Future.successful(())
     val processing = for {
+      _ <- processBlocks()
       _ <- processTezosBlocks()
       _ <-
         if (iteration % lorreConf.feeUpdateInterval == 0)
@@ -120,6 +121,39 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     checkTezosConnection()
     mainLoop(0)
   } finally {shutdown()}
+
+  private[this] def processBlocks() = {
+    import com.typesafe.scalalogging.Logger
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.tezos.{AccountsDataFetchers, ApiOperations, BlockchainOperator, BlocksDataFetchers, TezosRemoteInstances}
+
+    val fetchMaxLevel = ApiOperations.fetchMaxLevel _
+
+    import TezosRemoteInstances.Akka.Futures._
+    import TezosRemoteInstances.Akka.Streams._
+    val blockFetchers = BlocksDataFetchers(batchingConf.blockOperationsConcurrencyLevel)
+    val accountFetchers = AccountsDataFetchers(batchingConf.accountConcurrencyLevel)
+
+    import blockFetchers._
+    import accountFetchers._
+
+    val chain = new BlockchainOperator {
+      override val network: String = nodeContext.tezosConfig.network
+      override lazy val logger: Logger = Logger(classOf[BlockchainOperator])
+    }
+
+    logger.info("Processing Tezos Blocks..")
+
+    val blocksToSynchronize = lorreConf.depth match {
+      case Newest => chain.getBlocksNotInDatabase[Future](fetchMaxLevel)
+      case Everything => chain.getLatestBlocks[Future]()
+      case Custom(n) => chain.getLatestBlocks[Future](Some(n), lorreConf.headHash)
+    }
+
+    blocksToSynchronize
+
+  }
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.

@@ -95,7 +95,7 @@ object DataFetcher {
    * Example: the fetcher for tezos blocks might have type `Aux[Future, List, Throwable, Int, BlockData, String]
    * where the Int is for the offset from a given block, and String is a representation of a json value.
    */
-  private type Aux[Eff[_], Coll[_], Err, Input, Output, Encoding] = DataFetcher[Eff, Coll, Err] {
+  type Aux[Eff[_], Coll[_], Err, Input, Output, Encoding] = DataFetcher[Eff, Coll, Err] {
       type In = Input
       type Out = Output
       type Encoded = Encoding

@@ -48,8 +48,6 @@ object TezosNodeOperator {
         .filterNot(_.isEmpty)
         .map(subRange => subRange.head to subRange.last)
 
-    val isGenesis = (data: BlockData) => data.header.level == 0
-
 }
 
 /**
@@ -68,7 +66,6 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
   with TezosRemoteInstances.Akka.Streams
   with BlocksDataFetchers
   with AccountsDataFetchers {
-  import TezosNodeOperator.isGenesis
   import batchConf.blockPageSize
 
   override implicit val actorMaterializer = ActorMaterializer()
@@ -140,7 +137,7 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     import TezosOptics.Accounts.optionalScriptCode
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
-    implicit val fetcherInstance = accountFetcher(blockHash)
+    implicit val fetcherInstance = accountsFetcherProvider(blockHash)
 
     /*tries decoding but simply returns the input unchanged on failure*/
     def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
@@ -386,7 +383,7 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
 
-    implicit val blockFetcher = blocksFetcher(hashRef)
+    implicit val blockFetcher = blocksFetcherProvider(hashRef)
 
     //read the separate parts of voting and merge the results
     val proposalsStateFetch =

@@ -12,12 +12,21 @@ trait RemoteRpc[Eff[_], Req[_], Res[_]] {
 }
 
 object RemoteRpc {
-
   import cats.{Id, Functor}
   import cats.data.Const
   import cats.syntax.functor._
 
+  /* type aliases */
+  /** the complete signature applies to
+    * - wrapped input values
+    * - an output which depends on the input value, for correlation
+    * - a complex call configuration parameter, including extra information to execute the call
+    * - the payload-encoding type for POST calls
+    */
   type Aux[Eff[_], Req[_], Res[_], Conf, Payload] = RemoteRpc[Eff, Req, Res] { type CallConfig = Conf; type PostPayload = Payload }
+
+  /** support calls with no input wrapping (i.e. single values), and a simply-typed output, independent of the input value */
+  type Basic[Eff[_], Result, Payload] = RemoteRpc.Aux[Eff, Id, Const[Result, ?], Any, Payload]
 
   def apply[Eff[_], Req[_], Res[_], CallConfig, Payload](
     implicit remote: Aux[Eff, Req, Res, CallConfig, Payload]
@@ -39,12 +48,12 @@ object RemoteRpc {
   def runGet[Eff[_]: Functor, CallId, Res](
     request: CallId,
     commandMap: CallId => String
-  )(implicit remote: Aux[Eff, Id, Const[Res, ?], Any, _]): Eff[Res] =
+  )(implicit remote: Basic[Eff, Res, _]): Eff[Res] =
     remote.runGetCall((), request, commandMap).map(_.getConst)
 
   def runGet[Eff[_]: Functor, Res](
     command: String,
-  )(implicit remote: Aux[Eff, Id, Const[Res, ?], Any, _]): Eff[Res] =
+  )(implicit remote: Basic[Eff,Res, _]): Eff[Res] =
     remote.runGetCall((), (), (_: Any) => command).map(_.getConst)
 
   def runPost[Eff[_], CallId, Req[_], Res[_], CallConfig, Payload](

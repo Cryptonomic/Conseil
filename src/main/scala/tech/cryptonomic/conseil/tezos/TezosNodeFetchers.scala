@@ -14,10 +14,23 @@ import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
 import TezosTypes._
 
+object BlocksDataFetchers {
+  import TezosRemoteInstances.Akka.Streams.ConcurrencyLevel
+
+  def apply(streamConcurrency: ConcurrencyLevel)(implicit actorSystem: ActorSystem, rpc: RemoteContext, ec: ExecutionContext) =
+    new BlocksDataFetchers with TezosRemoteInstances.Akka.Streams with LazyLogging {
+      override implicit val system = actorSystem
+      override implicit val tezosContext = rpc
+      override implicit val fetchFutureContext = ec
+      override val fetchConcurrency: Int = streamConcurrency
+    }
+}
+
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
   //we require the cabability to log
   self: LazyLogging with TezosRemoteInstances.Akka.Streams =>
+  import cats.data.Reader
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
@@ -27,7 +40,7 @@ trait BlocksDataFetchers {
   implicit def system: ActorSystem
   implicit def tezosContext: RemoteContext
   implicit def fetchFutureContext: ExecutionContext
-  implicit def actorMaterializer: ActorMaterializer
+  implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
 
   /** parallelism in the multiple requests decoding on the RPC interface */
   def fetchConcurrency: Int
@@ -50,42 +63,42 @@ trait BlocksDataFetchers {
 
   //common type alias to simplify signatures
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
-  /** untyped alias to clarify intent */
-  type Offset = Int
 
-  /** a fetcher of blocks */
-  implicit def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
-    import JsonDecoders.Circe.Blocks._
+  /** a fetcher factory for blocks, based on a reference hash */
+  implicit val blocksFetcherProvider: Reader[BlockHash, DataFetcher.Aux[Future, List, Throwable, Offset, BlockData, String]] = Reader( (hashRef: BlockHash) =>
+    new FutureFetcher {
+      import JsonDecoders.Circe.Blocks._
 
-    type Encoded = String
-    type In = Offset
-    type Out = BlockData
+      type Encoded = String
+      type In = Offset
+      type Out = BlockData
 
-    def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
+      def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
-    // lazy val failureHandler = (offset: Offset, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching block data from {}, for offset reference {} . The error says {}",
-    //     network,
-    //     s"${hashRef.value}~${String.valueOf(offset)}",
-    //     error.getMessage
-    //   )
+      // lazy val failureHandler = (offset: Offset, error: Throwable) =>
+      //   logger.error("I encountered problems while fetching block data from {}, for offset reference {} . The error says {}",
+      //     network,
+      //     s"${hashRef.value}~${String.valueOf(offset)}",
+      //     error.getMessage
+      //   )
 
-    //fetch a future stream of values
-    override val fetchData = Kleisli {
-      offsets =>
-        val inStream: StreamSource[In] = Source(offsets)
-        RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
-          .runFold(List.empty[(In, String)])(_ :+ _)
+      //fetch a future stream of values
+      override val fetchData = Kleisli {
+        offsets =>
+          val inStream: StreamSource[In] = Source(offsets)
+          RemoteRpc.runGet(fetchConcurrency, inStream, makeUrl)
+            .runFold(List.empty[(In, String)])(_ :+ _)
+      }
+
+      // decode with `JsonDecoders`
+      override val decodeData = Kleisli {
+        json =>
+          decodeLiftingTo[Future, Out](json)
+            .onError(logErrorOnJsonDecoding(s"I fetched a block definition from tezos node that I'm unable to decode: $json"))
+      }
+
     }
-
-    // decode with `JsonDecoders`
-    override val decodeData = Kleisli {
-      json =>
-        decodeLiftingTo[Future, Out](json)
-          .onError(logErrorOnJsonDecoding(s"I fetched a block definition from tezos node that I'm unable to decode: $json"))
-    }
-
-  }
+  )
 
   /** decode account ids from operation json results with the `cats.Id` effect, i.e. a total function with no effect */
   val accountIdsJsonDecode: Kleisli[Id, String, List[AccountId]] =
@@ -319,10 +332,24 @@ trait BlocksDataFetchers {
 
 }
 
+object AccountsDataFetchers {
+
+  import TezosRemoteInstances.Akka.Streams.ConcurrencyLevel
+
+  def apply(streamConcurrency: ConcurrencyLevel)(implicit actorSystem: ActorSystem, rpc: RemoteContext, ec: ExecutionContext) =
+    new AccountsDataFetchers with TezosRemoteInstances.Akka.Streams with LazyLogging {
+      override implicit val system = actorSystem
+      override implicit val tezosContext = rpc
+      override implicit val fetchFutureContext = ec
+      override val accountsFetchConcurrency: Int = streamConcurrency
+    }
+}
+
 /** Defines intances of `DataFetcher` for accounts-related data */
 trait AccountsDataFetchers {
   //we require the cabability to log
   self: LazyLogging with TezosRemoteInstances.Akka.Streams =>
+  import cats.data.Reader
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
@@ -332,7 +359,7 @@ trait AccountsDataFetchers {
   implicit def system: ActorSystem
   implicit def tezosContext: RemoteContext
   implicit def fetchFutureContext: ExecutionContext
-  implicit def actorMaterializer: ActorMaterializer
+  implicit val actorMaterializer: ActorMaterializer = ActorMaterializer()
 
   /* reduces repetion in error handling */
   private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
@@ -348,39 +375,42 @@ trait AccountsDataFetchers {
   //common type alias to simplify signatures
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
-  implicit def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
-    import JsonDecoders.Circe.Accounts._
+  /** a fetcher for accounts, dependent on a specific block hash reference */
+  implicit val accountsFetcherProvider: Reader[BlockHash, DataFetcher.Aux[Future, List, Throwable, AccountId, Option[Account], String]] = Reader( (referenceBlock: BlockHash) =>
+    new FutureFetcher {
+      import JsonDecoders.Circe.Accounts._
 
-    type Encoded = String
-    type In = AccountId
-    type Out = Option[Account]
+      type Encoded = String
+      type In = AccountId
+      type Out = Option[Account]
 
-    val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
+      val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
 
-    // lazy val failureHandler = (id: AccountId, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching account data from {}, for id {}. The error says {}",
-    //     network,
-    //     id.id,
-    //     error.getMessage
-    //   )
+      // lazy val failureHandler = (id: AccountId, error: Throwable) =>
+      //   logger.error("I encountered problems while fetching account data from {}, for id {}. The error says {}",
+      //     network,
+      //     id.id,
+      //     error.getMessage
+      //   )
 
-    override def fetchData = Kleisli {
-      ids =>
-        val inStream: StreamSource[In] = Source(ids)
-        RemoteRpc.runGet(accountsFetchConcurrency, inStream, makeUrl)
-          .runFold(List.empty[(In, String)])(_ :+ _)
+      override def fetchData = Kleisli {
+        ids =>
+          val inStream: StreamSource[In] = Source(ids)
+          RemoteRpc.runGet(accountsFetchConcurrency, inStream, makeUrl)
+            .runFold(List.empty[(In, String)])(_ :+ _)
+        }
+
+      override def decodeData = Kleisli {
+        json =>
+          decodeLiftingTo[Future, Account](json)
+            .map(Some(_))
+            .onError(logWarnOnJsonDecoding(s"I fetched an account json from tezos node that I'm unable to decode: $json"))
+            .recover{
+              //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+              case NonFatal(_) => Option.empty
+            }
       }
-
-    override def decodeData = Kleisli {
-      json =>
-        decodeLiftingTo[Future, Account](json)
-          .map(Some(_))
-          .onError(logWarnOnJsonDecoding(s"I fetched an account json from tezos node that I'm unable to decode: $json"))
-          .recover{
-            //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
-            case NonFatal(_) => Option.empty
-          }
     }
-  }
+  )
 
 }

@@ -49,8 +49,14 @@ object TezosTypes {
     pattern.matcher(s).matches
   }
 
+  /** is the block the genesis? */
+  val isGenesis = (data: BlockData) => data.header.level == 0
+
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
+
+  /** a block offset from the head */
+  type Offset = Int
 
   final case class PublicKey(value: String) extends AnyVal
 

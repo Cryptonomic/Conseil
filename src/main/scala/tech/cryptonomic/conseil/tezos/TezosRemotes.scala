@@ -42,6 +42,8 @@ object TezosRemoteInstances {
 
     }
 
+    object Futures extends Futures
+
     trait Futures {
       import cats.Id
       import cats.data.Const
@@ -116,7 +118,7 @@ object TezosRemoteInstances {
         }
     }
 
-    object Streams {
+    object Streams extends Streams {
 
       type ConcurrencyLevel = Int
       type StreamSource[A] = Source[A, akka.NotUsed]
