@@ -99,7 +99,7 @@ object DataTypes {
 
   /** Trait representing attribute validation errors */
   sealed trait AttributesValidationError extends Product with Serializable {
-    val message: String
+    def message: String
   }
 
   /** Attribute shouldn't be queried because it is a high cardinality field */
@@ -110,7 +110,7 @@ object DataTypes {
 
   /** Trait representing query validation errors */
   sealed trait QueryValidationError extends Product with Serializable {
-    val message: String
+    def message: String
   }
 
   /** Class which contains output type with the response */

@@ -215,9 +215,9 @@ class TezosPlatformDiscoveryOperations(
     val result = for {
       attrOpt <- getTableAttributes(tableName).map(_.flatMap(_.find(_.name == column)))
     } yield {
-      val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) List(InvalidAttributeDataType(column)) else Nil
-      val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) List(HighCardinalityAttribute(column)) else Nil
-      val validationErrors = invalidDataTypeValidationResult ::: highCardinalityValidationResult
+      val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
+      val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(column)) else None
+      val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
 
       val res = Either.cond(
         test = validationErrors.isEmpty,
