@@ -217,10 +217,13 @@ class TezosPlatformDiscoveryOperations(
     } yield {
       val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) List(InvalidAttributeDataType(column)) else Nil
       val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) List(HighCardinalityAttribute(column)) else Nil
-      val res = invalidDataTypeValidationResult ::: highCardinalityValidationResult match {
-        case Nil => Right(attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence.map(_.flatten))
-        case errors => Left(Future.successful(errors))
-      }
+      val validationErrors = invalidDataTypeValidationResult ::: highCardinalityValidationResult
+
+      val res = Either.cond(
+        test = validationErrors.isEmpty,
+        right = attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence.map(_.flatten),
+        left = Future.successful(validationErrors)
+      )
       res.bisequence
     }
     result.flatten

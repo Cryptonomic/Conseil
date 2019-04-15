@@ -64,20 +64,16 @@ class PlatformDiscovery(config: PlatformsConfiguration, tezosPlatformDiscoveryOp
   /** Metadata route implementation for attributes values endpoint */
   private lazy val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
     case ((platform, network, entity), attribute, _) =>
-      ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-        tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
-          attributes
-        }
-      }.sequence
+      ConfigUtil.getNetworks(config, platform).find(_.network == network).traverse { _ =>
+        tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute)
+      }
   }
   /** Metadata route implementation for attributes values with filter endpoint */
   private lazy val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
     case (((platform, network, entity), attribute, filter), _) =>
-      ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-        tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
-          attributes
-        }
-      }.sequence
+      ConfigUtil.getNetworks(config, platform).find(_.network == network).traverse { _ =>
+        tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter))
+      }
   }
   /** Concatenated metadata routes */
   val route: Route =
