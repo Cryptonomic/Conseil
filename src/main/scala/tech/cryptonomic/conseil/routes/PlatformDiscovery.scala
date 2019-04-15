@@ -4,81 +4,58 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
-import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.metadata.MetadataService
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.util.ConfigUtil
-import tech.cryptonomic.conseil.util.ConfigUtil.getNetworks
 
 import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(platforms: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
-    new PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(apiExecutionContext)
+  def apply(metadataService: MetadataService)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+    new PlatformDiscovery(metadataService)(apiExecutionContext)
 }
 
 /**
   * Platform discovery routes.
   *
-  * @param config              configuration object
+  * @param metadataService     metadata Service
   * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit apiExecutionContext: ExecutionContext)
+class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** Metadata route implementation for platforms endpoint */
-  private val platformsRoute = platformsEndpoint.implementedBy(_ => ConfigUtil.getPlatforms(config))
+  private val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
 
   /** Metadata route implementation for networks endpoint */
   private val networksRoute = networksEndpoint.implementedBy {
     case (platform, _) =>
-      val networks = getNetworks(config, platform)
+      val networks = metadataService.getNetworks(platform)
       if (networks.isEmpty) None
       else Some(networks)
   }
 
   /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
-    case (platform, network, _) =>
-      tezosPlatformDiscoveryOperations.getEntities.map { entities =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-          entities
-        }
-      }
+    case (platform, network, _) => metadataService.getEntities(platform, network)
   }
 
   /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
-    case ((platform, network, entity), _) =>
-      tezosPlatformDiscoveryOperations.getTableAttributes(entity).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).flatMap { _ =>
-          attributes
-        }
-      }
+    case ((platform, network, entity), _) => metadataService.getTableAttributes(platform, network, entity)
   }
 
   /** Metadata route implementation for attributes values endpoint */
   private val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
-    case ((platform, network, entity), attribute, _) =>
-      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-          attributes
-        }
-      }
+    case ((platform, network, entity), attribute, _) => metadataService.getAttributeValues(platform, network, entity, attribute)
   }
 
   /** Metadata route implementation for attributes values with filter endpoint */
   private val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
-    case (((platform, network, entity), attribute, filter), _) =>
-      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map { attributes =>
-        ConfigUtil.getNetworks(config, platform).find(_.network == network).map { _ =>
-          attributes
-        }
-      }
+    case (((platform, network, entity), attribute, filter), _) => metadataService.getAttributesValuesWithFilterRoute(platform, network, entity, attribute, filter)
   }
 
-  /** Concatenated metadata routes */
+  /** Concatenated metadataService routes */
   val route: Route =
     concat(
       platformsRoute,

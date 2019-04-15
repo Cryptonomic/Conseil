@@ -14,8 +14,8 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.metadata.MetadataService
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
@@ -25,7 +25,7 @@ import scala.util.{Failure, Success}
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
 
   loadApplicationConfiguration(args) match {
-    case Right((server, platforms, securityApi, verbose)) =>
+    case Right((server, platforms, securityApi, verbose, metadataOverrides)) =>
 
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
@@ -52,7 +52,8 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
-      lazy val platformDiscovery = PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
+      lazy val metadataService = new MetadataService(platforms, tezosPlatformDiscoveryOperations, metadataOverrides)
+      lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
       val route = cors() {
