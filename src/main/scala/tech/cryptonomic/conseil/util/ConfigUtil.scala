@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, P
 
 import scala.util.Try
 import tech.cryptonomic.conseil.config.Platforms._
-import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, Newest}
+import tech.cryptonomic.conseil.config.HttpStreamingConfiguration
 
 object ConfigUtil {
 
