@@ -63,7 +63,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val query = ApiQuery(
         fields = None,
-        predicates = Some(List(Predicate("valid", OperationType.in))),
+        predicates = Some(List(ApiPredicate("valid", OperationType.in))),
         orderBy = None,
         limit = None,
         output = None,
@@ -89,7 +89,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val query = ApiQuery(
         fields = None,
-        predicates = Some(List(Predicate("invalid", OperationType.in))),
+        predicates = Some(List(ApiPredicate("invalid", OperationType.in))),
         orderBy = None,
         limit = None,
         output = None,
@@ -154,7 +154,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(Aggregation(field = "valid"))
+        aggregation = Some(ApiAggregation(field = "valid"))
       )
 
       val result = query.validate("test", tpdo)
@@ -181,7 +181,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(Aggregation(field = "invalid"))
+        aggregation = Some(ApiAggregation(field = "invalid"))
       )
 
       val result = query.validate("test", tpdo)
@@ -208,7 +208,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(Aggregation(field = "invalid"))
+        aggregation = Some(ApiAggregation(field = "invalid"))
       )
 
       val result = query.validate("test", tpdo)
@@ -235,7 +235,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(Aggregation(field = "valid", function = AggregationType.count))
+        aggregation = Some(ApiAggregation(field = "valid", function = AggregationType.count))
       )
 
       val result = query.validate("test", tpdo)
@@ -258,7 +258,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val query = ApiQuery(
         fields = None,
-        predicates = Some(List(Predicate(field = "valid", operation = OperationType.in, set = List(123456789000L)))),
+        predicates = Some(List(ApiPredicate(field = "valid", operation = OperationType.in, set = Some(List(123456789000L))))),
         orderBy = None,
         limit = None,
         output = None,
