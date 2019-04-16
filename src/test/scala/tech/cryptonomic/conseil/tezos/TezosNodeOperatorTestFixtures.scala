@@ -5,6 +5,7 @@ import cats.data.Kleisli
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import TezosTypes._
 
+/** provides implicit instances useful to call methods for testing the `NodeOperator`*/
 trait TezosNodeOperatorTestImplicits {
 
   //we need this to run the node's methods with an Id effect, though this instance is not lawful
@@ -19,7 +20,7 @@ trait TezosNodeOperatorTestImplicits {
     override def handleErrorWith[A](fa: cats.Id[A])(f: Throwable => cats.Id[A]): cats.Id[A] = fa
   }
 
-
+  //type alias, makes things more readable
   type TestFetcher[In, Out] = DataFetcher.Aux[Id, List, Throwable, In, Out, String]
 
   /** Use it to get dummy instances of fetchers needed by complex node operations

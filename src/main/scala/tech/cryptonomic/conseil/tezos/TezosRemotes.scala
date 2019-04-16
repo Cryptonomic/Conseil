@@ -5,9 +5,10 @@ import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.generic.chain.RemoteRpc
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 
-
+/** Provides RemoteRpc instances for the tezos chain */
 object TezosRemoteInstances {
 
+  /** Instances based on Akka toolkit*/
   object Akka {
     import com.typesafe.scalalogging.Logger
     import cats.Monoid
@@ -18,6 +19,7 @@ object TezosRemoteInstances {
     import akka.http.scaladsl.Http
     import akka.http.scaladsl.model._
 
+    /** Describes configurations for the tezos node, needed to actually execute the calls */
     case class RemoteContext(
       tezosConfig: TezosConfiguration,
       requestConfig: NetworkCallsConfiguration,
@@ -37,13 +39,16 @@ object TezosRemoteInstances {
         Http(system).shutdownAllConnectionPools().map(_ => this.ShutdownComplete)(system.dispatcher)
       }
 
+      /** Allows to stop calling the service when a shutdown is initiated, short-circuiting the response */
       def withRejectionControl[T, Container[_]](call: => Container[T])(implicit mono: Monoid[Container[T]]): Container[T] =
         if (rejectingCalls.get) mono.empty else call
 
     }
 
+    /** Statically provides rpc intances based on Akka and scala Future*/
     object Futures extends Futures
 
+    /** Mix-in this to get instances for async rpc calls on top of scala Future*/
     trait Futures {
       import cats.Id
       import cats.data.Const
@@ -58,8 +63,12 @@ object TezosRemoteInstances {
         override def empty: Future[T] = Future.failed(new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace)
       }
 
+      /** A type constructor that takes both String and CallId but actually ignores the CallId, hence isomorphic to String */
       type JustString[CallId] = Const[String, CallId]
 
+      /** The actual instance
+        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
+        */
       implicit def futuresInstance(implicit context: RemoteContext) =
         new RemoteRpc[Future, Id, JustString] {
           import context._
@@ -70,7 +79,9 @@ object TezosRemoteInstances {
           implicit val dispatcher = system.dispatcher
           implicit val materializer = ActorMaterializer()
 
+          // no support for extra params, anything can be passed in, and will be ignored
           type CallConfig = Any
+          // payload as verified JsonString
           type PostPayload = JsonString
 
           def runGetCall[CallId](
@@ -118,14 +129,17 @@ object TezosRemoteInstances {
         }
     }
 
+    /** Statically provides rpc intances based on Akka-Streams*/
     object Streams extends Streams {
 
+      //type aliases
       type ConcurrencyLevel = Int
       type StreamSource[A] = Source[A, akka.NotUsed]
       type TaggedString[CallId] = (CallId, String)
 
     }
 
+    /** Mix-in this to get instances for async rpc calls on top of akka-streams */
     trait Streams {
       import Streams._
       import akka.http.scaladsl.settings.ConnectionPoolSettings
@@ -136,7 +150,7 @@ object TezosRemoteInstances {
         override def empty: StreamSource[T] = Source.empty[T]
       }
 
-      /** override this to handle failures on the Get calls
+      /** Override this to handle failures on the Get calls
         * @param url the failing target
         * @param err the actual failure
         */
