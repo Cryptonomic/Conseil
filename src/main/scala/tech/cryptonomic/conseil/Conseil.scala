@@ -1,30 +1,33 @@
 package tech.cryptonomic.conseil
 
+import java.net.InetSocketAddress
+
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{HttpEntity, HttpResponse, StatusCode}
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.server.Directive0
+import akka.http.scaladsl.server.{Directive, Directive0, ExceptionHandler, RouteResult}
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.directives.{BasicDirectives, ExecutionDirectives}
+import akka.http.scaladsl.server.directives.BasicDirectives
 import akka.stream.ActorMaterializer
-import cats.effect.{ContextShift, IO}
+import akka.stream.scaladsl.Sink
 import cats.effect.concurrent.MVar
+import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import org.slf4j.MDC
-import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
+import org.slf4j.{LoggerFactory, MDC}
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.routes.openapi.OpenApiDoc
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.{ExecutionContextExecutor, duration}
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
 
@@ -59,84 +62,100 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       lazy val platformDiscovery = PlatformDiscovery(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
-//      def xxx: Directive0 = {
-//        extract{ r =>
-//
-//        }
-//      }
+      val asyncLogger = LoggerFactory.getLogger("ASYNC_LOGGER")
 
-      def recordResponseValues = BasicDirectives.extractRequestContext.flatMap { ctx =>
-        val requestStartTime = System.nanoTime()
-        BasicDirectives.mapResponse { resp =>
-          val result = record(requestStartTime)
-
-          MDC.put("responseTime", result.toMillis.toString)
+      def recordResponseValues(inet: InetSocketAddress): Directive[Unit] =
+        BasicDirectives.extractRequestContext.flatMap { ctx =>
+          import scala.concurrent.duration._
+          val apiVersion = if (ctx.request.uri.path.toString().startsWith("/v2")) "v2" else "v1"
+          MDC.put("httpMethod", ctx.request.method.value)
+          MDC.put("requestBody", ctx.request.entity.toStrict(1000.millis).value.get.get.data.utf8String)
+          MDC.put("clientIp", inet.getAddress.getHostAddress)
           MDC.put("path", ctx.request.uri.path.toString())
-          MDC.put("apiKey", ctx.request.headers.find(_.is("apiKey")).map(_.toString()).getOrElse(""))
-          MDC.put("responseCode",  resp.status.value)
-          logger.debug("HTTP request")
-          MDC.clear()
-          resp
-        }
-      }
+          MDC.put("apiVersion", apiVersion)
+          MDC.put("apiKey", ctx.request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""))
+          val requestStartTime = System.currentTimeMillis()
+          MDC.put("tmpStartTime", requestStartTime.toString)
 
-//      private def responseTimeRecordingExceptionHandler(endpoint: String, requestStartTime: Long) = ExceptionHandler {
-//  case NonFatal(e) =>
-//  record(endpoint, requestStartTime)
-//
-//    // Rethrow the exception to allow proper handling
-//    // from handlers higher ip in the hierarchy
-//  throw e
-//  }
-      def record(requestStartTime: Long): Duration = {
-        val requestEndTime = System.nanoTime()
-        val total = new FiniteDuration(requestEndTime - requestStartTime, duration.NANOSECONDS)
-
-        total
-      }
-
-
-      val route = cors() {
-        enableCORS {
-          recordResponseValues {
-            validateApiKey { _ =>
-              logRequest("Conseil", Logging.DebugLevel) {
-                tezos.route ~
-                  AppInfo.route
-              } ~
-                logRequest("Metadata Route", Logging.DebugLevel) {
-                  platformDiscovery.route
-                } ~
-                logRequest("Data Route", Logging.DebugLevel) {
-                  data.getRoute ~ data.postRoute
-                }
-            } ~
-              options {
-                // Support for CORS pre-flight checks.
-                complete("Supported methods : GET and POST.")
-              }
+          val response = BasicDirectives.mapResponse { resp =>
+            val requestEndTime = System.currentTimeMillis()
+            val responseTime = requestEndTime - requestStartTime
+            MDC.remove("tmpStartTime")
+            MDC.put("responseTime", responseTime.toString)
+            MDC.put("responseCode", resp.status.value)
+            asyncLogger.info("HTTP request")
+            MDC.clear()
+            resp
           }
+          response
         }
-      } ~
-      pathPrefix("docs") {
-        pathEndOrSingleSlash {
-          getFromResource("web/index.html")
+
+      def myExceptionHandler: ExceptionHandler =
+        ExceptionHandler {
+          case e: Throwable =>
+            val responseTime = Try(System.currentTimeMillis() - MDC.get("tmpStartTime").toLong).getOrElse(0)
+            MDC.remove("tmpStartTime")
+            MDC.put("responseTime", responseTime.toString)
+            MDC.put("responseCode", "500")
+            asyncLogger.info("HTTP request")
+            MDC.clear()
+            e.printStackTrace()
+            complete(HttpResponse(InternalServerError))
         }
-      } ~
-      pathPrefix("swagger-ui") {
-        getFromResourceDirectory("web/swagger-ui/")
-      } ~
-      path("openapi.json") {
-        complete(OpenApiDoc.openapiJson)
+
+      def route(inet: InetSocketAddress) = handleExceptions(myExceptionHandler) {
+        cors() {
+          enableCORS {
+            recordResponseValues(inet) {
+              validateApiKey { _ =>
+                logRequest("Conseil", Logging.DebugLevel) {
+                  tezos.route ~
+                    AppInfo.route
+                } ~
+                  logRequest("Metadata Route", Logging.DebugLevel) {
+                    platformDiscovery.route
+                  } ~
+                  logRequest("Data Route", Logging.DebugLevel) {
+                    data.getRoute ~ data.postRoute
+                  }
+              } ~
+                options {
+                  // Support for CORS pre-flight checks.
+                  complete("Supported methods : GET and POST.")
+                }
+            }
+
+          }
+        } ~
+          pathPrefix("docs") {
+            pathEndOrSingleSlash {
+              getFromResource("web/index.html")
+            }
+          } ~
+          pathPrefix("swagger-ui") {
+            getFromResourceDirectory("web/swagger-ui/")
+          } ~
+          path("openapi.json") {
+            complete(OpenApiDoc.openapiJson)
+          }
       }
 
-      val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       displayInfo(server)
       if (verbose.on) displayConfiguration(platforms)
 
+      // https://stackoverflow.com/questions/40132262/obtaining-the-client-ip-in-akka-http
+      Http().bind(server.hostname, server.port).runWith(Sink.foreach { conn =>
+        val address = conn.remoteAddress
+
+        conn.handleWith(route(address))
+      })
+
+
       sys.addShutdownHook {
-        bindingFuture
-          .flatMap(_.unbind().andThen { case _ => logger.info("Server stopped...") })
+
+        Http()
+          .shutdownAllConnectionPools()
+          .map(_ => logger.info("Server stopped..."))
           .flatMap(_ => system.terminate())
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }

@@ -9,14 +9,16 @@
         </encoder>
     </appender>
 
-    <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
-        <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-            <destination>localhost:5000</destination>
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
-            </encoder>
+    <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
+        <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
+            <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+                <destination>localhost:5000</destination>
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                    <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
+                </encoder>
+            </appender>
         </appender>
-    </appender>
+    </logger>
 
     <logger name="com.base22" level="TRACE"/>
     <logger name="de.flapdoodle.embed.process" level="OFF"/>
@@ -25,7 +27,4 @@
         <appender-ref ref="STDOUT" />
     </root>
 
-    <root level="debug">
-        <appender-ref ref="ASYNC" />
-    </root>
 </configuration>
