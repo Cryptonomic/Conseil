@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes.openapi
 import cats.Functor
 import endpoints.algebra.Documentation
 import endpoints.openapi
-import endpoints.openapi.model.{MediaType, Schema, Info, OpenApi}
+import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
 
 /** OpenAPI documentation object */
 object OpenApiDoc extends DataEndpoints
@@ -75,4 +75,13 @@ object OpenApiDoc extends DataEndpoints
   }
 
   override implicit def queryResponseSchemaWithOutputType: DocumentedJsonSchema = DocumentedJsonSchema.Primitive("Any - not yet supported")
+
+  override def validatedAttributes[A](response: List[OpenApiDoc.DocumentedResponse], invalidDocs: Documentation): List[OpenApiDoc.DocumentedResponse] =
+    response :+ OpenApiDoc.DocumentedResponse(
+      status = 400,
+      documentation = invalidDocs.getOrElse(""),
+      content = Map(
+        "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString, None)))
+      )
+    )
 }
