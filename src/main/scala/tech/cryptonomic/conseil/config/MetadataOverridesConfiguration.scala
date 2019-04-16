@@ -24,10 +24,10 @@ object OverridesPath {
 case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, PlatformConfiguration]) {
 
   def isVisible(path: OverridesPath): Boolean = {
-    def isPlatformVisible = platform(path).forall(_.visible)
-    def isNetworkVisible = network(path).forall(_.visible)
-    def isEntityVisible = entity(path).forall(_.visible)
-    def isAttributeVisible = attribute(path).forall(_.visible)
+    def isPlatformVisible = platform(path).flatMap(_.visible).getOrElse(true)
+    def isNetworkVisible = network(path).flatMap(_.visible).getOrElse(true)
+    def isEntityVisible = entity(path).flatMap(_.visible).getOrElse(true)
+    def isAttributeVisible = attribute(path).flatMap(_.visible).getOrElse(true)
 
     isPlatformVisible && isNetworkVisible && isEntityVisible && isAttributeVisible
   }
@@ -64,10 +64,10 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
   }
 }
 
-case class PlatformConfiguration(displayName: String, visible: Boolean, networks: Map[NetworkName, NetworkConfiguration])
+case class PlatformConfiguration(displayName: Option[String], visible: Option[Boolean] = Some(true), networks: Map[NetworkName, NetworkConfiguration])
 
-case class NetworkConfiguration(displayName: Option[String], visible: Boolean, entities: Map[EntityName, EntityConfiguration])
+case class NetworkConfiguration(displayName: Option[String], visible: Option[Boolean] = Some(true), entities: Map[EntityName, EntityConfiguration])
 
-case class EntityConfiguration(displayName: Option[String], visible: Boolean, attributes: Map[AttributeName, AttributeConfiguration])
+case class EntityConfiguration(displayName: Option[String], visible: Option[Boolean] = Some(true), attributes: Map[AttributeName, AttributeConfiguration])
 
-case class AttributeConfiguration(displayName: Option[String], visible: Boolean)
+case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean] = Some(true))

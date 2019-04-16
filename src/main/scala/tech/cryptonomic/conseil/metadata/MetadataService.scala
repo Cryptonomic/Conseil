@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.metadata
 
-import tech.cryptonomic.conseil.config.{MetadataOverridesConfiguration, OverridesPath}
+import tech.cryptonomic.conseil.config.{MetadataOverridesConfiguration, NetworkConfiguration, OverridesPath}
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.config.Types.PlatformName
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
@@ -22,7 +22,7 @@ class MetadataService(config: PlatformsConfiguration,
     val path = OverridesPath(platform.name)
 
     if (metadataOverrides.isVisible(path)) {
-      val newDisplayName = metadataOverrides.platform(path).map(_.displayName)
+      val newDisplayName = metadataOverrides.platform(path).flatMap(_.displayName)
       Some(platform.copy(displayName = newDisplayName.getOrElse(platform.displayName)))
     } else {
       None
@@ -77,7 +77,7 @@ class MetadataService(config: PlatformsConfiguration,
       successful(None)
   }
 
-  def processAttribute(platform: String, network: String, tableName: String, attribute: Attribute): Option[Attribute] = {
+  private def processAttribute(platform: String, network: String, tableName: String, attribute: Attribute): Option[Attribute] = {
     val path = OverridesPath(platform, network, tableName, attribute.name)
 
     if (metadataOverrides.isVisible(path)) {
