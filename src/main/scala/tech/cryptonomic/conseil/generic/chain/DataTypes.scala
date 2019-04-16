@@ -171,12 +171,15 @@ object DataTypes {
     inverse: Option[Boolean] = Some(false),
     precision: Option[Int] = None
   ) {
+    /** Transforms Aggregation predicate received form API into AggregationPredicate */
     def toAggregationPredicate: AggregationPredicate = {
       AggregationPredicate(operation = OperationType.in).patchWith(this)
     }
   }
 
+  /** Aggregation that is received by the API */
   case class ApiAggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[ApiAggregationPredicate] = None) {
+    /** Transforms Aggregation received form API into Aggregation */
     def toAggregation: Aggregation = {
       Aggregation(field, function, predicate.map(_.toAggregationPredicate))
     }
