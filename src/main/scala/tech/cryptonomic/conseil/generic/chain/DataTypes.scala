@@ -114,6 +114,14 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
+  case class ApiPredicate(
+    field: String,
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
+  )
+
   /** Class representing query ordering */
   case class QueryOrdering(field: String, direction: OrderDirection)
 
@@ -161,7 +169,7 @@ object DataTypes {
   /** Class representing query got through the REST API */
   case class ApiQuery(
     fields: Option[List[String]],
-    predicates: Option[List[Predicate]],
+    predicates: Option[List[ApiPredicate]],
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
     output: Option[OutputType],
@@ -171,7 +179,8 @@ object DataTypes {
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
 
-      val query = Query().patchWith(this)
+      val predicates = this.predicates.toList.flatten.map(Predicate("tmp", OperationType.in).patchWith)
+      val query = Query().copy(predicates = predicates).patchWith(this)
 
       val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
       val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)
