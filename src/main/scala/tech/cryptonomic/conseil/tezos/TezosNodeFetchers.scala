@@ -16,13 +16,23 @@ import TezosTypes._
 
 object BlocksDataFetchers {
   import TezosRemoteInstances.Akka.Streams.ConcurrencyLevel
+  import com.typesafe.scalalogging.Logger
 
   def apply(streamConcurrency: ConcurrencyLevel)(implicit actorSystem: ActorSystem, rpc: RemoteContext, ec: ExecutionContext) =
     new BlocksDataFetchers with TezosRemoteInstances.Akka.Streams with LazyLogging {
-      override implicit val system = actorSystem
-      override implicit val tezosContext = rpc
-      override implicit val fetchFutureContext = ec
+      override implicit lazy val system = actorSystem
+      override implicit lazy val tezosContext = rpc
+      override implicit lazy val fetchFutureContext = ec
       override val fetchConcurrency: Int = streamConcurrency
+
+      override lazy val logger = Logger[BlocksDataFetchers.type]
+
+      override def handleErrorsOnGet(url: String, err: Throwable): Unit =
+        logger.error("I encountered problems while fetching data from {}, at url {}.\n The error says {}",
+          rpc.tezosConfig.network,
+          url,
+          err.getMessage()
+        )
     }
 }
 
@@ -75,13 +85,6 @@ trait BlocksDataFetchers {
 
       def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
-      // lazy val failureHandler = (offset: Offset, error: Throwable) =>
-      //   logger.error("I encountered problems while fetching block data from {}, for offset reference {} . The error says {}",
-      //     network,
-      //     s"${hashRef.value}~${String.valueOf(offset)}",
-      //     error.getMessage
-      //   )
-
       //fetch a future stream of values
       override val fetchData = Kleisli {
         offsets =>
@@ -119,13 +122,6 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    // lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching baker operations from {}, for block {}. The error says {}",
-    //     network,
-    //     hash.value,
-    //     error.getMessage
-    //   )
-
     override val fetchData = Kleisli {
       hashes =>
         val inStream: StreamSource[In] = Source(hashes)
@@ -156,13 +152,6 @@ trait BlocksDataFetchers {
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
 
-    // lazy val failureHandler =  (hash: BlockHash, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching quorums from {}, for block {}. The error says {}",
-    //     network,
-    //     hash.value,
-    //     error.getMessage
-    //   )
-
     override val fetchData = Kleisli {
       hashes =>
         val inStream: StreamSource[In] = Source(hashes)
@@ -190,13 +179,6 @@ trait BlocksDataFetchers {
     type Out = Option[ProtocolId]
 
     val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
-
-    // lazy val failureHandler = (hash: BlockHash, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching current proposals from {}, for block {}. The error says {}",
-    //     network,
-    //     hash.value,
-    //     error.getMessage
-    //   )
 
     override val fetchData = Kleisli {
       hashes =>
@@ -226,14 +208,6 @@ trait BlocksDataFetchers {
     type Out = List[ProtocolId]
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
-
-    // lazy val failureHandler = (block: Block, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching proposals details from {}, for block {} at level {}. The error says {}",
-    //     network,
-    //     block.data.hash.value,
-    //     block.data.header.level,
-    //     error.getMessage
-    //   )
 
     override val fetchData = Kleisli {
       blocks =>
@@ -265,14 +239,6 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
 
-    // lazy val failureHandler = (block: Block, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching baker rolls from {}, for block {} at level {}. The error says {}",
-    //     network,
-    //     block.data.hash.value,
-    //     block.data.header.level,
-    //     error.getMessage
-    //   )
-
     override val fetchData = Kleisli {
       blocks =>
         val inStream: StreamSource[In] = Source(blocks)
@@ -303,15 +269,6 @@ trait BlocksDataFetchers {
 
     val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
 
-    // lazy val failureHandler = (block: Block, error: Throwable) =>
-    //   logger.error("I encountered problems while fetching ballot votes from {}, for block {} at level {}. The error says {}",
-    //     network,
-    //     block.data.hash.value,
-    //     block.data.header.level,
-    //     error.getMessage
-    //   )
-
-
     override val fetchData = Kleisli {
       blocks =>
         val inStream: StreamSource[In] = Source(blocks)
@@ -333,15 +290,25 @@ trait BlocksDataFetchers {
 }
 
 object AccountsDataFetchers {
-
   import TezosRemoteInstances.Akka.Streams.ConcurrencyLevel
+  import com.typesafe.scalalogging.Logger
 
   def apply(streamConcurrency: ConcurrencyLevel)(implicit actorSystem: ActorSystem, rpc: RemoteContext, ec: ExecutionContext) =
     new AccountsDataFetchers with TezosRemoteInstances.Akka.Streams with LazyLogging {
-      override implicit val system = actorSystem
-      override implicit val tezosContext = rpc
-      override implicit val fetchFutureContext = ec
+      override implicit lazy val system = actorSystem
+      override implicit lazy val tezosContext = rpc
+      override implicit lazy val fetchFutureContext = ec
       override val accountsFetchConcurrency: Int = streamConcurrency
+
+      override lazy val logger = Logger[AccountsDataFetchers.type]
+
+      override def handleErrorsOnGet(url: String, err: Throwable): Unit =
+        logger.error("I encountered problems while fetching accounts data from {}, at url {}.\n The error says {}",
+          rpc.tezosConfig.network,
+          url,
+          err.getMessage()
+        )
+
     }
 }
 
@@ -385,13 +352,6 @@ trait AccountsDataFetchers {
       type Out = Option[Account]
 
       val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
-
-      // lazy val failureHandler = (id: AccountId, error: Throwable) =>
-      //   logger.error("I encountered problems while fetching account data from {}, for id {}. The error says {}",
-      //     network,
-      //     id.id,
-      //     error.getMessage
-      //   )
 
       override def fetchData = Kleisli {
         ids =>

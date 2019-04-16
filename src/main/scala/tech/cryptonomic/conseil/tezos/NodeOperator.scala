@@ -20,7 +20,7 @@ import scala.reflect.ClassTag
 import scala.util.Try
 
 /** Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database. */
-trait BlockchainOperator {
+trait NodeOperator {
 
   /** which tezos network to go against */
   def network: String
@@ -323,6 +323,8 @@ trait BlockchainOperator {
       val (hashRef, levelRef) = reference
       require(levelRange.start >= 0 && levelRange.end <= levelRef)
       val offsets = levelRange.map(lvl => levelRef - lvl).toList
+
+      logger.debug(s"Request to fetch blocks offsets up to ${offsets.max} starting from $levelRef, hash: ${hashRef.value}")
 
       implicit val blockDataFetcher = blockDataFetchProvider(hashRef)
       val proposalsStateFetch = fetchMerge(quorumFetcher, proposalFetcher)(CurrentVotes.apply)

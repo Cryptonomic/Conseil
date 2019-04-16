@@ -136,19 +136,27 @@ object TezosRemoteInstances {
         override def empty: StreamSource[T] = Source.empty[T]
       }
 
+      /** override this to handle failures on the Get calls
+        * @param url the failing target
+        * @param err the actual failure
+        */
+      def handleErrorsOnGet(url: String, err: Throwable): Unit = ()
 
+      /** An instance available to stream GET requests, returning a stream of utf-8 results, paired with the input
+        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
+        */
       implicit def streamsInstance(implicit context: RemoteContext) =
         new RemoteRpc[StreamSource, StreamSource, TaggedString] {
           import context._
           import context.tezosConfig.nodeConfig
 
-          private val logger = Logger("Akka.Streams.RemoteRpc")
-
           implicit val system = context.system
           implicit val dispatcher = system.dispatcher
           implicit val materializer = ActorMaterializer()
 
+          //no real support for POST calls
           type PostPayload = Nothing
+          //will pass the concurrency level used in the internal stream as additional call information
           type CallConfig = ConcurrencyLevel
 
           override def runGetCall[CallId](
@@ -164,19 +172,24 @@ object TezosRemoteInstances {
               .via(getHostPoolFlow)
               .mapAsyncUnordered(callConfig) {
                 case (tried, id) =>
+                  tried.failed.foreach(handleErrorsOnGet(convertIdToUrl(id), _))
                   Future.fromTry(tried)
                     .flatMap(_.entity.toStrict(requestConfig.GETResponseEntityTimeout))
                     .map(content => id -> JsonString.sanitize(content.data.utf8String))
               }
           }
 
+          /* this is not expected to ever get called
+           * as testified by the empty payload
+           */
           override def runPostCall[CallId](
             callConfig: ConcurrencyLevel,
             request: StreamSource[CallId],
             commandMap: CallId => String,
             payload: Option[Nothing]
-          ): StreamSource[(CallId, String)] =
-            ???
+          ): StreamSource[(CallId, String)] = withRejectionControl {
+            Source.empty
+          }
 
           /* Connection pool settings customized for streaming requests */
           private val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(streamingConfig.pool)
