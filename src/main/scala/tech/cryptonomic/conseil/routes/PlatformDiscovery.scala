@@ -4,16 +4,15 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
   def apply(metadataService: MetadataService)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
-    new PlatformDiscovery(metadataService)(apiExecutionContext)
+    new PlatformDiscovery(metadataService)
 }
 
 /**
@@ -53,7 +52,7 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
     case (((platform, network, entity), attribute, filter), _) => metadataService.getAttributesValuesWithFilterRoute(platform, network, entity, attribute, filter)
   }
 
-  /** Concatenated metadataService routes */
+  /** Concatenated metadata routes */
   val route: Route =
     concat(
       platformsRoute,

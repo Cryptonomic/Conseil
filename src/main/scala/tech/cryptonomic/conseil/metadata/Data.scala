@@ -36,7 +36,7 @@ object Data {
   case class AttributeData(path: AttributePath, attribute: Attribute) {
     def apply(overrides: MetadataOverridesConfiguration): Option[Attribute] = when(overrides.isVisible(path)) {
       attribute.copy(displayName = overrides
-        .entity(path)
+        .attribute(path)
         .flatMap(_.displayName)
         .getOrElse(attribute.displayName))
     }

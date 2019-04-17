@@ -26,6 +26,6 @@ case class EntityPath(platform: String, network: String, entity: String) extends
 }
 
 case class AttributePath(platform: String, network: String, entity: String, attribute: String) extends Path {
-  override def up: PlatformPath = PlatformPath(platform)
-  override def addLevel(nextLabel: String): Path = ???
+  override def up: EntityPath = EntityPath(platform, network, entity)
+  override def addLevel(nextLabel: String): Path = throw new NotImplementedError()
 }
