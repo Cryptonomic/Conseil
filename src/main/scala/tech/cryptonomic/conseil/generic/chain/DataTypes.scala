@@ -206,7 +206,7 @@ object DataTypes {
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
 
-      val patchedPredicates = this.predicates.toList.flatten.map(_.toPredicate)
+      val patchedPredicates = predicates.getOrElse(List.empty).map(_.toPredicate)
       val query = this.into[Query]
         .withFieldConst(_.fields, fields.getOrElse(List.empty))
         .withFieldConst(_.predicates, patchedPredicates)
