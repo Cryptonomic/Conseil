@@ -35,7 +35,7 @@ object DatabaseUtil {
 
     /** Creates SQLAction of sequence of values
       *
-      * @param  xs list of values to be inserted into SQLAction
+      * @param  values list of values to be inserted into SQLAction
       * @return SqlActionBuilder with values from parameter
       */
     def insertValuesIntoSqlAction[T](values: Seq[T]): SQLActionBuilder = {
