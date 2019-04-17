@@ -38,15 +38,16 @@ object DatabaseUtil {
       * @param  xs list of values to be inserted into SQLAction
       * @return SqlActionBuilder with values from parameter
       */
-    def insertValuesIntoSqlAction[T](xs: Seq[T]): SQLActionBuilder = {
-      var b = sql"("
-      var first = true
-      xs.foreach { x =>
-        if (first) first = false
-        else b = concatenateSqlActions(b, sql",")
-        b = concatenateSqlActions(b, sql"'#$x'")
+    def insertValuesIntoSqlAction[T](values: Seq[T]): SQLActionBuilder = {
+      @scala.annotation.tailrec
+      def append(content: SQLActionBuilder, values: List[T]): SQLActionBuilder = values match {
+        case Nil =>
+          concatenateSqlActions(content, sql")")
+        case head :: tail =>
+          val next = concatenateSqlActions(content, sql",'#$head'")
+          append(next, tail)
       }
-      concatenateSqlActions(b, sql")")
+      append(sql"(", values.toList)
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
