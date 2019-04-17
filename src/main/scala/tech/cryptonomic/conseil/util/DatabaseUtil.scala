@@ -44,10 +44,12 @@ object DatabaseUtil {
         case Nil =>
           concatenateSqlActions(content, sql")")
         case head :: tail =>
-          val next = concatenateSqlActions(content, sql",'#$head'")
+          val next = concatenateSqlActions(content, sql",", sql"'#$head'")
           append(next, tail)
       }
-      append(sql"(", values.toList)
+
+      if (values.isEmpty) sql"()"
+      else append(sql"('#${values.head}'", values.tail.toList)
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
