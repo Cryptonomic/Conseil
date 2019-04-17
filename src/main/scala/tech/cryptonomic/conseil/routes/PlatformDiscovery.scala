@@ -4,10 +4,11 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
-import tech.cryptonomic.conseil.metadata.MetadataService
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
@@ -29,20 +30,17 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
 
   /** Metadata route implementation for networks endpoint */
   private val networksRoute = networksEndpoint.implementedBy {
-    case (platform, _) =>
-      val networks = metadataService.getNetworks(platform)
-      if (networks.isEmpty) None
-      else Some(networks)
+    case (platform, _) => metadataService.getNetworks(PlatformPath(platform))
   }
 
   /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
-    case (platform, network, _) => metadataService.getEntities(platform, network)
+    case (platform, network, _) => metadataService.getEntities(NetworkPath(platform, network))
   }
 
   /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
-    case ((platform, network, entity), _) => metadataService.getTableAttributes(platform, network, entity)
+    case ((platform, network, entity), _) => metadataService.getTableAttributes(EntityPath(platform, network, entity))
   }
 
   /** Metadata route implementation for attributes values endpoint */
