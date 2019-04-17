@@ -12,7 +12,7 @@
     <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
         <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
             <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-                <destination>localhost:5000</destination>
+                <destination>nautilus.cryptonomic.tech:5044</destination>
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                     <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
                 </encoder>
