@@ -24,22 +24,11 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
 
   def platform(path: PlatformPath): Option[PlatformConfiguration] = metadataOverrides.get(path.platform)
 
-  def network(path: NetworkPath): Option[NetworkConfiguration] = for {
-    platform <- platform(path.up)
-    network <- platform.networks.get(path.network)
-  } yield network
+  def network(path: NetworkPath): Option[NetworkConfiguration] = platform(path.up).flatMap(_.networks.get(path.network))
 
-  def entity(path: EntityPath): Option[EntityConfiguration] =
-    for {
-      network <- network(path.up)
-      entity <- network.entities.get(path.entity)
-    } yield entity
+  def entity(path: EntityPath): Option[EntityConfiguration] = network(path.up).flatMap(_.entities.get(path.entity))
 
-  def attribute(path: AttributePath): Option[AttributeConfiguration] =
-    for {
-      entity <- entity(path.up)
-      attribute <- entity.attributes.get(path.attribute)
-    } yield attribute
+  def attribute(path: AttributePath): Option[AttributeConfiguration] = entity(path.up).flatMap(_.attributes.get(path.attribute))
 }
 
 case class PlatformConfiguration(displayName: Option[String], visible: Option[Boolean], networks: Map[NetworkName, NetworkConfiguration])

@@ -12,8 +12,8 @@ import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 class MetadataService(config: PlatformsConfiguration,
-                      tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations,
-                      metadataOverrides: MetadataOverridesConfiguration) {
+                      metadataOverrides: MetadataOverridesConfiguration,
+                      tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
   def getPlatforms: List[Platform] = {
     ConfigUtil
@@ -50,17 +50,10 @@ class MetadataService(config: PlatformsConfiguration,
       }
   }
 
-  def getAttributeValues(platform: String, network: String, entity: String, attribute: String)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[String]]] = {
-    if (exists(NetworkPath(platform, network)))
-      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute).map(Some(_))
-    else
-      successful(None)
-  }
-
-
-  def getAttributesValuesWithFilterRoute(platform: String, network: String, entity: String, attribute: String, filter: String)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[String]]] = {
-    if (exists(NetworkPath(platform, network)))
-      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, Some(filter)).map(Some(_))
+  def getAttributeValues(platform: String, network: String, entity: String, attribute: String, filter: Option[String] = None)
+                        (implicit apiExecutionContext: ExecutionContext): Future[Option[List[String]]] = {
+    if (exists(NetworkPath(network, PlatformPath(platform))))
+      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, filter).map(Some(_))
     else
       successful(None)
   }

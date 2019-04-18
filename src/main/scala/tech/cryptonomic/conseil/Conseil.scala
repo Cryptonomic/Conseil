@@ -52,7 +52,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
-      lazy val metadataService = new MetadataService(platforms, tezosPlatformDiscoveryOperations, metadataOverrides)
+      lazy val metadataService = new MetadataService(platforms, metadataOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 

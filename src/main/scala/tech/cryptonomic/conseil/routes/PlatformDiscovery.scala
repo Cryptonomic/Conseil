@@ -34,12 +34,12 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
 
   /** Metadata route implementation for entities endpoint */
   private val entitiesRoute = entitiesEndpoint.implementedByAsync {
-    case (platform, network, _) => metadataService.getEntities(NetworkPath(platform, network))
+    case (platform, network, _) => metadataService.getEntities(NetworkPath(network, PlatformPath(platform)))
   }
 
   /** Metadata route implementation for attributes endpoint */
   private val attributesRoute = attributesEndpoint.implementedByAsync {
-    case ((platform, network, entity), _) => metadataService.getTableAttributes(EntityPath(platform, network, entity))
+    case ((platform, network, entity), _) => metadataService.getTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
   }
 
   /** Metadata route implementation for attributes values endpoint */
@@ -49,7 +49,7 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
 
   /** Metadata route implementation for attributes values with filter endpoint */
   private val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
-    case (((platform, network, entity), attribute, filter), _) => metadataService.getAttributesValuesWithFilterRoute(platform, network, entity, attribute, filter)
+    case (((platform, network, entity), attribute, filter), _) => metadataService.getAttributeValues(platform, network, entity, attribute, Some(filter))
   }
 
   /** Concatenated metadata routes */
