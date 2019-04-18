@@ -5,6 +5,8 @@ import cats.instances.option._
 import cats.syntax.applicative._
 import cats.syntax.apply._
 
+import scala.concurrent.{ExecutionContext, Future}
+
 object CollectionOps {
 
   /**
@@ -37,5 +39,13 @@ object CollectionOps {
     def onBounds(f: (T, T) => R): Option[R] = applyOnBounds(list)(f)
   }
 
+  implicit class ExtendedFutureWithOption[T](val value: Future[Option[List[T]]]) {
+    def embeddedMap(function: T => Option[T])(implicit apiExecutionContext: ExecutionContext): Future[Option[List[T]]] =
+      value.map(_.map(_.flatMap(function(_))))
+  }
 
+  implicit class ExtendedFuture[T](val value: Future[List[T]]) {
+    def embeddedMap(function: T => Option[T])(implicit apiExecutionContext: ExecutionContext): Future[List[T]] = value
+      .map(_.flatMap(function(_)))
+  }
 }
