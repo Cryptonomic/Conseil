@@ -12,10 +12,16 @@
     <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
         <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
             <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-                <destination>nautilus.cryptonomic.tech:5044</destination>
+                <destination>nautilus.cryptonomic.tech:5000</destination>
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                     <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
                 </encoder>
+                <ssl>
+                    <trustStore>
+                        <location>classpath:/client.jks</location>
+                        <password>conseil</password>
+                    </trustStore>
+                </ssl>
             </appender>
         </appender>
     </logger>
