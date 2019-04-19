@@ -118,6 +118,20 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
+  /** Predicate which is received by the API */
+  case class ApiPredicate(
+    field: String,
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
+  ) {
+    /** Method creating Predicate out of ApiPredicate which is received by the API */
+    def toPredicate: Predicate = {
+      Predicate("tmp", OperationType.in).patchWith(this)
+    }
+  }
+
   /** Class representing query ordering */
   case class QueryOrdering(field: String, direction: OrderDirection)
 
@@ -154,6 +168,27 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
+  /** AggregationPredicate that is received by the API */
+  case class ApiAggregationPredicate(
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
+  ) {
+    /** Transforms Aggregation predicate received form API into AggregationPredicate */
+    def toAggregationPredicate: AggregationPredicate = {
+      AggregationPredicate(operation = OperationType.in).patchWith(this)
+    }
+  }
+
+  /** Aggregation that is received by the API */
+  case class ApiAggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[ApiAggregationPredicate] = None) {
+    /** Transforms Aggregation received form API into Aggregation */
+    def toAggregation: Aggregation = {
+      Aggregation(field, function, predicate.map(_.toAggregationPredicate))
+    }
+  }
+
   /** Class representing aggregation */
   case class Aggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[AggregationPredicate] = None) {
     /** Method extracting predicate from aggregation */
@@ -165,17 +200,25 @@ object DataTypes {
   /** Class representing query got through the REST API */
   case class ApiQuery(
     fields: Option[List[String]],
-    predicates: Option[List[Predicate]],
+    predicates: Option[List[ApiPredicate]],
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
     output: Option[OutputType],
-    aggregation: Option[Aggregation] = None
+    aggregation: Option[ApiAggregation] = None
   ) {
     /** Method which validates query fields */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
 
-      val query = Query().patchWith(this)
+      val patchedPredicates = predicates.getOrElse(List.empty).map(_.toPredicate)
+      val query = this.into[Query]
+        .withFieldConst(_.fields, fields.getOrElse(List.empty))
+        .withFieldConst(_.predicates, patchedPredicates)
+        .withFieldConst(_.orderBy, orderBy.getOrElse(List.empty))
+        .withFieldConst(_.limit, limit.getOrElse(defaultLimitValue))
+        .withFieldConst(_.output, output.getOrElse(OutputType.json))
+        .withFieldConst(_.aggregation, aggregation.map(_.toAggregation))
+        .transform
 
       val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
       val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)

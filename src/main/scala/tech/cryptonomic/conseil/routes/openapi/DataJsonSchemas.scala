@@ -21,6 +21,18 @@ trait DataJsonSchemas extends generic.JsonSchemas {
   implicit lazy val queryOrderingOperationSchema: JsonSchema[OperationType.Value] =
     enumeration(OperationType.values.toSeq)(_.toString)
 
+  /** API predicate schema */
+  implicit lazy val apiPredicateSchema: JsonSchema[ApiPredicate] =
+    genericJsonSchema[ApiPredicate]
+
+  /** API aggregation schema */
+  implicit lazy val apiAggregationSchema: JsonSchema[ApiAggregation] =
+    genericJsonSchema[ApiAggregation]
+
+  /** API aggregation predicate schema */
+  implicit lazy val apiAggregationPredicateSchema: JsonSchema[ApiAggregationPredicate] =
+    genericJsonSchema[ApiAggregationPredicate]
+
   /** Query ordering schema */
   implicit lazy val queryOrderingSchema: JsonSchema[QueryOrdering] =
     genericJsonSchema[QueryOrdering]
