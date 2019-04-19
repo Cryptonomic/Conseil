@@ -7,6 +7,7 @@ import cats._
 import cats.implicits._
 
 class MockTezosNodes {
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   //RENAME ALL TEST FILES IN TERMS OF TEST OFFSETS
 
@@ -33,8 +34,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -64,8 +67,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -86,8 +91,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -117,8 +124,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -146,8 +155,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -175,8 +186,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -196,8 +209,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -227,8 +242,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -256,8 +273,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -285,8 +304,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -313,8 +334,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -341,8 +364,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -362,8 +387,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -393,8 +420,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -422,8 +451,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -451,8 +482,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -481,8 +514,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -502,8 +537,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -533,8 +570,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -562,8 +601,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -591,8 +632,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -621,8 +664,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -649,8 +694,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces
@@ -681,8 +728,10 @@ class MockTezosNodes {
 
     override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonUtil.JsonString]): Future[String] = ???
 
-    override def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      commands.traverse(command => runAsyncGetQuery(network, command))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      ids.traverse(id =>
+        runAsyncGetQuery(network, mapToCommand(id)).map((id, _))
+      )
 
     /*
     Add a switching function here to switch between iterations of Lorre. Each chain uses a list of TezosRPCInterfaces

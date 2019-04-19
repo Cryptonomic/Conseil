@@ -1,6 +1,8 @@
 package tech.cryptonomic.conseil.scripts
 
-import com.typesafe.config.ConfigFactory
+import pureconfig.{ConfigFieldMapping, CamelCase, loadConfig}
+import pureconfig.generic.auto._
+import pureconfig.generic.ProductHint
 
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.
@@ -8,17 +10,44 @@ import com.typesafe.config.ConfigFactory
   */
 object GenSchema extends App {
 
-  val conf = ConfigFactory.load
+  sealed trait DatabaseConfig {
+    def databaseName: String
+    def user: String
+    def password: String
+  }
 
-  val database = conf.getString("conseildb.properties.databaseName")
-  val user = conf.getString("conseildb.properties.user")
-  val password = conf.getString("conseildb.properties.password")
-  val url = s"jdbc:postgresql://localhost/${database}" // connection info
-  val jdbcDriver = "org.postgresql.Driver"
-  val slickDriver = "slick.jdbc.PostgresProfile"
-  val pkg = "tech.cryptonomic.conseil.tezos"
+  final case class PostgresConfig(databaseName: String, user: String, password: String) extends DatabaseConfig {
+    lazy val url = s"jdbc:postgresql://localhost/${databaseName}"
+    lazy val jdbcDriver = "org.postgresql.Driver"
+    lazy val slickProfile = "slick.jdbc.PostgresProfile"
+    lazy val `package` = "tech.cryptonomic.conseil.tezos"
+    lazy val dest = "/tmp/slick"
+  }
 
-  slick.codegen.SourceCodeGenerator.main(
-    Array(slickDriver, jdbcDriver, url, "/tmp/slick", pkg, s"${user}", s"${password}")
-  )
+  //applies convention to uses CamelCase when reading config fields
+  implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+
+  val conseilDbConf = loadConfig[PostgresConfig](namespace = "conseildb.properties")
+
+  conseilDbConf.foreach {
+    cfg =>
+      println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")
+      slick.codegen.SourceCodeGenerator.main(
+        Array(
+          cfg.slickProfile,
+          cfg.jdbcDriver,
+          cfg.url,
+          cfg.dest,
+          cfg.`package`,
+          cfg.user,
+          cfg.password
+        )
+      )
+  }
+
+  conseilDbConf.left.foreach {
+    failures =>
+      sys.error(failures.toList.mkString("\n"))
+  }
+
 }
