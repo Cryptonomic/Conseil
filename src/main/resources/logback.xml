@@ -16,6 +16,12 @@
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                     <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
                 </encoder>
+                <ssl>
+                    <trustStore>
+                        <location>classpath:/client.jks</location>
+                        <password>conseil</password>
+                    </trustStore>
+                </ssl>
             </appender>
         </appender>
     </logger>
