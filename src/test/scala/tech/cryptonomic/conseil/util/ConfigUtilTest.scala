@@ -5,6 +5,37 @@ import com.typesafe.config.ConfigFactory
 
 class ConfigUtilTest extends WordSpec with Matchers {
 
+  "the config.Natural matcher" should {
+
+    "match a valid positive integer string" in {
+      "10" match {
+        case Natural(value) => value shouldBe 10
+        case _ => fail("the matcher didn't correcly identify an integer")
+      }
+    }
+
+    "refuse a zero integer string" in {
+      "0" match {
+        case Natural(value) => fail(s"a zero string shouldn't match as $value")
+        case _ =>
+      }
+    }
+
+    "refuse a negatige integer string" in {
+      "-10" match {
+        case Natural(value) => fail(s"a negative integer string shouldn't match as $value")
+        case _ =>
+      }
+    }
+
+    "refuse a non-numeric string" in {
+      "abc10" match {
+        case Natural(value) => fail(s"a generic string shouldn't match as $value")
+        case _ =>
+      }
+    }
+  }
+
   "ConfigUtil" should {
 
     "extract the correct platforms type" in {
