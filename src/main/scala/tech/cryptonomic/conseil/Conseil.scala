@@ -14,7 +14,7 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.metadata.MetadataService
+import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
@@ -52,7 +52,8 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
-      lazy val metadataService = new MetadataService(platforms, metadataOverrides, tezosPlatformDiscoveryOperations)
+      lazy val transformation = new UnitTransformation(metadataOverrides)
+      lazy val metadataService = new MetadataService(platforms, transformation, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 

@@ -73,6 +73,9 @@ object JsonUtil {
   def toMap[V](json:String)(implicit m: Manifest[V]): Map[String, V] =
     fromJson[Map[String,V]](json)
 
+  def toListOfMaps[V](json:String)(implicit m: Manifest[V]): List[Map[String, V]] =
+    fromJson[List[Map[String,V]]](json)
+
   def fromJson[T: Manifest](json: String): T =
     mapper.readValue[T](JsonString sanitize json)
 

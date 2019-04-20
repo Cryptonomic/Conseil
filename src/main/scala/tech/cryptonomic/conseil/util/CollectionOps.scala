@@ -39,13 +39,12 @@ object CollectionOps {
     def onBounds(f: (T, T) => R): Option[R] = applyOnBounds(list)(f)
   }
 
-  implicit class ExtendedFutureWithOption[T](val value: Future[Option[List[T]]]) {
-    def embeddedMap(function: T => Option[T])(implicit apiExecutionContext: ExecutionContext): Future[Option[List[T]]] =
-      value.map(_.map(_.flatMap(function(_))))
+  implicit class ExtendedOptionalList[T](val value: Option[List[T]]) extends AnyVal {
+    def mapNested(function: T => Option[T]): Option[List[T]] = value.map(_.flatMap(function(_)))
   }
 
-  implicit class ExtendedFuture[T](val value: Future[List[T]]) {
-    def embeddedMap(function: T => Option[T])(implicit apiExecutionContext: ExecutionContext): Future[List[T]] = value
-      .map(_.flatMap(function(_)))
+  implicit class ExtendedFuture[T](val value: Future[List[T]]) extends AnyVal {
+    def mapNested(function: T => Option[T])(implicit apiExecutionContext: ExecutionContext): Future[List[T]] =
+      value.map(_.flatMap(function(_)))
   }
 }
