@@ -35,18 +35,21 @@ object DatabaseUtil {
 
     /** Creates SQLAction of sequence of values
       *
-      * @param  xs list of values to be inserted into SQLAction
+      * @param  values list of values to be inserted into SQLAction
       * @return SqlActionBuilder with values from parameter
       */
-    def insertValuesIntoSqlAction[T](xs: Seq[T]): SQLActionBuilder = {
-      var b = sql"("
-      var first = true
-      xs.foreach { x =>
-        if (first) first = false
-        else b = concatenateSqlActions(b, sql",")
-        b = concatenateSqlActions(b, sql"'#$x'")
+    def insertValuesIntoSqlAction[T](values: Seq[T]): SQLActionBuilder = {
+      @scala.annotation.tailrec
+      def append(content: SQLActionBuilder, values: List[T]): SQLActionBuilder = values match {
+        case Nil =>
+          concatenateSqlActions(content, sql")")
+        case head :: tail =>
+          val next = concatenateSqlActions(content, sql",", sql"'#$head'")
+          append(next, tail)
       }
-      concatenateSqlActions(b, sql")")
+
+      if (values.isEmpty) sql"()"
+      else append(sql"('#${values.head}'", values.tail.toList)
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
@@ -186,7 +189,7 @@ object DatabaseUtil {
     /** maps operation type to SQL operation */
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
       val op = operation match {
-        case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
+        case OperationType.between => sql"BETWEEN '#${vals.head}' AND '#${vals(1)}'"
         case OperationType.in => concatenateSqlActions(sql"IN ", insertValuesIntoSqlAction(vals))
         case OperationType.like => sql"LIKE '%#${vals.head}%'"
         case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"

@@ -1,13 +1,15 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
+import tech.cryptonomic.conseil.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes
 
 /** Trait containing platform discovery endpoints definition */
 trait PlatformDiscoveryEndpoints
   extends algebra.Endpoints
     with PlatformDiscoveryJsonSchemas
-    with algebra.JsonSchemaEntities {
+    with algebra.JsonSchemaEntities
+    with AttributesQueryValidation{
 
   /** Common path for metadata endpoints */
   private val commonPath = path / "v2" / "metadata"
@@ -53,22 +55,28 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata attributes values endpoint */
-  def attributesValuesEndpoint: Endpoint[((String, String, String), String, String), Option[List[String]]] =
+  def attributesValuesEndpoint: Endpoint[((String, String, String), String, String), Option[Either[List[AttributesValidationError], List[String]]]] =
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](name = "entity") / segment[String](name = "attribute"),
         headers = header("apiKey")),
-      response = jsonResponse[List[String]](docs = Some("Metadata endpoint for listing available distinct values for given attribute")).orNotFound(Some("Not found")),
+      response = validatedAttributes[List[String]](
+        response = jsonResponse[List[String]](docs = Some("Metadata endpoint for listing available distinct values for given attribute")),
+        invalidDocs = Some("Cannot get the attributes!")
+      ).orNotFound(Some("Not found")),
       tags = List("Metadata")
     )
 
   /** Metadata attributes values with filter endpoint */
-  def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), String), Option[List[String]]] =
+  def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), String), Option[Either[List[AttributesValidationError], List[String]]]] =
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](name = "entity") / segment[String](name = "attribute") / segment[String](name = "filter"),
         headers = header("apiKey")),
-      response = jsonResponse[List[String]](docs = Some("Metadata endpoint for listing available distinct values for given attribute filtered")).orNotFound(Some("Not found")),
+      response = validatedAttributes[List[String]](
+        response = jsonResponse[List[String]](docs = Some("Metadata endpoint for listing available distinct values for given attribute filtered")),
+        invalidDocs = Some("Cannot get the attributes!")
+      ).orNotFound(Some("Not found")),
       tags = List("Metadata")
     )
 

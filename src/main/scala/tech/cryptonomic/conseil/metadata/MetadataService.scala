@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.metadata
 
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.CollectionOps.{ExtendedFuture, ExtendedOptionalList}
@@ -42,7 +43,7 @@ class MetadataService(config: PlatformsConfiguration,
     .mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
 
   def getAttributeValues(platform: String, network: String, entity: String, attribute: String, filter: Option[String] = None)
-                        (implicit apiExecutionContext: ExecutionContext): Future[Option[List[String]]] = {
+                        (implicit apiExecutionContext: ExecutionContext): Future[Option[Either[List[DataTypes.AttributesValidationError], List[String]]]] = {
     if (exists(NetworkPath(network, PlatformPath(platform))))
       tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, filter).map(Some(_))
     else

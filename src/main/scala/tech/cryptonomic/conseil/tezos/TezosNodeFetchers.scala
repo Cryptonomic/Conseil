@@ -47,16 +47,18 @@ trait BlocksDataFetchers {
 
   //common type alias to simplify signatures
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
+  /** untyped alias to clarify intent */
+  type Offset = Int
 
   /** a fetcher of blocks */
-  def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
+  implicit def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
     import JsonDecoders.Circe.Blocks._
 
     type Encoded = String
-    type In = Int //offset from head
+    type In = Offset
     type Out = BlockData
 
-    def makeUrl = (offset: In) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
+    def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
     //fetch a future stream of values
     override val fetchData =
@@ -91,7 +93,7 @@ trait BlocksDataFetchers {
     }
 
   /** a fetcher of operation groups from block hashes */
-  val operationGroupFetcher = new FutureFetcher {
+  implicit val operationGroupFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Operations._
 
     type Encoded = String
@@ -121,8 +123,13 @@ trait BlocksDataFetchers {
 
   }
 
+  // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
+
+  /** A derived fetcher that reads block hashes to get both the operation groups and the account ids from the same returned json */
+  implicit val operationsWithAccountsFetcher = DataFetcher.decodeBoth(operationGroupFetcher, accountIdsJsonDecode.lift[Future])
+
   /** a fetcher for the current quorum of blocks */
-  val currentQuorumFetcher = new FutureFetcher {
+  implicit val currentQuorumFetcher = new FutureFetcher {
 
     type Encoded = String
     type In = BlockHash
@@ -154,7 +161,7 @@ trait BlocksDataFetchers {
   }
 
   /** a fetcher for the current proposals of blocks */
-  val currentProposalFetcher = new FutureFetcher {
+  implicit val currentProposalFetcher = new FutureFetcher {
     import JsonDecoders.Circe._
 
     type Encoded = String
@@ -187,10 +194,9 @@ trait BlocksDataFetchers {
   }
 
   /** a fetcher for all proposals for blocks */
-  val proposalsMultiFetch = new FutureFetcher {
+  implicit val proposalsFetcher = new FutureFetcher {
     import JsonDecoders.Circe._
     import cats.instances.future._
-
 
     type Encoded = String
     type In = Block
@@ -218,11 +224,11 @@ trait BlocksDataFetchers {
             //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
           }
-  }
+    }
   }
 
   /** a fetcher of baker rolls for blocks */
-  val bakersMultiFetch = new FutureFetcher {
+  implicit val bakersFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
     import cats.instances.future._
 
@@ -257,7 +263,7 @@ trait BlocksDataFetchers {
   }
 
  /** a fetcher of ballot votes for blocks */
- val ballotsMultiFetch = new FutureFetcher {
+ implicit val ballotsFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
     import cats.instances.future._
 
@@ -322,7 +328,7 @@ trait AccountsDataFetchers {
   //common type alias to simplify signatures
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
-  def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+  implicit def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
     import JsonDecoders.Circe.Accounts._
 
     type Encoded = String

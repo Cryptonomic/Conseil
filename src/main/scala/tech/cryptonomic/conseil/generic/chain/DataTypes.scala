@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.generic.chain
 
-import java.time.format.DateTimeFormatter.ISO_INSTANT
-import java.time.{Instant, ZoneOffset}
+import java.sql.Timestamp
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -46,19 +45,13 @@ object DataTypes {
         maybeAttributes.flatMap { attributes =>
           attributes.find(_.name == predicate.field).map {
             case attribute if attribute.dataType == DataType.DateTime =>
-              predicate.copy(set = predicate.set.map(x => formatToIso(x.toString.toLong)))
+              predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toString))
             case _ => predicate
           }
         }.toList
       }
     }.sequence.map(pred => query.copy(predicates = pred.flatten))
   }
-
-  /** Method formatting millis to ISO format */
-  def formatToIso(epochMillis: Long): String =
-    Instant.ofEpochMilli(epochMillis)
-      .atZone(ZoneOffset.UTC)
-      .format(ISO_INSTANT)
 
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
@@ -97,9 +90,20 @@ object DataTypes {
       .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
   }
 
+  /** Trait representing attribute validation errors */
+  sealed trait AttributesValidationError extends Product with Serializable {
+    def message: String
+  }
+
+  /** Attribute shouldn't be queried because it is a high cardinality field */
+  case class HighCardinalityAttribute(message: String) extends AttributesValidationError
+
+  /** Attribute shouldn't be queried because it is of a type that we forbid to query */
+  case class InvalidAttributeDataType(message: String) extends AttributesValidationError
+
   /** Trait representing query validation errors */
   sealed trait QueryValidationError extends Product with Serializable {
-    val message: String
+    def message: String
   }
 
   /** Class which contains output type with the response */
@@ -113,6 +117,20 @@ object DataTypes {
     inverse: Boolean = false,
     precision: Option[Int] = None
   )
+
+  /** Predicate which is received by the API */
+  case class ApiPredicate(
+    field: String,
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
+  ) {
+    /** Method creating Predicate out of ApiPredicate which is received by the API */
+    def toPredicate: Predicate = {
+      Predicate("tmp", OperationType.in).patchWith(this)
+    }
+  }
 
   /** Class representing query ordering */
   case class QueryOrdering(field: String, direction: OrderDirection)
@@ -150,6 +168,27 @@ object DataTypes {
     precision: Option[Int] = None
   )
 
+  /** AggregationPredicate that is received by the API */
+  case class ApiAggregationPredicate(
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
+  ) {
+    /** Transforms Aggregation predicate received form API into AggregationPredicate */
+    def toAggregationPredicate: AggregationPredicate = {
+      AggregationPredicate(operation = OperationType.in).patchWith(this)
+    }
+  }
+
+  /** Aggregation that is received by the API */
+  case class ApiAggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[ApiAggregationPredicate] = None) {
+    /** Transforms Aggregation received form API into Aggregation */
+    def toAggregation: Aggregation = {
+      Aggregation(field, function, predicate.map(_.toAggregationPredicate))
+    }
+  }
+
   /** Class representing aggregation */
   case class Aggregation(field: String, function: AggregationType = AggregationType.sum, predicate: Option[AggregationPredicate] = None) {
     /** Method extracting predicate from aggregation */
@@ -161,17 +200,25 @@ object DataTypes {
   /** Class representing query got through the REST API */
   case class ApiQuery(
     fields: Option[List[String]],
-    predicates: Option[List[Predicate]],
+    predicates: Option[List[ApiPredicate]],
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
     output: Option[OutputType],
-    aggregation: Option[Aggregation] = None
+    aggregation: Option[ApiAggregation] = None
   ) {
     /** Method which validates query fields */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
 
-      val query = Query().patchWith(this)
+      val patchedPredicates = predicates.getOrElse(List.empty).map(_.toPredicate)
+      val query = this.into[Query]
+        .withFieldConst(_.fields, fields.getOrElse(List.empty))
+        .withFieldConst(_.predicates, patchedPredicates)
+        .withFieldConst(_.orderBy, orderBy.getOrElse(List.empty))
+        .withFieldConst(_.limit, limit.getOrElse(defaultLimitValue))
+        .withFieldConst(_.output, output.getOrElse(OutputType.json))
+        .withFieldConst(_.aggregation, aggregation.map(_.toAggregation))
+        .transform
 
       val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
       val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)

@@ -1,9 +1,13 @@
 package tech.cryptonomic.conseil.routes
 
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
+import endpoints.algebra.Documentation
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 
@@ -25,33 +29,33 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
   extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** Metadata route implementation for platforms endpoint */
-  private val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
+  private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
 
   /** Metadata route implementation for networks endpoint */
-  private val networksRoute = networksEndpoint.implementedBy {
+  private lazy val networksRoute = networksEndpoint.implementedBy {
     case (platform, _) => metadataService.getNetworks(PlatformPath(platform))
   }
-
   /** Metadata route implementation for entities endpoint */
-  private val entitiesRoute = entitiesEndpoint.implementedByAsync {
+  private lazy val entitiesRoute = entitiesEndpoint.implementedByAsync {
     case (platform, network, _) => metadataService.getEntities(NetworkPath(network, PlatformPath(platform)))
   }
-
   /** Metadata route implementation for attributes endpoint */
-  private val attributesRoute = attributesEndpoint.implementedByAsync {
+  private lazy val attributesRoute = attributesEndpoint.implementedByAsync {
     case ((platform, network, entity), _) => metadataService.getTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
   }
 
+  import cats.instances.future._
+  import cats.instances.option._
+  import cats.syntax.traverse._
   /** Metadata route implementation for attributes values endpoint */
-  private val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
+  private lazy val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
     case ((platform, network, entity), attribute, _) => metadataService.getAttributeValues(platform, network, entity, attribute)
   }
 
   /** Metadata route implementation for attributes values with filter endpoint */
-  private val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
+  private lazy val attributesValuesWithFilterRoute = attributesValuesWithFilterEndpoint.implementedByAsync {
     case (((platform, network, entity), attribute, filter), _) => metadataService.getAttributeValues(platform, network, entity, attribute, Some(filter))
   }
-
   /** Concatenated metadata routes */
   val route: Route =
     concat(
@@ -62,4 +66,11 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
       attributesValuesRoute,
       attributesValuesWithFilterRoute
     )
+
+  override def validatedAttributes[A](response: A => Route, invalidDocs: Documentation): Either[List[AttributesValidationError], A] => Route = {
+    case Left(errors) =>
+      complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
+    case Right(success) =>
+      response(success)
+  }
 }
