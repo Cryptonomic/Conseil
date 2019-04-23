@@ -14,10 +14,10 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
 
   def isVisible(path: Path): Boolean = path match {
     case EmptyPath() => true
-    case p: PlatformPath => platform(p).flatMap(_.visible).getOrElse(true)
-    case p: NetworkPath => network(p).flatMap(_.visible).getOrElse(true) && isVisible(p.up)
-    case p: EntityPath => entity(p).flatMap(_.visible).getOrElse(true) && isVisible(p.up)
-    case p: AttributePath => attribute(p).flatMap(_.visible).getOrElse(true) && isVisible(p.up)
+    case p: PlatformPath => platform(p).flatMap(_.visible).getOrElse(false)
+    case p: NetworkPath => network(p).flatMap(_.visible).getOrElse(false) && isVisible(p.up)
+    case p: EntityPath => entity(p).flatMap(_.visible).getOrElse(false) && isVisible(p.up)
+    case p: AttributePath => attribute(p).flatMap(_.visible).getOrElse(false) && isVisible(p.up)
   }
 
   def platform(path: PlatformPath): Option[PlatformConfiguration] = metadataOverrides.get(path.platform)

@@ -28,24 +28,32 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       tezosPlatformDiscoveryOperations)
 
     "fetch the list of supported platforms" in {
-      sut(Map.empty).getPlatforms shouldBe List(Platform("tezos", "Tezos"))
+      sut(Map("tezos" -> PlatformConfiguration(None, Some(true)))).getPlatforms shouldBe List(Platform("tezos", "Tezos"))
     }
 
     "override the display name for a platform" in {
-      sut(Map("tezos" -> PlatformConfiguration(Some("overwritten name"), None))).getPlatforms shouldBe List(Platform("tezos", "overwritten name"))
+      sut(Map("tezos" -> PlatformConfiguration(Some("overwritten name"), Some(true)))).getPlatforms shouldBe List(Platform("tezos", "overwritten name"))
     }
 
     "filter out disabled platform" in {
       sut(Map("tezos" -> PlatformConfiguration(None, Some(false)))).getPlatforms shouldBe List.empty
     }
 
+    "filter out disabled platform (default behaviour)" in {
+      sut(Map.empty).getPlatforms shouldBe List.empty
+    }
+
     "fetch the list of supported networks" in {
-      sut(Map.empty).getNetworks(PlatformPath("tezos")) shouldBe Some(List(Network("mainnet", "Mainnet", "tezos", "mainnet")))
+      // given
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true), Map("mainnet" -> NetworkConfiguration(None, Some(true)))))
+
+      // expect
+      sut(overriddenConfiguration).getNetworks(PlatformPath("tezos")) shouldBe Some(List(Network("mainnet", "Mainnet", "tezos", "mainnet")))
     }
 
     "override the display name for a network" in {
       // given
-      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, None, Map("mainnet" -> NetworkConfiguration(Some("overwritten name"), None))))
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true), Map("mainnet" -> NetworkConfiguration(Some("overwritten name"), Some(true)))))
 
       // when
       val result = sut(overriddenConfiguration).getNetworks(PlatformPath("tezos"))
@@ -56,7 +64,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
     "filter out a hidden network" in {
       // given
-      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, None, Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true), Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
 
       // when
       val result = sut(overriddenConfiguration).getNetworks(PlatformPath("tezos"))
@@ -84,12 +92,28 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       result shouldBe None
     }
 
+    "return None when fetching networks for a hidden platform (by default)" in {
+      // given
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, None))
+
+      // when
+      val result = sut(overriddenConfiguration).getNetworks(PlatformPath("tezos"))
+
+      // then
+      result shouldBe None
+    }
+
     "fetch the list of supported entities" in {
       // given
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
 
+      val overwrittenConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true)))))))
+
       // when
-      val result = sut(Map.empty).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+      val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
 
       // then
       result shouldBe Some(List(Entity("entity", "entity-name", 0)))
@@ -100,9 +124,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
 
       val overwrittenConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, None, Map("mainnet" ->
-          NetworkConfiguration(None, None, Map("entity" ->
-            EntityConfiguration(Some("overwritten name"), None))))))
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(Some("overwritten name"), Some(true)))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
@@ -116,9 +140,25 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
 
       val overwrittenConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, None, Map("mainnet" ->
-          NetworkConfiguration(None, None, Map("entity" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
             EntityConfiguration(None, Some(false)))))))
+
+      // when
+      val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+
+      // then
+      result shouldBe Some(List.empty)
+    }
+
+    "filter out a hidden entity (by default)" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
+
+      val overwrittenConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, None))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
@@ -137,7 +177,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
     "return None when fetching entities for a hidden platform" in {
       // given
-      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(false)))
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true)))
 
       // when
       val result = sut(overriddenConfiguration).getEntities(NetworkPath("tezos", PlatformPath("mainnet"))).futureValue
@@ -147,8 +187,11 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
     }
 
     "return None when fetching entities for a non existing network" in {
+      // given
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true)))
+
       // when
-      val result = sut(Map.empty).getEntities(NetworkPath("non-existing-network", PlatformPath("tezos"))).futureValue
+      val result = sut(overriddenConfiguration).getEntities(NetworkPath("non-existing-network", PlatformPath("tezos"))).futureValue
 
       // then
       result shouldBe None
@@ -156,7 +199,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
     "return None when fetching entities for a hidden network" in {
       // given
-      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, None, Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true), Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
 
       // when
       val result = sut(overriddenConfiguration).getEntities(NetworkPath("tezos", PlatformPath("mainnet"))).futureValue
@@ -170,8 +213,14 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
+      val overwrittenConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true), Map("attribute" ->
+              AttributeConfiguration(None, Some(true)))))))))
+
       // when
-      val result = sut(Map.empty).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
+      val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
 
       // then
       result shouldBe Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))
@@ -183,10 +232,10 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
       val overwrittenConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, None, Map("mainnet" ->
-          NetworkConfiguration(None, None, Map("entity" ->
-            EntityConfiguration(None, None, Map("attribute" ->
-              AttributeConfiguration(Some("overwritten-name"), None))))))))
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true), Map("attribute" ->
+              AttributeConfiguration(Some("overwritten-name"), Some(true)))))))))
 
       // when
       val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
@@ -201,10 +250,28 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
       val overwrittenConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, None, Map("mainnet" ->
-          NetworkConfiguration(None, None, Map("entity" ->
-            EntityConfiguration(None, None, Map("attribute" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true), Map("attribute" ->
               AttributeConfiguration(None, Some(false)))))))))
+
+      // when
+      val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
+
+      // then
+      result shouldBe Some(List.empty)
+    }
+
+    "filter out a hidden attribute (bu default)" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
+      (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+
+      val overwrittenConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true), Map("attribute" ->
+              AttributeConfiguration(None, None))))))))
 
       // when
       val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
@@ -257,7 +324,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
       // given
-      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, None, Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
+      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true), Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
 
       // when
       val result = sut(overriddenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
@@ -283,7 +350,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
-      val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, None, Map("mainnet" -> NetworkConfiguration(None, Some(false)))))
+      val overriddenConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true)))))
 
       // when
       val result = sut(overriddenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue

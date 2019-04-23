@@ -6,7 +6,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{MetadataOverridesConfiguration, PlatformConfiguration, Platforms}
+import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataOverridesConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
@@ -30,8 +30,11 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       tezosPlatformDiscoveryOperations)).route
 
     "expose an endpoint to get the list of supported platforms" in {
+      // given
+      val matadataOverridesConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true)))
+
       // when
-      Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+      Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(matadataOverridesConfiguration) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
@@ -43,8 +46,11 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
     }
 
     "should filter out hidden platforms" in {
+      // given
+      val overridesConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(false)))
+
       // when
-      Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(Map("tezos" -> PlatformConfiguration(None, Some(false)))) ~> check {
+      Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
@@ -55,8 +61,11 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
     }
 
     "should rename platform's display name" in {
+      // given
+      val overridesConfiguration = Map("tezos" -> PlatformConfiguration(Some("overwritten-name"), Some(true)))
+
       // when
-      Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(Map("tezos" -> PlatformConfiguration(Some("overwritten-name"), None))) ~> check {
+      Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
@@ -67,8 +76,13 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
     }
 
     "expose an endpoint to get the list of supported networks" in {
+      // given
+      val overridesConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true)))))
+
       // when
-      Get("/v2/metadata/tezos/networks") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+      Get("/v2/metadata/tezos/networks") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
@@ -83,8 +97,13 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       // given
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
 
+      val overridesConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true)))))))
+
       // when
-      Get("/v2/metadata/tezos/mainnet/entities") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+      Get("/v2/metadata/tezos/mainnet/entities") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
@@ -101,8 +120,14 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
+      val overridesConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), Map("entity" ->
+            EntityConfiguration(None, Some(true), Map("attribute" ->
+              AttributeConfiguration(None, Some(true)))))))))
+
       // when
-      Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+      Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
@@ -110,6 +135,52 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
         result.head("name") shouldBe "attribute"
         result.head("displayName") shouldBe "attribute-name"
+      }
+    }
+
+    "return 404 on getting attributes when parent entity is not enabled" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
+      (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+
+      val overridesConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+          NetworkConfiguration(None, Some(true)))))
+
+      // when
+      Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
+
+        // then
+        status shouldEqual StatusCodes.NotFound
+      }
+    }
+
+    "return 404 on getting attributes when parent network is not enabled" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
+      (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+
+      val overridesConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true)))
+
+      // when
+      Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
+
+        // then
+        status shouldEqual StatusCodes.NotFound
+      }
+    }
+
+    "return 404 on getting attributes when parent platform is not enabled" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
+      (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+
+      // when
+      Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+
+        // then
+        status shouldEqual StatusCodes.NotFound
       }
     }
   }
