@@ -6,7 +6,6 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import endpoints.akkahttp
 import endpoints.algebra.Documentation
-import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AttributesValidationError
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
@@ -44,9 +43,6 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
     case ((platform, network, entity), _) => metadataService.getTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
   }
 
-  import cats.instances.future._
-  import cats.instances.option._
-  import cats.syntax.traverse._
   /** Metadata route implementation for attributes values endpoint */
   private lazy val attributesValuesRoute = attributesValuesEndpoint.implementedByAsync {
     case ((platform, network, entity), attribute, _) => metadataService.getAttributeValues(platform, network, entity, attribute)
