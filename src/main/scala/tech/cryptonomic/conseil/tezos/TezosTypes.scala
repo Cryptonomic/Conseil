@@ -4,6 +4,7 @@ import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -21,12 +22,12 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    private val storage = GenLens[Scripted.Contracts](_.storage)
-    private val code = GenLens[Scripted.Contracts](_.code)
+    private val storage = GenLens[Contracts](_.storage)
+    private val code = GenLens[Contracts](_.code)
 
     private val string = GenLens[Micheline](_.expression)
 
-    private val scriptLens: Traversal[Block, Scripted.Contracts] =
+    private val scriptLens: Traversal[Block, Contracts] =
       operationGroups composeTraversal each composeLens
         operations composeTraversal each composePrism
         origination composeLens
@@ -341,15 +342,12 @@ object TezosTypes {
     value: Option[PublicKeyHash]
   )
 
-  //represents unparsed micheline json
-  final case class AccountScript(code: String) extends AnyVal
-
   final case class Account(
     manager: PublicKeyHash,
     balance: scala.math.BigDecimal,
     spendable: Boolean,
     delegate: AccountDelegate,
-    script: Option[AccountScript],
+    script: Option[Contracts],
     counter: Int
   )
 

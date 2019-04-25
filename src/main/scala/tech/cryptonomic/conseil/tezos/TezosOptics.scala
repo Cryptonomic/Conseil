@@ -1,8 +1,11 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.time.ZonedDateTime
+
 import TezosTypes._
 import TezosTypes.OperationMetadata.BalanceUpdate
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
+import monocle.std.option._
 
 /** Provides [[http://julien-truffaut.github.io/Monocle/ monocle]] lenses and additional "optics"
   * for most common access and modifcation patterns for Tezos type hierarchies and ADTs
@@ -38,13 +41,17 @@ object TezosOptics {
     //basic building blocks to reach into the account's structure
     private val accountScript = GenLens[Account](_.script)
 
-    val optionalScript =
-      Optional[Account, AccountScript](accountScript.get)(script => accountScript.set(Some(script)))
+    private val contractsCode = GenLens[Contracts](_.code)
 
-    val scriptCode = GenLens[AccountScript](_.code)
+    private val storageCode = GenLens[Contracts](_.storage)
+
+    private val micheline = GenLens[Micheline](_.expression)
 
     /** an optional lens allowing to reach into the script code field of an account*/
-    val optionalScriptCode = optionalScript composeLens scriptCode
+    val scriptLense = accountScript composePrism some composeLens contractsCode composeLens micheline
+
+    /** an optional lens allowing to reach into the script storage field of an account*/
+    val storageLense = accountScript composePrism some composeLens storageCode composeLens micheline
   }
 
 }
