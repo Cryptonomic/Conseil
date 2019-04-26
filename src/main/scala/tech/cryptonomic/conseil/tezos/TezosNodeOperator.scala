@@ -137,7 +137,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     def parseMichelsonScripts(account: Account): Account = {
       val scriptAlter = scriptLense.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLense.modify(toMichelsonScript[MichelsonExpression])
+      val storageAlter = storageLense.modify(toMichelsonScript[MichelsonInstruction])
 
       (scriptAlter compose storageAlter)(account)
     }
@@ -387,8 +387,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     def parseMichelsonScripts(block: Block): Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonExpression])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (codeAlter compose storageAlter compose parametersAlter)(block)
     }
