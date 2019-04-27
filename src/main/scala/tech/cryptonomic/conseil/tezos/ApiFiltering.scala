@@ -51,17 +51,16 @@ object ApiFiltering {
 /**
   * type class to apply complex filtering operations based on
   * underlying data access
-  * @tparam F   An effect that the output will be wrapped into, e.g. [[scala.util.Try]], [[scala.concurrent.Future]]
+  * @tparam F   An effect that the output will be wrapped into, e.g. `scala.util.Try`, `scala.concurrent.Future`
   * @tparam OUT The specific output value or each result row
   */
 trait ApiFiltering[F[_], OUT] {
 
   /**
     * Applies filtering
-    * @param filter              A [[Filter]] instance
-    * @param maxLevelForAccounts How far in the chain we have accounts for
-    * @return                    A sequence of filtered results wrapped in the effect `F`
+    * @param filter A `Filter` instance
+    * @return       A sequence of filtered results wrapped in the effect `F`
     */
-  def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): F[Seq[OUT]]
+  def apply(filter: Filter): F[Seq[OUT]]
 
 }

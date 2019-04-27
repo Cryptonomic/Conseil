@@ -186,12 +186,11 @@ object DatabaseQueryExecution {
       filter.operationKinds.isEmpty.bind || fee.kind.inSet(filter.operationKinds)
 
     /** gets filtered accounts */
-    val filteredAccounts = (appliedFilters: Filter, maxLevel: Rep[BigDecimal]) =>
+    val filteredAccounts = (appliedFilters: Filter) =>
       Tables.Accounts.filter(account =>
         filterAccountIDs(appliedFilters, account) &&
         filterAccountDelegates(appliedFilters, account) &&
-        filterAccountManagers(appliedFilters, account) &&
-        account.blockLevel === maxLevel
+        filterAccountManagers(appliedFilters, account)
       )
 
     /** gets filtered operation groups */
@@ -228,9 +227,9 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
   import DatabaseQueryExecution._
   import DatabaseQueryExecution.Queries._
 
-  /** See [[ApiFiltering#apply]] */
-  def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): F[Seq[OUT]] = {
-    val joinTables: TableSelection => JoinedTables = prepareJoins(filter, maxLevelForAccounts)
+  /** See `ApiFiltering#apply` */
+  override def apply(filter: Filter): F[Seq[OUT]] = {
+    val joinTables: TableSelection => JoinedTables = prepareJoins(filter)
     val execute: JoinedTables => F[Seq[OUT]] = executeQuery(getFilterLimit(filter), filter.sortBy, filter.order)
     (execute compose joinTables compose select)(filter)
   }
@@ -246,13 +245,13 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
 
   /**
     * Defines which tables are affected by this filter
-    * @param filter The generic input [[Filter]] for the request
+    * @param filter The generic input `Filter` for the request
     * @return       Tables the filter will act on
     */
   protected def select(filter: Filter): TableSelection
 
   /**
-    * Defines a function of [[JoinedTables]] that will actually execute all the queries
+    * Defines a function of `JoinedTables` that will actually execute all the queries
     * @param limit     Cap on the result sequence
     * @param sortBy    The sorting column as a String
     * @param sortOrder A sorting order
@@ -266,19 +265,19 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
 
   /**
     * Composes the actual queries to execute by joining tables
-    * @param f        The generic input [[Filter]] for the request
+    * @param f        The generic input `Filter` for the request
     * @param maxLevel How far in the chain we have accounts for
     * @param s        Which tables the filter acts upon
-    * @return         One of the available joins defined through the [[JoinedTables]] ADT
+    * @return         One of the available joins defined through the `JoinedTables` ADT
     */
-  protected def prepareJoins(f: Filter, maxLevel: BigDecimal)(s: TableSelection): JoinedTables = {
+  protected def prepareJoins(f: Filter)(s: TableSelection): JoinedTables = {
     s match {
       case TableSelection(true, true, true, true) =>
         BlocksOperationGroupsOperationsAccounts(
           filteredBlocks(f)
             .join(filteredOpGroups(f)).on(_.hash === _.blockId)
             .join(filteredOps(f)).on(_._2.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapQuadJoin)
         )
       case TableSelection(true, true, true, false) =>
@@ -304,7 +303,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
             .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, true, true, false) =>
@@ -315,7 +314,7 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
             .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, true, false, false) =>
@@ -324,13 +323,13 @@ trait DatabaseQueryExecution[F[_], OUT] extends ApiFiltering[F, OUT] {
         OperationGroupsOperationsAccounts(
           filteredOpGroups(f)
             .join(filteredOps(f)).on(_.hash === _.operationGroupHash)
-            .join(filteredAccounts(f, maxLevel)).on(_._2.source === _.accountId)
+            .join(filteredAccounts(f)).on(_._2.source === _.accountId)
             .map(unwrapTripleJoin)
         )
       case TableSelection(false, false, true, false) =>
         EmptyJoin
       case TableSelection(false, false, false, true) =>
-        Accounts(filteredAccounts(f, maxLevel))
+        Accounts(filteredAccounts(f))
       case TableSelection(false, false, false, false) =>
         EmptyJoin
     }
@@ -345,7 +344,7 @@ trait ActionSorting[A <: DatabaseQueryExecution.Action] {
   /**
     * Read a sorting order to create an ordering on columns
     * @param col   Identifies a specific column that can be sorted
-    * @param order the specific [[Sorting]]
+    * @param order the specific `Sorting`
     * @tparam T    The column type
     * @return      The column with sorting order applied
     */
@@ -376,7 +375,7 @@ trait DatabaseApiFiltering {
   lazy val dbHandle = ApiOperations.dbHandle
 
   /**
-    * an implementation is required to make the async [[ApiFiltering]] instances available in the context work correctly
+    * an implementation is required to make the async `ApiFiltering` instances available in the context work correctly
     * consider using the appropriate instance to compose database operations
     */
   def asyncApiFiltersExecutionContext: scala.concurrent.ExecutionContext
@@ -417,7 +416,10 @@ trait DatabaseApiFiltering {
           blocksOperationGroupsOperations.map { case (b, _, _) => b }
       }
 
-    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
+    /**
+      * Will fail the `Future` with `NoSuchElementException` if no block is in the chain
+      * or with `IllegalArgumentException` if the filter parameters where not correctly defined
+      */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
@@ -489,7 +491,10 @@ trait DatabaseApiFiltering {
           operationGroupsOperationsAccounts.map(_._3)
       }
 
-    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
+    /**
+      * will fail the `Future` with `NoSuchElementException` if no block is in the chain
+      * or with `IllegalArgumentException` if the filter parameters where not correctly defined
+      */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
@@ -571,7 +576,7 @@ trait DatabaseApiFiltering {
           blocksOperationGroupsOperationsAccounts.map(_._2)
       }
 
-    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
+    /** will fail the `Future` with `NoSuchElementException` if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
@@ -631,7 +636,7 @@ trait DatabaseApiFiltering {
           blocksOperationGroupsOperations.map(_._3)
       }
 
-    /** will fail the [[Future]] with [[NoSuchElementException]] if no block is in the chain */
+    /** will fail the `Future` with `NoSuchElementException` if no block is in the chain */
     override protected def executeQuery(
       limit: Int,
       sortBy: Option[String],
@@ -655,8 +660,8 @@ trait DatabaseApiFiltering {
   /** an instance to execute filtering and sorting for fees, asynchronously */
   implicit object FeesFiltering extends ApiFiltering[Future, Tables.FeesRow] {
 
-    /** See [[ApiFiltering#apply]] */
-    def apply(filter: Filter)(maxLevelForAccounts: BigDecimal): Future[Seq[Tables.FeesRow]] = {
+    /** See `ApiFiltering#apply` */
+    override def apply(filter: Filter): Future[Seq[Tables.FeesRow]] = {
       import DatabaseQueryExecution.Queries
 
       val action =

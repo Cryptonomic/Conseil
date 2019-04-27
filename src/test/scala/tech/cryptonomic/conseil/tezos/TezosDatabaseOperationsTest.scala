@@ -1,32 +1,32 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.{LocalDate, ZoneOffset}
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Matchers, WordSpec, OptionValues}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
-import slick.jdbc.H2Profile.api._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationsRow, OperationGroupsRow, AccountsRow}
+import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
+import tech.cryptonomic.conseil.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
-
-/* use this to make random generation implicit but deterministic */
-case class RandomSeed(seed: Long) extends AnyVal with Product with Serializable {
-  def +(extra: Long): RandomSeed = RandomSeed(seed + extra)
-}
 
 class TezosDatabaseOperationsTest
   extends WordSpec
     with MockFactory
+    with TezosDataGeneration
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
     with OptionValues
-    with LazyLogging {
+    with LazyLogging
+    with IntegrationPatience {
 
   override val inMemoryDbName = "db-ops-test"
 
@@ -36,12 +36,13 @@ class TezosDatabaseOperationsTest
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val sut = TezosDatabaseOperations
+    val feesToConsider = 1000
 
     "write fees" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val expectedCount = 5
-      val generatedFees = generateFees(expectedCount, testReferenceTime)
+      val generatedFees = generateFees(expectedCount, testReferenceTimestamp)
 
       val writeAndGetRows = for {
         written <- sut.writeFees(generatedFees)
@@ -66,13 +67,13 @@ class TezosDatabaseOperationsTest
     }
 
     "write blocks" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
-      val basicBlocks = generateBlocks(5, testReferenceTime)
+      val basicBlocks = generateBlocks(5, testReferenceDateTime)
       val generatedBlocks = basicBlocks.zipWithIndex map {
         case (block, idx) =>
           //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, operations = 1)(randomSeed + idx)
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
 
@@ -87,18 +88,28 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocks zip generatedBlocks) {
             case (row, block) =>
-              row.level shouldEqual block.metadata.header.level
-              row.proto shouldEqual block.metadata.header.proto
-              row.predecessor shouldEqual block.metadata.header.predecessor.value
-              row.timestamp shouldEqual block.metadata.header.timestamp
-              row.validationPass shouldEqual block.metadata.header.validationPass
-              row.fitness shouldEqual block.metadata.header.fitness.mkString(",")
-              row.context.value shouldEqual block.metadata.header.context
-              row.signature shouldEqual block.metadata.header.signature
-              row.protocol shouldEqual block.metadata.protocol
-              row.chainId shouldEqual block.metadata.chain_id
-              row.hash shouldEqual block.metadata.hash.value
-              row.operationsHash shouldEqual block.metadata.header.operations_hash
+              val metadata = discardGenesis.lift(block.data.metadata)
+
+              row.level shouldEqual block.data.header.level
+              row.proto shouldEqual block.data.header.proto
+              row.predecessor shouldEqual block.data.header.predecessor.value
+              row.timestamp shouldEqual Timestamp.from(block.data.header.timestamp.toInstant)
+              row.validationPass shouldEqual block.data.header.validation_pass
+              row.fitness shouldEqual block.data.header.fitness.mkString(",")
+              row.context.value shouldEqual block.data.header.context
+              row.signature shouldEqual block.data.header.signature
+              row.protocol shouldEqual block.data.protocol
+              row.chainId shouldEqual block.data.chain_id
+              row.hash shouldEqual block.data.hash.value
+              row.operationsHash shouldEqual block.data.header.operations_hash
+              row.periodKind shouldEqual metadata.map(_.voting_period_kind.toString)
+              row.currentExpectedQuorum shouldEqual block.votes.quorum
+              row.activeProposal shouldEqual block.votes.active.map(_.id)
+              row.baker shouldEqual metadata.map(_.baker.value)
+              row.consumedGas shouldEqual metadata.map(_.consumed_gas).flatMap {
+                case PositiveDecimal(value) => Some(value)
+                case _ => None
+              }
           }
 
           val dbBlocksAndGroups =
@@ -114,15 +125,18 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocksAndGroups) {
             case (blockRow, groupRow) =>
-              val blockForGroup = generatedBlocks.find(_.metadata.hash.value == blockRow.hash).value
+              val blockForGroup = generatedBlocks.find(_.data.hash.value == blockRow.hash).value
               val group = blockForGroup.operationGroups.head
               groupRow.hash shouldEqual group.hash.value
-              groupRow.blockId shouldEqual blockForGroup.metadata.hash.value
-              groupRow.chainId shouldEqual group.chain_id
-              groupRow.branch shouldEqual group.branch
-              groupRow.signature shouldEqual group.signature
+              groupRow.blockId shouldEqual blockForGroup.data.hash.value
+              groupRow.chainId shouldEqual group.chain_id.map(_.id)
+              groupRow.branch shouldEqual group.branch.value
+              groupRow.signature shouldEqual group.signature.map(_.value)
           }
 
+          /* we read operations as mappings to a case class for ease of comparison vs.
+           * having to check un-tagged field values from a HList
+           */
           val dbOperations =
            dbHandler.run {
              val query = for {
@@ -134,50 +148,137 @@ class TezosDatabaseOperationsTest
 
           val generatedGroups = generatedBlocks.map(_.operationGroups.head)
 
-          dbOperations should have size (generatedGroups.map(_.contents.map(_.size).getOrElse(0)).sum)
+          dbOperations should have size (generatedGroups.map(_.contents.size).sum)
 
           forAll(dbOperations) {
             case (groupRow, opRow) =>
-              val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
-              val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
-              val operation = operationGroup.contents.value.head
-              opRow.kind shouldEqual operation.kind
-              opRow.source shouldEqual operation.source
-              opRow.fee shouldEqual operation.fee
-              opRow.storageLimit shouldEqual operation.storageLimit
-              opRow.gasLimit shouldEqual operation.gasLimit
-              opRow.amount shouldEqual operation.amount
-              opRow.destination shouldEqual operation.destination
-              opRow.pkh shouldEqual operation.pkh
-              opRow.delegate shouldEqual operation.delegate
-              opRow.balance shouldEqual operation.balance
-              opRow.operationGroupHash shouldEqual operationGroup.hash.value
-              opRow.blockHash shouldEqual operationBlock.metadata.hash.value
-              opRow.blockLevel shouldEqual operationBlock.metadata.header.level
-              opRow.timestamp shouldEqual operationBlock.metadata.header.timestamp
+            val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
+            val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
+            //figure out common fields
+            opRow.operationId should be > -1
+            opRow.operationGroupHash shouldEqual operationGroup.hash.value
+            opRow.blockHash shouldEqual operationBlock.data.hash.value
+            opRow.timestamp shouldEqual Timestamp.from(operationBlock.data.header.timestamp.toInstant)
+            //figure out the correct sub-type
+            val operationMatch = opRow.kind match {
+              case "endorsement" =>
+                operationGroup.contents.find(_.isInstanceOf[Endorsement])
+              case "seed_nonce_revelation" =>
+                operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
+              case "activate_account" =>
+                operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
+              case "reveal" =>
+                operationGroup.contents.find(_.isInstanceOf[Reveal])
+              case "transaction" =>
+                operationGroup.contents.find(_.isInstanceOf[Transaction])
+              case "origination" =>
+                operationGroup.contents.find(_.isInstanceOf[Origination])
+              case "delegation" =>
+                operationGroup.contents.find(_.isInstanceOf[Delegation])
+              case "double_endorsement_evidence" =>
+                operationGroup.contents.find(_ == DoubleEndorsementEvidence)
+              case "double_baking_evidence" =>
+                operationGroup.contents.find(_ == DoubleBakingEvidence)
+              case "proposals" =>
+                operationGroup.contents.find(_ == Proposals)
+              case "ballot" =>
+                operationGroup.contents.find(_ == Ballot)
+              case _ => None
+            }
+
+            operationMatch shouldBe 'defined
+
+            val operation = operationMatch.value
+
+            /* Convert both the generated operation to a tables row representation
+             * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
+             * that the conversion itself is correct
+             */
+            import DatabaseConversions._
+            import tech.cryptonomic.conseil.util.Conversion.Syntax._
+            //used as a constraint to read balance updates from operations
+            import tech.cryptonomic.conseil.tezos.OperationBalances._
+            import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
+
+            val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
+            //skip the id, to take into account that it's only generated on save
+            generatedConversion shouldEqual opRow.copy(operationId = 0)
+
+            /* check stored balance updates */
+            //convert and set the real stored operation id
+            val generatedUpdateRows =
+              operation.convertToA[List, Tables.BalanceUpdatesRow]
+                .map(_.copy(sourceId = Some(opRow.operationId)))
+
+            //reset the generated id for matching
+            val dbUpdateRows = dbHandler.run(
+              Tables.BalanceUpdates.filter(_.sourceId === opRow.operationId).result
+            ).futureValue
+            .map(_.copy(id = 0))
+
+            dbUpdateRows should contain theSameElementsAs generatedUpdateRows
+
           }
       }
 
+    }
+
+    "write metadata balance updates along with the blocks" in {
+      import TezosOptics.Blocks._
+
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val basicBlocks = generateBlocks(2, testReferenceDateTime)
+      val generatedBlocks = basicBlocks.zipWithIndex.map {
+        case (block, idx) =>
+          val randomUpdates = generateBalanceUpdates(2)(randomSeed + idx)
+          setBalances(randomUpdates)(block)
+      }
+
+      whenReady(dbHandler.run(sut.writeBlocks(generatedBlocks))) {
+        _ =>
+        val dbUpdatesRows = dbHandler.run(Tables.BalanceUpdates.result).futureValue
+
+        dbUpdatesRows should have size 4 //2 updates x 2 blocks, not considering genesis which has no balances
+
+        /* Convert both the generated blocks data to balance updates table row representation
+         * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
+         * that the conversion itself is correct
+         */
+        import DatabaseConversions._
+        import tech.cryptonomic.conseil.util.Conversion.Syntax._
+        //used as a constraint to read balance updates from block data
+        import tech.cryptonomic.conseil.tezos.BlockBalances._
+        import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
+
+        val generatedUpdateRows =
+          generatedBlocks.flatMap(
+            _.data.convertToA[List, Tables.BalanceUpdatesRow]
+          )
+
+        //reset the generated id for matching
+        dbUpdatesRows.map(_.copy(id = 0)) should contain theSameElementsAs generatedUpdateRows
+      }
 
     }
 
-    "write accounts" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+    "write accounts for a single block" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val expectedCount = 3
 
-      val block = generateBlockRows(1, testReferenceTime).head
+      val block = generateBlockRows(1, testReferenceTimestamp).head
       val accountsInfo = generateAccounts(expectedCount, BlockHash(block.hash), block.level)
 
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block
-        written <- sut.writeAccounts(accountsInfo)
+        written <- sut.writeAccounts(List(accountsInfo))
         rows <- Tables.Accounts.result
       } yield (written, rows)
 
       val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
-      stored.value shouldBe expectedCount
+      stored shouldBe expectedCount
 
       dbAccounts should have size expectedCount
 
@@ -187,28 +288,254 @@ class TezosDatabaseOperationsTest
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
-          row.blockLevel shouldEqual block.level
-          row.manager shouldEqual account.manager
+          row.manager shouldEqual account.manager.value
           row.spendable shouldEqual account.spendable
           row.delegateSetable shouldEqual account.delegate.setable
-          row.delegateValue shouldEqual account.delegate.value
+          row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.toString)
+          row.script shouldEqual account.script.map(_.code.toString)
           row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual block.level
       }
 
     }
 
     "fail to write accounts if the reference block is not stored" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val accountsInfo = generateAccounts(howMany = 1, blockHash = BlockHash("no-block-hash"), blockLevel = 1)
 
-      val resultFuture = dbHandler.run(sut.writeAccounts(accountsInfo))
+      val resultFuture = dbHandler.run(sut.writeAccounts(List(accountsInfo)))
 
       whenReady(resultFuture.failed) {
           _ shouldBe a [java.sql.SQLException]
       }
+    }
+
+    "update accounts if they exists already" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks @ (second :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
+      val account = generateAccountRows(1, first).head
+
+      val populate =
+        DBIO.seq(
+          Tables.Blocks ++= blocks,
+          Tables.Accounts += account
+        )
+
+      dbHandler.run(populate)
+
+      //prepare new accounts
+      val accountChanges = 2
+      val (hashUpdate, levelUpdate) = (second.hash, second.level)
+      val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
+
+      //double-check for the identifier existence
+      accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
+
+      //do the updates
+      val writeUpdatedAndGetRows = for {
+        written <- sut.writeAccounts(List(accountsInfo))
+        rows <- Tables.Accounts.result
+      } yield (written, rows)
+
+      val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
+
+      //number of db changes
+      updates shouldBe accountChanges
+
+      //total number of rows on db (1 update and 1 insert expected)
+      dbAccounts should have size accountChanges
+
+      import org.scalatest.Inspectors._
+
+      //both rows on db should refer to updated data
+      forAll(dbAccounts zip accountsInfo.accounts) {
+        case (row, (id, account)) =>
+          row.accountId shouldEqual id.id
+          row.blockId shouldEqual hashUpdate
+          row.manager shouldEqual account.manager.value
+          row.spendable shouldEqual account.spendable
+          row.delegateSetable shouldEqual account.delegate.setable
+          row.delegateValue shouldEqual account.delegate.value.map(_.value)
+          row.counter shouldEqual account.counter
+          row.script shouldEqual account.script.map(_.code.toString)
+          row.balance shouldEqual account.balance
+          row.blockLevel shouldEqual levelUpdate
+      }
+
+    }
+
+    "store checkpoint account ids with block reference" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      //custom hash generator with predictable seed
+      val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+      val maxLevel = 1
+      val idPerBlock = 3
+      val expectedCount = (maxLevel + 1) * idPerBlock
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
+      val ids = blocks.map(block => (BlockHash(block.hash), block.level, List.fill(idPerBlock)(AccountId(generateHash(5)))))
+
+      //store and write
+      val populateAndFetch = for {
+        _ <- Tables.Blocks ++= blocks
+        written <- sut.writeAccountsCheckpoint(ids)
+        rows <- Tables.AccountsCheckpoint.result
+      } yield (written, rows)
+
+      val (stored, checkpointRows) = dbHandler.run(populateAndFetch).futureValue
+
+      //number of changes
+      stored.value shouldBe expectedCount
+      checkpointRows should have size expectedCount
+
+      import org.scalatest.Inspectors._
+
+      val flattenedIdsData = ids.flatMap{ case (hash, level, accounts) => accounts.map((hash, level, _))}
+
+      forAll(checkpointRows.zip(flattenedIdsData)) {
+        case (row, (hash, level, accountId)) =>
+          row.blockId shouldEqual hash.value
+          row.blockLevel shouldBe level
+          row.accountId shouldEqual accountId.id
+      }
+
+    }
+
+    "clean the checkpoints with no selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+        )
+
+        val populateAndTest = for {
+          stored <- Tables.AccountsCheckpoint ++= checkpointRows
+          cleaned <- sut.cleanAccountsCheckpoint()
+          rows <- Tables.AccountsCheckpoint.result
+        } yield (stored, cleaned, rows)
+
+        val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
+        initialCount.value shouldBe checkpointRows.size
+        deletes shouldBe checkpointRows.size
+        survivors shouldBe empty
+      }
+
+      "clean the checkpoints with a partial id selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+        )
+
+      val inSelection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4))
+
+      val selection = inSelection.map(AccountId)
+
+      val expected = checkpointRows.filterNot(row => inSelection(row.accountId))
+
+      val populateAndTest = for {
+        stored <- Tables.AccountsCheckpoint ++= checkpointRows
+        cleaned <- sut.cleanAccountsCheckpoint(Some(selection))
+        rows <- Tables.AccountsCheckpoint.result
+      } yield (stored, cleaned, rows)
+
+      val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+      deletes shouldEqual checkpointRows.filter(row => inSelection(row.accountId)).size
+      survivors should contain theSameElementsAs expected
+
+    }
+
+    "read latest account ids from checkpoint" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+      val accountIds = Array("a0", "a1", "a2", "a3", "a4", "a5", "a6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
+        Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
+        Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
+        Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
+        Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+      )
+
+      def entry(accountAtIndex: Int, atLevel: Int) =
+        AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+
+        //expecting only the following to remain
+      val expected =
+        Map(
+          entry(accountAtIndex = 1, atLevel = 1),
+          entry(accountAtIndex = 2, atLevel = 3),
+          entry(accountAtIndex = 3, atLevel = 4),
+          entry(accountAtIndex = 4, atLevel = 2),
+          entry(accountAtIndex = 5, atLevel = 4),
+          entry(accountAtIndex = 6, atLevel = 5)
+      )
+
+      val populateAndFetch = for {
+        stored <- Tables.AccountsCheckpoint ++= checkpointRows
+        rows <- sut.getLatestAccountsFromCheckpoint
+      } yield (stored, rows)
+
+      val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+
+      latest.toSeq should contain theSameElementsAs expected.toSeq
+
     }
 
     "fetch nothing if looking up a non-existent operation group by hash" in {
@@ -216,11 +543,11 @@ class TezosDatabaseOperationsTest
     }
 
     "fetch existing operations with their group on a existing hash" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
-      val block = generateBlockRows(1, testReferenceTime).head
+      val block = generateBlockRows(1, testReferenceTimestamp).head
       val group = generateOperationGroupRows(block).head
-      val ops = generateOperationRowsForGroup(block, group)
+      val ops = generateOperationsForGroup(block, group)
 
       val populateAndFetch = for {
         _ <- Tables.Blocks += block
@@ -239,17 +566,17 @@ class TezosDatabaseOperationsTest
 
     "compute correct average fees from stored operations" in {
       //generate data
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateBlockRows(1, testReferenceTime).head
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      val block = generateBlockRows(1, testReferenceTimestamp).head
       val group = generateOperationGroupRows(block).head
 
       // mu = 152.59625
       // std-dev = 331.4
       // the sample std-dev should be 354.3, using correction formula
       val fees = Seq(
-        Some("35.23"), Some("12.01"), Some("2.22"), Some("150.01"), None, Some("1020.30"), Some("1.00"), None
+        Some(BigDecimal(35.23)), Some(BigDecimal(12.01)), Some(BigDecimal(2.22)), Some(BigDecimal(150.01)), None, Some(BigDecimal(1020.30)), Some(BigDecimal(1.00)), None
       )
-      val ops = wrapFeesWithOperationRows(fees, block, group)
+      val ops = wrapFeesWithOperations(fees, block, group)
 
       val populate = for {
         _ <- Tables.Blocks += block
@@ -272,7 +599,7 @@ class TezosDatabaseOperationsTest
       )
 
       //check
-      val feesCalculation = sut.calculateAverageFees(ops.head.kind)
+      val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
 
@@ -280,12 +607,12 @@ class TezosDatabaseOperationsTest
 
     "return None when computing average fees for a kind with no data" in {
       //generate data
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateBlockRows(1, testReferenceTime).head
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      val block = generateBlockRows(1, testReferenceTimestamp).head
       val group = generateOperationGroupRows(block).head
 
-      val fees = Seq.fill(3)(Some("1.0"))
-      val ops = wrapFeesWithOperationRows(fees, block, group)
+      val fees = Seq.fill(3)(Some(BigDecimal(1)))
+      val ops = wrapFeesWithOperations(fees, block, group)
 
       val populate = for {
         _ <- Tables.Blocks += block
@@ -296,7 +623,7 @@ class TezosDatabaseOperationsTest
       dbHandler.run(populate).futureValue should have size (fees.size)
 
       //check
-      val feesCalculation = sut.calculateAverageFees("undefined")
+      val feesCalculation = sut.calculateAverageFees("undefined", feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue shouldBe None
 
@@ -304,16 +631,16 @@ class TezosDatabaseOperationsTest
 
     "compute average fees only using the selected operation kinds" in {
       //generate data
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-      val block = generateBlockRows(1, testReferenceTime).head
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      val block = generateBlockRows(1, testReferenceTimestamp).head
       val group = generateOperationGroupRows(block).head
 
-      val (selectedFee, ignoredFee) = (Some("1.0"), Some("1000.0"))
+      val (selectedFee, ignoredFee) = (Some(BigDecimal(1)), Some(BigDecimal(1000)))
 
       val fees = Seq(selectedFee, selectedFee, ignoredFee, ignoredFee)
 
       //change kind for fees we want to ignore
-      val ops = wrapFeesWithOperationRows(fees, block, group).map {
+      val ops = wrapFeesWithOperations(fees, block, group).map {
         case op if op.fee == ignoredFee => op.copy(kind = op.kind + "ignore")
         case op => op
       }
@@ -340,9 +667,116 @@ class TezosDatabaseOperationsTest
         kind = ops.head.kind
       )
       //check
-      val feesCalculation = sut.calculateAverageFees(selection.head.kind)
+      val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
 
       dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
+
+    }
+
+    "write voting proposal" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+      val proposals = Voting.generateProposals(howMany = 3, forBlock = block)
+
+      //write
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
+        written <- sut.writeVotingProposals(proposals)
+        rows <- Tables.Proposals.result
+      } yield (written, rows)
+
+      val (stored, dbProposals) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      //expectations
+      val expectedWrites = proposals.map(_.protocols.size).sum
+      stored.value shouldEqual expectedWrites
+      dbProposals should have size expectedWrites
+
+      import org.scalatest.Inspectors._
+
+      val allProtocols = proposals.flatMap(_.protocols)
+
+      forAll(dbProposals) {
+        proposalRow =>
+          allProtocols should contain (ProtocolId(proposalRow.protocolHash))
+          proposalRow.blockId shouldBe block.data.hash.value
+          proposalRow.blockLevel shouldBe block.data.header.level
+      }
+
+    }
+
+    "write voting bakers" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+      val bakers = Voting.generateBakers(howMany = 3)
+
+      //write
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
+        written <- sut.writeVotingBakers(bakers, block)
+        rows <- Tables.Bakers.result
+      } yield (written, rows)
+
+      val (stored, dbBakers) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      //expectations
+      stored.value shouldEqual bakers.size
+      dbBakers should have size bakers.size
+
+      import org.scalatest.Inspectors._
+
+      forAll(dbBakers) {
+        bakerRow =>
+          val generated = bakers.find(_.pkh.value == bakerRow.pkh).value
+          bakerRow.rolls shouldEqual generated.rolls
+          bakerRow.blockId shouldBe block.data.hash.value
+          bakerRow.blockLevel shouldBe block.data.header.level
+      }
+
+    }
+
+    "write voting ballots" in {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      //generate data
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+      val ballots = Voting.generateBallots(howMany = 3)
+
+      //write
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
+        written <- sut.writeVotingBallots(ballots, block)
+        rows <- Tables.Ballots.result
+      } yield (written, rows)
+
+      val (stored, dbBallots) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      //expectations
+      stored.value shouldEqual ballots.size
+      dbBallots should have size ballots.size
+
+      import org.scalatest.Inspectors._
+
+      forAll(dbBallots) {
+        ballotRow =>
+          val generated = ballots.find(_.pkh.value == ballotRow.pkh).value
+          ballotRow.ballot shouldEqual generated.ballot.value
+          ballotRow.blockId shouldBe block.data.hash.value
+          ballotRow.blockLevel shouldBe block.data.header.level
+      }
 
     }
 
@@ -356,11 +790,11 @@ class TezosDatabaseOperationsTest
     }
 
     "fetch the latest block level when blocks are available" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val expected = 5
       val populateAndFetch = for {
-        _ <- Tables.Blocks ++= generateBlockRows(expected, testReferenceTime)
+        _ <- Tables.Blocks ++= generateBlockRows(expected, testReferenceTimestamp)
         result <- sut.fetchMaxBlockLevel
       } yield result
 
@@ -369,80 +803,10 @@ class TezosDatabaseOperationsTest
       maxLevel should equal(expected)
     }
 
-    "return the default when fetching the max account level and there's no account stored" in {
-      val expected = -1
-      val maxLevel = dbHandler.run(
-        sut.fetchAccountsMaxBlockLevel
-      ).futureValue
-
-      maxLevel shouldEqual expected
-    }
-
-    "fetch accounts max block level based only on stored accounts" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val blocks = generateBlockRows(5, testReferenceTime)
-      val blocksWithAccounts = blocks.take(2)
-      val accounts = blocksWithAccounts flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val expected = blocksWithAccounts.map(_.level).max
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
-        _ <- Tables.Accounts ++= accounts
-        result <- sut.fetchAccountsMaxBlockLevel
-      } yield result
-
-      val maxLevel = dbHandler.run(populateAndTest.transactionally).futureValue
-
-      maxLevel shouldEqual expected
-
-    }
-
-    "test old accounts purging" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
-
-      val levels = 5
-
-      //first prepare the data
-
-      val blocks = generateBlockRows(levels, testReferenceTime)
-      val accounts = blocks flatMap {
-        block => generateAccountRows(1, block)
-      }
-
-      val populate = for {
-        bs <- Tables.Blocks ++= blocks
-        accs <- Tables.Accounts ++= accounts
-      } yield (bs, accs)
-
-      val (Some(storedBlocks), Some(storedAccounts)) = dbHandler.run(populate.transactionally).futureValue
-
-      //take level 0 (genesis block) into account
-      storedBlocks shouldEqual (levels + 1)
-      storedAccounts shouldEqual (levels + 1)
-
-      //purge
-      val removed = dbHandler.run(sut.purgeOldAccounts()).futureValue
-
-      removed shouldBe levels //only the last is left
-
-      //check the db
-      val counts = for {
-        different <- Tables.Accounts.filterNot(_.blockLevel === BigDecimal(levels)).length.result
-        same <- Tables.Accounts.filter(_.blockLevel === BigDecimal(levels)).length.result
-      } yield (different, same)
-
-      dbHandler.run(counts).futureValue shouldBe (0, 1)
-
-    }
-
     "correctly verify when a block exists" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
-      val blocks = generateBlockRows(1, testReferenceTime)
+      val blocks = generateBlockRows(1, testReferenceTimestamp)
       val opGroups = generateOperationGroupRows(blocks: _*)
       val testHash = BlockHash(blocks.last.hash)
 
@@ -461,9 +825,9 @@ class TezosDatabaseOperationsTest
     }
 
     "say a block doesn't exist if it has no associated operation group" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
-      val blocks = generateBlockRows(1, testReferenceTime)
+      val blocks = generateBlockRows(1, testReferenceTimestamp)
       val testHash = BlockHash(blocks.last.hash)
 
       val populateAndTest = for {
@@ -493,281 +857,1001 @@ class TezosDatabaseOperationsTest
     }
   }
 
-  //a stable timestamp reference if needed
-  private lazy val testReferenceTime =
-    new Timestamp(
-      LocalDate.of(2018, 1, 1)
-        .atStartOfDay
-        .toEpochSecond(ZoneOffset.UTC)
+    val blocksTmp = List(
+      BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",Some("context0"),Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+      BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
     )
 
-  //creates pseudo-random strings of given length, based on an existing [[Random]] generator
-  private val alphaNumericGenerator =
-    (random: Random) => random.alphanumeric.take(_: Int).mkString
+    "get all values from the table with nulls as nones" in {
 
-  /* randomly populate a number of fees */
-  private def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
-    require(howMany > 0, "the test can generates a positive number of fees, you asked for a non positive value")
+      val columns = List()
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty, None,3)
+      } yield found
 
-    val rnd = new Random(randomSeed.seed)
-
-    (1 to howMany).map {
-      current =>
-        val low = rnd.nextInt(10)
-        val medium = rnd.nextInt(10) + 10
-        val high = rnd.nextInt(10) + 20
-        AverageFees(
-          low = low,
-          medium = medium,
-          high = high,
-          timestamp = new Timestamp(startAt.getTime + current),
-          kind = "kind"
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result should contain theSameElementsAs List(
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(0)),
+          "context" -> Some("context0"),
+          "proto" -> Some(1),
+          "signature" -> Some("sigqs6AXPny9K"),
+          "hash" -> Some("R0NpYZuUeF"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("genesis"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(0),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None
+        ),
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(1)),
+          "context" -> Some("context1"),
+          "proto" -> Some(1),
+          "signature" -> Some("sigTZ2IB879wD"),
+          "hash" -> Some("aQeGrbXCmG"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("R0NpYZuUeF"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(1),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None
         )
-    }.toList
-  }
+      )
+    }
 
-  /* randomly generates a number of accounts with associated block data */
-  private def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): AccountsWithBlockHashAndLevel = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
-    val rnd = new Random(randomSeed.seed)
 
-    val accounts = (1 to howMany).map {
-      currentId =>
-        (AccountId(String valueOf currentId),
-          Account(
-            manager = "manager",
-            balance = rnd.nextInt,
-            spendable = true,
-            delegate = AccountDelegate(setable = false, value = Some("delegate-value")),
-            script = Some("script"),
-            counter = currentId
-          )
+    "get values where context is null" in {
+      val blocksTmp = List(
+        BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",None,Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+        BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
+      )
+      val columns = List("level", "proto", "context", "hash", "operations_hash")
+      val predicates = List(
+        Predicate(
+          field = "context",
+          operation = OperationType.isnull,
+          set = List.empty,
+          inverse = false
         )
-    }.toMap
-
-    AccountsWithBlockHashAndLevel(blockHash, blockLevel, accounts)
-  }
-
-  /* randomly populate a number of blocks based on a level range */
-  private def generateBlocks(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Block] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    //same for all blocks
-    val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
-
-    def generateOne(level: Int, predecessorHash: BlockHash): Block =
-      Block(
-        BlockMetadata(
-          "protocol",
-          Some(chainHash),
-          BlockHash(generateHash(10)),
-          BlockHeader(
-            level = level,
-            proto = 1,
-            predecessor = predecessorHash,
-            timestamp = new Timestamp(startMillis + level),
-            validationPass = 0,
-            operations_hash = None,
-            fitness = Seq.empty,
-            context = s"context$level",
-            signature = Some(s"sig${generateHash(10)}")
-          )),
-        operationGroups = List.empty
       )
 
-    //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"))
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
 
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.metadata.hash)
-        currentBlock :: chain
-    }.reverse
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "context" -> None, "hash" -> Some("R0NpYZuUeF"), "operations_hash" -> None)
+      )
+    }
 
-  }
-
-
-  /* randomly populate a number of blocks based on a level range */
-  private def generateBlockRows(toLevel: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[Tables.BlocksRow] = {
-    require(toLevel > 0, "the test can generate blocks up to a positive chain level, you asked for a non positive value")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    //same for all blocks
-    val chainHash = generateHash(5)
-
-    val startMillis = startAt.getTime
-
-    def generateOne(level: Int, predecessorHash: String): BlocksRow =
-      BlocksRow(
-      level = level,
-      proto = 1,
-      predecessor = predecessorHash,
-      timestamp = new Timestamp(startMillis + level),
-      validationPass = 0,
-      fitness = "fitness",
-      protocol = "protocol",
-      context = Some(s"context$level"),
-      signature = Some(s"sig${generateHash(10)}"),
-      chainId = Some(chainHash),
-      hash = generateHash(10)
-    )
-
-    //we need somewhere to start with
-    val genesis = generateOne(0, "genesis")
-
-    //use a fold to pass the predecessor hash, to keep a plausibility of sort
-    (1 to toLevel).foldLeft(List(genesis)) {
-      case (chain, lvl) =>
-        val currentBlock = generateOne(lvl, chain.head.hash)
-        currentBlock :: chain
-    }.reverse
-
-  }
-
-  /* create an operation group for each block passed in, using random values, with the requested copies of operations */
-  private def generateOperationGroup(block: Block, operations: Int)(implicit randomSeed: RandomSeed): OperationGroup = {
-    require(operations >= 0, "the test won't generate a negative number of operations")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    def fillOperations(): Option[List[Operation]] = {
-      val ops = List.fill(operations) {
-        Operation(
-          kind = "kind",
-          block = Some(block.metadata.hash.value),
-          level = Some(block.metadata.header.level),
-          slots = Some(List(0)),
-          nonce = Some(generateHash(10)),
-          op1 = None,
-          op2 = None,
-          bh1 = None,
-          bh2 = None,
-          pkh = Some("pkh"),
-          secret = Some("secret"),
-          proposals = Some(List("proposal")),
-          period = Some("period"),
-          source = Some("source"),
-          proposal = Some("proposal"),
-          ballot = Some("ballot"),
-          fee = Some("fee"),
-          counter = Some(0),
-          gasLimit = Some("gasLimit"),
-          storageLimit = Some("storageLimit"),
-          publicKey = Some("publicKey"),
-          amount = Some("amount"),
-          destination = Some("destination"),
-          parameters = Some("parameters"),
-          managerPubKey = Some("managerPubKey"),
-          balance = Some("balance"),
-          spendable = Some(true),
-          delegatable = Some(true),
-          delegate = Some("delegate")
+    "get values where context is NOT null" in {
+      val blocksTmp = List(
+        BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",None,Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
+        BlocksRow(1,1,"R0NpYZuUeF",new Timestamp(1),0,"fitness",Some("context1"),Some("sigTZ2IB879wD"),"protocol",Some("YLBMy"),"aQeGrbXCmG",None)
+      )
+      val columns = List("level", "proto", "context", "hash", "operations_hash")
+      val predicates = List(
+        Predicate(
+          field = "context",
+          operation = OperationType.isnull,
+          set = List.empty,
+          inverse = true
         )
-      }
-      if (ops.isEmpty) None else Some(ops)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "context" -> Some("context1"), "hash" -> Some("aQeGrbXCmG"), "operations_hash" -> None)
+      )
+    }
+
+    "get null values from the table as none" in {
+
+      val columns = List("level", "proto", "protocol", "hash", "operations_hash")
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result should contain theSameElementsAs List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"), "operations_hash" -> None),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"), "operations_hash" -> None)
+      )
+    }
+
+    "get map from a block table" in {
+
+      val columns = List("level", "proto", "protocol", "hash")
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, List.empty, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+
+    "get map from a block table with inverse predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = true
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with multiple predicates" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("R0NpYZuUeF"),
+          inverse = true
+        ),
+        Predicate(
+          field = "hash",
+          operation = OperationType.in,
+          set = List("aQeGrbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get empty map from empty table" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List.empty
+
+      val populateAndTest = for {
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    "get map from a block table with eq predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.eq,
+          set = List("aQeGrbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with eq predicate on numeric type" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.eq,
+          set = List(1),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
     }
 
 
-    OperationGroup(
-      protocol = "protocol",
-      chain_id = block.metadata.chain_id,
-      hash = OperationHash(generateHash(10)),
-      branch = generateHash(10),
-      signature = Some(s"sig${generateHash(10)}"),
-      contents = fillOperations()
+    "get map from a block table with like predicate when starts with pattern" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.like,
+          set = List("aQeGr"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with like predicate when ends with pattern" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.like,
+          set = List("rbXCmG"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with like predicate when pattern is in the middle" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.like,
+          set = List("rbX"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with less than predicate when one element fulfils it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.lt,
+          set = List(1),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+
+    "get empty map from a block table with less than predicate when no elements fulfil it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.lt,
+          set = List(0),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    "get map from a block table with between predicate when two element fulfill it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.between,
+          set = List(-10,10),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table with between predicate when two element fulfill it but limited to 1 element" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.between,
+          set = List(-10,10),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,1)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+
+    "get map from a block table with between predicate when one element fulfill it" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "level",
+          operation = OperationType.between,
+          set = List(1,10),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+    "get map from a block table with datetime field" in {
+      val columns = List("level", "proto", "protocol", "hash", "timestamp")
+      val predicates = List(
+        Predicate(
+          field = "timestamp",
+          operation = OperationType.gt,
+          set = List(new Timestamp(0)),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"), "timestamp" -> Some(new Timestamp(1)))
+      )
+    }
+    "get map from a block table with startsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.startsWith,
+          set = List("R0Np"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+    "get empty map from a block table with startsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.startsWith,
+          set = List("YZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+    "get map from a block table with endsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.endsWith,
+          set = List("ZuUeF"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+    "get empty map from a block table with endsWith predicate" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List(
+        Predicate(
+          field = "hash",
+          operation = OperationType.endsWith,
+          set = List("R0NpYZ"),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    val accRow = AccountsRow(
+      accountId = 1.toString,
+      blockId = "R0NpYZuUeF",
+      blockLevel = 0,
+      manager = "manager",
+      spendable = true,
+      delegateSetable = false,
+      delegateValue = None,
+      counter = 0,
+      script = None,
+      balance = BigDecimal(1.45)
     )
-  }
-
-
-  /* create an empty operation group for each block passed in, using random values */
-  private def generateOperationGroupRows(blocks: BlocksRow*)(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
-    require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
-
-    //custom hash generator with predictable seed
-    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
-
-    blocks.map(
-      block =>
-        Tables.OperationGroupsRow(
-          protocol = "protocol",
-          chainId = block.chainId,
-          hash = generateHash(10),
-          branch = generateHash(10),
-          signature = Some(s"sig${generateHash(10)}"),
-          blockId = block.hash
+    "get one element when correctly rounded value" in {
+      val columns = List("account_id", "balance")
+      val predicates = List(
+        Predicate(
+          field = "balance",
+          operation = OperationType.eq,
+          set = List(1.5),
+          inverse = false,
+          precision = Some(1)
         )
-    ).toList
-  }
+      )
 
-  /* create operations related to a specific group, with random data */
-  private def generateOperationRowsForGroup(block: BlocksRow, group: OperationGroupsRow, howMany: Int = 3): List[Tables.OperationsRow] =
-   if (howMany > 0) {
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        _ <- Tables.Accounts += accRow
+        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
 
-     (1 to howMany).map {
-       counting =>
-         Tables.OperationsRow(
-           kind = "operation-kind",
-           operationGroupHash = group.hash,
-           operationId = -1,
-           blockHash = block.hash,
-           timestamp = block.timestamp,
-           blockLevel = block.level
-         )
-     }.toList
-   } else List.empty
-
-  /* create operation rows to hold the given fees */
-  private def wrapFeesWithOperationRows(
-    fees: Seq[Option[String]],
-    block: BlocksRow,
-    group: OperationGroupsRow) = {
-
-    fees.zipWithIndex.map {
-      case (fee, index) =>
-        OperationsRow(
-          kind = "kind",
-          operationGroupHash = group.hash,
-          operationId = -1,
-          fee = fee,
-          blockHash = block.hash,
-          timestamp = new Timestamp(block.timestamp.getTime + index),
-          blockLevel = block.level
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue.map(_.mapValues(_.toString))
+      result shouldBe List(Map("account_id" -> "Some(1)", "balance" -> "Some(1.45)"))
+    }
+    "get empty list of elements when correctly rounded value does not match" in {
+      val columns = List("account_id", "balance")
+      val predicates = List(
+        Predicate(
+          field = "balance",
+          operation = OperationType.eq,
+          set = List(1.5),
+          inverse = false,
+          precision = Some(2)
         )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        _ <- Tables.Accounts += accRow
+        found <- sut.selectWithPredicates(Tables.Accounts.baseTableRow.tableName, columns, predicates, List.empty, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe 'empty
+    }
+
+    "return the same results for the same query" in {
+      type AnyMap = Map[String, Any]
+
+      import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
+      val columns = List("level", "proto", "protocol", "hash")
+      val tableName = Tables.Blocks.baseTableRow.tableName
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        generatedQuery <- makeQuery(tableName, columns, None).as[AnyMap]
+      } yield generatedQuery
+
+      val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
+      val expectedQueryResult = dbHandler.run(
+        sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true""".as[AnyMap]
+      ).futureValue
+      generatedQueryResult shouldBe expectedQueryResult
+    }
+
+
+    "get map from a block table and sort by level in ascending order" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List()
+      val sortBy = List(
+        QueryOrdering(
+          field = "level",
+          direction = OrderDirection.asc
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table and sort by level in descending order" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List()
+      val sortBy = List(
+        QueryOrdering(
+          field = "level",
+          direction = OrderDirection.desc
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+
+    "get map from a block table and sort by hash in descending order" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List()
+      val sortBy = List(
+        QueryOrdering(
+          field = "hash",
+          direction = OrderDirection.desc
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+      )
+    }
+
+    "get map from a block table and sort by hash in ascending order" in {
+      val columns = List("level", "proto", "protocol", "hash")
+      val predicates = List()
+      val sortBy = List(
+        QueryOrdering(
+          field = "hash",
+          direction = OrderDirection.asc
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, None,3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+      )
+    }
+
+    "get map from a block table and sort by proto in descending order and by level in ascending order" in {
+      val columns = List("level", "proto")
+      val predicates = List()
+      val sortBy = List(
+        QueryOrdering(
+          field = "proto",
+          direction = OrderDirection.desc
+        ),
+        QueryOrdering(
+          field = "level",
+          direction = OrderDirection.asc
+        )
+      )
+
+      val blocksTmp2 = blocksTmp.head.copy(level = 2, proto = 2, hash = "aQeGrbXCmF") :: blocksTmp
+
+      val populateAndTest = for {
+        _ <- Tables.Blocks ++= blocksTmp2
+        found <- sut.selectWithPredicates(Tables.Blocks.baseTableRow.tableName, columns, predicates, sortBy, None, 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+      result shouldBe List(
+        Map("level" -> Some(2), "proto" -> Some(2)),
+        Map("level" -> Some(0), "proto" -> Some(1)),
+        Map("level" -> Some(1), "proto" -> Some(1))
+      )
+    }
+
+    "should aggregate with COUNT function" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.count, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List.empty,
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "count" -> Some(1), "low" -> Some(0)),
+        Map("high" -> Some(4), "count" -> Some(2), "low" -> Some(0))
+      )
+    }
+
+    "should aggregate with MAX function" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.max, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List.empty,
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "max" -> Some(4), "low" -> Some(0)),
+        Map("high" -> Some(4), "max" -> Some(3), "low" -> Some(0))
+      )
+    }
+
+    "should aggregate with MIN function" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.min, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List.empty,
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "min" -> Some(4), "low" -> Some(0)),
+        Map("high" -> Some(4), "min" -> Some(2), "low" -> Some(0))
+      )
+    }
+
+    "should aggregate with SUM function" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.sum, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List.empty,
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(8), "sum" -> Some(4), "low" -> Some(0)),
+        Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0))
+      )
+    }
+
+    "should aggregate with SUM function and order by SUM()" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.sum, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("medium", OrderDirection.desc)),
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0)),
+        Map("high" -> Some(8), "sum" -> Some(4), "low" -> Some(0))
+      )
+    }
+
+    "should order correctly by the field not existing in query)" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 3, new Timestamp(2), "kind")
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("high", OrderDirection.desc)),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("medium" -> Some(4), "low" -> Some(0)), // high = Some(8)
+        Map("medium" -> Some(2), "low" -> Some(0)), // high = Some(4)
+        Map("medium" -> Some(3), "low" -> Some(0)), // high = Some(3)
+      )
+    }
+
+    "should correctly check use between in the timestamps" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(2), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(4), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "timestamp",
+        operation = OperationType.between,
+        set = List(
+          new Timestamp(1),
+          new Timestamp(3)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("timestamp"),
+          predicates = List(predicate),
+          ordering = List.empty,
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result.flatMap(_.values.map(_.map(_.asInstanceOf[Timestamp]))) shouldBe List(
+        Some(new Timestamp(2))
+      )
+    }
+
+    "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
+      val feesTmp = List(
+        FeesRow(0, 0, 0, new Timestamp(0), "kind"),
+        FeesRow(0, 0, 10, new Timestamp(3), "kind"),
+        FeesRow(0, 0, 2, new Timestamp(1), "kind"),
+        FeesRow(0, 0, 30, new Timestamp(2), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "high",
+        operation = OperationType.between,
+        set = List(1,3)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("high"),
+          predicates = List(predicate),
+          ordering = List(),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(Map("high" -> Some(2)))
     }
 
   }
 
-  /* randomly generates a number of account rows for some block */
-  private def generateAccountRows(howMany: Int, block: BlocksRow): List[AccountsRow] = {
-    require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
-
-    (1 to howMany).map {
-      currentId =>
-        AccountsRow(
-          accountId = String valueOf currentId,
-          blockId = block.hash,
-          blockLevel = block.level,
-          manager = "manager",
-          spendable = true,
-          delegateSetable = false,
-          delegateValue = None,
-          counter = 0,
-          script = None,
-          balance = 0
-        )
-    }.toList
-
-  }
-
-
-}
+ }

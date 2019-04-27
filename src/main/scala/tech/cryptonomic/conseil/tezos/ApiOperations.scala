@@ -1,14 +1,22 @@
 package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, Query, QueryOrdering, QueryResponse}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object Api {
+/**
+  * Functionality for fetching data from the Conseil database.
+  */
+object ApiOperations extends DataOperations with MetadataOperations {
+
+  lazy val dbHandle: Database = DatabaseUtil.db
+
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
   case object AscendingSort extends Sorting
@@ -61,7 +69,90 @@ object Api {
     accountDelegates: Set[String] = Set.empty,
     sortBy: Option[String] = None,
     order: Option[Sorting] = Some(DescendingSort)
-  )
+  ) {
+
+    /** transforms Filter into a Query with a set of predicates */
+    def toQuery: DataTypes.Query = {
+      Query(
+        fields = List.empty,
+        predicates = List(
+          Predicate(
+            field = "block_id",
+            operation = OperationType.in,
+            set = blockIDs.toList
+          ),
+          Predicate(
+            field = "level",
+            operation = OperationType.in,
+            set = levels.toList
+          ),
+          Predicate(
+            field = "chain_id",
+            operation = OperationType.in,
+            set = chainIDs.toList
+          ),
+          Predicate(
+            field = "protocol",
+            operation = OperationType.in,
+            set = protocols.toList
+          ),
+          Predicate(
+            field = "level",
+            operation = OperationType.in,
+            set = levels.toList
+          ),
+          Predicate(
+            field = "group_id",
+            operation = OperationType.in,
+            set = operationGroupIDs.toList
+          ),
+          Predicate(
+            field = "source",
+            operation = OperationType.in,
+            set = operationSources.toList
+          ),
+          Predicate(
+            field = "destination",
+            operation = OperationType.in,
+            set = operationDestinations.toList
+          ),
+          Predicate(
+            field = "participant",
+            operation = OperationType.in,
+            set = operationParticipants.toList
+          ),
+          Predicate(
+            field = "kind",
+            operation = OperationType.in,
+            set = operationKinds.toList
+          ),
+          Predicate(
+            field = "account_id",
+            operation = OperationType.in,
+            set = accountIDs.toList
+          ),
+          Predicate(
+            field = "manager",
+            operation = OperationType.in,
+            set = accountManagers.toList
+          ),
+          Predicate(
+            field = "delegate",
+            operation = OperationType.in,
+            set = accountDelegates.toList
+          )
+        ).filter(_.set.nonEmpty),
+        limit = limit.getOrElse(DataTypes.defaultLimitValue),
+        orderBy = sortBy.map { o =>
+          val direction = order match {
+            case Some(AscendingSort) => OrderDirection.asc
+            case _ => OrderDirection.desc
+          }
+          QueryOrdering(o, direction)
+        }.toList
+      )
+    }
+  }
 
   object Filter {
 
@@ -109,17 +200,17 @@ object Api {
   }
 }
 
-object ApiOperations extends ApiOperations {
-  final lazy val dbHandle: Database = DatabaseUtil.db
-}
-
 /**
   * Functionality for fetching data from the Conseil database.
   */
 trait ApiOperations {
-  import Api._
+  import ApiOperations._
 
   def dbHandle: Database
+
+  case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
+  case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
+  case class AccountResult(account: Tables.AccountsRow)
 
   /**
     * Fetches the level of the most recent block stored in the database.
@@ -145,7 +236,7 @@ trait ApiOperations {
     * @param hash The block's hash
     * @return The block along with its operations, if the hash matches anything
     */
-  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+  def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
       block <- groups.blocksFk
@@ -154,9 +245,9 @@ trait ApiOperations {
     dbHandle.run(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
       blocks.headOption.map {
-        block => Map(
-          'block -> block,
-          'operation_groups -> groups
+        block => BlockResult(
+          block = block,
+          operation_groups = groups
         )
       }
     }
@@ -167,30 +258,29 @@ trait ApiOperations {
     *
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of blocks
     */
-  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow], ec: ExecutionContext): Future[Seq[Tables.BlocksRow]] =
-    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
+  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow]): Future[Seq[Tables.BlocksRow]] =
+    apiFilters(filter)
 
   /**
     * Fetch a given operation group
     *
-    * Running the returned operation will fail with [[NoSuchElementException]] if no block is found on the db
+    * Running the returned operation will fail with `NoSuchElementException` if no block is found on the db
     *
     * @param operationGroupHash Operation group hash
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[Map[Symbol, Any]]] = {
+  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
     } yield operations.map {
         case (opGroup, ops) =>
-          Map(
-            'operation_group -> opGroup,
-            'operations -> ops
+          OperationGroupResult(
+            operation_group = opGroup,
+            operations = ops
           )
         }
 
@@ -201,11 +291,10 @@ trait ApiOperations {
     * Fetches all operation groups.
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of operation groups
     */
-  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow], ec: ExecutionContext): Future[Seq[Tables.OperationGroupsRow]] =
-    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
+  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow]): Future[Seq[Tables.OperationGroupsRow]] =
+    apiFilters(filter)
 
   /**
     * Fetches all operations.
@@ -214,7 +303,7 @@ trait ApiOperations {
     * @return List of operations
     */
   def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow]): Future[Seq[Tables.OperationsRow]] =
-    apiFilters(filter)(0)
+    apiFilters(filter)
 
   /**
     * Given the operation kind return the mean (along with +/- one standard deviation)
@@ -228,7 +317,7 @@ trait ApiOperations {
     *           averaged over.
     */
   def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[Option[AverageFees]] =
-    apiFilters(filter)(0)
+    apiFilters(filter)
       .map( rows =>
         rows.headOption map {
           case Tables.FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
@@ -236,31 +325,21 @@ trait ApiOperations {
       )
 
   /**
-    * Fetches the level of the most recent block in the accounts table.
-    *
-    * @return Max level or -1 if no blocks were found in the database.
-    */
-  def fetchMaxBlockLevelForAccounts(): Future[BigDecimal] =
-    dbHandle.run(TezosDb.fetchAccountsMaxBlockLevel)
-
-  /**
     * Fetches an account by account id from the db.
     * @param account_id The account's id number
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return The account with its associated operation groups
     */
-  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Map[String, Any]] = {
-    val fetchOperation = TezosDb.fetchAccountsMaxBlockLevel.flatMap {
-      latestBlockLevel =>
+  def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
+    val fetchOperation =
         Tables.Accounts
-          .filter(row =>
-            row.blockLevel === latestBlockLevel && row.accountId === account_id.id
-          ).take(1)
+          .filter(row => row.accountId === account_id.id)
+          .take(1)
           .result
-    }
+
     dbHandle.run(fetchOperation).map{
-      account =>
-        Map("account" -> account)
+      accounts =>
+        accounts.headOption.map(AccountResult)
     }
   }
 
@@ -268,11 +347,10 @@ trait ApiOperations {
     * Fetches a list of accounts from the db.
     * @param filter Filters to apply
     * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return List of accounts
     */
-  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow], ec: ExecutionContext): Future[Seq[Tables.AccountsRow]] =
-    fetchMaxBlockLevelForAccounts().flatMap(apiFilters(filter))
+  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow]): Future[Seq[Tables.AccountsRow]] =
+    apiFilters(filter)
 
   /**
     * @param ec ExecutionContext needed to invoke the data fetching using async results
@@ -287,6 +365,73 @@ trait ApiOperations {
           .result
           .headOption
     )
+
+  /**
+    * Counts all entities in the db
+    * @param ec ExecutionContext needed to invoke the data fetching using async results
+    * @return Count with all amounts
+    */
+  def countAll(implicit ec: ExecutionContext): Future[Map[String, Int]] = {
+    dbHandle.run {
+      for {
+        blocks <- TezosDb.countRows(Tables.Blocks)
+        accounts <- TezosDb.countRows(Tables.Accounts)
+        operationGroups <- TezosDb.countRows(Tables.OperationGroups)
+        operations <- TezosDb.countRows(Tables.Operations)
+        fees <- TezosDb.countRows(Tables.Fees)
+      } yield
+        Map(
+          Tables.Blocks.baseTableRow.tableName -> blocks,
+          Tables.Accounts.baseTableRow.tableName -> accounts,
+          Tables.OperationGroups.baseTableRow.tableName -> operationGroups,
+          Tables.Operations.baseTableRow.tableName -> operations,
+          Tables.Fees.baseTableRow.tableName -> fees
+        )
+    }
+  }
+
+  /**
+    * Runs DBIO action
+    * @param  action action to be performed on db
+    * @return result of DBIO action as a Future
+    */
+  def runQuery[A](action: DBIO[A]): Future[A] = {
+    dbHandle.run {
+      action
+    }
+  }
+
+  /** Executes the query with given predicates
+    *
+    * @param  tableName name of the table which we query
+    * @param  query     query predicates and fields
+    * @return query result as a map
+    * */
+  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] = {
+    runQuery(
+      TezosDatabaseOperations.selectWithPredicates(
+        tableName,
+        query.fields,
+        sanitizePredicates(query.predicates),
+        query.orderBy,
+        query.aggregation,
+        Math.min(query.limit, DataTypes.maxLimitValue)
+      )
+    )
+  }
+
+  /** Sanitizes predicate values so query is safe from SQL injection */
+  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
+    predicates.map { predicate =>
+      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
+    }
+  }
+
+  /** Sanitizes string to be viable to paste into plain SQL */
+  def sanitizeForSql(str: String): String = {
+    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
+    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+  }
 
 }
 

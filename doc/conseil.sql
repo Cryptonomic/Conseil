@@ -33,6 +33,8 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 -- Name: truncate_tables(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
+DROP FUNCTION IF EXISTS public.truncate_tables(username character varying);
+
 CREATE FUNCTION public.truncate_tables(username character varying) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -86,7 +88,20 @@ CREATE TABLE public.blocks (
     protocol character varying NOT NULL,
     chain_id character varying,
     hash character varying NOT NULL,
-    operations_hash character varying
+    operations_hash character varying,
+    period_kind character varying,
+    current_expected_quorum integer,
+    active_proposal character varying,
+    baker character varying,
+    nonce_hash character varying,
+    consumed_gas numeric,
+    meta_level integer,
+    meta_level_position integer,
+    meta_cycle integer,
+    meta_cycle_position integer,
+    meta_voting_period integer,
+    meta_voting_period_position integer,
+    expected_commitment boolean
 );
 
 
@@ -133,21 +148,101 @@ CREATE TABLE public.operation_groups (
 --
 
 CREATE TABLE public.operations (
-    kind character varying NOT NULL,
-    source character varying,
-    amount character varying,
-    destination character varying,
-    balance character varying,
-    delegate character varying,
-    operation_group_hash character varying NOT NULL,
     operation_id integer NOT NULL,
-    fee character varying,
-    storage_limit character varying,
-    gas_limit character varying,
+    operation_group_hash character varying NOT NULL,
+    kind character varying NOT NULL,
+    level integer,
+    delegate character varying,
+    slots character varying,
+    nonce character varying,
+    pkh character varying,
+    secret character varying,
+    source character varying,
+    fee numeric,
+    counter numeric,
+    gas_limit numeric,
+    storage_limit numeric,
+    public_key character varying,
+    amount numeric,
+    destination character varying,
+    parameters character varying,
+    manager_pubkey character varying,
+    balance numeric,
+    spendable boolean,
+    delegatable boolean,
+    script character varying,
+    storage character varying,
+    status character varying,
+    consumed_gas numeric,
+    storage_size numeric,
+    paid_storage_size_diff numeric,
     block_hash character varying NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL,
     block_level integer NOT NULL,
-    pkh character varying
+    "timestamp" timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: balance_updates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.balance_updates (
+    id integer NOT NULL,
+    source character varying NOT NULL,
+    source_id integer,
+    source_hash character varying,
+    kind character varying NOT NULL,
+    contract character varying,
+    change numeric NOT NULL,
+    level numeric,
+    delegate character varying,
+    category character varying
+);
+
+
+--
+-- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounts_checkpoint (
+    account_id character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer DEFAULT '-1'::integer NOT NULL
+);
+
+
+--
+-- Name: proposals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.proposals (
+    protocol_hash character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
+);
+
+
+--
+-- Name: bakers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bakers (
+    pkh character varying NOT NULL,
+    rolls integer NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
+);
+
+
+--
+-- Name: ballots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ballots (
+    pkh character varying NOT NULL,
+    ballot character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
 );
 
 
@@ -156,18 +251,6 @@ CREATE TABLE public.operations (
 --
 
 CREATE SEQUENCE public.operations_operation_id_seq
-    START WITH 177489
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: operations_operation_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.operations_operation_id_seq1
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -176,17 +259,43 @@ CREATE SEQUENCE public.operations_operation_id_seq1
 
 
 --
--- Name: operations_operation_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: operations_operation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.operations_operation_id_seq1 OWNED BY public.operations.operation_id;
+ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.operation_id;
 
 
 --
 -- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq1'::regclass);
+ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq'::regclass);
+
+
+--
+-- Name: balance_updates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.balance_updates_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: balance_updates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.balance_updates_id_seq OWNED BY public.balance_updates.id;
+
+
+--
+-- Name: balance_updates id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.balance_updates ALTER COLUMN id SET DEFAULT nextval('public.balance_updates_id_seq'::regclass);
 
 
 --
@@ -202,7 +311,7 @@ ALTER TABLE ONLY public.operation_groups
 --
 
 ALTER TABLE ONLY public.accounts
-    ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id, block_id);
+    ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id);
 
 
 --
@@ -230,6 +339,14 @@ ALTER TABLE ONLY public.operations
 
 
 --
+-- Name: balance_updates balance_updates_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.balance_updates
+    ADD CONSTRAINT "balance_updates_key" PRIMARY KEY (id);
+
+
+--
 -- Name: fki_block; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -242,6 +359,50 @@ CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 
 CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
+--
+-- Name: ix_accounts_block_level; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX ix_accounts_block_level ON public.accounts USING btree (block_level);
+
+--
+-- Name: ix_accounts_manager; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_accounts_manager ON public.accounts USING btree (manager);
+
+
+--
+-- Name: ix_blocks_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_blocks_level ON public.blocks USING btree (level);
+
+
+--
+-- Name: ix_operations_destination; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_operations_destination ON public.operations USING btree (destination);
+
+
+--
+-- Name: ix_operations_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_operations_source ON public.operations USING btree (source);
+
+--
+-- Name: ix_accounts_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint USING btree (block_level);
+
+--
+-- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_proposals_protocol ON public.proposals USING btree (protocol_hash);
+
 
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -249,6 +410,40 @@ CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+--
+-- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounts_checkpoint
+    ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+
+--
+-- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.proposals
+    ADD CONSTRAINT proposal_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+
+
+--
+-- Name: bakers baker_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bakers
+    ADD CONSTRAINT baker_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+
+
+
+--
+-- Name: ballots ballot_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ballots
+    ADD CONSTRAINT ballot_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 
 --
