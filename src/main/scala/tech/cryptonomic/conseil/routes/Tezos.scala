@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos._
-import tech.cryptonomic.conseil.tezos.Api.Filter
+import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockHash, AccountId}
 import endpoints.akkahttp
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering

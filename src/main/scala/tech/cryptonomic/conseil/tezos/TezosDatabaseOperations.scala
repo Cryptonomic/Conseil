@@ -4,7 +4,6 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, Predicate, QueryOrdering, QueryResponse}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
@@ -108,13 +107,13 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /* find blocks at the same level as those passed-in and invalidates them */
   private def invalidateBlocks(validBlocks: List[Block])(implicit ec: ExecutionContext) =
-    DBIO.sequence(validBlocks.map(valid => markInvalids(valid.metadata.header.level, valid.metadata.hash)))
+    DBIO.sequence(validBlocks.map(valid => markInvalids(valid.data.header.level, valid.data.hash)))
 
   /* find corresponding blocks that needs to be invalidated and adds them to the table */
   private def markInvalids(level: Int, validHash: BlockHash)(implicit ec: ExecutionContext): DBIO[Int] =
     Tables.Blocks.filter(block => block.level === level && block.hash =!= validHash.value)
       .result
-      .map(rows => rows.map(RowConversion.convertToInvalidatedBlock)
+      .map(rows => rows.map(_.convertTo[Tables.InvalidatedBlocksRow])
     ).flatMap(
       invalid =>
         DBIO.sequence(invalid.map(Tables.InvalidatedBlocks.insertOrUpdate)).map(_.sum)
@@ -128,8 +127,8 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return      A database action that will give back a tuple with the number of rows updated in the form (revalidated, invalidated)
     */
   def revalidateBlock(block: Block): DBIO[(Int, Int)] = {
-    val hash = block.metadata.hash
-    val level = block.metadata.header.level
+    val hash = block.data.hash
+    val level = block.data.header.level
     val invalidatedAction = Tables.InvalidatedBlocks.filter(block => block.level === level && block.hash =!= hash.value).map(block => block.isInvalidated).update(true)
     val revalidatedAction = Tables.InvalidatedBlocks.filter(_.hash === hash.value).map(block => block.isInvalidated).update(false)
     invalidatedAction zip revalidatedAction
@@ -302,6 +301,22 @@ object TezosDatabaseOperations extends LazyLogging {
       blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
       opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
     } yield blockThere && opsThere
+
+  /**
+    * Checks if a block for this hash is stored on db
+    * @param hash Identifies the block
+    * @return     true if block exists
+    */
+  def blockExists(hash: BlockHash): DBIO[Boolean] =
+    Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
+
+  /**
+    * Checks if a block for this hash has ever been invalidated
+    * @param hash Identifies the block
+    * @return     true if block and operations exists
+    */
+  def blockExistsInInvalidatedBlocks(hash: BlockHash): DBIO[Boolean] =
+    Tables.InvalidatedBlocks.findBy(_.hash).applied(hash.value).exists.result
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BigDecimal = -1

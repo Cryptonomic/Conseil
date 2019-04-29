@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, Fees.schema, InvalidatedBlocks.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -66,6 +66,11 @@ trait Tables {
 
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Index over (blockLevel) (database name ix_accounts_block_level) */
+    val index1 = index("ix_accounts_block_level", blockLevel)
+    /** Index over (manager) (database name ix_accounts_manager) */
+    val index2 = index("ix_accounts_manager", manager)
   }
   /** Collection-like TableQuery object for table Accounts */
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
@@ -343,20 +348,20 @@ trait Tables {
   lazy val Fees = new TableQuery(tag => new Fees(tag))
 
   /** Entity class storing rows of table InvalidatedBlocks
-    *  @param hash Database column hash SqlType(varchar), PrimaryKey
-    *  @param level Database column level SqlType(int4)
-    *  @param isInvalidated Database column is_invalidated SqlType(bool) */
+   *  @param hash Database column hash SqlType(varchar), PrimaryKey
+   *  @param level Database column level SqlType(int4)
+   *  @param isInvalidated Database column is_invalidated SqlType(bool) */
   case class InvalidatedBlocksRow(hash: String, level: Int, isInvalidated: Boolean)
   /** GetResult implicit for fetching InvalidatedBlocksRow objects using plain SQL queries */
   implicit def GetResultInvalidatedBlocksRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Boolean]): GR[InvalidatedBlocksRow] = GR{
     prs => import prs._
-      InvalidatedBlocksRow.tupled((<<[String], <<[Int], <<[Boolean]))
+    InvalidatedBlocksRow.tupled((<<[String], <<[Int], <<[Boolean]))
   }
   /** Table description of table invalidated_blocks. Objects of this class serve as prototypes for rows in queries. */
   class InvalidatedBlocks(_tableTag: Tag) extends profile.api.Table[InvalidatedBlocksRow](_tableTag, "invalidated_blocks") {
     def * = (hash, level, isInvalidated) <> (InvalidatedBlocksRow.tupled, InvalidatedBlocksRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(hash), Rep.Some(level), Rep.Some(isInvalidated)).shaped.<>({r=>import r._; _1.map(_=> InvalidatedBlocksRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(hash), Rep.Some(level), Rep.Some(isInvalidated))).shaped.<>({r=>import r._; _1.map(_=> InvalidatedBlocksRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column hash SqlType(varchar), PrimaryKey */
     val hash: Rep[String] = column[String]("hash", O.PrimaryKey)

@@ -95,6 +95,15 @@ object DatabaseConversions {
     }
   }
 
+  implicit val blockRowToInvalidatedRow = new Conversion[Id, Tables.BlocksRow, Tables.InvalidatedBlocksRow] {
+    override def convert(from: Tables.BlocksRow) =
+      Tables.InvalidatedBlocksRow(
+        hash = from.hash,
+        level = from.level,
+        isInvalidated = true
+      )
+  }
+
   implicit val blockToOperationGroupsRow = new Conversion[List, Block, Tables.OperationGroupsRow] {
     override def convert(from: Block) =
       from.operationGroups.map{ og =>

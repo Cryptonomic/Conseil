@@ -8,7 +8,6 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
@@ -27,8 +26,6 @@ class TezosDatabaseOperationsTest
     with OptionValues
     with LazyLogging
     with IntegrationPatience {
-
-  override val inMemoryDbName = "db-ops-test"
 
   "The database api" should {
 
@@ -841,9 +838,9 @@ class TezosDatabaseOperationsTest
     }
 
     "correctly verify if a block exists even with no associated operation group" in {
-      implicit val randomSeed = RandomSeed(testReferenceTime.getTime)
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
-      val blocks = generateBlockRows(1, testReferenceTime)
+      val blocks = generateBlockRows(1, testReferenceTimestamp)
       val testHash = BlockHash(blocks.last.hash)
 
       val populateAndTest = for {
@@ -855,7 +852,6 @@ class TezosDatabaseOperationsTest
       exists shouldBe true
 
     }
-  }
 
     val blocksTmp = List(
       BlocksRow(0,1,"genesis",new Timestamp(0),0,"fitness",Some("context0"),Some("sigqs6AXPny9K"),"protocol",Some("YLBMy"),"R0NpYZuUeF",None),
@@ -1854,4 +1850,4 @@ class TezosDatabaseOperationsTest
 
   }
 
- }
+}

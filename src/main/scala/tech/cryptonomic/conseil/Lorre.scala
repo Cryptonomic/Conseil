@@ -16,6 +16,7 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
+import slick.jdbc.PostgresProfile.api._
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -130,24 +131,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     logger.info("Processing Tezos Blocks..")
 
-    // forking logic
-    // tezosNodeOperator.getBlocksNotInDatabase(network, followFork = true).flatMap {
-    //   blocks =>
-    //     val mainChainBlocks = blocks.collect { case tezosNodeOperator.WriteBlock(block) => block }
-    //     val missingBlocks = blocks.collect { case tezosNodeOperator.WriteAndMakeValidBlock(block) => block }
-    //     val revalidatedBlocks = blocks.collect { case tezosNodeOperator.RevalidateBlock(block) => block }
-
-    //     val dbAction = DBIO.seq(
-    //       TezosDb.writeBlocks(mainChainBlocks),
-    //       TezosDb.writeAndValidateBlocks(missingBlocks),
-    //       TezosDb.revalidateBlocks(revalidatedBlocks)
-    //     ).transactionally
-    //     db.run(dbAction).andThen {
-    //       case Success(_) => logger.info("Wrote {} blocks to the database", blocks.size)
-    //       case Failure(e) => logger.error(s"Could not write blocks to the database because $e")
-    //     }.map(_ => Done)
-    // }.andThen {
-
     val blockPagesToSynchronize = lorreConf.depth match {
       case Newest => tezosNodeOperator.getBlocksNotInDatabase()
       case Everything => tezosNodeOperator.getLatestBlocks()
@@ -159,11 +142,25 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       results.flatMap {
         blocksWithAccounts =>
 
-          def logBlockOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
-            case Success(accountsCount) =>
-              logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksWithAccounts.size, accountsCount.fold("")(" " + _))
+          val mainChain = blocksWithAccounts.collect { case (tezosNodeOperator.WriteBlock(block), accounts) => (block, accounts) }
+          val missingBlocks = blocksWithAccounts.collect { case (tezosNodeOperator.WriteAndMakeValidBlock(block), _) => block }
+          val revalidatedBlocks = blocksWithAccounts.collect { case (tezosNodeOperator.RevalidateBlock(block), _) => block }
+
+          def logBlockOutcome: PartialFunction[Try[(Option[Int], Int, Int)], Unit] = {
+            case Success((accountsCount, invalidatedCount, revalidatedCount)) =>
+              logger.info(
+                """Wrote:
+                  | - {} new blocks to the database
+                  | - {}/{} blocks invalidated/revalidated after the chain forked
+                  | - Checkpoint stored for{} account updates
+                """.stripMargin,
+                  mainChain.size,
+                  invalidatedCount,
+                  revalidatedCount,
+                  accountsCount.fold("")(" " + _)
+              )
             case Failure(e) =>
-              logger.error("Could not write blocks or accounts checkpoints to the database.", e)
+              logger.error("Could not write new blocks or accounts checkpoints to the database.", e)
           }
 
           def logVotingOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
@@ -173,9 +170,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
               logger.error("Could not write voting data to the database", e)
           }
 
+          val dbAction: DBIO[(Option[Int], Int, Int)] = for {
+            accountsCount <- TezosDb.writeBlocksAndCheckpointAccounts(mainChain.toMap)
+            _ <- TezosDb.writeAndValidateBlocks(missingBlocks)
+            (invalidCount, revalidatedCount) <- TezosDb.revalidateBlocks(revalidatedBlocks)
+          } yield (accountsCount, invalidCount, revalidatedCount)
+
           for {
-            _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocksWithAccounts.toMap)) andThen logBlockOutcome
-            _ <- processVotesForBlocks(blocksWithAccounts.map{case (block, _) => block}) andThen logVotingOutcome
+            _ <- db.run(dbAction.transactionally) andThen logBlockOutcome
+            _ <- processVotesForBlocks(mainChain.map{case (block, _) => block}) andThen logVotingOutcome
           } yield blocksWithAccounts.size
 
       }

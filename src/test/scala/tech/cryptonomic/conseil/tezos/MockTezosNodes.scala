@@ -37,16 +37,16 @@ object MockTezosNodes {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    def runBatchedGetQuery(network: String, commands: List[String], concurrencyLevel: Int): Future[List[String]] =
-      Future.traverse(commands)(runAsyncGetQuery(network, _))
+    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+      Future.traverse(ids)(id => runAsyncGetQuery(network, mapToCommand(id)) map (id -> _))
 
-    def runGetQuery(network: String, command: String): Try[String] = ???
+    override def runGetQuery(network: String, command: String): Try[String] = ???
 
-    def runAsyncGetQuery(network: String, command: String): Future[String] = ???
+    override def runAsyncGetQuery(network: String, command: String): Future[String] = ???
 
-    def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] = ???
+    override def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] = ???
 
-    def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String] = ???
+    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String] = ???
 
   }
 

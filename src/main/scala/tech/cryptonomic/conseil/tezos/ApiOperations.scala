@@ -198,15 +198,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
     val defaultLimit = 10
 
   }
-}
-
-/**
-  * Functionality for fetching data from the Conseil database.
-  */
-trait ApiOperations {
-  import ApiOperations._
-
-  def dbHandle: Database
 
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])

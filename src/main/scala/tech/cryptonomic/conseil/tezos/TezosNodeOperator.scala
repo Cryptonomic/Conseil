@@ -71,11 +71,13 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   override val accountsFetchConcurrency = accountConcurrencyLevel
 
   //use this alias to make signatures easier to read and kept in-sync
-  type BlockFetchingResults = List[(Block, List[AccountId])]
+  type BlockFetchingResults = List[(BlockAction, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
   type PaginatedAccountResults = (Iterator[Future[List[BlockAccounts]]], Int)
 
-  protected lazy val operations: ApiOperations = ApiOperations
+  //introduced to simplify signatures
+  type BallotBlock = (Block, List[Voting.Ballot])
+  type BakerBlock = (Block, List[Voting.BakerRolls])
 
   /**
     * A sum type representing the actions that can happen with a block read from the node,
@@ -88,23 +90,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   case class WriteAndMakeValidBlock(block: Block) extends BlockAction
   /** block needs to be stored */
   case class WriteBlock(block: Block) extends BlockAction
-
-  /**
-    * Output of operation signing.
-    * @param bytes      Signed bytes of the transaction
-    * @param signature  The actual signature
-    */
-  case class SignedOperationGroup(bytes: Array[Byte], signature: String)
-
-  /**
-    * Result of a successfully sent operation
-    * @param results          Results of operation application
-    * @param operationGroupID Operation group ID
-    */
-  case class OperationResult(results: TezosTypes.AppliedOperation, operationGroupID: String)
-  //introduced to simplify signatures
-  type BallotBlock = (Block, List[Voting.Ballot])
-  type BakerBlock = (Block, List[Voting.BakerRolls])
 
   /**
     * Fetches a specific account for a given block.
@@ -357,7 +342,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
         val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
-          page => getBlocks((headHash, headLevel), page)
+          page => getBlocks((headHash, headLevel), page, followFork)
         )
         val minLevel = if (bootstrapping) 1 else maxLevel
         (pagedResults, headLevel - minLevel)
@@ -373,8 +358,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param headHash   Hash of a block from which to start, None to start from a real head
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[BlockHash] = None, followFork: Boolean = false): Future[PaginatedBlocksResults] = {
-    val blocksInRange = headHash
+  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[BlockHash] = None, followFork: Boolean = false): Future[PaginatedBlocksResults] =
+    headHash
       .map(getBlock(_))
       .getOrElse(getBlockHead())
       .map {
@@ -383,33 +368,27 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
           val headHash = maxHead.data.hash
           val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
           val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
-            page => getBlocks((headHash, headLevel), page)
+            page => getBlocks((headHash, headLevel), page, followFork)
           )
           (pagedResults, headLevel - minLevel + 1)
       }
-    // val blocksFromFork =
-    //   if (followFork && minLevel > 0) getForkedBlocks(network, startBlockHash, maxLevel - minLevel + 1)
-    //   else Future.successful(List.empty)
-
-    blocksInRange
-  }
 
   /*
    * If the currently stored block of highest level is not the same returned by the node, reload that
    * and all the missing predecessors on the fork, with actions to re-sync conseil data with the blockchain
    */
-  private def getForkedBlocks(network: String, headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockAction]] = {
+  private def getForkedBlocks(headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockAction]] = {
 
     import cats._
     import cats.instances.future._
 
     //read the latest stored top-level and the corresponding one from the current chain
-    val highestLevelFromChain = getBlock(network, headBlockHash, Some(maxLevelOffset))//chain block
-    val highestLevelOnConseil = operations.fetchLatestBlock() //stored block
+    val highestLevelFromChain = getBlock(headBlockHash, Some(maxLevelOffset))//chain block
+    val highestLevelOnConseil = ApiOperations.fetchLatestBlock() //stored block
 
     //compare the results and in case read the missing data from the fork
     Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
-      case (remote, Some(stored)) if remote.metadata.header.level != stored.level =>
+      case (remote, Some(stored)) if remote.data.header.level != stored.level =>
         //better stop the process than to risk corrupting conseil's database
         logger.error(
           """Loading the latest stored block and the corresponding expected block from the remote node returned a mismatched block level
@@ -417,14 +396,14 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
              | The Node returned block: {}
           """.stripMargin,
           stored,
-          remote.metadata
+          remote.data
         )
         Future.failed(new IllegalStateException("Fork detection found inconsistent levels in corresponding blocks"))
-      case (remote, Some(stored)) if remote.metadata.hash.value != stored.hash =>
-        followFork(network, remote)
+      case (remote, Some(stored)) if remote.data.hash.value != stored.hash =>
+        followFork(remote)
       case (remote, None) =>
-        logger.warn("There's no latest block stored on Conseil, corresponding to level {}. Trying to recover from the remote node", remote.metadata.header.level)
-        followFork(network, remote) //the local block for that level is missing... this shouldn't actually happen!
+        logger.warn("There's no latest block stored on Conseil, corresponding to level {}. Trying to recover from the remote node", remote.data.header.level)
+        followFork(remote) //the local block for that level is missing... this shouldn't actually happen!
       case _ =>
         Future.successful(List.empty) //no additional action to take
     }.flatten
@@ -438,22 +417,18 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * for concision and efficiency purposes. We may want to consider using IO instead
     * of Future in general.
     *
-    * @param network Current Blockchain network we're getting blocks from
     * @param hash Hash of the block where the fork was detected
     * @return Future of List of Blocks that were missed during the Fork, in reverse order
     */
-  def followFork(
-    network: String,
-    missingBlock: Block
-  ): Future[List[BlockAction]] = {
+  def followFork(missingBlock: Block): Future[List[BlockAction]] = {
 
     import tech.cryptonomic.conseil.util.EffectConversionUtil._
     import cats.data._
     import cats.implicits._
 
-    logger.info(s"An inconsistent block was detected at level ${missingBlock.metadata.header.level}, with hash ${missingBlock.metadata.hash.value}, possibly from a forked branch, I'm syncing ...")
+    logger.info(s"An inconsistent block was detected at level ${missingBlock.data.header.level}, with hash ${missingBlock.data.hash.value}, possibly from a forked branch, I'm syncing ...")
 
-    implicit val db = operations.dbHandle
+    implicit val db = ApiOperations.dbHandle
 
     /* just for clarity
      * Kleisli[IO, A, B] is a typed wrapper to a function of type: A => IO[B]
@@ -463,17 +438,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //load a block for an offset
     val getBlockIO = Kleisli[IO, Option[Int], Block]{
-      (maybeOffset) => futureToIO(getBlock(network, missingBlock.metadata.hash, maybeOffset))
+      (maybeOffset) => futureToIO(getBlock(missingBlock.data.hash, maybeOffset))
     }
 
     //check if the block is on db
     val blockExists = Kleisli[IO, Block, Boolean]{
-      block => runToIO(TezosDatabaseOperations.blockExists(block.metadata.hash))
+      block => runToIO(TezosDatabaseOperations.blockExists(block.data.hash))
     }
 
     //check if the block is on the invalidated list
     val blockHasBeenInvalidated = Kleisli[IO, Block, Boolean]{
-      block => runToIO(TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.metadata.hash))
+      block => runToIO(TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.data.hash))
     }
 
     //given the same input, computes both outputs
@@ -533,6 +508,26 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       .unsafeToFuture()
   }
 
+  def getBlocks(
+    reference: (BlockHash, Int),
+    levelRange: Range.Inclusive,
+    followFork: Boolean = false
+  ): Future[BlockFetchingResults] = {
+
+    val emptyAccountRefs = List.empty[AccountId]
+    val blocksFromRange = getBlocks(reference, levelRange)
+    val maxOffset = levelRange.end - levelRange.start + 1
+
+    val blocksFromFork =
+      if (followFork && levelRange.start > 0) getForkedBlocks(reference._1, maxOffset)
+      else List.empty.pure
+
+    for {
+      range <- blocksFromRange
+      fork <- blocksFromFork
+      forkResults = fork.iterator.map(blockAction => blockAction -> emptyAccountRefs)
+    } yield (range ++ forkResults)
+  }
 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
@@ -580,7 +575,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         case (offset, md) =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-          (parseMichelsonScripts(Block(md, ops, votes)), accs)
+          (WriteBlock(parseMichelsonScripts(Block(md, ops, votes))), accs)
       }
     }
   }
@@ -683,7 +678,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
     * @return                 Bytes of the signed operation along with the actual signature
     */
   def signOperationGroup(forgedOperation: String, keyStore: KeyStore): Try[SignedOperationGroup] = Try{
-    SodiumLibrary.setLibraryPath(sodiumLibraryPath)
     val privateKeyBytes = CryptoUtil.base58CheckDecode(keyStore.privateKey, "edsk").get
     val watermark = "03"  // In the future, we must support "0x02" for endorsements and "0x01" for block signing.
     val watermarkedForgedOperationBytes = SodiumUtils.hex2Binary(watermark + forgedOperation)
@@ -701,7 +695,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
     */
   def computeOperationHash(signedOpGroup: SignedOperationGroup): Try[String] =
     Try{
-      SodiumLibrary.setLibraryPath(sodiumLibraryPath)
       SodiumLibrary.cryptoGenerichash(signedOpGroup.bytes, 32)
     }.flatMap { hash =>
       CryptoUtil.base58CheckEncode(hash.toList, "op")
@@ -843,7 +836,6 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
     * @return A new key pair along with a public key hash
     */
   def createIdentity(): Try[KeyStore] = {
-    SodiumLibrary.setLibraryPath(sodiumLibraryPath)
 
     //The Java bindings for libSodium don't support generating a key pair from a seed.
     //We will revisit this later in order to support mnemomics and passphrases
