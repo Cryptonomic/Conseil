@@ -25,7 +25,7 @@ object TezosTypes {
     private val storage = GenLens[Contracts](_.storage)
     private val code = GenLens[Contracts](_.code)
 
-    private val string = GenLens[Micheline](_.expression)
+    private val expression = GenLens[Micheline](_.expression)
 
     private val scriptLens: Traversal[Block, Contracts] =
       operationGroups composeTraversal each composeLens
@@ -33,15 +33,15 @@ object TezosTypes {
         origination composeLens
         script composePrism some
 
-    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens string
-    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens string
+    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens expression
+    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens expression
 
     val parametersLens: Traversal[Block, String] =
       operationGroups composeTraversal each composeLens
         operations composeTraversal each composePrism
         transaction composeLens
         parameters composePrism some composeLens
-        string
+        expression
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
