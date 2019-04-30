@@ -9,19 +9,22 @@ object Versioning {
     (s: String) => (("0" * upto) ++ s.take(upto)) takeRight upto
 
   //currently allows "-SNAPSHOT" as a valid suffix for a release
-  val releasePattern = raw"^ci-release-(\d+)(-.*)?".r
+  val releasePattern = raw"^(.+)-release-(\d+)(-.*)?".r
 
   /**
     * implement the logic for versioning explained in the build file
     * the tag parameter should have a format like:
+    *
     *   ci-release-1-3-d3a9863 <-- this latter part is the result of `git describe`
-    *              ^
-    *              |- this is the version we care about
+    *   ^          ^
+    *   |          |- this is the version we care about
+    *   |
+    *   |- freeform ('ci' would be the one used by sbt tagging)
     */
   def generate(major: Int, date: LocalDate, tag: String): String = {
     val week = zeroPadded(2)(date.get(temporal.ChronoField.ALIGNED_WEEK_OF_YEAR).toString)
     val year = date.getYear.toString.takeRight(2)
-    val nextTagVersion = releasePattern.findAllIn(tag).group(1).toInt + 1
+    val nextTagVersion = releasePattern.findAllIn(tag).group(2).toInt + 1
     val paddedTagVersion = zeroPadded(4)(String.valueOf(nextTagVersion))
     s"$major.$year$week.$paddedTagVersion"
   }
