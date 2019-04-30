@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
@@ -127,7 +127,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import TezosOptics.Accounts.{scriptLense, storageLense}
+    import TezosOptics.Accounts.{scriptLens, storageLens}
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     implicit val fetcherInstance = accountFetcher(blockHash)
@@ -136,8 +136,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
     def parseMichelsonScripts(account: Account): Account = {
-      val scriptAlter = scriptLense.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLense.modify(toMichelsonScript[MichelsonInstruction])
+      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (scriptAlter compose storageAlter)(account)
     }
@@ -412,9 +412,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     }
   }
 
-  private def toMichelsonScript[T <: MichelsonElement : Parser](json: Any)(implicit tag: ClassTag[T]): String = {
+  private def toMichelsonScript[T <: MichelsonElement : Parser](json: String)(implicit tag: ClassTag[T]): String = {
 
-    def unparsableResult(json: Any, exception: Option[Throwable] = None) = {
+    def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
       exception match {
         case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
         case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
@@ -423,15 +423,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       s"Unparsable code: $json"
     }
 
-    def parse(json: Any) = {
-      Some(json).collect {
-        case t: String => convert[T](t)
-        case t: Micheline => convert[T](t.expression)
-      } match {
-        case Some(Right(value)) => value
-        case Some(Left(t)) => unparsableResult(json, Some(t))
-        case _ => unparsableResult(json)
-      }
+    def parse(json: String): String = convert[T](json) match {
+      case Right(convertedResult) => convertedResult
+      case Left(exception) => unparsableResult(json, Some(exception))
     }
 
     Try(parse(json)).getOrElse(unparsableResult(json))

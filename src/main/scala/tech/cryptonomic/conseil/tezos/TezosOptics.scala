@@ -45,13 +45,13 @@ object TezosOptics {
 
     private val storageCode = GenLens[Contracts](_.storage)
 
-    private val micheline = GenLens[Micheline](_.expression)
+    private val expression = GenLens[Micheline](_.expression)
 
     /** an optional lens allowing to reach into the script code field of an account*/
-    val scriptLense = accountScript composePrism some composeLens contractsCode composeLens micheline
+    val scriptLens = accountScript composePrism some composeLens contractsCode composeLens expression
 
     /** an optional lens allowing to reach into the script storage field of an account*/
-    val storageLense = accountScript composePrism some composeLens storageCode composeLens micheline
+    val storageLens = accountScript composePrism some composeLens storageCode composeLens expression
   }
 
 }
