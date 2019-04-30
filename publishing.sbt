@@ -10,7 +10,7 @@ enablePlugins(GitVersioning)
 /* The versioning scheme is
  *  - use a major number as the platform version
  *  - add a date reference in form of yyww (year + week in year)
- *  - use the latest git tag formatted as "ci-release-<xyz>" and take the numbers from xyz, increasing it
+ *  - use the latest git tag formatted as "<anything>-release-<xyz>[-optionally-anything-else]" and take the numbers from xyz, increasing it
  * Compose the three separated by "dots" to have the version that will be released
  * The Git plugin will add a trailing "-SNAPSHOT" if there are locally uncommitted changes
  */
