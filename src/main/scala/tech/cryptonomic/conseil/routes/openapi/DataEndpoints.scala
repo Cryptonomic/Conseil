@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.tezos.ApiOperations.{Filter, BlockResult, OperationGroupResult, AccountResult}
+import tech.cryptonomic.conseil.tezos.ApiTypes.{Filter, BlockResult, OperationGroupResult, AccountResult}
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow

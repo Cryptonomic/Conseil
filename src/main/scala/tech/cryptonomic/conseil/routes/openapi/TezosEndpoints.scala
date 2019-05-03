@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
-import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.tezos.ApiTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
@@ -10,7 +10,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
   private val commonPath = path / "tezos" / segment[String](name = "network")
 
   /** Blocks endpoint definition */
-  def blocksEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[BlocksRow]] =
+  def blocksEndpointV1: Endpoint[(String, Filter, String), Seq[BlocksRow]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" /? qsFilter,
@@ -30,17 +30,17 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Blocks by hash endpoint definition */
-  def blockByHashEndpointV1: Endpoint[(String, String, String), Option[ApiOperations.BlockResult]] =
+  def blockByHashEndpointV1: Endpoint[(String, String, String), Option[BlockResult]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" / segment[String](name = "hash"),
         headers = header("apiKey")),
-      response = jsonResponse[ApiOperations.BlockResult](docs = Some("Endpoint for block")).orNotFound(Some("Not found")),
+      response = jsonResponse[BlockResult](docs = Some("Endpoint for block")).orNotFound(Some("Not found")),
       tags = List("Blocks")
     )
 
   /** Accounts endpoint definition */
-  def accountsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[AccountsRow]] =
+  def accountsEndpointV1: Endpoint[(String, Filter, String), Seq[AccountsRow]] =
     endpoint(
       request = get(
         url = commonPath / "accounts" /? qsFilter,
@@ -50,17 +50,17 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Accounts by ID endpoint definition */
-  def accountByIdEndpointV1: Endpoint[(String, String, String), Option[ApiOperations.AccountResult]] =
+  def accountByIdEndpointV1: Endpoint[(String, String, String), Option[AccountResult]] =
     endpoint(
       request = get(
         url = commonPath / "accounts" / segment[String](name = "accountId"),
         headers = header("apiKey")),
-      response = jsonResponse[ApiOperations.AccountResult](docs = Some("Endpoint for account")).orNotFound(Some("Not found")),
+      response = jsonResponse[AccountResult](docs = Some("Endpoint for account")).orNotFound(Some("Not found")),
       tags = List("Accounts")
     )
 
   /** Operation group endpoint definition */
-  def operationGroupsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[OperationGroupsRow]] =
+  def operationGroupsEndpointV1: Endpoint[(String, Filter, String), Seq[OperationGroupsRow]] =
     endpoint(
       request = get(
         url = commonPath / "operation_groups" /? qsFilter,
@@ -70,17 +70,17 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Operation groups by ID endpoint definition */
-  def operationGroupByIdEndpointV1: Endpoint[(String, String, String), Option[ApiOperations.OperationGroupResult]] =
+  def operationGroupByIdEndpointV1: Endpoint[(String, String, String), Option[OperationGroupResult]] =
     endpoint(
       request = get(
         url = commonPath / "operation_groups" / segment[String](name = "operationGroupId"),
         headers = header("apiKey")),
-      response = jsonResponse[ApiOperations.OperationGroupResult](docs = Some("Endpoint for operation group")).orNotFound(Some("Not found")),
+      response = jsonResponse[OperationGroupResult](docs = Some("Endpoint for operation group")).orNotFound(Some("Not found")),
       tags = List("Operation groups")
     )
 
   /** Operations endpoint definition */
-  def operationsEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Seq[OperationsRow]] =
+  def operationsEndpointV1: Endpoint[(String, Filter, String), Seq[OperationsRow]] =
     endpoint(
       request = get(
         url = commonPath / "operations" /? qsFilter,
@@ -90,7 +90,7 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Average fees endpoint definition */
-  def avgFeesEndpointV1: Endpoint[(String, ApiOperations.Filter, String), Option[AverageFees]] =
+  def avgFeesEndpointV1: Endpoint[(String, Filter, String), Option[AverageFees]] =
     endpoint(
       request = get(
         url = commonPath / "operations" / "avgFees" /? qsFilter,

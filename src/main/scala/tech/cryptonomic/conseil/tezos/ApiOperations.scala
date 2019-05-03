@@ -10,12 +10,8 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
-  * Functionality for fetching data from the Conseil database.
-  */
-object ApiOperations extends DataOperations with MetadataOperations {
-
-  lazy val dbHandle: Database = DatabaseUtil.db
+/** conseil api-related types and definitions */
+object ApiTypes {
 
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
@@ -32,6 +28,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
       case _ => None
     }
   }
+
   import Filter._
 
   /**
@@ -53,155 +50,171 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param sortBy                 Database column name to sort by
     * @param order                  Sort items ascending or descending
     */
-  final case class Filter(
-    limit: Option[Int] = Some(defaultLimit),
-    blockIDs: Set[String] = Set.empty,
-    levels: Set[Int] = Set.empty,
-    chainIDs: Set[String] = Set.empty,
-    protocols: Set[String] = Set.empty,
-    operationGroupIDs: Set[String] = Set.empty,
-    operationSources: Set[String] = Set.empty,
-    operationDestinations: Set[String] = Set.empty,
-    operationParticipants: Set[String] = Set.empty,
-    operationKinds: Set[String] = Set.empty,
-    accountIDs: Set[String] = Set.empty,
-    accountManagers: Set[String] = Set.empty,
-    accountDelegates: Set[String] = Set.empty,
-    sortBy: Option[String] = None,
-    order: Option[Sorting] = Some(DescendingSort)
-  ) {
+    final case class Filter(
+      limit: Option[Int] = Some(defaultLimit),
+      blockIDs: Set[String] = Set.empty,
+      levels: Set[Int] = Set.empty,
+      chainIDs: Set[String] = Set.empty,
+      protocols: Set[String] = Set.empty,
+      operationGroupIDs: Set[String] = Set.empty,
+      operationSources: Set[String] = Set.empty,
+      operationDestinations: Set[String] = Set.empty,
+      operationParticipants: Set[String] = Set.empty,
+      operationKinds: Set[String] = Set.empty,
+      accountIDs: Set[String] = Set.empty,
+      accountManagers: Set[String] = Set.empty,
+      accountDelegates: Set[String] = Set.empty,
+      sortBy: Option[String] = None,
+      order: Option[Sorting] = Some(DescendingSort)
+    ) {
 
-    /** transforms Filter into a Query with a set of predicates */
-    def toQuery: DataTypes.Query = {
-      Query(
-        fields = List.empty,
-        predicates = List(
-          Predicate(
-            field = "block_id",
-            operation = OperationType.in,
-            set = blockIDs.toList
-          ),
-          Predicate(
-            field = "level",
-            operation = OperationType.in,
-            set = levels.toList
-          ),
-          Predicate(
-            field = "chain_id",
-            operation = OperationType.in,
-            set = chainIDs.toList
-          ),
-          Predicate(
-            field = "protocol",
-            operation = OperationType.in,
-            set = protocols.toList
-          ),
-          Predicate(
-            field = "level",
-            operation = OperationType.in,
-            set = levels.toList
-          ),
-          Predicate(
-            field = "group_id",
-            operation = OperationType.in,
-            set = operationGroupIDs.toList
-          ),
-          Predicate(
-            field = "source",
-            operation = OperationType.in,
-            set = operationSources.toList
-          ),
-          Predicate(
-            field = "destination",
-            operation = OperationType.in,
-            set = operationDestinations.toList
-          ),
-          Predicate(
-            field = "participant",
-            operation = OperationType.in,
-            set = operationParticipants.toList
-          ),
-          Predicate(
-            field = "kind",
-            operation = OperationType.in,
-            set = operationKinds.toList
-          ),
-          Predicate(
-            field = "account_id",
-            operation = OperationType.in,
-            set = accountIDs.toList
-          ),
-          Predicate(
-            field = "manager",
-            operation = OperationType.in,
-            set = accountManagers.toList
-          ),
-          Predicate(
-            field = "delegate",
-            operation = OperationType.in,
-            set = accountDelegates.toList
-          )
-        ).filter(_.set.nonEmpty),
-        limit = limit.getOrElse(DataTypes.defaultLimitValue),
-        orderBy = sortBy.map { o =>
-          val direction = order match {
-            case Some(AscendingSort) => OrderDirection.asc
-            case _ => OrderDirection.desc
-          }
-          QueryOrdering(o, direction)
-        }.toList
-      )
+      /** transforms Filter into a Query with a set of predicates */
+      def toQuery: DataTypes.Query = {
+        Query(
+          fields = List.empty,
+          predicates = List(
+            Predicate(
+              field = "block_id",
+              operation = OperationType.in,
+              set = blockIDs.toList
+            ),
+            Predicate(
+              field = "level",
+              operation = OperationType.in,
+              set = levels.toList
+            ),
+            Predicate(
+              field = "chain_id",
+              operation = OperationType.in,
+              set = chainIDs.toList
+            ),
+            Predicate(
+              field = "protocol",
+              operation = OperationType.in,
+              set = protocols.toList
+            ),
+            Predicate(
+              field = "level",
+              operation = OperationType.in,
+              set = levels.toList
+            ),
+            Predicate(
+              field = "group_id",
+              operation = OperationType.in,
+              set = operationGroupIDs.toList
+            ),
+            Predicate(
+              field = "source",
+              operation = OperationType.in,
+              set = operationSources.toList
+            ),
+            Predicate(
+              field = "destination",
+              operation = OperationType.in,
+              set = operationDestinations.toList
+            ),
+            Predicate(
+              field = "participant",
+              operation = OperationType.in,
+              set = operationParticipants.toList
+            ),
+            Predicate(
+              field = "kind",
+              operation = OperationType.in,
+              set = operationKinds.toList
+            ),
+            Predicate(
+              field = "account_id",
+              operation = OperationType.in,
+              set = accountIDs.toList
+            ),
+            Predicate(
+              field = "manager",
+              operation = OperationType.in,
+              set = accountManagers.toList
+            ),
+            Predicate(
+              field = "delegate",
+              operation = OperationType.in,
+              set = accountDelegates.toList
+            )
+          ).filter(_.set.nonEmpty),
+          limit = limit.getOrElse(DataTypes.defaultLimitValue),
+          orderBy = sortBy.map { o =>
+            val direction = order match {
+              case Some(AscendingSort) => OrderDirection.asc
+              case _ => OrderDirection.desc
+            }
+            QueryOrdering(o, direction)
+          }.toList
+        )
+      }
     }
-  }
 
-  object Filter {
+    object Filter {
 
-    /** builds a filter from incoming string-based parameters */
-    def readParams(
-      limit: Option[Int],
-      blockIDs: Iterable[String],
-      levels: Iterable[Int],
-      chainIDs: Iterable[String],
-      protocols: Iterable[String],
-      operationGroupIDs: Iterable[String],
-      operationSources: Iterable[String],
-      operationDestinations: Iterable[String],
-      operationParticipants: Iterable[String],
-      operationKinds: Iterable[String],
-      accountIDs: Iterable[String],
-      accountManagers: Iterable[String],
-      accountDelegates: Iterable[String],
-      sortBy: Option[String],
-      order: Option[String]
-    ): Filter =
-      Filter(
-        limit,
-        blockIDs.toSet,
-        levels.toSet,
-        chainIDs.toSet,
-        protocols.toSet,
-        operationGroupIDs.toSet,
-        operationSources.toSet,
-        operationDestinations.toSet,
-        operationParticipants.toSet,
-        operationKinds.toSet,
-        accountIDs.toSet,
-        accountManagers.toSet,
-        accountDelegates.toSet,
-        sortBy,
-        order.flatMap(Sorting.fromString)
-      )
+      /** builds a filter from incoming string-based parameters */
+      def readParams(
+        limit: Option[Int],
+        blockIDs: Iterable[String],
+        levels: Iterable[Int],
+        chainIDs: Iterable[String],
+        protocols: Iterable[String],
+        operationGroupIDs: Iterable[String],
+        operationSources: Iterable[String],
+        operationDestinations: Iterable[String],
+        operationParticipants: Iterable[String],
+        operationKinds: Iterable[String],
+        accountIDs: Iterable[String],
+        accountManagers: Iterable[String],
+        accountDelegates: Iterable[String],
+        sortBy: Option[String],
+        order: Option[String]
+      ): Filter =
+        Filter(
+          limit,
+          blockIDs.toSet,
+          levels.toSet,
+          chainIDs.toSet,
+          protocols.toSet,
+          operationGroupIDs.toSet,
+          operationSources.toSet,
+          operationDestinations.toSet,
+          operationParticipants.toSet,
+          operationKinds.toSet,
+          accountIDs.toSet,
+          accountManagers.toSet,
+          accountDelegates.toSet,
+          sortBy,
+          order.flatMap(Sorting.fromString)
+        )
 
-    // Common values
+      // Common values
 
-    // default limit on output results, if not available as call input
-    val defaultLimit = 10
+      // default limit on output results, if not available as call input
+      val defaultLimit = 10
 
-  }
+    }
 
-  case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
-  case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
-  case class AccountResult(account: Tables.AccountsRow)
+    case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
+    case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
+    case class AccountResult(account: Tables.AccountsRow)
+
+}
+
+/** default instance */
+object ApiOperations extends ApiOperations with DataOperations with MetadataOperations {
+  override lazy val dbHandle: Database = DatabaseUtil.db
+}
+
+/**
+ * Functionality for fetching data from the Conseil database.
+ */
+trait ApiOperations extends DataOperations with MetadataOperations {
+  import ApiTypes._
+
+  /** how to access the database */
+  def dbHandle: Database
 
   /**
     * Fetches the level of the most recent block stored in the database.

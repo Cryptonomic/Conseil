@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.db
 
 import tech.cryptonomic.conseil.tezos.{ApiFiltering, ApiOperations, Tables, TezosDatabaseOperations}
-import tech.cryptonomic.conseil.tezos.ApiOperations._
+import tech.cryptonomic.conseil.tezos.ApiTypes._
 import slick.jdbc.PostgresProfile.api._
 
 import scala.language.higherKinds

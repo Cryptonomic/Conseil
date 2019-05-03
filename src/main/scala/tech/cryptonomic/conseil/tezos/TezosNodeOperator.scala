@@ -11,8 +11,9 @@ import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 
-import cats.instances.future._
-import cats.syntax.applicative._
+import cats._
+import cats.implicits._
+import cats.data.Kleisli
 import scala.{Stream => _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -79,6 +80,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   type BallotBlock = (Block, List[Voting.Ballot])
   type BakerBlock = (Block, List[Voting.BakerRolls])
 
+  //use this handle to override the operations injected references for testing purposes
+  protected lazy val operations: ApiOperations = ApiOperations
+
   /**
     * A sum type representing the actions that can happen with a block read from the node,
     * both as new ones and previous ones detected during a fork.
@@ -141,8 +145,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
-    import cats.instances.future._
-    import cats.instances.list._
     import TezosOptics.Accounts.optionalScriptCode
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
@@ -223,10 +225,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   /** Fetches votes information for the block */
   def getCurrentVotesForBlock(block: BlockData, offset: Option[Offset] = None): Future[CurrentVotes] =
     if (isGenesis(block))
-      CurrentVotes.empty.pure
+      CurrentVotes.empty.pure[Future]
     else {
       import JsonDecoders.Circe._
-      import cats.syntax.apply._
 
       val offsetString = offset.map(_.toString).getOrElse("")
       val hashString = block.hash.value
@@ -246,9 +247,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
   def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock])] = {
-    import cats.instances.future._
-    import cats.instances.list._
-    import cats.syntax.apply._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     //adapt the proposal protocols result to include the block
@@ -331,7 +329,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   def getBlocksNotInDatabase(followFork: Boolean = false): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- ApiOperations.fetchMaxLevel
+      maxLevel <- operations.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -376,15 +374,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   /*
    * If the currently stored block of highest level is not the same returned by the node, reload that
    * and all the missing predecessors on the fork, with actions to re-sync conseil data with the blockchain
+   *
+   * We start looking at headHash ~ maxOffset and backtrack to increasing offsets up to the deepest level stored still disagreeing
+   * with the current chain from the node
+   *
+   * @param headBlockHash the hash of the current chain head block
+   * @param maxLevelOffset the offset from the head that should be already stored, yet diverges from the current level on chain
    */
   private def getForkedBlocks(headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockAction]] = {
 
-    import cats._
-    import cats.instances.future._
 
     //read the latest stored top-level and the corresponding one from the current chain
     val highestLevelFromChain = getBlock(headBlockHash, Some(maxLevelOffset))//chain block
-    val highestLevelOnConseil = ApiOperations.fetchLatestBlock() //stored block
+    val highestLevelOnConseil = operations.fetchLatestBlock() //stored block
 
     //compare the results and in case read the missing data from the fork
     Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
@@ -405,7 +407,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         logger.warn("There's no latest block stored on Conseil, corresponding to level {}. Trying to recover from the remote node", remote.data.header.level)
         followFork(remote) //the local block for that level is missing... this shouldn't actually happen!
       case _ =>
-        Future.successful(List.empty) //no additional action to take
+        List.empty.pure[Future] //no additional action to take
     }.flatten
   }
 
@@ -423,12 +425,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def followFork(missingBlock: Block): Future[List[BlockAction]] = {
 
     import tech.cryptonomic.conseil.util.EffectConversionUtil._
-    import cats.data._
-    import cats.implicits._
 
     logger.info(s"An inconsistent block was detected at level ${missingBlock.data.header.level}, with hash ${missingBlock.data.hash.value}, possibly from a forked branch, I'm syncing ...")
 
-    implicit val db = ApiOperations.dbHandle
+    implicit val db = operations.dbHandle
 
     /* just for clarity
      * Kleisli[IO, A, B] is a typed wrapper to a function of type: A => IO[B]
@@ -511,7 +511,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getBlocks(
     reference: (BlockHash, Int),
     levelRange: Range.Inclusive,
-    followFork: Boolean = false
+    followFork: Boolean
   ): Future[BlockFetchingResults] = {
 
     val emptyAccountRefs = List.empty[AccountId]
@@ -520,7 +520,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     val blocksFromFork =
       if (followFork && levelRange.start > 0) getForkedBlocks(reference._1, maxOffset)
-      else List.empty.pure
+      else List.empty.pure[Future]
 
     for {
       range <- blocksFromRange
@@ -539,8 +539,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     reference: (BlockHash, Int),
     levelRange: Range.Inclusive
   ): Future[BlockFetchingResults] = {
-    import cats.instances.future._
-    import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
 
     val (hashRef, levelRef) = reference

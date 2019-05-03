@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import tech.cryptonomic.conseil.tezos.ApiOperations._
+import tech.cryptonomic.conseil.tezos.ApiTypes.Filter
 import scala.language.higherKinds
 
 object ApiFiltering {

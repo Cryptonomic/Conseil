@@ -33,6 +33,10 @@ class TezosNodeOperatorForkTest
 
   val mocks = MockTezosNodes
 
+  val testApi = new ApiOperations {
+    override val dbHandle = dbHandler
+  }
+
   /*
    * The following diagrams outlines all testing scenarios available
    *
@@ -77,8 +81,6 @@ class TezosNodeOperatorForkTest
    */
 
   "The Node Operator" should {
-
-    val network = "tezos"
 
     "load blocks to save in the no-fork scenario" in {
       //SCENARIO 1 on the scheme
@@ -194,7 +196,9 @@ class TezosNodeOperatorForkTest
    * - a test database access
    */
   private def createTestOperator(node: TezosRPCInterface) =
-    new TezosNodeOperator(node, network = "", batchConf = config)
+    new TezosNodeOperator(node, network = "tezos", batchConf = config) {
+      override lazy val operations = testApi
+    }
 
   /* store rows on the db as blocks */
   private def store(sut: TezosNodeOperator)(actions: sut.BlockFetchingResults): Future[_] = {

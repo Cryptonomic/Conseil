@@ -15,8 +15,13 @@ object MockTezosNodes {
   private val HashEndpointMatch = """blocks/([A-Za-z0-9]+)~(\d+)""".r
   //endpoint matcher for operation requests, no need to extract
   private val OperationsEndpointMatch = """blocks/([A-Za-z0-9]+)/operations""".r
+  //endpoint matcher for votes, no need to extract
+  private val VotesEndpointMatch = """blocks/([A-Za-z0-9]+)~*/votes/(.+)""".r
 
   private val emptyBlockOperationsResult = Future.successful("[[]]")
+  private val votesQuorumResult = Future.successful("1000")
+  private val votesProposalResult = Future.successful("null")
+  private val votesPeriodResult = Future.successful(""" "proposal" """)
 
   /* expected head hash based on branch and level
    * this must match the base file hash returned from the mock node when the head block is requested
@@ -92,6 +97,12 @@ object MockTezosNodes {
               }
           case OperationsEndpointMatch(_) =>
             emptyBlockOperationsResult //ignoring the matched hash
+          case VotesEndpointMatch(_, "current_quorum") =>
+            votesQuorumResult //ignoring the matched hash
+          case VotesEndpointMatch(_, "current_period_kind") =>
+            votesPeriodResult //ignoring the matched hash
+          case VotesEndpointMatch(_, "current_proposal") =>
+            votesProposalResult //ignoring the matched hash
           case _ =>
             throw new IllegalStateException(s"Unexpected request path in $command")
         }
