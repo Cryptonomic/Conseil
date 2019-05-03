@@ -5,8 +5,31 @@ A blockchain indexer for building decentralized applications, currently focused 
 Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. Check out [ConseilJS](https://github.com/Cryptonomic/ConseilJS) for a Typescript wrapper with a Tezos node interface.
 
 ## Running Conseil
+ 
+### Starting and Stopping
 
-### Configuration
+There are two processes to consider, lorre and conseil.  Lorre retrieves blocks from the tezos node and places it in the db, conseil provides the front end so that the end user and applications can interact with the blockchain.  
+
+To run lorre, an example command is:
+
+```java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet```
+
+In this command, the ```-Xms512m``` and ```-Xmx14g``` can be changed based on the amount of memory available on the system, the ```-Dconfig.file=conseil.conf``` can be changed to point to any user created config file contains the credentials for the respective db and tezos node, the file can also contain any overrides for settings provided by the ```application.conf``` file from the repo.  Lastly, ```alphanet``` is the network being run by the tezos node, it can and should be changed if running mainnet or zeronet.
+
+To run conseil, an example command is:
+
+```java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil```
+
+The characteristics of the attributes for lorre apply here as well, with the omission of the network name.  As this is the front end, it does not require as much of a memory commitment as Lorre given that conseil's main function is to interact with the chain on an ad-hoc basis.  
+
+Both of these can be placed in a bash file and also can be run as services.  Configuring this as a service is beyong the scope of this README.  
+
+###Logging
+
+Both conseil and lorre write to syslog, the logs are currently verbose enought to determine the point of synchronization between the db, the blockchain, and the status of lorre/conseil.  If any issues arise, please first check the log to see if the services are running and if the chain and db are synced as this would be the starting point of all troubleshooting enqueries. 
+
+
+### Configuration 
 
 ### Datasource configuration
 
