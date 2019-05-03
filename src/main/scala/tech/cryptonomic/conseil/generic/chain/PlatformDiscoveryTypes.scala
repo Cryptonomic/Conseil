@@ -9,13 +9,13 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.Key
 object PlatformDiscoveryTypes {
 
   /** Case class representing network */
-  final case class Platform(name: String, displayName: String)
+  final case class Platform(name: String, displayName: String, description: Option[String] = None)
 
   /** Case class representing network */
-  final case class Network(name: String, displayName: String, platform: String, network: String)
+  final case class Network(name: String, displayName: String, platform: String, network: String, description: Option[String] = None)
 
   /** Case class representing single entity of a given network */
-  final case class Entity(name: String, displayName: String, count: Int)
+  final case class Entity(name: String, displayName: String, count: Int, description: Option[String] = None)
 
   /** Case class representing single attribute of given entity from DB */
   final case class Attribute(
@@ -24,7 +24,10 @@ object PlatformDiscoveryTypes {
     dataType: DataType,
     cardinality: Option[Int],
     keyType: KeyType,
-    entity: String
+    entity: String,
+    description: Option[String] = None,
+    placeholder: Option[String] = None,
+    dataformat: Option[String] = None
   )
 
   /** Enumeration of data types */

@@ -29,10 +29,10 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
   def attribute(path: AttributePath): Option[AttributeConfiguration] = entity(path.up).flatMap(_.attributes.get(path.attribute))
 }
 
-case class PlatformConfiguration(displayName: Option[String], visible: Option[Boolean], networks: Map[NetworkName, NetworkConfiguration] = Map.empty)
+case class PlatformConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, networks: Map[NetworkName, NetworkConfiguration] = Map.empty)
 
-case class NetworkConfiguration(displayName: Option[String], visible: Option[Boolean], entities: Map[EntityName, EntityConfiguration] = Map.empty)
+case class NetworkConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, entities: Map[EntityName, EntityConfiguration] = Map.empty)
 
-case class EntityConfiguration(displayName: Option[String], visible: Option[Boolean], attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)
+case class EntityConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)
 
-case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean])
+case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, placeholder: Option[String] = None, dataformat: Option[String] = None)

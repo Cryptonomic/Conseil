@@ -60,9 +60,9 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       }
     }
 
-    "should rename platform's display name" in {
+    "should rename platform's display name and description" in {
       // given
-      val overridesConfiguration = Map("tezos" -> PlatformConfiguration(Some("overwritten-name"), Some(true)))
+      val overridesConfiguration = Map("tezos" -> PlatformConfiguration(Some("overwritten-name"), Some(true), Some("description")))
 
       // when
       Get("/v2/metadata/platforms") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
@@ -72,13 +72,14 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         contentType shouldBe ContentTypes.`application/json`
         val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
         result.head("displayName") shouldBe "overwritten-name"
+        result.head("description") shouldBe "description"
       }
     }
 
     "expose an endpoint to get the list of supported networks" in {
       // given
       val overridesConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, Some(true), Map("mainnet" ->
+        PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true)))))
 
       // when
@@ -98,8 +99,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
 
       val overridesConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, Some(true), Map("mainnet" ->
-          NetworkConfiguration(None, Some(true), Map("entity" ->
+        PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), None, Map("entity" ->
             EntityConfiguration(None, Some(true)))))))
 
       // when
@@ -121,9 +122,9 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
       val overridesConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, Some(true), Map("mainnet" ->
-          NetworkConfiguration(None, Some(true), Map("entity" ->
-            EntityConfiguration(None, Some(true), Map("attribute" ->
+        PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), None, Map("entity" ->
+            EntityConfiguration(None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(None, Some(true)))))))))
 
       // when
@@ -138,14 +139,40 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       }
     }
 
+    "override additional data for attributes" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
+      (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+
+      val overridesConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), None, Map("entity" ->
+            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+              AttributeConfiguration(None, Some(true), Some("description"), Some("placeholder"), Some("dataformat")))))))))
+
+      // when
+      Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
+
+        // then
+        status shouldEqual StatusCodes.OK
+        contentType shouldBe ContentTypes.`application/json`
+        val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
+        result.head("name") shouldBe "attribute"
+        result.head("displayName") shouldBe "attribute-name"
+        result.head("description") shouldBe "description"
+        result.head("placeholder") shouldBe "placeholder"
+        result.head("dataformat") shouldBe "dataformat"
+      }
+    }
+
     "return 404 on getting attributes when parent entity is not enabled" in {
       // given
       (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 1))))
       (tezosPlatformDiscoveryOperations.getTableAttributes _).when("entity").returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
 
       val overridesConfiguration = Map("tezos" ->
-        PlatformConfiguration(None, Some(true), Map("mainnet" ->
-          NetworkConfiguration(None, Some(true)))))
+        PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), None))))
 
       // when
       Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
