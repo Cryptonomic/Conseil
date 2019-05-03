@@ -291,7 +291,8 @@ class TezosDatabaseOperationsTest
           row.delegateSetable shouldEqual account.delegate.setable
           row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.code.toString)
+          row.script shouldEqual account.script.map(_.code.expression)
+          row.storage shouldEqual account.script.map(_.storage.expression)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual block.level
       }
@@ -359,7 +360,8 @@ class TezosDatabaseOperationsTest
           row.delegateSetable shouldEqual account.delegate.setable
           row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.code.toString)
+          row.script shouldEqual account.script.map(_.code.expression)
+          row.storage shouldEqual account.script.map(_.storage.expression)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual levelUpdate
       }

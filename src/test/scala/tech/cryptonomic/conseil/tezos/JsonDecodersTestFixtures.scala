@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import TezosTypes._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 /* defines example tezos json definitions of accounts and typed counterparts used in the tests */
 trait AccountsJsonData {
@@ -46,8 +47,8 @@ trait AccountsJsonData {
     |  }
     |}""".stripMargin
 
-  val expectedScript = AccountScript(
-    """{"code":[{"prim":"parameter","args":[{"prim":"string"}]}],"storage":{"string":"hello"}}"""
+  val expectedScript = Contracts(
+    storage = Micheline("""{"string":"hello"}"""), code = Micheline("""[{"prim":"parameter","args":[{"prim":"string"}]}]""")
   )
 
   val accountScriptedJson =

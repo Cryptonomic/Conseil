@@ -183,6 +183,15 @@ class JsonUtilTest extends WordSpec with Matchers with JsonMatchers {
       }
     }
 
+    "not match when no valid hash was found" in {
+      "invalid-hash" match {
+        case AccountIds(first) =>
+          fail("Account ids were matched incorrectly")
+        case _ =>
+          succeed
+      }
+    }
+
   }
 
 }
