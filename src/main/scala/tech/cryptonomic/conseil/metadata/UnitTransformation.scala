@@ -50,7 +50,7 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
         .flatMap(_.description),
       placeholder = overrideAttribute
         .flatMap(_.placeholder),
-      dataformat = overrideAttribute
-        .flatMap(_.dataformat))
+      dataFormat = overrideAttribute
+        .flatMap(_.dataFormat))
   }
 }

@@ -27,7 +27,7 @@ object PlatformDiscoveryTypes {
     entity: String,
     description: Option[String] = None,
     placeholder: Option[String] = None,
-    dataformat: Option[String] = None
+    dataFormat: Option[String] = None
   )
 
   /** Enumeration of data types */

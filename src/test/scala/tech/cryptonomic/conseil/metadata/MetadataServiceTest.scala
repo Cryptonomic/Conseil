@@ -273,13 +273,13 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
             EntityConfiguration(None, Some(true), None, Map("attribute" ->
-              AttributeConfiguration(Some("overwritten-name"), Some(true), Some("description"), Some("placeholder"), Some("dataformat")))))))))
+              AttributeConfiguration(Some("overwritten-name"), Some(true), Some("description"), Some("placeholder"), Some("dataFormat")))))))))
 
       // when
       val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
 
       // then
-      result shouldBe Some(List(Attribute("attribute", "overwritten-name", Int, None, NonKey, "entity", Some("description"), Some("placeholder"), Some("dataformat"))))
+      result shouldBe Some(List(Attribute("attribute", "overwritten-name", Int, None, NonKey, "entity", Some("description"), Some("placeholder"), Some("dataFormat"))))
     }
 
     "filter out a hidden attribute" in {
