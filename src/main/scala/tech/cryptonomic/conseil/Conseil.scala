@@ -5,11 +5,11 @@ import java.net.InetSocketAddress
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpEntity, HttpResponse, StatusCode}
+import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.server.{Directive, Directive0, ExceptionHandler, RouteResult}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.BasicDirectives
+import akka.http.scaladsl.server.{Directive, ExceptionHandler}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import cats.effect.concurrent.MVar
@@ -25,7 +25,7 @@ import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
-import scala.concurrent.{ExecutionContextExecutor, duration}
+import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success, Try}
 
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
@@ -134,9 +134,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           pathPrefix("swagger-ui") {
             getFromResourceDirectory("web/swagger-ui/")
           } ~
-          path("openapi.json") {
-            complete(OpenApiDoc.openapiJson)
-          }
+          Docs.route
       }
 
       displayInfo(server)
