@@ -87,7 +87,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * A sum type representing the actions that can happen with a block read from the node,
     * both as new ones and previous ones detected during a fork.
     */
-  sealed trait BlockAction extends Product with Serializable
+  sealed trait BlockAction extends Product with Serializable {
+    def block: Block
+  }
   /** block was invalid and should be restored as the valid one */
   case class RevalidateBlock(block: Block) extends BlockAction
   /** block wasn't present and should be added and made the valid one */
@@ -139,7 +141,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   /**
     * Fetches the accounts identified by id
-    *
+    *P
     * @param accountIds the ids
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
@@ -448,7 +450,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //check if the block is on the invalidated list
     val blockHasBeenInvalidated = Kleisli[IO, Block, Boolean]{
-      block => runToIO(TezosDatabaseOperations.blockExistsInInvalidatedBlocks(block.data.hash))
+      block => runToIO(TezosDatabaseOperations.blockIsInInvalidatedState(block.data.hash))
     }
 
     //given the same input, computes both outputs
@@ -472,6 +474,14 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
           lazy val reachedValid = exists && !invalidated
           lazy val invalidYetMissing = !exists && invalidated
           lazy val needRevalidation = exists && invalidated
+
+          println(s"""evaluating if need to go deeper
+                  | examined level ${block.data.header.level}
+                  | block hash is ${block.data.hash.value}
+                  | block is on the blocks table? $exists
+                  | block is invalidated? $invalidated
+                  | hence: reachedValid: $reachedValid; invalidYetMissing: $invalidYetMissing; needRevalidation: $needRevalidation
+                  |""".stripMargin)
 
           if (reachedValid)
             None
@@ -516,8 +526,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     val emptyAccountRefs = List.empty[AccountId]
     val blocksFromRange = getBlocks(reference, levelRange)
-    val maxOffset = levelRange.end - levelRange.start + 1
 
+    val maxOffset = levelRange.end - levelRange.start + 1
     val blocksFromFork =
       if (followFork && levelRange.start > 0) getForkedBlocks(reference._1, maxOffset)
       else List.empty.pure[Future]

@@ -7,7 +7,7 @@ import scala.concurrent.Future
 import scala.util.Try
 
 /** Defines mocking scenarios for testing against tezos nodes */
-object MockTezosNodes {
+object MockTezosForkingNodes {
 
   //endpoint to retrieves the head block
   private val headRequestUrl = "blocks/head"
@@ -131,7 +131,7 @@ object MockTezosNodes {
     */
   class Frame(max: Int) {
 
-    private[MockTezosNodes] val cursor = {
+    private[MockTezosForkingNodes] val cursor = {
       //a sychronized cell to hold a value, used to simplify a concurrent access to a var
       val synced = new scala.concurrent.SyncVar[Int]()
       synced.put(0)

@@ -361,14 +361,10 @@ trait ApiOperations extends DataOperations with MetadataOperations {
     * @return the most recent block, if one exists in the database.
     */
   private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[Tables.BlocksRow]] =
-    TezosDb.fetchMaxBlockLevel.flatMap(
-      maxLevel =>
-        Tables.Blocks
-          .filter(_.level === maxLevel)
-          .take(1)
-          .result
-          .headOption
-    )
+    for {
+      maxLevel <- TezosDb.fetchMaxBlockLevel
+      validBlocks <- TezosDb.validBlockForLevel(maxLevel)
+    } yield validBlocks.headOption
 
   /**
     * Counts all entities in the db

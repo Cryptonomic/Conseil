@@ -113,11 +113,12 @@ object TezosDatabaseOperations extends LazyLogging {
   private def markInvalids(level: Int, validHash: BlockHash)(implicit ec: ExecutionContext): DBIO[Int] =
     Tables.Blocks.filter(block => block.level === level && block.hash =!= validHash.value)
       .result
-      .map(rows => rows.map(_.convertTo[Tables.InvalidatedBlocksRow])
-    ).flatMap(
-      invalid =>
-        DBIO.sequence(invalid.map(Tables.InvalidatedBlocks.insertOrUpdate)).map(_.sum)
-    )
+      .map(
+        rows => rows.map(_.convertTo[Tables.InvalidatedBlocksRow])
+      ).flatMap(
+        invalid =>
+          DBIO.sequence(invalid.map(Tables.InvalidatedBlocks.insertOrUpdate)).map(_.sum)
+      )
 
   /**
     * Update invalidated blocks in the database table so that current block is revalidated, and all other blocks
@@ -313,10 +314,18 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Checks if a block for this hash has ever been invalidated
     * @param hash Identifies the block
-    * @return     true if block and operations exists
+    * @return     true if the block is in the invalidated table, regardless of its invalidation state
     */
   def blockExistsInInvalidatedBlocks(hash: BlockHash): DBIO[Boolean] =
     Tables.InvalidatedBlocks.findBy(_.hash).applied(hash.value).exists.result
+
+  /**
+    * Checks if a block for this hash has ever been invalidated
+    * @param hash Identifies the block
+    * @return     true if the block is in the invalidated table with and invalidated state
+    */
+  def blockIsInInvalidatedState(hash: BlockHash): DBIO[Boolean] =
+    Tables.InvalidatedBlocks.filter(invalidated => invalidated.hash === hash.value && invalidated.isInvalidated === true).exists.result
 
   /* use as max block level when none exists */
   private[tezos] val defaultBlockLevel: BigDecimal = -1
@@ -336,6 +345,16 @@ object TezosDatabaseOperations extends LazyLogging {
       .max
       .getOrElse(defaultBlockLevel.toInt)
       .result
+
+  /** Extracts all blocks for a given level, as long as they're not currently invalidated.
+    * On a consistency note, there should be at most one result available from the db
+    */
+  def validBlockForLevel(level: Int): DBIO[Seq[Tables.BlocksRow]] =
+    (for {
+      (block, invalidEntry) <- Tables.Blocks.filter(_.level === level) joinLeft Tables.InvalidatedBlocks on (_.hash === _.hash)
+      if invalidEntry.fold(true.bind)(entry => !entry.isInvalidated)
+    } yield block).result
+
 
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =
