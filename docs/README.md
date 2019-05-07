@@ -2,38 +2,41 @@
 
 A blockchain indexer for building decentralized applications, currently focused on Tezos.
 
-Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. Check out [ConseilJS](https://github.com/Cryptonomic/ConseilJS) for a Typescript wrapper with a Tezos node interface.
+Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the bone of Cryptonomic product offering. The [Arronax]() block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &ndash; a Typescript wrapper with a Tezos node interface.
+
+## Components
+
+Conseil the project, consists of several parts. First it requires a data store compatible with the [Slick FRM](http://slick.lightbend.com). At Cryptonomic we use [PostgreSQL](http://postgresql.org). There are two services that will then interact with the database: [lorre](https://github.com/Cryptonomic/Conseil/blob/master/src/main/scala/tech/cryptonomic/conseil/Lorre.scala) and [conseil](https://github.com/Cryptonomic/Conseil/blob/master/src/main/scala/tech/cryptonomic/conseil/Conseil.scala). The former is responsible to keeping the database in sync with the blockchain, the latter services user requests for that data via a RESTful interface. Generally, `lorre` is the only component that will write to the database. Similarly, `conseil` will only read. Separating the configuration files for these two services with different database credentials would be good security practice as `lorre` has no exposed interface. Finally, a [blockchain node](https://gitlab.com/tezos/tezos) is required.
 
 ## Running Conseil
- 
-### Starting and Stopping
 
-There are two processes to consider, lorre and conseil.  Lorre retrieves blocks from the tezos node and places it in the db, conseil provides the front end so that the end user and applications can interact with the blockchain.  
+### Starting
 
-To run lorre, an example command is:
+Assuming that the database and blockchain node are up and running, the next thing to start is `lorre`.
 
-```java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet```
+`java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet`
 
-In this command, the ```-Xms512m``` and ```-Xmx14g``` can be changed based on the amount of memory available on the system, the ```-Dconfig.file=conseil.conf``` can be changed to point to any user created config file contains the credentials for the respective db and tezos node, the file can also contain any overrides for settings provided by the ```application.conf``` file from the repo.  Lastly, ```alphanet``` is the network being run by the tezos node, it can and should be changed if running mainnet or zeronet.
+In this command, the `-Xms512m` and `-Xmx14g` can be changed based on the amount of memory available on the system, the `-Dconfig.file=conseil.conf` can be changed to point to any user created config file contains the credentials for the respective db and Tezos node, the file can also contain any overrides for settings provided by the `application.conf` file. Lastly, `alphanet` is the network being run by the Tezos node, it can and should be changed if running `mainnet` or `zeronet`.
 
-To run conseil, an example command is:
+Start `conseil` as: 
 
-```java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil```
+`java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil`
 
-The characteristics of the attributes for lorre apply here as well, with the omission of the network name.  As this is the front end, it does not require as much of a memory commitment as Lorre given that conseil's main function is to interact with the chain on an ad-hoc basis.  
+A few things to note. `lorre` may take some time to catch up to the current block height depending on how long the chain is. During this process it may require more memory. Incremental updates are quick and not memory intensive after that. `lorre` will write data incrementally to the database, so `conseil` will be usable before it's fully updated.
 
-Both of these can be placed in a bash file and also can be run as services.  Configuring this as a service is beyong the scope of this README.  
+For examples of how we run these services check out the [Nautilus](https://github.com/Cryptonomic/Nautilus) repo.
 
-###Logging
+### Logging
 
-Both conseil and lorre write to syslog, the logs are currently verbose enought to determine the point of synchronization between the db, the blockchain, and the status of lorre/conseil.  If any issues arise, please first check the log to see if the services are running and if the chain and db are synced as this would be the starting point of all troubleshooting enqueries. 
+Both `conseil` and `lorre` write to `syslog`, the logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see if the services are running and if the chain and db are synced as this would be the starting point of all troubleshooting inquiries. 
 
+### Configuration
 
-### Configuration 
+`conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Typesafe Config] github page(https://github.com/lightbend/config)
 
 ### Datasource configuration
 
-In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataformat` can also be added.
+In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataFormat` can also be added.
 
 ## REST API Overview &amp; Examples
 
@@ -48,15 +51,15 @@ Conseil provides a dynamic query API. This means that newly exposed datasets can
 To get a list of platforms, make the following call.
 
 ```bash
-curl --request GET --header 'apiKey: hooman' --url '<conseil-host>/v2/metadata/platforms'
+curl --request GET --header 'apiKey: <API key>' --url '<conseil-host>/v2/metadata/platforms'
 ```
 
 The result may look like the following.
 
 ```json
 [{
-	"name": "tezos",
-	"displayName": "Tezos"
+    "name": "tezos",
+    "displayName": "Tezos"
 }]
 ```
 
@@ -65,22 +68,22 @@ The result may look like the following.
 To get a list of networks, take one of the platform `name` attributes from the call above to construct the following URL.
 
 ```bash
-curl --request GET --header 'apiKey: hooman' --url '<conseil-host>/v2/metadata/tezos/networks'
+curl --request GET --header 'apiKey: <API key>' --url '<conseil-host>/v2/metadata/tezos/networks'
 ```
 
 On a development server the result might be this:
 
 ```json
 [{
-	"name": "zeronet",
-	"displayName": "Zeronet",
-	"platform": "tezos",
-	"network": "zeronet"
+    "name": "zeronet",
+    "displayName": "Zeronet",
+    "platform": "tezos",
+    "network": "zeronet"
 }, {
-	"name": "alphanet",
-	"displayName": "Alphanet",
-	"platform": "tezos",
-	"network": "alphanet"
+    "name": "alphanet",
+    "displayName": "Alphanet",
+    "platform": "tezos",
+    "network": "alphanet"
 }]
 ```
 
@@ -89,52 +92,52 @@ On a development server the result might be this:
 Taking again the `name` property from one of the network results, we can list the entities available for that network.
 
 ```bash
-curl --request GET --header 'apiKey: hooman' --url '<conseil-host>/v2/metadata/tezos/alphanet/entities'
+curl --request GET --header 'apiKey: <API key>' --url '<conseil-host>/v2/metadata/tezos/alphanet/entities'
 ```
 
 WIth the following sample result.
 
 ```json
 [{
-	"name": "accounts",
-	"displayName": "Accounts",
-	"count": 19587
+    "name": "accounts",
+    "displayName": "Accounts",
+    "count": 19587
 }, {
-	"name": "accounts_checkpoint",
-	"displayName": "Accounts checkpoint",
-	"count": 5
+    "name": "accounts_checkpoint",
+    "displayName": "Accounts checkpoint",
+    "count": 5
 }, {
-	"name": "bakers",
-	"displayName": "Bakers",
-	"count": 9232185
+    "name": "bakers",
+    "displayName": "Bakers",
+    "count": 9232185
 }, {
-	"name": "balance_updates",
-	"displayName": "Balance updates",
-	"count": 8848857
+    "name": "balance_updates",
+    "displayName": "Balance updates",
+    "count": 8848857
 }, {
-	"name": "ballots",
-	"displayName": "Ballots",
-	"count": 0
+    "name": "ballots",
+    "displayName": "Ballots",
+    "count": 0
 }, {
-	"name": "blocks",
-	"displayName": "Blocks",
-	"count": 346319
+    "name": "blocks",
+    "displayName": "Blocks",
+    "count": 346319
 }, {
-	"name": "fees",
-	"displayName": "Fees",
-	"count": 1680
+    "name": "fees",
+    "displayName": "Fees",
+    "count": 1680
 }, {
-	"name": "operation_groups",
-	"displayName": "Operation groups",
-	"count": 2590969
+    "name": "operation_groups",
+    "displayName": "Operation groups",
+    "count": 2590969
 }, {
-	"name": "operations",
-	"displayName": "Operations",
-	"count": 2619443
+    "name": "operations",
+    "displayName": "Operations",
+    "count": 2619443
 }, {
-	"name": "proposals",
-	"displayName": "Proposals",
-	"count": 0
+    "name": "proposals",
+    "displayName": "Proposals",
+    "count": 0
 }]
 ```
 
@@ -152,72 +155,72 @@ curl --request GET --header 'apiKey: hooman' --url '<conseil-host>/v2/metadata/t
 
 ```json
 [{
-	"name": "account_id",
-	"displayName": "Account id",
-	"dataType": "String",
-	"cardinality": 19587,
-	"keyType": "UniqueKey",
-	"entity": "accounts"
+    "name": "account_id",
+    "displayName": "Account id",
+    "dataType": "String",
+    "cardinality": 19587,
+    "keyType": "UniqueKey",
+    "entity": "accounts"
 }, {
-	"name": "block_id",
-	"displayName": "Block id",
-	"dataType": "String",
-	"cardinality": 4614,
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "block_id",
+    "displayName": "Block id",
+    "dataType": "String",
+    "cardinality": 4614,
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "manager",
-	"displayName": "Manager",
-	"dataType": "String",
-	"cardinality": 15572,
-	"keyType": "UniqueKey",
-	"entity": "accounts"
+    "name": "manager",
+    "displayName": "Manager",
+    "dataType": "String",
+    "cardinality": 15572,
+    "keyType": "UniqueKey",
+    "entity": "accounts"
 }, {
-	"name": "spendable",
-	"displayName": "Spendable",
-	"dataType": "Boolean",
-	"cardinality": 2,
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "spendable",
+    "displayName": "Spendable",
+    "dataType": "Boolean",
+    "cardinality": 2,
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "delegate_setable",
-	"displayName": "Delegate setable",
-	"dataType": "Boolean",
-	"cardinality": 2,
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "delegate_setable",
+    "displayName": "Delegate setable",
+    "dataType": "Boolean",
+    "cardinality": 2,
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "delegate_value",
-	"displayName": "Delegate value",
-	"dataType": "String",
-	"cardinality": 143,
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "delegate_value",
+    "displayName": "Delegate value",
+    "dataType": "String",
+    "cardinality": 143,
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "counter",
-	"displayName": "Counter",
-	"dataType": "Int",
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "counter",
+    "displayName": "Counter",
+    "dataType": "Int",
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "script",
-	"displayName": "Script",
-	"dataType": "String",
-	"cardinality": 1317,
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "script",
+    "displayName": "Script",
+    "dataType": "String",
+    "cardinality": 1317,
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "balance",
-	"displayName": "Balance",
-	"dataType": "Decimal",
-	"keyType": "NonKey",
-	"entity": "accounts"
+    "name": "balance",
+    "displayName": "Balance",
+    "dataType": "Decimal",
+    "keyType": "NonKey",
+    "entity": "accounts"
 }, {
-	"name": "block_level",
-	"displayName": "Block level",
-	"dataType": "Decimal",
-	"keyType": "UniqueKey",
-	"entity": "accounts"
+    "name": "block_level",
+    "displayName": "Block level",
+    "dataType": "Decimal",
+    "keyType": "UniqueKey",
+    "entity": "accounts"
 }]
 ```
 
@@ -242,7 +245,7 @@ These are the operation types this particular Conseil instance has seen since st
 It is possible to get values for high-cardinality properties with a prefix. In this example we get all `accounts.manager` values starting with "KT1".
 
 ```bash
-curl --request GET --header 'apiKey: hooman' --url 'https://conseil-dev.cryptonomic-infra.tech:443/v2/metadata/tezos/alphanet/accounts/manager/KT1'
+curl --request GET --header 'apiKey: <API key>' --url 'https://conseil-dev.cryptonomic-infra.tech:443/v2/metadata/tezos/alphanet/accounts/manager/KT1'
 ```
 
 ```json
@@ -255,15 +258,15 @@ As mentioned in the [Datasource configuration](#datasource-configuration) sectio
 
 ### Tezos Chain Data Query
 
-Data requests in Conseil v2 API are sent via `POST` command and have a prefix of `/v2/data/<platform>/<network>/<entity>`. The items in curly braces match up to the `name` property of the related metadata results. There additional header to be set in the request: `Content-Type: application/json`.
+Data requests in Conseil v2 API are sent via `POST` command and have a prefix of `/v2/data/<platform>/<network>/<entity>`. The items in angle braces match up to the `name` property of the related metadata results. There additional header to be set in the request: `Content-Type: application/json`.
 
 The most basic query has the following JSON structure.
 
 ```json
 {
-	"fields": [],
-	"predicates": [],
-	"limit": 5
+    "fields": [],
+    "predicates": [],
+    "limit": 5
 }
 ```
 
@@ -281,10 +284,10 @@ It is possible to narrow down the fields returned in the result set by listing j
 
 #### `predicates`
 
-`predicates` is an array containing objects. The inner object as several properties:
+`predicates` is an array containing objects. The inner object has several properties:
 - `field` – attribute name from the metadata response.
 - `operation` – one of: in, between, like, lt, gt, eq, startsWith, endsWith, before, after.
-- `set` – an array of values to compare against. `in` requires two or more elements, `between` must have exactly two, the rest of the operations require a single element.
+- `set` – an array of values to compare against. 'in' requires two or more elements, 'between' must have exactly two, the rest of the operations require a single element.
 - `inverse` – boolean, setting it to `true` applied a `NOT` to the operator
 - `precision` – for numeric field matches this specifies the number of decimal places to round to.
 
@@ -294,7 +297,7 @@ Specifies the maximum number of records to return.
 
 #### `orderBy`
 
-Sort condition, multiple may be supplied for a single query. Inner obejct(s) will contain `field` and `direction` properties. The former is `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response, the latter is one of 'asc', 'desc'.
+Sort condition, multiple may be supplied for a single query. Inner object(s) will contain `field` and `direction` properties. The former is `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response, the latter is one of 'asc', 'desc'.
 
 #### `aggregation`
 
@@ -309,3 +312,147 @@ It is possible to apply an aggregation function to single field of the result se
 Default result set format is JSON, it is possible however to output csv instead for exporting larger datasets that will then be imported into other tools.
 
 `'output': 'csv|json'`
+
+### Business Intelligence &amp; Analytics
+
+Here's a collection of interesting datasets. Run these examples as
+
+```bash
+curl -H 'Content-Type: application/json' -H 'apiKey: <API key>' \
+-X POST '<conseil-host>/v2/data/tezos/alphanet/blocks/' \
+-d '<example>'
+```
+
+#### Bakers by block count in April 2019
+
+Send this query to `/v2/data/tezos/alphanet/blocks` Note that `orderBy` below ends up sorting by the aggregated value.
+
+```json
+{
+    "fields": ["baker", "level"],
+    "predicates": [{ "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false }],
+    "orderBy": [{ "field": "level", "direction": "desc" }],
+    "aggregation": { "field": "level", "function": "count" },
+    "limit": 50,
+    "output": "csv"
+}
+```
+
+#### Top 50 Bakers delegator balance
+
+Send this query to `/v2/data/tezos/alphanet/accounts`
+
+```json
+{
+    "fields": ["delegate_value", "balance"],
+    "predicates": [{ "field": "delegate_value", "set": [], "operation": "isnull", "inverse": true }],
+    "orderBy": [{ "field": "balance", "direction": "desc" }],
+    "aggregation": { "field": "balance", "function": "sum" },
+    "limit": 50,
+    "output": "csv"
+}
+```
+
+### Top 50 Bakers by delegator count
+
+Send this query to `/v2/data/tezos/alphanet/accounts`
+
+```json
+{
+    "fields": ["delegate_value", "account_id"],
+    "predicates": [{ "field": "delegate_value", "set": [], "operation": "isnull", "inverse": true }],
+    "orderBy": [{ "field": "account_id", "direction": "desc" }],
+    "aggregation": { "field": "account_id", "function": "count" },
+    "limit": 50,
+    "output": "csv"
+}
+```
+
+#### All originated accounts with smart contracts
+
+Send this query to `/v2/data/tezos/alphanet/accounts`
+
+```json
+{
+    "fields": ["account_id"],
+    "predicates": [
+        { "field": "account_id", "set": ["KT1"], "operation": "startsWith", "inverse": false },
+        { "field": "script", "set": [], "operation": "isnull", "inverse": true },
+    ],
+    "limit": 10000,
+    "output": "csv"
+}
+```
+
+#### Top 10 contracts by number of interactions
+
+Send this query to `/v2/data/tezos/alphanet/operations`
+
+```json
+{
+    "fields": ["destination", "operation_group_hash"],
+    "predicates": [
+        { "field": "kind", "set": ["transaction"], "operation": "eq", "inverse": false },
+        { "field": "destination", "set": ["KT1"], "operation": "startsWith", "inverse": false },
+        { "field": "parameters", "set": [], "operation": "isnull", "inverse": true }
+    ],
+    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
+    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "limit": 10,
+    "output": "csv"
+}
+```
+
+#### Top 10 contract originators
+
+Send this query to `/v2/data/tezos/alphanet/operations`
+
+```json
+{
+    "fields": ["source", "operation_group_hash"],
+    "predicates": [
+        { "field": "kind", "set": ["origination"], "operation": "eq", "inverse": false },
+        { "field": "script", "set": [], "operation": "isnull", "inverse": true }
+    ],
+    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
+    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "limit": 10,
+    "output": "csv"
+}
+```
+
+#### Top 100 transactions in 2019
+
+Send this query to `/v2/data/tezos/alphanet/operations`
+
+```json
+{
+    "fields": ["source", "amount"],
+    "predicates": [
+        { "field": "kind", "set": ["transaction"], "operation": "eq", "inverse": false },
+        { "field": "timestamp", "set": [1546300800000, 1577836799000], "operation": "between", "inverse": false }
+    ],
+    "orderBy": [{ "field": "amount", "direction": "desc" }],
+    "aggregation": { "field": "amount", "function": "sum" },
+    "limit": 50,
+    "output": "csv"
+}
+```
+
+#### Fees by block level, transaction kind in April 2019
+
+Send this query to `/v2/data/tezos/alphanet/operations`
+
+```json
+{
+    "fields": ["block_level", "kind", "fee"],
+    "predicates": [
+        { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
+        { "field": "fee", "set": [0], "operation": "gt", "inverse": false }
+    ],
+    "orderBy": [{ "field": "fee", "direction": "desc" }],
+    "aggregation": { "field": "fee", "function": "sum" },
+    "limit": 100000,
+    "output": "csv"
+}
+```
