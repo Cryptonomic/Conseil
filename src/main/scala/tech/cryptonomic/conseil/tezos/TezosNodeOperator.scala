@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
@@ -137,7 +137,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     def parseMichelsonScripts(account: Account): Account = {
       val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (scriptAlter compose storageAlter)(account)
     }
@@ -387,8 +387,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     def parseMichelsonScripts(block: Block): Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonExpression])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (codeAlter compose storageAlter compose parametersAlter)(block)
     }
