@@ -117,68 +117,73 @@ class TezosNodeOperatorForkTest
       val sut = createTestOperator(singleForkScenario)
       import sut.{WriteBlock, WriteAndMakeValidBlock, BlockFetchingResults}
 
+      // we first build all the steps as unupplied functions that can be eventually composed together
+      // passing the result of each step to the next (needed to store required data on db)
       //time 0
-      testNextStepAndStoreResults(sut) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
-        val blockActions: BlockFetchingResults =
-          sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+      val step1 = testNextStep(sut) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+          val blockActions: BlockFetchingResults =
+            sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 3
-        forAll(blockActions) {
-          _._1 shouldBe a [WriteBlock]
-        }
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain allOf(
-          "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
-          "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
-          "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
-        )
+          blockActions should have size 3
+          forAll(blockActions) {
+            _._1 shouldBe a [WriteBlock]
+          }
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain allOf(
+            "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+            "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+            "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
+          )
 
-        blockActions
-      }
+          blockActions
+        } _
 
       //time 1
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+      val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
+          val blockActions =
+            sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 2
+          blockActions should have size 2
 
-        forAll(blockActions) {
-          _._1 shouldBe a [WriteBlock]
-        }
+          forAll(blockActions) {
+            _._1 shouldBe a [WriteBlock]
+          }
 
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain allOf(
-          "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
-          "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
-        )
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain allOf(
+            "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
+            "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
+          )
 
-        blockActions
-      }
+          blockActions
+        } _
 
       //time 2
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+      val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
+          val blockActions =
+            sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 2
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
+          blockActions should have size 2
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
 
-        blockActions
-      }
+          blockActions
+        } _
+
+      //here we compose all steps and run them, one after the other
+      (step1 andThen step2 andThen step3)(List.empty)
 
       //double check that there's nothing more
       timeFrame.next() shouldBe false
@@ -198,8 +203,10 @@ class TezosNodeOperatorForkTest
       val sut = createTestOperator(singleForkAlternatingScenario)
       import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock, BlockFetchingResults}
 
+      // we first build all the steps as unupplied functions that can be eventually composed together
+      // passing the result of each step to the next (needed to store required data on db)
       //time 0
-      testNextStepAndStoreResults(sut) {
+      val step1 = testNextStep(sut) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
         val blockActions: BlockFetchingResults =
           sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
@@ -218,9 +225,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
       //time 1
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
         val blockActions =
           sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
@@ -240,9 +248,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
       //time 2
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
         val blockActions =
           sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
@@ -257,9 +266,10 @@ class TezosNodeOperatorForkTest
         } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
 
         blockActions
-      }
+      } _
+
       //time 3
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step4 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 6))
         val blockActions =
           sut.getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
@@ -278,9 +288,10 @@ class TezosNodeOperatorForkTest
         } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi" //lvl 4
 
         blockActions
-      }
+      } _
+
       //time 4
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step5 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
         val blockActions =
           sut.getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
@@ -302,7 +313,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
+      //here we compose all steps and run them, one after the other
+      (step1 andThen step2 andThen step3 andThen step4 andThen step5)(List.empty)
 
       //double check that there's nothing more
       timeFrame.next() shouldBe false
@@ -323,8 +337,10 @@ class TezosNodeOperatorForkTest
       val sut = createTestOperator(twoForksAlternatingScenario)
       import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock, BlockFetchingResults}
 
+      // we first build all the steps as unupplied functions that can be eventually composed together
+      // passing the result of each step to the next (needed to store required data on db)
       //time 0
-      testNextStepAndStoreResults(sut) {
+      val step1 = testNextStep(sut) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
         val blockActions: BlockFetchingResults =
           sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
@@ -343,9 +359,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
       //time 1
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
         val blockActions =
           sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
@@ -365,9 +382,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
       //time 2
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
         val blockActions =
           sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
@@ -382,9 +400,10 @@ class TezosNodeOperatorForkTest
         } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
 
         blockActions
-      }
+      } _
+
       //time 3
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step4 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 2, atLevel = 6))
         val blockActions =
           sut.getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
@@ -403,9 +422,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
       //time 4
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step5 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
         val blockActions =
           sut.getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
@@ -427,9 +447,10 @@ class TezosNodeOperatorForkTest
         )
 
         blockActions
-      }
+      } _
+
       //time 5
-      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+      val step6 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
         val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 8))
         val blockActions =
           sut.getBlocks(reference = headHash -> 8, levelRange = 8 to 8, followFork = true)
@@ -452,7 +473,10 @@ class TezosNodeOperatorForkTest
         } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi"  //lvl 4
 
         blockActions
-      }
+      } _
+
+      //here we compose all steps and run them, one after the other
+      (step1 andThen step2 andThen step3 andThen step4 andThen step5 andThen step6)(List.empty)
 
       //double check that there's nothing more
        timeFrame.next() shouldBe false
@@ -470,17 +494,22 @@ class TezosNodeOperatorForkTest
     }
 
   /* Share the same step behaviour for each scenario, i.e.
-    * 1. increase time-frame if passed-in
-    * 2. run the test code
-    * 3. store in the db the block actions returned from this step, to get ready
-         for next one
-    */
-  private def testNextStepAndStoreResults(
+   * 1. store in the db previous block actions, if any
+   * 2. increase time-frame if passed-in
+   * 3. run the test code and return the actions returned
+   *
+   * The returned value allow to compose many steps one after another
+   */
+  private def testNextStep(
     sut: TezosNodeOperator,
     increaseTimeFrame: Option[MockTezosForkingNodes.Frame] = None
-  )(stepCode: => sut.BlockFetchingResults) = {
+  )(
+    stepCode: => sut.BlockFetchingResults
+  )(existingResultsToStore: sut.BlockFetchingResults
+  ) = {
+    store(sut)(existingResultsToStore).isReadyWithin(1.second) shouldBe true
     increaseTimeFrame.foreach(_.next() shouldBe true)
-    store(sut)(stepCode).isReadyWithin(1.second) shouldBe true
+    stepCode
   }
 
   /* Store rows on the db as blocks and invalidations*/
