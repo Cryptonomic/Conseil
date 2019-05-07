@@ -8,6 +8,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
@@ -290,7 +291,8 @@ class TezosDatabaseOperationsTest
           row.delegateSetable shouldEqual account.delegate.setable
           row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.code.toString)
+          row.script shouldEqual account.script.map(_.code.expression)
+          row.storage shouldEqual account.script.map(_.storage.expression)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual block.level
       }
@@ -358,7 +360,8 @@ class TezosDatabaseOperationsTest
           row.delegateSetable shouldEqual account.delegate.setable
           row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.code.toString)
+          row.script shouldEqual account.script.map(_.code.expression)
+          row.storage shouldEqual account.script.map(_.storage.expression)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual levelUpdate
       }
@@ -540,9 +543,6 @@ class TezosDatabaseOperationsTest
     }
 
     "fetch existing operations with their group on a existing hash" in {
-      import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val block = generateBlockRows(1, testReferenceTimestamp).head
@@ -565,8 +565,6 @@ class TezosDatabaseOperationsTest
     }
 
     "compute correct average fees from stored operations" in {
-      import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.Conversion.Syntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
       val block = generateBlockRows(1, testReferenceTimestamp).head
@@ -608,8 +606,6 @@ class TezosDatabaseOperationsTest
     }
 
     "return None when computing average fees for a kind with no data" in {
-      import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.Conversion.Syntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
       val block = generateBlockRows(1, testReferenceTimestamp).head
@@ -634,8 +630,6 @@ class TezosDatabaseOperationsTest
     }
 
     "compute average fees only using the selected operation kinds" in {
-      import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.Conversion.Syntax._
       //generate data
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
       val block = generateBlockRows(1, testReferenceTimestamp).head
@@ -1465,6 +1459,8 @@ class TezosDatabaseOperationsTest
     }
 
     "return the same results for the same query" in {
+      type AnyMap = Map[String, Any]
+
       import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
       val columns = List("level", "proto", "protocol", "hash")
       val tableName = Tables.Blocks.baseTableRow.tableName
@@ -1598,7 +1594,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with COUNT function" in {
+    "should aggregate with COUNT function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1628,7 +1624,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with MAX function" in {
+    "should aggregate with MAX function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1658,7 +1654,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with MIN function" in {
+    "should aggregate with MIN function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1688,7 +1684,7 @@ class TezosDatabaseOperationsTest
       )
     }
 
-    "should aggregation with SUM function" in {
+    "should aggregate with SUM function" in {
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -1717,6 +1713,128 @@ class TezosDatabaseOperationsTest
         Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0))
       )
     }
+
+    "should aggregate with SUM function and order by SUM()" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = Some(
+        Aggregation("medium", AggregationType.sum, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("medium", OrderDirection.desc)),
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("high" -> Some(4), "sum" -> Some(5), "low" -> Some(0)),
+        Map("high" -> Some(8), "sum" -> Some(4), "low" -> Some(0))
+      )
+    }
+
+    "should order correctly by the field not existing in query)" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 3, new Timestamp(2), "kind")
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("high", OrderDirection.desc)),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("medium" -> Some(4), "low" -> Some(0)), // high = Some(8)
+        Map("medium" -> Some(2), "low" -> Some(0)), // high = Some(4)
+        Map("medium" -> Some(3), "low" -> Some(0)), // high = Some(3)
+      )
+    }
+
+    "should correctly check use between in the timestamps" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(2), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(4), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "timestamp",
+        operation = OperationType.between,
+        set = List(
+          new Timestamp(1),
+          new Timestamp(3)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("timestamp"),
+          predicates = List(predicate),
+          ordering = List.empty,
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result.flatMap(_.values.map(_.map(_.asInstanceOf[Timestamp]))) shouldBe List(
+        Some(new Timestamp(2))
+      )
+    }
+
+    "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
+      val feesTmp = List(
+        FeesRow(0, 0, 0, new Timestamp(0), "kind"),
+        FeesRow(0, 0, 10, new Timestamp(3), "kind"),
+        FeesRow(0, 0, 2, new Timestamp(1), "kind"),
+        FeesRow(0, 0, 30, new Timestamp(2), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "high",
+        operation = OperationType.between,
+        set = List(1,3)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("high"),
+          predicates = List(predicate),
+          ordering = List(),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(Map("high" -> Some(2)))
+    }
+
   }
 
  }

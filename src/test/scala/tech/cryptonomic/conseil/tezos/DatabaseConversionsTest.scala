@@ -329,7 +329,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.consumedGas ::
-        converted.status :: Nil) {
+        converted.status ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -368,7 +371,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.consumedGas ::
-        converted.status :: Nil) {
+        converted.status ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -407,7 +413,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.consumedGas ::
-        converted.status :: Nil) {
+        converted.status ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -461,7 +470,10 @@ class DatabaseConversionsTest
         converted.balance ::
         converted.spendable ::
         converted.delegatable ::
-        converted.script :: Nil) {
+        converted.script ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -505,6 +517,14 @@ class DatabaseConversionsTest
         case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
         case _ => converted.consumedGas shouldBe 'empty
       }
+      sampleTransaction.metadata.operation_result.storage_size match {
+        case Some(Decimal(bignumber)) => converted.storageSize.value shouldBe bignumber
+        case _ => converted.storageSize shouldBe 'empty
+      }
+      sampleTransaction.metadata.operation_result.paid_storage_size_diff match {
+        case Some(Decimal(bignumber)) => converted.paidStorageSizeDiff.value shouldBe bignumber
+        case _ => converted.paidStorageSizeDiff shouldBe 'empty
+      }
 
       forAll(
         converted.level ::
@@ -518,7 +538,8 @@ class DatabaseConversionsTest
         converted.balance ::
         converted.spendable ::
         converted.delegatable ::
-        converted.script :: Nil) {
+        converted.script ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -560,10 +581,19 @@ class DatabaseConversionsTest
       converted.spendable shouldBe sampleOrigination.spendable
       converted.delegatable shouldBe sampleOrigination.delegatable
       converted.script shouldBe sampleOrigination.script.map(_.code.expression)
+      converted.storage shouldBe sampleOrigination.script.map(_.storage.expression)
       converted.status.value shouldBe sampleOrigination.metadata.operation_result.status
       sampleOrigination.metadata.operation_result.consumed_gas match {
         case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
         case _ => converted.consumedGas shouldBe 'empty
+      }
+      sampleOrigination.metadata.operation_result.storage_size match {
+        case Some(Decimal(bignumber)) => converted.storageSize.value shouldBe bignumber
+        case _ => converted.storageSize shouldBe 'empty
+      }
+      sampleOrigination.metadata.operation_result.paid_storage_size_diff match {
+        case Some(Decimal(bignumber)) => converted.paidStorageSizeDiff.value shouldBe bignumber
+        case _ => converted.paidStorageSizeDiff shouldBe 'empty
       }
 
       forAll(
@@ -575,7 +605,8 @@ class DatabaseConversionsTest
         converted.publicKey ::
         converted.amount ::
         converted.destination ::
-        converted.parameters :: Nil) {
+        converted.parameters ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -629,7 +660,10 @@ class DatabaseConversionsTest
         converted.balance ::
         converted.spendable ::
         converted.delegatable ::
-        converted.script :: Nil) {
+        converted.script ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -668,7 +702,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.status ::
-        converted.consumedGas :: Nil) {
+        converted.consumedGas ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -707,7 +744,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.status ::
-        converted.consumedGas :: Nil) {
+        converted.consumedGas ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -746,7 +786,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.status ::
-        converted.consumedGas :: Nil) {
+        converted.consumedGas ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 
@@ -785,7 +828,10 @@ class DatabaseConversionsTest
         converted.delegatable ::
         converted.script ::
         converted.status ::
-        converted.consumedGas :: Nil) {
+        converted.consumedGas ::
+        converted.storageSize ::
+        converted.paidStorageSizeDiff ::
+        Nil) {
         _ shouldBe 'empty
       }
 

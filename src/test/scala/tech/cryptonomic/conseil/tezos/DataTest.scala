@@ -6,7 +6,6 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.config.Newest
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
@@ -100,6 +99,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
     "return a correct response with OK status code with POST" in {
       (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+      (tezosPlatformDiscoveryOperationsStub.getTableAttributesWithoutUpdatingCache _).when(*).returns(Future.successful(None))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/alphanet/accounts",
@@ -115,6 +115,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
     "return 404 NotFound status code for request for the not supported platform with POST" in {
       (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+      (tezosPlatformDiscoveryOperationsStub.getTableAttributesWithoutUpdatingCache _).when(*).returns(Future.successful(None))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
@@ -126,6 +127,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
     "return 404 NotFound status code for request for the not supported network with POST" in {
       (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+      (tezosPlatformDiscoveryOperationsStub.getTableAttributesWithoutUpdatingCache _).when(*).returns(Future.successful(None))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/notSupportedNetwork/accounts",

@@ -35,18 +35,21 @@ object DatabaseUtil {
 
     /** Creates SQLAction of sequence of values
       *
-      * @param  xs list of values to be inserted into SQLAction
+      * @param  values list of values to be inserted into SQLAction
       * @return SqlActionBuilder with values from parameter
       */
-    def insertValuesIntoSqlAction[T](xs: Seq[T]): SQLActionBuilder = {
-      var b = sql"("
-      var first = true
-      xs.foreach { x =>
-        if (first) first = false
-        else b = concatenateSqlActions(b, sql",")
-        b = concatenateSqlActions(b, sql"'#$x'")
+    def insertValuesIntoSqlAction[T](values: Seq[T]): SQLActionBuilder = {
+      @scala.annotation.tailrec
+      def append(content: SQLActionBuilder, values: List[T]): SQLActionBuilder = values match {
+        case Nil =>
+          concatenateSqlActions(content, sql")")
+        case head :: tail =>
+          val next = concatenateSqlActions(content, sql",", sql"'#$head'")
+          append(next, tail)
       }
-      concatenateSqlActions(b, sql")")
+
+      if (values.isEmpty) sql"()"
+      else append(sql"('#${values.head}'", values.tail.toList)
     }
 
     /** Implicit value that allows getting table row as Map[String, Any] */
@@ -75,11 +78,11 @@ object DatabaseUtil {
         * @param ordering list of QueryOrdering to add
         * @return new SQLActionBuilder containing ordering statements
         */
-      def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
+      def addOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
         val queryOrdering = if (ordering.isEmpty) {
           List.empty
         } else {
-          List(makeOrdering(ordering))
+          List(makeOrdering(ordering, aggregation))
         }
         concatenateSqlActions(action, queryOrdering:_*)
       }
@@ -100,11 +103,10 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
-        val columnsWithoutAggregation = columns.filterNot(col => aggregation.exists(_.field == col))
-        if(columnsWithoutAggregation.isEmpty) {
-          action
-        } else {
-          concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregation))
+        aggregation.fold(action) {
+          aggregates =>
+            val cols = columns.filterNot(_ == aggregates.field)
+          concatenateSqlActions(action, makeGroupBy(cols))
         }
       }
     }
@@ -144,8 +146,14 @@ object DatabaseUtil {
       * @param ordering list of ordering parameters
       * @return SQLAction with ordering
       */
-    def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-      val orderingBy = ordering.map(x => s"${x.field} ${x.direction}").mkString(",")
+    def makeOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
+      val orderingBy = ordering.map {
+        ord =>
+          val ordField =
+            if (aggregation.exists(_.field == ord.field)) mapAggregationToSQL(aggregation.get.function, aggregation.get.field)
+        else ord.field
+        s"$ordField ${ord.direction}"
+      }.mkString(",")
       sql""" ORDER BY #$orderingBy"""
     }
 
@@ -181,7 +189,7 @@ object DatabaseUtil {
     /** maps operation type to SQL operation */
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
       val op = operation match {
-        case OperationType.between => sql"BETWEEN #${vals.head} AND #${vals(1)}"
+        case OperationType.between => sql"BETWEEN '#${vals.head}' AND '#${vals(1)}'"
         case OperationType.in => concatenateSqlActions(sql"IN ", insertValuesIntoSqlAction(vals))
         case OperationType.like => sql"LIKE '%#${vals.head}%'"
         case OperationType.lt | OperationType.before => sql"< '#${vals.head}'"

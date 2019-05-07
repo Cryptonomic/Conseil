@@ -6,7 +6,7 @@ import endpoints.algebra
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-trait ApiFilterFromQueryString extends QueryStringLists { self: algebra.JsonSchemaEntities =>
+trait ApiFilterFromQueryString { self: algebra.JsonSchemaEntities =>
   import tech.cryptonomic.conseil.routes.openapi.TupleFlattenHelper._
   import FlattenHigh._
 
@@ -35,21 +35,21 @@ trait ApiFilterFromQueryString extends QueryStringLists { self: algebra.JsonSche
   /** Function for extracting query string with query params */
   private def filterQs: QueryString[QueryParams] = {
     val raw =
-      optQs[Int]("limit") &
-        qsList[String]("block_id") &
-        qsList[Int]("block_level") &
-        qsList[String]("block_netid") &
-        qsList[String]("block_protocol") &
-        qsList[String]("operation_id") &
-        qsList[String]("operation_source") &
-        qsList[String]("operation_destination") &
-        qsList[String]("operation_participant") &
-        qsList[String]("operation_kind") &
-        qsList[String]("account_id") &
-        qsList[String]("account_manager") &
-        qsList[String]("account_delegate") &
-        optQs[String]("sort_by") &
-        optQs[String]("order")
+      qs[Option[Int]]("limit") &
+      qs[List[String]]("block_id") &
+      qs[List[Int]]("block_level") &
+      qs[List[String]]("block_netid") &
+      qs[List[String]]("block_protocol") &
+      qs[List[String]]("operation_id") &
+      qs[List[String]]("operation_source") &
+      qs[List[String]]("operation_destination") &
+      qs[List[String]]("operation_participant") &
+      qs[List[String]]("operation_kind") &
+      qs[List[String]]("account_id") &
+      qs[List[String]]("account_manager") &
+      qs[List[String]]("account_delegate") &
+      qs[Option[String]]("sort_by") &
+      qs[Option[String]]("order")
     raw map (flatten(_))
   }
 

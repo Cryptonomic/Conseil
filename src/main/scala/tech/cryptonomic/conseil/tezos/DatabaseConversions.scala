@@ -52,7 +52,8 @@ object DatabaseConversions {
           delegateSetable = delegate.setable,
           delegateValue = delegate.value.map(_.value),
           counter = counter,
-          script = script.map(_.code.toString),
+          script = script.map(_.code.expression),
+          storage = script.map(_.storage.expression),
           balance = balance,
           blockLevel = level
         )
@@ -201,6 +202,8 @@ object DatabaseConversions {
         parameters = parameters.map(_.expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
+        paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
@@ -224,8 +227,11 @@ object DatabaseConversions {
         spendable = spendable,
         delegatable = delegatable,
         script = script.map(_.code.expression),
+        storage = script.map(_.storage.expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
+        storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
+        paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)

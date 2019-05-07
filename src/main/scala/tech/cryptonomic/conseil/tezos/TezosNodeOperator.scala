@@ -8,14 +8,14 @@ import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
-import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
-
 import cats.instances.future._
 import cats.syntax.applicative._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object TezosNodeOperator {
@@ -127,18 +127,26 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import TezosOptics.Accounts.optionalScriptCode
+    import TezosOptics.Accounts.{scriptLens, storageLens}
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
-    /*tries decoding but simply returns the input unchanged on failure*/
-    def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
+    implicit val fetcherInstance = accountFetcher(blockHash)
 
-    accountFetcher(blockHash).fetch
-      .run(accountIds)
-      .map(
-        indexedAccounts =>
-          indexedAccounts.collect {
-            case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
-          }.toMap
+    val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
+      fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
+
+    def parseMichelsonScripts(account: Account): Account = {
+      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
+
+      (scriptAlter compose storageAlter)(account)
+    }
+
+    fetchedAccounts.map(
+      indexedAccounts =>
+        indexedAccounts.collect {
+          case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
+        }.toMap
     )
   }
   /**
@@ -200,7 +208,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   }
 
   /** Fetches votes information for the block */
-  def getCurrentVotesForBlock(block: BlockData, offset: Option[Int] = None): Future[CurrentVotes] =
+  def getCurrentVotesForBlock(block: BlockData, offset: Option[Offset] = None): Future[CurrentVotes] =
     if (isGenesis(block))
       CurrentVotes.empty.pure
     else {
@@ -228,15 +236,23 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     //adapt the proposal protocols result to include the block
-    val fetchProposals = proposalsMultiFetch.fetch.map {
-      proposalsList => proposalsList.map {
-        case (block, protocols) => Voting.Proposal(protocols, block)
-      }
-    }
-    val fetchBakers = bakersMultiFetch.fetch
-    val fetchBallots = ballotsMultiFetch.fetch
+    val fetchProposals =
+      fetch[Block, List[ProtocolId], Future, List, Throwable]
+        .map {
+          proposalsList => proposalsList.map {
+            case (block, protocols) => Voting.Proposal(protocols, block)
+          }
+        }
+
+    val fetchBakers =
+      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
+
+    val fetchBallots =
+      fetch[Block, List[Voting.Ballot], Future, List, Throwable]
+
 
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input blocks
@@ -249,7 +265,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
-  def getBlock(hash: BlockHash, offset: Option[Int] = None): Future[Block] = {
+  def getBlock(hash: BlockHash, offset: Option[Offset] = None): Future[Block] = {
     import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Blocks._
 
@@ -357,23 +373,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     ): Future[BlockFetchingResults] = {
     import cats.instances.future._
     import cats.instances.list._
-    import tech.cryptonomic.conseil.generic.chain.DataFetcher
-    import tech.cryptonomic.conseil.generic.chain.DataFetcher.Syntax._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
 
-    val blockFetcher = blocksFetcher(hashRef)
-    // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
-    val operationsWithAccountsFetcher = operationGroupFetcher.decodeAlso(accountIdsJsonDecode.lift[Future])
+    implicit val blockFetcher = blocksFetcher(hashRef)
 
     //read the separate parts of voting and merge the results
     val proposalsStateFetch =
-      DataFetcher.mergeResults(
-        currentQuorumFetcher,
-        currentProposalFetcher
-      )(CurrentVotes.apply)
+      fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
     def parseMichelsonScripts(block: Block): Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
@@ -386,9 +396,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
-      fetchedBlocksData <- blockFetcher.fetch.run(offsets)
+      fetchedBlocksData <- fetch[Offset, BlockData, Future, List, Throwable].run(offsets)
       blockHashes = fetchedBlocksData.collect{ case (offset, block) if !isGenesis(block) => block.hash }
-      fetchedOperationsWithAccounts <- operationsWithAccountsFetcher.fetch.run(blockHashes)
+      fetchedOperationsWithAccounts <- fetch[BlockHash, (List[OperationsGroup], List[AccountId]), Future, List, Throwable].run(blockHashes)
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
@@ -402,21 +412,23 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     }
   }
 
-  val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
+  private def toMichelsonScript[T <: MichelsonElement : Parser](json: String)(implicit tag: ClassTag[T]): String = {
 
-  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any): String = {
-    Some(json).collect {
-      case t: String => convert[T](t)
-      case t: Micheline => convert[T](t.expression)
-    } match {
-      case Some(Right(value)) => value
-      case Some(Left(t)) =>
-        logger.error(s"Error during converting Michelson format: $json", t)
-        UNPARSABLE_CODE_PLACEMENT + json
-      case _ =>
-        logger.error(s"Error during converting Michelson format: $json")
-        UNPARSABLE_CODE_PLACEMENT + json
+    def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
+      exception match {
+        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
+        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
+      }
+
+      s"Unparsable code: $json"
     }
+
+    def parse(json: String): String = convert[T](json) match {
+      case Right(convertedResult) => convertedResult
+      case Left(exception) => unparsableResult(json, Some(exception))
+    }
+
+    Try(parse(json)).getOrElse(unparsableResult(json))
   }
 }
 
@@ -428,6 +440,9 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
   with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
+
+  /** Type representing Map[String, Any] */
+  type AnyMap = Map[String, Any]
 
   //used in subsequent operations using Sodium
   SodiumLibrary.setLibraryPath(sodiumConf.libraryPath)
@@ -465,7 +480,7 @@ class TezosNodeSenderOperator(override val node: TezosRPCInterface, network: Str
   def forgeOperations(
     blockHead: Block,
     account: Account,
-    operations: List[Map[String,Any]],
+    operations: List[AnyMap],
     keyStore: KeyStore,
     fee: Option[Float]): Future[String] = {
     val payload: AnyMap = fee match {

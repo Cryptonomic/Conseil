@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.effect.concurrent.MVar
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
@@ -99,7 +100,7 @@ class TezosPlatformDiscoveryOperations(
       name = col.name,
       displayName = makeDisplayName(col.name),
       dataType = mapType(col.typeName),
-      cardinality = if(canQueryType(mapType(col.typeName))) Some(count) else None,
+      cardinality = if (canQueryType(mapType(col.typeName))) Some(count) else None,
       keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
       entity = col.table.name
     )
@@ -131,6 +132,41 @@ class TezosPlatformDiscoveryOperations(
       .flatten
       .exists(_.column.contains(column.name))
   }
+
+  /** Makes displayName out of name */
+  private def makeDisplayName(name: String): String = {
+    name.capitalize.replace("_", " ")
+  }
+
+  /** Checks the data types if cannot be queried by */
+  private def canQueryType(dt: DataType): Boolean = {
+    // values described in the ticket #183
+    val cantQuery = Set(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
+    !cantQuery(dt)
+  }
+
+  /** Method querying slick metadata tables for entities */
+  private def preCacheEntities: DBIO[EntitiesCache] = {
+    for {
+      tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
+      counts <- getTablesCount(tables)
+    } yield now -> (tables.map(_.name.name) zip counts).map {
+      case (name, count) =>
+        Entity(name, makeDisplayName(name), count)
+    }.toList
+  }
+
+  /** Query for counting rows in the table */
+  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] = {
+    DBIOAction.sequence {
+      tables.map { table =>
+        TezosDatabaseOperations.countRows(table.name.name)
+      }
+    }
+  }
+
+  /** Returns current time in milliseconds */
+  private def now: Long = System.currentTimeMillis()
 
   /** Checks if attribute is valid for given entity
     *
@@ -167,47 +203,30 @@ class TezosPlatformDiscoveryOperations(
     result.unsafeToFuture()
   }
 
-  /** Method querying slick metadata tables for entities */
-  private def preCacheEntities: DBIO[EntitiesCache] = {
-    for {
-      tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
-      counts <- getTablesCount(tables)
-    } yield now -> (tables.map(_.name.name) zip counts).map {
-      case (name, count) =>
-        Entity(name, makeDisplayName(name), count)
-    }.toList
-  }
-
-  /** Query for counting rows in the table */
-  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] = {
-    DBIOAction.sequence {
-      tables.map { table =>
-        TezosDatabaseOperations.countRows(table.name.name)
-      }
-    }
-  }
-
-  /** Makes displayName out of name */
-  private def makeDisplayName(name: String): String = {
-    name.capitalize.replace("_", " ")
-  }
-
-  /** Returns current time in milliseconds */
-  private def now: Long = System.currentTimeMillis()
 
   /** Makes list of possible string values of the attributes
     *
     * @param  tableName  name of the table from which we extract attributes
-    * @param  attribute  name of the attribute
+    * @param  column  name of the attribute
     * @param  withFilter optional parameter which can filter attributes
-    * @return list of attributes
-    * */
-  def listAttributeValues(tableName: String, attribute: String, withFilter: Option[String] = None): Future[List[String]] = {
-    for {
-      attrOpt <- attributesCache.read.map(_.get(tableName)
-        .flatMap(_._2.find(_.name == attribute))).unsafeToFuture()
-      result <- attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence
-    } yield result.flatten
+    * @return Either list of attributes or list of errors
+    **/
+  def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
+    val result = for {
+      attrOpt <- getTableAttributes(tableName).map(_.flatMap(_.find(_.name == column)))
+    } yield {
+      val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
+      val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(column)) else None
+      val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
+
+      val res = Either.cond(
+        test = validationErrors.isEmpty,
+        right = attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence.map(_.flatten),
+        left = Future.successful(validationErrors)
+      )
+      res.bisequence
+    }
+    result.flatten
   }
 
   /** Makes list of possible string values of the attributes
@@ -216,34 +235,14 @@ class TezosPlatformDiscoveryOperations(
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    * */
+    **/
   private def makeAttributesQuery(tableName: String, column: String, withFilter: Option[String]): Future[List[String]] = {
-    for {
-      attribute <- attributesCache.read
-        .map(_.get(tableName)
-          .flatMap(_._2.find(_.name == column))).unsafeToFuture()
-      if attribute.exists(attr => canQueryType(attr.dataType)) && isLowCardinality(attribute.flatMap(_.cardinality))
-      distinctSelect <- withFilter match {
-        case Some(filter) =>
-          metadataOperations.runQuery(TezosDatabaseOperations.selectDistinctLike(tableName, column, ApiOperations.sanitizeForSql(filter)))
-        case None =>
-          metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))
-      }
-    } yield distinctSelect
-  }
-
-  /** Checks the data types if cannot be queried by */
-  private def canQueryType(dt: DataType): Boolean = {
-    // values described in the ticket #183
-    val cantQuery = Set(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
-    !cantQuery(dt)
-  }
-
-  /** Checks if cardinality of the column is not too high so it should not be queried */
-  private def isLowCardinality(distinctCount: Option[Int]): Boolean = {
-    // reasonable value which I thought of for now
-    val maxCount = 1000
-    distinctCount.getOrElse(maxCount) < maxCount
+    withFilter match {
+      case Some(filter) =>
+        metadataOperations.runQuery(TezosDatabaseOperations.selectDistinctLike(tableName, column, ApiOperations.sanitizeForSql(filter)))
+      case None =>
+        metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))
+    }
   }
 
   /**
@@ -301,6 +300,13 @@ class TezosPlatformDiscoveryOperations(
         }
       }
     }
+  }
+
+  /** Checks if cardinality of the column is not too high so it should not be queried */
+  private def isLowCardinality(distinctCount: Option[Int]): Boolean = {
+    // reasonable value which I thought of for now
+    val maxCount = 1000
+    distinctCount.getOrElse(maxCount) < maxCount
   }
 
 }

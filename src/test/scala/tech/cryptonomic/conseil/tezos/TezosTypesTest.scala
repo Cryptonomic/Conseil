@@ -140,11 +140,11 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           setable = false,
           value = None
         ),
-        script = Some(AccountScript(code = "Some code here")),
+        script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
         counter = 0
       )
 
-      sut.optionalScriptCode.getOption(account).value shouldBe "Some code here"
+      sut.scriptLens.getOption(account).value shouldBe "Some code here"
     }
 
     "read None if there's no script in an account" in {
@@ -161,7 +161,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         counter = 0
       )
 
-      sut.optionalScriptCode.getOption(account) shouldBe 'empty
+      sut.scriptLens.getOption(account) shouldBe 'empty
     }
 
     "allow to update an existing script within an account" in {
@@ -174,12 +174,12 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           setable = false,
           value = None
         ),
-        script = Some(AccountScript(code = "Some code here")),
+        script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
         counter = 0
       )
 
-      val updated = sut.optionalScriptCode.modify(old => old + "; new code")(account)
-      updated.script.value shouldBe AccountScript("Some code here; new code")
+      val updated = sut.scriptLens.modify(old => old + "; new code")(account)
+      updated.script.value shouldBe Contracts(storage = Micheline("storage code"), code = Micheline("Some code here; new code"))
     }
 
   }

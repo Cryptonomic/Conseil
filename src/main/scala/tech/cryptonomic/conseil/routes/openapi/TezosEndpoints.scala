@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.routes.openapi
 
 import endpoints.algebra
-import tech.cryptonomic.conseil.generic.chain.DataTypes.AnyMap
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
@@ -31,12 +30,12 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Blocks by hash endpoint definition */
-  def blockByHashEndpointV1: Endpoint[(String, String, String), Option[AnyMap]] =
+  def blockByHashEndpointV1: Endpoint[(String, String, String), Option[ApiOperations.BlockResult]] =
     endpoint(
       request = get(
         url = commonPath / "blocks" / segment[String](name = "hash"),
         headers = header("apiKey")),
-      response = jsonResponse[AnyMap](docs = Some("Endpoint for block")).orNotFound(Some("Not found")),
+      response = jsonResponse[ApiOperations.BlockResult](docs = Some("Endpoint for block")).orNotFound(Some("Not found")),
       tags = List("Blocks")
     )
 
@@ -51,12 +50,12 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Accounts by ID endpoint definition */
-  def accountByIdEndpointV1: Endpoint[(String, String, String), Option[AnyMap]] =
+  def accountByIdEndpointV1: Endpoint[(String, String, String), Option[ApiOperations.AccountResult]] =
     endpoint(
       request = get(
         url = commonPath / "accounts" / segment[String](name = "accountId"),
         headers = header("apiKey")),
-      response = jsonResponse[AnyMap](docs = Some("Endpoint for account")).orNotFound(Some("Not found")),
+      response = jsonResponse[ApiOperations.AccountResult](docs = Some("Endpoint for account")).orNotFound(Some("Not found")),
       tags = List("Accounts")
     )
 
@@ -71,12 +70,12 @@ trait TezosEndpoints extends algebra.Endpoints with DataJsonSchemas with ApiFilt
     )
 
   /** Operation groups by ID endpoint definition */
-  def operationGroupByIdEndpointV1: Endpoint[(String, String, String), Option[AnyMap]] =
+  def operationGroupByIdEndpointV1: Endpoint[(String, String, String), Option[ApiOperations.OperationGroupResult]] =
     endpoint(
       request = get(
         url = commonPath / "operation_groups" / segment[String](name = "operationGroupId"),
         headers = header("apiKey")),
-      response = jsonResponse[AnyMap](docs = Some("Endpoint for operation group")).orNotFound(Some("Not found")),
+      response = jsonResponse[ApiOperations.OperationGroupResult](docs = Some("Endpoint for operation group")).orNotFound(Some("Not found")),
       tags = List("Operation groups")
     )
 
