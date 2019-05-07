@@ -45,4 +45,4 @@ case class NetworkConfiguration(displayName: Option[String], visible: Option[Boo
 case class EntityConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)
 
 // configuration for attribute
-case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, placeholder: Option[String] = None, dataformat: Option[String] = None)
+case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, placeholder: Option[String] = None, dataFormat: Option[String] = None)

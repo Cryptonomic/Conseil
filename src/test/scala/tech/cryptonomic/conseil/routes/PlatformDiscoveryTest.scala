@@ -148,7 +148,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
             EntityConfiguration(None, Some(true), None, Map("attribute" ->
-              AttributeConfiguration(None, Some(true), Some("description"), Some("placeholder"), Some("dataformat")))))))))
+              AttributeConfiguration(None, Some(true), Some("description"), Some("placeholder"), Some("dataFormat")))))))))
 
       // when
       Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
@@ -161,7 +161,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         result.head("displayName") shouldBe "attribute-name"
         result.head("description") shouldBe "description"
         result.head("placeholder") shouldBe "placeholder"
-        result.head("dataformat") shouldBe "dataformat"
+        result.head("dataFormat") shouldBe "dataFormat"
       }
     }
 
