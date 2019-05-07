@@ -11,20 +11,24 @@ import tech.cryptonomic.conseil.util.OptionUtil.when
 import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
+// service class for metadata
 class MetadataService(config: PlatformsConfiguration,
                       transformation: UnitTransformation,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
+  // fetches platforms
   def getPlatforms: List[Platform] = ConfigUtil
     .getPlatforms(config)
     .flatMap(platform => transformation.overridePlatform(platform, PlatformPath(platform.name)))
 
+  // fetches networks
   def getNetworks(path: PlatformPath): Option[List[Network]] = when(exists(path)) {
     ConfigUtil
       .getNetworks(config, path.platform)
       .flatMap(network => transformation.overrideNetwork(network, path.addLevel(network.name)))
   }
 
+  // fetches entities
   def getEntities(path: NetworkPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Entity]]] = {
     if (exists(path))
       tezosPlatformDiscoveryOperations
@@ -35,6 +39,7 @@ class MetadataService(config: PlatformsConfiguration,
       successful(None)
   }
 
+  // fetches table attributes
   def getTableAttributes(path: EntityPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] = for {
     exists <- exists(path)
     attributes <- tezosPlatformDiscoveryOperations.getTableAttributes(path.entity)
@@ -42,10 +47,13 @@ class MetadataService(config: PlatformsConfiguration,
     .filter { _ => exists }
     .mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
 
+  // fetches attribute values
   def getAttributeValues(platform: String, network: String, entity: String, attribute: String, filter: Option[String] = None)
                         (implicit apiExecutionContext: ExecutionContext): Future[Option[Either[List[DataTypes.AttributesValidationError], List[String]]]] = {
     if (exists(NetworkPath(network, PlatformPath(platform))))
-      tezosPlatformDiscoveryOperations.listAttributeValues(entity, attribute, filter).map(Some(_))
+      tezosPlatformDiscoveryOperations
+        .listAttributeValues(entity, attribute, filter)
+        .map(Some(_))
     else
       successful(None)
   }
