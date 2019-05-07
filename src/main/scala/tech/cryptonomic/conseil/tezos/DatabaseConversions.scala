@@ -52,7 +52,8 @@ object DatabaseConversions {
           delegateSetable = delegate.setable,
           delegateValue = delegate.value.map(_.value),
           counter = counter,
-          script = script.map(_.code.toString),
+          script = script.map(_.code.expression),
+          storage = script.map(_.storage.expression),
           balance = balance,
           blockLevel = level
         )

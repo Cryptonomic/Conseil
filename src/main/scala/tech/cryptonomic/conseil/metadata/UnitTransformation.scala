@@ -4,8 +4,10 @@ import tech.cryptonomic.conseil.config.MetadataOverridesConfiguration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.util.OptionUtil.when
 
+// class for applying overrides configurations
 class UnitTransformation(overrides: MetadataOverridesConfiguration) {
 
+  // overrides platform
   def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
     val overridePlatform = overrides.platform(path)
 
@@ -17,6 +19,7 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
         .flatMap(_.description))
   }
 
+  // overrides network
   def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {
     val overrideNetwork = overrides.network(path)
 
@@ -28,6 +31,7 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
         .flatMap(_.description))
   }
 
+  // overrides entity
   def overrideEntity(entity: Entity, path: EntityPath): Option[Entity] = when(overrides.isVisible(path)) {
     val overrideEntity = overrides.entity(path)
 
@@ -39,6 +43,7 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
         .flatMap(_.description))
   }
 
+  // overrides attribute
   def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] = when(overrides.isVisible(path)) {
     val overrideAttribute = overrides.attribute(path)
 
