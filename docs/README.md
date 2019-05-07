@@ -319,13 +319,13 @@ Here's a collection of interesting datasets. Run these examples as
 
 ```bash
 curl -H 'Content-Type: application/json' -H 'apiKey: <API key>' \
--X POST '<conseil-host>/v2/data/tezos/alphanet/blocks/' \
+-X POST '<conseil-host>/v2/data/<platform>/<network>/<entity>/' \
 -d '<example>'
 ```
 
 #### Bakers by block count in April 2019
 
-Send this query to `/v2/data/tezos/alphanet/blocks` Note that `orderBy` below ends up sorting by the aggregated value.
+Send this query to `/v2/data/tezos/<network>/blocks` Note that `orderBy` below ends up sorting by the aggregated value.
 
 ```json
 {
@@ -340,7 +340,7 @@ Send this query to `/v2/data/tezos/alphanet/blocks` Note that `orderBy` below en
 
 #### Top 50 Bakers delegator balance
 
-Send this query to `/v2/data/tezos/alphanet/accounts`
+Send this query to `/v2/data/tezos/<network>/accounts`
 
 ```json
 {
@@ -353,9 +353,9 @@ Send this query to `/v2/data/tezos/alphanet/accounts`
 }
 ```
 
-### Top 50 Bakers by delegator count
+#### Top 50 Bakers by delegator count
 
-Send this query to `/v2/data/tezos/alphanet/accounts`
+Send this query to `/v2/data/tezos/<network>/accounts`
 
 ```json
 {
@@ -370,7 +370,7 @@ Send this query to `/v2/data/tezos/alphanet/accounts`
 
 #### All originated accounts with smart contracts
 
-Send this query to `/v2/data/tezos/alphanet/accounts`
+Send this query to `/v2/data/tezos/<network>/accounts`
 
 ```json
 {
@@ -386,7 +386,7 @@ Send this query to `/v2/data/tezos/alphanet/accounts`
 
 #### Top 10 contracts by number of interactions
 
-Send this query to `/v2/data/tezos/alphanet/operations`
+Send this query to `/v2/data/tezos/<network>/operations`
 
 ```json
 {
@@ -405,7 +405,7 @@ Send this query to `/v2/data/tezos/alphanet/operations`
 
 #### Top 10 contract originators
 
-Send this query to `/v2/data/tezos/alphanet/operations`
+Send this query to `/v2/data/tezos/<network>/operations`
 
 ```json
 {
@@ -423,7 +423,7 @@ Send this query to `/v2/data/tezos/alphanet/operations`
 
 #### Top 100 transactions in 2019
 
-Send this query to `/v2/data/tezos/alphanet/operations`
+Send this query to `/v2/data/tezos/<network>/operations`
 
 ```json
 {
@@ -441,7 +441,7 @@ Send this query to `/v2/data/tezos/alphanet/operations`
 
 #### Fees by block level, transaction kind in April 2019
 
-Send this query to `/v2/data/tezos/alphanet/operations`
+Send this query to `/v2/data/tezos/<network>/operations`
 
 ```json
 {
@@ -453,6 +453,59 @@ Send this query to `/v2/data/tezos/alphanet/operations`
     "orderBy": [{ "field": "fee", "direction": "desc" }],
     "aggregation": { "field": "fee", "function": "sum" },
     "limit": 100000,
+    "output": "csv"
+}
+```
+
+#### Number of transactions by type in April 2019
+
+Send this query to `/v2/data/tezos/<network>/operations`
+
+```json
+{
+    "fields": ["kind", "operation_group_hash"],
+    "predicates": [
+        { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false }
+    ],
+    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
+    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "limit": 20,
+    "output": "csv"
+}
+```
+
+#### Blocks by end-user transaction count in April 2019
+
+Send this query to `/v2/data/tezos/<network>/operations`
+
+```json
+{
+    "fields": ["block_level", "operation_group_hash"],
+    "predicates": [
+        { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
+        { "field": "kind", "set": ["transaction", "origination", "delegation", "activation"], "operation": "in", "inverse": false }
+    ],
+    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
+    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "limit": 100,
+    "output": "csv"
+}
+```
+
+#### Top 20 account controllers
+
+Send this query to `/v2/data/tezos/<network>/accounts`
+
+```json
+{
+    "fields": ["manager", "account_id"],
+    "predicates": [
+        { "field": "script", "set": [], "operation": "isnull", "inverse": false },
+        { "field": "balance", "set": [0], "operation": "gt", "inverse": false }
+    ],
+    "orderBy": [{ "field": "account_id", "direction": "desc" }],
+    "aggregation": { "field": "account_id", "function": "count" },
+    "limit": 20,
     "output": "csv"
 }
 ```
