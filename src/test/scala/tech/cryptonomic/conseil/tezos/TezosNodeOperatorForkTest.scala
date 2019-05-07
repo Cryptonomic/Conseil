@@ -309,6 +309,155 @@ class TezosNodeOperatorForkTest
 
     }
 
+    "load blocks to save in the two-alternating-forks scenario" in {
+      //SCENARIO 4 on the scheme
+      lazy val (twoForksAlternatingScenario, timeFrame) = sequenceNodes(
+        getNode(onBranch = 0, atLevel = 2),
+        getNode(onBranch = 0, atLevel = 4),
+        getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
+        getNode(onBranch = 2, atLevel = 6, forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")),
+        getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")),
+        getNode(onBranch = 0, atLevel = 8, forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis"))
+          )
+
+      val sut = createTestOperator(twoForksAlternatingScenario)
+      import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock, BlockFetchingResults}
+
+      //time 0
+      testNextStepAndStoreResults(sut) {
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+        val blockActions: BlockFetchingResults =
+          sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
+
+        blockActions should have size 3
+        forAll(blockActions) {
+          _._1 shouldBe a [WriteBlock]
+        }
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain allOf(
+          "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+          "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+          "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
+        )
+
+        blockActions
+      }
+      //time 1
+      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
+        val blockActions =
+          sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
+
+        blockActions should have size 2
+
+        forAll(blockActions) {
+          _._1 shouldBe a [WriteBlock]
+        }
+
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain allOf(
+          "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
+          "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
+        )
+
+        blockActions
+      }
+      //time 2
+      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
+        val blockActions =
+          sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
+
+        blockActions should have size 2
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
+        blockActions collect {
+          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+        } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
+
+        blockActions
+      }
+      //time 3
+      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 2, atLevel = 6))
+        val blockActions =
+          sut.getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
+
+        blockActions should have size 3
+
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain only "BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp" //lvl 6
+        blockActions collect {
+          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+        } should contain allOf (
+          "BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt", //lvl 5
+          "BLbJpro48vrgPpLRmiigYCkVJJRRC5uLkafnFsDZEQFuWBxdZiJ"  //lvl 4
+        )
+
+        blockActions
+      }
+      //time 4
+      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
+        val blockActions =
+          sut.getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
+
+        blockActions should have size 4
+
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain only "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr" //lvl 7
+        blockActions collect {
+          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+        } should contain only "BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J" //lvl 6
+        blockActions collect {
+          case (RevalidateBlock(block), _) => block.data.hash.value
+        } should contain allOf (
+          "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", //lvl 5
+          "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"  //lvl 4
+        )
+
+        blockActions
+      }
+      //time 5
+      testNextStepAndStoreResults(sut, increaseTimeFrame = Some(timeFrame)) {
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 8))
+        val blockActions =
+          sut.getBlocks(reference = headHash -> 8, levelRange = 8 to 8, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
+
+        blockActions should have size 5
+
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain only "BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u" //lvl 8
+        blockActions collect {
+          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+        } should contain allOf (
+          "BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis", //lvl 7
+          "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1", //lvl 6
+          "BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD"  //lvl 5
+        )
+        blockActions collect {
+          case (RevalidateBlock(block), _) => block.data.hash.value
+        } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi"  //lvl 4
+
+        blockActions
+      }
+
+      //double check that there's nothing more
+       timeFrame.next() shouldBe false
+    }
+
   }
 
   /* Create an operator instance to test, using
@@ -321,9 +470,10 @@ class TezosNodeOperatorForkTest
     }
 
   /* Share the same step behaviour for each scenario, i.e.
-    * 1. increase time-frame if needed
+    * 1. increase time-frame if passed-in
     * 2. run the test code
-    * 3. store the block actions returned from this step to get ready for the next
+    * 3. store in the db the block actions returned from this step, to get ready
+         for next one
     */
   private def testNextStepAndStoreResults(
     sut: TezosNodeOperator,
@@ -333,7 +483,7 @@ class TezosNodeOperatorForkTest
     store(sut)(stepCode).isReadyWithin(1.second) shouldBe true
   }
 
-  /* Store rows on the db as blocks */
+  /* Store rows on the db as blocks and invalidations*/
   private def store(sut: TezosNodeOperator)(actions: sut.BlockFetchingResults): Future[_] = {
     import slick.jdbc.PostgresProfile.api._
     import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock}
@@ -376,11 +526,7 @@ class TezosNodeOperatorForkTest
       //then rewrite only those that aren't invalid anymore
       val revalidate = validationRows.map(Tables.InvalidatedBlocks.insertOrUpdate)
 
-      dbHandler.run(DBIO.sequence( addingBlocks :: invalidate ::: revalidate)) andThen {
-        case _ =>
-          println("newly invalidated table")
-          dbHandler.run(Tables.InvalidatedBlocks.result).foreach(_.foreach(println))
-      }
+      dbHandler.run(DBIO.sequence( addingBlocks :: invalidate ::: revalidate))
 
     }
 
@@ -407,13 +553,4 @@ class TezosNodeOperatorForkTest
       isInvalidated = false,
     )
 
-  //SCENARIO 4 on the scheme
-  lazy val twoForksAlternatingScenario = sequenceNodes(
-    getNode(onBranch = 0, atLevel = 2),
-    getNode(onBranch = 0, atLevel = 4),
-    getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
-    getNode(onBranch = 2, atLevel = 6, forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")),
-    getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")),
-    getNode(onBranch = 0, atLevel = 8, forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis"))
-  )
 }

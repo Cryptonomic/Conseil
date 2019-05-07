@@ -475,7 +475,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
           lazy val invalidYetMissing = !exists && invalidated
           lazy val needRevalidation = exists && invalidated
 
-          println(s"""evaluating if need to go deeper
+          logger.debug(s"""evaluating forking logic for the need to get another level deeper
                   | examined level ${block.data.header.level}
                   | block hash is ${block.data.hash.value}
                   | block is on the blocks table? $exists
