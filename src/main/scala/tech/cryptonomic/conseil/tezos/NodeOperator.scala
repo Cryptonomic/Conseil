@@ -3,9 +3,9 @@ package tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.generic.chain.{DataFetcher, RemoteRpc}
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
-import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
+import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import com.typesafe.scalalogging.Logger
 import cats.{Functor, MonadError, Monoid}
@@ -86,13 +86,17 @@ trait NodeOperator {
     */
   def getAccountsForBlock[F[_] : MonadThrow](accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash)
     (implicit fetchProvider: Reader[BlockHash, ListFetcher[F, AccountId, Option[Account]]]): F[Map[AccountId, Account]] = {
-      import TezosOptics.Accounts.optionalScriptCode
+      import TezosOptics.Accounts.{scriptLens, storageLens}
       import cats.instances.list._
 
       implicit val fetcher = fetchProvider(blockHash)
 
-      /*tries decoding but simply returns the input unchanged on failure*/
-      def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
+      def parseMichelsonScripts(account: Account): Account = {
+        val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
+        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+
+        (scriptAlter compose storageAlter)(account)
+      }
 
       val fetchedAccounts: F[List[(AccountId, Option[Account])]] =
         fetch[AccountId, Option[Account], F, List, Throwable].run(accountIds)
@@ -100,7 +104,7 @@ trait NodeOperator {
       fetchedAccounts.map(
         indexedAccounts =>
           indexedAccounts.collect {
-            case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
+            case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
           }.toMap
       )
     }
@@ -317,63 +321,63 @@ trait NodeOperator {
       quorumFetcher: ListFetcher[F, BlockHash, Option[Int]],
       proposalFetcher: ListFetcher[F, BlockHash, Option[ProtocolId]]
     ): F[BlockFetchingResults] = {
-      import cats.instances.list._
-      import TezosTypes.Lenses._
+    import cats.instances.list._
+    import TezosTypes.Lenses._
 
-      val (hashRef, levelRef) = reference
-      require(levelRange.start >= 0 && levelRange.end <= levelRef)
-      val offsets = levelRange.map(lvl => levelRef - lvl).toList
+    val (hashRef, levelRef) = reference
+    require(levelRange.start >= 0 && levelRange.end <= levelRef)
+    val offsets = levelRange.map(lvl => levelRef - lvl).toList
 
-      logger.debug(s"Request to fetch blocks offsets up to ${offsets.max} starting from $levelRef, hash: ${hashRef.value}")
+    logger.debug(s"Request to fetch blocks offsets up to ${offsets.max} starting from $levelRef, hash: ${hashRef.value}")
 
-      implicit val blockDataFetcher = blockDataFetchProvider(hashRef)
-      val proposalsStateFetch = fetchMerge(quorumFetcher, proposalFetcher)(CurrentVotes.apply)
+    implicit val blockDataFetcher = blockDataFetchProvider(hashRef)
+    val proposalsStateFetch = fetchMerge(quorumFetcher, proposalFetcher)(CurrentVotes.apply)
 
-      val parseMichelsonScripts: Block => Block = {
-        val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
-        val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonExpression])
+    val parseMichelsonScripts: Block => Block = {
+      val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
-        codeAlter compose storageAlter compose parametersAlter
-      }
-
-      //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
-      //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
-      for {
-        fetchedBlocksData <- fetch[Offset, BlockData, F, List, Throwable].run(offsets)
-        blockHashes = fetchedBlocksData.collect{ case (offset, block) if !isGenesis(block) => block.hash }
-        fetchedOperationsWithAccounts <- fetch[BlockHash, (List[OperationsGroup], List[AccountId]), F, List, Throwable].run(blockHashes)
-        proposalsState <- proposalsStateFetch.run(blockHashes)
-      } yield {
-        val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
-        val proposalsMap = proposalsState.toMap
-        fetchedBlocksData.map {
-          case (offset, md) =>
-            val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
-            val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-            (parseMichelsonScripts(Block(md, ops, votes)), accs)
-        }
-      }
-
+      codeAlter compose storageAlter compose parametersAlter
     }
 
-  private def toMichelsonScript[T <: MichelsonElement : JsonParser.Parser](json: Any)(implicit tag: ClassTag[T]): String = {
-    val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
-    import JsonToMichelson._
-    import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-    Some(json).collect {
-      case t: String => t.convertToA[Either[Throwable, ?], String]
-      case t: Micheline => t.expression.convertToA[Either[Throwable, ?], String]
-    } match {
-      case Some(Right(value)) => value
-      case Some(Left(t)) =>
-        logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
-        UNPARSABLE_CODE_PLACEMENT + json
-      case _ =>
-        logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
-        UNPARSABLE_CODE_PLACEMENT + json
+    //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
+    //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
+    for {
+      fetchedBlocksData <- fetch[Offset, BlockData, F, List, Throwable].run(offsets)
+      blockHashes = fetchedBlocksData.collect{ case (offset, block) if !isGenesis(block) => block.hash }
+      fetchedOperationsWithAccounts <- fetch[BlockHash, (List[OperationsGroup], List[AccountId]), F, List, Throwable].run(blockHashes)
+      proposalsState <- proposalsStateFetch.run(blockHashes)
+    } yield {
+      val operationalDataMap = fetchedOperationsWithAccounts.map{ case (hash, (ops, accounts)) => (hash, (ops, accounts))}.toMap
+      val proposalsMap = proposalsState.toMap
+      fetchedBlocksData.map {
+        case (offset, md) =>
+          val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
+          val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
+          (parseMichelsonScripts(Block(md, ops, votes)), accs)
+      }
     }
+
+  }
+
+  private def toMichelsonScript[T <: MichelsonElement : Parser](json: String)(implicit tag: ClassTag[T]): String = {
+
+    def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
+      exception match {
+        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
+        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
+      }
+
+      s"Unparsable code: $json"
+    }
+
+    def parse(json: String): String = convert[T](json) match {
+      case Right(convertedResult) => convertedResult
+      case Left(exception) => unparsableResult(json, Some(exception))
+    }
+
+    Try(parse(json)).getOrElse(unparsableResult(json))
   }
 
 }
