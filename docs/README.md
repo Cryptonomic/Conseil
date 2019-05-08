@@ -371,7 +371,7 @@ Send this query to `/v2/data/tezos/<network>/blocks` Note that `orderBy` below e
 }
 ```
 
-#### Top 50 Bakers delegator balance
+#### Top 50 Bakers by delegator balance
 
 Send this query to `/v2/data/tezos/<network>/accounts`
 
@@ -434,7 +434,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 }
 ```
 
-#### Top 10 contracts by number of interactions
+#### Top 10 most active contracts
 
 Send this query to `/v2/data/tezos/<network>/operations`
 
