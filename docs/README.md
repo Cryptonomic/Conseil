@@ -1,12 +1,12 @@
 # Conseil
 
-A blockchain indexer for building decentralized applications, currently focused on Tezos.
+A blockchain indexer & API for building decentralized applications, currently focused on Tezos.
 
-Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the bone of Cryptonomic product offering. The [Arronax]() block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &ndash; a Typescript wrapper with a Tezos node interface.
+Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the backbone of Cryptonomic's product offerings. The [Arronax]() block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &ndash; a Typescript wrapper with a Tezos node interface.
 
 ## Components
 
-Conseil the project, consists of several parts. First it requires a data store compatible with the [Slick FRM](http://slick.lightbend.com). At Cryptonomic we use [PostgreSQL](http://postgresql.org). There are two services that will then interact with the database: [lorre](https://github.com/Cryptonomic/Conseil/blob/master/src/main/scala/tech/cryptonomic/conseil/Lorre.scala) and [conseil](https://github.com/Cryptonomic/Conseil/blob/master/src/main/scala/tech/cryptonomic/conseil/Conseil.scala). The former is responsible to keeping the database in sync with the blockchain, the latter services user requests for that data via a RESTful interface. Generally, `lorre` is the only component that will write to the database. Similarly, `conseil` will only read. Separating the configuration files for these two services with different database credentials would be good security practice as `lorre` has no exposed interface. Finally, a [blockchain node](https://gitlab.com/tezos/tezos) is required.
+Conseil the project consists of several parts. First it requires a data store compatible with the [Slick FRM](http://slick.lightbend.com). At Cryptonomic we use [PostgreSQL](http://postgresql.org). There are two services that will then interact with the database: [lorre](https://github.com/Cryptonomic/Conseil/blob/master/src/main/scala/tech/cryptonomic/conseil/Lorre.scala) and [conseil](https://github.com/Cryptonomic/Conseil/blob/master/src/main/scala/tech/cryptonomic/conseil/Conseil.scala). The former is responsible for keeping the database in sync with the blockchain, the latter handles user requests for that data via a RESTful interface. Generally, `lorre` is the only component that will write to the database. Similarly, `conseil` will only read from the database. Separating the configuration files for these two services with different database credentials would be good security practice as `lorre` has no exposed interface. Finally, a [blockchain node](https://gitlab.com/tezos/tezos) is required.
 
 ## Running Conseil
 
@@ -16,19 +16,19 @@ Assuming that the database and blockchain node are up and running, the next thin
 
 `java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet`
 
-In this command, the `-Xms512m` and `-Xmx14g` can be changed based on the amount of memory available on the system, the `-Dconfig.file=conseil.conf` can be changed to point to any user created config file contains the credentials for the respective db and Tezos node, the file can also contain any overrides for settings provided by the `application.conf` file. Lastly, `alphanet` is the network being run by the Tezos node, it can and should be changed if running `mainnet` or `zeronet`.
+In this command, the `-Xms512m` and `-Xmx14g` can be changed based on the amount of memory available on the system, the `-Dconfig.file=conseil.conf` can be changed to point to any user created config file that contains the credentials for the respective db and Tezos node. The file can also contain any overrides for settings provided by the `reference.conf` file. Lastly, `alphanet` is the network being run by the Tezos node, it can and should be changed if running `mainnet` or `zeronet`.
 
 Start `conseil` as: 
 
 `java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil`
 
-A few things to note. `lorre` may take some time to catch up to the current block height depending on how long the chain is. During this process it may require more memory. Incremental updates are quick and not memory intensive after that. `lorre` will write data incrementally to the database, so `conseil` will be usable before it's fully updated.
+A few things to note- `lorre` may take some time to catch up to the current block height depending on how long the chain is. During this process it may require more memory. Incremental updates are quick and not memory intensive after that. `lorre` will write data incrementally to the database, so `conseil` will be usable before it's fully updated.
 
 For examples of how we run these services check out the [Nautilus](https://github.com/Cryptonomic/Nautilus) repo.
 
 ### Logging
 
-Both `conseil` and `lorre` write to `syslog`, the logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see if the services are running and if the chain and db are synced as this would be the starting point of all troubleshooting inquiries. 
+Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see whether the services are running and whether the chain and db are synced as this would be the starting point of all troubleshooting inquiries. 
 
 ### Configuration
 
@@ -36,7 +36,7 @@ Both `conseil` and `lorre` write to `syslog`, the logs are verbose enough to det
 
 ### Datasource configuration
 
-In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataFormat` can also be added.
+In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example, table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataFormat` can also be added.
 
 ## REST API Overview &amp; Examples
 
@@ -270,7 +270,7 @@ The most basic query has the following JSON structure.
 }
 ```
 
-This will return 5 items without any filtering for some entity. Note that the query does not specify which entity is being requested. If this is sent to `/v2/data/tezos/alphanet/blocks`, it will return five rows with all the fields available in the blocks entity.
+This will return five items without any filtering for some entity. Note that the query does not specify which entity is being requested. If this is sent to `/v2/data/tezos/alphanet/blocks`, it will return five rows with all the fields available in the blocks entity.
 
 ```bash
 curl -d '{ "fields": [], "predicates": [], "limit": 5 }' -H 'Content-Type: application/json' -H 'apiKey: <API key>' -X POST '<conseil-host>/v2/data/tezos/alphanet/blocks/'
@@ -301,7 +301,7 @@ Sort condition, multiple may be supplied for a single query. Inner object(s) wil
 
 #### `aggregation`
 
-It is possible to apply an aggregation function to single field of the result set. The aggregation object contains the following properties:
+It is possible to apply an aggregation function to a single field of the result set. The aggregation object contains the following properties:
 
 - `field` – `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response.
 - `function` – one of: sum, count, max, min, avg.
@@ -368,7 +368,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 }
 ```
 
-#### All originated accounts with smart contracts
+#### All originated accounts which are smart contracts
 
 Send this query to `/v2/data/tezos/<network>/accounts`
 
