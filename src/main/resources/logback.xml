@@ -12,10 +12,16 @@
     <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
         <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
             <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-                <destination>159.203.120.200:5000</destination>
+                <destination>142.93.74.99:5000</destination>
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                     <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
                 </encoder>
+                <ssl>
+                    <trustStore>
+                        <location>classpath:/spinner2.jks</location>
+                        <password>conseilpass</password>
+                    </trustStore>
+                </ssl>
             </appender>
         </appender>
     </logger>
