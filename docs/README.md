@@ -10,6 +10,20 @@ Conseil the project consists of several parts. First it requires a data store co
 
 ## Running Conseil
 
+### Requirements
+
+In addition to the database service described above, JRE (>= 8.0) is required to run the Conseil components.
+
+#### Building from Source
+
+Should you chose to compile from source, a Scala development environment will be necessary comprising of the following:
+
+- JDK (> 8.x)
+- Scala (> 2.12.x)
+- SBT (> 1.2.6)
+
+To package, simply run `sbt -J-Xss32m clean assembly`. This process may take a minute to complete, once it's done, `.jar` will be produced in `/tmp/conseil.jar`. To just compile, run `sbt -J-Xss32m clean compile`.
+
 ### Starting
 
 Assuming that the database and blockchain node are up and running, the next thing to start is `lorre`.
