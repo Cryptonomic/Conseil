@@ -10,21 +10,46 @@ Conseil the project consists of several parts. First it requires a data store co
 
 ## Running Conseil
 
+### Requirements
+
+In addition to the database service described above, JRE (>= 8.0) is required to run the Conseil components.
+
+#### Building from Source
+
+Should you chose to compile from source, a Scala development environment will be necessary comprising of the following:
+
+- JDK (> 8.x)
+- Scala (> 2.12.x)
+- SBT (> 1.2.6)
+
+To package, simply run `sbt -J-Xss32m clean assembly`. This process may take a minute to complete, once it's done, `.jar` will be produced in `/tmp/conseil.jar`. To just compile, run `sbt -J-Xss32m clean compile`.
+
 ### Starting
 
 Assuming that the database and blockchain node are up and running, the next thing to start is `lorre`.
 
-`java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet`
+```
+java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet
+```
 
 In this command, the `-Xms512m` and `-Xmx14g` can be changed based on the amount of memory available on the system, the `-Dconfig.file=conseil.conf` can be changed to point to any user created config file that contains the credentials for the respective db and Tezos node. The file can also contain any overrides for settings provided by the `reference.conf` file. Lastly, `alphanet` is the network being run by the Tezos node, it can and should be changed if running `mainnet` or `zeronet`.
 
 Start `conseil` as: 
 
-`java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil`
+```
+java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil
+```
 
 A few things to note- `lorre` may take some time to catch up to the current block height depending on how long the chain is. During this process it may require more memory. Incremental updates are quick and not memory intensive after that. `lorre` will write data incrementally to the database, so `conseil` will be usable before it's fully updated.
 
 For examples of how we run these services check out the [Nautilus](https://github.com/Cryptonomic/Nautilus) repo.
+
+To run `lorre` and `conseil` with `sbt`, use the following:
+
+```
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "runConseil"
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "runLorre alphanet"
+```
 
 ### Logging
 
@@ -37,6 +62,14 @@ Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to det
 ### Datasource configuration
 
 In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example, table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataFormat` can also be added.
+
+### Initializing the Data Store
+
+Prior to starting the Conseil services for the first time the database initialization script needs to be run as such:
+
+```
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "genSchema"
+```
 
 ## REST API Overview &amp; Examples
 
@@ -338,7 +371,7 @@ Send this query to `/v2/data/tezos/<network>/blocks` Note that `orderBy` below e
 }
 ```
 
-#### Top 50 Bakers delegator balance
+#### Top 50 Bakers by delegator balance
 
 Send this query to `/v2/data/tezos/<network>/accounts`
 
@@ -401,7 +434,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 }
 ```
 
-#### Top 10 contracts by number of interactions
+#### Top 10 most active contracts
 
 Send this query to `/v2/data/tezos/<network>/operations`
 
