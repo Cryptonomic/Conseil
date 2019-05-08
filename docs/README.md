@@ -368,6 +368,23 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 }
 ```
 
+#### Top 20 Bakers by roll count
+
+Send this query to `/v2/data/tezos/<network>/bakers`
+
+```json
+{
+    "fields": ["pkh", "rolls"],
+    "predicates": [],
+    "orderBy": [
+        { "field": "block_level", "direction": "desc" },
+        { "field": "rolls", "direction": "desc" }
+    ],
+    "limit": 20,
+    "output": "csv"
+}
+```
+
 #### All originated accounts which are smart contracts
 
 Send this query to `/v2/data/tezos/<network>/accounts`
