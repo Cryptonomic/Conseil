@@ -200,13 +200,11 @@ object JsonDecoders {
     object Accounts {
       private implicit val conf = tezosDerivationConfig
 
-      implicit val scriptDecoder: Decoder[AccountScript] =
-        Decoder.decodeJson.map(json => AccountScript(json.noSpaces))
+      import JsonDecoders.Circe.Operations.scriptedContractsDecoder
+
       implicit val delegateDecoder: Decoder[AccountDelegate] = deriveDecoder
       implicit val accountDecoder: Decoder[Account] = deriveDecoder
     }
 
   }
-
-
 }

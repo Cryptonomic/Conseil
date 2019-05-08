@@ -12,11 +12,11 @@ import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfigura
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
-
 import cats.instances.future._
 import cats.syntax.applicative._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.reflect.ClassTag
@@ -134,22 +134,25 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import TezosOptics.Accounts.optionalScriptCode
+    import TezosOptics.Accounts.{scriptLens, storageLens}
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     implicit val fetcherInstance = accountsFetcherProvider(blockHash)
 
-    /*tries decoding but simply returns the input unchanged on failure*/
-    def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
-
-
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
+
+    def parseMichelsonScripts(account: Account): Account = {
+      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+
+      (scriptAlter compose storageAlter)(account)
+    }
 
     fetchedAccounts.map(
       indexedAccounts =>
         indexedAccounts.collect {
-          case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
+          case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
         }.toMap
     )
   }
@@ -391,8 +394,8 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
     def parseMichelsonScripts(block: Block): Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonExpression])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (codeAlter compose storageAlter compose parametersAlter)(block)
     }
@@ -416,21 +419,23 @@ class TezosNodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     }
   }
 
-  private val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
+  private def toMichelsonScript[T <: MichelsonElement : Parser](json: String)(implicit tag: ClassTag[T]): String = {
 
-  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any)(implicit tag: ClassTag[T]): String = {
-    Some(json).collect {
-      case t: String => convert[T](t)
-      case t: Micheline => convert[T](t.expression)
-    } match {
-      case Some(Right(value)) => value
-      case Some(Left(t)) =>
-        logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
-        UNPARSABLE_CODE_PLACEMENT + json
-      case _ =>
-        logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
-        UNPARSABLE_CODE_PLACEMENT + json
+    def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
+      exception match {
+        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
+        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
+      }
+
+      s"Unparsable code: $json"
     }
+
+    def parse(json: String): String = convert[T](json) match {
+      case Right(convertedResult) => convertedResult
+      case Left(exception) => unparsableResult(json, Some(exception))
+    }
+
+    Try(parse(json)).getOrElse(unparsableResult(json))
   }
 }
 

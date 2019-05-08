@@ -67,6 +67,7 @@ CREATE TABLE public.accounts (
     delegate_value character varying,
     counter integer NOT NULL,
     script character varying,
+    storage character varying,
     balance numeric NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL
 );
@@ -163,6 +164,8 @@ CREATE TABLE public.operations (
     storage character varying,
     status character varying,
     consumed_gas numeric,
+    storage_size numeric,
+    paid_storage_size_diff numeric,
     block_hash character varying NOT NULL,
     block_level integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL

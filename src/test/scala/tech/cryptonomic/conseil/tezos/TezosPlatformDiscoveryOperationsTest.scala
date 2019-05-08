@@ -11,6 +11,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
 import tech.cryptonomic.conseil.config.Newest
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
@@ -107,6 +108,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("delegate_value", "Delegate value", DataType.String, Some(0), KeyType.NonKey, "accounts"),
             Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
             Attribute("script", "Script", DataType.String, Some(0), KeyType.NonKey, "accounts"),
+            Attribute("storage", "Storage", DataType.String, Some(0), KeyType.NonKey, "accounts"),
             Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
             Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
           )
@@ -176,6 +178,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("storage", "Storage", DataType.String, Some(0), KeyType.NonKey, "operations"),
             Attribute("status", "Status", DataType.String, Some(0), KeyType.NonKey, "operations"),
             Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("paid_storage_size_diff", "Paid storage size diff", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("block_hash", "Block hash", DataType.String, Some(0), KeyType.NonKey, "operations"),
             Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "operations")
@@ -209,17 +213,17 @@ class TezosPlatformDiscoveryOperationsTest
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
       metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
-      sut.listAttributeValues("fees", "kind", None).futureValue shouldBe List("example1")
+      sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
     }
 
-    "returns a failed future when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
+    "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
       dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
-      intercept[NoSuchElementException] {
-        throw sut.listAttributeValues("fees", "medium", None).failed.futureValue
-      }
+
+      sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(InvalidAttributeDataType("medium"), HighCardinalityAttribute("medium"))
+
     }
 
     "return empty list when trying to sql inject" in {
@@ -231,7 +235,7 @@ class TezosPlatformDiscoveryOperationsTest
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
 
-      sut.listAttributeValues("fees", "kind", maliciousFilter).futureValue shouldBe List.empty
+      sut.listAttributeValues("fees", "kind", maliciousFilter).futureValue.right.get shouldBe List.empty
 
       dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
 
@@ -242,13 +246,13 @@ class TezosPlatformDiscoveryOperationsTest
         AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
       )
 
-      sut.listAttributeValues("fees", "kind", Some("1")).futureValue shouldBe List.empty
+      sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
       dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
 
-      sut.listAttributeValues("fees", "kind", None).futureValue should contain theSameElementsAs List("example1", "example2")
-      sut.listAttributeValues("fees", "kind", Some("ex")).futureValue should contain theSameElementsAs List("example1", "example2")
-      sut.listAttributeValues("fees", "kind", Some("ample")).futureValue should contain theSameElementsAs List("example1", "example2")
-      sut.listAttributeValues("fees", "kind", Some("1")).futureValue shouldBe List("example1")
+      sut.listAttributeValues("fees", "kind", None).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
+      sut.listAttributeValues("fees", "kind", Some("ex")).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
+      sut.listAttributeValues("fees", "kind", Some("ample")).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
+      sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List("example1")
 
     }
 

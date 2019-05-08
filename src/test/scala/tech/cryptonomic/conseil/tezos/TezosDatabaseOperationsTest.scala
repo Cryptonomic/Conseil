@@ -8,6 +8,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
@@ -290,7 +291,8 @@ class TezosDatabaseOperationsTest
           row.delegateSetable shouldEqual account.delegate.setable
           row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.code.toString)
+          row.script shouldEqual account.script.map(_.code.expression)
+          row.storage shouldEqual account.script.map(_.storage.expression)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual block.level
       }
@@ -358,7 +360,8 @@ class TezosDatabaseOperationsTest
           row.delegateSetable shouldEqual account.delegate.setable
           row.delegateValue shouldEqual account.delegate.value.map(_.value)
           row.counter shouldEqual account.counter
-          row.script shouldEqual account.script.map(_.code.toString)
+          row.script shouldEqual account.script.map(_.code.expression)
+          row.storage shouldEqual account.script.map(_.storage.expression)
           row.balance shouldEqual account.balance
           row.blockLevel shouldEqual levelUpdate
       }
@@ -1766,6 +1769,70 @@ class TezosDatabaseOperationsTest
         Map("medium" -> Some(2), "low" -> Some(0)), // high = Some(4)
         Map("medium" -> Some(3), "low" -> Some(0)), // high = Some(3)
       )
+    }
+
+    "should correctly check use between in the timestamps" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(2), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(4), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "timestamp",
+        operation = OperationType.between,
+        set = List(
+          new Timestamp(1),
+          new Timestamp(3)
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("timestamp"),
+          predicates = List(predicate),
+          ordering = List.empty,
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result.flatMap(_.values.map(_.map(_.asInstanceOf[Timestamp]))) shouldBe List(
+        Some(new Timestamp(2))
+      )
+    }
+
+    "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
+      val feesTmp = List(
+        FeesRow(0, 0, 0, new Timestamp(0), "kind"),
+        FeesRow(0, 0, 10, new Timestamp(3), "kind"),
+        FeesRow(0, 0, 2, new Timestamp(1), "kind"),
+        FeesRow(0, 0, 30, new Timestamp(2), "kind")
+      )
+
+      val predicate = Predicate(
+        field = "high",
+        operation = OperationType.between,
+        set = List(1,3)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("high"),
+          predicates = List(predicate),
+          ordering = List(),
+          aggregation = None,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(Map("high" -> Some(2)))
     }
 
   }

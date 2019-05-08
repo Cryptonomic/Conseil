@@ -4,6 +4,7 @@ import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -21,26 +22,26 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    private val storage = GenLens[Scripted.Contracts](_.storage)
-    private val code = GenLens[Scripted.Contracts](_.code)
+    private val storage = GenLens[Contracts](_.storage)
+    private val code = GenLens[Contracts](_.code)
 
-    private val string = GenLens[Micheline](_.expression)
+    private val expression = GenLens[Micheline](_.expression)
 
-    private val scriptLens: Traversal[Block, Scripted.Contracts] =
+    private val scriptLens: Traversal[Block, Contracts] =
       operationGroups composeTraversal each composeLens
         operations composeTraversal each composePrism
         origination composeLens
         script composePrism some
 
-    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens string
-    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens string
+    val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens expression
+    val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens expression
 
     val parametersLens: Traversal[Block, String] =
       operationGroups composeTraversal each composeLens
         operations composeTraversal each composePrism
         transaction composeLens
         parameters composePrism some composeLens
-        string
+        expression
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
@@ -347,15 +348,12 @@ object TezosTypes {
     value: Option[PublicKeyHash]
   )
 
-  //represents unparsed micheline json
-  final case class AccountScript(code: String) extends AnyVal
-
   final case class Account(
     manager: PublicKeyHash,
     balance: scala.math.BigDecimal,
     spendable: Boolean,
     delegate: AccountDelegate,
-    script: Option[AccountScript],
+    script: Option[Contracts],
     counter: Int
   )
 
