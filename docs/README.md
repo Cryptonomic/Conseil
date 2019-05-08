@@ -40,6 +40,13 @@ A few things to note- `lorre` may take some time to catch up to the current bloc
 
 For examples of how we run these services check out the [Nautilus](https://github.com/Cryptonomic/Nautilus) repo.
 
+To run `lorre` and `conseil` with `sbt`, use the following:
+
+```
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "runConseil"
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "runLorre alphanet"
+```
+
 ### Logging
 
 Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see whether the services are running and whether the chain and db are synced as this would be the starting point of all troubleshooting inquiries. 
@@ -51,6 +58,14 @@ Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to det
 ### Datasource configuration
 
 In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example, table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataFormat` can also be added.
+
+### Initializing the Data Store
+
+Prior to starting the Conseil services for the first time the database initialization script needs to be run as such:
+
+```
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "genSchema"
+```
 
 ## REST API Overview &amp; Examples
 
