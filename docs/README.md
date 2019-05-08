@@ -287,7 +287,7 @@ It is possible to narrow down the fields returned in the result set by listing j
 `predicates` is an array containing objects. The inner object has several properties:
 - `field` – attribute name from the metadata response.
 - `operation` – one of: in, between, like, lt, gt, eq, startsWith, endsWith, before, after.
-- `set` – an array of values to compare against. 'in' requires two or more elements, 'between' must have exactly two, the rest of the operations require a single element.
+- `set` – an array of values to compare against. 'in' requires two or more elements, 'between' must have exactly two, the rest of the operations require a single element. Dates are expressed as epoch milliseconds.
 - `inverse` – boolean, setting it to `true` applied a `NOT` to the operator
 - `precision` – for numeric field matches this specifies the number of decimal places to round to.
 
@@ -483,7 +483,7 @@ Send this query to `/v2/data/tezos/<network>/operations`
     "fields": ["block_level", "operation_group_hash"],
     "predicates": [
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
-        { "field": "kind", "set": ["transaction", "origination", "delegation", "activation"], "operation": "in", "inverse": false }
+        { "field": "kind", "set": ["transaction", "origination", "delegation", "activation", "reveal"], "operation": "in", "inverse": false }
     ],
     "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
     "aggregation": { "field": "operation_group_hash", "function": "count" },
@@ -505,6 +505,23 @@ Send this query to `/v2/data/tezos/<network>/accounts`
     ],
     "orderBy": [{ "field": "account_id", "direction": "desc" }],
     "aggregation": { "field": "account_id", "function": "count" },
+    "limit": 20,
+    "output": "csv"
+}
+```
+
+#### Top 20 account controllers by balance
+
+Send this query to `/v2/data/tezos/<network>/accounts`
+
+```json
+{
+    "fields": ["manager", "balance"],
+    "predicates": [
+        { "field": "script", "set": [], "operation": "isnull", "inverse": false }
+    ],
+    "orderBy": [{ "field": "balance", "direction": "desc" }],
+    "aggregation": { "field": "balance", "function": "sum" },
     "limit": 20,
     "output": "csv"
 }
