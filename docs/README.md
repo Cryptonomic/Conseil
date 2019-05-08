@@ -28,13 +28,17 @@ To package, simply run `sbt -J-Xss32m clean assembly`. This process may take a m
 
 Assuming that the database and blockchain node are up and running, the next thing to start is `lorre`.
 
-`java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet`
+```
+java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Lorre alphanet
+```
 
 In this command, the `-Xms512m` and `-Xmx14g` can be changed based on the amount of memory available on the system, the `-Dconfig.file=conseil.conf` can be changed to point to any user created config file that contains the credentials for the respective db and Tezos node. The file can also contain any overrides for settings provided by the `reference.conf` file. Lastly, `alphanet` is the network being run by the Tezos node, it can and should be changed if running `mainnet` or `zeronet`.
 
 Start `conseil` as: 
 
-`java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil`
+```
+java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil
+```
 
 A few things to note- `lorre` may take some time to catch up to the current block height depending on how long the chain is. During this process it may require more memory. Incremental updates are quick and not memory intensive after that. `lorre` will write data incrementally to the database, so `conseil` will be usable before it's fully updated.
 
