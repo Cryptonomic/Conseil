@@ -1,5 +1,59 @@
 package tech.cryptonomic.conseil.generic.chain
 
+import cats._
+import cats.arrow._
+import cats.data.Kleisli
+
+trait RpcHandler[Eff[_]] {
+  import cats.data.Kleisli
+
+  /** some typed endpoint representation */
+  type Command
+  /** usually corresponds to Json */
+  type Response
+  /** the type of a Post payload, when needed */
+  type PostPayload
+
+  def getQuery: Kleisli[Eff, Command, Response]
+
+  def postQuery: Kleisli[Eff, (Command, Option[PostPayload]), Response]
+
+}
+
+object RpcHandler {
+
+  type Aux[Eff[_], Comm, Payload, Res] = RpcHandler[Eff] { type Command = Comm; type PostPayload = Payload; type Response = Res}
+
+  /** Factor method based on an implicit instance being available in scope */
+  def apply[Eff[_], Command, PostPayload, Response](implicit rpc: Aux[Eff, Command, PostPayload, Response]) = rpc
+
+  /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
+  def runGet[Eff[_], Command, Res](command: Command)(implicit rpc: Aux[Eff, Command, _, Res]): Eff[rpc.Response] =
+    rpc.getQuery.run(command)
+
+  /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
+  def runPost[Eff[_], Command, PostPayload, Res](command: Command, payload: Option[PostPayload] = None)(implicit rpc: Aux[Eff, Command, PostPayload, Res]): Eff[rpc.Response] =
+    rpc.postQuery.run((command, payload))
+
+  /** provides an implicit to convert the effect-type of the handler, if there's a natural transformation `F ~> G` */
+  def functionK[F[_], G[_], Comm, Payload](implicit nat: F ~> G) =
+    new FunctionK[Aux[F, Comm, Payload, ?], Aux[G, Comm, Payload, ?]] {
+
+      override def apply[A](fa: Aux[F, Comm, Payload, A]): Aux[G, Comm, Payload, A] =
+        new RpcHandler[G] {
+          type Command = Comm
+          type Response = A
+          type PostPayload = Payload
+
+          def getQuery: Kleisli[G, Comm, A] = Kleisli.liftFunctionK(nat)(fa.getQuery)
+
+          def postQuery: Kleisli[G, (Comm, Option[Payload]), A] = Kleisli.liftFunctionK(nat)(fa.postQuery)
+
+        }
+    }
+
+}
+
 /** describes remote calls, adding extra things on top
   * `Eff` is the container effect for the call response
   * `Req` is a wrapper around the call input parameter, to allow variations from a single element call

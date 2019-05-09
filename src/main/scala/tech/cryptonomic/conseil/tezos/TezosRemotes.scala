@@ -2,11 +2,34 @@ package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
-import tech.cryptonomic.conseil.generic.chain.RemoteRpc
+import tech.cryptonomic.conseil.generic.chain.{RemoteRpc, RpcHandler}
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 
 /** Provides RemoteRpc instances for the tezos chain */
 object TezosRemoteInstances {
+
+  object Cats {
+    import cats._
+    import cats.arrow._
+    import cats.effect.IO
+    import scala.concurrent.Future
+
+    object IOEff extends IOEff
+
+    /** a polymorphic value function that converts any future wrapper to an IO */
+    implicit val fromFuture: Future ~> IO = Lambda[FunctionK[Future, IO]](fut => IO.fromFuture(IO(fut)))
+
+    trait IOEff {
+      import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
+      import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.Futures._
+
+      //uses the available functionKs to build the IO instance on top of the one for Futures
+      implicit def ioRpcHandlerInstance(implicit context: RemoteContext): RpcHandler.Aux[IO, String, JsonString, String] =
+        RpcHandler.functionK.apply(futureRpcHandlerInstance)
+
+    }
+
+  }
 
   /** Instances based on Akka toolkit*/
   object Akka {
@@ -15,7 +38,6 @@ object TezosRemoteInstances {
     import scala.concurrent.Future
     import akka.actor.ActorSystem
     import akka.stream.ActorMaterializer
-    import akka.stream.scaladsl.Source
     import akka.http.scaladsl.Http
     import akka.http.scaladsl.model._
 
@@ -62,6 +84,69 @@ object TezosRemoteInstances {
         override def combine(x: Future[T], y: Future[T]) = x *> y
         override def empty: Future[T] = Future.failed(new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace)
       }
+
+      /** The actual instance
+        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
+        */
+      implicit def futureRpcHandlerInstance(implicit context: RemoteContext) =
+        new RpcHandler[Future] {
+          import cats.data.Kleisli
+          import context._
+
+          private val logger = Logger("Akka.Futures.RpcHandler")
+
+          implicit val system = context.system
+          implicit val dispatcher = system.dispatcher
+          implicit val materializer = ActorMaterializer()
+
+          //a partial URL path
+          type Command = String
+          // the json response content
+          type Response = String
+          // payload is formally verified json
+          type PostPayload = JsonString
+
+          override def getQuery: Kleisli[Future, Command, Response] = Kleisli {
+            command => withRejectionControl {
+              val url = translateCommandToUrl(command)
+              val httpRequest = HttpRequest(HttpMethods.GET, url)
+              logger.debug("Async querying URL {} for platform Tezos and network {}", url, tezosConfig.network)
+
+              for {
+                response <- Http(system).singleRequest(httpRequest)
+                strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
+              } yield {
+                val content = strict.data.utf8String
+                logger.debug("GET query result: {}", content)
+                JsonString sanitize content
+              }
+            }
+          }
+
+          override def postQuery: Kleisli[Future, (Command, Option[PostPayload]), Response] = Kleisli {
+            case (command, payload) => withRejectionControl {
+              val url = translateCommandToUrl(command)
+              logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, tezosConfig.network, payload)
+              val postedData = payload.getOrElse(JsonString.emptyObject)
+              val httpRequest = HttpRequest(
+                HttpMethods.POST,
+                url,
+                entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
+              )
+
+              for {
+                response <- Http(system).singleRequest(httpRequest)
+                strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
+              } yield {
+                val content = strict.data.utf8String
+                logger.debug("POST query result: {}", content)
+                JsonString sanitize content
+              }
+
+            }
+          }
+
+        }
 
       /** A type constructor that takes both String and CallId but actually ignores the CallId, hence isomorphic to String */
       type JustString[CallId] = Const[String, CallId]
@@ -129,103 +214,6 @@ object TezosRemoteInstances {
         }
     }
 
-    /** Statically provides rpc intances based on Akka-Streams*/
-    object Streams extends Streams {
-
-      //type aliases
-      type ConcurrencyLevel = Int
-      type StreamSource[A] = Source[A, akka.NotUsed]
-      type TaggedString[CallId] = (CallId, String)
-
-    }
-
-    /** Mix-in this to get instances for async rpc calls on top of akka-streams */
-    trait Streams {
-      import Streams._
-      import akka.http.scaladsl.settings.ConnectionPoolSettings
-
-      //might be actually unlawful, but we won't use it for append, only for empty
-      private implicit def sourceMonoid[T] = new Monoid[StreamSource[T]] {
-        override def combine(x: StreamSource[T], y: StreamSource[T]) = x ++ y
-        override def empty: StreamSource[T] = Source.empty[T]
-      }
-
-      /** Override this to handle failures on the Get calls
-        * @param url the failing target
-        * @param err the actual failure
-        */
-      def handleErrorsOnGet(url: String, err: Throwable): Unit = ()
-
-      /** An instance available to stream GET requests, returning a stream of utf-8 results, paired with the input
-        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
-        */
-      implicit def streamsInstance(implicit context: RemoteContext) =
-        new RemoteRpc[StreamSource, StreamSource, TaggedString] {
-          import context._
-          import context.tezosConfig.nodeConfig
-
-          implicit val system = context.system
-          implicit val dispatcher = system.dispatcher
-          implicit val materializer = ActorMaterializer()
-
-          //no real support for POST calls
-          type PostPayload = Nothing
-          //will pass the concurrency level used in the internal stream as additional call information
-          type CallConfig = ConcurrencyLevel
-
-          override def runGetCall[CallId](
-            callConfig: ConcurrencyLevel,
-            request: StreamSource[CallId],
-            commandMap: CallId => String
-          ): StreamSource[(CallId, String)] = withRejectionControl {
-            val convertIdToUrl = commandMap andThen translateCommandToUrl
-            val toRequest: ((String, CallId)) => (HttpRequest, CallId) = { case (url, id) => HttpRequest(uri = Uri(url)) -> id }
-
-            request.map(id => convertIdToUrl(id) -> id)
-              .map(toRequest)
-              .via(getHostPoolFlow)
-              .mapAsyncUnordered(callConfig) {
-                case (tried, id) =>
-                  tried.failed.foreach(handleErrorsOnGet(convertIdToUrl(id), _))
-                  Future.fromTry(tried)
-                    .flatMap(_.entity.toStrict(requestConfig.GETResponseEntityTimeout))
-                    .map(content => id -> JsonString.sanitize(content.data.utf8String))
-              }
-          }
-
-          /* this is not expected to ever get called
-           * as testified by the empty payload
-           */
-          override def runPostCall[CallId](
-            callConfig: ConcurrencyLevel,
-            request: StreamSource[CallId],
-            commandMap: CallId => String,
-            payload: Option[Nothing]
-          ): StreamSource[(CallId, String)] = withRejectionControl {
-            Source.empty
-          }
-
-          /* Connection pool settings customized for streaming requests */
-          private val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(streamingConfig.pool)
-
-          /* creates a connections pool based on the host network */
-          private[this] def getHostPoolFlow[T] = {
-            if (nodeConfig.protocol == "https")
-              Http(system).cachedHostConnectionPoolHttps[T](
-                host = nodeConfig.hostname,
-                port = nodeConfig.port,
-                settings = streamingRequestsConnectionPooling
-              )
-            else
-              Http(system).cachedHostConnectionPool[T](
-                host = nodeConfig.hostname,
-                port = nodeConfig.port,
-                settings = streamingRequestsConnectionPooling
-              )
-          }
-
-        }
-
-    }
   }
+
 }
