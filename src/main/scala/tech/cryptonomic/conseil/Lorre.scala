@@ -28,6 +28,7 @@ import scala.util.{Failure, Success, Try}
 import scala.{Stream => _}
 
 import cats.effect.{ContextShift, IO}
+import scala.util.control.NonFatal
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -54,6 +55,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   implicit val dispatcher = system.dispatcher
   implicit val nodeContext = RemoteContext(tezosConf, callsConf, streamingClientConf)
   implicit val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
+  implicit val timer = IO.timer(dispatcher)
 
   //how long to wait for graceful shutdown of system components
   val shutdownWait = 10.seconds
@@ -136,15 +138,22 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             IO(logger.error("Failed processing but will keep on going next cycle", f))
         }
 
-    Await.result((attemptedProcessing).unsafeToFuture(), atMost = Duration.Inf)
-
     lorreConf.depth match {
       case Newest =>
-        logger.info("Taking a nap")
-        Thread.sleep(lorreConf.sleepInterval.toMillis)
+        val cycle = for {
+          _ <- attemptedProcessing.timeout(12.hours)
+          _ <- IO(logger.info("Taking a nap"))
+          _ <- IO.shift
+          _ <- timer.sleep(lorreConf.sleepInterval)
+        } yield ()
+        cycle.unsafeRunSync()
         mainLoop(iteration + 1)
       case _ =>
-        logger.info("Synchronization is done")
+        val cycle = for {
+          _ <- attemptedProcessing.timeout(12.hours)
+          _ <- IO(logger.info("Synchronization is done"))
+        } yield ()
+        cycle.unsafeRunSync()
     }
   }
 
@@ -176,11 +185,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       def logOutcome(accountCounts: Int) = IO(logger.info("{} accounts were touched on the database.", accountCounts))
 
       for {
-        checkpoints  <- toIO(db.run(TezosDb.getLatestAccountsFromCheckpoint)) <* IO(logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain"))
+        checkpoints  <- toIO(db.run(TezosDb.getLatestAccountsFromCheckpoint))
+        _            <- IO(logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain"))
         underProcess =  checkpoints.keySet
         info         <- node.getAccounts[IO](checkpoints)
         stored       <- toIO(db.run(TezosDb.writeAccounts(info)))
         _            <- toIO(db.run(TezosDb.cleanAccountsCheckpoint(Some(underProcess))))
+        _            <- IO(logger.debug("Done cleaning checkpoint on accounts"))
         _            <- logOutcome(stored)
       } yield ()
     }
@@ -201,11 +212,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       import cats.syntax.semigroup._
       import cats.instances.option._
       import cats.instances.int._
-      import slick.dbio.DBIO
 
       val writeAllProposals = TezosDb.writeVotingProposals(proposals)
       //this is a nested list, each block with many baker rolls
-      val writeAllBakers = blocksWithBakers.traverse[DBIO, Option[Int]]((TezosDb.writeVotingBakers _).tupled)
+      val writeAllBakers = blocksWithBakers.traverse((TezosDb.writeVotingBakers _).tupled)
       //this is a nested list, each block with many ballot votes
       val writeAllBallots = blocksWithBallots.traverse((TezosDb.writeVotingBallots _).tupled)
 
@@ -222,6 +232,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     }
 
+    def toBlocksProcessingFailure[T]: Throwable => IO[T] = {
+      case NonFatal(err) =>
+        val errorMsg = "I failed to fetch the blocks and related data from the client and store it"
+        IO(logger.error(errorMsg, err)) *> IO.raiseError(BlocksProcessingFailed(message = errorMsg, err))
+      case fatal =>
+        val errorMsg = "Something serioursly bad happened, probably unrecoverable. Please restart the process once possible"
+        IO(logger.error(errorMsg, fatal)) *> IO.raiseError(fatal)
+     }
+
+    def toAccountsProcessingFailure[T]: Throwable => IO[T] = {
+      case NonFatal(err) =>
+        val errorMsg = "I failed to fetch the accounts from the client and update them"
+        IO(logger.error(errorMsg, err)) *> IO.raiseError(AccountsProcessingFailed(message = errorMsg, err))
+      case fatal =>
+       val errorMsg = "Something serioursly bad happened, probably unrecoverable. Please restart the process once possible"
+       IO(logger.error(errorMsg, fatal)) *> IO.raiseError(fatal)
+    }
+
     val blocksToSynchronize: IO[node.BlockFetchingResults[IO]] = lorreConf.depth match {
       case Newest => node.getBlocksNotInDatabase[IO](fetchMaxLevel)
       case Everything => node.getLatestBlocks[IO]()
@@ -231,17 +259,18 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     blocksToSynchronize.flatMap { results =>
       results.chunkN(batchingConf.blockPageSize)
         .evalTap(
-          chunk => IO(logger.info("processing chunk {}", chunk))
+          //add progress tracking
+          chunk => IO(logger.info("I received {} blocks from the node, about to process", chunk.size))
         )
         .evalMap {
           chunk =>
             val blockCheckPointMap = chunk.toList.toMap
 
             for {
-              accountsStored <- toIO(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blockCheckPointMap)))
-              votesStored    <- processVotes(blockCheckPointMap.keys.toList)
+              accountsStored <- toIO(db.run(TezosDb.writeBlocksAndCheckpointAccounts(blockCheckPointMap))).handleErrorWith(toBlocksProcessingFailure)
+              votesStored    <- processVotes(blockCheckPointMap.keys.toList).handleErrorWith(toBlocksProcessingFailure)
               _              <- logOutcomes(blockCheckPointMap.size, accountsStored, votesStored)
-              _              <- writeAccounts(node)
+              _              <- writeAccounts(node).handleErrorWith(toAccountsProcessingFailure)
             } yield ()
         }
         .compile
