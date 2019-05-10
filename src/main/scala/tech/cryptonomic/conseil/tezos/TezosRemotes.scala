@@ -9,19 +9,14 @@ import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 object TezosRemoteInstances {
 
   object Cats {
-    import cats._
-    import cats.arrow._
     import cats.effect.IO
-    import scala.concurrent.Future
 
     object IOEff extends IOEff
-
-    /** a polymorphic value function that converts any future wrapper to an IO */
-    implicit val fromFuture: Future ~> IO = Lambda[FunctionK[Future, IO]](fut => IO.fromFuture(IO(fut)))
 
     trait IOEff {
       import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
       import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.Futures._
+      import tech.cryptonomic.conseil.util.EffectsUtil._
 
       //uses the available functionKs to build the IO instance on top of the one for Futures
       implicit def ioRpcHandlerInstance(implicit context: RemoteContext): RpcHandler.Aux[IO, String, JsonString, String] =

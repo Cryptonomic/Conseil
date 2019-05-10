@@ -38,6 +38,8 @@ trait NodeOperator {
   type MonadThrow[F[_]] = MonadError[F, Throwable]
   /** an applicative that can raise and handle Throwables */
   type ApplicativeThrow[F[_]] = ApplicativeError[F, Throwable]
+  /** generic pair of multiple Ts with their associated block reference */
+  type BlockWithMany[T] = (Block, List[T])
   /** the whole results of reading latest info from the chain */
   type BlockFetchingResults[F[_]] = Stream[F, (Block, List[AccountId])]
 
@@ -108,94 +110,49 @@ trait NodeOperator {
 
   }
 
-  // /**
-  //   * Fetches all accounts for a given block.
-  //   * @param blockHash  Hash of given block.
-  //   * @return           Accounts
-  //   */
-  // def getAllAccountsForBlock[F[_] : MonadThrow : RpcGet](blockHash: BlockHash)
-  //   (implicit fetchProvider: Reader[BlockHash, ListFetcher[F, AccountId, Option[Account]]]): F[Map[AccountId, Account]] = {
+  /**
+    * Get accounts for all the identifiers passed-in with the corresponding block
+    * @param accountsBlocksIndex a map from unique id to the [latest] block reference
+    * @return         Accounts with their corresponding block data
+    */
+  def getAccounts[F[_] : MonadThrow](
+    accountsBlocksIndex: Map[AccountId, BlockReference]
+  )(
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
+  ): F[List[BlockAccounts]] = {
+    import cats.syntax.applicativeError._
 
-  //   for {
-  //     jsonEncodedAccounts <- RemoteRpc.runGet(s"blocks/${blockHash.value}/context/contracts")
-  //     accountIds = fromJson[List[String]](jsonEncodedAccounts).map(AccountId)
-  //     accounts <- getAccountsForBlock(accountIds, blockHash)
-  //   } yield accounts
-  // }
+    def notifyAnyLostIds(missing: Set[AccountId]) =
+      if (missing.nonEmpty) {
+        logger.warn(
+          "The following account keys were not found querying the {} node: {}",
+          network,
+          missing.map(_.id).mkString("\n", ",", "\n")
+        )
+      }
 
-  // /**
-  //   * Fetches the accounts identified by id
-  //   *
-  //   * @param accountIds the ids
-  //   * @param blockHash  the block storing the accounts, the head block if not specified
-  //   * @return           the list of accounts, indexed by AccountId
-  //   */
-  // def getAccountsForBlock[F[_] : MonadThrow](accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash)
-  //   (implicit fetchProvider: Reader[BlockHash, ListFetcher[F, AccountId, Option[Account]]]): F[Map[AccountId, Account]] = {
-  //     import TezosOptics.Accounts.{scriptLens, storageLens}
-  //     import cats.instances.list._
+    //uses the index to collect together BlockAccounts matching the same block
+    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
+      data.groupBy {
+        case (id, _) => accountsBlocksIndex(id)
+      }.map {
+        case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
+      }.toList
 
-  //     implicit val fetcher = fetchProvider(blockHash)
+    //fetch accounts by requested ids and group them together with corresponding blocks
+    getAccountsForBlock(accountsBlocksIndex.keys.toList)
+      .onError {
+        case err =>
+          val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
+          logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err).pure[F]
+      }
+      .map {
+        accountsMap =>
+          notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
+          groupByLatestBlock(accountsMap)
+      }
 
-  //     def parseMichelsonScripts(account: Account): Account = {
-  //       val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-  //       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
-
-  //       (scriptAlter compose storageAlter)(account)
-  //     }
-
-  //     val fetchedAccounts: F[List[(AccountId, Option[Account])]] =
-  //       fetch[AccountId, Option[Account], F, List, Throwable].run(accountIds)
-
-  //     fetchedAccounts.map(
-  //       indexedAccounts =>
-  //         indexedAccounts.collect {
-  //           case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
-  //         }.toMap
-  //     )
-  //   }
-
-  // /**
-  //   * Get accounts for all the identifiers passed-in with the corresponding block
-  //   * @param accountsBlocksIndex a map from unique id to the [latest] block reference
-  //   * @return         Accounts with their corresponding block data
-  //   *
-  //   */
-  // @deprecated(message = "This might not be needed anymore", since = "April 2019")
-  // def getAccountsForBlocks[F[_] : MonadThrow](accountsBlocksIndex: Map[AccountId, BlockReference])
-  //   (implicit fetchProvider: Reader[BlockHash, ListFetcher[F, AccountId, Option[Account]]]): F[List[BlockAccounts]] = {
-
-  //   def notifyAnyLostIds(missing: Set[AccountId]) =
-  //     if (missing.nonEmpty) {
-  //       logger.warn(
-  //         "The following account keys were not found querying the {} node: {}",
-  //         network,
-  //         missing.map(_.id).mkString("\n", ",", "\n")
-  //       )
-  //     }
-
-  //   //uses the index to collect together BlockAccounts matching the same block
-  //   def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
-  //     data.groupBy {
-  //       case (id, _) => accountsBlocksIndex(id)
-  //     }.map {
-  //       case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
-  //     }.toList
-
-  //   //fetch accounts by requested ids and group them together with corresponding blocks
-  //   getAccountsForBlock(accountsBlocksIndex.keys.toList)
-  //     .onError{
-  //       case err =>
-  //         val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
-  //         logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err).pure[F]
-  //     }
-  //     .map {
-  //       accountsMap =>
-  //         notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
-  //         groupByLatestBlock(accountsMap)
-  //     }
-
-  // }
+  }
 
   /**
     * Fetches operations for a block, without waiting for the result
@@ -240,7 +197,7 @@ trait NodeOperator {
       proposalFetcher: NodeFetcherThrow[F, Block, List[ProtocolId]],
       bakersFetch: NodeFetcherThrow[F, Block, List[Voting.BakerRolls]],
       ballotsFetcher: NodeFetcherThrow[F, Block, List[Voting.Ballot]]
-    ): F[(Voting.Proposal, List[Voting.BakerRolls], List[Voting.Ballot])] = {
+    ): F[(Voting.Proposal, BlockWithMany[Voting.BakerRolls], BlockWithMany[Voting.Ballot])] = {
 
     //adapt the proposal protocols result to include the block
     val fetchProposals =
@@ -250,10 +207,10 @@ trait NodeOperator {
           }
 
     val fetchBakers =
-      fetcher[F, Block, List[Voting.BakerRolls], Throwable]
+      fetcher[F, Block, List[Voting.BakerRolls], Throwable].tapWith(_ -> _)
 
     val fetchBallots =
-      fetcher[F, Block, List[Voting.Ballot], Throwable]
+      fetcher[F, Block, List[Voting.Ballot], Throwable].tapWith(_ -> _)
 
 
     /* combine the three kleisli operations to return a tuple of the results
@@ -330,7 +287,7 @@ trait NodeOperator {
     * @return Blocks and Account hashes involved
     */
   def getBlocksNotInDatabase[F[_] : MonadThrow](
-    fetchLocalMaxLevel: () => F[Int]
+    fetchLocalMaxLevel: => F[Int]
   )(implicit
     blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
     additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
@@ -339,7 +296,7 @@ trait NodeOperator {
     resultMonoid: Monoid[BlockFetchingResults[F]]
   ): F[BlockFetchingResults[F]] =
     for {
-      maxLevel <- fetchLocalMaxLevel()
+      maxLevel <- fetchLocalMaxLevel
       blockHead <- getBlockHead
     } yield {
       val headLevel = blockHead.data.header.level

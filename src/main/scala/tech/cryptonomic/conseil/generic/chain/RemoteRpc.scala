@@ -28,11 +28,11 @@ object RpcHandler {
   def apply[Eff[_], Command, PostPayload, Response](implicit rpc: Aux[Eff, Command, PostPayload, Response]) = rpc
 
   /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
-  def runGet[Eff[_], Command, Res](command: Command)(implicit rpc: Aux[Eff, Command, _, Res]): Eff[rpc.Response] =
+  def runGet[Eff[_], Command, Res](command: Command)(implicit rpc: Aux[Eff, Command, _, Res]): Eff[Res] =
     rpc.getQuery.run(command)
 
   /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
-  def runPost[Eff[_], Command, PostPayload, Res](command: Command, payload: Option[PostPayload] = None)(implicit rpc: Aux[Eff, Command, PostPayload, Res]): Eff[rpc.Response] =
+  def runPost[Eff[_], Command, PostPayload, Res](command: Command, payload: Option[PostPayload] = None)(implicit rpc: Aux[Eff, Command, PostPayload, Res]): Eff[Res] =
     rpc.postQuery.run((command, payload))
 
   /** provides an implicit to convert the effect-type of the handler, if there's a natural transformation `F ~> G` */

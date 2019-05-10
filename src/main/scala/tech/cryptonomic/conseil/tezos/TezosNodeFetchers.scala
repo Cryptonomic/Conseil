@@ -62,7 +62,13 @@ trait BlocksDataFetchers {
 
   implicit def tezosContext: RemoteContext
 
-  def makeIOFetcherFromRpc[In, Decoded : Decoder](makeCommand: In => String, decodeJson: String => IO[Decoded]) = {
+  //common type for the fetchers
+  type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]
+
+  def makeIOFetcherFromRpc[In, Decoded : Decoder](
+    makeCommand: In => String,
+    decodeJson: String => IO[Decoded]
+  ): IOFetcher[In, Decoded] = {
     val genericCommandFetcher = new DataFetcher[IO, Throwable] {
 
       type Encoded = String
@@ -82,23 +88,24 @@ trait BlocksDataFetchers {
     }
 
     //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
-    Profunctor[DataFetcher.Aux[IO, Throwable, ?, ?, String]].lmap(genericCommandFetcher)(makeCommand)
+    Profunctor[IOFetcher].lmap(genericCommandFetcher)(makeCommand)
   }
 
   /** a fetcher factory for blocks, based on a reference hash */
-  implicit val blocksFetcherProvider: Reader[BlockHash, DataFetcher[IO, Throwable]] = Reader( (hashRef: BlockHash) => {
-    import JsonDecoders.Circe.Blocks._
+  implicit val blocksFetcherProvider: Reader[BlockHash, IOFetcher[Offset, BlockData]] =
+    Reader( hashRef => {
+      import JsonDecoders.Circe.Blocks._
 
-    makeIOFetcherFromRpc[Offset, BlockData](
-      makeCommand = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}",
-      decodeJson = json =>
-        decodeLiftingTo[IO, BlockData](json)
-          .onError(logErrorOnJsonDecoding[IO](s"I fetched a block definition from tezos node that I'm unable to decode: $json"))
-    )
-  })
+      makeIOFetcherFromRpc[Offset, BlockData](
+        makeCommand = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}",
+        decodeJson = json =>
+          decodeLiftingTo[IO, BlockData](json)
+            .onError(logErrorOnJsonDecoding[IO](s"I fetched a block definition from tezos node that I'm unable to decode: $json"))
+      )
+    })
 
   /** a fetcher of operation groups from block hashes */
-  implicit val operationGroupFetcher = {
+  implicit val operationGroupFetcher: IOFetcher[BlockHash, List[OperationsGroup]] = {
     import JsonDecoders.Circe.Operations._
 
     val makeCommand = (hash: BlockHash) => s"blocks/${hash.value}/operations"
@@ -124,7 +131,8 @@ trait BlocksDataFetchers {
     }
 
     //adapt the fetcher to accept the real input and return the flattened output, by pre-parsing the input and transforming the output with `dimap`
-    Profunctor[DataFetcher.Aux[IO, Throwable, ?, ?, String]].dimap(fetcher)(makeCommand)(_.flatten)
+    // Profunctor[DataFetcher.Aux[IO, Throwable, ?, ?, String]].dimap(fetcher)(makeCommand)(_.flatten)
+    Profunctor[IOFetcher].dimap(fetcher)(makeCommand)(_.flatten)
   }
 
   /** decode account ids from operation json results with the `cats.Id` effect, i.e. a total function with no effect */
@@ -137,7 +145,8 @@ trait BlocksDataFetchers {
     }.lift[IO]
 
   /** An implicitly derived fetcher that reads block hashes to get both the operation groups and the account ids from the same returned json */
-  implicit val operationsWithAccountsFetcher = DataFetcher.multiDecodeFetcher[IO, Throwable, BlockHash, List[OperationsGroup], List[AccountId], String]
+  implicit val operationsWithAccountsFetcher =
+    DataFetcher.multiDecodeFetcher[IO, Throwable, BlockHash, List[OperationsGroup], List[AccountId], String]
 
   /** a fetcher for the current quorum of blocks */
   implicit val currentQuorumFetcher =
@@ -244,42 +253,46 @@ trait AccountsDataFetchers {
 
   implicit def tezosContext: RemoteContext
 
+  //common type for the fetchers
+  type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]
+
   /** a fetcher for accounts, dependent on a specific block hash reference */
-  implicit val accountsFetcherProvider: Reader[BlockHash, DataFetcher[IO, Throwable]] = Reader( (referenceBlock: BlockHash) => {
-    import JsonDecoders.Circe.Accounts._
-    import cats.syntax.option._
+  implicit val accountsFetcherProvider: Reader[BlockHash, IOFetcher[AccountId, Option[Account]]] = Reader {
+    referenceBlock =>
+      import JsonDecoders.Circe.Accounts._
+      import cats.syntax.option._
 
-    val makeCommand = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
+      val makeCommand = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
 
-    val fetcher = new DataFetcher[IO, Throwable] {
+      val fetcher = new DataFetcher[IO, Throwable] {
 
-      type Encoded = String
-      type In = String
-      type Out = Option[Account]
+        type Encoded = String
+        type In = String
+        type Out = Option[Account]
 
-      //fetch json from the passed-in URL fragment command
-      override val fetchData = Kleisli {
-        command =>
-          RpcHandler.runGet[IO, In, Encoded](command)
-            .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+        //fetch json from the passed-in URL fragment command
+        override val fetchData = Kleisli {
+          command =>
+            RpcHandler.runGet[IO, In, Encoded](command)
+              .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+        }
+
+        // decode with `JsonDecoders`
+        override val decodeData = Kleisli {
+          json =>
+            decodeLiftingTo[IO, Account](json)
+              .onError(logWarnOnJsonDecoding[IO](s"I fetched an account json from tezos node that I'm unable to decode: $json"))
+              .map(_.some)
+              .recover {
+                //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+                case NonFatal(_) => Option.empty
+              }
+        }
+
       }
 
-      // decode with `JsonDecoders`
-      override val decodeData = Kleisli {
-        json =>
-          decodeLiftingTo[IO, Account](json)
-            .onError(logWarnOnJsonDecoding[IO](s"I fetched an account json from tezos node that I'm unable to decode: $json"))
-            .map(_.some)
-            .recover {
-              //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
-              case NonFatal(_) => Option.empty
-            }
-      }
-
-    }
-
-    //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
-    Profunctor[DataFetcher.Aux[IO, Throwable, ?, ?, String]].lmap(fetcher)(makeCommand)
-  })
+      //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
+      Profunctor[IOFetcher].lmap(fetcher)(makeCommand)
+  }
 
 }
