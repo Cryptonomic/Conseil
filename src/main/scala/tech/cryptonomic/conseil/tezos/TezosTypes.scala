@@ -319,13 +319,13 @@ object TezosTypes {
   )
 
   final case class AppliedOperationBalanceUpdates(
-                                             kind: String,
-                                             contract: Option[String],
-                                             change: Int,
-                                             category: Option[String],
-                                             delegate: Option[String],
-                                             level: Option[Int]
-                                           )
+    kind: String,
+    contract: Option[String],
+    change: Int,
+    category: Option[String],
+    delegate: Option[String],
+    level: Option[Int]
+  )
 
   final case class AppliedOperationResultStatus(
     status: String,
@@ -357,6 +357,38 @@ object TezosTypes {
       accounts: Map[AccountId, Account] = Map.empty
   )
 
+  final case class Delegate(
+    balance: PositiveBigNumber,
+    frozen_balance: PositiveBigNumber,
+    frozen_balance_by_cycle: List[CycleBalance],
+    staking_balance: PositiveBigNumber,
+    delegated_contracts: List[ContractId],
+    delegated_balance: PositiveBigNumber,
+    deactivated: Boolean,
+    grace_period: Int
+  )
+
+  final case class CycleBalance(
+    cycle: Int,
+    deposit: PositiveBigNumber,
+    fees: PositiveBigNumber,
+    rewards: PositiveBigNumber
+  )
+
+  final case class Contract(
+    manager: PublicKeyHash,
+    balance: PositiveBigNumber,
+    spendable: Boolean,
+    delegate: ContractDelegate,
+    script: Option[Scripted.Contracts],
+    counter: PositiveBigNumber
+  )
+
+  final case class ContractDelegate(
+    setable: Boolean,
+    value: Option[PublicKeyHash]
+  )
+
   object VotingPeriod extends Enumeration {
     type Kind = Value
     val proposal, promotion_vote, testing_vote, testing = Value
@@ -374,40 +406,40 @@ object TezosTypes {
   }
 
   final case class Block(
-                    data: BlockData,
-                    operationGroups: List[OperationsGroup],
-                    votes: CurrentVotes
-                  )
+    data: BlockData,
+    operationGroups: List[OperationsGroup],
+    votes: CurrentVotes
+  )
 
   final case class ManagerKey(
-                       manager: String,
-                       key: Option[String]
-                       )
+    manager: String,
+    key: Option[String]
+  )
 
   final case class ForgedOperation(operation: String)
 
   final case class AppliedOperationError(
-                                  kind: String,
-                                  id: String,
-                                  hash: String
-                                  )
+    kind: String,
+    id: String,
+    hash: String
+  )
 
   final case class AppliedOperationResult(
-                                   operation: String,
-                                   status: String,
-                                   operationKind: Option[String],
-                                   balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
-                                   originatedContracts: Option[List[String]],
-                                   errors: Option[List[AppliedOperationError]]
-                                   )
+    operation: String,
+    status: String,
+    operationKind: Option[String],
+    balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
+    originatedContracts: Option[List[String]],
+    errors: Option[List[AppliedOperationError]]
+  )
 
   final case class AppliedOperation(
-                             kind: String,
-                             balance_updates: Option[List[AppliedOperationBalanceUpdates]],
-                             operation_results: Option[List[AppliedOperationResult]],
-                             id: Option[String],
-                             contract: Option[String]
-                             )
+    kind: String,
+    balance_updates: Option[List[AppliedOperationBalanceUpdates]],
+    operation_results: Option[List[AppliedOperationResult]],
+    id: Option[String],
+    contract: Option[String]
+  )
 
   final case class InjectedOperation(injectedOperation: String)
 
