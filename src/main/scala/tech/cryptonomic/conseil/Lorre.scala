@@ -29,12 +29,13 @@ import scala.{Stream => _}
 
 import cats.effect.{ContextShift, IO}
 import scala.util.control.NonFatal
+import cats.Eval
+import java.util.concurrent.TimeUnit
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
 object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig with LorreOutput {
-  import com.typesafe.scalalogging.Logger
   import cats.instances.list._
   import cats.syntax.applicative._
   import cats.syntax.apply._
@@ -250,16 +251,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
        IO(logger.error(errorMsg, fatal)) *> IO.raiseError(fatal)
     }
 
-    val blocksToSynchronize: IO[node.BlockFetchingResults[IO]] = lorreConf.depth match {
+    val blocksToSynchronize: IO[(node.BlockFetchingResults[IO], Int)] = lorreConf.depth match {
       case Newest => node.getBlocksNotInDatabase[IO](fetchMaxLevel)
       case Everything => node.getLatestBlocks[IO]()
       case Custom(n) => node.getLatestBlocks[IO](Some(n), lorreConf.headHash)
     }
 
-    blocksToSynchronize.flatMap { results =>
-      results.chunkN(batchingConf.blockPageSize)
+    def process(streamWithTotal: (node.BlockFetchingResults[IO], Int), startNanos: Long) = {
+      val (streamIn, total) = streamWithTotal
+      val logProgress = logProcessingProgress("block", total, startNanos) _
+      streamIn.chunkN(batchingConf.blockPageSize)
         .evalTap(
-          //add progress tracking
           chunk => IO(logger.info("I received {} blocks from the node, about to process", chunk.size))
         )
         .evalMap {
@@ -271,12 +273,49 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
               votesStored    <- processVotes(blockCheckPointMap.keys.toList).handleErrorWith(toBlocksProcessingFailure)
               _              <- logOutcomes(blockCheckPointMap.size, accountsStored, votesStored)
               _              <- writeAccounts(node).handleErrorWith(toAccountsProcessingFailure)
-            } yield ()
+            } yield chunk.size
+        }
+        .evalMapAccumulate(0){
+          //keep track of the running total and prints progress wrt the requested blocks
+          case (runningTotal, added) =>
+            val newTotal = runningTotal + added
+            logProgress(newTotal) *> IO((newTotal, ()))
         }
         .compile
         .drain
     }
 
+    /** Keeps track of time passed between different partial checkpoints of some entity processing
+    * Designed to be partially applied to set properties of the whole process once, and then only compute partial completion
+    *
+    * @param entityName a string that will be logged to identify what kind of resource is being processed
+    * @param totalToProcess how many entities there were in the first place
+    * @param processStartNanos a nano-time from jvm monotonic time, used to identify when the whole processing operation began
+    * @param processed how many entities were processed at the current checkpoint
+    */
+    def logProcessingProgress(
+      entityName: String,
+      totalToProcess: Int,
+      processStartNanos: Long
+    )(processed: Int): IO[Unit] =
+      for {
+        elapsed <- timer.clock.monotonic(NANOSECONDS).map(_ - processStartNanos)
+        progress = processed.toDouble/totalToProcess
+        _ <- IO(logger.info("Completed processing {}% of total requested {}s", "%.2f".format(progress * 100), entityName))
+        etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
+        _ <- if (processed < totalToProcess && etaMins > 1)
+          IO(logger.info("Estimated time to finish is around {} minutes", etaMins))
+          else IO.unit
+      } yield ()
+
+    //now we can actually bind all IO pieces together
+    for {
+      startTime       <- timer.clock.monotonic(TimeUnit.NANOSECONDS)
+      streamWithTotal <- blocksToSynchronize
+      _               <- process(streamWithTotal, startTime)
+    } yield ()
+
   }
+
 
 }

@@ -292,7 +292,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
     proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]],
     resultMonoid: Monoid[BlockFetchingResults[F]]
-  ): F[BlockFetchingResults[F]] =
+  ): F[(BlockFetchingResults[F], Int)] =
     for {
       maxLevel <- fetchLocalMaxLevel
       blockHead <- getBlockHead
@@ -305,10 +305,11 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
         //got something to load
         if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
         else logger.info("I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.", headLevel, maxLevel, headLevel - maxLevel)
-        getBlocks((headHash, headLevel), maxLevel + 1 to headLevel)
+        val minLevel = if (bootstrapping) 1 else maxLevel
+        getBlocks((headHash, headLevel), maxLevel + 1 to headLevel) -> (headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")
-        resultMonoid.empty
+        resultMonoid.empty -> 0
       }
     }
 
@@ -325,14 +326,14 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
     quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
     proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]],
-  ): F[BlockFetchingResults[F]] =
+  ): F[(BlockFetchingResults[F], Int)] =
     headHash.fold(getBlockHead)(getBlock(_))
       .map {
         maxHead =>
           val headLevel = maxHead.data.header.level
           val headHash = maxHead.data.hash
           val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
-          getBlocks((headHash, headLevel), minLevel to headLevel)
+          getBlocks((headHash, headLevel), minLevel to headLevel) -> (headLevel - minLevel + 1)
       }
 
   /** Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.
