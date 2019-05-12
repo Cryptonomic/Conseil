@@ -2,12 +2,13 @@ package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.generic.chain.{DataFetcher, RpcHandler}
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetcher
+import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.LazyLogging
 import cats.{ApplicativeError, FlatMap, Functor, MonadError, Monoid}
 import cats.data.Reader
 import cats.syntax.applicative._
@@ -19,14 +20,11 @@ import fs2.Stream
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Try
+import cats.effect.Concurrent
 
 /** Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database. */
-trait NodeOperator {
-
-  /** which tezos network to go against */
-  def network: String
-  /** assumes some capability to log */
-  def logger: Logger
+class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
+  extends LazyLogging {
 
   //use this aliases to make signatures easier to read and kept in-sync
 
@@ -286,7 +284,7 @@ trait NodeOperator {
    *  @param fetchLocalMaxLevel should read the current top-level available for the chain, as stored in conseil
     * @return Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase[F[_] : MonadThrow](
+  def getBlocksNotInDatabase[F[_] : MonadThrow : Concurrent](
     fetchLocalMaxLevel: => F[Int]
   )(implicit
     blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
@@ -319,7 +317,7 @@ trait NodeOperator {
     * @param headHash   Hash of a block from which to start, None to start from a real head
     * @return           Blocks and Account hashes involved
     */
-  def getLatestBlocks[F[_] : MonadThrow](
+  def getLatestBlocks[F[_] : MonadThrow : Concurrent](
     depth: Option[Int] = None,
     headHash: Option[BlockHash] = None
   )(implicit
@@ -342,7 +340,7 @@ trait NodeOperator {
     * @param levelRange a range of levels to load
     * @return the list of blocks with relative account ids touched in the operations
     */
-  private def getBlocks[F[_] : MonadThrow](
+  private def getBlocks[F[_] : MonadThrow: Concurrent](
     reference: (BlockHash, Int),
     levelRange: Range.Inclusive
   )(implicit
@@ -362,7 +360,7 @@ trait NodeOperator {
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
-    offsets.evalMap(offset => getBlockWithAccounts(hashRef, Some(offset)))
+    offsets.lift[F].parEvalMap(batchConf.blockFetchConcurrencyLevel)(offset => getBlockWithAccounts(hashRef, Some(offset)))
 
   }
 

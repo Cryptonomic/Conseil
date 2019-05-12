@@ -73,6 +73,7 @@ object TezosRemoteInstances {
       import cats.syntax.apply._
       import scala.concurrent.ExecutionContext
       import scala.util.control.NoStackTrace
+      import akka.http.scaladsl.settings.ConnectionPoolSettings
 
       //might be actually unlawful, but we won't use it for append, only for empty
       private implicit def futureMonoid[T](implicit ec: ExecutionContext) = new Monoid[Future[T]] {
@@ -80,9 +81,10 @@ object TezosRemoteInstances {
         override def empty: Future[T] = Future.failed(new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace)
       }
 
+
       /** The actual instance
-        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
-        */
+       * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
+       */
       implicit def futureRpcHandlerInstance(implicit context: RemoteContext) =
         new RpcHandler[Future] {
           import cats.data.Kleisli
@@ -93,6 +95,10 @@ object TezosRemoteInstances {
           implicit val system = context.system
           implicit val dispatcher = system.dispatcher
           implicit val materializer = ActorMaterializer()
+
+          /* Connection pool settings customization */
+          val requestsConnectionPooling: ConnectionPoolSettings =
+            ConnectionPoolSettings(context.streamingConfig.pool)
 
           //a partial URL path
           type Command = String
@@ -108,7 +114,7 @@ object TezosRemoteInstances {
               logger.debug("Async querying URL {} for platform Tezos and network {}", url, tezosConfig.network)
 
               for {
-                response <- Http(system).singleRequest(httpRequest)
+                response <- Http(system).singleRequest(httpRequest, settings = requestsConnectionPooling)
                 strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
               } yield {
                 val content = strict.data.utf8String

@@ -83,10 +83,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   import accountFetchers._
 
   //create a new node operator, with custom configuration
-  val node = new NodeOperator {
-    override val network: String = nodeContext.tezosConfig.network
-    override lazy val logger: Logger = Logger(classOf[NodeOperator])
-  }
+  val node = new NodeOperator(
+    network = nodeContext.tezosConfig.network,
+    batchConf = batchingConf
+  )
 
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {
