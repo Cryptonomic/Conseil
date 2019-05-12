@@ -1,7 +1,7 @@
 name := "Conseil"
 scalaVersion := "2.12.8"
 
-val akkaVersion = "2.5.21"
+val akkaVersion = "2.5.22"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
 val slickVersion = "3.3.0"
