@@ -29,8 +29,6 @@ import scala.{Stream => _}
 
 import cats.effect.{ContextShift, IO}
 import scala.util.control.NonFatal
-import cats.Eval
-import java.util.concurrent.TimeUnit
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -310,7 +308,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     //now we can actually bind all IO pieces together
     for {
-      startTime       <- timer.clock.monotonic(TimeUnit.NANOSECONDS)
+      startTime       <- timer.clock.monotonic(NANOSECONDS)
       streamWithTotal <- blocksToSynchronize
       _               <- process(streamWithTotal, startTime)
     } yield ()
