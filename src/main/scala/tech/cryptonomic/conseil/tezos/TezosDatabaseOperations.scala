@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
+import cats.effect.Async
 
 /**
   * Functions for writing Tezos data to a database.
@@ -35,7 +36,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
-  def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
+  def writeAccounts(accountsInfo: List[BlockTagged[Map[AccountId, Account]]])(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO.sequence(accountsInfo.flatMap {
       info =>
         info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
@@ -94,11 +95,19 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /**
     * Writes association of account ids and block data to define accounts that needs update
-    * @param accountIds will have blocks, paired with corresponding account ids to store
+    * @param accountIds will have block information, paired with corresponding account ids to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] =
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
+
+  /**
+    * Writes association of delegate key-hashes and block data to define delegates that needs to be written
+    * @param delegatesKeyHashes will have block information, paired with corresponding hashes to store
+    * @return Database action possibly returning the rows written (if available form the underlying driver)
+    */
+  def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]): DBIO[Option[Int]] =
+    Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
 
   /**
     * Removes  data on the accounts checkpoint table
@@ -160,17 +169,33 @@ object TezosDatabaseOperations extends LazyLogging {
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates)).transactionally
   }
 
-  /** Writes proposals to the database*/
+  /**
+    * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
+    * @param accounts the full accounts' data
+    * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block
+    * @return a database action that stores both arguments and return a tuple of the row counts inserted
+    */
+  def writeAccountsAndCheckpointDelegates(
+    accounts: List[BlockTagged[Map[AccountId, Account]]],
+    delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
+  )(implicit ec: ExecutionContext): DBIO[(Int, Option[Int])] = {
+    import slickeffect.implicits._
+
+    //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
+    Async[DBIO].tuple2(writeAccounts(accounts), writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))).transactionally
+  }
+
+  /** Writes proposals to the database */
   def writeVotingProposals(proposals: List[Voting.Proposal]): DBIO[Option[Int]] = {
     Tables.Proposals ++= proposals.flatMap(_.convertToA[List, Tables.ProposalsRow])
   }
 
-  /** Writes bakers to the database*/
+  /** Writes bakers to the database */
   def writeVotingBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
     Tables.Bakers ++= (block, bakers).convertToA[List, Tables.BakersRow]
   }
 
-  /** Writes ballots to the database*/
+  /** Writes ballots to the database */
   def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
     Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
   }

@@ -351,11 +351,13 @@ object TezosTypes {
     counter: Int
   )
 
-  final case class BlockAccounts(
-      blockHash: BlockHash,
-      blockLevel: Int,
-      accounts: Map[AccountId, Account] = Map.empty
-  )
+  final case class BlockTagged[T](
+    blockHash: BlockHash,
+    blockLevel: Int,
+    content: T
+  ) {
+    val asTuple = (blockHash, blockLevel, content)
+  }
 
   final case class Delegate(
     balance: PositiveBigNumber,
@@ -453,5 +455,15 @@ object TezosTypes {
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
   }
 
+  object Syntax {
+
+    /** provides a factory to tag any content with a reference block */
+    implicit class BlockTagger[T](val content: T) extends AnyVal {
+
+      /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
+      def taggedWithBlock(hash: BlockHash, level: Int): BlockTagged[T] = BlockTagged(hash, level, content)
+    }
+
+  }
 
 }

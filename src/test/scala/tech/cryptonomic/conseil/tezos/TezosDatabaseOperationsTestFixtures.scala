@@ -34,7 +34,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
+  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -53,7 +53,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    BlockAccounts(blockHash, blockLevel, accounts)
+    BlockTagged(blockHash, blockLevel, accounts)
   }
 
   /* randomly populate a number of blocks based on a level range */

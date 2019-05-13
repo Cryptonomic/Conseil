@@ -318,6 +318,14 @@ trait AccountsDataFetchers {
       logger.error("Something unexpected failed while decoding json", t).pure[Future]
   }
 
+  /* reduces repetion in error handling */
+  private def logErrorOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
+    case decodingError: io.circe.Error =>
+      logger.warn(message, decodingError).pure[Future]
+    case t =>
+      logger.error("Something unexpected failed while decoding json", t).pure[Future]
+  }
+
   /** the tezos network to connect to */
   def network: String
   /** the tezos interface to query */
@@ -359,6 +367,35 @@ trait AccountsDataFetchers {
             //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
             case NonFatal(_) => Option.empty
           }
+    }
+  }
+
+  implicit def delegateFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+    import JsonDecoders.Circe.Delegates._
+
+    type Encoded = String
+    type In = PublicKeyHash
+    type Out = Delegate
+
+    val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
+
+    override val fetchData = Kleisli(
+      keyHashes =>
+        node.runBatchedGetQuery(network, keyHashes, makeUrl, accountsFetchConcurrency)
+          .onError {
+            case err =>
+              logger.error("I encountered problems while fetching delegates data from {}, for pkhs {}. The error says {}",
+                network,
+                keyHashes.map(_.value).mkString(", "),
+                err.getMessage
+              ).pure[Future]
+          }
+      )
+
+    override def decodeData = Kleisli {
+      json =>
+        decodeLiftingTo[Future, Delegate](json)
+          .onError(logErrorOnJsonDecoding(s"I fetched an account delegate json from tezos node that I'm unable to decode: $json"))
     }
   }
 

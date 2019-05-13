@@ -8,7 +8,6 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
@@ -282,7 +281,7 @@ class TezosDatabaseOperationsTest
 
       import org.scalatest.Inspectors._
 
-      forAll(dbAccounts zip accountsInfo.accounts) {
+      forAll(dbAccounts zip accountsInfo.content) {
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
@@ -332,7 +331,7 @@ class TezosDatabaseOperationsTest
       val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
 
       //double-check for the identifier existence
-      accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
+      accountsInfo.content.keySet.map(_.id) should contain (account.accountId)
 
       //do the updates
       val writeUpdatedAndGetRows = for {
@@ -351,7 +350,7 @@ class TezosDatabaseOperationsTest
       import org.scalatest.Inspectors._
 
       //both rows on db should refer to updated data
-      forAll(dbAccounts zip accountsInfo.accounts) {
+      forAll(dbAccounts zip accountsInfo.content) {
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual hashUpdate
@@ -537,6 +536,46 @@ class TezosDatabaseOperationsTest
       latest.toSeq should contain theSameElementsAs expected.toSeq
 
     }
+
+    "store checkpoint delegate key hashes with block reference" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      //custom hash generator with predictable seed
+      val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+      val maxLevel = 1
+      val pkPerBlock = 3
+      val expectedCount = (maxLevel + 1) * pkPerBlock
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
+      val keys = blocks.map(block => (BlockHash(block.hash), block.level, List.fill(pkPerBlock)(PublicKeyHash(generateHash(5)))))
+
+      //store and write
+      val populateAndFetch = for {
+        _ <- Tables.Blocks ++= blocks
+        written <- sut.writeDelegatesCheckpoint(keys)
+        rows <- Tables.DelegatesCheckpoint.result
+      } yield (written, rows)
+
+      val (stored, checkpointRows) = dbHandler.run(populateAndFetch).futureValue
+
+      //number of changes
+      stored.value shouldBe expectedCount
+      checkpointRows should have size expectedCount
+
+      import org.scalatest.Inspectors._
+
+      val flattenedKeysData = keys.flatMap{ case (hash, level, keys) => keys.map((hash, level, _))}
+
+      forAll(checkpointRows.zip(flattenedKeysData)) {
+        case (row, (hash, level, keyHash)) =>
+          row.blockId shouldEqual hash.value
+          row.blockLevel shouldBe level
+          row.delegatePkh shouldEqual keyHash.value
+      }
+
+    }
+
 
     "fetch nothing if looking up a non-existent operation group by hash" in {
       dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
