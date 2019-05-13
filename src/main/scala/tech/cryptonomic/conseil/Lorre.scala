@@ -181,18 +181,29 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
 
     def writeAccounts(node: NodeOperator): IO[Unit] = {
+      import cats.instances.int._
       def logOutcome(accountCounts: Int) = IO(logger.info("{} accounts were touched on the database.", accountCounts))
 
-      for {
-        checkpoints  <- toIO(db.run(TezosDb.getLatestAccountsFromCheckpoint))
-        _            <- IO(logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain"))
-        underProcess =  checkpoints.keySet
-        info         <- node.getAccounts[IO](checkpoints)
-        stored       <- toIO(db.run(TezosDb.writeAccounts(info)))
-        _            <- toIO(db.run(TezosDb.cleanAccountsCheckpoint(Some(underProcess))))
-        _            <- IO(logger.debug("Done cleaning checkpoint on accounts"))
-        _            <- logOutcome(stored)
-      } yield ()
+      (toIO(db.run(TezosDb.getLatestAccountsFromCheckpoint)) <* IO(logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain")))
+        .flatMap {
+          checkpoints =>
+            val idsBeingProcessed = checkpoints.keySet
+            //we process a stream of accounts as they're fetched from the node
+            val accountsProcessing = node.getAccounts[IO](checkpoints)
+              .evalMap(accountData =>
+                toIO(db.run(TezosDb.writeAccounts(accountData)))
+              )
+              .reduceSemigroup //sums all counts of written rows using the semigroup for ints
+              .evalMap(logOutcome)
+              .compile
+              .drain
+
+            for {
+              _ <- accountsProcessing
+              _ <- toIO(db.run(TezosDb.cleanAccountsCheckpoint(Some(idsBeingProcessed))))
+              _ <- IO(logger.debug("Done cleaning checkpoint on accounts"))
+            } yield ()
+        }
     }
 
     def processVotes(blocks: List[Block]) = for {

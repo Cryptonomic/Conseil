@@ -35,11 +35,21 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
+  def writeAccounts(accountsInfo: BlockAccounts)(implicit ec: ExecutionContext): DBIO[Int] =
+    DBIO.sequence(
+      accountsInfo.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
+    ).map(_.sum)
+
+    /**
+    * Writes accounts with block data to a database.
+    *
+    * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
+    * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
+    */
   def writeAccounts(accountsInfo: List[BlockAccounts])(implicit ec: ExecutionContext): DBIO[Int] =
-    DBIO.sequence(accountsInfo.flatMap {
-      info =>
-        info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
-    }).map(_.sum)
+    DBIO.sequence(
+      accountsInfo.map(writeAccounts)
+    ).map(_.sum)
 
   /**
     * Writes blocks and related operations to a database.

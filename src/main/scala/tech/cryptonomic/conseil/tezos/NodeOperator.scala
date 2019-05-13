@@ -109,15 +109,44 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
   }
 
   /**
+    * Fetches the accounts identified by id
+    *
+    * @param accountIds the ids
+    * @param blockHash  the block storing the accounts, the head block if not specified
+    * @return           the list of accounts, indexed by AccountId
+    */
+  def getAccountsForBlock[F[_] : MonadThrow : Concurrent](accountIds: Stream[F, AccountId], blockHash: BlockHash)
+    (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]): Stream[F, (AccountId, Account)] = {
+      import TezosOptics.Accounts.{scriptLens, storageLens}
+
+      implicit val accountFetcher: DataFetcher.Aux[F, Throwable, AccountId, Option[Account], String] = fetchProvider(blockHash)
+
+      val parseMichelsonScripts: Account => Account = {
+        val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
+        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+
+        scriptAlter compose storageAlter
+      }
+
+      accountIds.parEvalMap(batchConf.accountFetchConcurrencyLevel)(
+        fetcher[F, AccountId, Option[Account], Throwable].tapWith((_, _)).run
+      )
+      .collect {
+        case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
+      }
+
+  }
+
+  /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param accountsBlocksIndex a map from unique id to the [latest] block reference
     * @return         Accounts with their corresponding block data
     */
-  def getAccounts[F[_] : MonadThrow](
+  def getAccounts[F[_] : MonadThrow : Concurrent](
     accountsBlocksIndex: Map[AccountId, BlockReference]
   )(
     implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
-  ): F[List[BlockAccounts]] = {
+  ): Stream[F, BlockAccounts] = {
     import cats.syntax.applicativeError._
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
@@ -130,24 +159,25 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
       }
 
     //uses the index to collect together BlockAccounts matching the same block
-    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
+    def groupByLatestBlock(data: Map[AccountId, Account]): Iterable[BlockAccounts] =
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
         case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
-      }.toList
+      }
 
     //fetch accounts by requested ids and group them together with corresponding blocks
-    getAccountsForBlock(accountsBlocksIndex.keys.toList)
+    getAccountsForBlock(Stream.fromIterator(accountsBlocksIndex.keys.iterator), blockHeadHash)
       .onError {
         case err =>
           val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
-          logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err).pure[F]
+          Stream.eval_(logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err).pure)
       }
-      .map {
+      .fold(Map.empty[AccountId, Account]){_ + _} //this is collecting to a map the whole stream
+      .flatMap {
         accountsMap =>
           notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
-          groupByLatestBlock(accountsMap)
+          Stream.fromIterator(groupByLatestBlock(accountsMap).iterator) //gets back elements in a stream
       }
 
   }
