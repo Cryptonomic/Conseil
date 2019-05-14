@@ -13,12 +13,9 @@ object EffectsUtil {
 
   def toIO[T](future: => Future[T]): IO[T] = IO.fromFuture(IO(future))
 
-  def runDbIO[T](db: DatabaseUtil.DatabaseType, blockingExecutionPool: ExecutionContext)(dbAction: DBIO[T])(implicit defaultContext: ContextShift[IO]): IO[T] =
-    for {
-      _ <- IO.shift(blockingExecutionPool)
-      result <- toIO(db.run(dbAction))
-      _ <- IO.shift
-    } yield result
+  /** Runs the db action converting the result to a lazy IO value */
+  def runDbIO[T](db: DatabaseUtil.DatabaseType, dbAction: DBIO[T])(implicit defaultContext: ContextShift[IO]): IO[T] =
+    toIO(db.run(dbAction)).guarantee(IO.shift)
 
   /** A polymorphic value function that converts any future wrapper to an IO
     * that is, it's independent of the type of value in the future, it just converts the "wrapping".

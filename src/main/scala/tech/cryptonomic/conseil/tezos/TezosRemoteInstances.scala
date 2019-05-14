@@ -4,6 +4,7 @@ import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCalls
 import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.generic.chain.RpcHandler
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
+import cats.data.Kleisli
 
 /** Provides RPC instances for the tezos chain */
 object TezosRemoteInstances {
@@ -18,9 +19,26 @@ object TezosRemoteInstances {
       import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.Futures._
       import tech.cryptonomic.conseil.util.EffectsUtil._
 
-      //uses the available functionKs to build the IO instance on top of the one for Futures
+      //creates an IO instance on top of the one for Futures
       implicit def ioRpcHandlerInstance(implicit context: RemoteContext): RpcHandler.Aux[IO, String, JsonString, String] =
-        RpcHandler.functionK.apply(futureRpcHandlerInstance)
+        new RpcHandler[IO] {
+          val futureRpc = futureRpcHandlerInstance(context)
+
+          //a partial URL path
+          type Command = String
+          // the json response content
+          type Response = String
+          // payload is formally verified json
+          type PostPayload = JsonString
+
+          override def getQuery = Kleisli {
+            in => toIO(futureRpc.getQuery.run(in))
+          }
+
+          override def postQuery = Kleisli {
+            case in => toIO(futureRpc.postQuery.run(in))
+          }
+        }
 
     }
 

@@ -64,7 +64,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   sys.addShutdownHook(shutdown())
 
   //use this to run db-based async operations into IO
-  def runOnDb[T](dbAction: DBIO[T]) = runDbIO(DatabaseUtil.db, system.dispatchers.lookup("akka.tezos-dispatcher"))(dbAction)
+  def runOnDb[T](dbAction: DBIO[T]) = runDbIO(DatabaseUtil.db, dbAction)
 
   /* this is needed later to connect api logic to the fetcher,
    * being dependent on the specific effect -- i.e. Future, IO -- we can't
