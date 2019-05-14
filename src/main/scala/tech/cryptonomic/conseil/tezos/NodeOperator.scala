@@ -253,20 +253,16 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     * @return the block data
     */
   def getBlockWithAccounts[F[_] : MonadThrow](
-    hash: BlockHash,
     offset: Option[Offset] = None
   )(implicit
-    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
+    blockDataFetcher: NodeFetcherThrow[F, Offset, BlockData],
     additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
     quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
     proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[(Block, List[AccountId])] = {
     import TezosTypes.Lenses._
 
-    /*DataFetcher.Aux[F, Throwable, Offset, BlockData, String] */
-    implicit val blockDataFetcher = blockDataFetchProvider(hash)
     val fetchBlockData = fetcher[F, Offset, BlockData, Throwable].run(offset.getOrElse(0))
-
 
     val parseMichelsonScripts: Block => Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
@@ -298,7 +294,12 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
     quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
     proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
-  ): F[Block] = getBlockWithAccounts(hash, offset).map(_._1)
+  ): F[Block] = {
+    //bring the block fetcher for the specific reference hash into scope, so that each getBlockWithAccount can re-use it
+    implicit val blockFetcher = blockDataFetchProvider(hash)
+
+    getBlockWithAccounts(offset).map(_._1)
+  }
 
   /** Gets the block head.
     * @return Block head
@@ -389,9 +390,12 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
     logger.info(s"Request to fetch blocks in levels $levelRange, with reference block at level $levelRef and hash: ${hashRef.value}")
 
+    //bring the block fetcher for the specific reference hash into scope, so that each getBlockWithAccount can re-use it
+    implicit val blockFetcher = blockDataFetchProvider(hashRef)
+
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
-    offsets.lift[F].parEvalMap(batchConf.blockFetchConcurrencyLevel)(offset => getBlockWithAccounts(hashRef, Some(offset)))
+    offsets.lift[F].parEvalMap(batchConf.blockFetchConcurrencyLevel)(offset => getBlockWithAccounts(Some(offset)))
 
   }
 
