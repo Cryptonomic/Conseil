@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.metadata
 
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.CollectionOps.{ExtendedFuture, ExtendedOptionalList}
 import tech.cryptonomic.conseil.util.ConfigUtil
@@ -14,6 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 // service class for metadata
 class MetadataService(config: PlatformsConfiguration,
                       transformation: UnitTransformation,
+                      cacheOverrides: AttributeValuesCacheOverrides,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
   // fetches platforms
@@ -50,10 +51,14 @@ class MetadataService(config: PlatformsConfiguration,
   // fetches attribute values
   def getAttributeValues(platform: String, network: String, entity: String, attribute: String, filter: Option[String] = None)
                         (implicit apiExecutionContext: ExecutionContext): Future[Option[Either[List[DataTypes.AttributesValidationError], List[String]]]] = {
-    if (exists(NetworkPath(network, PlatformPath(platform))))
+
+    val path = NetworkPath(network, PlatformPath(platform))
+    if (exists(path)) {
+      val attributePath = EntityPath(entity, path).addLevel(attribute)
       tezosPlatformDiscoveryOperations
-        .listAttributeValues(entity, attribute, filter)
+        .listAttributeValues(entity, attribute, filter, cacheOverrides.getCacheConfiguration(attributePath))
         .map(Some(_))
+    }
     else
       successful(None)
   }

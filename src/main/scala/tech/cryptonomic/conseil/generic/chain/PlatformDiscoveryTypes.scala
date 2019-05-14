@@ -41,4 +41,7 @@ object PlatformDiscoveryTypes {
     type KeyType = Value
     val NonKey, UniqueKey = Value
   }
+
+  /** Attribute cache configuration */
+  final case class AttributeCacheConfiguration(cached: Boolean, minMatchLength: Int, maxResultLength: Int)
 }

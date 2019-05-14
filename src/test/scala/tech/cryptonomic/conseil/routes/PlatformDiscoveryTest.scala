@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfigurat
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheOverrides, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
@@ -21,12 +21,14 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
   "The platform discovery route" should {
 
     val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
+    val cacheOverrides = stub[AttributeValuesCacheOverrides]
 
     val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) => PlatformDiscovery(new MetadataService(
       PlatformsConfiguration(Map(Platforms.Tezos -> List(
         TezosConfiguration("mainnet",
           TezosNodeConfiguration("tezos-host", 123, "https://"))))),
       new UnitTransformation(MetadataOverridesConfiguration(metadataOverridesConfiguration)),
+      cacheOverrides,
       tezosPlatformDiscoveryOperations)).route
 
     "expose an endpoint to get the list of supported platforms" in {

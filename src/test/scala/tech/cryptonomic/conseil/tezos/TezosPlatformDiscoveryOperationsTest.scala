@@ -10,12 +10,13 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.config.Newest
+import tech.cryptonomic.conseil.config.{MetadataOverridesConfiguration, Newest}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheOverrides
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
@@ -43,7 +44,10 @@ class TezosPlatformDiscoveryOperationsTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
   val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
   val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, 10 seconds)
+  val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
+  val metadadataOverrides = new MetadataOverridesConfiguration(Map.empty)
+  val cacheOverrides = new AttributeValuesCacheOverrides(metadadataOverrides)
+  val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, 10 seconds)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
