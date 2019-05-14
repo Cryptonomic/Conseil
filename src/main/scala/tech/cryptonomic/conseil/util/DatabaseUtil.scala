@@ -12,6 +12,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
 object DatabaseUtil {
   lazy val db = Database.forConfig("conseildb")
 
+  type DatabaseType = Database
+
   /**
     * Utility object for generic query composition with SQL interpolation
     */

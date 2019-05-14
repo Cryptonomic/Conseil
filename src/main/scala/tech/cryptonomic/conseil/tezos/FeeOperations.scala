@@ -2,11 +2,13 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIOAction
-import tech.cryptonomic.conseil.Lorre.db
+import tech.cryptonomic.conseil.Lorre.runOnDb
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
+import cats.effect.IO
+import cats.syntax.flatMap._
+import cats.syntax.apply._
 
 /**
   * Helper classes and functions used for average fee calculations.
@@ -33,12 +35,12 @@ object FeeOperations extends LazyLogging {
     * @param kind      The kind of operation being averaged over
     */
   final case class AverageFees(
-                 low: Int,
-                 medium: Int,
-                 high: Int,
-                 timestamp: java.sql.Timestamp,
-                 kind: String
-                 )
+    low: Int,
+    medium: Int,
+    high: Int,
+    timestamp: java.sql.Timestamp,
+    kind: String
+  )
 
   /**
     * Calculates average fees for each operation kind and stores them into a fees table.
@@ -46,19 +48,22 @@ object FeeOperations extends LazyLogging {
     * @param ex the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
-  def processTezosAverageFees(numberOfFeesAveraged: Int)(implicit ex: ExecutionContext): Future[Option[Int]] = {
+  def processTezosAverageFees(numberOfFeesAveraged: Int)(implicit ex: ExecutionContext): IO[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
     val computeAndStore = for {
       fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFees(_, numberOfFeesAveraged)))
       dbWrites <- TezosDb.writeFees(fees.collect { case Some(fee) => fee })
     } yield dbWrites
 
-    db.run(computeAndStore)
-      .andThen{
-        case Success(Some(written)) => logger.info("Wrote {} average fees to the database.", written)
-        case Success(None) => logger.info("Wrote average fees to the database.")
-        case Failure(e) => logger.error("Could not write average fees to the database because", e)
-      }
+    runOnDb(computeAndStore)
+      .handleErrorWith(
+        //logs and rethrows
+        err => IO(logger.error("Could not write average fees to the database because", err)) *> IO.raiseError(err)
+      )
+      .flatTap(
+        //logs and keeps the previous value
+        written => IO(logger.info("Wrote{} average fees to the database.", written.fold("")(" " + _)))
+      )
 
   }
 

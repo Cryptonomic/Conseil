@@ -2,10 +2,10 @@ package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
-import tech.cryptonomic.conseil.generic.chain.{RemoteRpc, RpcHandler}
+import tech.cryptonomic.conseil.generic.chain.RpcHandler
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 
-/** Provides RemoteRpc instances for the tezos chain */
+/** Provides RPC instances for the tezos chain */
 object TezosRemoteInstances {
 
   object Cats {
@@ -67,8 +67,6 @@ object TezosRemoteInstances {
 
     /** Mix-in this to get instances for async rpc calls on top of scala Future*/
     trait Futures {
-      import cats.Id
-      import cats.data.Const
       import cats.instances.future._
       import cats.syntax.apply._
       import scala.concurrent.ExecutionContext
@@ -149,70 +147,6 @@ object TezosRemoteInstances {
 
         }
 
-      /** A type constructor that takes both String and CallId but actually ignores the CallId, hence isomorphic to String */
-      type JustString[CallId] = Const[String, CallId]
-
-      /** The actual instance
-        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
-        */
-      implicit def futuresInstance(implicit context: RemoteContext) =
-        new RemoteRpc[Future, Id, JustString] {
-          import context._
-
-          private val logger = Logger("Akka.Futures.RemoteRpc")
-
-          implicit val system = context.system
-          implicit val dispatcher = system.dispatcher
-          implicit val materializer = ActorMaterializer()
-
-          // no support for extra params, anything can be passed in, and will be ignored
-          type CallConfig = Any
-          // payload as verified JsonString
-          type PostPayload = JsonString
-
-          def runGetCall[CallId](
-            callConfig: Any = (),
-            request: CallId,
-            commandMap: CallId => String
-          ): Future[JustString[CallId]] = withRejectionControl {
-
-            val url = (commandMap andThen translateCommandToUrl)(request)
-            val httpRequest = HttpRequest(HttpMethods.GET, url)
-            logger.debug("Async querying URL {} for platform Tezos and network {}", url, tezosConfig.network)
-
-            for {
-              response <- Http(system).singleRequest(httpRequest)
-              strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
-            } yield Const(JsonString sanitize strict.data.utf8String)
-
-          }
-
-          def runPostCall[CallId](
-            callConfig: Any = (),
-            request: CallId,
-            commandMap: CallId => String,
-            payload: Option[JsonString]
-          ): Future[JustString[CallId]] = withRejectionControl {
-
-            val url = (commandMap andThen translateCommandToUrl)(request)
-            logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, tezosConfig.network, payload)
-            val postedData = payload.getOrElse(JsonString.emptyObject)
-            val httpRequest = HttpRequest(
-              HttpMethods.POST,
-              url,
-              entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
-            )
-
-            for {
-              response <- Http(system).singleRequest(httpRequest)
-              strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
-            } yield {
-              val responseBody = strict.data.utf8String
-              logger.debug("Query results: {}", responseBody)
-              Const(JsonString sanitize responseBody)
-            }
-          }
-        }
     }
 
   }

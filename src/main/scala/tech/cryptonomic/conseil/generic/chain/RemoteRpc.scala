@@ -35,7 +35,7 @@ object RpcHandler {
   def runPost[Eff[_], Command, PostPayload, Res](command: Command, payload: Option[PostPayload] = None)(implicit rpc: Aux[Eff, Command, PostPayload, Res]): Eff[Res] =
     rpc.postQuery.run((command, payload))
 
-  /** provides an implicit to convert the effect-type of the handler, if there's a natural transformation `F ~> G` */
+  /** provides an implicit to convert the effect-type of the handler, if there's a "natural transformation" `F ~> G` in scope */
   def functionK[F[_], G[_], Comm, Payload](implicit nat: F ~> G) =
     new FunctionK[Aux[F, Comm, Payload, ?], Aux[G, Comm, Payload, ?]] {
 
