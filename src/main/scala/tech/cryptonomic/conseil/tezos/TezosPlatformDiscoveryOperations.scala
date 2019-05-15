@@ -2,10 +2,11 @@ package tech.cryptonomic.conseil.tezos
 
 import cats.effect.IO
 import cats.effect.concurrent.MVar
+import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType}
-import tech.cryptonomic.conseil.generic.chain.{MetadataOperations, Trie}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheOverrides
@@ -18,7 +19,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object TezosPlatformDiscoveryOperations {
 
   type AttributesCache = Map[String, (Long, List[Attribute])]
-  type AttributeValuesCache = Map[String, (Long, Trie)]
+  type AttributeValuesCache = Map[String, (Long, RadixTree[String, String])]
   type EntitiesCache = (Long, List[Entity])
 
   def apply(metadataOperations: MetadataOperations,
@@ -80,9 +81,8 @@ class TezosPlatformDiscoveryOperations(
       cacheOverrides.getAttributesToCache.map {
         case (table, column) =>
           TezosDatabaseOperations.selectDistinct(table, column).map { values =>
-            val trie = new Trie
-            values.foreach(trie.put)
-            makeKey(table, column) -> (now -> trie)
+            val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
+            makeKey(table, column) -> (now -> radixTree)
           }
       }
     }.map(_.toMap)
@@ -235,11 +235,15 @@ class TezosPlatformDiscoveryOperations(
     **/
   def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None, attributesCacheConfig: Option[AttributeCacheConfiguration] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
     val result = for {
-      attrOpt <- getTableAttributes(tableName).map(_.flatMap(_.find(_.name == column)))
+      attrOpt <- getTableAttributesWithoutUpdatingCache(tableName).map(_.flatMap(_.find(_.name == column)))
     } yield {
       val res = (attributesCacheConfig, withFilter) match {
         case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter)) if cached && attributeFilter.length >= minMatchLength  =>
           Right(getAttributeValuesFromCache(tableName, column, attributeFilter, maxResultLength))
+
+        case (Some(AttributeCacheConfiguration(cached, minMatchLength, _)), Some(attributeFilter)) if cached && attributeFilter.length < minMatchLength =>
+          Left(Future.successful(List(InvalidAttributeFilterLength(column, minMatchLength))))
+
         case _ =>
           val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
           val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(column)) else None
@@ -258,22 +262,21 @@ class TezosPlatformDiscoveryOperations(
 
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(tableName: String, columnName: String, attributeFilter: String, maxResultLength: Int): Future[List[String]] = {
-    attributeValuesCache.read.map { cache =>
+    attributeValuesCache.read.flatMap { cache =>
       cache(makeKey(tableName, columnName)) match {
-        case (last, trie) if last + cacheTTL.toMillis > now =>
-          Future.successful(trie.getNWithPrefix(attributeFilter, maxResultLength).toList)
-        case (_, _) =>
-          attributeValuesCache.take.map { cache =>
-            makeAttributesQuery(tableName, columnName, None).map { attributeValues =>
-              val trie = new Trie
-              attributeValues.map(trie.put)
-              val cacheTmp = cache.updated(makeKey(tableName, columnName), (now, trie))
-              attributeValuesCache.put(cacheTmp)
-              trie.getNWithPrefix(attributeFilter, maxResultLength).toList
-            }
-          }.unsafeToFuture().flatten
+        case (last, radixTree) if last + cacheTTL.toMillis > now =>
+          IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
+        case _ =>
+          for {
+            cache <- attributeValuesCache.take
+            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
+            radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
+            cacheTmp = cache.updated(makeKey(tableName, columnName), (now, radixTree))
+            _ <- attributeValuesCache.put(cacheTmp)
+          } yield radixTree.filterPrefix(attributeFilter).keys.take(maxResultLength).toList
+
       }
-    } .unsafeToFuture().flatten
+    }.unsafeToFuture()
   }
 
   /** Makes key out of table and column names */
