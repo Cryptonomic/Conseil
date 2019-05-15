@@ -20,14 +20,10 @@ object TezosRemoteInstances {
       import tech.cryptonomic.conseil.util.EffectsUtil._
 
       //creates an IO instance on top of the one for Futures
-      implicit def ioRpcHandlerInstance(implicit context: RemoteContext): RpcHandler.Aux[IO, String, JsonString, String] =
-        new RpcHandler[IO] {
+      implicit def ioRpcHandlerInstance(implicit context: RemoteContext): RpcHandler.Aux[IO, String, String, JsonString] =
+        new RpcHandler[IO, UrlPath, ResponseBody] {
           val futureRpc = futureRpcHandlerInstance(context)
 
-          //a partial URL path
-          type Command = String
-          // the json response content
-          type Response = String
           // payload is formally verified json
           type PostPayload = JsonString
 
@@ -91,6 +87,10 @@ object TezosRemoteInstances {
       import scala.util.control.NoStackTrace
       import akka.http.scaladsl.settings.ConnectionPoolSettings
 
+      //support types
+      type UrlPath = String
+      type ResponseBody = String
+
       //might be actually unlawful, but we won't use it for append, only for empty
       private implicit def futureMonoid[T](implicit ec: ExecutionContext) = new Monoid[Future[T]] {
         override def combine(x: Future[T], y: Future[T]) = x *> y
@@ -102,7 +102,7 @@ object TezosRemoteInstances {
        * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
        */
       implicit def futureRpcHandlerInstance(implicit context: RemoteContext) =
-        new RpcHandler[Future] {
+        new RpcHandler[Future, UrlPath, ResponseBody] {
           import cats.data.Kleisli
           import context._
 
@@ -116,14 +116,10 @@ object TezosRemoteInstances {
           val requestsConnectionPooling: ConnectionPoolSettings =
             ConnectionPoolSettings(context.streamingConfig.pool)
 
-          //a partial URL path
-          type Command = String
-          // the json response content
-          type Response = String
           // payload is formally verified json
           type PostPayload = JsonString
 
-          override def getQuery: Kleisli[Future, Command, Response] = Kleisli {
+          override def getQuery: Kleisli[Future, UrlPath, ResponseBody] = Kleisli {
             command => withRejectionControl {
               val url = translateCommandToUrl(command)
               val httpRequest = HttpRequest(HttpMethods.GET, url)
@@ -140,7 +136,7 @@ object TezosRemoteInstances {
             }
           }
 
-          override def postQuery: Kleisli[Future, (Command, Option[PostPayload]), Response] = Kleisli {
+          override def postQuery: Kleisli[Future, (UrlPath, Option[PostPayload]), ResponseBody] = Kleisli {
             case (command, payload) => withRejectionControl {
               val url = translateCommandToUrl(command)
               logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, tezosConfig.network, payload)

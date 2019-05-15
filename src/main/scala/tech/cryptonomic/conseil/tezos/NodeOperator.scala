@@ -29,17 +29,17 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
   //use this aliases to make signatures easier to read and kept in-sync
 
   /** describes capability to run a single remote call returning strings*/
-  type GetHandler[F[_]] = RpcHandler.Aux[F, String, _, String]
+  type GetHandler[Eff[_]] = RpcHandler[Eff, String, String]
   /** alias for a fetcher with String json encoding and Throwable failures */
-  type NodeFetcherThrow[F[_], In, Out] = DataFetcher.Aux[F, Throwable, In, Out, String]
+  type NodeFetcherThrow[Eff[_], In, Out] = DataFetcher.Aux[Eff, Throwable, In, Out, String]
   /** a monad that can raise and handle Throwables */
-  type MonadThrow[F[_]] = MonadError[F, Throwable]
+  type MonadThrow[Eff[_]] = MonadError[Eff, Throwable]
   /** an applicative that can raise and handle Throwables */
-  type ApplicativeThrow[F[_]] = ApplicativeError[F, Throwable]
+  type ApplicativeThrow[Eff[_]] = ApplicativeError[Eff, Throwable]
   /** generic pair of multiple Ts with their associated block reference */
   type BlockWithMany[T] = (Block, List[T])
   /** the whole results of reading latest info from the chain */
-  type BlockFetchingResults[F[_]] = Stream[F, (Block, List[AccountId])]
+  type BlockFetchingResults[Eff[_]] = Stream[Eff, (Block, List[AccountId])]
 
   /**
     * Fetches a specific account for a given block.

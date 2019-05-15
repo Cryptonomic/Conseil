@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import tech.cryptonomic.conseil.generic.chain.RemoteRpc
 import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore

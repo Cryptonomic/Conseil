@@ -1,13 +1,15 @@
 package tech.cryptonomic.conseil.tezos
 
+import scala.language.postfixOps
+import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.generic.chain.RemoteRpc
-
+import tech.cryptonomic.conseil.generic.chain.RpcHandler
 import cats.Id
 import cats.data.{Const, Reader}
+import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 
 class TezosNodeOperatorTest
   extends FlatSpec
@@ -19,10 +21,14 @@ class TezosNodeOperatorTest
   val outerLogger = logger
 
   // create a test instance
-  val sut: NodeOperator = new NodeOperator {
-    override val logger = outerLogger
-    override val network: String = "network"
-  }
+  val sut: NodeOperator = new NodeOperator(
+    network = "network",
+    batchConf = BatchFetchConfiguration(
+      blockFetchConcurrencyLevel = 100,
+      accountFetchConcurrencyLevel = 100,
+      blockPageSize = 100
+    )
+  )
 
   "getBlock" should "correctly fetch the genesis block" in {
     //given
