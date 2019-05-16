@@ -4,7 +4,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
 import scala.concurrent.duration.FiniteDuration
 
-final case class ServerConfiguration(hostname: String, port: Int, cacheTTL: FiniteDuration)
+final case class ServerConfiguration(hostname: String, port: Int, cacheTTL: FiniteDuration, maxQueryResultSize: Int)
 
 final case class LorreConfiguration(
   sleepInterval: FiniteDuration,

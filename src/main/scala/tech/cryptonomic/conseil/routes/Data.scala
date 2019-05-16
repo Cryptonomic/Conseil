@@ -4,6 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
@@ -16,8 +17,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext): Data =
-    new Data(config, DataPlatform(), tezosPlatformDiscoveryOperations)
+  def apply(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations, server: ServerConfiguration)(implicit ec: ExecutionContext): Data =
+    new Data(config, DataPlatform(server.maxQueryResultSize), tezosPlatformDiscoveryOperations)
 }
 
 /**
