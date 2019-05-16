@@ -269,6 +269,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case Custom(n) => node.getLatestBlocks[IO](Some(n), lorreConf.headHash)
     }
 
+    val getNanos: IO[Long] = timer.clock.monotonic(NANOSECONDS)
+
     def process(streamWithTotal: (node.BlockFetchingResults[IO], Int), startNanos: Long) = {
       val (streamIn, total) = streamWithTotal
       val logProgress = logProcessingProgress("block", total, startNanos) _
@@ -310,19 +312,21 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       totalToProcess: Int,
       processStartNanos: Long
     )(processed: Int): IO[Unit] =
-      for {
-        elapsed <- timer.clock.monotonic(NANOSECONDS).map(_ - processStartNanos)
-        progress = processed.toDouble/totalToProcess
-        _ <- IO(logger.info("Completed processing {}% of total requested {}s", "%.2f".format(progress * 100), entityName))
-        etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
-        _ <- if (processed < totalToProcess && etaMins > 1)
-          IO(logger.info("Estimated time to finish is around {} minutes", etaMins))
-          else IO.unit
-      } yield ()
+      getNanos
+        .map(_ - processStartNanos)
+        .flatMap { elapsed =>
+          val progress = processed.toDouble/totalToProcess
+          IO.shift *>
+            IO(logger.info("Completed processing {}% of total requested {}s.", "%.2f".format(progress * 100), entityName)) *>
+            IO(logger.info("Estimated throughput is {}/min.", "%d".format(processed/(Duration(elapsed, NANOSECONDS).toMinutes))))
+              .whenA(elapsed > 60e9) *>
+            IO(logger.info("Estimated time to finish is {} minutes.", Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes))
+              .whenA(processed < totalToProcess)
+        }
 
     //now we can actually bind all IO pieces together
     for {
-      startTime       <- timer.clock.monotonic(NANOSECONDS)
+      startTime       <- getNanos
       streamWithTotal <- blocksToSynchronize
       _               <- process(streamWithTotal, startTime)
     } yield ()

@@ -395,7 +395,9 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
-    offsets.lift[F].parEvalMap(batchConf.blockFetchConcurrencyLevel)(offset => getBlockWithAccounts(Some(offset)))
+    offsets.lift[F]
+      .prefetchN(batchConf.blockFetchConcurrencyLevel)
+      .parEvalMap(batchConf.blockFetchConcurrencyLevel)(offset => getBlockWithAccounts(Some(offset)))
 
   }
 

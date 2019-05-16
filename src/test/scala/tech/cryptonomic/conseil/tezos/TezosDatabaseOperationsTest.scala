@@ -723,7 +723,7 @@ class TezosDatabaseOperationsTest
       //write
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-        written <- sut.writeVotingBakers(bakers, block)
+        written <- sut.writeVotingBakers(block, bakers)
         rows <- Tables.Bakers.result
       } yield (written, rows)
 
@@ -758,7 +758,7 @@ class TezosDatabaseOperationsTest
       //write
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-        written <- sut.writeVotingBallots(ballots, block)
+        written <- sut.writeVotingBallots(block, ballots)
         rows <- Tables.Ballots.result
       } yield (written, rows)
 
