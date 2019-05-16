@@ -3,15 +3,15 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import cats.effect.{ContextShift, IO}
 import cats.effect.concurrent.MVar
+import cats.effect.{ContextShift, IO}
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.config.{MetadataOverridesConfiguration, Newest}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
+import tech.cryptonomic.conseil.config.MetadataOverridesConfiguration
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheOverrides
@@ -127,7 +127,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("predecessor", "Predecessor", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-            Attribute("validation_pass", "Validation pass", DataType.Int,None, KeyType.NonKey, "blocks"),
+            Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("fitness", "Fitness", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("context", "Context", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("signature", "Signature", DataType.String, Some(0), KeyType.NonKey, "blocks"),
@@ -228,6 +228,13 @@ class TezosPlatformDiscoveryOperationsTest
 
       sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(InvalidAttributeDataType("medium"), HighCardinalityAttribute("medium"))
 
+    }
+
+    "return list with one error when the minimum matching length is greater than match length" in {
+      val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+
+      sut.listAttributeValues("fees", "kind", Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5))).futureValue.left.get shouldBe List(InvalidAttributeFilterLength("kind", 4))
     }
 
     "return empty list when trying to sql inject" in {

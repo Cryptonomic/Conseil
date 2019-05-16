@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.metadata
 
 import tech.cryptonomic.conseil.config.MetadataOverridesConfiguration
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.util.OptionUtil.when
 
 // class for applying overrides configurations
@@ -58,8 +58,4 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
       dataFormat = overrideAttribute
         .flatMap(_.dataFormat))
   }
-
-
 }
-
-
