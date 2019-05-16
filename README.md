@@ -31,7 +31,7 @@ Deployment
 Run the following command from the root directory of the repository:
 
 ```bash
-sbt clean assembly
+sbt clean assembly -J-Xss32m
 ```
 
 This will clean any existing local artifact, compile the project, and create a "fat JAR" with the runnable application, including all its dependencies.
