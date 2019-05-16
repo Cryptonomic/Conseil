@@ -109,25 +109,65 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]): DBIO[Option[Int]] =
     Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
 
+  /** Removes data from a accounts checkpoint table */
+  def cleanAccountsCheckpoint(
+    ids: Option[Set[AccountId]] = None
+  )(implicit ec: ExecutionContext): DBIO[Int] =
+    cleanCheckpoint[
+      AccountId,
+      Tables.AccountsCheckpointRow,
+      Tables.AccountsCheckpoint,
+      TableQuery[Tables.AccountsCheckpoint]
+    ](
+      selection = ids,
+      tableQuery = Tables.AccountsCheckpoint,
+      tableTotal = getAccountsCheckpointSize(),
+      applySelection = (checkpoint, keySet) => checkpoint.filter(_.accountId inSet keySet.map(_.id))
+    )
+
+  /** Removes data from a delegates checkpoint table */
+  def cleanDelegatesCheckpoint(
+    pkhs: Option[Set[PublicKeyHash]] = None
+  )(implicit ec: ExecutionContext): DBIO[Int] =
+    cleanCheckpoint[
+      PublicKeyHash,
+      Tables.DelegatesCheckpointRow,
+      Tables.DelegatesCheckpoint,
+      TableQuery[Tables.DelegatesCheckpoint]
+    ](
+      selection = pkhs,
+      tableQuery = Tables.DelegatesCheckpoint,
+      tableTotal = getDelegatesCheckpointSize(),
+      applySelection = (checkpoint, keySet) => checkpoint.filter(_.delegatePkh inSet keySet.map(_.value))
+    )
+
   /**
-    * Removes  data on the accounts checkpoint table
+    * Removes  data from a generic checkpoint table
     * @param selection limits the removed rows to those
     *                  concerning the selected elements, by default no selection is made.
-    *                  We strictly assume those Ids were previously loaded from the checkpoint table itself
+    *                  We strictly assume those keys were previously loaded from the checkpoint table itself
+    * @param tableQuery the slick table query to identify which is the table to clean up
+    * @param tableTotal an action needed to compute the number of max keys in the checkpoint
+    * @param applySelection used to filter the results to clean-up, using the available `selection`
     * @return the database action to run
     */
-  def cleanAccountsCheckpoint(selection: Option[Set[AccountId]] = None)(implicit ec: ExecutionContext): DBIO[Int] =
+  def cleanCheckpoint[PK, Row, T <: Table[Row], CheckpointTable <: TableQuery[T]](
+    selection: Option[Set[PK]] = None,
+    tableQuery: CheckpointTable,
+    tableTotal: DBIO[Int],
+    applySelection: (CheckpointTable, Set[PK]) => Query[T, Row, Seq]
+  )(implicit ec: ExecutionContext): DBIO[Int] =
     selection match {
-      case Some(ids) =>
+      case Some(pks) =>
         for {
-          total <- getAccountsCheckpointSize()
+          total <- tableTotal
           marked =
-            if (total > ids.size) Tables.AccountsCheckpoint.filter(_.accountId inSet ids.map(_.id))
-            else Tables.AccountsCheckpoint
+            if (total > pks.size) applySelection(tableQuery, pks)
+            else tableQuery
           deleted <- marked.delete
         } yield deleted
       case None =>
-        Tables.AccountsCheckpoint.delete
+        tableQuery.delete
     }
 
   /**
@@ -137,8 +177,14 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.AccountsCheckpoint.distinctOn(_.accountId).length.result
 
   /**
+    * @return the number of distinct accounts present in the checkpoint table
+    */
+  def getDelegatesCheckpointSize(): DBIO[Int] =
+    Tables.DelegatesCheckpoint.distinctOn(_.delegatePkh).length.result
+
+  /**
     * Reads the account ids in the checkpoint table, considering
-    * only those that at the latest block level (highest value)
+    * only those at the latest block level (highest value)
     * @return a database action that loads the list of relevant rows
     */
   def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[AccountId, BlockReference]] =
@@ -149,6 +195,21 @@ object TezosDatabaseOperations extends LazyLogging {
               })
     } yield rows.map {
       case Tables.AccountsCheckpointRow(id, blockId, level) => AccountId(id) -> (BlockHash(blockId), level)
+    }.toMap
+
+  /**
+    * Reads the delegate key hashes in the checkpoint table, considering
+    * only those at the latest block level (highest value)
+    * @return a database action that loads the list of relevant rows
+    */
+  def getLatestDelegatesFromCheckpoint(implicit ex: ExecutionContext): DBIO[Map[PublicKeyHash, BlockReference]] =
+    for {
+      keys <- Tables.DelegatesCheckpoint.map(_.delegatePkh).distinct.result
+      rows <- DBIO.sequence(keys.map {
+                pkh => Tables.DelegatesCheckpoint.filter(_.delegatePkh === pkh).sortBy(_.blockLevel.desc).take(1).result.head
+              })
+    } yield rows.map {
+      case Tables.DelegatesCheckpointRow(pkh, blockId, level) => PublicKeyHash(pkh) -> (BlockHash(blockId), level)
     }.toMap
 
   /**
@@ -183,6 +244,18 @@ object TezosDatabaseOperations extends LazyLogging {
 
     //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
     Async[DBIO].tuple2(writeAccounts(accounts), writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))).transactionally
+  }
+
+  /**
+    * Writes delegates to the database and gets the delegated accounts' keys to copy the accounts data
+    * as delegated contracts on the db, as a secondary copy
+    * @param delegates the full delegates' data
+    * @return a database action that stores delegates and returns the number of saved rows
+    */
+  def writeDelegatesAndCopyContracts(
+    delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
+  )(implicit ec: ExecutionContext): DBIO[Int] = {
+    ???
   }
 
   /** Writes proposals to the database */
