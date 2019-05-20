@@ -45,6 +45,8 @@ class TezosPlatformDiscoveryOperations(
   import cats.effect._
   import cats.implicits._
 
+  var isCachingComplete: Boolean = false
+
   /** Method for initializing values of the cache */
   def init(): Future[Unit] = {
     val result = for {
@@ -319,19 +321,55 @@ class TezosPlatformDiscoveryOperations(
     * @return list of attributes as a Future
     */
   def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] = {
-    attributesCache.read.flatMap { entitiesMap =>
-      entitiesMap.get(tableName).map { case (last, attributes) =>
-        if (last + cacheTTL.toMillis > now) {
-          IO.pure(attributes)
-        } else {
-          for {
-            updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
-            _ <- attributesCache.take
-            _ <- attributesCache.put(entitiesMap.updated(tableName, now -> updatedAttributes))
-          } yield updatedAttributes
+    if(isCachingComplete) {
+      attributesCache.read.flatMap { attributesMap =>
+        attributesMap.get(tableName).map { case (last, attributes) =>
+          if (last + cacheTTL.toMillis > now) {
+            println("1st")
+            IO.pure(attributes)
+          } else {
+            println("2nd")
+            for {
+              updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
+              _ <- attributesCache.take
+              _ <- attributesCache.put(attributesMap.updated(tableName, now -> updatedAttributes))
+            } yield updatedAttributes
+          }
+        }.sequence
+      }.unsafeToFuture()
+    } else {
+      println("3rd")
+      getTableAttributesWithoutUpdatingCache(tableName)
+    }
+  }
+
+
+  def initAttributesCount(): Future[List[Unit]] = {
+    val result = for {
+      entCache <- entitiesCache.read
+      attributes <- attributesCache.read
+      updatedAttributes <- IO.fromFuture {
+        IO {
+          metadataOperations.runQuery {
+            DBIOAction.sequence {
+              val (_, entities) = entCache
+              for {
+                entity <- entities
+                (_, (_, attr)) <- attributes.filter(_._1 == entity.name)
+              } yield getUpdatedAttributesQuery(entity.name, attr).map(entity.name -> _)
+            }
+          }
         }
+      }
+    } yield
+      updatedAttributes.map {
+        case (tableName, attr) =>
+          attributesCache.take.flatMap { _ =>
+            attributesCache.put(attributes.updated(tableName, now -> attr))
+          }
       }.sequence
-    }.unsafeToFuture()
+
+    result.flatten.unsafeToFuture()
   }
 
   /** Runs query and attributes with updated counts */

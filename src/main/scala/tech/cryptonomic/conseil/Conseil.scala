@@ -52,10 +52,27 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, server.cacheTTL)(executionContext)
 
-      tezosPlatformDiscoveryOperations.init().onComplete {
-        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
-        case Success(_) => logger.info("Pre-caching successful!")
+//      tezosPlatformDiscoveryOperations.init().onComplete {
+//        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
+//        case Success(_) =>
+//          tezosPlatformDiscoveryOperations.initAttributesCount().onComplete {
+//            case Failure(exception) => logger.error("Pre-caching attributes counts failed", exception)
+//            case Success(_) =>
+//              tezosPlatformDiscoveryOperations.isCachingComplete = true
+//              logger.info("Pre-caching attributes counts successful!")
+//          }
+//          logger.info("Pre-caching successful!")
+//      }
+
+      for {
+        _ <- tezosPlatformDiscoveryOperations.init()
+        _ = logger.info("Pre-caching successful!")
+        _ <- tezosPlatformDiscoveryOperations.initAttributesCount()
+      } {
+        tezosPlatformDiscoveryOperations.isCachingComplete = true
+        logger.info("Pre-caching attributes counts successful!")
       }
+
       lazy val metadataService = new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
