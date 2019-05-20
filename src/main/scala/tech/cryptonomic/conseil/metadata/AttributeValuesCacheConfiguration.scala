@@ -12,17 +12,14 @@ class AttributeValuesCacheConfiguration(metadataConfiguration: MetadataConfigura
   def getCacheConfiguration(path: AttributePath): Option[AttributeCacheConfiguration] = when(metadataConfiguration.isVisible(path)) {
     metadataConfiguration
       .attribute(path)
-      .map(attribute =>
-        AttributeCacheConfiguration(attribute.cached.getOrElse(false),
-          attribute.minMatchLength.getOrElse(0),
-          attribute.maxResults.getOrElse(Int.MaxValue)))
+      .flatMap(_.cacheConfig)
   }.flatten
 
   /** extracts pair (entity, attribute) which needs to be cached */
   def getAttributesToCache: List[(EntityName, AttributeName)] = {
     metadataConfiguration.allAttributes
       .filter {
-        case (_, conf) => conf.cached.getOrElse(false)
+        case (_, conf) => conf.cacheConfig.exists(_.cached)
       }
       .keys
       .filter(metadataConfiguration.isVisible)

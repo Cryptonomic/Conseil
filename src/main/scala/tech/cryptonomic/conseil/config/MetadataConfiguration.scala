@@ -1,7 +1,8 @@
 package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Types.{AttributeName, EntityName, NetworkName, PlatformName}
-import tech.cryptonomic.conseil.metadata.{AttributePath, EmptyPath, EntityPath, NetworkPath, Path, PlatformPath}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.AttributeCacheConfiguration
+import tech.cryptonomic.conseil.metadata._
 
 object Types {
   type PlatformName = String
@@ -33,22 +34,6 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
 
   // fetches attribute based on a given path
   def attribute(path: AttributePath): Option[AttributeConfiguration] = entity(path.up).flatMap(_.attributes.get(path.attribute))
-
-//  // fetches all visible entity and attribute names
-//  def getAllAttributeNames = {
-//    val result = for {
-//      platform <- metadataConfiguration.values
-//      if platform.visible.getOrElse(false)
-//      network <- platform.networks.values
-//      if network.visible.getOrElse(false)
-//      (entityName, entity) <- network.entities.toList
-//      if entity.visible.getOrElse(false)
-//      (attributeName, attribute) <- entity.attributes.toList
-//      if attribute.visible.getOrElse(false)
-//    } yield entityName -> (attributeName -> attribute)
-//
-//    result.toList
-//  }
 
   // fetches all platforms
   def allPlatforms: Map[PlatformPath, PlatformConfiguration] = metadataConfiguration.map {
@@ -89,4 +74,4 @@ case class EntityConfiguration(displayName: Option[String], visible: Option[Bool
 
 // configuration for attribute
 case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, placeholder: Option[String] = None,
-  dataFormat: Option[String] = None, cached: Option[Boolean] = None, minMatchLength: Option[Int] = None, maxResults: Option[Int] = None)
+  dataFormat: Option[String] = None, cacheConfig: Option[AttributeCacheConfiguration] = None)
