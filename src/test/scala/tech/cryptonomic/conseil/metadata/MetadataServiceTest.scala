@@ -19,7 +19,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
   "The metadata service" should {
 
     val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
-    val cacheOverrides = stub[AttributeValuesCacheOverrides]
+    val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
     val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) => new MetadataService(
       PlatformsConfiguration(Map(Platforms.Tezos -> List(

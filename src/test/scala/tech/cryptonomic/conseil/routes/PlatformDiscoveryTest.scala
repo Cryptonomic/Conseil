@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfigurat
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheOverrides, MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
@@ -21,7 +21,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
   "The platform discovery route" should {
 
     val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
-    val cacheOverrides = stub[AttributeValuesCacheOverrides]
+    val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
     val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) => PlatformDiscovery(new MetadataService(
       PlatformsConfiguration(Map(Platforms.Tezos -> List(

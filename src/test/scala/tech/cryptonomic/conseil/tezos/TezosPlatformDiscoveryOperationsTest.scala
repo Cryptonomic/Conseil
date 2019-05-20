@@ -14,7 +14,7 @@ import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.metadata.AttributeValuesCacheOverrides
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.util.ConfigUtil
@@ -46,7 +46,7 @@ class TezosPlatformDiscoveryOperationsTest
   val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
   val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
   val metadadataOverrides = new MetadataConfiguration(Map.empty)
-  val cacheOverrides = new AttributeValuesCacheOverrides(metadadataOverrides)
+  val cacheOverrides = new AttributeValuesCacheConfiguration(metadadataOverrides)
   val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, 10 seconds)
 
   override def beforeAll(): Unit = {

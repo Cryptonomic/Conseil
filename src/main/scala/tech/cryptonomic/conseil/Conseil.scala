@@ -14,7 +14,7 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheOverrides, MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
@@ -47,7 +47,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
       val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
       lazy val transformation = new UnitTransformation(metadataOverrides)
-      lazy val cacheOverrides = new AttributeValuesCacheOverrides(metadataOverrides)
+      lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, server.cacheTTL)(executionContext)

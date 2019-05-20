@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.AttributeCa
 import tech.cryptonomic.conseil.util.OptionUtil.when
 
 /** Class for extracting attribute cache configurations */
-class AttributeValuesCacheOverrides(metadataConfiguration: MetadataConfiguration) {
+class AttributeValuesCacheConfiguration(metadataConfiguration: MetadataConfiguration) {
 
   /** extracts cache configuration for given attribute path */
   def getCacheConfiguration(path: AttributePath): Option[AttributeCacheConfiguration] = when(metadataConfiguration.isVisible(path)) {

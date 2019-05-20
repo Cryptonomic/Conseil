@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationErr
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.metadata.AttributeValuesCacheOverrides
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 
 import scala.concurrent.duration.FiniteDuration
@@ -26,7 +26,7 @@ object TezosPlatformDiscoveryOperations {
     attributesCache: MVar[IO, AttributesCache],
     entitiesCache: MVar[IO, EntitiesCache],
     attributeValuesCache: MVar[IO, AttributeValuesCache],
-    cacheOverrides: AttributeValuesCacheOverrides,
+    cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration)
     (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, cacheTTL)
@@ -38,7 +38,7 @@ class TezosPlatformDiscoveryOperations(
   attributesCache: MVar[IO, AttributesCache],
   entitiesCache: MVar[IO, EntitiesCache],
   attributeValuesCache: MVar[IO, AttributeValuesCache],
-  cacheOverrides: AttributeValuesCacheOverrides,
+  cacheOverrides: AttributeValuesCacheConfiguration,
   cacheTTL: FiniteDuration)
   (implicit executionContext: ExecutionContext) {
 

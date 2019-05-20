@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 // service class for metadata
 class MetadataService(config: PlatformsConfiguration,
                       transformation: UnitTransformation,
-                      cacheOverrides: AttributeValuesCacheOverrides,
+                      cacheOverrides: AttributeValuesCacheConfiguration,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
   // fetches platforms
