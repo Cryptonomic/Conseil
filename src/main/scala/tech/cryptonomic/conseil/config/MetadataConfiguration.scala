@@ -10,8 +10,8 @@ object Types {
   type AttributeName = String
 }
 
-// metadata overrides configuration
-case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, PlatformConfiguration]) {
+// metadata configuration
+case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, PlatformConfiguration]) {
 
   // determines if a given path is visible
   def isVisible(path: Path): Boolean = path match {
@@ -23,7 +23,7 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
   }
 
   // fetches platform based on a given path
-  def platform(path: PlatformPath): Option[PlatformConfiguration] = metadataOverrides.get(path.platform)
+  def platform(path: PlatformPath): Option[PlatformConfiguration] = metadataConfiguration.get(path.platform)
 
   // fetches network based on a given path
   def network(path: NetworkPath): Option[NetworkConfiguration] = platform(path.up).flatMap(_.networks.get(path.network))
@@ -33,6 +33,49 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
 
   // fetches attribute based on a given path
   def attribute(path: AttributePath): Option[AttributeConfiguration] = entity(path.up).flatMap(_.attributes.get(path.attribute))
+
+//  // fetches all visible entity and attribute names
+//  def getAllAttributeNames = {
+//    val result = for {
+//      platform <- metadataConfiguration.values
+//      if platform.visible.getOrElse(false)
+//      network <- platform.networks.values
+//      if network.visible.getOrElse(false)
+//      (entityName, entity) <- network.entities.toList
+//      if entity.visible.getOrElse(false)
+//      (attributeName, attribute) <- entity.attributes.toList
+//      if attribute.visible.getOrElse(false)
+//    } yield entityName -> (attributeName -> attribute)
+//
+//    result.toList
+//  }
+
+  // fetches all platforms
+  def allPlatforms: Map[PlatformPath, PlatformConfiguration] = metadataConfiguration.map {
+    case (platformName, platformConfiguration) => PlatformPath(platformName) -> platformConfiguration
+  }
+
+  // fetches all networks
+  def allNetworks: Map[NetworkPath, NetworkConfiguration] = allPlatforms.flatMap {
+    case (platformPath, platformConfiguration) => platformConfiguration.networks.map {
+      case (networkName, networkConfiguration) => (platformPath.addLevel(networkName), networkConfiguration)
+    }
+  }
+
+  // fetches all entities
+  def allEntities: Map[EntityPath, EntityConfiguration] = allNetworks.flatMap {
+    case (networkPath, networkConfiguration) => networkConfiguration.entities.map {
+      case (entityName, entityConfiguration) => (networkPath.addLevel(entityName), entityConfiguration)
+    }
+  }
+
+  // fetches all attributes
+  def allAttributes: Map[AttributePath, AttributeConfiguration] = allEntities.flatMap {
+    case (entityPath, entityConfiguration) => entityConfiguration.attributes.map {
+      case (attributeName, attributeConfiguration) => (entityPath.addLevel(attributeName), attributeConfiguration)
+    }
+  }
+
 }
 
 // configuration for platform

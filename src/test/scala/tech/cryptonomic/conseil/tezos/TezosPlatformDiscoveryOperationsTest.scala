@@ -10,7 +10,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.config.MetadataOverridesConfiguration
+import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
@@ -45,7 +45,7 @@ class TezosPlatformDiscoveryOperationsTest
   val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
   val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
   val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
-  val metadadataOverrides = new MetadataOverridesConfiguration(Map.empty)
+  val metadadataOverrides = new MetadataConfiguration(Map.empty)
   val cacheOverrides = new AttributeValuesCacheOverrides(metadadataOverrides)
   val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, 10 seconds)
 
