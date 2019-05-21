@@ -261,9 +261,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
-  //move it to the node operator
-  def getDelegatesForBlock(keys: List[PublicKeyHash], blockHash: BlockHash): Future[Map[Delegate, Contract]] = ???
-
   /**
     * Fetches a single block from the chain, without waiting for the result
     * @param hash      Hash of the block
