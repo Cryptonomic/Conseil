@@ -28,7 +28,7 @@ trait PlatformDiscoveryEndpoints
   def networksEndpoint: Endpoint[(String, String), Option[List[PlatformDiscoveryTypes.Network]]] =
     endpoint(
       request = get(
-        url = commonPath / segment[String](name = "platforms") / "networks",
+        url = commonPath / segment[String](name = "platform") / "networks",
         headers = header("apiKey")),
       response = jsonResponse[List[PlatformDiscoveryTypes.Network]](docs = Some("Metadata endpoint for listing available networks")).orNotFound(Some("Not found")),
       tags = List("Metadata")

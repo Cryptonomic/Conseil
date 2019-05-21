@@ -10,7 +10,7 @@ import scopt.OptionParser
 /** wraps all configuration needed to run Conseil */
 trait ConseilAppConfig {
 
-  type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, VerboseOutput)
+  type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, VerboseOutput, MetadataOverridesConfiguration)
   /** Lazily reads all configuration upstart, will print all errors encountered during loading */
   private val argsParser = new OptionParser[VerboseOutput]("conseil") {
     opt[Unit]('v', "verbose")
@@ -34,8 +34,9 @@ trait ConseilAppConfig {
       verbose <- readArgs(commandLineArgs)
       server <- loadConfig[ServerConfiguration](namespace = "conseil")
       platforms <- loadConfig[PlatformsConfiguration](namespace = "platforms")
+      metadataOverrides <- loadConfig[MetadataOverridesConfiguration]
       securityApi <- Security()
-    } yield (server, platforms, securityApi, verbose)
+    } yield (server, platforms, securityApi, verbose, metadataOverrides)
 
     //something went wrong
     loadedConf.left.foreach {
