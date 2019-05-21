@@ -266,7 +266,7 @@ object TezosDatabaseOperations extends LazyLogging {
     )
     val contractsUpdateAction =
       copyAccountsToDelegateContracts(
-        delegates.flatMap(_.content.keySet).map(pkh => AccountId(pkh.value)).toSet
+        delegates.flatMap(_.content.values.flatMap(_.delegated_contracts)).toSet
       )
     for {
       updated <- delegatesUpdateAction.map(_.sum)
@@ -277,13 +277,14 @@ object TezosDatabaseOperations extends LazyLogging {
   /* Selects accounts corresponding to the given ids and copy the rows
    * into the delegated contracts tables, whose schema should match exactly
    */
-  private def copyAccountsToDelegateContracts(accountIds: Set[AccountId])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    val ids = accountIds.map(_.id)
+  private def copyAccountsToDelegateContracts(contractIds: Set[ContractId])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    val ids = contractIds.map(_.id)
     val inputAccounts = Tables.Accounts
       .filter(_.accountId inSet ids)
       .result
       .map(_.map(_.convertTo[Tables.DelegatedContractsRow]))
 
+    //we read the accounts data, then remove matching ids from contracts and re-insert the updated rows
     (for {
       accounts <- inputAccounts
       _ <- Tables.DelegatedContracts.filter(_.accountId inSet ids).delete
@@ -382,10 +383,6 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Precompiled fetch for Operations by Group */
   val operationsByGroupHash =
     Tables.Operations.findBy(_.operationGroupHash)
-
-  /** Precompiled fetch for groups of operations */
-  val operationGroupsByHash =
-    Tables.OperationGroups.findBy(_.hash).map(_.andThen(_.take(1)))
 
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
   private[tezos] def fetchMaxBlockLevel: DBIO[Int] =
