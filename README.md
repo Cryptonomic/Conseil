@@ -67,7 +67,7 @@ And..
 env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "runLorre <network>"
 ```
 
-If you're getting a ``StackOverflowError`` during this step make sure that [you've built](#Package) Conceil properly. 
+If you're getting a ``StackOverflowError`` during this step make sure that [you've built](#Package) Conseil properly. 
 
 Here `network` refers to a valid configuration key, defined in the `application.conf` file (or a custom one), and describing a blockchain node connection info.
 Such configuration should provide `protocol, hostname, port, pathPrefix` for a chain rpc node. Such key will be looked-up under the `platforms.<blockchain-name>` path in the config file.
