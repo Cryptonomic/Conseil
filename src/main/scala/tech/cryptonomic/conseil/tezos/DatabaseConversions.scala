@@ -3,10 +3,10 @@ package tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
-import tech.cryptonomic.conseil.util.Conversion._
-import cats.Show
+import cats.{Id, Show}
 import java.sql.Timestamp
 import monocle.Getter
+import io.scalaland.chimney.dsl._
 
 object DatabaseConversions {
 
@@ -59,6 +59,10 @@ object DatabaseConversions {
         )
       }.toList
     }
+  }
+
+  implicit val accountRowsToContractRows = new Conversion[Id, Tables.AccountsRow, Tables.DelegatedContractsRow] {
+    override def convert(from: Tables.AccountsRow) = from.into[Tables.DelegatedContractsRow].transform
   }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
@@ -386,6 +390,23 @@ object DatabaseConversions {
       )
     }
 
+  }
+
+  implicit val delegateToRow = new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate), Tables.DelegatesRow] {
+    override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate)) = {
+      val (blockHash, blockLevel, keyHash, delegate) = from
+      Tables.DelegatesRow(
+        pkh = keyHash.value,
+        blockId = blockHash.value,
+        balance = extractBigDecimal(delegate.balance),
+        frozenBalance = extractBigDecimal(delegate.frozen_balance),
+        stakingBalance = extractBigDecimal(delegate.staking_balance),
+        delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+        deactivated = delegate.deactivated,
+        gracePeriod = delegate.grace_period,
+        blockLevel = blockLevel
+      )
+    }
   }
 
   implicit val proposalToRow = new Conversion[List, Voting.Proposal, Tables.ProposalsRow] {

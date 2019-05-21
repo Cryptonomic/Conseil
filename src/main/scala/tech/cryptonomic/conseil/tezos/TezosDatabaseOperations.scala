@@ -255,7 +255,40 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeDelegatesAndCopyContracts(
     delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
-    ???
+    val delegatesUpdateAction = DBIO.sequence(
+      delegates.flatMap {
+        case BlockTagged(blockHash, blockLevel, delegateMap) =>
+          delegateMap.map {
+            case (pkh, delegate) =>
+              Tables.Delegates insertOrUpdate (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]
+          }
+        }
+    )
+    val contractsUpdateAction =
+      copyAccountsToDelegateContracts(
+        delegates.flatMap(_.content.keySet).map(pkh => AccountId(pkh.value)).toSet
+      )
+    for {
+      updated <- delegatesUpdateAction.map(_.sum)
+      _ <- contractsUpdateAction
+    } yield updated
+  }
+
+  /* Selects accounts corresponding to the given ids and copy the rows
+   * into the delegated contracts tables, whose schema should match exactly
+   */
+  private def copyAccountsToDelegateContracts(accountIds: Set[AccountId])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    val ids = accountIds.map(_.id)
+    val inputAccounts = Tables.Accounts
+      .filter(_.accountId inSet ids)
+      .result
+      .map(_.map(_.convertTo[Tables.DelegatedContractsRow]))
+
+    (for {
+      accounts <- inputAccounts
+      _ <- Tables.DelegatedContracts.filter(_.accountId inSet ids).delete
+      updated <- Tables.DelegatedContracts.forceInsertAll(accounts)
+    } yield updated).transactionally
   }
 
   /** Writes proposals to the database */
