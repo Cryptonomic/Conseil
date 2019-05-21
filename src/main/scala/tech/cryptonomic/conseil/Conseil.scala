@@ -5,11 +5,9 @@ import java.net.InetSocketAddress
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.directives.BasicDirectives
-import akka.http.scaladsl.server.{Directive, ExceptionHandler}
+import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import cats.effect.concurrent.MVar
@@ -17,17 +15,17 @@ import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import org.slf4j.{LoggerFactory, MDC}
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
+import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.util.RouteUtil._
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
 
@@ -64,51 +62,12 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations)(tezosDispatcher)
 
-      val asyncLogger = LoggerFactory.getLogger("ASYNC_LOGGER")
 
-      def recordResponseValues(inet: InetSocketAddress): Directive[Unit] =
-        BasicDirectives.extractRequestContext.flatMap { ctx =>
-          import scala.concurrent.duration._
-          val apiVersion = if (ctx.request.uri.path.toString().startsWith("/v2")) "v2" else "v1"
-          MDC.put("httpMethod", ctx.request.method.value)
-          MDC.put("requestBody", ctx.request.entity.toStrict(1000.millis).value.get.get.data.utf8String)
-          MDC.put("clientIp", inet.getAddress.getHostAddress)
-          MDC.put("path", ctx.request.uri.path.toString())
-          MDC.put("apiVersion", apiVersion)
-          MDC.put("apiKey", ctx.request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""))
-          val requestStartTime = System.currentTimeMillis()
-          MDC.put("tmpStartTime", requestStartTime.toString)
 
-          val response = BasicDirectives.mapResponse { resp =>
-            val requestEndTime = System.currentTimeMillis()
-            val responseTime = requestEndTime - requestStartTime
-            MDC.remove("tmpStartTime")
-            MDC.put("responseTime", responseTime.toString)
-            MDC.put("responseCode", resp.status.value)
-            asyncLogger.info("HTTP request")
-            MDC.clear()
-            resp
-          }
-          response
-        }
-
-      def myExceptionHandler: ExceptionHandler =
-        ExceptionHandler {
-          case e: Throwable =>
-            val responseTime = Try(System.currentTimeMillis() - MDC.get("tmpStartTime").toLong).getOrElse(0)
-            MDC.remove("tmpStartTime")
-            MDC.put("responseTime", responseTime.toString)
-            MDC.put("responseCode", "500")
-            asyncLogger.info("HTTP request")
-            MDC.clear()
-            e.printStackTrace()
-            complete(HttpResponse(InternalServerError))
-        }
-
-      def route(inet: InetSocketAddress) = handleExceptions(myExceptionHandler) {
+      def route(inet: InetSocketAddress): Route = handleExceptions(loggingExceptionHandler) {
         cors() {
           enableCORS {
-            recordResponseValues(inet) {
+            recordResponseValues(inet)(materializer) {
               validateApiKey { _ =>
                 logRequest("Conseil", Logging.DebugLevel) {
                   tezos.route ~
