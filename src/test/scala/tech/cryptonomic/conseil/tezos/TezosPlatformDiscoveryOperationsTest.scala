@@ -201,6 +201,62 @@ class TezosPlatformDiscoveryOperationsTest
         )
     }
 
+    "return list of attributes of delegates" in {
+
+      sut.getTableAttributes("delegates").futureValue shouldBe
+        Some(
+          List(
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.UniqueKey, "delegates"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "delegates"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("deactivated", "Deactivated", DataType.Boolean, Some(0), KeyType.NonKey, "delegates"),
+            Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
+          )
+        )
+    }
+
+    "return list of attributes of proposals" in {
+
+      sut.getTableAttributes("proposals").futureValue shouldBe
+        Some(
+          List(
+            Attribute("protocol_hash", "Protocol hash", DataType.String, Some(0), KeyType.UniqueKey, "proposals"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "proposals"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals")
+          )
+        )
+    }
+
+    "return list of attributes of bakers" in {
+
+      sut.getTableAttributes("bakers").futureValue shouldBe
+        Some(
+          List(
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.NonKey, "bakers"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "bakers"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "bakers")
+          )
+        )
+    }
+
+    "return list of attributes of ballots" in {
+
+      sut.getTableAttributes("ballots").futureValue shouldBe
+        Some(
+          List(
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.NonKey, "ballots"),
+            Attribute("ballot", "Ballot", DataType.String, Some(0), KeyType.NonKey, "ballots"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "ballots"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
+          )
+        )
+    }
+
     "return empty list for non existing table" in {
       sut.getTableAttributes("nonExisting").futureValue shouldBe None
     }

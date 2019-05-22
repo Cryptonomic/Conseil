@@ -198,7 +198,7 @@ CREATE TABLE public.delegates (
     delegated_balance numeric,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL
+    block_level integer DEFAULT '-1'::integer NOT NULL
 );
 
 CREATE TABLE public.delegated_contracts (

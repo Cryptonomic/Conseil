@@ -382,12 +382,12 @@ trait Tables {
    *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
    *  @param deactivated Database column deactivated SqlType(bool)
    *  @param gracePeriod Database column grace_period SqlType(int4)
-   *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
-  case class DelegatesRow(pkh: String, blockId: String, balance: Option[scala.math.BigDecimal] = None, frozenBalance: Option[scala.math.BigDecimal] = None, stakingBalance: Option[scala.math.BigDecimal] = None, delegatedBalance: Option[scala.math.BigDecimal] = None, deactivated: Boolean, gracePeriod: Int, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
+  case class DelegatesRow(pkh: String, blockId: String, balance: Option[scala.math.BigDecimal] = None, frozenBalance: Option[scala.math.BigDecimal] = None, stakingBalance: Option[scala.math.BigDecimal] = None, delegatedBalance: Option[scala.math.BigDecimal] = None, deactivated: Boolean, gracePeriod: Int, blockLevel: Int = -1)
   /** GetResult implicit for fetching DelegatesRow objects using plain SQL queries */
-  implicit def GetResultDelegatesRow(implicit e0: GR[String], e1: GR[Option[scala.math.BigDecimal]], e2: GR[Boolean], e3: GR[Int], e4: GR[scala.math.BigDecimal]): GR[DelegatesRow] = GR{
+  implicit def GetResultDelegatesRow(implicit e0: GR[String], e1: GR[Option[scala.math.BigDecimal]], e2: GR[Boolean], e3: GR[Int]): GR[DelegatesRow] = GR{
     prs => import prs._
-    DelegatesRow.tupled((<<[String], <<[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<[Boolean], <<[Int], <<[scala.math.BigDecimal]))
+    DelegatesRow.tupled((<<[String], <<[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<[Boolean], <<[Int], <<[Int]))
   }
   /** Table description of table delegates. Objects of this class serve as prototypes for rows in queries. */
   class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, "delegates") {
@@ -411,8 +411,8 @@ trait Tables {
     val deactivated: Rep[Boolean] = column[Boolean]("deactivated")
     /** Database column grace_period SqlType(int4) */
     val gracePeriod: Rep[Int] = column[Int]("grace_period")
-    /** Database column block_level SqlType(numeric), Default(-1) */
-    val blockLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
+    /** Database column block_level SqlType(int4), Default(-1) */
+    val blockLevel: Rep[Int] = column[Int]("block_level", O.Default(-1))
 
     /** Foreign key referencing Blocks (database name delegates_block_id_fkey) */
     lazy val blocksFk = foreignKey("delegates_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
