@@ -39,9 +39,9 @@ object DatabaseConversions {
       )
   }
 
-  implicit val blockAccountsToAccountRows = new Conversion[List, BlockAccounts, Tables.AccountsRow] {
-    override def convert(from: BlockAccounts) = {
-      val BlockAccounts(hash, level, accounts) = from
+  implicit val blockAccountsToAccountRows = new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
+    override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
+      val BlockTagged(hash, level, accounts) = from
       accounts.map {
         case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
         Tables.AccountsRow(
@@ -365,6 +365,21 @@ object DatabaseConversions {
         accountId =>
           Tables.AccountsCheckpointRow(
             accountId = accountId.id,
+            blockId = blockHash.value,
+            blockLevel = blockLevel
+          )
+      )
+    }
+
+  }
+
+  implicit val blockDelegatesAssociationToCheckpointRow = new Conversion[List, (BlockHash, Int, List[PublicKeyHash]), Tables.DelegatesCheckpointRow] {
+    override def convert(from: (BlockHash, Int, List[PublicKeyHash])) = {
+      val (blockHash, blockLevel, pkhs) = from
+      pkhs.map(
+        keyHash =>
+          Tables.DelegatesCheckpointRow(
+            delegatePkh = keyHash.value,
             blockId = blockHash.value,
             blockLevel = blockLevel
           )
