@@ -318,7 +318,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return       amount of distinct elements in given column
     */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
-    sql"""SELECT COUNT(DISTINCT #$column) FROM #$table""".as[Int].map(_.head)
+    sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #$table) AS temp""".as[Int].map(_.head)
 
   /**
     * Selects distinct elements by given table and column
