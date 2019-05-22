@@ -370,7 +370,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     }
 
-    def generateBakers(howMany: Int)(implicit randomSeed: RandomSeed) = {
+    def generateBakersRolls(howMany: Int)(implicit randomSeed: RandomSeed) = {
       require(howMany > 0, "the test can only generate a positive number of bakers, you asked for a non positive value")
 
       //custom hash generator with predictable seed

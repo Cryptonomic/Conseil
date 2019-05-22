@@ -298,8 +298,8 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /** Writes bakers to the database */
-  def writeVotingBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
-    Tables.Bakers ++= (block, bakers).convertToA[List, Tables.BakersRow]
+  def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
+    Tables.Rolls ++= (block, bakers).convertToA[List, Tables.RollsRow]
   }
 
   /** Writes ballots to the database */

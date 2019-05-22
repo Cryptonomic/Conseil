@@ -47,6 +47,7 @@ class TezosPlatformDiscoveryOperationsTest
   override def beforeAll(): Unit = {
     super.beforeAll()
     sut.init()
+    ()
   }
 
   "getNetworks" should {
@@ -231,15 +232,15 @@ class TezosPlatformDiscoveryOperationsTest
         )
     }
 
-    "return list of attributes of bakers" in {
+    "return list of attributes of rolls" in {
 
-      sut.getTableAttributes("bakers").futureValue shouldBe
+      sut.getTableAttributes("rolls").futureValue shouldBe
         Some(
           List(
-            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.NonKey, "bakers"),
-            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "bakers"),
-            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "bakers"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "bakers")
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.NonKey, "rolls"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "rolls"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "rolls")
           )
         )
     }

@@ -247,10 +247,10 @@ CREATE TABLE public.proposals (
 
 
 --
--- Name: bakers; Type: TABLE; Schema: public; Owner: -
+-- Name: rolls; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.bakers (
+CREATE TABLE public.rolls (
     pkh character varying NOT NULL,
     rolls integer NOT NULL,
     block_id character varying NOT NULL,
@@ -467,11 +467,11 @@ ALTER TABLE ONLY public.proposals
 
 
 --
--- Name: bakers baker_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.bakers
-    ADD CONSTRAINT baker_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+ALTER TABLE ONLY public.rolls
+    ADD CONSTRAINT rolls_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 
 

@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, DelegatedContracts.schema, Delegates.schema, DelegatesCheckpoint.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, DelegatedContracts.schema, Delegates.schema, DelegatesCheckpoint.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema, Rolls.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -109,38 +109,6 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table AccountsCheckpoint */
   lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))
-
-  /** Entity class storing rows of table Bakers
-   *  @param pkh Database column pkh SqlType(varchar)
-   *  @param rolls Database column rolls SqlType(int4)
-   *  @param blockId Database column block_id SqlType(varchar)
-   *  @param blockLevel Database column block_level SqlType(int4) */
-  case class BakersRow(pkh: String, rolls: Int, blockId: String, blockLevel: Int)
-  /** GetResult implicit for fetching BakersRow objects using plain SQL queries */
-  implicit def GetResultBakersRow(implicit e0: GR[String], e1: GR[Int]): GR[BakersRow] = GR{
-    prs => import prs._
-    BakersRow.tupled((<<[String], <<[Int], <<[String], <<[Int]))
-  }
-  /** Table description of table bakers. Objects of this class serve as prototypes for rows in queries. */
-  class Bakers(_tableTag: Tag) extends profile.api.Table[BakersRow](_tableTag, "bakers") {
-    def * = (pkh, rolls, blockId, blockLevel) <> (BakersRow.tupled, BakersRow.unapply)
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(pkh), Rep.Some(rolls), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> BakersRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
-
-    /** Database column pkh SqlType(varchar) */
-    val pkh: Rep[String] = column[String]("pkh")
-    /** Database column rolls SqlType(int4) */
-    val rolls: Rep[Int] = column[Int]("rolls")
-    /** Database column block_id SqlType(varchar) */
-    val blockId: Rep[String] = column[String]("block_id")
-    /** Database column block_level SqlType(int4) */
-    val blockLevel: Rep[Int] = column[Int]("block_level")
-
-    /** Foreign key referencing Blocks (database name baker_block_id_fkey) */
-    lazy val blocksFk = foreignKey("baker_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
-  }
-  /** Collection-like TableQuery object for table Bakers */
-  lazy val Bakers = new TableQuery(tag => new Bakers(tag))
 
   /** Entity class storing rows of table BalanceUpdates
    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
@@ -673,4 +641,36 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Proposals */
   lazy val Proposals = new TableQuery(tag => new Proposals(tag))
+
+  /** Entity class storing rows of table Rolls
+   *  @param pkh Database column pkh SqlType(varchar)
+   *  @param rolls Database column rolls SqlType(int4)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4) */
+  case class RollsRow(pkh: String, rolls: Int, blockId: String, blockLevel: Int)
+  /** GetResult implicit for fetching RollsRow objects using plain SQL queries */
+  implicit def GetResultRollsRow(implicit e0: GR[String], e1: GR[Int]): GR[RollsRow] = GR{
+    prs => import prs._
+    RollsRow.tupled((<<[String], <<[Int], <<[String], <<[Int]))
+  }
+  /** Table description of table rolls. Objects of this class serve as prototypes for rows in queries. */
+  class Rolls(_tableTag: Tag) extends profile.api.Table[RollsRow](_tableTag, "rolls") {
+    def * = (pkh, rolls, blockId, blockLevel) <> (RollsRow.tupled, RollsRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = ((Rep.Some(pkh), Rep.Some(rolls), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> RollsRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column pkh SqlType(varchar) */
+    val pkh: Rep[String] = column[String]("pkh")
+    /** Database column rolls SqlType(int4) */
+    val rolls: Rep[Int] = column[Int]("rolls")
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
+
+    /** Foreign key referencing Blocks (database name rolls_block_id_fkey) */
+    lazy val blocksFk = foreignKey("rolls_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+  }
+  /** Collection-like TableQuery object for table Rolls */
+  lazy val Rolls = new TableQuery(tag => new Rolls(tag))
 }

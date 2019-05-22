@@ -1053,7 +1053,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "write voting bakers" in {
+    "write voting bakers rolls" in {
       import DatabaseConversions._
       import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
@@ -1061,29 +1061,29 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-      val bakers = Voting.generateBakers(howMany = 3)
+      val rolls = Voting.generateBakersRolls(howMany = 3)
 
       //write
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-        written <- sut.writeVotingBakers(bakers, block)
-        rows <- Tables.Bakers.result
+        written <- sut.writeVotingRolls(rolls, block)
+        rows <- Tables.Rolls.result
       } yield (written, rows)
 
-      val (stored, dbBakers) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+      val (stored, dbRolls) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
       //expectations
-      stored.value shouldEqual bakers.size
-      dbBakers should have size bakers.size
+      stored.value shouldEqual rolls.size
+      dbRolls should have size rolls.size
 
       import org.scalatest.Inspectors._
 
-      forAll(dbBakers) {
-        bakerRow =>
-          val generated = bakers.find(_.pkh.value == bakerRow.pkh).value
-          bakerRow.rolls shouldEqual generated.rolls
-          bakerRow.blockId shouldBe block.data.hash.value
-          bakerRow.blockLevel shouldBe block.data.header.level
+      forAll(dbRolls) {
+        rollsRow =>
+          val generated = rolls.find(_.pkh.value == rollsRow.pkh).value
+          rollsRow.rolls shouldEqual generated.rolls
+          rollsRow.blockId shouldBe block.data.hash.value
+          rollsRow.blockLevel shouldBe block.data.header.level
       }
 
     }

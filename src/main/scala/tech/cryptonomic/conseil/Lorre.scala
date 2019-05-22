@@ -215,7 +215,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         val writeProposal = TezosDb.writeVotingProposals(proposals)
         //this is a nested list, each block with many baker rolls
         val writeBakers = bakersBlocks.traverse {
-          case (block, bakers) => TezosDb.writeVotingBakers(bakers, block)
+          case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
         }
         //this is a nested list, each block with many ballot votes
         val writeBallots = ballotsBlocks.traverse {
