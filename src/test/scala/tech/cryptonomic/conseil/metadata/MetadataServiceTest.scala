@@ -6,7 +6,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataOverridesConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
+import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
@@ -19,13 +19,13 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
   "The metadata service" should {
 
     val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
-    val cacheOverrides = stub[AttributeValuesCacheOverrides]
+    val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
     val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) => new MetadataService(
       PlatformsConfiguration(Map(Platforms.Tezos -> List(
         TezosConfiguration("mainnet",
           TezosNodeConfiguration("tezos-host", 123, "https://"))))),
-      new UnitTransformation(MetadataOverridesConfiguration(metadataOverridesConfiguration)),
+      new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
       cacheOverrides,
       tezosPlatformDiscoveryOperations)
 

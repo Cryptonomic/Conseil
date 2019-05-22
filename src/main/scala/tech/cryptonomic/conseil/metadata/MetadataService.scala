@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 // service class for metadata
 class MetadataService(config: PlatformsConfiguration,
                       transformation: UnitTransformation,
-                      cacheOverrides: AttributeValuesCacheOverrides,
+                      cacheConfiguration: AttributeValuesCacheConfiguration,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
   // fetches platforms
@@ -56,7 +56,7 @@ class MetadataService(config: PlatformsConfiguration,
     if (exists(path)) {
       val attributePath = EntityPath(entity, path).addLevel(attribute)
       tezosPlatformDiscoveryOperations
-        .listAttributeValues(entity, attribute, filter, cacheOverrides.getCacheConfiguration(attributePath))
+        .listAttributeValues(entity, attribute, filter, cacheConfiguration.getCacheConfiguration(attributePath))
         .map(Some(_))
     }
     else

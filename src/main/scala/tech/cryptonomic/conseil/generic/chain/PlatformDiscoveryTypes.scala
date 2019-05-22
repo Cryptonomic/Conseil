@@ -43,5 +43,5 @@ object PlatformDiscoveryTypes {
   }
 
   /** Attribute cache configuration */
-  final case class AttributeCacheConfiguration(cached: Boolean, minMatchLength: Int, maxResultLength: Int)
+  final case class AttributeCacheConfiguration(cached: Boolean = false, minMatchLength: Int = 0, maxResultSize: Int = Int.MaxValue)
 }

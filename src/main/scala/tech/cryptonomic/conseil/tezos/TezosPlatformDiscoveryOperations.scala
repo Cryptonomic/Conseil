@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationErr
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.metadata.AttributeValuesCacheOverrides
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 
 import scala.concurrent.duration.FiniteDuration
@@ -18,15 +18,16 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Companion object providing apply method implementation */
 object TezosPlatformDiscoveryOperations {
 
-  type AttributesCache = Map[String, (Long, List[Attribute])]
-  type AttributeValuesCache = Map[String, (Long, RadixTree[String, String])]
-  type EntitiesCache = (Long, List[Entity])
+  type CacheTTL = Long
+  type AttributesCache = Map[String, (CacheTTL, List[Attribute])]
+  type AttributeValuesCache = Map[String, (CacheTTL, RadixTree[String, String])]
+  type EntitiesCache = (CacheTTL, List[Entity])
 
   def apply(metadataOperations: MetadataOperations,
     attributesCache: MVar[IO, AttributesCache],
     entitiesCache: MVar[IO, EntitiesCache],
     attributeValuesCache: MVar[IO, AttributeValuesCache],
-    cacheOverrides: AttributeValuesCacheOverrides,
+    cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration)
     (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, cacheTTL)
@@ -38,7 +39,7 @@ class TezosPlatformDiscoveryOperations(
   attributesCache: MVar[IO, AttributesCache],
   entitiesCache: MVar[IO, EntitiesCache],
   attributeValuesCache: MVar[IO, AttributeValuesCache],
-  cacheOverrides: AttributeValuesCacheOverrides,
+  cacheOverrides: AttributeValuesCacheConfiguration,
   cacheTTL: FiniteDuration)
   (implicit executionContext: ExecutionContext) {
 
@@ -236,15 +237,14 @@ class TezosPlatformDiscoveryOperations(
     * @return Either list of attributes or list of errors
     **/
   def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None, attributesCacheConfig: Option[AttributeCacheConfiguration] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
-    val result = for {
-      attrOpt <- getTableAttributesWithoutUpdatingCache(tableName).map(_.flatMap(_.find(_.name == column)))
-    } yield {
+    getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap  { attrOpt  =>
       val res = (attributesCacheConfig, withFilter) match {
-        case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter)) if cached && attributeFilter.length >= minMatchLength  =>
-          Right(getAttributeValuesFromCache(tableName, column, attributeFilter, maxResultLength))
-
-        case (Some(AttributeCacheConfiguration(cached, minMatchLength, _)), Some(attributeFilter)) if cached && attributeFilter.length < minMatchLength =>
-          Left(Future.successful(List(InvalidAttributeFilterLength(column, minMatchLength))))
+        case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter)) if cached  =>
+          Either.cond(
+            test = attributeFilter.length >= minMatchLength,
+            right = getAttributeValuesFromCache(tableName, column, attributeFilter, maxResultLength),
+            left = Future.successful(List(InvalidAttributeFilterLength(column, minMatchLength)))
+          )
 
         case _ =>
           val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
@@ -256,10 +256,8 @@ class TezosPlatformDiscoveryOperations(
             left = Future.successful(validationErrors)
           )
       }
-
       res.bisequence
     }
-    result.flatten
   }
 
   /** Gets attribute values from cache and updates them if necessary */
@@ -268,14 +266,16 @@ class TezosPlatformDiscoveryOperations(
       cache(makeKey(tableName, columnName)) match {
         case (last, radixTree) if last + cacheTTL.toMillis > now =>
           IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
-        case _ =>
+        case (_, oldRadixTree) =>
           for {
             cache <- attributeValuesCache.take
+            _ <- attributeValuesCache.put(cache.updated(makeKey(tableName, columnName), (now, oldRadixTree)))
             attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
             radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
             cacheTmp = cache.updated(makeKey(tableName, columnName), (now, radixTree))
+            _ <- attributeValuesCache.take
             _ <- attributeValuesCache.put(cacheTmp)
-          } yield radixTree.filterPrefix(attributeFilter).keys.take(maxResultLength).toList
+          } yield radixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList
 
       }
     }.unsafeToFuture()
