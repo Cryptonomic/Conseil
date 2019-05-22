@@ -38,6 +38,38 @@ class ConfigUtilTest extends WordSpec with Matchers {
 
   "ConfigUtil" should {
 
+    "adapt multiple pureconfig reader failures to a single reason" in {
+      import tech.cryptonomic.conseil.util.{ConfigUtil => sut}
+      import pureconfig.error._
+      import java.io.FileNotFoundException
+      import java.nio.file.Paths
+
+      val failure1: ConfigReaderFailure = CannotParse("cannot parse", location = None)
+      val failure2: ConfigReaderFailure = CannotReadFile(path = Paths.get("no/path/to/exit"), reason = None)
+      val failure3: ConfigReaderFailure = ThrowableFailure(new Exception("generic failure"), location = None)
+      val failures = ConfigReaderFailures(failure1, failure2 :: failure3 :: Nil)
+
+      val reason = sut.Pureconfig.reasonFromReadFailures(failures)
+      reason shouldBe a[FailureReason]
+      reason.description shouldBe "Unable to parse the configuration: cannot parse. Unable to read file no/path/to/exit. generic failure."
+    }
+
+    "fold many parse results into a single failure if any is present" in {
+      import tech.cryptonomic.conseil.util.{ConfigUtil => sut}
+      import pureconfig.error._
+      import java.io.FileNotFoundException
+      import java.nio.file.Paths
+      import cats.syntax.either._
+
+      val reason1 = CannotConvert(value = "this", toType = "that", because = "reasons")
+      val reason2 = EmptyStringFound("something")
+      val success = "did it!"
+
+      val results: List[Either[FailureReason, String]] = reason1.asLeft[String] :: success.asRight[FailureReason] :: reason2.asLeft[String] :: Nil
+      val folded = sut.Pureconfig.foldReadResults(results)(_.mkString(""))
+
+    }
+
     "extract the correct platforms type" in {
       import Platforms._
       import scala.collection.JavaConverters._

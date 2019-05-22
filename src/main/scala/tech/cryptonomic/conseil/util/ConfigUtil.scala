@@ -51,7 +51,7 @@ object ConfigUtil {
     /** converts multiple read failures to a single, generic, FailureReason */
     val reasonFromReadFailures = (failures: ConfigReaderFailures) =>
       new FailureReason {
-        override val description = failures.toList.map(_.description).mkString(" and ")
+        override val description = failures.toList.map(_.description).mkString(" ")
       }
 
     /** extract a custom class type from the generic lightbend-config value failing with a `FailureReason` */

@@ -58,7 +58,7 @@ trait BlocksDataFetchers {
     type In = Offset
     type Out = BlockData
 
-    def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
+    private def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
     //fetch a future stream of values
     override val fetchData =
@@ -100,7 +100,7 @@ trait BlocksDataFetchers {
     type In = BlockHash
     type Out = List[OperationsGroup]
 
-    val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
+    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
     override val fetchData =
       Kleisli(hashes =>
@@ -135,7 +135,7 @@ trait BlocksDataFetchers {
     type In = BlockHash
     type Out = Option[Int]
 
-    val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
+    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
 
     override val fetchData =
       Kleisli(hashes =>
@@ -168,7 +168,7 @@ trait BlocksDataFetchers {
     type In = BlockHash
     type Out = Option[ProtocolId]
 
-    val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
+    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
 
     override val fetchData =
       Kleisli(hashes =>
@@ -202,7 +202,7 @@ trait BlocksDataFetchers {
     type In = Block
     type Out = List[ProtocolId]
 
-    val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
+    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
 
     override val fetchData =
       Kleisli(blocks =>
@@ -237,7 +237,7 @@ trait BlocksDataFetchers {
     type In = Block
     type Out = List[Voting.BakerRolls]
 
-    val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
+    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
 
     override val fetchData =
       Kleisli(blocks =>
@@ -272,7 +272,7 @@ trait BlocksDataFetchers {
     type In = Block
     type Out = List[Voting.Ballot]
 
-    val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
+    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
 
     override val fetchData =
       Kleisli(blocks =>
@@ -343,7 +343,7 @@ trait AccountsDataFetchers {
     type In = AccountId
     type Out = Option[Account]
 
-    val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
+    private val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
 
     override val fetchData = Kleisli(
       ids =>
@@ -377,7 +377,7 @@ trait AccountsDataFetchers {
     type In = PublicKeyHash
     type Out = Delegate
 
-    val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
+    private val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
 
     override val fetchData = Kleisli(
       keyHashes =>
