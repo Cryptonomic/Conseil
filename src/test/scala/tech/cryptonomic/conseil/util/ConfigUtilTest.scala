@@ -2,8 +2,9 @@ package tech.cryptonomic.conseil.config
 
 import org.scalatest.{WordSpec, Matchers}
 import com.typesafe.config.ConfigFactory
+import org.scalatest.EitherValues
 
-class ConfigUtilTest extends WordSpec with Matchers {
+class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
 
   "the config.Natural matcher" should {
 
@@ -41,7 +42,6 @@ class ConfigUtilTest extends WordSpec with Matchers {
     "adapt multiple pureconfig reader failures to a single reason" in {
       import tech.cryptonomic.conseil.util.{ConfigUtil => sut}
       import pureconfig.error._
-      import java.io.FileNotFoundException
       import java.nio.file.Paths
 
       val failure1: ConfigReaderFailure = CannotParse("cannot parse", location = None)
@@ -57,8 +57,6 @@ class ConfigUtilTest extends WordSpec with Matchers {
     "fold many parse results into a single failure if any is present" in {
       import tech.cryptonomic.conseil.util.{ConfigUtil => sut}
       import pureconfig.error._
-      import java.io.FileNotFoundException
-      import java.nio.file.Paths
       import cats.syntax.either._
 
       val reason1 = CannotConvert(value = "this", toType = "that", because = "reasons")
@@ -67,6 +65,11 @@ class ConfigUtilTest extends WordSpec with Matchers {
 
       val results: List[Either[FailureReason, String]] = reason1.asLeft[String] :: success.asRight[FailureReason] :: reason2.asLeft[String] :: Nil
       val folded = sut.Pureconfig.foldReadResults(results)(_.mkString(""))
+
+      folded shouldBe 'left
+      val leftValue = folded.left.value
+      leftValue shouldBe a[FailureReason]
+      leftValue.description shouldBe "Cannot convert 'this' to that: reasons. Empty string found when trying to convert to something."
 
     }
 

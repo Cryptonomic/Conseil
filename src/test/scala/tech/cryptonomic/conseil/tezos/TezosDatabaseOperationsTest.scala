@@ -15,6 +15,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class TezosDatabaseOperationsTest
   extends WordSpec
@@ -323,7 +325,7 @@ class TezosDatabaseOperationsTest
           Tables.Accounts += account
         )
 
-      dbHandler.run(populate)
+      dbHandler.run(populate).isReadyWithin(5 seconds) shouldBe true
 
       //prepare new accounts
       val accountChanges = 2

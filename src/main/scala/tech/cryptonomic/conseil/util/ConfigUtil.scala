@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, P
 
 import scala.util.Try
 import tech.cryptonomic.conseil.config.Platforms._
-import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, Newest}
+import tech.cryptonomic.conseil.config.HttpStreamingConfiguration
 
 object ConfigUtil {
 
@@ -69,7 +69,7 @@ object ConfigUtil {
       */
     def foldReadResults[T, R](readResults: Traversable[Either[FailureReason, T]])(reduce: Traversable[T] => R) = {
       //elements might have failed, collect all failures
-      val failureDescription = readResults.collect { case Left(f) => f.description }.mkString(" and ")
+      val failureDescription = readResults.collect { case Left(f) => f.description }.mkString(" ")
       if (failureDescription.nonEmpty) logger.warn("Can't correctly read platform configuration, reasons are: {}", failureDescription)
       //test for failures, and if there's none, we can safely read the Right values
       Either.cond(
