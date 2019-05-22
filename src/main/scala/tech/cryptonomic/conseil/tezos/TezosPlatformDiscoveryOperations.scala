@@ -18,10 +18,10 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Companion object providing apply method implementation */
 object TezosPlatformDiscoveryOperations {
 
-  type CacheTTL = Long
-  type AttributesCache = Map[String, (CacheTTL, List[Attribute])]
-  type AttributeValuesCache = Map[String, (CacheTTL, RadixTree[String, String])]
-  type EntitiesCache = (CacheTTL, List[Entity])
+  type LastUpdated = Long
+  type AttributesCache = Map[String, (LastUpdated, List[Attribute])]
+  type AttributeValuesCache = Map[String, (LastUpdated, RadixTree[String, String])]
+  type EntitiesCache = (LastUpdated, List[Entity])
 
   def apply(metadataOperations: MetadataOperations,
     attributesCache: MVar[IO, AttributesCache],
