@@ -1,14 +1,13 @@
 package tech.cryptonomic.conseil.tezos
 
-import scala.language.postfixOps
-import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Matchers, Inspectors}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.generic.chain.RpcHandler
-import cats.Id
-import cats.data.{Kleisli, Reader}
+import cats.{Id, ~>}
+import cats.data.Reader
+import cats.effect.IO
+import cats.arrow.FunctionK
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 
 class TezosNodeOperatorTest
@@ -17,8 +16,6 @@ class TezosNodeOperatorTest
   with Matchers
   with LazyLogging
   with TezosNodeOperatorTestImplicits {
-  //used to log within the test node using the testsuite's own logger
-  val outerLogger = logger
 
   // create a test instance
   val sut: NodeOperator = new NodeOperator(
@@ -30,13 +27,21 @@ class TezosNodeOperatorTest
     )
   )
 
-  "getBlock" should "correctly fetch the genesis block" in withInstances {
-    //given
-    implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
+  //needed to instantiate fetchers from the generic test builder, providing
+  //a transformation that actually does nothing real
+  implicit val idK: Id ~> Id = FunctionK.id[Id]
+  //needed to instantiate fetchers for IO from the generic test builder which
+  // has no effect (cats.Id[_])
+  implicit val ioK: Id ~> IO = FunctionK.lift[Id, IO](IO.pure)
 
-      //test dataFetcher for blocks
+
+  "getBlock" should "correctly fetch the genesis block" in withDummyFetchers[Id] {
+    implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
+      //given
+
+      //test dataFetcher for blocks, returns a single response
       implicit val blockFetchProvider = Reader(
-        (_: BlockHash) => testBlockFetcher(TezosResponseBuilder.genesisBlockResponse)
+        (_: BlockHash) => testBlockFetcher[Id](_ => TezosResponseBuilder.genesisBlockResponse)
       )
 
       //when
@@ -44,136 +49,121 @@ class TezosNodeOperatorTest
 
       //then
       block.data.hash shouldBe BlockHash("BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe")
+      block.data.header.level shouldBe 0
+    }
+
+  "getLatestBlocks" should "correctly fetch all the blocks if no depth is passed-in" in withDummyFetchers[IO] {
+    implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
+      //given
+
+      //needed to run the method under test which needs this to run in IO concurrently
+      implicit val shift = IO.contextShift(scala.concurrent.ExecutionContext.global)
+      //test dataFetcher for blocks, returning pre-made responses
+      implicit val blockFetchProvider = Reader {
+        (_: BlockHash) => testBlockFetcher[IO](
+          //an array can be used as a function where the index is the input
+          TezosResponseBuilder.precannedGetBlockQueryResponse(_)
+        )
+      }
+
+      //when
+      val (blocksResults, fetched): (sut.BlockFetchingResults[IO], Int) =
+        sut.getLatestBlocks[IO]().unsafeRunSync
+
+      //then
+      fetched shouldBe 4
+
+      val resultsList = blocksResults.compile.toList.unsafeRunSync
+      resultsList should have size 4
+
+      import Inspectors._
+
+      forAll(resultsList) {
+        case (Block(data, ops, votes), accounts) =>
+        ops shouldBe empty
+        if (TezosTypes.isGenesis(data)) votes shouldEqual CurrentVotes.empty
+        else votes shouldEqual CurrentVotes.empty.copy(quorum = Some(TezosResponseBuilder.votesQuorum))
+        accounts shouldBe empty
+      }
+      val blocks = resultsList.map(_._1.data)
+
+      blocks.map(_.header.level) should contain theSameElementsInOrderAs (0 to 3).toList
+
   }
 
-  // "getLatestBlocks" should "correctly fetch all the blocks if no depth is passed-in" in withInstances {
-  //   implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
-  //     //given
-  //     //test remote caller, with no special effect on input or output, returning a String, based on expected calls
-  //     implicit val testRpc = new RemoteRpc[Id, Id, Const[String, ?]] {
-  //       type CallConfig = Any
-  //       type PostPayload = Nothing
-  //       val Quorum = "blocks/.+/votes/current_quorum".r
-  //       val Proposal = "blocks/.+/votes/current_proposal".r
+  "getLatestBlocks" should "correctly fetch latest blocks with a given depth" in withDummyFetchers[IO] {
+    implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
+      //given
 
-  //       override def runGetCall[CallId](callConfig: Any, request: CallId, commandMap: CallId => String): Const[String,CallId] =
-  //         Const(commandMap(request) match {
-  //             case "blocks/head~" => TezosResponseBuilder.blockResponse
-  //             case "blocks/head~/operations" => TezosResponseBuilder.operationsResponse
-  //             case "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations" => TezosResponseBuilder.operationsResponse
-  //             case Quorum() => TezosResponseBuilder.votesQuorum
-  //             case Proposal() => TezosResponseBuilder.votesProposal
-  //           }
-  //         )
+      //needed to run the method under test which needs this to run in IO concurrently
+      implicit val shift = IO.contextShift(scala.concurrent.ExecutionContext.global)
+      //test dataFetcher for blocks, returning pre-made responses
+      implicit val blockFetchProvider = Reader {
+        (_: BlockHash) => testBlockFetcher[IO](
+          //an array can be used as a function where the index is the input
+          TezosResponseBuilder.precannedGetBlockQueryResponse(_)
+        )
+      }
 
-  //       override def runPostCall[CallId](callConfig: Any, request: CallId, commandMap: CallId => String, payload: Option[Nothing]): Const[String,CallId] = ???
-  //     }
+      //when
+      val (blocksResults, fetched): (sut.BlockFetchingResults[IO], Int) =
+        sut.getLatestBlocks[IO](depth = Some(1)).unsafeRunSync
 
-  //     //test dataFetcher for blocks
-  //     implicit val blockFetchProvider = Reader(
-  //       (_: BlockHash) => testBlockFetcher(TezosResponseBuilder.batchedGetBlockQueryResponse)
-  //     )
+      //then
+      fetched shouldBe 1
 
-  //     //when
-  //     val blocksResults: sut.BlockFetchingResults = sut.getLatestBlocks[Id]()
+      val resultsList = blocksResults.compile.toList.unsafeRunSync
+      resultsList should have size 1
 
-  //     //then
-  //     blocksResults should have size 1
-  //     val (Block(data, ops, votes), accounts) = blocksResults.head
-  //     data.hash.value shouldBe "BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"
-  //     data.header.level shouldBe 162385
+      val (Block(data, ops, votes), accounts) :: Nil = resultsList
 
-  //     ops shouldBe empty
-  //     votes shouldEqual CurrentVotes.empty
-  //     accounts shouldBe empty
+      data.header.level shouldBe 3
 
-  // }
+      ops shouldBe empty
+      votes shouldEqual CurrentVotes.empty.copy(quorum = Some(TezosResponseBuilder.votesQuorum))
+      accounts shouldBe empty
 
-  // "getLatestBlocks" should "correctly fetch latest blocks" in withInstances {
-  //   implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
-  //     //given
-  //     //test remote caller, with no special effect on input or output, returning a String, based on expected calls
-  //     implicit val testRpc = new RemoteRpc[Id, Id, Const[String, ?]] {
-  //       type CallConfig = Any
-  //       type PostPayload = Nothing
-  //       val Quorum = "blocks/.+/votes/current_quorum".r
-  //       val Proposal = "blocks/.+/votes/current_proposal".r
+  }
 
-  //       override def runGetCall[CallId](callConfig: Any, request: CallId, commandMap: CallId => String): Const[String,CallId] =
-  //         Const(commandMap(request) match {
-  //             case "blocks/head~" => TezosResponseBuilder.blockResponse
-  //             case "blocks/head~/operations" => TezosResponseBuilder.operationsResponse
-  //             case "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations" => TezosResponseBuilder.operationsResponse
-  //             case Quorum() => TezosResponseBuilder.votesQuorum
-  //             case Proposal() => TezosResponseBuilder.votesProposal
-  //           }
-  //         )
+  "getLatestBlocks" should "correctly fetch blocks starting from a given head" in withDummyFetchers[IO] {
+    implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
+      //given
 
-  //       override def runPostCall[CallId](callConfig: Any, request: CallId, commandMap: CallId => String, payload: Option[Nothing]): Const[String,CallId] = ???
-  //     }
+      //coprresponds to the second element in the test precanned responses
+      val referenceHash = BlockHash("BLwKksYwrxt39exDei7yi47h7aMcVY2kZMZhTwEEoSUwToQUiDV")
 
-  //     //test dataFetcher for blocks
-  //     implicit val blockFetchProvider = Reader(
-  //       (_: BlockHash) => testBlockFetcher(TezosResponseBuilder.batchedGetBlockQueryResponse)
-  //     )
+      //needed to run the method under test which needs this to run in IO concurrently
+      implicit val shift = IO.contextShift(scala.concurrent.ExecutionContext.global)
+      //test dataFetcher for blocks, returning pre-made responses
+      implicit val blockFetchProvider = Reader {
+        (hash: BlockHash) =>
+          if (hash == referenceHash)
+            testBlockFetcher[IO](
+              //an array can be used as a function where the index is the input
+              offset => TezosResponseBuilder.precannedGetBlockQueryResponse(offset + 1)
+            )
+          else //the expected reference hash is wrong, return something bad
+            fail(s"the test fetcher was requested relative to head $hash, while expecting $referenceHash")
+      }
 
-  //     //when
-  //     val blocksResults: sut.BlockFetchingResults = sut.getLatestBlocks[Id](depth = Some(1))
+      //when
+      val (blocksResults, fetched): (sut.BlockFetchingResults[IO], Int) =
+        sut.getLatestBlocks[IO](depth = Some(1), headHash = Some(referenceHash)).unsafeRunSync
 
-  //     //then
-  //     blocksResults should have size 1
+      //then
+      fetched shouldBe 1
 
-  //     val (Block(data, ops, votes), accounts) = blocksResults.head
-  //     data.hash.value shouldBe "BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"
-  //     data.header.level shouldBe 162385
+      val resultsList = blocksResults.compile.toList.unsafeRunSync
+      resultsList should have size 1
 
-  //     ops shouldBe empty
-  //     votes shouldEqual CurrentVotes.empty
-  //     accounts shouldBe empty
+      val (Block(data, ops, votes), accounts) :: Nil = resultsList
 
-  // }
+      data.header.level shouldBe 2
 
-  // "getLatestBlocks" should "correctly fetch blocks starting from a given head" in withInstances {
-  //   implicit extraBlockFetcher => implicit quorumFetcher => implicit proposalFetcher =>
-  //     //given
-  //     //test remote caller, with no special effect on input or output, returning a String, based on expected calls
-  //     implicit val testRpc = new RemoteRpc[Id, Id, Const[String, ?]] {
-  //       type CallConfig = Any
-  //       type PostPayload = Nothing
-  //       val Quorum = "blocks/.+/votes/current_quorum".r
-  //       val Proposal = "blocks/.+/votes/current_proposal".r
+      ops shouldBe empty
+      votes shouldEqual CurrentVotes.empty.copy(quorum = Some(TezosResponseBuilder.votesQuorum))
+      accounts shouldBe empty
 
-  //       override def runGetCall[CallId](callConfig: Any, request: CallId, commandMap: CallId => String): Const[String,CallId] =
-  //         Const(commandMap(request) match {
-  //             case "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~" => TezosResponseBuilder.blockResponse
-  //             case "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c~/operations" => TezosResponseBuilder.operationsResponse
-  //             case "blocks/BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c/operations" => TezosResponseBuilder.operationsResponse
-  //             case Quorum() => TezosResponseBuilder.votesQuorum
-  //             case Proposal() => TezosResponseBuilder.votesProposal
-  //           }
-  //         )
-
-  //       override def runPostCall[CallId](callConfig: Any, request: CallId, commandMap: CallId => String, payload: Option[Nothing]): Const[String,CallId] = ???
-  //     }
-
-  //     //test dataFetcher for blocks
-  //     implicit val blockFetchProvider = Reader(
-  //       (_: BlockHash) => testBlockFetcher(TezosResponseBuilder.batchedGetBlockQueryResponse)
-  //     )
-
-  //     //when
-  //     val blocksResults: sut.BlockFetchingResults = sut.getLatestBlocks[Id](depth = Some(1), headHash = Some(BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")))
-
-  //     //then
-  //     blocksResults should have size 1
-
-  //     val (Block(data, ops, votes), accounts) = blocksResults.head
-  //     data.hash.value shouldBe "BMKoXSqeytk6NU3pdL7q8GLN8TT7kcodU1T6AUxeiGqz2gffmEF"
-  //     data.header.level shouldBe 162385
-
-  //     ops shouldBe empty
-  //     votes shouldEqual CurrentVotes.empty
-  //     accounts shouldBe empty
-  // }
+  }
 
 }

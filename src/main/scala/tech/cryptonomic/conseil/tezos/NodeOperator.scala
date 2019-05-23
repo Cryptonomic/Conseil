@@ -247,12 +247,13 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     (fetchProposals, fetchBakers, fetchBallots).tupled.run(block)
   }
 
-  /** Fetches a single block from the chain, without waiting for the result
-    * @param hash Hash of the block
-    * @param offset an offset level to use from the passed hash, optionally
+  /** Fetches a single block from the chain, without waiting for the result.
+    * The block is identified by it's level offset with respect to a reference
+    * block which is already configured in the implicit `blockDataFetcher` argument.
+    * @param offset an offset level to use from the reference block, optionally
     * @return the block data
     */
-  def getBlockWithAccounts[F[_] : MonadThrow](
+  private def getBlockWithAccounts[F[_] : MonadThrow](
     offset: Option[Offset] = None
   )(implicit
     blockDataFetcher: NodeFetcherThrow[F, Offset, BlockData],
@@ -345,9 +346,9 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     }
 
   /** Gets last `depth` blocks.
-    * @param depth      Number of latest block to fetch, `None` to get all
-    * @param headHash   Hash of a block from which to start, None to start from a real head
-    * @return           Blocks and Account hashes involved
+    * @param depth Number of latest block to fetch, `None` to get all
+    * @param headHash Hash of a block from which to start, None to start from a real head
+    * @return Blocks and Account hashes involved, paired with the computed result size, based on a level range
     */
   def getLatestBlocks[F[_] : MonadThrow : Concurrent](
     depth: Option[Int] = None,
@@ -363,7 +364,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
         maxHead =>
           val headLevel = maxHead.data.header.level
           val headHash = maxHead.data.hash
-          val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
+          val minLevel = depth.fold(0)(d => max(0, headLevel - d + 1))
           getBlocks((headHash, headLevel), minLevel to headLevel) -> (headLevel - minLevel + 1)
       }
 
@@ -388,7 +389,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     //build offsets in descending order, using level bounds, to load oldest blocks first
     val offsets = Stream.range(levelRange.start, levelRange.end + 1).map(lvl => levelRef - lvl)
 
-    logger.info(s"Request to fetch blocks in levels $levelRange, with reference block at level $levelRef and hash: ${hashRef.value}")
+    logger.debug(s"Request to fetch blocks in levels $levelRange, with reference block at level $levelRef and hash: ${hashRef.value}")
 
     //bring the block fetcher for the specific reference hash into scope, so that each getBlockWithAccount can re-use it
     implicit val blockFetcher = blockDataFetchProvider(hashRef)

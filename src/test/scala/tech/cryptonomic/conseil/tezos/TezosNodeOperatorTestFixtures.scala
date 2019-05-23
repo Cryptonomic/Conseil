@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import cats.{Id, MonadError}
+import cats.{Id, MonadError, ~>}
 import cats.data.Kleisli
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import TezosTypes._
@@ -21,28 +21,29 @@ trait TezosNodeOperatorTestImplicits {
   }
 
   //type alias, makes things more readable
-  type TestFetcher[In, Out] = DataFetcher.Aux[Id, Throwable, In, Out, String]
+  type TestFetcher[Eff[_], In, Out] = DataFetcher.Aux[Eff, Throwable, In, Out, String]
 
   /** Use it to get dummy instances of fetchers needed by complex node operations
     * and make them available implicitly
     */
-  protected def withInstances (
+  protected def withDummyFetchers[Eff[_]](
     testCode:
-      TestFetcher[BlockHash, (List[OperationsGroup], List[AccountId])] =>
-      TestFetcher[(BlockHash, Option[Offset]), Option[Int]] =>
-      TestFetcher[(BlockHash, Option[Offset]), Option[TezosTypes.ProtocolId]] =>
+      TestFetcher[Eff, BlockHash, (List[OperationsGroup], List[AccountId])] =>
+      TestFetcher[Eff, (BlockHash, Option[Offset]), Option[Int]] =>
+      TestFetcher[Eff, (BlockHash, Option[Offset]), Option[TezosTypes.ProtocolId]] =>
       Any
-  ) = {
-    val extraBlockFetcher = dummyFetcher[BlockHash, (List[OperationsGroup], List[AccountId])](out = (Nil, Nil))
-    val quorumFetcher = dummyFetcher[(BlockHash, Option[Offset]), Option[Int]](out = None)
-    val proposalFetcher = dummyFetcher[(BlockHash, Option[Offset]), Option[ProtocolId]](out = None)
+  )(implicit fk: Id ~> Eff) = {
+    val extraBlockFetcher = dummyFetcher[Eff, BlockHash, (List[OperationsGroup], List[AccountId])](out = (Nil, Nil))
+    val quorumFetcher = dummyFetcher[Eff, (BlockHash, Option[Offset]), Option[Int]](out = Some(TezosResponseBuilder.votesQuorum))
+    val proposalFetcher = dummyFetcher[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]](out = None)
     testCode(extraBlockFetcher)(quorumFetcher)(proposalFetcher)
   }
 
-  /** A semi-realistic fetcher of blocks that will return a single json response, passed-in
-    * as an argument, and will try to decode it as json to a `BlockData` instance
-    */
-  protected def testBlockFetcher(jsonResponse: String) = new DataFetcher[Id, Throwable] {
+  /* A partly-stubbed fetcher of blocks that will return a json response, computed
+   * from the passed-in function argument, and will try to decode it
+   * as json to a `BlockData` instance, all within an arbitrary Eff, given the proper transformation funK: Id ~> Eff
+   */
+  protected def testBlockFetcher[Eff[_]](jsonFetch: Offset => String)(implicit funK: Id ~> Eff) = new DataFetcher[Eff, Throwable] {
     type Encoded = String
     type In = Offset
     type Out = BlockData
@@ -51,30 +52,31 @@ trait TezosNodeOperatorTestImplicits {
     import JsonDecoders.Circe.decodeLiftingTo
 
     override def fetchData = Kleisli[Id, In, Encoded](
-      Function.const(jsonResponse)
-    )
+      in => jsonFetch(in)
+    ).mapK(funK)
 
     override def decodeData = Kleisli(
       json => decodeLiftingTo[Id, BlockData](json)
-    )
+    ).mapK(funK)
   }
 
   /* Provides a fetcher that
    * - encodes internally to an empty string
    * - returns always `out` as the final decoded result for any input
+   * - wraps the results into an arbitrary Eff, given the proper transformation funK: Id ~> Eff
    */
-  private def dummyFetcher[I, O](out: O) = new DataFetcher[Id, Throwable] {
+  private def dummyFetcher[Eff[_], I, O](out: O)(implicit funK: Id ~> Eff) = new DataFetcher[Eff, Throwable] {
     type Encoded = String
     type In = I
     type Out = O
 
     override def fetchData = Kleisli[Id, In, Encoded](
       Function.const("")
-    )
+    ).mapK(funK)
 
     override def decodeData = Kleisli[Id, String, Out]{
       Function.const(out)
-    }
+    }.mapK(funK)
   }
 
 }
