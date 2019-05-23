@@ -36,13 +36,29 @@ case class MetadataOverridesConfiguration(metadataOverrides: Map[PlatformName, P
 }
 
 // configuration for platform
-case class PlatformConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, networks: Map[NetworkName, NetworkConfiguration] = Map.empty)
+case class PlatformConfiguration(displayName: Option[String],
+                                 visible: Option[Boolean],
+                                 description: Option[String] = None,
+                                 networks: Map[NetworkName, NetworkConfiguration] = Map.empty)
 
 // configuration for network
-case class NetworkConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, entities: Map[EntityName, EntityConfiguration] = Map.empty)
+case class NetworkConfiguration(displayName: Option[String],
+                                visible: Option[Boolean],
+                                description: Option[String] = None,
+                                entities: Map[EntityName, EntityConfiguration] = Map.empty)
 
 // configuration for entity
-case class EntityConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)
+case class EntityConfiguration(displayName: Option[String],
+                               visible: Option[Boolean],
+                               description: Option[String] = None,
+                               attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)
 
 // configuration for attribute
-case class AttributeConfiguration(displayName: Option[String], visible: Option[Boolean], description: Option[String] = None, placeholder: Option[String] = None, dataFormat: Option[String] = None)
+case class AttributeConfiguration(displayName: Option[String],
+                                  visible: Option[Boolean],
+                                  description: Option[String] = None,
+                                  placeholder: Option[String] = None,
+                                  scale: Option[Int] = None,
+                                  dataType: Option[String] = None,
+                                  dataFormat: Option[String] = None,
+                                  valueMap: Option[Map[String, String]] = None)

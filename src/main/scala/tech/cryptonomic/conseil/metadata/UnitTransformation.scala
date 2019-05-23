@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.metadata
 
 import tech.cryptonomic.conseil.config.MetadataOverridesConfiguration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.mapType
 import tech.cryptonomic.conseil.util.OptionUtil.when
 
 // class for applying overrides configurations
@@ -48,14 +49,12 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
     val overrideAttribute = overrides.attribute(path)
 
     attribute.copy(
-      displayName = overrideAttribute
-        .flatMap(_.displayName)
-        .getOrElse(attribute.displayName),
-      description = overrideAttribute
-        .flatMap(_.description),
-      placeholder = overrideAttribute
-        .flatMap(_.placeholder),
-      dataFormat = overrideAttribute
-        .flatMap(_.dataFormat))
+      displayName = overrideAttribute.flatMap(_.displayName).getOrElse(attribute.displayName),
+      description = overrideAttribute.flatMap(_.description),
+      placeholder = overrideAttribute.flatMap(_.placeholder),
+      dataFormat = overrideAttribute.flatMap(_.dataFormat),
+      scale = overrideAttribute.flatMap(_.scale),
+      dataType = overrideAttribute.flatMap(_.dataType).map(mapType).getOrElse(attribute.dataType),
+      valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty))
   }
 }

@@ -27,13 +27,15 @@ object PlatformDiscoveryTypes {
     entity: String,
     description: Option[String] = None,
     placeholder: Option[String] = None,
-    dataFormat: Option[String] = None
+    dataFormat: Option[String] = None,
+    valueMap: Option[Map[String, String]] = None,
+    scale: Option[Int] = None
   )
 
   /** Enumeration of data types */
   object DataType extends Enumeration {
     type DataType = Value
-    val Enum, Hex, Binary, Date, DateTime, String, Int, LargeInt, Decimal, Boolean = Value
+    val Enum, Hex, Binary, Date, DateTime, String, Hash, Int, LargeInt, Decimal, Boolean = Value
   }
 
   /** Enumeration of key types */
