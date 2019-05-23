@@ -8,11 +8,10 @@ import tech.cryptonomic.conseil.tezos.{
   BlocksDataFetchers,
   FeeOperations,
   NodeOperator,
-  ShutdownComplete,
   TezosDatabaseOperations => TezosDb,
   TezosErrors
 }
-import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.{RemoteContext, ShutdownComplete}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil

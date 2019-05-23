@@ -50,6 +50,9 @@ object TezosRemoteInstances {
     import akka.http.scaladsl.Http
     import akka.http.scaladsl.model._
 
+    /** A generic marker type for shutdown completion signals*/
+    trait ShutdownComplete
+
     /** Describes configurations for the tezos node, needed to actually execute the calls */
     case class RemoteContext(
       tezosConfig: TezosConfiguration,
@@ -58,6 +61,7 @@ object TezosRemoteInstances {
     )(implicit val system: ActorSystem) {
 
       object ShutdownComplete extends ShutdownComplete
+
       private val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
 
       def translateCommandToUrl(command: String): String = {
