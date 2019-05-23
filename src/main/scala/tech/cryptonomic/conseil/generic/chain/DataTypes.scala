@@ -34,8 +34,6 @@ object DataTypes {
   }
   /** Default value of limit parameter */
   val defaultLimitValue: Int = 10000
-  /** Max value of limit parameter */
-  val maxLimitValue: Int = 100000
 
   /** Replaces timestamp represented as Long in predicates with one understood by the SQL */
   private def replaceTimestampInPredicates(entity: String, query: Query, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)

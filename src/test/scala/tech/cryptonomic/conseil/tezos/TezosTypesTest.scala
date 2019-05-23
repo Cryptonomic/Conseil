@@ -34,6 +34,26 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
   }
 
+  "The Syntax import" should {
+    "allow building Block-tagged generic data" in {
+      import TezosTypes.Syntax._
+
+      val content = "A content string"
+      val (hash, level) = (BlockHash("hash"), 1)
+
+      content.taggedWithBlock(hash, level) shouldEqual BlockTagged(hash, level, content)
+    }
+  }
+
+  "The BlockTagged wrapper" should {
+    "convert to a tuple" in {
+      val content = "A content string"
+      val (hash, level) = (BlockHash("hash"), 1)
+
+      BlockTagged(hash, level, content).asTuple shouldEqual (hash, level, content)
+    }
+  }
+
   "The lenses for tezos types" should {
 
     val blockData =

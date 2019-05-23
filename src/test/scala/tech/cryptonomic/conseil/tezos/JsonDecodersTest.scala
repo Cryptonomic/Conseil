@@ -11,6 +11,8 @@ class JsonDecodersTest extends WordSpec
 
   import JsonDecoders.Circe._
   import JsonDecoders.Circe.Accounts._
+  import JsonDecoders.Circe.Scripts._
+  import JsonDecoders.Circe.Numbers._
   import JsonDecoders.Circe.Operations._
   import JsonDecoders.Circe.Votes._
   import io.circe.parser.decode
@@ -29,7 +31,7 @@ class JsonDecodersTest extends WordSpec
     "allow decoding json with duplicate fields" in {
       import io.circe.Decoder
       import io.circe.generic.extras.semiauto._
-      implicit val derivationConf = tezosDerivationConfig
+      implicit val derivationConf = Derivation.tezosDerivationConfig
 
       case class JsonTest(field: String)
 
@@ -46,7 +48,7 @@ class JsonDecodersTest extends WordSpec
     "decode null fields as empty Options" in {
       import io.circe.Decoder
       import io.circe.generic.extras.semiauto._
-      implicit val derivationConf = tezosDerivationConfig
+      implicit val derivationConf = Derivation.tezosDerivationConfig
 
       case class JsonTest(field: Option[String])
 
@@ -436,6 +438,23 @@ class JsonDecodersTest extends WordSpec
 
       val account = decoded.right.value
       account.script.value shouldEqual expectedScript
+    }
+
+    import JsonDecoders.Circe.Delegates._
+    "decode a delegate baker" in new DelegatesJsonData {
+      val decoded = decode[Delegate](delegateJson)
+      decoded shouldBe 'right
+
+      val delegate = decoded.right.value
+      delegate shouldEqual expectedDelegate
+    }
+
+    "decode delegate contracts" in new DelegatesJsonData {
+      val decoded = decode[Contract](contractJson)
+      decoded shouldBe 'right
+
+      val contract = decoded.right.value
+      contract shouldEqual expectedContract
     }
   }
 

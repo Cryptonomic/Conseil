@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonExpression, MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
@@ -69,7 +69,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
-  type PaginatedAccountResults = (Iterator[Future[List[BlockAccounts]]], Int)
+  type PaginatedAccountResults = (Iterator[Future[List[BlockTagged[Map[AccountId, Account]]]]], Int)
 
   //introduced to simplify signatures
   type BallotBlock = (Block, List[Voting.Ballot])
@@ -155,16 +155,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return         Accounts with their corresponding block data
     */
   def getAccountsForBlocks(accountsBlocksIndex: Map[AccountId, BlockReference]): PaginatedAccountResults = {
+    import TezosTypes.Syntax._
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
 
     //uses the index to collect together BlockAccounts matching the same block
-    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
+    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockTagged[Map[AccountId, Account]]] =
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
+        case ((hash, level), accounts) => accounts.taggedWithBlock(hash, level)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks

@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, DelegatesCheckpoint.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -317,6 +317,38 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
+
+  /** Entity class storing rows of table DelegatesCheckpoint
+   *  @param delegatePkh Database column delegate_pkh SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
+  case class DelegatesCheckpointRow(delegatePkh: String, blockId: String, blockLevel: Int = -1)
+  /** GetResult implicit for fetching DelegatesCheckpointRow objects using plain SQL queries */
+  implicit def GetResultDelegatesCheckpointRow(implicit e0: GR[String], e1: GR[Int]): GR[DelegatesCheckpointRow] = GR{
+    prs => import prs._
+    DelegatesCheckpointRow.tupled((<<[String], <<[String], <<[Int]))
+  }
+  /** Table description of table delegates_checkpoint. Objects of this class serve as prototypes for rows in queries. */
+  class DelegatesCheckpoint(_tableTag: Tag) extends profile.api.Table[DelegatesCheckpointRow](_tableTag, "delegates_checkpoint") {
+    def * = (delegatePkh, blockId, blockLevel) <> (DelegatesCheckpointRow.tupled, DelegatesCheckpointRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = ((Rep.Some(delegatePkh), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> DelegatesCheckpointRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column delegate_pkh SqlType(varchar) */
+    val delegatePkh: Rep[String] = column[String]("delegate_pkh")
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column block_level SqlType(int4), Default(-1) */
+    val blockLevel: Rep[Int] = column[Int]("block_level", O.Default(-1))
+
+    /** Foreign key referencing Blocks (database name delegate_checkpoint_block_id_fkey) */
+    lazy val blocksFk = foreignKey("delegate_checkpoint_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Index over (blockLevel) (database name ix_delegates_checkpoint_block_level) */
+    val index1 = index("ix_delegates_checkpoint_block_level", blockLevel)
+  }
+  /** Collection-like TableQuery object for table DelegatesCheckpoint */
+  lazy val DelegatesCheckpoint = new TableQuery(tag => new DelegatesCheckpoint(tag))
 
   /** Entity class storing rows of table Fees
    *  @param low Database column low SqlType(int4)
