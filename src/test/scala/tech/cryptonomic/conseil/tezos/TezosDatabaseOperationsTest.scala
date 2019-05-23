@@ -594,7 +594,7 @@ class TezosDatabaseOperationsTest
           Tables.Delegates += delegate
         )
 
-      dbHandler.run(populate)
+      dbHandler.run(populate).isReadyWithin(5 seconds) shouldBe true
 
       //prepare new delegates
       val changes = 2
