@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import cats.{Id, MonadError, ~>}
 import cats.data.Kleisli
-import tech.cryptonomic.conseil.generic.chain.DataFetcher
+import tech.cryptonomic.conseil.generic.rpc.DataFetcher
 import TezosTypes._
 
 /** provides implicit instances useful to call methods for testing the `NodeOperator`*/

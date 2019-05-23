@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
-import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
+import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkTimeoutConfiguration}
 import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
-import tech.cryptonomic.conseil.generic.chain.RpcHandler
+import tech.cryptonomic.conseil.generic.rpc.RpcHandler
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 import cats.data.Kleisli
 
@@ -15,12 +15,12 @@ object TezosRemoteInstances {
     object IOEff extends IOEff
 
     trait IOEff {
-      import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
+      import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.TezosNodeContext
       import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.Futures._
       import tech.cryptonomic.conseil.util.EffectsUtil._
 
       //creates an IO instance on top of the one for Futures
-      implicit def ioRpcHandlerInstance(implicit context: RemoteContext): RpcHandler.Aux[IO, String, String, JsonString] =
+      implicit def ioRpcHandlerInstance(implicit context: TezosNodeContext): RpcHandler.Aux[IO, String, String, JsonString] =
         new RpcHandler[IO, UrlPath, ResponseBody] {
           val futureRpc = futureRpcHandlerInstance(context)
 
@@ -54,9 +54,9 @@ object TezosRemoteInstances {
     trait ShutdownComplete
 
     /** Describes configurations for the tezos node, needed to actually execute the calls */
-    case class RemoteContext(
+    case class TezosNodeContext(
       tezosConfig: TezosConfiguration,
-      requestConfig: NetworkCallsConfiguration,
+      timeoutConfig: NetworkTimeoutConfiguration,
       streamingConfig: HttpStreamingConfiguration
     )(implicit val system: ActorSystem) {
 
@@ -103,9 +103,9 @@ object TezosRemoteInstances {
 
 
       /** The actual instance
-       * @param context we need to convert to the fetcher, based on an implicit `RemoteContext`
+       * @param context we need to convert to the fetcher, based on an implicit `TezosNodeContext`
        */
-      implicit def futureRpcHandlerInstance(implicit context: RemoteContext) =
+      implicit def futureRpcHandlerInstance(implicit context: TezosNodeContext) =
         new RpcHandler[Future, UrlPath, ResponseBody] {
           import cats.data.Kleisli
           import context._
@@ -131,7 +131,7 @@ object TezosRemoteInstances {
 
               for {
                 response <- Http(system).singleRequest(httpRequest, settings = requestsConnectionPooling)
-                strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
+                strict <- response.entity.toStrict(timeoutConfig.GETResponseEntityTimeout)
               } yield {
                 val content = strict.data.utf8String
                 logger.debug("GET query result: {}", content)
@@ -153,7 +153,7 @@ object TezosRemoteInstances {
 
               for {
                 response <- Http(system).singleRequest(httpRequest)
-                strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
+                strict <- response.entity.toStrict(timeoutConfig.POSTResponseEntityTimeout)
               } yield {
                 val content = strict.data.utf8String
                 logger.debug("POST query result: {}", content)

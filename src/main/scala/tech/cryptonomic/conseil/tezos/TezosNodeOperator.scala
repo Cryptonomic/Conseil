@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.TezosNodeContext
 import tech.cryptonomic.conseil.util.{CryptoUtil, JsonUtil}
 import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
@@ -24,7 +24,7 @@ import scala.util.{Failure, Success, Try}
 /** TODO refactor to new type classes
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations
   */
-class TezosNodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, sodiumConf: SodiumConfiguration)(implicit val tezosContext: RemoteContext, system: ActorSystem, executionContext: ExecutionContext)
+class TezosNodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, sodiumConf: SodiumConfiguration)(implicit val tezosContext: TezosNodeContext, system: ActorSystem, executionContext: ExecutionContext)
   // extends TezosNodeOperator(network, batchConf)
   // with LazyLogging {
   // import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}

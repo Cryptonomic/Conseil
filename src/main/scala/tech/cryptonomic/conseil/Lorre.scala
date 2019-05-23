@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.tezos.{
   TezosDatabaseOperations => TezosDb,
   TezosErrors
 }
-import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.{RemoteContext, ShutdownComplete}
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.{TezosNodeContext, ShutdownComplete}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -46,13 +46,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   config.left.foreach { _ => sys.exit(1) }
 
   //unsafe call, will only be reached if loadedConf is a Right, otherwise the merge will fail
-  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, callsConf, streamingClientConf, batchingConf, verbose) = config.merge
+  val LorreAppConfig.CombinedConfiguration(lorreConf, tezosConf, timeoutConf, streamingClientConf, batchingConf, verbose) = config.merge
   val ignoreProcessFailures = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
 
   //the dispatcher is visible for all async operations in the following code
   implicit val system: ActorSystem = ActorSystem("lorre-system")
   implicit val dispatcher = system.dispatcher
-  implicit val nodeContext = RemoteContext(tezosConf, callsConf, streamingClientConf)
+  implicit val nodeContext = TezosNodeContext(tezosConf, timeoutConf, streamingClientConf)
   implicit val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
   implicit val timer = IO.timer(dispatcher)
 

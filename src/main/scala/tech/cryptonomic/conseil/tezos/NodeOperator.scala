@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
-import tech.cryptonomic.conseil.generic.chain.{DataFetcher, RpcHandler}
-import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetcher
+import tech.cryptonomic.conseil.generic.rpc.{DataFetcher, RpcHandler}
+import tech.cryptonomic.conseil.generic.rpc.DataFetcher.fetcher
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert

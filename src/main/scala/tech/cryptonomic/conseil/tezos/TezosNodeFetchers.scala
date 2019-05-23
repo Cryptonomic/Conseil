@@ -4,8 +4,8 @@ import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
 import scala.util.control.NonFatal
-import tech.cryptonomic.conseil.generic.chain.{DataFetcher, RpcHandler}
-import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.RemoteContext
+import tech.cryptonomic.conseil.generic.rpc.{DataFetcher, RpcHandler}
+import tech.cryptonomic.conseil.tezos.TezosRemoteInstances.Akka.TezosNodeContext
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
 import TezosTypes._
@@ -42,7 +42,7 @@ trait TezosNodeFetchersLogging extends LazyLogging {
 object BlocksDataFetchers {
   import com.typesafe.scalalogging.Logger
 
-  def apply(rpc: RemoteContext) =
+  def apply(rpc: TezosNodeContext) =
     new BlocksDataFetchers with TezosRemoteInstances.Cats.IOEff with TezosNodeFetchersLogging {
       override implicit lazy val tezosContext = rpc
       override lazy val logger = Logger[BlocksDataFetchers.type]
@@ -60,7 +60,7 @@ trait BlocksDataFetchers {
   import DataFetcher.Instances._
   import JsonDecoders.Circe.decodeLiftingTo
 
-  implicit def tezosContext: RemoteContext
+  implicit def tezosContext: TezosNodeContext
 
   //common type for the fetchers
   type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]
@@ -234,7 +234,7 @@ trait BlocksDataFetchers {
 object AccountsDataFetchers {
   import com.typesafe.scalalogging.Logger
 
-  def apply(rpc: RemoteContext) =
+  def apply(rpc: TezosNodeContext) =
     new AccountsDataFetchers with TezosRemoteInstances.Cats.IOEff with TezosNodeFetchersLogging {
       override implicit lazy val tezosContext = rpc
       override lazy val logger = Logger[AccountsDataFetchers.type]
@@ -251,7 +251,7 @@ trait AccountsDataFetchers {
   import DataFetcher.Instances._
   import JsonDecoders.Circe.decodeLiftingTo
 
-  implicit def tezosContext: RemoteContext
+  implicit def tezosContext: TezosNodeContext
 
   //common type for the fetchers
   type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]

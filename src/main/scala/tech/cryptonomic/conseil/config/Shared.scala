@@ -23,8 +23,7 @@ final case class BatchFetchConfiguration(
 )
 
 /** configurations related to a chain-node network calls */
-final case class NetworkCallsConfiguration(
-  requestAwaitTime: FiniteDuration,
+final case class NetworkTimeoutConfiguration(
   GETResponseEntityTimeout: FiniteDuration,
   POSTResponseEntityTimeout: FiniteDuration
 )

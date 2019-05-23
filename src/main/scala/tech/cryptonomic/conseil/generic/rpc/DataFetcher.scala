@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.generic.chain
+package tech.cryptonomic.conseil.generic.rpc
 
 import cats._
 import cats.arrow._
@@ -126,6 +126,13 @@ object DataFetcher {
     def decodeData = fetcher.decodeData.product(additionalDecode)
   }
 
+
+  /** Provides a generic way to convert the effect-type of a data fetcher, if there's
+    * a "natural transformation" `F ~> G` in scope
+    *
+    * Please refer to `tezos.cryptonomic.conseil.generic.rpc.RpcHandler.functionK` for
+    * an explanatory example.
+    */
   def functionK[F[_], G[_], Err, Input, Encoding](implicit nat: F ~> G) =
     new FunctionK[Aux[F, Err, Input, ?, Encoding], Aux[G, Err, Input, ?, Encoding]] {
 
@@ -142,8 +149,22 @@ object DataFetcher {
 
     }
 
+  /** Import this object in scope, i.e.
+    * `import t.c.c.g.c.DataFetcher.Instances._`
+    * To get implicit instances in scope for additioal and generic operations on fetchers
+    */
   object Instances {
 
+    /** A Profunctor allows to "map" on both sides of a function-like type, that is,
+      * considering a DataFetcher that reads a `String` type and returns an `Int` type
+      * - change the output from an Int to a Double, using fetcher.rmap(f: Int => Double) (convert the result)
+      * - change the input from String to an Boolean, using fetcher.lmap(f: Boolean => String) (adapt the input)
+      * - change both input from String to Boolean and output from Int to Double at the same time,
+      *   using fetcher.dimap(f1: Boolean => String)(f2: Int => Double)
+      *
+      * The use case is to create the simplest possible fetchers and compose extra conversions after the definition.
+      * To enable the extension methods, you need to also `import cats.syntax.profunctor._`
+      */
     implicit def profunctorInstances[Eff[_] : Functor, Err, Encoding] =
       new Profunctor[Aux[Eff, Err, ?, ?, Encoding]] {
         override def dimap[A, B, C, D](fab: Aux[Eff, Err, A, B, Encoding])(f: C => A)(g: B => D): Aux[Eff, Err, C, D, Encoding] =
