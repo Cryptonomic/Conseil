@@ -288,53 +288,26 @@ trait Tables {
 
   /** Entity class storing rows of table DelegatedContracts
    *  @param accountId Database column account_id SqlType(varchar)
-   *  @param blockId Database column block_id SqlType(varchar)
-   *  @param manager Database column manager SqlType(varchar)
-   *  @param spendable Database column spendable SqlType(bool)
-   *  @param delegateSetable Database column delegate_setable SqlType(bool)
-   *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-   *  @param counter Database column counter SqlType(int4)
-   *  @param script Database column script SqlType(varchar), Default(None)
-   *  @param storage Database column storage SqlType(varchar), Default(None)
-   *  @param balance Database column balance SqlType(numeric)
-   *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
-  case class DelegatedContractsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, storage: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
+   *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None) */
+  case class DelegatedContractsRow(accountId: String, delegateValue: Option[String] = None)
   /** GetResult implicit for fetching DelegatedContractsRow objects using plain SQL queries */
-  implicit def GetResultDelegatedContractsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal]): GR[DelegatedContractsRow] = GR{
+  implicit def GetResultDelegatedContractsRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[DelegatedContractsRow] = GR{
     prs => import prs._
-    DelegatedContractsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
+    DelegatedContractsRow.tupled((<<[String], <<?[String]))
   }
   /** Table description of table delegated_contracts. Objects of this class serve as prototypes for rows in queries. */
   class DelegatedContracts(_tableTag: Tag) extends profile.api.Table[DelegatedContractsRow](_tableTag, "delegated_contracts") {
-    def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter, script, storage, balance, blockLevel) <> (DelegatedContractsRow.tupled, DelegatedContractsRow.unapply)
+    def * = (accountId, delegateValue) <> (DelegatedContractsRow.tupled, DelegatedContractsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, storage, Rep.Some(balance), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> DelegatedContractsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9, _10.get, _11.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(accountId), delegateValue)).shaped.<>({r=>import r._; _1.map(_=> DelegatedContractsRow.tupled((_1.get, _2)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
-    /** Database column block_id SqlType(varchar) */
-    val blockId: Rep[String] = column[String]("block_id")
-    /** Database column manager SqlType(varchar) */
-    val manager: Rep[String] = column[String]("manager")
-    /** Database column spendable SqlType(bool) */
-    val spendable: Rep[Boolean] = column[Boolean]("spendable")
-    /** Database column delegate_setable SqlType(bool) */
-    val delegateSetable: Rep[Boolean] = column[Boolean]("delegate_setable")
     /** Database column delegate_value SqlType(varchar), Default(None) */
     val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
-    /** Database column counter SqlType(int4) */
-    val counter: Rep[Int] = column[Int]("counter")
-    /** Database column script SqlType(varchar), Default(None) */
-    val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
-    /** Database column storage SqlType(varchar), Default(None) */
-    val storage: Rep[Option[String]] = column[Option[String]]("storage", O.Default(None))
-    /** Database column balance SqlType(numeric) */
-    val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
-    /** Database column block_level SqlType(numeric), Default(-1) */
-    val blockLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
 
-    /** Foreign key referencing Blocks (database name contracts_block_id_fkey) */
-    lazy val blocksFk = foreignKey("contracts_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+    /** Foreign key referencing Accounts (database name contracts_account_id_fkey) */
+    lazy val accountsFk = foreignKey("contracts_account_id_fkey", accountId, Accounts)(r => r.accountId, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
     /** Foreign key referencing Delegates (database name contracts_delegate_pkh_fkey) */
     lazy val delegatesFk = foreignKey("contracts_delegate_pkh_fkey", delegateValue, Delegates)(r => Rep.Some(r.pkh), onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }

@@ -560,16 +560,7 @@ class TezosDatabaseOperationsTest
       forAll(dbContracts zip delegatedAccounts) {
         case (contract, account) =>
           contract.accountId shouldEqual account.accountId
-          contract.balance shouldEqual account.balance
-          contract.blockId shouldEqual account.blockId
-          contract.blockLevel shouldEqual account.blockLevel
-          contract.counter shouldEqual account.counter
-          contract.delegateSetable shouldEqual account.delegateSetable
           contract.delegateValue shouldEqual account.delegateValue
-          contract.manager shouldEqual account.manager
-          contract.script shouldEqual account.script
-          contract.spendable shouldEqual account.spendable
-          contract.storage shouldEqual account.storage
       }
 
     }
