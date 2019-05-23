@@ -8,9 +8,9 @@ import tech.cryptonomic.conseil.tezos.MetadataCaching._
 
 
 object MetadataCaching {
-  type CacheTTL = Long
+  type LastUpdated = Long
 
-  type MetadataCache[A] = Map[String, (CacheTTL, A)]
+  type MetadataCache[A] = Map[String, (LastUpdated, A)]
   type AttributesCache = MetadataCache[List[Attribute]]
   type AttributeValuesCache = MetadataCache[RadixTree[String, String]]
   type EntitiesCache = MetadataCache[List[Entity]]
@@ -48,15 +48,15 @@ class MetadataCaching[F[_]](
   }
 
   /** Reads entities from cache */
-  def getEntities(network: String): F[Option[(CacheTTL, List[Entity])]] =
+  def getEntities(network: String): F[Option[(LastUpdated, List[Entity])]] =
     getFromCache(network)(entitiesCache)
 
   /** Reads attributes from cache for given entity */
-  def getAttributes(entity: String): F[Option[(CacheTTL, List[Attribute])]] =
+  def getAttributes(entity: String): F[Option[(LastUpdated, List[Attribute])]] =
     getFromCache(entity)(attributesCache)
 
   /** Generic method for getting value from cache */
-  private def getFromCache[A](key: String)(cache: MVar[F, MetadataCache[A]]): F[Option[(CacheTTL, A)]] = {
+  private def getFromCache[A](key: String)(cache: MVar[F, MetadataCache[A]]): F[Option[(LastUpdated, A)]] = {
     cache.read.map(_.get(key))
   }
 
@@ -69,7 +69,7 @@ class MetadataCaching[F[_]](
     cache.read
 
   /** Reads attribute values from cache */
-  def getAttributeValues(entity: String, attribute: String): F[Option[(CacheTTL, RadixTree[String, String])]] =
+  def getAttributeValues(entity: String, attribute: String): F[Option[(LastUpdated, RadixTree[String, String])]] =
     getFromCache(makeKey(entity, attribute))(attributeValuesCache)
 
   /** Inserts entities into cache */

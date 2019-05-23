@@ -390,7 +390,7 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Helper method for updating */
-  private def getAllUpdatedAttributes(entCache: Option[(CacheTTL, List[Entity])], attributes: MetadataCache[List[Attribute]]): Future[List[(String, List[Attribute])]] = {
+  private def getAllUpdatedAttributes(entCache: Option[(LastUpdated, List[Entity])], attributes: MetadataCache[List[Attribute]]): Future[List[(String, List[Attribute])]] = {
     metadataOperations.runQuery {
       DBIOAction.sequence {
         entCache.toList.flatMap {
