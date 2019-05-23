@@ -27,7 +27,7 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Endpoint for cache initialization status */
-  def cacheStatus: Endpoint[String, String] =
+  def cacheStatusEndpoint: Endpoint[String, String] =
   endpoint(
     request = get(
       url = commonPath / "cache",

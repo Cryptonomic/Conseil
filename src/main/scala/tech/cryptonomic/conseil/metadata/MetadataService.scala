@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.metadata
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.tezos.MetadataCaching.CachingStatus
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.CollectionOps.{ExtendedFuture, ExtendedOptionalList}
 import tech.cryptonomic.conseil.util.ConfigUtil
@@ -16,6 +17,15 @@ class MetadataService(config: PlatformsConfiguration,
                       transformation: UnitTransformation,
                       cacheConfiguration: AttributeValuesCacheConfiguration,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
+
+  // inits attributes cache
+  def initAttributesCache: Unit = {
+    tezosPlatformDiscoveryOperations.initAttributesCount()
+  }
+
+  def attributesCacheStatus: Future[CachingStatus] = {
+    tezosPlatformDiscoveryOperations.getCacheStatus
+  }
 
   // fetches platforms
   def getPlatforms: List[Platform] = ConfigUtil

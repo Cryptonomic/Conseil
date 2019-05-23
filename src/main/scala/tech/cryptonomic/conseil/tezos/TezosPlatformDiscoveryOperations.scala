@@ -1,8 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import cats.Monad
 import cats.effect.IO
-import cats.effect.concurrent.MVar
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
@@ -11,7 +9,7 @@ import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations._
+import tech.cryptonomic.conseil.tezos.MetadataCaching._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,109 +17,37 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Companion object providing apply method implementation */
 object TezosPlatformDiscoveryOperations {
 
-  type CacheTTL = Long
-
-  type MetadataCache[A] = Map[String, (CacheTTL, A)]
-  type AttributesCache = MetadataCache[List[Attribute]]
-  //Map[String, (CacheTTL, List[Attribute])]
-  type AttributeValuesCache = MetadataCache[RadixTree[String, String]]
-  //Map[String, (CacheTTL, RadixTree[String, String])]
-  type EntitiesCache = MetadataCache[List[Entity]] //Map[String, (CacheTTL, List[Entity])]
-
-
-  def apply(metadataOperations: MetadataOperations,
-    attributesCache: MVar[IO, AttributesCache],
-    entitiesCache: MVar[IO, EntitiesCache],
-    attributeValuesCache: MVar[IO, AttributeValuesCache],
+  def apply(
+    metadataOperations: MetadataOperations,
+    caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration)
     (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
-    new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, cacheTTL)
-}
-
-class Caching[F[_]](
-  attributesCache: MVar[F, AttributesCache],
-  entitiesCache: MVar[F, EntitiesCache],
-  attributeValuesCache: MVar[F, AttributeValuesCache]
-)(implicit monad: Monad[F]) {
-
-  import cats.implicits._
-
-  def getEntitiesFromCache(network: String): F[Option[(CacheTTL, List[Entity])]] =
-    getFromCache(network)(entitiesCache)
-
-  def getAttributesFromCache(entity: String): F[Option[(CacheTTL, List[Attribute])]] =
-    getFromCache(entity)(attributesCache)
-
-  def getAttributeValuesFromCache(entity:String, attribute: String): F[Option[(CacheTTL, RadixTree[String, String])]] =
-    getFromCache(makeKey(entity, attribute))(attributeValuesCache)
-
-  def putEntitiesIntoCache(network: String, entities: List[Entity]): F[Unit] =
-    putIntoCache(network, entities)(entitiesCache)
-
-  def putAllEntitiesIntoCache(entities: EntitiesCache): F[Unit] =
-    putAllIntoCache(entities)(entitiesCache)
-
-  def putAttributesIntoCache(entity: String, attributes: List[Attribute]): F[Unit] =
-    putIntoCache(entity, attributes)(attributesCache)
-
-  def putAllAttributesIntoCache(attributes: AttributesCache): F[Unit] =
-    putAllIntoCache(attributes)(attributesCache)
-
-  def putAttributeValuesIntoCache(entity: String, attribute: String, radixTree: RadixTree[String, String]): F[Unit] =
-    putIntoCache(makeKey(entity, attribute), radixTree)(attributeValuesCache)
-
-  def putAllAttributeValuesIntoCache(attributeValues: AttributeValuesCache): F[Unit] =
-    putAllIntoCache(attributeValues)(attributeValuesCache)
-
-  private def getFromCache[A](key: String)(cache: MVar[F, MetadataCache[A]]): F[Option[(CacheTTL, A)]] = {
-    cache.read.map(_.get(key))
-  }
-
-  private def putAllIntoCache[A](values: MetadataCache[A])(cache: MVar[F, MetadataCache[A]]): F[Unit] = {
-    for {
-      _ <- cache.take
-      _ <- cache.put(values)
-    } yield ()
-  }
-
-  private def putIntoCache[A](key: String, value: A)(cache: MVar[F, MetadataCache[A]]): F[Unit] = {
-    for {
-      ca <- cache.take
-      _ <- cache.put(ca.updated(key, (now, value)))
-    } yield ()
-  }
-
-  /** Makes key out of table and column names */
-  private def makeKey(table: String, column: String): String = s"$table.$column"
-  /** Returns current time in milliseconds */
-  private def now: Long = System.currentTimeMillis()
+    new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL)
 }
 
 /** Class providing the implementation of the metadata calls with caching */
 class TezosPlatformDiscoveryOperations(
-  networkName: String,
   metadataOperations: MetadataOperations,
-  caching: Caching[IO],
+  caching: MetadataCaching[IO],
   cacheOverrides: AttributeValuesCacheConfiguration,
-  cacheTTL: FiniteDuration)
+  cacheTTL: FiniteDuration,
+  networkName: String = "notUsed")
   (implicit executionContext: ExecutionContext) {
 
   import cats.effect._
   import cats.implicits._
 
 
-  var isCachingComplete: Boolean = false
-
   /** Method for initializing values of the cache */
   def init(): Future[Unit] = {
     val result = for {
       ent <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
-      _ <- caching.putAllEntitiesIntoCache(ent)
+      _ <- caching.putAllEntitiesIntoEmptyCache(ent)
       attr <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes)))
-      _ <- caching.putAllAttributesIntoCache(attr)
+      _ <- caching.putAllAttributesIntoEmptyCache(attr)
       attrValues <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributeValues)))
-      _ <- caching.putAllAttributeValuesIntoCache(attrValues)
+      _ <- caching.putAllAttributeValuesIntoEmptyCache(attrValues)
     } yield ()
 
     result.unsafeToFuture()
@@ -210,11 +136,6 @@ class TezosPlatformDiscoveryOperations(
       .exists(_.column.contains(column.name))
   }
 
-  /** Makes displayName out of name */
-  private def makeDisplayName(name: String): String = {
-    name.capitalize.replace("_", " ")
-  }
-
   private def preCacheAttributeValues: DBIO[AttributeValuesCache] = {
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.map {
@@ -227,6 +148,9 @@ class TezosPlatformDiscoveryOperations(
     }.map(_.toMap)
   }
 
+  /** Makes key out of table and column names */
+  private def makeKey(table: String, column: String): String = s"$table.$column"
+
   /** Method querying slick metadata tables for entities */
   private def preCacheEntities: DBIO[EntitiesCache] = {
     val result = for {
@@ -237,6 +161,11 @@ class TezosPlatformDiscoveryOperations(
         Entity(name, makeDisplayName(name), count)
     }.toList
     result.map(value => Map(networkName -> value))
+  }
+
+  /** Makes displayName out of name */
+  private def makeDisplayName(name: String): String = {
+    name.capitalize.replace("_", " ")
   }
 
   /** Query for counting rows in the table */
@@ -255,7 +184,7 @@ class TezosPlatformDiscoveryOperations(
     * @return boolean which tells us if attribute is valid for given entity
     */
   def isAttributeValid(tableName: String, columnName: String): Future[Boolean] = {
-    caching.getAttributesFromCache(tableName).map { attributesOpt =>
+    caching.getAttributes(tableName).map { attributesOpt =>
       attributesOpt.exists {
         case (_, attributes) =>
           attributes.exists(_.name == columnName)
@@ -268,21 +197,20 @@ class TezosPlatformDiscoveryOperations(
     *
     * @return list of entities as a Future
     */
-    def getEntities: Future[List[Entity]] = {
-      val result = for {
-        entities <- caching.getEntitiesFromCache(networkName)
-        res <- if (entities.get._1 + cacheTTL.toMillis > now) {
-          IO.pure(entities.get._2)
-        } else {
-          for {
-            updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
-            _ <- caching.putAllEntitiesIntoCache(updatedEntities)
-          } yield updatedEntities(networkName)._2
-        }
-      } yield res
-      result.unsafeToFuture()
-    }
-
+  def getEntities: Future[List[Entity]] = {
+    val result = for {
+      entities <- caching.getEntities(networkName)
+      res <- if (entities.get._1 + cacheTTL.toMillis > now) {
+        IO.pure(entities.get._2)
+      } else {
+        for {
+          updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
+          _ <- caching.putAllEntities(updatedEntities)
+        } yield updatedEntities(networkName)._2
+      }
+    } yield res
+    result.unsafeToFuture()
+  }
 
   /** Makes list of possible string values of the attributes
     *
@@ -291,7 +219,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  withFilter            optional parameter which can filter attributes
     * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
-    * */
+    **/
   def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None, attributesCacheConfig: Option[AttributeCacheConfiguration] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
     getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap { attrOpt =>
       val res = (attributesCacheConfig, withFilter) match {
@@ -325,26 +253,23 @@ class TezosPlatformDiscoveryOperations(
 
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(tableName: String, columnName: String, attributeFilter: String, maxResultLength: Int): Future[List[String]] = {
-    caching.getAttributeValuesFromCache(tableName, columnName).flatMap {
-        case Some((last, radixTree)) if last + cacheTTL.toMillis > now =>
-          IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
-        case Some((_, oldRadixTree)) =>
-          for {
-            _ <- caching.putAttributeValuesIntoCache(tableName, columnName, oldRadixTree)
-            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
-            radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
-            _ <- caching.putAttributeValuesIntoCache(tableName, columnName, radixTree)
-          } yield radixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList
-        case None =>
-          IO.pure(List.empty)
+    caching.getAttributeValues(tableName, columnName).flatMap {
+      case Some((last, radixTree)) if last + cacheTTL.toMillis > now =>
+        IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
+      case Some((_, oldRadixTree)) =>
+        for {
+          _ <- caching.putAttributeValues(tableName, columnName, oldRadixTree)
+          attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
+          radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
+          _ <- caching.putAttributeValues(tableName, columnName, radixTree)
+        } yield radixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList
+      case None =>
+        IO.pure(List.empty)
     }.unsafeToFuture()
   }
 
   /** Returns current time in milliseconds */
   private def now: Long = System.currentTimeMillis()
-
-  /** Makes key out of table and column names */
-  private def makeKey(table: String, column: String): String = s"$table.$column"
 
   /** Makes list of possible string values of the attributes
     *
@@ -352,7 +277,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    * */
+    **/
   private def makeAttributesQuery(tableName: String, column: String, withFilter: Option[String]): Future[List[String]] = {
     withFilter match {
       case Some(filter) =>
@@ -369,7 +294,7 @@ class TezosPlatformDiscoveryOperations(
     * @return list of attributes as a Future
     */
   def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] = {
-    caching.getAttributesFromCache(tableName).map { attrOpt =>
+    caching.getAttributes(tableName).map { attrOpt =>
       attrOpt.map {
         case (_, attr) => attr
       }
@@ -390,26 +315,25 @@ class TezosPlatformDiscoveryOperations(
     * @return list of attributes as a Future
     */
   def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] = {
-    if (isCachingComplete) {
-      attributesCache.read.flatMap { attributesMap =>
-        attributesMap.get(tableName).map { case (last, attributes) =>
-          if (last + cacheTTL.toMillis > now) {
-            println("1st")
-            IO.pure(attributes)
-          } else {
-            println("2nd")
-            for {
-              updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
-              _ <- attributesCache.take
-              _ <- attributesCache.put(attributesMap.updated(tableName, now -> updatedAttributes))
-            } yield updatedAttributes
-          }
-        }.sequence
-      }.unsafeToFuture()
-    } else {
-      println("3rd")
-      getTableAttributesWithoutUpdatingCache(tableName)
-    }
+    caching.getCachingStatus.map { status =>
+      if (status == Finished) {
+        caching.getAttributes(tableName).flatMap { attributesOpt =>
+          attributesOpt.map { case (last, attributes) =>
+            if (last + cacheTTL.toMillis > now) {
+              IO.pure(attributes)
+            } else {
+              for {
+                updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
+                _ <- caching.putAttributes(tableName, updatedAttributes)
+              } yield updatedAttributes
+            }
+          }.sequence
+        }.unsafeToFuture()
+      } else {
+        // if caching is not finished cardinality should be set to None
+        getTableAttributesWithoutUpdatingCache(tableName).map(_.map(_.map(_.copy(cardinality = None))))
+      }
+    }.unsafeToFuture().flatten
   }
 
   /** Runs query and attributes with updated counts */
@@ -433,32 +357,51 @@ class TezosPlatformDiscoveryOperations(
     }
   }
 
-  def initAttributesCount(): Future[List[Unit]] = {
-    val result = for {
-      entCache <- entitiesCache.read
-      attributes <- attributesCache.read
-      updatedAttributes <- IO.fromFuture {
-        IO {
-          metadataOperations.runQuery {
-            DBIOAction.sequence {
-              val (_, entities) = entCache
-              for {
-                entity <- entities
-                (_, (_, attr)) <- attributes.filter(_._1 == entity.name)
-              } yield getUpdatedAttributesQuery(entity.name, attr).map(entity.name -> _)
-            }
-          }
+  def getCacheStatus: Future[CachingStatus] =
+    caching.getCachingStatus.unsafeToFuture()
+
+
+  /** Inits attributes counts */
+  def initAttributesCount(): Unit = {
+    println("here")
+    caching.getCachingStatus.flatMap { status =>
+      if (status == NotStarted) {
+        println("maybe here")
+        val result = for {
+          _ <- caching.updateCachingStatus(InProgress)
+          _ = println("in progress")
+          entCache <- caching.getEntities(networkName)
+          attributes <- caching.getAllAttributes
+          updatedAttributes <- IO.fromFuture(IO(getAllUpdatedAttributes(entCache, attributes)))
+        } yield
+          updatedAttributes.map {
+            case (tableName, attr) =>
+              caching.putAttributes(tableName, attr)
+          }.sequence
+
+        for {
+          _ <- result.flatten
+          _ <- caching.updateCachingStatus(Finished)
+        } yield ()
+      } else {
+        IO.pure(())
+      }
+    }.unsafeRunAsyncAndForget()
+  }
+
+  /** Helper method for updating */
+  private def getAllUpdatedAttributes(entCache: Option[(CacheTTL, List[Entity])], attributes: MetadataCache[List[Attribute]]): Future[List[(String, List[Attribute])]] = {
+    metadataOperations.runQuery {
+      DBIOAction.sequence {
+        entCache.toList.flatMap {
+          case (_, entities) =>
+            for {
+              entity <- entities
+              (_, (_, attr)) <- attributes.filter(_._1 == entity.name)
+            } yield getUpdatedAttributesQuery(entity.name, attr).map(entity.name -> _)
         }
       }
-    } yield
-      updatedAttributes.map {
-        case (tableName, attr) =>
-          attributesCache.take.flatMap { _ =>
-            attributesCache.put(attributes.updated(tableName, now -> attr))
-          }
-      }.sequence
-
-    result.flatten.unsafeToFuture()
+    }
   }
 
 }
