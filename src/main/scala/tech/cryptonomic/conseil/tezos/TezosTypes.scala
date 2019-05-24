@@ -4,7 +4,6 @@ import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
-import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -22,12 +21,12 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    private val storage = GenLens[Contracts](_.storage)
-    private val code = GenLens[Contracts](_.code)
+    private val storage = GenLens[Scripted.Contracts](_.storage)
+    private val code = GenLens[Scripted.Contracts](_.code)
 
     private val expression = GenLens[Micheline](_.expression)
 
-    private val scriptLens: Traversal[Block, Contracts] =
+    private val scriptLens: Traversal[Block, Scripted.Contracts] =
       operationGroups composeTraversal each composeLens
         operations composeTraversal each composePrism
         origination composeLens
@@ -347,10 +346,13 @@ object TezosTypes {
     balance: scala.math.BigDecimal,
     spendable: Boolean,
     delegate: AccountDelegate,
-    script: Option[Contracts],
+    script: Option[Scripted.Contracts],
     counter: Int
   )
 
+  /** Keeps track of association between some domain type and a block reference
+    * Synthetic class, no domain correspondence, it's used to simplify signatures
+    */
   final case class BlockTagged[T](
     blockHash: BlockHash,
     blockLevel: Int,

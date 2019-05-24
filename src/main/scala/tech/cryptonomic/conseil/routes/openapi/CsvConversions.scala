@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.routes.openapi
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponse
 import tech.cryptonomic.conseil.util.Conversion
-import tech.cryptonomic.conseil.util.Conversion.Id
+import cats.Id
 
 /** Object containing implicit conversions to CSV format */
 object CsvConversions {

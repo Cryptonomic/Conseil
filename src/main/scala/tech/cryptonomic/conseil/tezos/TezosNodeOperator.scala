@@ -70,6 +70,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   type BlockFetchingResults = List[(Block, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
   type PaginatedAccountResults = (Iterator[Future[List[BlockTagged[Map[AccountId, Account]]]]], Int)
+  type PaginatedDelegateResults = (Iterator[Future[List[BlockTagged[Map[PublicKeyHash, Delegate]]]]], Int)
 
   //introduced to simplify signatures
   type BallotBlock = (Block, List[Voting.Ballot])
@@ -115,7 +116,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
   def getPaginatedAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[AccountId, Account]]] =
-    partitionAccountIds(accountIds).map(ids => getAccountsForBlock(ids, blockHash))
+    partitionElements(accountIds).map(ids => getAccountsForBlock(ids, blockHash))
 
   /**
     * Fetches the accounts identified by id
@@ -261,6 +262,70 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
+  //move it to the node operator
+  def getDelegatesForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
+    import TezosTypes.Syntax._
+
+    def notifyAnyLostKeys(missing: Set[PublicKeyHash]) =
+      if (missing.nonEmpty) logger.warn("The following delegate keys were not found querying the {} node: {}", network, missing.map(_.value).mkString("\n", ",", "\n"))
+
+    //uses the index to collect together BlockAccounts matching the same block
+    def groupByLatestBlock(data: Map[PublicKeyHash, Delegate]): List[BlockTagged[Map[PublicKeyHash, Delegate]]] =
+      data.groupBy {
+        case (pkh, _) => keysBlocksIndex(pkh)
+      }.map {
+        case ((hash, level), delegates) => delegates.taggedWithBlock(hash, level)
+      }.toList
+
+    //fetch delegates by requested pkh and group them together with corresponding blocks
+    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.keys.toList) map {
+      futureMap =>
+        futureMap
+          .andThen {
+            case Success(delegatesMap) =>
+              notifyAnyLostKeys(keysBlocksIndex.keySet -- delegatesMap.keySet)
+            case Failure(err) =>
+              val showSomeIds = keysBlocksIndex.keys.take(30).map(_.value).mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
+              logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
+          }.map(groupByLatestBlock)
+    }
+
+    (pages, keysBlocksIndex.size)
+  }
+
+  /**
+    * Fetches the accounts identified by id, lazily paginating the results
+    *
+    * @param accountIds the ids
+    * @param blockHash  the block storing the accounts, the head block if not specified
+    * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
+    */
+    def getPaginatedDelegatesForBlock(delegatePkhs: List[PublicKeyHash], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[PublicKeyHash, Delegate]]] =
+      partitionElements(delegatePkhs).map(pkhs => getDelegatesForBlock(pkhs, blockHash))
+
+  /**
+    * Fetches the delegate and delegated contracts identified by key hash
+    *
+    * @param pkhs the delegate key hashes
+    * @param blockHash  the block storing the delegation reference, the head block if not specified
+    * @return           the list of delegates and associated contracts, wrapped in a [[Future]], indexed by key hash
+    */
+  def getDelegatesForBlock(
+    pkhs: List[PublicKeyHash],
+    blockHash: BlockHash = blockHeadHash
+  ): Future[Map[PublicKeyHash, Delegate]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+
+    implicit val fetcherInstance = delegateFetcher(blockHash)
+
+    val fetchedDelegates: Future[List[(PublicKeyHash, Delegate)]] =
+      fetch[PublicKeyHash, Delegate, Future, List, Throwable].run(pkhs)
+
+    fetchedDelegates.map(_.toMap)
+  }
+
   /**
     * Fetches a single block from the chain, without waiting for the result
     * @param hash      Hash of the block
@@ -303,14 +368,14 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     TezosNodeOperator.partitionRanges(blockPageSize)(levels)
 
   /**
-    * Given a list of ids, creates sub-lists of max the given size
-    * @param accouuntIDs a list of ids to partition into (possibly) smaller parts
+    * Given a list of generic elements, creates sub-lists of max the given size
+    * @param elements a list of elements to partition into (possibly) smaller parts
     * @param pageSize how big a part is allowed to be
-    * @return an iterator over the part, which are themselves ids
+    * @return an iterator over the part, which are themselves elements
     */
-  def partitionAccountIds(accountsIDs: List[AccountId]): Iterator[List[AccountId]] =
-  TezosNodeOperator.partitionRanges(blockPageSize)(Range.inclusive(0, accountsIDs.size - 1)) map {
-      range => accountsIDs.take(range.end + 1).drop(range.start)
+  def partitionElements[E](elements: List[E]): Iterator[List[E]] =
+    TezosNodeOperator.partitionRanges(blockPageSize)(Range.inclusive(0, elements.size - 1)) map {
+      range => elements.take(range.end + 1).drop(range.start)
     }
 
   /**

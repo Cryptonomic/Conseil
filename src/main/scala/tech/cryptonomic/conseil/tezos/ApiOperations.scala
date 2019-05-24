@@ -320,7 +320,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * Fetches an account by account id from the db.
     * @param account_id The account's id number
     * @param ec ExecutionContext needed to invoke the data fetching using async results
-    * @return The account with its associated operation groups
+    * @return The account
     */
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
