@@ -228,6 +228,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   }
 
+  /**
+    * Fetches accountIds for a block, without waiting for the result
+    * @param blockHash Hash of the block
+    * @return          The `Future` list of accountIds
+    */
+  def getAllAccountIdsForBlock(block: BlockData): Future[List[AccountId]] =
+    if (isGenesis(block))
+      Future.successful(List.empty) //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
+    else
+      node
+        .runAsyncGetQuery(network, s"blocks/${block.hash.value}/operations")
+        .map(accountIdsJsonDecode.run)
+
   /** Fetches votes information for the block */
   def getCurrentVotesForBlock(block: BlockData, offset: Option[Offset] = None): Future[CurrentVotes] =
     if (isGenesis(block))
@@ -387,15 +400,13 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
    * @param headBlockHash the hash of the current chain head block
    * @param maxLevelOffset the offset from the head that should be already stored, yet diverges from the current level on chain
    */
-  private def getForkedBlocks(headBlockHash: BlockHash, maxLevelOffset: Int): Future[List[BlockAction]] = {
-
-
+  private def getForkedBlocks(headBlockHash: BlockHash, maxLevelOffset: Int): Future[BlockFetchingResults] = {
     //read the latest stored top-level and the corresponding one from the current chain
     val highestLevelFromChain = getBlock(headBlockHash, Some(maxLevelOffset))//chain block
     val highestLevelOnConseil = operations.fetchLatestBlock() //stored block
 
     //compare the results and in case read the missing data from the fork
-    Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
+    val chainForkedSection: Future[List[BlockAction]] = Apply[Future].map2(highestLevelFromChain, highestLevelOnConseil) {
       case (remote, Some(stored)) if remote.data.header.level != stored.level =>
         //better stop the process than to risk corrupting conseil's database
         logger.error(
@@ -415,7 +426,20 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       case _ =>
         List.empty.pure[Future] //no additional action to take
     }.flatten
+
+    //add account references to the fetched data
+    chainForkedSection.flatMap(_ traverse addAccountReferences)
   }
+
+  /* extracts account references for each action, if useful
+   * i.e. when the action assumes that accounts are stored already, there's
+   * no need to fetch those references again
+   */
+  private def addAccountReferences(action: BlockAction): Future[(BlockAction, List[AccountId])] =
+    action match {
+      case revalidation @ RevalidateBlock(_) => Future.successful(revalidation -> List.empty)
+      case write => getAllAccountIdsForBlock(write.block.data) map (write -> _)
+    }
 
   /**
     * Given the blockchain network and the hash of the block where the fork was detected,
@@ -528,7 +552,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     followFork: Boolean
   ): Future[BlockFetchingResults] = {
 
-    val emptyAccountRefs = List.empty[AccountId]
     val blocksFromRange = getBlocks(reference, levelRange)
 
     val maxOffset = levelRange.end - levelRange.start + 1
@@ -539,8 +562,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     for {
       range <- blocksFromRange
       fork <- blocksFromFork
-      forkResults = fork.iterator.map(blockAction => blockAction -> emptyAccountRefs)
-    } yield (range ++ forkResults)
+    } yield (range ++ fork)
   }
 
   /**
