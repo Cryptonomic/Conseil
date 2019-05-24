@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing default apply implementation */
 object DataPlatform {
-  def apply(): DataPlatform = new DataPlatform(Map("tezos" -> ApiOperations))
+  def apply(maxQueryResultSize: Int): DataPlatform = new DataPlatform(Map("tezos" -> ApiOperations), maxQueryResultSize)
 }
 
 /** Class for validating if query protocol exists for the given platform
@@ -15,7 +15,7 @@ object DataPlatform {
   * @param operationsMap map of platformName -> QueryProtocolOperations
   * */
 
-class DataPlatform(operationsMap: Map[String, DataOperations]) {
+class DataPlatform(operationsMap: Map[String, DataOperations], maxQueryResultSize: Int) {
   import cats.instances.future._
   import cats.instances.option._
   import cats.syntax.traverse._
@@ -28,6 +28,6 @@ class DataPlatform(operationsMap: Map[String, DataOperations]) {
     * */
   def queryWithPredicates(platform: String, tableName: String, query: Query)
     (implicit ec: ExecutionContext): Future[Option[List[QueryResponse]]] = {
-    operationsMap.get(platform).map(_.queryWithPredicates(tableName, query)).sequence
+    operationsMap.get(platform).map(_.queryWithPredicates(tableName, query.copy(limit = Math.min(query.limit, maxQueryResultSize)))).sequence
   }
 }

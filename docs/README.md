@@ -34,7 +34,7 @@ java -Xms512m -Xmx14g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomi
 
 In this command, the `-Xms512m` and `-Xmx14g` can be changed based on the amount of memory available on the system, the `-Dconfig.file=conseil.conf` can be changed to point to any user created config file that contains the credentials for the respective db and Tezos node. The file can also contain any overrides for settings provided by the `reference.conf` file. Lastly, `alphanet` is the network being run by the Tezos node, it can and should be changed if running `mainnet` or `zeronet`.
 
-Start `conseil` as: 
+Start `conseil` as:
 
 ```
 java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil
@@ -47,13 +47,13 @@ For examples of how we run these services check out the [Nautilus](https://githu
 To run `lorre` and `conseil` with `sbt`, use the following:
 
 ```
-env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "runConseil"
-env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt "runLorre alphanet"
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt -J-Xss32m "runConseil"
+env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt -J-Xss32m "runLorre alphanet"
 ```
 
 ### Logging
 
-Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see whether the services are running and whether the chain and db are synced as this would be the starting point of all troubleshooting inquiries. 
+Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see whether the services are running and whether the chain and db are synced as this would be the starting point of all troubleshooting inquiries.
 
 ### Configuration
 
@@ -287,7 +287,7 @@ curl --request GET --header 'apiKey: <API key>' --url 'https://conseil-dev.crypt
 
 #### Extended metadata
 
-As mentioned in the [Datasource configuration](#datasource-configuration) section, it's possible to provide additional details for the items Conseil manages. 
+As mentioned in the [Datasource configuration](#datasource-configuration) section, it's possible to provide additional details for the items Conseil manages.
 
 ### Tezos Chain Data Query
 

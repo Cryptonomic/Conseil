@@ -5,7 +5,7 @@ import akka.Done
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{TezosTypes, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.tezos.TezosTypes.BlockAccounts
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockTagged, Account, AccountId}
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -238,19 +238,33 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * we should evaluate how to handle failed processing
     */
   private[this] def processTezosAccounts(): Future[Done] = {
+    import cats.instances.list._
+    import cats.syntax.functorFilter._
+
     logger.info("Processing latest Tezos data for updated accounts...")
 
-    def logOutcome[A]: PartialFunction[Try[A], Unit] = {
-      case Success(rows) =>
-        logger.info("{} accounts were touched on the database.", rows)
+    def logOutcome: PartialFunction[Try[(Int, Option[Int])], Unit] = {
+      case Success((accountsRows, delegateCheckpointRows)) =>
+        logger.info("{} accounts were touched on the database. Checkpoint stored for{} delegates.", accountsRows, delegateCheckpointRows.fold("")(" " + _))
       case Failure(e) =>
         logger.error("Could not write accounts to the database")
     }
 
-    def processAccountsPage(accountsInfo: Future[List[BlockAccounts]]): Future[Int] =
+    def processAccountsPage(accountsInfo: Future[List[BlockTagged[Map[AccountId, Account]]]]): Future[Int] =
       accountsInfo.flatMap{
-        info =>
-          db.run(TezosDb.writeAccounts(info)) andThen logOutcome
+        taggedAccounts =>
+          import TezosTypes.Syntax._
+          val delegatesCheckpoint = taggedAccounts.map {
+            case BlockTagged(blockHash, blockLevel, accountsMap) =>
+              val delegateKeys = accountsMap.values
+                .toList
+                .mapFilter(_.delegate.value)
+
+                delegateKeys.taggedWithBlock(blockHash, blockLevel)
+          }
+          db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, delegatesCheckpoint))
+            .andThen(logOutcome)
+            .map(_._1) // discard the checkpoints counts, not needed for progress count
       }
 
     val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map {

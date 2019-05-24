@@ -12,6 +12,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
 import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
@@ -21,7 +22,7 @@ import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-
+import scala.language.postfixOps
 
 class TezosPlatformDiscoveryOperationsTest
   extends WordSpec
@@ -219,7 +220,7 @@ class TezosPlatformDiscoveryOperationsTest
 
     "return list of values of kind attribute of Fees without filter" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
-      metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+      metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
       sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
     }
@@ -227,7 +228,7 @@ class TezosPlatformDiscoveryOperationsTest
     "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
 
       sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(InvalidAttributeDataType("medium"), HighCardinalityAttribute("medium"))
@@ -244,7 +245,7 @@ class TezosPlatformDiscoveryOperationsTest
     "return empty list when trying to sql inject" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
       // That's how the SLQ-injected string will look like:
       // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
@@ -262,7 +263,7 @@ class TezosPlatformDiscoveryOperationsTest
       )
 
       sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
-      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
 
       sut.listAttributeValues("fees", "kind", None).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
       sut.listAttributeValues("fees", "kind", Some("ex")).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
