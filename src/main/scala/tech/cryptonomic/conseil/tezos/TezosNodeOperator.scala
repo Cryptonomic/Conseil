@@ -14,7 +14,6 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats._
 import cats.implicits._
 import cats.data.Kleisli
-import cats.syntax.applicative._
 import scala.{Stream => _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
