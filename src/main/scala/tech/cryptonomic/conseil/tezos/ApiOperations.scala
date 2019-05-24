@@ -415,7 +415,7 @@ trait ApiOperations extends DataOperations with MetadataOperations {
         sanitizePredicates(query.predicates),
         query.orderBy,
         query.aggregation,
-        Math.min(query.limit, DataTypes.maxLimitValue)
+        query.limit
       )
     )
   }

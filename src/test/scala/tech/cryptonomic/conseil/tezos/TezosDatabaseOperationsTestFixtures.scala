@@ -2,12 +2,13 @@ package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
 import java.time.ZonedDateTime
-import scala.util.Random
 
+import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 trait TezosDataGeneration extends RandomGenerationKit {
 
@@ -33,7 +34,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
+  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -46,13 +47,13 @@ trait TezosDataGeneration extends RandomGenerationKit {
             balance = rnd.nextInt,
             spendable = true,
             delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
-            script = Some(AccountScript("script")),
+            script = Some(Contracts(Micheline("storage"), Micheline("script"))),
             counter = currentId
           )
         )
     }.toMap
 
-    BlockAccounts(blockHash, blockLevel, accounts)
+    BlockTagged(blockHash, blockLevel, accounts)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -365,7 +366,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     import OperationMetadata.BalanceUpdate
 
     val sampleScriptedContract =
-      Scripted.Contracts(
+      Contracts(
         code = Micheline("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
         storage = Micheline("""{"string":"hello"}""")
       )

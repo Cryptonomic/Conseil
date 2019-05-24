@@ -1,7 +1,11 @@
 package tech.cryptonomic.conseil.tezos.michelson.dto
 
 /*
- * Class representing a Michelson instruction (code section)
+ * Class representing a Michelson instruction (code section).
+ *
+ * In fact, you can use this type to represent Data as well. According to the grammar, it should be a separate type for
+ * Data but since Data type is represented in the same way as an Instruction, the code is simplified and treats Data as
+ * Instruction.
  *
  * Example:
  *

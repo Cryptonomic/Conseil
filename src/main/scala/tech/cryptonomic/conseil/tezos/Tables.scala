@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, Fees.schema, InvalidatedBlocks.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, Bakers.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, DelegatesCheckpoint.schema, Fees.schema, InvalidatedBlocks.schema, OperationGroups.schema, Operations.schema, Proposals.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -29,19 +29,20 @@ trait Tables {
    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
    *  @param counter Database column counter SqlType(int4)
    *  @param script Database column script SqlType(varchar), Default(None)
+   *  @param storage Database column storage SqlType(varchar), Default(None)
    *  @param balance Database column balance SqlType(numeric)
    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
-  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
+  case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, storage: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
   implicit def GetResultAccountsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal]): GR[AccountsRow] = GR{
     prs => import prs._
-    AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
+    AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
   }
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
   class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
-    def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter, script, balance, blockLevel) <> (AccountsRow.tupled, AccountsRow.unapply)
+    def * = (accountId, blockId, manager, spendable, delegateSetable, delegateValue, counter, script, storage, balance, blockLevel) <> (AccountsRow.tupled, AccountsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, Rep.Some(balance), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9.get, _10.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(manager), Rep.Some(spendable), Rep.Some(delegateSetable), delegateValue, Rep.Some(counter), script, storage, Rep.Some(balance), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9, _10.get, _11.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column account_id SqlType(varchar), PrimaryKey */
     val accountId: Rep[String] = column[String]("account_id", O.PrimaryKey)
@@ -59,6 +60,8 @@ trait Tables {
     val counter: Rep[Int] = column[Int]("counter")
     /** Database column script SqlType(varchar), Default(None) */
     val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
+    /** Database column storage SqlType(varchar), Default(None) */
+    val storage: Rep[Option[String]] = column[Option[String]]("storage", O.Default(None))
     /** Database column balance SqlType(numeric) */
     val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
     /** Database column block_level SqlType(numeric), Default(-1) */
@@ -314,6 +317,38 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
+
+  /** Entity class storing rows of table DelegatesCheckpoint
+   *  @param delegatePkh Database column delegate_pkh SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
+  case class DelegatesCheckpointRow(delegatePkh: String, blockId: String, blockLevel: Int = -1)
+  /** GetResult implicit for fetching DelegatesCheckpointRow objects using plain SQL queries */
+  implicit def GetResultDelegatesCheckpointRow(implicit e0: GR[String], e1: GR[Int]): GR[DelegatesCheckpointRow] = GR{
+    prs => import prs._
+    DelegatesCheckpointRow.tupled((<<[String], <<[String], <<[Int]))
+  }
+  /** Table description of table delegates_checkpoint. Objects of this class serve as prototypes for rows in queries. */
+  class DelegatesCheckpoint(_tableTag: Tag) extends profile.api.Table[DelegatesCheckpointRow](_tableTag, "delegates_checkpoint") {
+    def * = (delegatePkh, blockId, blockLevel) <> (DelegatesCheckpointRow.tupled, DelegatesCheckpointRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = ((Rep.Some(delegatePkh), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> DelegatesCheckpointRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column delegate_pkh SqlType(varchar) */
+    val delegatePkh: Rep[String] = column[String]("delegate_pkh")
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column block_level SqlType(int4), Default(-1) */
+    val blockLevel: Rep[Int] = column[Int]("block_level", O.Default(-1))
+
+    /** Foreign key referencing Blocks (database name delegate_checkpoint_block_id_fkey) */
+    lazy val blocksFk = foreignKey("delegate_checkpoint_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Index over (blockLevel) (database name ix_delegates_checkpoint_block_level) */
+    val index1 = index("ix_delegates_checkpoint_block_level", blockLevel)
+  }
+  /** Collection-like TableQuery object for table DelegatesCheckpoint */
+  lazy val DelegatesCheckpoint = new TableQuery(tag => new DelegatesCheckpoint(tag))
 
   /** Entity class storing rows of table Fees
    *  @param low Database column low SqlType(int4)

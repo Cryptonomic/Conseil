@@ -67,6 +67,7 @@ CREATE TABLE public.accounts (
     delegate_value character varying,
     counter integer NOT NULL,
     script character varying,
+    storage character varying,
     balance numeric NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL
 );
@@ -206,6 +207,16 @@ CREATE TABLE public.balance_updates (
 
 CREATE TABLE public.accounts_checkpoint (
     account_id character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer DEFAULT '-1'::integer NOT NULL
+);
+
+--
+-- Name: delegates_checkpoint; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.delegates_checkpoint (
+    delegate_pkh character varying NOT NULL,
     block_id character varying NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL
 );
@@ -398,6 +409,12 @@ CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint USING btree (block_level);
 
 --
+-- Name: ix_delegates_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_delegates_checkpoint_block_level ON public.delegates_checkpoint USING btree (block_level);
+
+--
 -- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -417,6 +434,13 @@ ALTER TABLE ONLY public.accounts
 
 ALTER TABLE ONLY public.accounts_checkpoint
     ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+--
+-- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.delegates_checkpoint
+    ADD CONSTRAINT delegate_checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 
 --

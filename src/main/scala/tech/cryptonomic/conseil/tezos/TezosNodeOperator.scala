@@ -8,12 +8,13 @@ import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonCode, MichelsonElement, MichelsonExpression, MichelsonSchema}
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 
 import cats._
 import cats.implicits._
 import cats.data.Kleisli
+import cats.syntax.applicative._
 import scala.{Stream => _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -74,7 +75,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   //use this alias to make signatures easier to read and kept in-sync
   type BlockFetchingResults = List[(BlockAction, List[AccountId])]
   type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
-  type PaginatedAccountResults = (Iterator[Future[List[BlockAccounts]]], Int)
+  type PaginatedAccountResults = (Iterator[Future[List[BlockTagged[Map[AccountId, Account]]]]], Int)
 
   //introduced to simplify signatures
   type BallotBlock = (Block, List[Voting.Ballot])
@@ -147,22 +148,25 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
-    import TezosOptics.Accounts.optionalScriptCode
+    import TezosOptics.Accounts.{scriptLens, storageLens}
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     implicit val fetcherInstance = accountFetcher(blockHash)
 
-    /*tries decoding but simply returns the input unchanged on failure*/
-    def parseScript(code: String): String = Try(toMichelsonScript[MichelsonCode](code)).getOrElse(code)
-
-
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
+
+    def parseMichelsonScripts(account: Account): Account = {
+      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+
+      (scriptAlter compose storageAlter)(account)
+    }
 
     fetchedAccounts.map(
       indexedAccounts =>
         indexedAccounts.collect {
-          case (accountId, Some(account)) => accountId -> optionalScriptCode.modify(parseScript)(account)
+          case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
         }.toMap
     )
   }
@@ -172,16 +176,17 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return         Accounts with their corresponding block data
     */
   def getAccountsForBlocks(accountsBlocksIndex: Map[AccountId, BlockReference]): PaginatedAccountResults = {
+    import TezosTypes.Syntax._
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
 
     //uses the index to collect together BlockAccounts matching the same block
-    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockAccounts] =
+    def groupByLatestBlock(data: Map[AccountId, Account]): List[BlockTagged[Map[AccountId, Account]]] =
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
+        case ((hash, level), accounts) => accounts.taggedWithBlock(hash, level)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -563,8 +568,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     def parseMichelsonScripts(block: Block): Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonExpression])
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonExpression])
+      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (codeAlter compose storageAlter compose parametersAlter)(block)
     }
@@ -588,21 +593,23 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     }
   }
 
-  private val UNPARSABLE_CODE_PLACEMENT = "Unparsable code: "
+  private def toMichelsonScript[T <: MichelsonElement : Parser](json: String)(implicit tag: ClassTag[T]): String = {
 
-  private def toMichelsonScript[T <: MichelsonElement:Parser](json: Any)(implicit tag: ClassTag[T]): String = {
-    Some(json).collect {
-      case t: String => convert[T](t)
-      case t: Micheline => convert[T](t.expression)
-    } match {
-      case Some(Right(value)) => value
-      case Some(Left(t)) =>
-        logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
-        UNPARSABLE_CODE_PLACEMENT + json
-      case _ =>
-        logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
-        UNPARSABLE_CODE_PLACEMENT + json
+    def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
+      exception match {
+        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
+        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
+      }
+
+      s"Unparsable code: $json"
     }
+
+    def parse(json: String): String = convert[T](json) match {
+      case Right(convertedResult) => convertedResult
+      case Left(exception) => unparsableResult(json, Some(exception))
+    }
+
+    Try(parse(json)).getOrElse(unparsableResult(json))
   }
 }
 
