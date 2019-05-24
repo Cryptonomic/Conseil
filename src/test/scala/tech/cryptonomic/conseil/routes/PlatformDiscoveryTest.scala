@@ -166,15 +166,17 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         status shouldEqual StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
         val result: List[Map[String, Any]] = toListOfMaps[Any](responseAs[String])
-        result.head("name") shouldBe "attribute"
-        result.head("displayName") shouldBe "attribute-name"
-        result.head("description") shouldBe "description"
-        result.head("placeholder") shouldBe "placeholder"
-        result.head("dataFormat") shouldBe "dataFormat"
-        result.head("scale") shouldBe 6
-        result.head("valueMap") shouldBe Map("0" -> "value")
-        result.head("dataType") shouldBe "Hash"
-        result.head("reference") shouldBe Map("0" -> "value")
+
+        val headResult = toListOfMaps[Any](responseAs[String]).head
+        headResult("name") shouldBe "attribute"
+        headResult("displayName") shouldBe "attribute-name"
+        headResult("description") shouldBe "description"
+        headResult("placeholder") shouldBe "placeholder"
+        headResult("dataFormat") shouldBe "dataFormat"
+        headResult("scale") shouldBe 6
+        headResult("valueMap") shouldBe Map("0" -> "value")
+        headResult("dataType") shouldBe "Hash"
+        headResult("reference") shouldBe Map("0" -> "value")
       }
     }
 
