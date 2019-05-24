@@ -156,7 +156,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
                 scale = Some(6),
                 dataType = Some("hash"),
                 dataFormat = Some("dataFormat"),
-                valueMap = Some(Map("0" -> "value"))))))))))
+                valueMap = Some(Map("0" -> "value")),
+                reference = Some(Map("0" -> "value"))))))))))
 
       // when
       Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
@@ -173,6 +174,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         result.head("scale") shouldBe 6
         result.head("valueMap") shouldBe Map("0" -> "value")
         result.head("dataType") shouldBe "Hash"
+        result.head("reference") shouldBe Map("0" -> "value")
       }
     }
 

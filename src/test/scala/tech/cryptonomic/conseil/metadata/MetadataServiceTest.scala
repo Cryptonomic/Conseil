@@ -281,7 +281,8 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
                 scale = Some(6),
                 dataType = Some("hash"),
                 dataFormat = Some("dataFormat"),
-                valueMap = Some(Map("0" -> "value1", "1" -> "other value"))))))))))
+                valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
+                reference = Some(Map("0" -> "value1", "1" -> "other value"))))))))))
 
       // when
       val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
@@ -298,6 +299,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         placeholder = Some("placeholder"),
         dataFormat = Some("dataFormat"),
         valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
+        reference = Some(Map("0" -> "value1", "1" -> "other value")),
         scale = Some(6))))
     }
 

@@ -29,7 +29,8 @@ object PlatformDiscoveryTypes {
     placeholder: Option[String] = None,
     dataFormat: Option[String] = None,
     valueMap: Option[Map[String, String]] = None,
-    scale: Option[Int] = None
+    scale: Option[Int] = None,
+    reference: Option[Map[String, String]] = None
   )
 
   /** Enumeration of data types */

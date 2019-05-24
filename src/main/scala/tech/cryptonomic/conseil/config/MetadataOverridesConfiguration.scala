@@ -61,4 +61,5 @@ case class AttributeConfiguration(displayName: Option[String],
                                   scale: Option[Int] = None,
                                   dataType: Option[String] = None,
                                   dataFormat: Option[String] = None,
-                                  valueMap: Option[Map[String, String]] = None)
+                                  valueMap: Option[Map[String, String]] = None,
+                                  reference: Option[Map[String, String]] = None)

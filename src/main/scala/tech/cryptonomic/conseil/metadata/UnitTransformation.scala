@@ -55,6 +55,7 @@ class UnitTransformation(overrides: MetadataOverridesConfiguration) {
       dataFormat = overrideAttribute.flatMap(_.dataFormat),
       scale = overrideAttribute.flatMap(_.scale),
       dataType = overrideAttribute.flatMap(_.dataType).map(mapType).getOrElse(attribute.dataType),
-      valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty))
+      valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty),
+      reference = overrideAttribute.flatMap(_.reference).filter(_.nonEmpty))
   }
 }
