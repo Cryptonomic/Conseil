@@ -151,32 +151,6 @@ class TezosPlatformDiscoveryOperations(
   /** Makes key out of table and column names */
   private def makeKey(table: String, column: String): String = s"$table.$column"
 
-  /** Method querying slick metadata tables for entities */
-  private def preCacheEntities: DBIO[EntitiesCache] = {
-    val result = for {
-      tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
-      counts <- getTablesCount(tables)
-    } yield now -> (tables.map(_.name.name) zip counts).map {
-      case (name, count) =>
-        Entity(name, makeDisplayName(name), count)
-    }.toList
-    result.map(value => Map(networkName -> value))
-  }
-
-  /** Makes displayName out of name */
-  private def makeDisplayName(name: String): String = {
-    name.capitalize.replace("_", " ")
-  }
-
-  /** Query for counting rows in the table */
-  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] = {
-    DBIOAction.sequence {
-      tables.map { table =>
-        TezosDatabaseOperations.countRows(table.name.name)
-      }
-    }
-  }
-
   /** Checks if attribute is valid for given entity
     *
     * @param tableName  name of the table(entity) which needs to be checked
@@ -212,6 +186,35 @@ class TezosPlatformDiscoveryOperations(
     result.unsafeToFuture()
   }
 
+  /** Method querying slick metadata tables for entities */
+  private def preCacheEntities: DBIO[EntitiesCache] = {
+    val result = for {
+      tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
+      counts <- getTablesCount(tables)
+    } yield now -> (tables.map(_.name.name) zip counts).map {
+      case (name, count) =>
+        Entity(name, makeDisplayName(name), count)
+    }.toList
+    result.map(value => Map(networkName -> value))
+  }
+
+  /** Makes displayName out of name */
+  private def makeDisplayName(name: String): String = {
+    name.capitalize.replace("_", " ")
+  }
+
+  /** Query for counting rows in the table */
+  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] = {
+    DBIOAction.sequence {
+      tables.map { table =>
+        TezosDatabaseOperations.countRows(table.name.name)
+      }
+    }
+  }
+
+  /** Returns current time in milliseconds */
+  private def now: Long = System.currentTimeMillis()
+
   /** Makes list of possible string values of the attributes
     *
     * @param  tableName             name of the table from which we extract attributes
@@ -219,7 +222,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  withFilter            optional parameter which can filter attributes
     * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
-    **/
+    * */
   def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None, attributesCacheConfig: Option[AttributeCacheConfiguration] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
     getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap { attrOpt =>
       val res = (attributesCacheConfig, withFilter) match {
@@ -244,13 +247,6 @@ class TezosPlatformDiscoveryOperations(
     }
   }
 
-  /** Checks the data types if cannot be queried by */
-  private def canQueryType(dt: DataType): Boolean = {
-    // values described in the ticket #183
-    val cantQuery = Set(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
-    !cantQuery(dt)
-  }
-
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(tableName: String, columnName: String, attributeFilter: String, maxResultLength: Int): Future[List[String]] = {
     caching.getAttributeValues(tableName, columnName).flatMap {
@@ -268,16 +264,13 @@ class TezosPlatformDiscoveryOperations(
     }.unsafeToFuture()
   }
 
-  /** Returns current time in milliseconds */
-  private def now: Long = System.currentTimeMillis()
-
   /** Makes list of possible string values of the attributes
     *
     * @param  tableName  name of the table from which we extract attributes
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    **/
+    * */
   private def makeAttributesQuery(tableName: String, column: String, withFilter: Option[String]): Future[List[String]] = {
     withFilter match {
       case Some(filter) =>
@@ -299,13 +292,6 @@ class TezosPlatformDiscoveryOperations(
         case (_, attr) => attr
       }
     }.unsafeToFuture()
-  }
-
-  /** Checks if cardinality of the column is not too high so it should not be queried */
-  private def isLowCardinality(distinctCount: Option[Int]): Boolean = {
-    // reasonable value which I thought of for now
-    val maxCount = 1000
-    distinctCount.getOrElse(maxCount) < maxCount
   }
 
   /**
@@ -341,35 +327,16 @@ class TezosPlatformDiscoveryOperations(
     metadataOperations.runQuery(getUpdatedAttributesQuery(tableName, columns))
   }
 
-  /** Query for returning partial attributes with updated counts */
-  private def getUpdatedAttributesQuery(tableName: String, columns: List[Attribute]): DBIO[List[Attribute]] = {
-    DBIOAction.sequence {
-      columns.map { column =>
-        if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
-          TezosDatabaseOperations.countDistinct(tableName, column.name)
-            .map { count =>
-              column.copy(cardinality = Some(count))
-            }
-        } else {
-          DBIOAction.successful(column)
-        }
-      }
-    }
-  }
-
+  /** Returns current cache initialization status */
   def getCacheStatus: Future[CachingStatus] =
     caching.getCachingStatus.unsafeToFuture()
 
-
-  /** Inits attributes counts */
+  /** Inits attribute counts */
   def initAttributesCount(): Unit = {
-    println("here")
     caching.getCachingStatus.flatMap { status =>
       if (status == NotStarted) {
-        println("maybe here")
         val result = for {
           _ <- caching.updateCachingStatus(InProgress)
-          _ = println("in progress")
           entCache <- caching.getEntities(networkName)
           attributes <- caching.getAllAttributes
           updatedAttributes <- IO.fromFuture(IO(getAllUpdatedAttributes(entCache, attributes)))
@@ -390,7 +357,8 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Helper method for updating */
-  private def getAllUpdatedAttributes(entCache: Option[(LastUpdated, List[Entity])], attributes: MetadataCache[List[Attribute]]): Future[List[(String, List[Attribute])]] = {
+  private def getAllUpdatedAttributes(entCache: Option[(LastUpdated, List[Entity])], attributes: MetadataCache[List[Attribute]]):
+  Future[List[(String, List[Attribute])]] = {
     metadataOperations.runQuery {
       DBIOAction.sequence {
         entCache.toList.flatMap {
@@ -402,6 +370,36 @@ class TezosPlatformDiscoveryOperations(
         }
       }
     }
+  }
+
+  /** Query for returning partial attributes with updated counts */
+  private def getUpdatedAttributesQuery(tableName: String, columns: List[Attribute]): DBIO[List[Attribute]] = {
+    DBIOAction.sequence {
+      columns.map { column =>
+        if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
+          TezosDatabaseOperations.countDistinct(tableName, column.name)
+            .map { count =>
+              column.copy(cardinality = Some(count))
+            }
+        } else {
+          DBIOAction.successful(column)
+        }
+      }
+    }
+  }
+
+  /** Checks the data types if cannot be queried by */
+  private def canQueryType(dt: DataType): Boolean = {
+    // values described in the ticket #183
+    val cantQuery = Set(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
+    !cantQuery(dt)
+  }
+
+  /** Checks if cardinality of the column is not too high so it should not be queried */
+  private def isLowCardinality(distinctCount: Option[Int]): Boolean = {
+    // reasonable value which I thought of for now
+    val maxCount = 1000
+    distinctCount.getOrElse(maxCount) < maxCount
   }
 
 }

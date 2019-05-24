@@ -11,9 +11,11 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.In
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.tezos.MetadataCaching.NotStarted
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
+import scala.concurrent.Future
 import scala.concurrent.Future.successful
 
 class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTest with MockFactory {
@@ -212,5 +214,33 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         status shouldEqual StatusCodes.NotFound
       }
     }
+
+    "expose endpoint for cache initialization" in {
+      // given
+      (tezosPlatformDiscoveryOperations.initAttributesCount _).when().returns(())
+
+      // when
+      Post("/v2/metadata/cache") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+
+        // then
+        status shouldEqual StatusCodes.OK
+      }
+    }
+
+    "expose endpoint for cache initialization status" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getCacheStatus _).when().returns(Future.successful(NotStarted))
+
+      // when
+      Get("/v2/metadata/cache") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+
+        // then
+        status shouldEqual StatusCodes.OK
+        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        entityAs[String] shouldBe "NotStarted"
+      }
+    }
+
+
   }
 }

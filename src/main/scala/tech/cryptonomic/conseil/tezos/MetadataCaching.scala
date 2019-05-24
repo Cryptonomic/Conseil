@@ -6,7 +6,7 @@ import com.rklaehn.radixtree.RadixTree
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.tezos.MetadataCaching._
 
-
+/** Companion object providing useful types related with MetadataCaching */
 object MetadataCaching {
   type LastUpdated = Long
 
@@ -15,7 +15,7 @@ object MetadataCaching {
   type AttributeValuesCache = MetadataCache[RadixTree[String, String]]
   type EntitiesCache = MetadataCache[List[Entity]]
 
-
+  /** Cache initialization statuses */
   sealed trait CachingStatus
 
   case object NotStarted extends CachingStatus
@@ -26,6 +26,7 @@ object MetadataCaching {
 
 }
 
+/** Class providing caching for metadata */
 class MetadataCaching[F[_]](
   cachingStatus: MVar[F, CachingStatus],
   attributesCache: MVar[F, AttributesCache],
@@ -61,12 +62,16 @@ class MetadataCaching[F[_]](
   }
 
   /** Reads all attributes from cache */
-  def getAllAttributes: F[MetadataCache[List[Attribute]]] =
+  def getAllAttributes: F[AttributesCache] =
     getAllFromCache(attributesCache)
 
   /** Generic method which reads reads all values from cache */
   private def getAllFromCache[A](cache: MVar[F, MetadataCache[A]]): F[MetadataCache[A]] =
     cache.read
+
+  /** Reads all entities from cache */
+  def getAllEntities: F[EntitiesCache] =
+    getAllFromCache(entitiesCache)
 
   /** Reads attribute values from cache */
   def getAttributeValues(entity: String, attribute: String): F[Option[(LastUpdated, RadixTree[String, String])]] =
@@ -91,6 +96,10 @@ class MetadataCaching[F[_]](
   /** Inserts all entities into empty cache */
   def putAllEntitiesIntoEmptyCache(entities: EntitiesCache): F[Unit] =
     putAllIntoEmptyCache(entities)(entitiesCache)
+
+  /** Generic method inserting all values into cache */
+  private def putAllIntoEmptyCache[A](values: MetadataCache[A])(cache: MVar[F, MetadataCache[A]]): F[Unit] =
+    cache.put(values)
 
   /** Inserts attributes into cache */
   def putAttributes(entity: String, attributes: List[Attribute]): F[Unit] =
@@ -129,9 +138,5 @@ class MetadataCaching[F[_]](
   /** Inserts all attribute values into empty cache */
   def putAllAttributeValuesIntoEmptyCache(attributeValues: AttributeValuesCache): F[Unit] =
     putAllIntoEmptyCache(attributeValues)(attributeValuesCache)
-
-  /** Generic method inserting all values into cache */
-  private def putAllIntoEmptyCache[A](values: MetadataCache[A])(cache: MVar[F, MetadataCache[A]]): F[Unit] =
-    cache.put(values)
 }
 
