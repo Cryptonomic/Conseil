@@ -6,9 +6,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
-import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataOverridesConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
+import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.{Hash, Int}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
