@@ -424,18 +424,6 @@ object TezosDatabaseOperations extends LazyLogging {
     }
 
   /**
-    * Checks if a block for this hash and related operations are stored on db
-    * @param hash Identifies the block
-    * @param ec   Needed to compose the operations
-    * @return     true if block and operations exists
-    */
-  def blockAndOpsExists(hash: BlockHash)(implicit ec: ExecutionContext): DBIO[Boolean] =
-    for {
-      blockThere <- Tables.Blocks.findBy(_.hash).applied(hash.value).exists.result
-      opsThere <- Tables.OperationGroups.filter(_.blockId === hash.value).exists.result
-    } yield blockThere && opsThere
-
-  /**
     * Checks if a block for this hash is stored on db
     * @param hash Identifies the block
     * @return     true if block exists

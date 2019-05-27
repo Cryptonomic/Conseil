@@ -1137,7 +1137,7 @@ class TezosDatabaseOperationsTest
       maxLevel should equal(expected)
     }
 
-    "correctly verify when a block exists" in {
+    "correctly verify when a block exists, including those with no operations group" in {
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val blocks = generateBlockRows(1, testReferenceTimestamp)
@@ -1147,46 +1147,14 @@ class TezosDatabaseOperationsTest
       val populateAndTest = for {
         _ <- Tables.Blocks ++= blocks
         _ <- Tables.OperationGroups ++= opGroups
-        existing <- sut.blockAndOpsExists(testHash)
-        nonExisting <- sut.blockAndOpsExists(BlockHash("bogus-hash"))
+        existing <- sut.blockExists(testHash)
+        nonExisting <- sut.blockExists(BlockHash("bogus-hash"))
       } yield (existing, nonExisting)
 
       val (hit, miss) = dbHandler.run(populateAndTest.transactionally).futureValue
 
       hit shouldBe true
       miss shouldBe false
-
-    }
-
-    "say a block doesn't exist if it has no associated operation group" in {
-      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val blocks = generateBlockRows(1, testReferenceTimestamp)
-      val testHash = BlockHash(blocks.last.hash)
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
-        found <- sut.blockAndOpsExists(testHash)
-      } yield found
-
-      val exists = dbHandler.run(populateAndTest.transactionally).futureValue
-      exists shouldBe false
-
-    }
-
-    "correctly verify if a block exists even with no associated operation group" in {
-      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val blocks = generateBlockRows(1, testReferenceTimestamp)
-      val testHash = BlockHash(blocks.last.hash)
-
-      val populateAndTest = for {
-        _ <- Tables.Blocks ++= blocks
-        found <- sut.blockExists(testHash)
-      } yield found
-
-      val exists = dbHandler.run(populateAndTest.transactionally).futureValue
-      exists shouldBe true
 
     }
 
