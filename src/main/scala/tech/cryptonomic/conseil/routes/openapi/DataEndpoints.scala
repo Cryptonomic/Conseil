@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.routes.openapi
 import endpoints.algebra
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.ApiOperations.{Filter, BlockResult, OperationGroupResult, AccountResult}
-import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
@@ -102,12 +101,12 @@ trait DataEndpoints
     )
 
   /** V2 average fees endpoint definition */
-  def avgFeesEndpoint: Endpoint[((String, String, Filter), String), Option[AverageFees]] =
+  def avgFeesEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
     endpoint(
       request = get(
         url = commonPath / "operations" / "avgFees" /? qsFilter,
         headers = header("apiKey")),
-      response = compatibilityQuery[AverageFees]("average fees"),
+      response = compatibilityQuery[List[QueryResponse]]("average fees"),
       tags = List("Fees")
     )
 

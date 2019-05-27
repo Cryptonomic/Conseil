@@ -8,7 +8,6 @@ import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
 /** OpenAPI documentation object */
 object OpenApiDoc extends DataEndpoints
   with PlatformDiscoveryEndpoints
-  with TezosEndpoints
   with AppInfoEndpoint
   with openapi.model.OpenApiSchemas
   with openapi.JsonSchemaEntities
@@ -32,15 +31,6 @@ object OpenApiDoc extends DataEndpoints
     attributesEndpoint,
     attributesValuesEndpoint,
     attributesValuesWithFilterEndpoint,
-    blocksEndpointV1,
-    blocksHeadEndpointV1,
-    blockByHashEndpointV1,
-    accountsEndpointV1,
-    accountByIdEndpointV1,
-    operationGroupsEndpointV1,
-    operationGroupByIdEndpointV1,
-    avgFeesEndpointV1,
-    operationsEndpointV1,
     appInfoEndpoint
   )
 
