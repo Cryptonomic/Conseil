@@ -12,7 +12,6 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
 import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
@@ -50,9 +49,9 @@ class TezosPlatformDiscoveryOperationsTest
   val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
 
   val metadataCaching = new MetadataCaching[IO](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
-  val metadadataOverrides = new MetadataConfiguration(Map.empty)
-  val cacheOverrides = new AttributeValuesCacheConfiguration(metadadataOverrides)
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheOverrides, 10 seconds)
+  val metadadataConfiguration = new MetadataConfiguration(Map.empty)
+  val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
+  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
