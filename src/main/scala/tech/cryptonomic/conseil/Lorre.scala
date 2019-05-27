@@ -5,7 +5,7 @@ import akka.Done
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{TezosTypes, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockTagged, Account, AccountId}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BlockTagged, Account, AccountId, Delegate, PublicKeyHash}
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -24,6 +24,7 @@ import slick.jdbc.PostgresProfile.api._
 object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig with LorreOutput {
 
   //reads all configuration upstart, will only complete if all values are found
+
   val config = loadApplicationConfiguration(args)
 
   //stop if conf is not available
@@ -198,7 +199,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           (processed, nextPage) =>
             //wait for each page to load, before looking at the next, thus  starting the new computation
             val justDone = Await.result(
-              processBlocksPage(nextPage) <* processTezosAccounts(),
+              processBlocksPage(nextPage) <*
+                processTezosAccounts() <*
+                processTezosDelegates(),
               atMost = batchingConf.blockPageProcessingTimeout)
             processed + justDone <| logProgress
         }
@@ -233,7 +236,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         val writeProposal = TezosDb.writeVotingProposals(proposals)
         //this is a nested list, each block with many baker rolls
         val writeBakers = bakersBlocks.traverse {
-          case (block, bakers) => TezosDb.writeVotingBakers(bakers, block)
+          case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
         }
         //this is a nested list, each block with many ballot votes
         val writeBallots = ballotsBlocks.traverse {
@@ -252,12 +255,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
   }
 
-  /**
-    * Fetches and stores all accounts from the latest blocks stored in the database.
-    *
-    * NOTE: as the call is now async, it won't stop the application on error as before, so
-    * we should evaluate how to handle failed processing
-    */
+
+  /** Fetches and stores all accounts from the latest blocks stored in the database. */
   private[this] def processTezosAccounts(): Future[Done] = {
     import cats.instances.list._
     import cats.syntax.functorFilter._
@@ -295,16 +294,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         //custom progress tracking for accounts
         val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
 
-          /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
-          * The size and partition of results is driven by the NodeOperator itself, were each page contains a
-          * "thunked" future of the result.
-          * Such future will be actually started only as the page iterator is scanned, one element at the time
-          */
-          pages.foldLeft(0) {
-            (processed, nextPage) =>
-              //wait for each page to load, before looking at the next, thus  starting the new computation
-              val justDone = Await.result(processAccountsPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
-              processed + justDone <| logProgress
+        /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
+        * The size and partition of results is driven by the NodeOperator itself, were each page contains a
+        * "thunked" future of the result.
+        * Such future will be actually started only as the page iterator is scanned, one element at the time
+        */
+        pages.foldLeft(0) {
+          (processed, nextPage) =>
+            //wait for each page to load, before looking at the next, thus  starting the new computation
+            val justDone = Await.result(processAccountsPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
+            processed + justDone <| logProgress
         }
 
         checkpoints
@@ -327,6 +326,66 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         Failure(AccountsProcessingFailed(message = error, e))
       case success => Success(Done)
     }
+  }
+
+  /** Fetches and stores all delegates from the latest blocks stored in the database. */
+  private[this] def processTezosDelegates(): Future[Done] = {
+
+    logger.info("Processing latest Tezos data for account delegates...")
+
+    def logOutcome: PartialFunction[Try[Int], Unit] = {
+      case Success(delegateRows) =>
+        logger.info("{} delegates were touched on the database.", delegateRows)
+      case Failure(e) =>
+        logger.error("Could not write delegates to the database")
+    }
+
+    def processDelegatesPage(delegatesInfo: Future[List[BlockTagged[Map[PublicKeyHash, Delegate]]]]): Future[Int] =
+      delegatesInfo.flatMap{
+        taggedDelegates =>
+          db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates))
+            .andThen(logOutcome)
+      }
+
+    val saveDelegates = db.run(TezosDb.getLatestDelegatesFromCheckpoint) map {
+      checkpoints =>
+        logger.debug("I loaded all stored delegate references and will proceed to fetch updated information from the chain")
+        val (pages, total) = tezosNodeOperator.getDelegatesForBlocks(checkpoints)
+        //custom progress tracking for accounts
+        val logProgress = logProcessingProgress(entityName = "delegate", totalToProcess = total, processStartNanos = System.nanoTime()) _
+
+        /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
+        * The size and partition of results is driven by the NodeOperator itself, were each page contains a
+        * "thunked" future of the result.
+        * Such future will be actually started only as the page iterator is scanned, one element at the time
+        */
+        pages.foldLeft(0) {
+          (processed, nextPage) =>
+            //wait for each page to load, before looking at the next, thus  starting the new computation
+            val justDone = Await.result(processDelegatesPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
+            processed + justDone <| logProgress
+        }
+
+        checkpoints
+    }
+
+    saveDelegates.andThen {
+      //additional cleanup, that can fail with no downsides
+      case Success(checkpoints) =>
+        val processed = Some(checkpoints.keySet)
+        logger.debug("Cleaning checkpointed delegates..")
+        Await.result(db.run(TezosDb.cleanDelegatesCheckpoint(processed)), atMost = batchingConf.accountPageProcessingTimeout)
+        logger.debug("Done cleaning checkpointed delegates.")
+      case _ =>
+        ()
+    }.transform {
+      case Failure(e) =>
+        val error = "I failed to fetch delegates from client and update them"
+        logger.error(error, e)
+        Failure(DelegatesProcessingFailed(message = error, e))
+      case success => Success(Done)
+    }
+
   }
 
   /** Keeps track of time passed between different partial checkpoints of some entity processing
