@@ -31,6 +31,19 @@ object TezosPlatformDiscoveryOperations {
     cacheTTL: FiniteDuration)
     (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, cacheTTL)
+
+  /** Maps type from DB to type used in query */
+  def mapType(tpe: String): DataType = {
+    tpe match {
+      case "timestamp" => DataType.DateTime
+      case "varchar" => DataType.String
+      case "int4" | "serial" => DataType.Int
+      case "numeric" => DataType.Decimal
+      case "bool" => DataType.Boolean
+      case "hash" => DataType.Hash
+      case _ => DataType.String
+    }
+  }
 }
 
 /** Class providing the implementation of the metadata calls with caching */
@@ -121,23 +134,11 @@ class TezosPlatformDiscoveryOperations(
     Attribute(
       name = col.name,
       displayName = makeDisplayName(col.name),
-      dataType = mapType(col.typeName),
-      cardinality = if (canQueryType(mapType(col.typeName))) Some(count) else None,
+      dataType = TezosPlatformDiscoveryOperations.mapType(col.typeName),
+      cardinality = if (canQueryType(TezosPlatformDiscoveryOperations.mapType(col.typeName))) Some(count) else None,
       keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
       entity = col.table.name
     )
-
-  /** Maps type from DB to type used in query */
-  private def mapType(tpe: String): DataType = {
-    tpe match {
-      case "timestamp" => DataType.DateTime
-      case "varchar" => DataType.String
-      case "int4" | "serial" => DataType.Int
-      case "numeric" => DataType.Decimal
-      case "bool" => DataType.Boolean
-      case _ => DataType.String
-    }
-  }
 
   /** Checks if given MColumn has primary key */
   private def isKey(column: MColumn, keys: Vector[Vector[MPrimaryKey]]): Boolean = {
