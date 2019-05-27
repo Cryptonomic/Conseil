@@ -6,8 +6,8 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
+import tech.cryptonomic.conseil.config._
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.{Hash, Int}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
@@ -275,13 +275,34 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
             EntityConfiguration(None, Some(true), None, Map("attribute" ->
-              AttributeConfiguration(Some("overwritten-name"), Some(true), Some("description"), Some("placeholder"), Some("dataFormat")))))))))
+              AttributeConfiguration(
+                displayName = Some("overwritten-name"),
+                visible = Some(true),
+                description = Some("description"),
+                placeholder = Some("placeholder"),
+                scale = Some(6),
+                dataType = Some("hash"),
+                dataFormat = Some("dataFormat"),
+                valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
+                reference = Some(Map("0" -> "value1", "1" -> "other value"))))))))))
 
       // when
       val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
 
       // then
-      result shouldBe Some(List(Attribute("attribute", "overwritten-name", Int, None, NonKey, "entity", Some("description"), Some("placeholder"), Some("dataFormat"))))
+      result shouldBe Some(List(Attribute(
+        name = "attribute",
+        displayName = "overwritten-name",
+        dataType = Hash,
+        cardinality = None,
+        keyType = NonKey,
+        entity = "entity",
+        description = Some("description"),
+        placeholder = Some("placeholder"),
+        dataFormat = Some("dataFormat"),
+        valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
+        reference = Some(Map("0" -> "value1", "1" -> "other value")),
+        scale = Some(6))))
     }
 
     "filter out a hidden attribute" in {
