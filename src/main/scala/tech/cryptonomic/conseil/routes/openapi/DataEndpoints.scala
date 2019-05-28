@@ -101,12 +101,12 @@ trait DataEndpoints
     )
 
   /** V2 average fees endpoint definition */
-  def avgFeesEndpoint: Endpoint[((String, String, Filter), String), Option[List[QueryResponse]]] =
+  def avgFeesEndpoint: Endpoint[((String, String, Filter), String), Option[QueryResponse]] =
     endpoint(
       request = get(
         url = commonPath / "operations" / "avgFees" /? qsFilter,
         headers = header("apiKey")),
-      response = compatibilityQuery[List[QueryResponse]]("average fees"),
+      response = compatibilityQuery[QueryResponse]("average fees"),
       tags = List("Fees")
     )
 

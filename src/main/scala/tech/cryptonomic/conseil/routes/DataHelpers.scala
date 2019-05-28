@@ -48,10 +48,8 @@ trait DataHelpers
 
   override implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
     new JsonSchema[QueryResponseWithOutput] {
-      override def encoder: Encoder[QueryResponseWithOutput] = (a: QueryResponseWithOutput) => a match {
-        case queryResponse =>
-          queryResponse.queryResponse.asJson(queryResponseSchema.encoder)
-      }
+      override def encoder: Encoder[QueryResponseWithOutput] = (a: QueryResponseWithOutput) =>
+          a.queryResponse.asJson(Encoder.encodeList(queryResponseSchema.encoder))
 
       override def decoder: Decoder[QueryResponseWithOutput] = ???
     }
@@ -82,17 +80,21 @@ trait DataHelpers
   }
 
   /** Query response JSON schema implementation */
-  override implicit def queryResponseSchema: JsonSchema[List[QueryResponse]] =
-    new JsonSchema[List[QueryResponse]] {
-      override def encoder: Encoder[List[QueryResponse]] = (a: List[QueryResponse]) =>
-        a.map { myMap =>
-          Json.obj(myMap.map(field => (field._1, field._2 match {
+  override implicit def queryResponseSchema: JsonSchema[QueryResponse] =
+    new JsonSchema[QueryResponse] {
+      override def encoder: Encoder[QueryResponse] = (a: QueryResponse) =>
+          Json.obj(a.map(field => (field._1, field._2 match {
             case Some(y) => y.asJson(anyEncoder)
             case None => Json.Null
           })).toList: _*)
-        }.asJson
 
-      override def decoder: Decoder[List[QueryResponse]] = ???
+      //Thisshouldn't actually be used anywhere, in any case we can go as far as
+      //assume that anything in the value is coming from json, but nothing more
+      override def decoder: Decoder[QueryResponse] =
+        Decoder.decodeMap(
+          KeyDecoder.decodeKeyString,
+          Decoder.decodeOption(Decoder.decodeJson.map(_.asInstanceOf[Any]))
+        )
     }
 
 }

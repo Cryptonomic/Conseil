@@ -102,21 +102,26 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
       platformNetworkValidation(platform, network) {
         queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
       }
-    }
+  }
 
-    /** V2 Route implementation for operation group by ID endpoint */
-    val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
-      case ((platform, network, operationGroupId), _) =>
+  /** V2 Route implementation for operation group by ID endpoint */
+  val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
+    case ((platform, network, operationGroupId), _) =>
       platformNetworkValidation(platform, network) {
         ApiOperations.fetchOperationGroup(operationGroupId)
       }
-    }
+  }
 
-    /** V2 Route implementation for average fees endpoint */
-    val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
-      case ((platform, network, filter), _) =>
+  /** V2 Route implementation for average fees endpoint */
+  val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      //to simplify working on Future[Option[Somedata]]
+      import cats.data.OptionT
       platformNetworkValidation(platform, network) {
-        queryProtocolPlatform.queryWithPredicates(platform, "fees", filter.toQuery)
+        (for {
+          queryResponses <- OptionT(queryProtocolPlatform.queryWithPredicates(platform, "fees", filter.toQuery))
+          first <- OptionT.fromOption[Future](queryResponses.headOption)
+        } yield first).value
       }
   }
 
