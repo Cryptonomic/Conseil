@@ -3,18 +3,20 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import cats.effect.{ContextShift, IO}
 import cats.effect.concurrent.MVar
+import cats.effect.{ContextShift, IO}
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
+import tech.cryptonomic.conseil.config.MetadataConfiguration
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
@@ -42,7 +44,10 @@ class TezosPlatformDiscoveryOperationsTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
   val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
   val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, 10 seconds)
+  val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
+  val metadadataConfiguration = new MetadataConfiguration(Map.empty)
+  val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
+  val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheConfiguration, 10 seconds)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -123,7 +128,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("predecessor", "Predecessor", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-            Attribute("validation_pass", "Validation pass", DataType.Int,None, KeyType.NonKey, "blocks"),
+            Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("fitness", "Fitness", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("context", "Context", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("signature", "Signature", DataType.String, Some(0), KeyType.NonKey, "blocks"),
@@ -280,6 +285,13 @@ class TezosPlatformDiscoveryOperationsTest
 
       sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(InvalidAttributeDataType("medium"), HighCardinalityAttribute("medium"))
 
+    }
+
+    "return list with one error when the minimum matching length is greater than match length" in {
+      val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+
+      sut.listAttributeValues("fees", "kind", Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5))).futureValue.left.get shouldBe List(InvalidAttributeFilterLength("kind", 4))
     }
 
     "return empty list when trying to sql inject" in {
