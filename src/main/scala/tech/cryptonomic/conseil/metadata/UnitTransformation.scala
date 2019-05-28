@@ -40,6 +40,8 @@ class UnitTransformation(overrides: MetadataConfiguration) {
       displayName = overrideEntity
         .flatMap(_.displayName)
         .getOrElse(entity.displayName),
+      displayNamePlural = overrideEntity
+        .flatMap(_.displayNamePlural),
       description = overrideEntity
         .flatMap(_.description))
   }
