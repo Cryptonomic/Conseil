@@ -34,6 +34,7 @@ object TezosPlatformDiscoveryOperations {
       case "numeric" => DataType.Decimal
       case "bool" => DataType.Boolean
       case "hash" => DataType.Hash
+      case "accountAddress" => DataType.AccountAddress
       case _ => DataType.String
     }
   }

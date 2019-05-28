@@ -47,7 +47,6 @@ class TezosPlatformDiscoveryOperationsTest
   val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
   val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
   val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
-
   val metadataCaching = new MetadataCaching[IO](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
