@@ -14,9 +14,9 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -39,21 +39,23 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
-      lazy val tezos = Tezos(tezosDispatcher)
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
       implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
       val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
       val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
+      val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
+      lazy val transformation = new UnitTransformation(metadataOverrides)
+      lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
+
       lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, server.cacheTTL)(executionContext)
+        TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, server.cacheTTL)(executionContext)
 
       tezosPlatformDiscoveryOperations.init().onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
-      lazy val transformation = new UnitTransformation(metadataOverrides)
-      lazy val metadataService = new MetadataService(platforms, transformation, tezosPlatformDiscoveryOperations)
+      lazy val metadataService = new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, tezosPlatformDiscoveryOperations, server)(tezosDispatcher)
 
@@ -61,7 +63,6 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         enableCORS {
           validateApiKey { _ =>
             logRequest("Conseil", Logging.DebugLevel) {
-              tezos.route ~
               AppInfo.route
             } ~
             logRequest("Metadata Route", Logging.DebugLevel) {

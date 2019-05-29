@@ -99,6 +99,9 @@ object DataTypes {
   /** Attribute shouldn't be queried because it is of a type that we forbid to query */
   case class InvalidAttributeDataType(message: String) extends AttributesValidationError
 
+  /** Attribute values should not be listed because minimal length is greater than filter length for given column  */
+  case class InvalidAttributeFilterLength(message: String, minMatchLength: Int) extends AttributesValidationError
+
   /** Trait representing query validation errors */
   sealed trait QueryValidationError extends Product with Serializable {
     def message: String

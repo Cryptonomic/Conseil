@@ -6,11 +6,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataOverridesConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
+import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
@@ -21,12 +21,14 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
   "The platform discovery route" should {
 
     val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
+    val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
     val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) => PlatformDiscovery(new MetadataService(
       PlatformsConfiguration(Map(Platforms.Tezos -> List(
         TezosConfiguration("mainnet",
           TezosNodeConfiguration("tezos-host", 123, "https://"))))),
-      new UnitTransformation(MetadataOverridesConfiguration(metadataOverridesConfiguration)),
+      new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
+      cacheOverrides,
       tezosPlatformDiscoveryOperations)).route
 
     "expose an endpoint to get the list of supported platforms" in {

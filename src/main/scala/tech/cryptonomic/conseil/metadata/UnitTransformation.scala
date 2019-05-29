@@ -1,12 +1,12 @@
 package tech.cryptonomic.conseil.metadata
 
-import tech.cryptonomic.conseil.config.MetadataOverridesConfiguration
+import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.mapType
 import tech.cryptonomic.conseil.util.OptionUtil.when
 
 // class for applying overrides configurations
-class UnitTransformation(overrides: MetadataOverridesConfiguration) {
+class UnitTransformation(overrides: MetadataConfiguration) {
 
   // overrides platform
   def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
