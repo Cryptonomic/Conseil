@@ -243,7 +243,8 @@ trait ApiOperations extends DataOperations with MetadataOperations {
   def fetchBlock(hash: BlockHash)(implicit ec: ExecutionContext): Future[Option[BlockResult]] = {
     val joins = for {
       groups <- Tables.OperationGroups if groups.blockId === hash.value
-      block <- groups.blocksFk
+      (block, invalidEntry) <- groups.blocksFk joinLeft Tables.InvalidatedBlocks on (_.hash === _.hash)
+      if invalidEntry.fold(true.bind)(entry => !entry.isInvalidated)
     } yield (block, groups)
 
     dbHandle.run(joins.result).map { paired =>
