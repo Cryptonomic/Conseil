@@ -5,7 +5,6 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.config.ServerConfiguration
-import tech.cryptonomic.conseil.db.DatabaseApiFiltering
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
@@ -28,19 +27,15 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)
-  (implicit apiExecutionContext: ExecutionContext) extends LazyLogging with DatabaseApiFiltering with DataHelpers {
+  (implicit apiExecutionContext: ExecutionContext)
+  extends LazyLogging
+  with DataHelpers {
 
   import cats.instances.either._
   import cats.instances.future._
   import cats.instances.option._
   import cats.syntax.bitraverse._
   import cats.syntax.traverse._
-
-  /*
-   * reuse the same context as the one for ApiOperations calls
-   * as long as it doesn't create issues or performance degradation
-   */
-  override val asyncApiFiltersExecutionContext: ExecutionContext = apiExecutionContext
 
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
@@ -120,8 +115,13 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   /** V2 Route implementation for average fees endpoint */
   val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
+      //to simplify working on Future[Option[Somedata]]
+      import cats.data.OptionT
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchAverageFees(filter)
+        (for {
+          queryResponses <- OptionT(queryProtocolPlatform.queryWithPredicates(platform, "fees", filter.toQuery))
+          first <- OptionT.fromOption[Future](queryResponses.headOption)
+        } yield first).value
       }
   }
 

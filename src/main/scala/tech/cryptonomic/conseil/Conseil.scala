@@ -39,7 +39,6 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
-      lazy val tezos = Tezos(tezosDispatcher)
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
       implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
@@ -71,8 +70,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         enableCORS {
           validateApiKey { _ =>
             logRequest("Conseil", Logging.DebugLevel) {
-              tezos.route ~
-                AppInfo.route
+              AppInfo.route
             } ~
               logRequest("Metadata Route", Logging.DebugLevel) {
                 platformDiscovery.route

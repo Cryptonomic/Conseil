@@ -81,7 +81,7 @@ trait DataJsonSchemas extends generic.JsonSchemas {
   implicit def anySchema: JsonSchema[Any]
 
   /** Query response schema */
-  implicit def queryResponseSchema: JsonSchema[List[QueryResponse]]
+  implicit def queryResponseSchema: JsonSchema[QueryResponse]
 
   /** Query response schema with output type */
   implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput]
