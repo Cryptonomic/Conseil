@@ -9,18 +9,19 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, Michelson
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import com.typesafe.scalalogging.LazyLogging
-import cats.{ApplicativeError, FlatMap, Functor, MonadError, Monoid}
+import cats.{ApplicativeError, FlatMap, Functor, MonadError, Monoid, Show}
 import cats.data.Reader
 import cats.syntax.applicative._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import cats.instances.string._
+import cats.effect.Concurrent
 import scala.{Stream => _}
 import fs2.Stream
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Try
-import cats.effect.Concurrent
 
 /** Operations run against Tezos nodes, mainly used for collecting chain data for later entry into a database. */
 class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
@@ -88,11 +89,12 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
       implicit val accountFetcher: DataFetcher.Aux[F, Throwable, AccountId, Option[Account], String] = fetchProvider(blockHash)
 
-      val parseMichelsonScripts: Account => Account = {
-        val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      def parseMichelsonScripts(id: AccountId): Account => Account = withLoggingContext[Account, String](makeContext = _ => s"account with keyhash ${id.id}") {
+        implicit ctx =>
+          val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema, String])
+          val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction, String])
 
-        scriptAlter compose storageAlter
+          scriptAlter compose storageAlter
       }
 
       val fetchedAccounts: F[List[(AccountId, Option[Account])]] =
@@ -102,7 +104,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
       fetchedAccounts.map{
         indexedAccounts =>
           indexedAccounts.collect {
-            case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
+            case (accountId, Some(account)) => accountId -> parseMichelsonScripts(accountId)(account)
           }.toMap
       }
 
@@ -121,18 +123,19 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
       implicit val accountFetcher: DataFetcher.Aux[F, Throwable, AccountId, Option[Account], String] = fetchProvider(blockHash)
 
-      val parseMichelsonScripts: Account => Account = {
-        val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      def parseMichelsonScripts(id: AccountId): Account => Account = withLoggingContext[Account, String](makeContext = _ => s"account with key hash ${id.id}") {
+        implicit ctx =>
+          val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema, String])
+          val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction, String])
 
-        scriptAlter compose storageAlter
+          scriptAlter compose storageAlter
       }
 
       accountIds.parEvalMap(batchConf.accountFetchConcurrencyLevel)(
         fetcher[F, AccountId, Option[Account], Throwable].tapWith((_, _)).run
       )
       .collect {
-        case (accountId, Some(account)) => accountId -> parseMichelsonScripts(account)
+        case (accountId, Some(account)) => accountId -> parseMichelsonScripts(accountId)(account)
       }
 
   }
@@ -331,13 +334,14 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
     val fetchBlockData = fetcher[F, Offset, BlockData, Throwable].run(offset.getOrElse(0))
 
-    val parseMichelsonScripts: Block => Block = {
-      val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
-      val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
+    val parseMichelsonScripts: Block => Block = withLoggingContext[Block, String](makeContext = block => s"block with hash ${block.data.hash.value}") {
+      implicit ctx =>
+        val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema, String])
+        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction, String])
+        val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction, String])
 
-      codeAlter compose storageAlter compose parametersAlter
-    }
+        codeAlter compose storageAlter compose parametersAlter
+      }
 
     fetchBlockData.flatMap( data =>
       (getAllOperationsAndAccountsForBlock(data), getCurrentVotesForBlock(data)).mapN {
@@ -468,12 +472,32 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
   }
 
-  private[this] def toMichelsonScript[T <: MichelsonElement : Parser](json: String)(implicit tag: ClassTag[T]): String = {
+  /* Used to provide an implicit logging context (of type CTX) to the michelson script conversion method
+   * It essentially defines an extraction mechanism to define a generic logging context from the conversion input (i.e. `makeContext`)
+   * and then provides both the context and the original input to another function that will use both.
+   *
+   * We require that the `CTX` type can be printed to be logged, so a Show instance must be available to convert it to a String.
+   */
+  private[this] def withLoggingContext[T, CTX: Show](makeContext: T => CTX)(function: CTX => T => T): T => T = (t: T) => {
+    function(makeContext(t))(t)
+  }
+
+  /* Takes a json string and tries parsing it as a Micheline data structure.
+   * If the parsing succeeds, the returned value is the Michelson equivalent of the original json,
+   * otherwise an error is logged explaining what failed and an error string referring the input script is returned.
+   *
+   * The method requires an implicit "logging context" to be provided, as additional information over what kind of operation
+   * was occurring when the parsing failed.
+   * Example: we use the context when converting inner script fields of blocks or accounts. The context is a string identifying the
+   *   specific block or account.
+   */
+  private[this] def toMichelsonScript[T <: MichelsonElement : Parser, CTX : Show](json: String)(implicit tag: ClassTag[T], ctx: CTX): String = {
+    import cats.syntax.show._
 
     def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
       exception match {
-        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
-        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
+        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json in ${ctx.show}", t)
+        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json in ${ctx.show}")
       }
 
       s"Unparsable code: $json"
