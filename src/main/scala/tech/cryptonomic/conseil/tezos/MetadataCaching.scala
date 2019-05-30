@@ -11,7 +11,10 @@ import tech.cryptonomic.conseil.tezos.MetadataCaching._
 object MetadataCaching {
   type LastUpdated = Long
 
+  /** Class representing entry in cache */
   final case class CacheEntry[A](lastUpdated: LastUpdated, value: A)
+
+  /** Class representing key in cache */
   final case class CacheKey(key: String)
 
   type Cache[A] = Map[CacheKey, CacheEntry[A]]
