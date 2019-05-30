@@ -46,7 +46,7 @@ object MichelsonRenderer {
     def render(indent: String): String = self
       .map(_.render())
       .mkString(" ;\n")
-      .lines
+      .linesIterator
       .mkString("\n" + indent)
   }
 }
