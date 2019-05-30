@@ -359,7 +359,7 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Helper method for updating */
-  private def getAllUpdatedAttributes(entities: List[Entity], attributes: MetadataCache[List[Attribute]]): IO[Map[String, List[Attribute]]] = {
+  private def getAllUpdatedAttributes(entities: List[Entity], attributes: Cache[List[Attribute]]): IO[Map[String, List[Attribute]]] = {
     val queries = attributes
       .filterKeys(entities.map(_.name).toSet)
       .mapValues {

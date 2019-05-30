@@ -14,10 +14,10 @@ object MetadataCaching {
   final case class CacheEntry[A](lastUpdated: LastUpdated, value: A)
   final case class CacheKey(key: String)
 
-  type MetadataCache[A] = Map[CacheKey, CacheEntry[A]]
-  type AttributesCache = MetadataCache[List[Attribute]]
-  type AttributeValuesCache = MetadataCache[RadixTree[String, String]]
-  type EntitiesCache = MetadataCache[List[Entity]]
+  type Cache[A] = Map[CacheKey, CacheEntry[A]]
+  type AttributesCache = Cache[List[Attribute]]
+  type AttributeValuesCache = Cache[RadixTree[String, String]]
+  type EntitiesCache = Cache[List[Entity]]
 
   /** Cache initialization statuses */
   sealed trait CachingStatus extends Product with Serializable
@@ -74,7 +74,7 @@ class MetadataCaching[F[_]](
     getFromCache(attributesCache)
 
   /** Generic method for getting value from cache */
-  private def getFromCache[A](cache: MVar[F, MetadataCache[A]])(key: String): F[Option[CacheEntry[A]]] = {
+  private def getFromCache[A](cache: MVar[F, Cache[A]])(key: String): F[Option[CacheEntry[A]]] = {
     cache.read.map(_.get(CacheKey(key)))
   }
 
@@ -102,7 +102,7 @@ class MetadataCaching[F[_]](
     fillCache(entities)(entitiesCache)
 
   /** Generic method inserting all values into cache */
-  private def fillCache[A](values: MetadataCache[A])(cache: MVar[F, MetadataCache[A]]): F[Boolean] =
+  private def fillCache[A](values: Cache[A])(cache: MVar[F, Cache[A]]): F[Boolean] =
     cache.tryPut(values)
 
   /** Inserts attributes into cache */
@@ -121,7 +121,7 @@ class MetadataCaching[F[_]](
     putIntoCache(makeKey(entity, attribute), radixTree)(attributeValuesCache)
 
   /** Generic method for putting value into cache */
-  private def putIntoCache[A](key: String, value: A)(cache: MVar[F, MetadataCache[A]]): F[Unit] = {
+  private def putIntoCache[A](key: String, value: A)(cache: MVar[F, Cache[A]]): F[Unit] = {
     for {
       ca <- cache.take
       _ <- cache.put(ca.updated(CacheKey(key), CacheEntry(now, value)))
