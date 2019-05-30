@@ -205,7 +205,7 @@ object DataTypes {
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
     output: Option[OutputType],
-    aggregation: List[ApiAggregation] = List.empty
+    aggregation: Option[List[ApiAggregation]]
   ) {
     /** Method which validates query fields */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
@@ -218,7 +218,7 @@ object DataTypes {
         .withFieldConst(_.orderBy, orderBy.getOrElse(List.empty))
         .withFieldConst(_.limit, limit.getOrElse(defaultLimitValue))
         .withFieldConst(_.output, output.getOrElse(OutputType.json))
-        .withFieldConst(_.aggregation, aggregation.map(_.toAggregation))
+        .withFieldConst(_.aggregation, aggregation.toList.flatten.map(_.toAggregation))
         .transform
 
       val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
