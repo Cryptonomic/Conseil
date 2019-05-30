@@ -20,7 +20,8 @@ final case class BatchFetchConfiguration(
   blockFetchConcurrencyLevel: Int,
   accountFetchConcurrencyLevel: Int,
   delegateFetchConcurrencyLevel: Int,
-  blockPageSize: Int
+  blockPageSize: Int,
+  accountPageSize: Int
 )
 
 /** configurations related to a chain-node network calls */

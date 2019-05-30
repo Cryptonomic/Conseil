@@ -204,7 +204,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             val idsBeingProcessed = checkpoints.keySet
             //we process a stream of accounts as they're fetched from the node
             val accountsProcessing = node.getAccounts[IO](checkpoints)
-              .chunkN(batchingConf.blockPageSize)
+              .chunkN(batchingConf.accountPageSize)
               .evalMap {chunkedAccounts =>
                 val accountData = chunkedAccounts.toList
                 runOnDb(TezosDb.writeAccountsAndCheckpointDelegates(accountData, extractDelegates(accountData)))
