@@ -86,13 +86,34 @@ object JsonDecoders {
     implicit val scriptIdDecoder: Decoder[ScriptId] = base58CheckDecoder.map(b58 => ScriptId(b58.content))
     implicit val nonceHashDecoder: Decoder[NonceHash] = base58CheckDecoder.map(b58 => NonceHash(b58.content))
 
-    val tezosDerivationConfig: Configuration =
-    Configuration.default.withSnakeCaseConstructorNames
+    // holds a template for customization of derivation rules, or to use as-is, by importing it in scope as an implicit
+    object Derivation {
+      val tezosDerivationConfig: Configuration = Configuration.default.withSnakeCaseConstructorNames
+    }
+
+    object Scripts {
+      private implicit val conf = Derivation.tezosDerivationConfig
+
+      implicit val scriptedContractsDecoder: Decoder[Scripted.Contracts] = deriveDecoder
+    }
+
+    /* Collects definitions to decode delegates and their contracts */
+    object Delegates {
+      //reusing much of the values used in operations
+      import Numbers._
+      import Scripts._
+      private implicit val conf = Derivation.tezosDerivationConfig
+
+      implicit val contractDelegateDecoder: Decoder[ContractDelegate] = deriveDecoder
+      implicit val delegateDecoder: Decoder[Delegate] = deriveDecoder
+      implicit val cycleBalanceDecoder: Decoder[CycleBalance] = deriveDecoder
+      implicit val contractDecoder: Decoder[Contract] = deriveDecoder
+    }
 
     /* Collects definitions to decode voting data and their components */
     object Votes {
       import Voting._
-      private implicit val conf = tezosDerivationConfig
+      private implicit val conf = Derivation.tezosDerivationConfig
 
       private val admittedVotes = Set("yay", "nay", "pass")
 
@@ -116,8 +137,9 @@ object JsonDecoders {
     /* Collects definitions to decode blocks and their components */
     object Blocks {
       // we need to decode BalanceUpdates
+      import Numbers._
       import Operations._
-      private implicit val conf = tezosDerivationConfig
+      private implicit val conf = Derivation.tezosDerivationConfig
 
       val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
       implicit val metadataLevelDecoder: Decoder[BlockHeaderMetadataLevel] = deriveDecoder
@@ -127,15 +149,8 @@ object JsonDecoders {
       implicit val mainDecoder: Decoder[BlockData] = deriveDecoder //remember to add ISO-control filtering
     }
 
-    /*
-     * Collects definitions of decoders for the Operations hierarchy.
-     * Import this in scope to be able to call `io.circe.parser.decode[T](json)` for a valid type of operation
-     */
-    object Operations {
-
-      /* decode any json value to its string representation wrapped in a Error*/
-      implicit val errorDecoder: Decoder[OperationResult.Error] =
-        Decoder.decodeJson.map(json => OperationResult.Error(json.noSpaces))
+    /* Collects alternatives for numbers with different constraints */
+    object Numbers {
 
       /* try decoding a number */
       private implicit val bignumDecoder: Decoder[Decimal] =
@@ -173,13 +188,25 @@ object JsonDecoders {
           Decoder[Decimal].widen,
           Decoder[InvalidDecimal].widen
         ).reduceLeft(_ or _)
+    }
+
+    /*
+     * Collects definitions of decoders for the Operations hierarchy.
+     * Import this in scope to be able to call `io.circe.parser.decode[T](json)` for a valid type of operation
+     */
+    object Operations {
+      import Scripts._
+      import Numbers._
+
+      /* decode any json value to its string representation wrapped in a Error*/
+      implicit val errorDecoder: Decoder[OperationResult.Error] =
+        Decoder.decodeJson.map(json => OperationResult.Error(json.noSpaces))
 
       //use the kind field to distinguish subtypes of the Operation ADT
-      private implicit val conf = tezosDerivationConfig.withDiscriminator("kind")
+      private implicit val conf = Derivation.tezosDerivationConfig.withDiscriminator("kind")
 
       //derive all the remaining decoders, sorted to preserve dependencies
       implicit val bigmapdiffDecoder: Decoder[Contract.BigMapDiff] = deriveDecoder
-      implicit val scriptedContractsDecoder: Decoder[Scripted.Contracts] = deriveDecoder
       implicit val balanceUpdateDecoder: Decoder[OperationMetadata.BalanceUpdate] = deriveDecoder
       implicit val endorsementMetadataDecoder: Decoder[EndorsementMetadata] = deriveDecoder
       implicit val balanceUpdatesMetadataDecoder: Decoder[BalanceUpdatesMetadata] = deriveDecoder
@@ -198,9 +225,8 @@ object JsonDecoders {
 
     /* Collects definitions to decode accounts and their components */
     object Accounts {
-      private implicit val conf = tezosDerivationConfig
-
-      import JsonDecoders.Circe.Operations.scriptedContractsDecoder
+      import Scripts._
+      private implicit val conf = Derivation.tezosDerivationConfig
 
       implicit val delegateDecoder: Decoder[AccountDelegate] = deriveDecoder
       implicit val accountDecoder: Decoder[Account] = deriveDecoder

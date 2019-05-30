@@ -4,7 +4,6 @@ import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
-import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -22,12 +21,12 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    private val storage = GenLens[Contracts](_.storage)
-    private val code = GenLens[Contracts](_.code)
+    private val storage = GenLens[Scripted.Contracts](_.storage)
+    private val code = GenLens[Scripted.Contracts](_.code)
 
     private val expression = GenLens[Micheline](_.expression)
 
-    private val scriptLens: Traversal[Block, Contracts] =
+    private val scriptLens: Traversal[Block, Scripted.Contracts] =
       operationGroups composeTraversal each composeLens
         operations composeTraversal each composePrism
         origination composeLens
@@ -325,13 +324,13 @@ object TezosTypes {
   )
 
   final case class AppliedOperationBalanceUpdates(
-                                             kind: String,
-                                             contract: Option[String],
-                                             change: Int,
-                                             category: Option[String],
-                                             delegate: Option[String],
-                                             level: Option[Int]
-                                           )
+    kind: String,
+    contract: Option[String],
+    change: Int,
+    category: Option[String],
+    delegate: Option[String],
+    level: Option[Int]
+  )
 
   final case class AppliedOperationResultStatus(
     status: String,
@@ -353,14 +352,51 @@ object TezosTypes {
     balance: scala.math.BigDecimal,
     spendable: Boolean,
     delegate: AccountDelegate,
-    script: Option[Contracts],
+    script: Option[Scripted.Contracts],
     counter: Int
   )
 
-  final case class BlockAccounts(
-      blockHash: BlockHash,
-      blockLevel: Int,
-      accounts: Map[AccountId, Account] = Map.empty
+  /** Keeps track of association between some domain type and a block reference
+    * Synthetic class, no domain correspondence, it's used to simplify signatures
+    */
+  final case class BlockTagged[T](
+    blockHash: BlockHash,
+    blockLevel: Int,
+    content: T
+  ) {
+    val asTuple = (blockHash, blockLevel, content)
+  }
+
+  final case class Delegate(
+    balance: PositiveBigNumber,
+    frozen_balance: PositiveBigNumber,
+    frozen_balance_by_cycle: List[CycleBalance],
+    staking_balance: PositiveBigNumber,
+    delegated_contracts: List[ContractId],
+    delegated_balance: PositiveBigNumber,
+    deactivated: Boolean,
+    grace_period: Int
+  )
+
+  final case class CycleBalance(
+    cycle: Int,
+    deposit: PositiveBigNumber,
+    fees: PositiveBigNumber,
+    rewards: PositiveBigNumber
+  )
+
+  final case class Contract(
+    manager: PublicKeyHash,
+    balance: PositiveBigNumber,
+    spendable: Boolean,
+    delegate: ContractDelegate,
+    script: Option[Scripted.Contracts],
+    counter: PositiveBigNumber
+  )
+
+  final case class ContractDelegate(
+    setable: Boolean,
+    value: Option[PublicKeyHash]
   )
 
   object VotingPeriod extends Enumeration {
@@ -380,40 +416,40 @@ object TezosTypes {
   }
 
   final case class Block(
-                    data: BlockData,
-                    operationGroups: List[OperationsGroup],
-                    votes: CurrentVotes
-                  )
+    data: BlockData,
+    operationGroups: List[OperationsGroup],
+    votes: CurrentVotes
+  )
 
   final case class ManagerKey(
-                       manager: String,
-                       key: Option[String]
-                       )
+    manager: String,
+    key: Option[String]
+  )
 
   final case class ForgedOperation(operation: String)
 
   final case class AppliedOperationError(
-                                  kind: String,
-                                  id: String,
-                                  hash: String
-                                  )
+    kind: String,
+    id: String,
+    hash: String
+  )
 
   final case class AppliedOperationResult(
-                                   operation: String,
-                                   status: String,
-                                   operationKind: Option[String],
-                                   balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
-                                   originatedContracts: Option[List[String]],
-                                   errors: Option[List[AppliedOperationError]]
-                                   )
+    operation: String,
+    status: String,
+    operationKind: Option[String],
+    balanceUpdates: Option[List[AppliedOperationBalanceUpdates]],
+    originatedContracts: Option[List[String]],
+    errors: Option[List[AppliedOperationError]]
+  )
 
   final case class AppliedOperation(
-                             kind: String,
-                             balance_updates: Option[List[AppliedOperationBalanceUpdates]],
-                             operation_results: Option[List[AppliedOperationResult]],
-                             id: Option[String],
-                             contract: Option[String]
-                             )
+    kind: String,
+    balance_updates: Option[List[AppliedOperationBalanceUpdates]],
+    operation_results: Option[List[AppliedOperationResult]],
+    id: Option[String],
+    contract: Option[String]
+  )
 
   final case class InjectedOperation(injectedOperation: String)
 
@@ -427,5 +463,15 @@ object TezosTypes {
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
   }
 
+  object Syntax {
+
+    /** provides a factory to tag any content with a reference block */
+    implicit class BlockTagger[T](val content: T) extends AnyVal {
+
+      /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
+      def taggedWithBlock(hash: BlockHash, level: Int): BlockTagged[T] = BlockTagged(hash, level, content)
+    }
+
+  }
 
 }

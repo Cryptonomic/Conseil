@@ -256,43 +256,62 @@ trait AccountsDataFetchers {
   //common type for the fetchers
   type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]
 
+  def makeIOFetcherFromRpc[In, Decoded : Decoder](
+    makeCommand: In => String,
+    decodeJson: String => IO[Decoded]
+  ): IOFetcher[In, Decoded] = {
+    val genericCommandFetcher = new DataFetcher[IO, Throwable] {
+
+      type Encoded = String
+      type In = String
+      type Out = Decoded
+
+      //fetch json from the passed-in URL fragment command
+      override val fetchData = Kleisli {
+        command =>
+          RpcHandler.runGet[IO, In, Encoded](command)
+            .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+      }
+
+      // decode with `JsonDecoders`
+      override val decodeData = Kleisli(decodeJson)
+
+    }
+
+    //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
+    Profunctor[IOFetcher].lmap(genericCommandFetcher)(makeCommand)
+  }
+
   /** a fetcher for accounts, dependent on a specific block hash reference */
   implicit val accountsFetcherProvider: Reader[BlockHash, IOFetcher[AccountId, Option[Account]]] = Reader {
     referenceBlock =>
       import JsonDecoders.Circe.Accounts._
       import cats.syntax.option._
 
-      val makeCommand = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
+      makeIOFetcherFromRpc[AccountId, Option[Account]](
+        makeCommand = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}",
+        decodeJson = json =>
+          decodeLiftingTo[IO, Account](json)
+            .onError(logWarnOnJsonDecoding[IO](s"I fetched an account json from tezos node that I'm unable to decode: $json"))
+            .map(_.some)
+            .recover {
+              //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+              case NonFatal(_) => Option.empty
+            }
+      )
+  }
 
-      val fetcher = new DataFetcher[IO, Throwable] {
+  /** a fetcher for delegates, dependent on a specific block hash reference */
+  implicit val delegateFetcherProvider: Reader[BlockHash, IOFetcher[PublicKeyHash, Delegate]] = Reader {
+    referenceBlock =>
+      import JsonDecoders.Circe.Delegates._
 
-        type Encoded = String
-        type In = String
-        type Out = Option[Account]
-
-        //fetch json from the passed-in URL fragment command
-        override val fetchData = Kleisli {
-          command =>
-            RpcHandler.runGet[IO, In, Encoded](command)
-              .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
-        }
-
-        // decode with `JsonDecoders`
-        override val decodeData = Kleisli {
-          json =>
-            decodeLiftingTo[IO, Account](json)
-              .onError(logWarnOnJsonDecoding[IO](s"I fetched an account json from tezos node that I'm unable to decode: $json"))
-              .map(_.some)
-              .recover {
-                //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
-                case NonFatal(_) => Option.empty
-              }
-        }
-
-      }
-
-      //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
-      Profunctor[IOFetcher].lmap(fetcher)(makeCommand)
+      makeIOFetcherFromRpc[PublicKeyHash, Delegate](
+        makeCommand = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}",
+        decodeJson = json =>
+          decodeLiftingTo[IO, Delegate](json)
+            .onError(logErrorOnJsonDecoding[IO](s"I fetched an account delegate json from tezos node that I'm unable to decode: $json"))
+      )
   }
 
 }

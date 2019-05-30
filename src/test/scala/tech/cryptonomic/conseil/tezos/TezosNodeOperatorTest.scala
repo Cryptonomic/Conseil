@@ -23,6 +23,7 @@ class TezosNodeOperatorTest
     batchConf = BatchFetchConfiguration(
       blockFetchConcurrencyLevel = 100,
       accountFetchConcurrencyLevel = 100,
+      delegateFetchConcurrencyLevel = 100,
       blockPageSize = 100
     )
   )

@@ -5,12 +5,13 @@ import java.time.ZonedDateTime
 
 import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, DelegatesRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 trait TezosDataGeneration extends RandomGenerationKit {
+  import TezosTypes.Syntax._
 
   /* randomly populate a number of fees */
   def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
@@ -34,14 +35,14 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockAccounts = {
+  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
 
     val accounts = (1 to howMany).map {
       currentId =>
-        (AccountId(String valueOf currentId),
+        AccountId(String valueOf currentId) ->
           Account(
             manager = PublicKeyHash("manager"),
             balance = rnd.nextInt,
@@ -50,10 +51,36 @@ trait TezosDataGeneration extends RandomGenerationKit {
             script = Some(Contracts(Micheline("storage"), Micheline("script"))),
             counter = currentId
           )
-        )
     }.toMap
 
-    BlockAccounts(blockHash, blockLevel, accounts)
+    accounts.taggedWithBlock(blockHash, blockLevel)
+  }
+
+  /* randomly generates a number of delegates with associated block data */
+  def generateDelegates(delegatedHashes: List[String], blockHash: BlockHash, blockLevel: Int)(implicit randomSeed: RandomSeed): BlockTagged[Map[PublicKeyHash, Delegate]] = {
+    require(delegatedHashes.nonEmpty, "the test can generates a positive number of delegates, you can't pass an empty list of account key hashes")
+
+    val rnd = new Random(randomSeed.seed)
+
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(rnd)
+
+    val delegates = delegatedHashes.zipWithIndex.map {
+      case (accountPkh, counter) =>
+        PublicKeyHash(generateHash(10)) ->
+          Delegate(
+            balance = PositiveDecimal(rnd.nextInt()),
+            frozen_balance = PositiveDecimal(rnd.nextInt()),
+            frozen_balance_by_cycle = List.empty,
+            staking_balance = PositiveDecimal(rnd.nextInt()),
+            delegated_contracts = List(ContractId(accountPkh)),
+            delegated_balance = PositiveDecimal(rnd.nextInt()),
+            deactivated = false,
+            grace_period = rnd.nextInt()
+          )
+    }.toMap
+
+    delegates.taggedWithBlock(blockHash, blockLevel)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -296,6 +323,28 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   }
 
+  /* randomly generates a number of delegate rows for some block */
+  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[DelegatesRow] = {
+    require(howMany > 0, "the test can only generate a positive number of delegates, you asked for a non positive value")
+
+    //custom hash generator with predictable seed
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+    List.fill(howMany) {
+      DelegatesRow(
+        blockId = block.hash,
+        pkh = generateHash(10),
+        balance = Some(0),
+        frozenBalance = Some(0),
+        stakingBalance = Some(0),
+        delegatedBalance = Some(0),
+        deactivated = true,
+        gracePeriod = 0
+      )
+    }
+
+  }
+
   object Voting {
 
     import tech.cryptonomic.conseil.tezos.TezosTypes.Voting._
@@ -321,7 +370,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     }
 
-    def generateBakers(howMany: Int)(implicit randomSeed: RandomSeed) = {
+    def generateBakersRolls(howMany: Int)(implicit randomSeed: RandomSeed) = {
       require(howMany > 0, "the test can only generate a positive number of bakers, you asked for a non positive value")
 
       //custom hash generator with predictable seed

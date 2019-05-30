@@ -27,13 +27,16 @@ object PlatformDiscoveryTypes {
     entity: String,
     description: Option[String] = None,
     placeholder: Option[String] = None,
-    dataFormat: Option[String] = None
+    dataFormat: Option[String] = None,
+    valueMap: Option[Map[String, String]] = None,
+    scale: Option[Int] = None,
+    reference: Option[Map[String, String]] = None
   )
 
   /** Enumeration of data types */
   object DataType extends Enumeration {
     type DataType = Value
-    val Enum, Hex, Binary, Date, DateTime, String, Int, LargeInt, Decimal, Boolean = Value
+    val Enum, Hex, Binary, Date, DateTime, String, Hash, AccountAddress, Int, LargeInt, Decimal, Boolean = Value
   }
 
   /** Enumeration of key types */
@@ -41,4 +44,7 @@ object PlatformDiscoveryTypes {
     type KeyType = Value
     val NonKey, UniqueKey = Value
   }
+
+  /** Attribute cache configuration */
+  final case class AttributeCacheConfiguration(cached: Boolean = false, minMatchLength: Int = 0, maxResultSize: Int = Int.MaxValue)
 }

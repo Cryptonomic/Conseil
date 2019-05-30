@@ -2,7 +2,6 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
-import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, Query, QueryOrdering, QueryResponse}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -246,16 +245,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
   }
 
   /**
-    * Fetches all blocks from the db.
-    *
-    * @param filter Filters to apply
-    * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @return List of blocks
-    */
-  def fetchBlocks(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.BlocksRow]): Future[Seq[Tables.BlocksRow]] =
-    apiFilters(filter)
-
-  /**
     * Fetch a given operation group
     *
     * Running the returned operation will fail with `NoSuchElementException` if no block is found on the db
@@ -280,47 +269,10 @@ object ApiOperations extends DataOperations with MetadataOperations {
   }
 
   /**
-    * Fetches all operation groups.
-    * @param filter Filters to apply
-    * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @return List of operation groups
-    */
-  def fetchOperationGroups(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationGroupsRow]): Future[Seq[Tables.OperationGroupsRow]] =
-    apiFilters(filter)
-
-  /**
-    * Fetches all operations.
-    * @param filter Filters to apply
-    * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @return List of operations
-    */
-  def fetchOperations(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.OperationsRow]): Future[Seq[Tables.OperationsRow]] =
-    apiFilters(filter)
-
-  /**
-    * Given the operation kind return the mean (along with +/- one standard deviation)
-    * of fees incurred in those operations.
-    * @param filter Filters to apply, specifically operation kinds
-    * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
-    * @return AverageFee class, getting low, medium, and high
-    *           estimates for average fees, timestamp the calculation
-    *           was performed at, and the kind of operation being
-    *           averaged over.
-    */
-  def fetchAverageFees(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.FeesRow], ec: ExecutionContext): Future[Option[AverageFees]] =
-    apiFilters(filter)
-      .map( rows =>
-        rows.headOption map {
-          case Tables.FeesRow(low, medium, high, timestamp, kind) => AverageFees(low, medium, high, timestamp, kind)
-        }
-      )
-
-  /**
     * Fetches an account by account id from the db.
     * @param account_id The account's id number
     * @param ec ExecutionContext needed to invoke the data fetching using async results
-    * @return The account with its associated operation groups
+    * @return The account
     */
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
@@ -334,15 +286,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
         accounts.headOption.map(AccountResult)
     }
   }
-
-  /**
-    * Fetches a list of accounts from the db.
-    * @param filter Filters to apply
-    * @param apiFilters an instance in scope that actually executes filtered data-fetching
-    * @return List of accounts
-    */
-  def fetchAccounts(filter: Filter)(implicit apiFilters: ApiFiltering[Future, Tables.AccountsRow]): Future[Seq[Tables.AccountsRow]] =
-    apiFilters(filter)
 
   /**
     * @param ec ExecutionContext needed to invoke the data fetching using async results

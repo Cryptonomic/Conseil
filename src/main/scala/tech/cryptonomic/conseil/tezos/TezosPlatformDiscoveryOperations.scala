@@ -2,13 +2,15 @@ package tech.cryptonomic.conseil.tezos
 
 import cats.effect.IO
 import cats.effect.concurrent.MVar
+import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,15 +18,33 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Companion object providing apply method implementation */
 object TezosPlatformDiscoveryOperations {
 
-  type AttributesCache = Map[String, (Long, List[Attribute])]
-  type EntitiesCache = (Long, List[Entity])
+  type LastUpdated = Long
+  type AttributesCache = Map[String, (LastUpdated, List[Attribute])]
+  type AttributeValuesCache = Map[String, (LastUpdated, RadixTree[String, String])]
+  type EntitiesCache = (LastUpdated, List[Entity])
 
   def apply(metadataOperations: MetadataOperations,
     attributesCache: MVar[IO, AttributesCache],
     entitiesCache: MVar[IO, EntitiesCache],
+    attributeValuesCache: MVar[IO, AttributeValuesCache],
+    cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration)
     (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
-    new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, cacheTTL)
+    new TezosPlatformDiscoveryOperations(metadataOperations: MetadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, cacheTTL)
+
+  /** Maps type from DB to type used in query */
+  def mapType(tpe: String): DataType = {
+    tpe match {
+      case "timestamp" => DataType.DateTime
+      case "varchar" => DataType.String
+      case "int4" | "serial" => DataType.Int
+      case "numeric" => DataType.Decimal
+      case "bool" => DataType.Boolean
+      case "hash" => DataType.Hash
+      case "accountAddress" => DataType.AccountAddress
+      case _ => DataType.String
+    }
+  }
 }
 
 /** Class providing the implementation of the metadata calls with caching */
@@ -32,6 +52,8 @@ class TezosPlatformDiscoveryOperations(
   metadataOperations: MetadataOperations,
   attributesCache: MVar[IO, AttributesCache],
   entitiesCache: MVar[IO, EntitiesCache],
+  attributeValuesCache: MVar[IO, AttributeValuesCache],
+  cacheOverrides: AttributeValuesCacheConfiguration,
   cacheTTL: FiniteDuration)
   (implicit executionContext: ExecutionContext) {
 
@@ -45,6 +67,8 @@ class TezosPlatformDiscoveryOperations(
       _ <- entitiesCache.put(ent)
       attr <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes)))
       _ <- attributesCache.put(attr)
+      attrValues <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributeValues)))
+      _ <- attributeValuesCache.put(attrValues)
     } yield ()
 
     result.unsafeToFuture()
@@ -65,6 +89,18 @@ class TezosPlatformDiscoveryOperations(
       }
     }
     result.map(_.toMap)
+  }
+
+  private def preCacheAttributeValues: DBIO[AttributeValuesCache] = {
+    DBIO.sequence {
+      cacheOverrides.getAttributesToCache.map {
+        case (table, column) =>
+          TezosDatabaseOperations.selectDistinct(table, column).map { values =>
+            val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
+            makeKey(table, column) -> (now -> radixTree)
+          }
+      }
+    }.map(_.toMap)
   }
 
   /** MTable query for getting columns from the DB */
@@ -99,23 +135,11 @@ class TezosPlatformDiscoveryOperations(
     Attribute(
       name = col.name,
       displayName = makeDisplayName(col.name),
-      dataType = mapType(col.typeName),
-      cardinality = if (canQueryType(mapType(col.typeName))) Some(count) else None,
+      dataType = TezosPlatformDiscoveryOperations.mapType(col.typeName),
+      cardinality = if (canQueryType(TezosPlatformDiscoveryOperations.mapType(col.typeName))) Some(count) else None,
       keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
       entity = col.table.name
     )
-
-  /** Maps type from DB to type used in query */
-  private def mapType(tpe: String): DataType = {
-    tpe match {
-      case "timestamp" => DataType.DateTime
-      case "varchar" => DataType.String
-      case "int4" | "serial" => DataType.Int
-      case "numeric" => DataType.Decimal
-      case "bool" => DataType.Boolean
-      case _ => DataType.String
-    }
-  }
 
   /** Checks if given MColumn has primary key */
   private def isKey(column: MColumn, keys: Vector[Vector[MPrimaryKey]]): Boolean = {
@@ -209,25 +233,56 @@ class TezosPlatformDiscoveryOperations(
     * @param  tableName  name of the table from which we extract attributes
     * @param  column  name of the attribute
     * @param  withFilter optional parameter which can filter attributes
+    * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
     **/
-  def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
-    val result = for {
-      attrOpt <- getTableAttributes(tableName).map(_.flatMap(_.find(_.name == column)))
-    } yield {
-      val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
-      val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(column)) else None
-      val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
+  def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None, attributesCacheConfig: Option[AttributeCacheConfiguration] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
+    getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap  { attrOpt  =>
+      val res = (attributesCacheConfig, withFilter) match {
+        case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter)) if cached  =>
+          Either.cond(
+            test = attributeFilter.length >= minMatchLength,
+            right = getAttributeValuesFromCache(tableName, column, attributeFilter, maxResultLength),
+            left = Future.successful(List(InvalidAttributeFilterLength(column, minMatchLength)))
+          )
 
-      val res = Either.cond(
-        test = validationErrors.isEmpty,
-        right = attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence.map(_.flatten),
-        left = Future.successful(validationErrors)
-      )
+        case _ =>
+          val invalidDataTypeValidationResult = if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
+          val highCardinalityValidationResult = if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(column)) else None
+          val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
+          Either.cond(
+            test = validationErrors.isEmpty,
+            right = attrOpt.map(attr => makeAttributesQuery(tableName, attr.name, withFilter)).toList.sequence.map(_.flatten),
+            left = Future.successful(validationErrors)
+          )
+      }
       res.bisequence
     }
-    result.flatten
   }
+
+  /** Gets attribute values from cache and updates them if necessary */
+  private def getAttributeValuesFromCache(tableName: String, columnName: String, attributeFilter: String, maxResultLength: Int): Future[List[String]] = {
+    attributeValuesCache.read.flatMap { cache =>
+      cache(makeKey(tableName, columnName)) match {
+        case (last, radixTree) if last + cacheTTL.toMillis > now =>
+          IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
+        case (_, oldRadixTree) =>
+          for {
+            cache <- attributeValuesCache.take
+            _ <- attributeValuesCache.put(cache.updated(makeKey(tableName, columnName), (now, oldRadixTree)))
+            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
+            radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
+            cacheTmp = cache.updated(makeKey(tableName, columnName), (now, radixTree))
+            _ <- attributeValuesCache.take
+            _ <- attributeValuesCache.put(cacheTmp)
+          } yield radixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList
+
+      }
+    }.unsafeToFuture()
+  }
+
+  /** Makes key out of table and column names */
+  private def makeKey(table: String, column: String): String = s"$table.$column"
 
   /** Makes list of possible string values of the attributes
     *

@@ -8,7 +8,6 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
@@ -16,6 +15,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.util.Random
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class TezosDatabaseOperationsTest
   extends WordSpec
@@ -62,6 +63,23 @@ class TezosDatabaseOperationsTest
         row.timestamp shouldEqual fee.timestamp
         row.kind shouldEqual fee.kind
       }
+    }
+
+    "tell if there are any stored blocks" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //check initial condition
+      dbHandler.run(sut.doBlocksExist()).futureValue shouldBe false
+
+      //store some blocks
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      //check final condition
+      dbHandler.run(sut.doBlocksExist()).futureValue shouldBe true
+
     }
 
     "write blocks" in {
@@ -282,7 +300,7 @@ class TezosDatabaseOperationsTest
 
       import org.scalatest.Inspectors._
 
-      forAll(dbAccounts zip accountsInfo.accounts) {
+      forAll(dbAccounts zip accountsInfo.content) {
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual block.hash
@@ -324,7 +342,7 @@ class TezosDatabaseOperationsTest
           Tables.Accounts += account
         )
 
-      dbHandler.run(populate)
+      dbHandler.run(populate).isReadyWithin(5 seconds) shouldBe true
 
       //prepare new accounts
       val accountChanges = 2
@@ -332,7 +350,7 @@ class TezosDatabaseOperationsTest
       val accountsInfo = generateAccounts(accountChanges, BlockHash(hashUpdate), levelUpdate)
 
       //double-check for the identifier existence
-      accountsInfo.accounts.keySet.map(_.id) should contain (account.accountId)
+      accountsInfo.content.keySet.map(_.id) should contain (account.accountId)
 
       //do the updates
       val writeUpdatedAndGetRows = for {
@@ -351,7 +369,7 @@ class TezosDatabaseOperationsTest
       import org.scalatest.Inspectors._
 
       //both rows on db should refer to updated data
-      forAll(dbAccounts zip accountsInfo.accounts) {
+      forAll(dbAccounts zip accountsInfo.content) {
         case (row, (id, account)) =>
           row.accountId shouldEqual id.id
           row.blockId shouldEqual hashUpdate
@@ -407,7 +425,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "clean the checkpoints with no selection" in {
+    "clean the accounts checkpoints with no selection" in {
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       //generate data
@@ -444,7 +462,7 @@ class TezosDatabaseOperationsTest
         survivors shouldBe empty
       }
 
-      "clean the checkpoints with a partial id selection" in {
+      "clean the accounts checkpoints with a partial id selection" in {
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       //generate data
@@ -484,6 +502,272 @@ class TezosDatabaseOperationsTest
       val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
       initialCount.value shouldBe checkpointRows.size
       deletes shouldEqual checkpointRows.filter(row => inSelection(row.accountId)).size
+      survivors should contain theSameElementsAs expected
+
+    }
+
+    "write delegates for a single block" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val expectedCount = 3
+
+      val block = generateBlockRows(1, testReferenceTimestamp).head
+      val delegatedAccounts = generateAccountRows(howMany = expectedCount, block)
+      val delegatesInfo = generateDelegates(delegatedHashes = delegatedAccounts.map(_.accountId), BlockHash(block.hash), block.level)
+
+      val writeAndGetRows = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.Accounts ++= delegatedAccounts
+        written <- sut.writeDelegatesAndCopyContracts(List(delegatesInfo))
+        delegatesRows <- Tables.Delegates.result
+        contractsRows <- Tables.DelegatedContracts.result
+      } yield (written, delegatesRows, contractsRows)
+
+      val (stored, dbDelegates, dbContracts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+      stored shouldBe expectedCount
+
+      dbDelegates should have size expectedCount
+      dbContracts should have size expectedCount
+
+      import org.scalatest.Inspectors._
+
+      forAll(dbDelegates zip delegatesInfo.content) {
+        case (row, (pkh, delegate)) =>
+          row.pkh shouldEqual pkh.value
+          row.balance shouldEqual (delegate.balance match {
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.delegatedBalance shouldEqual (delegate.delegated_balance match{
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.frozenBalance shouldEqual (delegate.frozen_balance match{
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.stakingBalance shouldEqual (delegate.staking_balance match{
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.gracePeriod shouldEqual delegate.grace_period
+          row.deactivated shouldBe delegate.deactivated
+          row.blockId shouldEqual block.hash
+          row.blockLevel shouldEqual block.level
+      }
+
+      forAll(dbContracts zip delegatedAccounts) {
+        case (contract, account) =>
+          contract.accountId shouldEqual account.accountId
+          contract.delegateValue shouldEqual account.delegateValue
+      }
+
+    }
+
+    "fail to write delegates if the reference block is not stored" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateBlockRows(1, testReferenceTimestamp).head
+      val delegatedAccounts = generateAccountRows(howMany = 1, block)
+      val delegatesInfo = generateDelegates(delegatedHashes = delegatedAccounts.map(_.accountId), blockHash = BlockHash("no-block-hash"), blockLevel = 1)
+
+      val resultFuture = dbHandler.run(sut.writeDelegatesAndCopyContracts(List(delegatesInfo)))
+
+      whenReady(resultFuture.failed) {
+          _ shouldBe a [java.sql.SQLException]
+      }
+    }
+
+    "update delegates if they exists already" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks @ (second :: first :: genesis :: Nil) = generateBlockRows(toLevel = 2, startAt = testReferenceTimestamp)
+      val account = generateAccountRows(1, first).head
+      val delegate = generateDelegateRows(1, first).head
+
+      val populate =
+        DBIO.seq(
+          Tables.Blocks ++= blocks,
+          Tables.Accounts += account,
+          Tables.Delegates += delegate
+        )
+
+      dbHandler.run(populate).isReadyWithin(5 seconds) shouldBe true
+
+      //prepare new delegates
+      val changes = 2
+      val (hashUpdate, levelUpdate) = (second.hash, second.level)
+      val delegatedKeys = generateAccounts(howMany = changes, BlockHash(hashUpdate), levelUpdate).content.keySet.map(_.id)
+      val delegatesInfo = generateDelegates(delegatedHashes = delegatedKeys.toList, blockHash = BlockHash(hashUpdate), blockLevel = levelUpdate)
+
+      //rewrite one of the keys to make it update the previously stored delegate row
+      val delegateMap = delegatesInfo.content
+      val pkh = delegateMap.keySet.head
+      val updatedMap = (delegateMap - pkh) + (PublicKeyHash(delegate.pkh) -> delegateMap(pkh))
+      val updatedDelegates = delegatesInfo.copy(content = updatedMap)
+
+      //do the updates
+      val writeUpdatedAndGetRows = for {
+        written <- sut.writeDelegatesAndCopyContracts(List(updatedDelegates))
+        rows <- Tables.Delegates.result
+      } yield (written, rows)
+
+      val (updates, dbDelegates) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
+
+      //number of db changes
+      updates shouldBe changes
+
+      //total number of rows on db (1 update and 1 insert expected)
+      dbDelegates should have size changes
+
+      import org.scalatest.Inspectors._
+
+      //both rows on db should refer to updated data
+      forAll(dbDelegates zip updatedDelegates.content) {
+        case (row, (pkh, delegate)) =>
+          row.pkh shouldEqual pkh.value
+          row.balance shouldEqual (delegate.balance match {
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.delegatedBalance shouldEqual (delegate.delegated_balance match{
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.frozenBalance shouldEqual (delegate.frozen_balance match{
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.stakingBalance shouldEqual (delegate.staking_balance match{
+            case PositiveDecimal(value) => Some(value)
+            case _ => None
+          })
+          row.gracePeriod shouldEqual delegate.grace_period
+          row.deactivated shouldBe delegate.deactivated
+          row.blockId should (equal(first.hash) or equal(second.hash))
+          row.blockLevel should (equal(first.level) or equal(second.level))
+      }
+
+    }
+
+    "store checkpoint delegate key hashes with block reference" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+      //custom hash generator with predictable seed
+      val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+      val maxLevel = 1
+      val pkPerBlock = 3
+      val expectedCount = (maxLevel + 1) * pkPerBlock
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
+      val keys = blocks.map(block => (BlockHash(block.hash), block.level, List.fill(pkPerBlock)(PublicKeyHash(generateHash(5)))))
+
+      //store and write
+      val populateAndFetch = for {
+        _ <- Tables.Blocks ++= blocks
+        written <- sut.writeDelegatesCheckpoint(keys)
+        rows <- Tables.DelegatesCheckpoint.result
+      } yield (written, rows)
+
+      val (stored, checkpointRows) = dbHandler.run(populateAndFetch).futureValue
+
+      //number of changes
+      stored.value shouldBe expectedCount
+      checkpointRows should have size expectedCount
+
+      import org.scalatest.Inspectors._
+
+      val flattenedKeysData = keys.flatMap{ case (hash, level, keys) => keys.map((hash, level, _))}
+
+      forAll(checkpointRows.zip(flattenedKeysData)) {
+        case (row, (hash, level, keyHash)) =>
+          row.blockId shouldEqual hash.value
+          row.blockLevel shouldBe level
+          row.delegatePkh shouldEqual keyHash.value
+      }
+
+    }
+
+    "clean the delegates checkpoints with no selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val delegateKeyHashes = Array("pkh0", "pkh1", "pkh2", "pkh3", "pkh4", "pkh5", "pkh6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
+        )
+
+        val populateAndTest = for {
+          stored <- Tables.DelegatesCheckpoint ++= checkpointRows
+          cleaned <- sut.cleanDelegatesCheckpoint()
+          rows <- Tables.DelegatesCheckpoint.result
+        } yield (stored, cleaned, rows)
+
+        val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
+        initialCount.value shouldBe checkpointRows.size
+        deletes shouldBe checkpointRows.size
+        survivors shouldBe empty
+      }
+
+      "clean the delegates checkpoints with a partial key hash selection" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+
+      val delegateKeyHashes = Array("pkh0", "pkh1", "pkh2", "pkh3", "pkh4", "pkh5", "pkh6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
+      )
+
+      val inSelection = Set(delegateKeyHashes(1), delegateKeyHashes(2), delegateKeyHashes(3), delegateKeyHashes(4))
+
+      val selection = inSelection.map(PublicKeyHash)
+
+      val expected = checkpointRows.filterNot(row => inSelection(row.delegatePkh))
+
+      val populateAndTest = for {
+        stored <- Tables.DelegatesCheckpoint ++= checkpointRows
+        cleaned <- sut.cleanDelegatesCheckpoint(Some(selection))
+        rows <- Tables.DelegatesCheckpoint.result
+      } yield (stored, cleaned, rows)
+
+      val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+      deletes shouldEqual checkpointRows.filter(row => inSelection(row.delegatePkh)).size
       survivors should contain theSameElementsAs expected
 
     }
@@ -529,6 +813,56 @@ class TezosDatabaseOperationsTest
       val populateAndFetch = for {
         stored <- Tables.AccountsCheckpoint ++= checkpointRows
         rows <- sut.getLatestAccountsFromCheckpoint
+      } yield (stored, rows)
+
+      val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
+      initialCount.value shouldBe checkpointRows.size
+
+      latest.toSeq should contain theSameElementsAs expected.toSeq
+
+    }
+
+    "read latest delegate key hashes from checkpoint" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      //generate data
+      val blocks = generateBlockRows(toLevel = 5, testReferenceTimestamp)
+
+      //store required blocks for FK
+      dbHandler.run(Tables.Blocks ++= blocks).futureValue shouldBe Some(blocks.size)
+      val delegateKeyHashes = Array("pkh0", "pkh1", "pkh2", "pkh3", "pkh4", "pkh5", "pkh6")
+      val blockIds = blocks.map(_.hash)
+
+      //create test data:
+      val checkpointRows = Array(
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
+        Tables.DelegatesCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
+      )
+
+      def entry(delegateAtIndex: Int, atLevel: Int) =
+        PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+
+        //expecting only the following to remain
+      val expected =
+        Map(
+          entry(delegateAtIndex = 1, atLevel = 1),
+          entry(delegateAtIndex = 2, atLevel = 3),
+          entry(delegateAtIndex = 3, atLevel = 4),
+          entry(delegateAtIndex = 4, atLevel = 2),
+          entry(delegateAtIndex = 5, atLevel = 4),
+          entry(delegateAtIndex = 6, atLevel = 5)
+      )
+
+      val populateAndFetch = for {
+        stored <- Tables.DelegatesCheckpoint ++= checkpointRows
+        rows <- sut.getLatestDelegatesFromCheckpoint
       } yield (stored, rows)
 
       val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
@@ -710,7 +1044,7 @@ class TezosDatabaseOperationsTest
 
     }
 
-    "write voting bakers" in {
+    "write voting bakers rolls" in {
       import DatabaseConversions._
       import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
@@ -718,29 +1052,29 @@ class TezosDatabaseOperationsTest
       implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
       val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-      val bakers = Voting.generateBakers(howMany = 3)
+      val rolls = Voting.generateBakersRolls(howMany = 3)
 
       //write
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-        written <- sut.writeVotingBakers(block, bakers)
-        rows <- Tables.Bakers.result
+        written <- sut.writeVotingRolls(rolls, block)
+        rows <- Tables.Rolls.result
       } yield (written, rows)
 
-      val (stored, dbBakers) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+      val (stored, dbRolls) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
       //expectations
-      stored.value shouldEqual bakers.size
-      dbBakers should have size bakers.size
+      stored.value shouldEqual rolls.size
+      dbRolls should have size rolls.size
 
       import org.scalatest.Inspectors._
 
-      forAll(dbBakers) {
-        bakerRow =>
-          val generated = bakers.find(_.pkh.value == bakerRow.pkh).value
-          bakerRow.rolls shouldEqual generated.rolls
-          bakerRow.blockId shouldBe block.data.hash.value
-          bakerRow.blockLevel shouldBe block.data.header.level
+      forAll(dbRolls) {
+        rollsRow =>
+          val generated = rolls.find(_.pkh.value == rollsRow.pkh).value
+          rollsRow.rolls shouldEqual generated.rolls
+          rollsRow.blockId shouldBe block.data.hash.value
+          rollsRow.blockLevel shouldBe block.data.header.level
       }
 
     }
@@ -758,7 +1092,7 @@ class TezosDatabaseOperationsTest
       //write
       val writeAndGetRows = for {
         _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-        written <- sut.writeVotingBallots(block, ballots)
+        written <- sut.writeVotingBallots(ballots, block)
         rows <- Tables.Ballots.result
       } yield (written, rows)
 

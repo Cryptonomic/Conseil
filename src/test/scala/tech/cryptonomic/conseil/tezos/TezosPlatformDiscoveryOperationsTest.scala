@@ -3,24 +3,25 @@ package tech.cryptonomic.conseil.tezos
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import cats.effect.{ContextShift, IO}
 import cats.effect.concurrent.MVar
+import cats.effect.{ContextShift, IO}
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.config.Newest
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType}
+import tech.cryptonomic.conseil.config.MetadataConfiguration
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributesCache, EntitiesCache}
+import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-
+import scala.language.postfixOps
 
 class TezosPlatformDiscoveryOperationsTest
   extends WordSpec
@@ -43,11 +44,15 @@ class TezosPlatformDiscoveryOperationsTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
   val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
   val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, 10 seconds)
+  val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
+  val metadadataConfiguration = new MetadataConfiguration(Map.empty)
+  val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
+  val sut = TezosPlatformDiscoveryOperations(metadataOperations, attributesCache, entitiesCache, attributeValuesCache, cacheConfiguration, 10 seconds)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
     sut.init()
+    ()
   }
 
   "getNetworks" should {
@@ -123,7 +128,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("predecessor", "Predecessor", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-            Attribute("validation_pass", "Validation pass", DataType.Int,None, KeyType.NonKey, "blocks"),
+            Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("fitness", "Fitness", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("context", "Context", DataType.String, Some(0), KeyType.NonKey, "blocks"),
             Attribute("signature", "Signature", DataType.String, Some(0), KeyType.NonKey, "blocks"),
@@ -202,6 +207,62 @@ class TezosPlatformDiscoveryOperationsTest
         )
     }
 
+    "return list of attributes of delegates" in {
+
+      sut.getTableAttributes("delegates").futureValue shouldBe
+        Some(
+          List(
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.UniqueKey, "delegates"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "delegates"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("deactivated", "Deactivated", DataType.Boolean, Some(0), KeyType.NonKey, "delegates"),
+            Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
+          )
+        )
+    }
+
+    "return list of attributes of proposals" in {
+
+      sut.getTableAttributes("proposals").futureValue shouldBe
+        Some(
+          List(
+            Attribute("protocol_hash", "Protocol hash", DataType.String, Some(0), KeyType.UniqueKey, "proposals"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "proposals"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals")
+          )
+        )
+    }
+
+    "return list of attributes of rolls" in {
+
+      sut.getTableAttributes("rolls").futureValue shouldBe
+        Some(
+          List(
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.NonKey, "rolls"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "rolls"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "rolls")
+          )
+        )
+    }
+
+    "return list of attributes of ballots" in {
+
+      sut.getTableAttributes("ballots").futureValue shouldBe
+        Some(
+          List(
+            Attribute("pkh", "Pkh", DataType.String, Some(0), KeyType.NonKey, "ballots"),
+            Attribute("ballot", "Ballot", DataType.String, Some(0), KeyType.NonKey, "ballots"),
+            Attribute("block_id", "Block id", DataType.String, Some(0), KeyType.NonKey, "ballots"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
+          )
+        )
+    }
+
     "return empty list for non existing table" in {
       sut.getTableAttributes("nonExisting").futureValue shouldBe None
     }
@@ -211,7 +272,7 @@ class TezosPlatformDiscoveryOperationsTest
 
     "return list of values of kind attribute of Fees without filter" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
-      metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+      metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
       sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
     }
@@ -219,17 +280,24 @@ class TezosPlatformDiscoveryOperationsTest
     "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
 
       sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(InvalidAttributeDataType("medium"), HighCardinalityAttribute("medium"))
 
     }
 
+    "return list with one error when the minimum matching length is greater than match length" in {
+      val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+
+      sut.listAttributeValues("fees", "kind", Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5))).futureValue.left.get shouldBe List(InvalidAttributeFilterLength("kind", 4))
+    }
+
     "return empty list when trying to sql inject" in {
       val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
       // That's how the SLQ-injected string will look like:
       // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
       val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
@@ -247,7 +315,7 @@ class TezosPlatformDiscoveryOperationsTest
       )
 
       sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
-      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
 
       sut.listAttributeValues("fees", "kind", None).futureValue.right.get should contain theSameElementsAs List("example1", "example2")
       sut.listAttributeValues("fees", "kind", Some("ex")).futureValue.right.get should contain theSameElementsAs List("example1", "example2")

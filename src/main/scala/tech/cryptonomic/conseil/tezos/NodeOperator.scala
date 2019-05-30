@@ -113,7 +113,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     *
     * @param accountIds the ids
     * @param blockHash  the block storing the accounts, the head block if not specified
-    * @return           the list of accounts, indexed by AccountId
+    * @return           the stream of accounts, indexed by AccountId
     */
   def getAccountsForBlock[F[_] : MonadThrow : Concurrent](accountIds: Stream[F, AccountId], blockHash: BlockHash)
     (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]): Stream[F, (AccountId, Account)] = {
@@ -146,7 +146,8 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     accountsBlocksIndex: Map[AccountId, BlockReference]
   )(
     implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
-  ): Stream[F, BlockAccounts] = {
+  ): Stream[F, BlockTagged[Map[AccountId, Account]]] = {
+    import TezosTypes.Syntax._
     import cats.syntax.applicativeError._
 
     def notifyAnyLostIds(missing: Set[AccountId]) =
@@ -158,12 +159,12 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
         )
       }
 
-    //uses the index to collect together BlockAccounts matching the same block
-    def groupByLatestBlock(data: Map[AccountId, Account]): Iterable[BlockAccounts] =
+    //uses the index to collect together Accounts matching the same block reference
+    def groupByLatestBlock(data: Map[AccountId, Account]): Iterable[BlockTagged[Map[AccountId, Account]]] =
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level), accounts) => BlockAccounts(hash, level, accounts)
+        case ((hash, level), accounts) => accounts.taggedWithBlock(hash, level)
       }
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -178,6 +179,71 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
         accountsMap =>
           notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
           Stream.fromIterator(groupByLatestBlock(accountsMap).iterator) //gets back elements in a stream
+      }
+
+  }
+
+  /**
+    * Fetches the delegates identified by public key hash
+    *
+    * @param delegateKeys the pkhs
+    * @param blockHash    the block storing the delegates, the head block if not specified
+    * @return             the stream of delegates, indexed by PublicKeyHash
+    */
+  def getDelegatesForBlock[F[_] : MonadThrow : Concurrent](delegateKeys: Stream[F, PublicKeyHash], blockHash: BlockHash)
+    (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Delegate]]): Stream[F, (PublicKeyHash, Delegate)] = {
+
+      implicit val delegateFetcher: DataFetcher.Aux[F, Throwable, PublicKeyHash, Delegate, String] = fetchProvider(blockHash)
+
+      delegateKeys.parEvalMap(batchConf.delegateFetchConcurrencyLevel)(
+        fetcher[F, PublicKeyHash, Delegate, Throwable].tapWith((_, _)).run
+      )
+
+  }
+
+  //NOTE FACTOR THE DELEGATES AND ACCOUNTS FETCHING TO A COMMON CODE
+  /**
+    * Get delegates for all the identifiers passed-in with the corresponding block
+    * @param keysBlocksIndex a map from unique id to the [latest] block reference
+    * @return Delegates with their corresponding block data
+    */
+  def getDelegates[F[_] : MonadThrow : Concurrent](
+    keysBlocksIndex: Map[PublicKeyHash, BlockReference]
+  )(
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Delegate]]
+  ): Stream[F, BlockTagged[Map[PublicKeyHash, Delegate]]] = {
+    import TezosTypes.Syntax._
+    import cats.syntax.applicativeError._
+
+    def notifyAnyLostIds(missing: Set[PublicKeyHash]) =
+      if (missing.nonEmpty) {
+        logger.warn(
+          "The following delegate keys were not found querying the {} node: {}",
+          network,
+          missing.map(_.value).mkString("\n", ",", "\n")
+        )
+      }
+
+    //uses the index to collect together Delegates matching the same block reference
+    def groupByLatestBlock(data: Map[PublicKeyHash, Delegate]): Iterable[BlockTagged[Map[PublicKeyHash, Delegate]]] =
+      data.groupBy {
+        case (pkh, _) => keysBlocksIndex(pkh)
+      }.map {
+        case ((hash, level), delegates) => delegates.taggedWithBlock(hash, level)
+      }
+
+    //fetch delegates by requested pkh and group them together with corresponding blocks
+    getDelegatesForBlock(Stream.fromIterator(keysBlocksIndex.keys.iterator), blockHeadHash)
+      .onError {
+        case err =>
+          val showSomeIds = keysBlocksIndex.keys.take(30).map(_.value).mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
+          Stream.eval_(logger.error(s"Could not get delegates' data for ids ${showSomeIds}", err).pure)
+      }
+      .fold(Map.empty[PublicKeyHash, Delegate]){_ + _} //this is collecting to a map the whole stream
+      .flatMap {
+        delegatesMap =>
+          notifyAnyLostIds(keysBlocksIndex.keySet -- delegatesMap.keySet)
+          Stream.fromIterator(groupByLatestBlock(delegatesMap).iterator) //gets back elements in a stream
       }
 
   }

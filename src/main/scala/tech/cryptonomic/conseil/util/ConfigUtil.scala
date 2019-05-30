@@ -51,7 +51,7 @@ object ConfigUtil {
     /** converts multiple read failures to a single, generic, FailureReason */
     val reasonFromReadFailures = (failures: ConfigReaderFailures) =>
       new FailureReason {
-        override val description = failures.toList.map(_.description).mkString(" and ")
+        override val description = failures.toList.map(_.description).mkString(" ")
       }
 
     /** extract a custom class type from the generic lightbend-config value failing with a `FailureReason` */
@@ -69,7 +69,7 @@ object ConfigUtil {
       */
     def foldReadResults[T, R](readResults: Traversable[Either[FailureReason, T]])(reduce: Traversable[T] => R) = {
       //elements might have failed, collect all failures
-      val failureDescription = readResults.collect { case Left(f) => f.description }.mkString(" and ")
+      val failureDescription = readResults.collect { case Left(f) => f.description }.mkString(" ")
       if (failureDescription.nonEmpty) logger.warn("Can't correctly read platform configuration, reasons are: {}", failureDescription)
       //test for failures, and if there's none, we can safely read the Right values
       Either.cond(

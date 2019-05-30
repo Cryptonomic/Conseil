@@ -6,11 +6,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataOverridesConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
+import tech.cryptonomic.conseil.config.{AttributeConfiguration, EntityConfiguration, MetadataConfiguration, NetworkConfiguration, PlatformConfiguration, Platforms}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
@@ -21,12 +21,14 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
   "The platform discovery route" should {
 
     val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
+    val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
     val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) => PlatformDiscovery(new MetadataService(
       PlatformsConfiguration(Map(Platforms.Tezos -> List(
         TezosConfiguration("mainnet",
           TezosNodeConfiguration("tezos-host", 123, "https://"))))),
-      new UnitTransformation(MetadataOverridesConfiguration(metadataOverridesConfiguration)),
+      new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
+      cacheOverrides,
       tezosPlatformDiscoveryOperations)).route
 
     "expose an endpoint to get the list of supported platforms" in {
@@ -148,7 +150,16 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
             EntityConfiguration(None, Some(true), None, Map("attribute" ->
-              AttributeConfiguration(None, Some(true), Some("description"), Some("placeholder"), Some("dataFormat")))))))))
+              AttributeConfiguration(
+                displayName = None,
+                visible = Some(true),
+                description = Some("description"),
+                placeholder = Some("placeholder"),
+                scale = Some(6),
+                dataType = Some("hash"),
+                dataFormat = Some("dataFormat"),
+                valueMap = Some(Map("0" -> "value")),
+                reference = Some(Map("0" -> "value"))))))))))
 
       // when
       Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
@@ -156,12 +167,18 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         // then
         status shouldEqual StatusCodes.OK
         contentType shouldBe ContentTypes.`application/json`
-        val result: List[Map[String, String]] = toListOfMaps[String](responseAs[String])
-        result.head("name") shouldBe "attribute"
-        result.head("displayName") shouldBe "attribute-name"
-        result.head("description") shouldBe "description"
-        result.head("placeholder") shouldBe "placeholder"
-        result.head("dataFormat") shouldBe "dataFormat"
+        val result: List[Map[String, Any]] = toListOfMaps[Any](responseAs[String])
+
+        val headResult = toListOfMaps[Any](responseAs[String]).head
+        headResult("name") shouldBe "attribute"
+        headResult("displayName") shouldBe "attribute-name"
+        headResult("description") shouldBe "description"
+        headResult("placeholder") shouldBe "placeholder"
+        headResult("dataFormat") shouldBe "dataFormat"
+        headResult("scale") shouldBe 6
+        headResult("valueMap") shouldBe Map("0" -> "value")
+        headResult("dataType") shouldBe "Hash"
+        headResult("reference") shouldBe Map("0" -> "value")
       }
     }
 
