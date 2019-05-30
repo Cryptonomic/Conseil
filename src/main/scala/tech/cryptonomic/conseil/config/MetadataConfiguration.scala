@@ -77,6 +77,7 @@ case class NetworkConfiguration(displayName: Option[String],
 
 // configuration for entity
 case class EntityConfiguration(displayName: Option[String],
+                               displayNamePlural: Option[String],
                                visible: Option[Boolean],
                                description: Option[String] = None,
                                attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)

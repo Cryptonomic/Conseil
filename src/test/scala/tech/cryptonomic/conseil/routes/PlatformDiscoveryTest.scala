@@ -103,7 +103,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       val overridesConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true)))))))
+            EntityConfiguration(None, None, Some(true)))))))
 
       // when
       Get("/v2/metadata/tezos/mainnet/entities") ~> addHeader("apiKey", "hooman") ~> sut(overridesConfiguration) ~> check {
@@ -126,7 +126,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       val overridesConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+            EntityConfiguration(None, None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(None, Some(true)))))))))
 
       // when
@@ -149,7 +149,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       val overridesConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+            EntityConfiguration(None, None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(
                 displayName = None,
                 visible = Some(true),

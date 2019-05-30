@@ -134,7 +134,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true)))))))
+            EntityConfiguration(None, None, Some(true)))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
@@ -150,13 +150,29 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(Some("overwritten name"), Some(true)))))))
+            EntityConfiguration(Some("overwritten name"), None, Some(true)))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
 
       // then
       result shouldBe Some(List(Entity("entity", "overwritten name", 0)))
+    }
+
+    "override the display name plural for an entity" in {
+      // given
+      (tezosPlatformDiscoveryOperations.getEntities _).when().returns(successful(List(Entity("entity", "entity-name", 0))))
+
+      val overwrittenConfiguration = Map("tezos" ->
+        PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
+          NetworkConfiguration(None, Some(true), None, Map("entity" ->
+            EntityConfiguration(None, Some("overwritten display name plural"), Some(true)))))))
+
+      // when
+      val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+
+      // then
+      result shouldBe Some(List(Entity("entity", "entity-name", 0, Some("overwritten display name plural"))))
     }
 
     "override description for an entity" in {
@@ -166,13 +182,13 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), Some("description")))))))
+            EntityConfiguration(None, None, Some(true), Some("description")))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
 
       // then
-      result shouldBe Some(List(Entity("entity", "entity-name", 0, Some("description"))))
+      result shouldBe Some(List(Entity("entity", "entity-name", 0, None, Some("description"))))
     }
 
     "filter out a hidden entity" in {
@@ -182,7 +198,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(false)))))))
+            EntityConfiguration(None, None, Some(false)))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
@@ -198,7 +214,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, None))))))
+            EntityConfiguration(None, None, None))))))
 
       // when
       val result = sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
@@ -256,7 +272,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+            EntityConfiguration(None, None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(None, Some(true)))))))))
 
       // when
@@ -274,7 +290,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+            EntityConfiguration(None, None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(
                 displayName = Some("overwritten-name"),
                 visible = Some(true),
@@ -313,7 +329,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+            EntityConfiguration(None, None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(None, Some(false)))))))))
 
       // when
@@ -331,7 +347,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       val overwrittenConfiguration = Map("tezos" ->
         PlatformConfiguration(None, Some(true), None, Map("mainnet" ->
           NetworkConfiguration(None, Some(true), None, Map("entity" ->
-            EntityConfiguration(None, Some(true), None, Map("attribute" ->
+            EntityConfiguration(None, None, Some(true), None, Map("attribute" ->
               AttributeConfiguration(None, None))))))))
 
       // when
