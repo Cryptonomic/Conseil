@@ -179,11 +179,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     logger.info("Processing Tezos Blocks..")
 
-    def logOutcomes(blocksCount: Int, accountsCount: Option[Int], votesCount: Option[Int]) = IO {
-      logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksCount, accountsCount.fold("")(" " + _))
-      logger.info("Wrote{} voting data records to the database", votesCount.fold("")(" " + _))
-    }
-
     def writeAccounts(node: NodeOperator): IO[Unit] = {
       import cats.instances.int._
       def logOutcome(accountCounts: Int) = IO(logger.info("{} accounts were touched on the database.", accountCounts))
@@ -254,10 +249,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     def processVotes(blocks: List[Block]) = for {
       _  <- IO.shift
       votings <- blocks.traverse(node.getVotingDetails[IO])
-      written <- (write _).tupled(votings.unzip3)
+      written <- (writeVotes _).tupled(votings.unzip3)
     } yield written
 
-    def write(
+    def writeVotes(
       proposals: List[Voting.Proposal],
       blocksWithRolls: List[(Block, List[Voting.BakerRolls])],
       blocksWithBallots: List[(Block, List[Voting.Ballot])]
@@ -317,6 +312,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case fatal =>
        val errorMsg = "Something serioursly bad happened, probably unrecoverable. Please restart the process once possible"
        IO(logger.error(errorMsg, fatal)) *> IO.raiseError(fatal)
+    }
+
+    def logOutcomes(blocksCount: Int, accountsCount: Option[Int], votesCount: Option[Int]) = IO {
+      logger.info("Wrote {} blocks to the database, checkpoint stored for{} account updates", blocksCount, accountsCount.fold("")(" " + _))
+      logger.info("Wrote{} voting data records to the database", votesCount.fold("")(" " + _))
     }
 
     val blocksToSynchronize: IO[(node.BlockFetchingResults[IO], Int)] = lorreConf.depth match {
