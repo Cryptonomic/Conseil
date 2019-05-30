@@ -76,7 +76,7 @@ class TezosPlatformDiscoveryOperations(
       primaryKeys <- getPrimaryKeys(tables)
     } yield {
       columns.map { cols =>
-        cols.head.table.name -> (0L, cols.map { col =>
+        CacheKey(cols.head.table.name) -> CacheEntry(0L, cols.map { col =>
           makeAttributes(col, 0, primaryKeys, indexes)
         }.toList)
       }
@@ -151,7 +151,7 @@ class TezosPlatformDiscoveryOperations(
         case (table, column) =>
           TezosDatabaseOperations.selectDistinct(table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
-            makeKey(table, column) -> (now -> radixTree)
+            CacheKey(makeKey(table, column)) -> CacheEntry(now, radixTree)
           }
       }
     }.map(_.toMap)
@@ -166,7 +166,7 @@ class TezosPlatformDiscoveryOperations(
   def isAttributeValid(tableName: String, columnName: String): Future[Boolean] = {
     caching.getAttributes(tableName).map { attributesOpt =>
       attributesOpt.exists {
-        case (_, attributes) =>
+        case CacheEntry(_, attributes) =>
           attributes.exists(_.name == columnName)
       }
     }.unsafeToFuture()
@@ -180,14 +180,14 @@ class TezosPlatformDiscoveryOperations(
   def getEntities: Future[List[Entity]] = {
     val result = for {
       entities <- caching.getEntities(networkName)
-      res <- entities.toList.map { case (last, ent) =>
+      res <- entities.toList.map { case CacheEntry(last, ent) =>
         if (!cacheExpired(last)) {
           IO.pure(ent)
         } else {
           for {
             updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
             _ <- caching.putAllEntities(updatedEntities)
-          } yield updatedEntities(networkName)._2
+          } yield updatedEntities(CacheKey(networkName)).value
         }
       }.sequence.map(_.flatten)
     } yield res
@@ -203,7 +203,7 @@ class TezosPlatformDiscoveryOperations(
       case (name, count) =>
         Entity(name, makeDisplayName(name), count)
     }.toList
-    result.map(value => Map(networkName -> value))
+    result.map(value => Map(CacheKey(networkName) -> CacheEntry(value._1, value._2)))
   }
 
   /** Makes displayName out of name */
@@ -259,9 +259,9 @@ class TezosPlatformDiscoveryOperations(
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(tableName: String, columnName: String, attributeFilter: String, maxResultLength: Int): Future[List[String]] = {
     caching.getAttributeValues(tableName, columnName).flatMap {
-      case Some((last, radixTree)) if !cacheExpired(last) =>
+      case Some(CacheEntry(last, radixTree)) if !cacheExpired(last) =>
         IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
-      case Some((_, oldRadixTree)) =>
+      case Some(CacheEntry(_, oldRadixTree)) =>
         for {
           _ <- caching.putAttributeValues(tableName, columnName, oldRadixTree)
           attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
@@ -299,7 +299,7 @@ class TezosPlatformDiscoveryOperations(
     caching.getCachingStatus.map { status =>
       if (status == Finished) {
         caching.getAttributes(tableName).flatMap { attributesOpt =>
-          attributesOpt.map { case (last, attributes) =>
+          attributesOpt.map { case CacheEntry(last, attributes) =>
             if (!cacheExpired(last)) {
               IO.pure(attributes)
             } else {
@@ -322,9 +322,7 @@ class TezosPlatformDiscoveryOperations(
     */
   def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] = {
     caching.getAttributes(tableName).map { attrOpt =>
-      attrOpt.map {
-        case (_, attr) => attr
-      }
+      attrOpt.map(_.value)
     }.unsafeToFuture()
   }
 
@@ -345,7 +343,7 @@ class TezosPlatformDiscoveryOperations(
           _ <- caching.updateCachingStatus(InProgress)
           entCache <- caching.getEntities(networkName)
           attributes <- caching.getAllAttributes
-          updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(entC => getAllUpdatedAttributes(entC._2, attributes))
+          updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(entC => getAllUpdatedAttributes(entC.value, attributes))
         } yield
           updatedAttributes.map {
             case (tableName, attr) =>
@@ -365,10 +363,10 @@ class TezosPlatformDiscoveryOperations(
     val queries = attributes
       .filterKeys(entities.map(_.name).toSet)
       .mapValues {
-        case (_, attrs) => attrs
+        case CacheEntry(_, attrs) => attrs
       }
       .map {
-        case (entityName, attrs) => getUpdatedAttributesQuery(entityName, attrs).map(entityName -> _)
+        case (entityName, attrs) => getUpdatedAttributesQuery(entityName.key, attrs).map(entityName.key -> _)
       }
     val action = DBIO.sequence(queries)
     IO.fromFuture(IO(metadataOperations.runQuery(action))).map(_.toMap)

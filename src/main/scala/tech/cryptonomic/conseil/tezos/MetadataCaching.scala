@@ -11,7 +11,10 @@ import tech.cryptonomic.conseil.tezos.MetadataCaching._
 object MetadataCaching {
   type LastUpdated = Long
 
-  type MetadataCache[A] = Map[String, (LastUpdated, A)]
+  final case class CacheEntry[A](lastUpdated: LastUpdated, value: A)
+  final case class CacheKey(key: String)
+
+  type MetadataCache[A] = Map[CacheKey, CacheEntry[A]]
   type AttributesCache = MetadataCache[List[Attribute]]
   type AttributeValuesCache = MetadataCache[RadixTree[String, String]]
   type EntitiesCache = MetadataCache[List[Entity]]
@@ -24,6 +27,7 @@ object MetadataCaching {
   case object InProgress extends CachingStatus
 
   case object Finished extends CachingStatus
+
   import cats.implicits._
 
   /** Initializes metadata caching */
@@ -62,16 +66,16 @@ class MetadataCaching[F[_]](
 
 
   /** Reads entities from cache */
-  def getEntities: String => F[Option[(LastUpdated, List[Entity])]] =
+  def getEntities: String => F[Option[CacheEntry[List[Entity]]]] =
     getFromCache(entitiesCache)
 
   /** Reads attributes from cache for given entity */
-  def getAttributes: String => F[Option[(LastUpdated, List[Attribute])]] =
+  def getAttributes: String => F[Option[CacheEntry[List[Attribute]]]] =
     getFromCache(attributesCache)
 
   /** Generic method for getting value from cache */
-  private def getFromCache[A](cache: MVar[F, MetadataCache[A]])(key: String): F[Option[(LastUpdated, A)]] = {
-    cache.read.map(_.get(key))
+  private def getFromCache[A](cache: MVar[F, MetadataCache[A]])(key: String): F[Option[CacheEntry[A]]] = {
+    cache.read.map(_.get(CacheKey(key)))
   }
 
   /** Reads all attributes from cache */
@@ -83,7 +87,7 @@ class MetadataCaching[F[_]](
     entitiesCache.read
 
   /** Reads attribute values from cache */
-  def getAttributeValues(entity: String, attribute: String): F[Option[(LastUpdated, RadixTree[String, String])]] =
+  def getAttributeValues(entity: String, attribute: String): F[Option[CacheEntry[RadixTree[String, String]]]] =
     getFromCache(attributeValuesCache)(makeKey(entity, attribute))
 
   /** Inserts entities into cache */
@@ -120,7 +124,7 @@ class MetadataCaching[F[_]](
   private def putIntoCache[A](key: String, value: A)(cache: MVar[F, MetadataCache[A]]): F[Unit] = {
     for {
       ca <- cache.take
-      _ <- cache.put(ca.updated(key, (now, value)))
+      _ <- cache.put(ca.updated(CacheKey(key), CacheEntry(now, value)))
     } yield ()
   }
 
