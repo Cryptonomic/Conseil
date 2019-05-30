@@ -30,7 +30,7 @@ trait PlatformDiscoveryEndpoints
   def cacheStatusEndpoint: Endpoint[String, String] =
   endpoint(
     request = get(
-      url = commonPath / "cache",
+      url = commonPath / "cache" / "status",
       headers = header("apiKey")
     ),
     response = textResponse(),

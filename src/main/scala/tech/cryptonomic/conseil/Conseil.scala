@@ -6,7 +6,6 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
-import cats.effect.concurrent.MVar
 import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
@@ -16,7 +15,6 @@ import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.tezos.MetadataCaching._
 import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -42,14 +40,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
       implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
-      val metadataCaching = {
-        for {
-          cachingStatus <- MVar[IO].of[CachingStatus](NotStarted)
-          attributesCache <- MVar[IO].empty[AttributesCache]
-          entitiesCache <- MVar[IO].empty[EntitiesCache]
-          attributeValuesCache <- MVar[IO].empty[AttributeValuesCache]
-        } yield new MetadataCaching[IO](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
-      }.unsafeRunSync()
+      val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
 
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)

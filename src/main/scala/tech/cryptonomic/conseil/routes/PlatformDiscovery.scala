@@ -31,7 +31,7 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
   private lazy val initCacheRoute = initCacheEndpoint.implementedBy(_ => metadataService.initAttributesCache)
 
   /** Implementation of the route fo cache initialization status */
-  private lazy val cacheStatusRoute = cacheStatusEndpoint.implementedByAsync(_ => metadataService.attributesCacheStatus.map(_.toString))
+  private lazy val cacheStatusRoute = cacheStatusEndpoint.implementedByAsync(_ => metadataService.getAttributesCacheStatus.map(_.toString))
 
   /** Metadata route implementation for platforms endpoint */
   private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)

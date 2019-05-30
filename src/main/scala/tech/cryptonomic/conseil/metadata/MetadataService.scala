@@ -23,8 +23,8 @@ class MetadataService(config: PlatformsConfiguration,
     tezosPlatformDiscoveryOperations.initAttributesCount()
 
   // fetches current caching status
-  def attributesCacheStatus: Future[CachingStatus] =
-    tezosPlatformDiscoveryOperations.getCacheStatus
+  def getAttributesCacheStatus: Future[CachingStatus] =
+    tezosPlatformDiscoveryOperations.getCachingStatus
 
   // fetches platforms
   def getPlatforms: List[Platform] = ConfigUtil

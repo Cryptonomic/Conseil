@@ -43,11 +43,7 @@ class TezosPlatformDiscoveryOperationsTest
   }
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
-  val cachingStatus = MVar[IO].of[CachingStatus](NotStarted).unsafeRunSync()
-  val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
-  val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
-  val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
-  val metadataCaching = new MetadataCaching[IO](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
+  val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
   val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds)

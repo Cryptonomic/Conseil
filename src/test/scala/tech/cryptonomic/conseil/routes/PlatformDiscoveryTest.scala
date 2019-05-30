@@ -244,10 +244,10 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
     "expose endpoint for cache initialization status" in {
       // given
-      (tezosPlatformDiscoveryOperations.getCacheStatus _).when().returns(Future.successful(NotStarted))
+      (tezosPlatformDiscoveryOperations.getCachingStatus _).when().returns(Future.successful(NotStarted))
 
       // when
-      Get("/v2/metadata/cache") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
+      Get("/v2/metadata/cache/status") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
 
         // then
         status shouldEqual StatusCodes.OK
