@@ -462,13 +462,13 @@ object TezosDatabaseOperations extends LazyLogging {
     columns: List[String],
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
-    aggregation: Option[Aggregation] = None,
+    aggregation: List[Aggregation] = List.empty,
     limit: Int)
     (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
      makeQuery(table, columns, aggregation)
-       .addPredicates(aggregation.flatMap(_.getPredicate).toList ::: predicates)
+       .addPredicates(aggregation.flatMap(_.getPredicate) ::: predicates)
        .addGroupBy(aggregation, columns)
-       .addOrdering(ordering, aggregation)
+       .addOrdering(ordering)
        .addLimit(limit)
        .as[QueryResponse]
        .map(_.toList)

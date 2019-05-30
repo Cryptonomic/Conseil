@@ -158,7 +158,7 @@ object DataTypes {
     orderBy: List[QueryOrdering] = List.empty,
     limit: Int = defaultLimitValue,
     output: OutputType = OutputType.json,
-    aggregation: Option[Aggregation] = None
+    aggregation: List[Aggregation] = List.empty
   )
 
   /** Class representing predicate used in aggregation */
@@ -205,7 +205,7 @@ object DataTypes {
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
     output: Option[OutputType],
-    aggregation: Option[ApiAggregation] = None
+    aggregation: List[ApiAggregation] = List.empty
   ) {
     /** Method which validates query fields */
     def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
