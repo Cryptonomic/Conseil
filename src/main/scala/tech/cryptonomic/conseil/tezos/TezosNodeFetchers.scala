@@ -38,7 +38,9 @@ trait BlocksDataFetchers {
   }
 
   /* reduces repetion in error handling, used when the failure is expected to be recovered */
-  private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
+  private def logWarnOnJsonDecoding[Encoded](message: String, ignore: Boolean = false): PartialFunction[Throwable, Future[Unit]] = {
+    case decodingError: io.circe.Error if ignore =>
+      ().pure[Future]
     case decodingError: io.circe.Error =>
       logger.warn(message, decodingError).pure[Future]
     case t =>
@@ -219,7 +221,7 @@ trait BlocksDataFetchers {
     override val decodeData = Kleisli{
       json =>
         decodeLiftingTo[Future, Out](json)
-          .onError(logWarnOnJsonDecoding(s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding(s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover{
             //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
@@ -254,7 +256,7 @@ trait BlocksDataFetchers {
     override val decodeData = Kleisli{
       json =>
         decodeLiftingTo[Future, Out](json)
-          .onError(logWarnOnJsonDecoding(s"I fetched baker rolls json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding(s"I fetched baker rolls json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover{
             //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
@@ -289,7 +291,7 @@ trait BlocksDataFetchers {
     override val decodeData = Kleisli{
       json =>
         decodeLiftingTo[Future, Out](json)
-          .onError(logWarnOnJsonDecoding(s"I fetched ballot votes json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding(s"I fetched ballot votes json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover{
             //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
