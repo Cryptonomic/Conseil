@@ -375,7 +375,7 @@ trait AccountsDataFetchers {
 
     type Encoded = String
     type In = PublicKeyHash
-    type Out = Delegate
+    type Out = Option[Delegate]
 
     private val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
 
@@ -395,7 +395,12 @@ trait AccountsDataFetchers {
     override def decodeData = Kleisli {
       json =>
         decodeLiftingTo[Future, Delegate](json)
+          .map(Some(_))
           .onError(logErrorOnJsonDecoding(s"I fetched an account delegate json from tezos node that I'm unable to decode: $json"))
+          .recover{
+            //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+            case NonFatal(_) => Option.empty
+          }
     }
   }
 

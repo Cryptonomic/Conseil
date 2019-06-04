@@ -320,10 +320,15 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     implicit val fetcherInstance = delegateFetcher(blockHash)
 
-    val fetchedDelegates: Future[List[(PublicKeyHash, Delegate)]] =
-      fetch[PublicKeyHash, Delegate, Future, List, Throwable].run(pkhs)
+    val fetchedDelegates: Future[List[(PublicKeyHash, Option[Delegate])]] =
+      fetch[PublicKeyHash, Option[Delegate], Future, List, Throwable].run(pkhs)
 
-    fetchedDelegates.map(_.toMap)
+    fetchedDelegates.map(
+      indexedDelegates =>
+        indexedDelegates.collect {
+          case (pkh, Some(delegate)) => pkh -> delegate
+        }.toMap
+    )
   }
 
   /**
