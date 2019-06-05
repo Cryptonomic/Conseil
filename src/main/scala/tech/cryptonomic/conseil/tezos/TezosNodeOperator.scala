@@ -115,8 +115,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getPaginatedAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[AccountId, Account]]] =
-    partitionElements(accountIds).map(ids => getAccountsForBlock(ids, blockHash))
+  def getPaginatedAccountsForBlock(accountIndex: Map[AccountId, BlockHash]): Iterator[Future[Map[AccountId, Account]]] = {
+    //collect by hash and paginate based on that
+    val reversedIndex =
+      accountIndex.groupBy{case (id, blockHash) => blockHash}
+      .mapValues(_.keySet)
+
+    reversedIndex.keysIterator
+      .map {
+        blockHash =>
+         val ids = reversedIndex.get(blockHash).fold(List.empty[AccountId])(_.toList)
+         getAccountsForBlock(ids, blockHash)
+      }
+  }
 
   /**
     * Fetches the accounts identified by id
@@ -125,7 +136,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash): Future[Map[AccountId, Account]] = {
+  def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
     import TezosOptics.Accounts.{scriptLens, storageLens}
@@ -170,7 +181,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
-    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.keys.toList) map {
+    val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_._1)) map {
       futureMap =>
         futureMap
          .andThen {
