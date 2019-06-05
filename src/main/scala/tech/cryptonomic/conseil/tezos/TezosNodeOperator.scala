@@ -289,7 +289,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
-    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.keys.toList) map {
+    val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.mapValues(_._1)) map {
       futureMap =>
         futureMap
           .andThen {
@@ -311,8 +311,19 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param blockHash  the block storing the accounts, the head block if not specified
     * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
     */
-    def getPaginatedDelegatesForBlock(delegatePkhs: List[PublicKeyHash], blockHash: BlockHash = blockHeadHash): Iterator[Future[Map[PublicKeyHash, Delegate]]] =
-      partitionElements(delegatePkhs).map(pkhs => getDelegatesForBlock(pkhs, blockHash))
+    def getPaginatedDelegatesForBlock(delegatesIndex: Map[PublicKeyHash, BlockHash]): Iterator[Future[Map[PublicKeyHash, Delegate]]] = {
+    //collect by hash and paginate based on that
+    val reversedIndex =
+      delegatesIndex.groupBy{case (key, blockHash) => blockHash}
+      .mapValues(_.keySet)
+
+    reversedIndex.keysIterator
+      .map {
+        blockHash =>
+         val pkhs = reversedIndex.get(blockHash).fold(List.empty[PublicKeyHash])(_.toList)
+         getDelegatesForBlock(pkhs, blockHash)
+      }
+    }
 
   /**
     * Fetches the delegate and delegated contracts identified by key hash
