@@ -268,10 +268,12 @@ object TezosDatabaseOperations extends LazyLogging {
       copyAccountsToDelegateContracts(
         delegates.flatMap(_.content.values.flatMap(_.delegated_contracts)).toSet
       )
-    for {
+
+    (for {
       updated <- delegatesUpdateAction.map(_.sum)
       _ <- contractsUpdateAction
-    } yield updated
+    } yield updated).transactionally
+
   }
 
   /* Selects accounts corresponding to the given ids and copy the rows
