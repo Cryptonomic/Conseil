@@ -15,7 +15,13 @@ object PlatformDiscoveryTypes {
   final case class Network(name: String, displayName: String, platform: String, network: String, description: Option[String] = None)
 
   /** Case class representing single entity of a given network */
-  final case class Entity(name: String, displayName: String, count: Int, displayNamePlural: Option[String] = None, description: Option[String] = None)
+  final case class Entity(
+    name: String,
+    displayName: String,
+    count: Int,
+    displayNamePlural: Option[String] = None,
+    description: Option[String] = None,
+    limitedQuery: Option[Boolean] = None)
 
   /** Case class representing single attribute of given entity from DB */
   final case class Attribute(
@@ -30,7 +36,8 @@ object PlatformDiscoveryTypes {
     dataFormat: Option[String] = None,
     valueMap: Option[Map[String, String]] = None,
     scale: Option[Int] = None,
-    reference: Option[Map[String, String]] = None
+    reference: Option[Map[String, String]] = None,
+    sufficientForQuery: Option[Boolean] = None
   )
 
   /** Enumeration of data types */

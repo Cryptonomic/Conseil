@@ -17,6 +17,10 @@ class MetadataService(config: PlatformsConfiguration,
                       cacheConfiguration: AttributeValuesCacheConfiguration,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
+  // checks if attribute is valid
+  def isAttributeValid(tableName: String, columnName: String): Future[Boolean] =
+    tezosPlatformDiscoveryOperations.isAttributeValid(tableName, columnName)
+
   // fetches platforms
   def getPlatforms: List[Platform] = ConfigUtil
     .getPlatforms(config)
@@ -41,12 +45,23 @@ class MetadataService(config: PlatformsConfiguration,
   }
 
   // fetches table attributes
-  def getTableAttributes(path: EntityPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] = for {
-    exists <- exists(path)
-    attributes <- tezosPlatformDiscoveryOperations.getTableAttributes(path.entity)
-  } yield attributes
-    .filter { _ => exists }
-    .mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
+  def getTableAttributes(path: EntityPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
+    getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributes)
+
+  // fetches table attributes without updating cache
+  def getTableAttributesWithoutUpdatingCache(path: EntityPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
+    getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
+
+  // fetches attributes with given function
+  private def getAttributesHelper(path: EntityPath)(getAttributes: String => Future[Option[List[Attribute]]])
+    (implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] = {
+    for {
+      exists <- exists(path)
+      attributes <- getAttributes(path.entity)
+    } yield attributes
+      .filter { _ => exists }
+      .mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
+  }
 
   // fetches attribute values
   def getAttributeValues(platform: String, network: String, entity: String, attribute: String, filter: Option[String] = None)
