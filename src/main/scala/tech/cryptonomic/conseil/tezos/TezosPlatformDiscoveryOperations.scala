@@ -59,12 +59,10 @@ class TezosPlatformDiscoveryOperations(
     val attributes = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes)))
     val attributeValues = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributeValues)))
 
-    (entities, attributes, attributeValues).mapN { case (ent, attr, attrValues) =>
-      (caching.fillEntitiesCache(ent), caching.fillAttributesCache(attr), caching.fillAttributeValuesCache(attrValues))
-        .mapN {
-          case (_, _, _) => ()
-        }
-    }.flatten.unsafeToFuture()
+    (entities flatMap caching.fillEntitiesCache, attributes flatMap caching.fillAttributesCache, attributeValues flatMap caching.fillAttributeValuesCache)
+      .tupled
+      .void
+      .unsafeToFuture
   }
 
   /** Pre-caching attributes without cardinality */
@@ -138,13 +136,6 @@ class TezosPlatformDiscoveryOperations(
       .exists(_.column.contains(column.name))
   }
 
-  /** Checks the data types if cannot be queried by */
-  private def canQueryType(dt: DataType): Boolean = {
-    // values described in the ticket #183
-    val cantQuery = Set(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
-    !cantQuery(dt)
-  }
-
   private def preCacheAttributeValues: DBIO[AttributeValuesCache] = {
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.map {
@@ -180,7 +171,7 @@ class TezosPlatformDiscoveryOperations(
   def getEntities: Future[List[Entity]] = {
     val result = for {
       entities <- caching.getEntities(networkName)
-      res <- entities.toList.map { case CacheEntry(last, ent) =>
+      res <- entities.traverse { case CacheEntry(last, ent) =>
         if (!cacheExpired(last)) {
           IO.pure(ent)
         } else {
@@ -189,8 +180,8 @@ class TezosPlatformDiscoveryOperations(
             _ <- caching.putAllEntities(updatedEntities)
           } yield updatedEntities(CacheKey(networkName)).value
         }
-      }.sequence.map(_.flatten)
-    } yield res
+      }
+    } yield res.toList.flatten
     result.unsafeToFuture()
   }
 
@@ -220,10 +211,6 @@ class TezosPlatformDiscoveryOperations(
     }
   }
 
-  /** Checks if cache expired */
-  private def cacheExpired(lastUpdated: LastUpdated): Boolean =
-    lastUpdated + cacheTTL.toNanos < now
-
   /** Makes list of possible string values of the attributes
     *
     * @param  tableName             name of the table from which we extract attributes
@@ -231,7 +218,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  withFilter            optional parameter which can filter attributes
     * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
-    **/
+    * */
   def listAttributeValues(tableName: String, column: String, withFilter: Option[String] = None, attributesCacheConfig: Option[AttributeCacheConfiguration] = None): Future[Either[List[AttributesValidationError], List[String]]] = {
     getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap { attrOpt =>
       val res = (attributesCacheConfig, withFilter) match {
@@ -279,7 +266,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
-    **/
+    * */
   private def makeAttributesQuery(tableName: String, column: String, withFilter: Option[String]): Future[List[String]] = {
     withFilter match {
       case Some(filter) =>
@@ -314,6 +301,10 @@ class TezosPlatformDiscoveryOperations(
     }.unsafeToFuture().flatten
   }
 
+  /** Checks if cache expired */
+  private def cacheExpired(lastUpdated: LastUpdated): Boolean =
+    lastUpdated + cacheTTL.toNanos < now
+
   /**
     * Extracts attributes in the DB for the given table name without updating counts
     *
@@ -329,47 +320,6 @@ class TezosPlatformDiscoveryOperations(
   /** Runs query and attributes with updated counts */
   private def getUpdatedAttributes(tableName: String, columns: List[Attribute]): Future[List[Attribute]] = {
     metadataOperations.runQuery(getUpdatedAttributesQuery(tableName, columns))
-  }
-
-  /** Returns current cache initialization status */
-  def getCachingStatus: Future[CachingStatus] =
-    caching.getCachingStatus.unsafeToFuture()
-
-  /** Inits attribute counts */
-  def initAttributesCount(): Unit = {
-    caching.getCachingStatus.flatMap {
-      case NotStarted =>
-        val result = for {
-          _ <- caching.updateCachingStatus(InProgress)
-          entCache <- caching.getEntities(networkName)
-          attributes <- caching.getAllAttributes
-          updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(entC => getAllUpdatedAttributes(entC.value, attributes))
-        } yield
-          updatedAttributes.map {
-            case (tableName, attr) =>
-              caching.putAttributes(tableName, attr)
-          }
-
-        result >> caching.updateCachingStatus(Finished)
-
-      case _ =>
-        IO.pure(())
-
-    }.unsafeRunAsyncAndForget()
-  }
-
-  /** Helper method for updating */
-  private def getAllUpdatedAttributes(entities: List[Entity], attributes: Cache[List[Attribute]]): IO[Map[String, List[Attribute]]] = {
-    val queries = attributes
-      .filterKeys(entities.map(_.name).toSet)
-      .mapValues {
-        case CacheEntry(_, attrs) => attrs
-      }
-      .map {
-        case (entityName, attrs) => getUpdatedAttributesQuery(entityName.key, attrs).map(entityName.key -> _)
-      }
-    val action = DBIO.sequence(queries)
-    IO.fromFuture(IO(metadataOperations.runQuery(action))).map(_.toMap)
   }
 
   /** Query for returning partial attributes with updated counts */
@@ -388,11 +338,62 @@ class TezosPlatformDiscoveryOperations(
     }
   }
 
+  /** Checks the data types if cannot be queried by */
+  private def canQueryType(dt: DataType): Boolean = {
+    // values described in the ticket #183
+    val cantQuery = Set(DataType.Date, DataType.DateTime, DataType.Int, DataType.LargeInt, DataType.Decimal)
+    !cantQuery(dt)
+  }
+
   /** Checks if cardinality of the column is not too high so it should not be queried */
   private def isLowCardinality(distinctCount: Option[Int]): Boolean = {
     // reasonable value which I thought of for now
     val maxCount = 1000
     distinctCount.getOrElse(maxCount) < maxCount
+  }
+
+  /** Returns current cache initialization status */
+  def getCachingStatus: Future[CachingStatus] =
+    caching.getCachingStatus.unsafeToFuture()
+
+  /** Starts initialization of attributes count cache */
+  private def startInitialization(): Unit = {
+    val result = for {
+      _ <- caching.updateCachingStatus(InProgress)
+      entCache <- caching.getEntities(networkName)
+      attributes <- caching.getAllAttributes
+      updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(entC => getAllUpdatedAttributes(entC.value, attributes))
+    } yield
+      updatedAttributes.map {
+        case (tableName, attr) =>
+          caching.putAttributes(tableName, attr)
+      }
+    result >> caching.updateCachingStatus(Finished)
+  }.unsafeRunAsyncAndForget()
+
+  /** Inits attribute counts */
+  def initAttributesCount(): Future[CachingStatus] = {
+    caching.getCachingStatus.flatMap {
+      case NotStarted =>
+        startInitialization()
+        IO.pure(InProgress)
+      case status =>
+        IO.pure(status)
+    }.unsafeToFuture()
+  }
+
+  /** Helper method for updating */
+  private def getAllUpdatedAttributes(entities: List[Entity], attributes: Cache[List[Attribute]]): IO[Map[String, List[Attribute]]] = {
+    val queries = attributes
+      .filterKeys(entities.map(_.name).toSet)
+      .mapValues {
+        case CacheEntry(_, attrs) => attrs
+      }
+      .map {
+        case (entityName, attrs) => getUpdatedAttributesQuery(entityName.key, attrs).map(entityName.key -> _)
+      }
+    val action = DBIO.sequence(queries)
+    IO.fromFuture(IO(metadataOperations.runQuery(action))).map(_.toMap)
   }
 
 }

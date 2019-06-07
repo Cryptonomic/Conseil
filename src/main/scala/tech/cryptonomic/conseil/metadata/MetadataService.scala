@@ -19,7 +19,7 @@ class MetadataService(config: PlatformsConfiguration,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
   // inits attributes cache
-  def initAttributesCache(): Unit =
+  def initAttributesCache(): Future[CachingStatus] =
     tezosPlatformDiscoveryOperations.initAttributesCount()
 
   // fetches current caching status

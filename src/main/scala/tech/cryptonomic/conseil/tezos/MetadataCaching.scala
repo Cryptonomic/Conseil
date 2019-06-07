@@ -42,7 +42,7 @@ object MetadataCaching {
     attributeValuesCache <- MVar[F].empty[AttributeValuesCache]
   } yield new MetadataCaching[F](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
 
-  /** Returns current time in milliseconds */
+  /** Returns current time in nanoseconds */
   def now: Long = System.nanoTime()
 
   /** Makes key out of table and column names */

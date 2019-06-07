@@ -28,7 +28,7 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
   extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** Implementation of the route for cache initialization */
-  private lazy val initCacheRoute = initCacheEndpoint.implementedBy(_ => metadataService.initAttributesCache)
+  private lazy val initCacheRoute = initCacheEndpoint.implementedByAsync(_ => metadataService.initAttributesCache().map(_.toString))
 
   /** Implementation of the route fo cache initialization status */
   private lazy val cacheStatusRoute = cacheStatusEndpoint.implementedByAsync(_ => metadataService.getAttributesCacheStatus.map(_.toString))

@@ -15,14 +15,14 @@ trait PlatformDiscoveryEndpoints
   private val commonPath = path / "v2" / "metadata"
 
   /** Endpoint for cache initialization */
-  def initCacheEndpoint: Endpoint[String, Unit] =
+  def initCacheEndpoint: Endpoint[String, String] =
     endpoint(
       request = post(
         url = commonPath / "cache",
         headers = header("apiKey"),
         entity = emptyRequest
       ),
-      response = emptyResponse(),
+      response = textResponse(),
       tags = List("Cache")
     )
 
