@@ -77,6 +77,32 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   type BakerBlock = (Block, List[Voting.BakerRolls])
 
   /**
+    * Generic fetch for paginated data relative to a specific block.
+    * Will return back the entities indexed by their unique key
+    * from those passed as inputs, through the use of the
+    * `entityLoad` function, customized per each entity type.
+    * e.g. we use it to load accounts and delegates without
+    * duplicating any logic.
+    */
+  def getPaginatedEntitiesForBlock[Key, Entity](
+    entityLoad: (List[Key], BlockHash) => Future[Map[Key, Entity]]
+  )(
+    keyIndex: Map[Key, BlockHash]
+  ): Iterator[Future[Map[Key, Entity]]] = {
+    //collect by hash and paginate based on that
+    val reversedIndex =
+      keyIndex.groupBy{case (key, blockHash) => blockHash}
+      .mapValues(_.keySet.toList)
+
+    reversedIndex.keysIterator
+      .map {
+        blockHash =>
+          val keys = reversedIndex.get(blockHash).getOrElse(List.empty)
+          entityLoad(keys, blockHash)
+      }
+  }
+
+  /**
     * Fetches a specific account for a given block.
     * @param blockHash  Hash of given block
     * @param accountId  Account ID
@@ -111,23 +137,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   /**
     * Fetches the accounts identified by id, lazily paginating the results
     *
-    * @param accountIds the ids
-    * @param blockHash  the block storing the accounts, the head block if not specified
-    * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
+    * @param delegatesIndex the accountid-to-blockhash index to get data for
+    * @return               the pages of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  def getPaginatedAccountsForBlock(accountIndex: Map[AccountId, BlockHash]): Iterator[Future[Map[AccountId, Account]]] = {
-    //collect by hash and paginate based on that
-    val reversedIndex =
-      accountIndex.groupBy{case (id, blockHash) => blockHash}
-      .mapValues(_.keySet)
-
-    reversedIndex.keysIterator
-      .map {
-        blockHash =>
-         val ids = reversedIndex.get(blockHash).fold(List.empty[AccountId])(_.toList)
-         getAccountsForBlock(ids, blockHash)
-      }
-  }
+  val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => Iterator[Future[Map[AccountId, Account]]] =
+    getPaginatedEntitiesForBlock(getAccountsForBlock)
 
   /**
     * Fetches the accounts identified by id
@@ -186,7 +200,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         futureMap
          .andThen {
             case Success(accountsMap) =>
-              notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
+              notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet) //FIXME, too many expected keys
             case Failure(err) =>
               val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
               logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
@@ -294,7 +308,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         futureMap
           .andThen {
             case Success(delegatesMap) =>
-              notifyAnyLostKeys(keysBlocksIndex.keySet -- delegatesMap.keySet)
+              notifyAnyLostKeys(keysBlocksIndex.keySet -- delegatesMap.keySet) //FIXME, too many expected keys
             case Failure(err) =>
               val showSomeIds = keysBlocksIndex.keys.take(30).map(_.value).mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
               logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
@@ -305,25 +319,13 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   }
 
   /**
-    * Fetches the accounts identified by id, lazily paginating the results
+    * Fetches the delegates bakers identified by key hash, lazily paginating the results
     *
-    * @param accountIds the ids
-    * @param blockHash  the block storing the accounts, the head block if not specified
-    * @return           the list of accounts wrapped in a [[Future]], indexed by AccountId
+    * @param delegatesIndex the pkh-to-blockhash index to get data for
+    * @return               the pages of delegates wrapped in a [[Future]], indexed by PublicKeyHash
     */
-    def getPaginatedDelegatesForBlock(delegatesIndex: Map[PublicKeyHash, BlockHash]): Iterator[Future[Map[PublicKeyHash, Delegate]]] = {
-    //collect by hash and paginate based on that
-    val reversedIndex =
-      delegatesIndex.groupBy{case (key, blockHash) => blockHash}
-      .mapValues(_.keySet)
-
-    reversedIndex.keysIterator
-      .map {
-        blockHash =>
-         val pkhs = reversedIndex.get(blockHash).fold(List.empty[PublicKeyHash])(_.toList)
-         getDelegatesForBlock(pkhs, blockHash)
-      }
-    }
+    val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => Iterator[Future[Map[PublicKeyHash, Delegate]]] =
+      getPaginatedEntitiesForBlock(getDelegatesForBlock)
 
   /**
     * Fetches the delegate and delegated contracts identified by key hash
