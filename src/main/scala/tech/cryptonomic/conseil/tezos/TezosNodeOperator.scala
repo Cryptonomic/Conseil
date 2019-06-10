@@ -88,7 +88,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     entityLoad: (List[Key], BlockHash) => Future[Map[Key, Entity]]
   )(
     keyIndex: Map[Key, BlockHash]
-  ): Iterator[Future[Map[Key, Entity]]] = {
+  ): Iterator[Future[(BlockHash, Map[Key, Entity])]] = {
     //collect by hash and paginate based on that
     val reversedIndex =
       keyIndex.groupBy{case (key, blockHash) => blockHash}
@@ -98,7 +98,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       .map {
         blockHash =>
           val keys = reversedIndex.get(blockHash).getOrElse(List.empty)
-          entityLoad(keys, blockHash)
+          entityLoad(keys, blockHash).map(blockHash -> _)
       }
   }
 
@@ -140,7 +140,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param delegatesIndex the accountid-to-blockhash index to get data for
     * @return               the pages of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => Iterator[Future[Map[AccountId, Account]]] =
+  val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => Iterator[Future[(BlockHash, Map[AccountId, Account])]] =
     getPaginatedEntitiesForBlock(getAccountsForBlock)
 
   /**
@@ -183,6 +183,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getAccountsForBlocks(accountsBlocksIndex: Map[AccountId, BlockReference]): PaginatedAccountResults = {
     import TezosTypes.Syntax._
 
+    val reverseIndex =
+      accountsBlocksIndex.groupBy{case (id, blockRef) => blockRef._1}
+        .mapValues(_.keySet)
+        .toMap
+
     def notifyAnyLostIds(missing: Set[AccountId]) =
       if (missing.nonEmpty) logger.warn("The following account keys were not found querying the {} node: {}", network, missing.map(_.id).mkString("\n", ",", "\n"))
 
@@ -199,12 +204,15 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       futureMap =>
         futureMap
          .andThen {
-            case Success(accountsMap) =>
-              notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet) //FIXME, too many expected keys
+            case Success((hash, accountsMap)) =>
+              val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
+              notifyAnyLostIds(searchedFor -- accountsMap.keySet)
             case Failure(err) =>
               val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
               logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
-          }.map(groupByLatestBlock)
+          }.map {
+            case (_, map) => groupByLatestBlock(map)
+          }
     }
 
     (pages, accountsBlocksIndex.size)
@@ -291,6 +299,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getDelegatesForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
     import TezosTypes.Syntax._
 
+    val reverseIndex =
+      keysBlocksIndex.groupBy { case (pkh, blockRef) => blockRef._1 }
+       .mapValues(_.keySet)
+       .toMap
+
     def notifyAnyLostKeys(missing: Set[PublicKeyHash]) =
       if (missing.nonEmpty) logger.warn("The following delegate keys were not found querying the {} node: {}", network, missing.map(_.value).mkString("\n", ",", "\n"))
 
@@ -307,12 +320,15 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       futureMap =>
         futureMap
           .andThen {
-            case Success(delegatesMap) =>
-              notifyAnyLostKeys(keysBlocksIndex.keySet -- delegatesMap.keySet) //FIXME, too many expected keys
+            case Success((hash, delegatesMap)) =>
+              val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
+              notifyAnyLostKeys(searchedFor -- delegatesMap.keySet)
             case Failure(err) =>
               val showSomeIds = keysBlocksIndex.keys.take(30).map(_.value).mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
               logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
-          }.map(groupByLatestBlock)
+          }.map {
+            case (_, map) => groupByLatestBlock(map)
+          }
     }
 
     (pages, keysBlocksIndex.size)
@@ -324,7 +340,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param delegatesIndex the pkh-to-blockhash index to get data for
     * @return               the pages of delegates wrapped in a [[Future]], indexed by PublicKeyHash
     */
-    val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => Iterator[Future[Map[PublicKeyHash, Delegate]]] =
+    val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => Iterator[Future[(BlockHash, Map[PublicKeyHash, Delegate])]] =
       getPaginatedEntitiesForBlock(getDelegatesForBlock)
 
   /**
