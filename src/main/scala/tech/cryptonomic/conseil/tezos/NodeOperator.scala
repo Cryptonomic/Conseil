@@ -194,13 +194,16 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     * @return             the stream of delegates, indexed by PublicKeyHash
     */
   def getDelegatesForBlock[F[_] : MonadThrow : Concurrent](delegateKeys: Stream[F, PublicKeyHash], blockHash: BlockHash)
-    (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Delegate]]): Stream[F, (PublicKeyHash, Delegate)] = {
+    (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]]): Stream[F, (PublicKeyHash, Delegate)] = {
 
-      implicit val delegateFetcher: DataFetcher.Aux[F, Throwable, PublicKeyHash, Delegate, String] = fetchProvider(blockHash)
+      implicit val delegateFetcher: DataFetcher.Aux[F, Throwable, PublicKeyHash, Option[Delegate], String] = fetchProvider(blockHash)
 
       delegateKeys.parEvalMap(batchConf.delegateFetchConcurrencyLevel)(
-        fetcher[F, PublicKeyHash, Delegate, Throwable].tapWith((_, _)).run
+        fetcher[F, PublicKeyHash, Option[Delegate], Throwable].tapWith((_, _)).run
       )
+      .collect {
+        case (pkh, Some(delegate)) => pkh -> delegate
+      }
 
   }
 
@@ -213,7 +216,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
   def getDelegates[F[_] : MonadThrow : Concurrent](
     keysBlocksIndex: Map[PublicKeyHash, BlockReference]
   )(
-    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Delegate]]
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]]
   ): Stream[F, BlockTagged[Map[PublicKeyHash, Delegate]]] = {
     import TezosTypes.Syntax._
     import cats.syntax.applicativeError._

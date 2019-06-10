@@ -302,16 +302,22 @@ trait AccountsDataFetchers {
   }
 
   /** a fetcher for delegates, dependent on a specific block hash reference */
-  implicit val delegateFetcherProvider: Reader[BlockHash, IOFetcher[PublicKeyHash, Delegate]] = Reader {
+  implicit val delegateFetcherProvider: Reader[BlockHash, IOFetcher[PublicKeyHash, Option[Delegate]]] = Reader {
     referenceBlock =>
       import JsonDecoders.Circe.Delegates._
+      import cats.syntax.option._
 
-      makeIOFetcherFromRpc[PublicKeyHash, Delegate](
+      makeIOFetcherFromRpc[PublicKeyHash, Option[Delegate]](
         makeCommand = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}",
         decodeJson = json =>
           decodeLiftingTo[IO, Delegate](json)
             .onError(logErrorOnJsonDecoding[IO](s"I fetched an account delegate json from tezos node that I'm unable to decode: $json"))
-      )
+            .map(_.some)
+            .recover{
+              //we need to consider that a delegate failed to be written in the chain, though we have its reference in some account
+              case NonFatal(_) => Option.empty
+            }
+        )
   }
 
 }
