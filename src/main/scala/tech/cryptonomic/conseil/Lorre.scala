@@ -127,19 +127,19 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             .whenA(iteration % lorreConf.feeUpdateInterval == 0)
     } yield ()
 
-    /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
-     * Can be used to investigate issues on consistently failing block or account processing.
-     * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
+    /* Won't stop Lorre on failure from processing the chain if explicitly set via the environment.
+     * Can be useful to skip non-critical failures due to tezos incorrect data or unexpected behaviour.
+     * If set, fetching errors will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (ignoreProcessFailures.forall(ignore => ignore == "false" || ignore == "no"))
-        processing
-      else
+      if (ignoreProcessFailures.exists(ignore => ignore.toLowerCase == "true" || ignore.toLowerCase == "yes"))
         processing.handleErrorWith {
           //swallow the error and proceed with the default behaviour
           case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | DelegatesProcessingFailed(_, _)) =>
-            IO(logger.error("Failed processing but will keep on going next cycle", f))
+          IO(logger.error("Failed processing but will keep on going next cycle", f))
         }
+      else
+        processing
 
     lorreConf.depth match {
       case Newest =>

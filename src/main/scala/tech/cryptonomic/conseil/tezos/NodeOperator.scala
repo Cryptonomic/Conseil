@@ -132,7 +132,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
       }
 
       accountIds.parEvalMap(batchConf.accountFetchConcurrencyLevel)(
-        fetcher[F, AccountId, Option[Account], Throwable].tapWith((_, _)).run
+        fetcher.tapWith((_, _)).run
       )
       .collect {
         case (accountId, Some(account)) => accountId -> parseMichelsonScripts(accountId)(account)
@@ -199,7 +199,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
       implicit val delegateFetcher: DataFetcher.Aux[F, Throwable, PublicKeyHash, Option[Delegate], String] = fetchProvider(blockHash)
 
       delegateKeys.parEvalMap(batchConf.delegateFetchConcurrencyLevel)(
-        fetcher[F, PublicKeyHash, Option[Delegate], Throwable].tapWith((_, _)).run
+        fetcher.tapWith((_, _)).run
       )
       .collect {
         case (pkh, Some(delegate)) => pkh -> delegate

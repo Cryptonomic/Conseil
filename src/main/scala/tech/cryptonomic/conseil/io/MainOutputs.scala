@@ -101,12 +101,12 @@ object MainOutputs {
         |
         | Reference hash for synchronization with the chain: {}
         | Requested depth of synchronization: {}
-        | Environment set to skip failed download of blocks or accounts: {} [†]
+        | Environment set to skip failed download of chain data: {} [†]
         |
         | {}
         |
-        | [†] To let the process crash on error,
-        |     set the environment variable {} to "off" or "no"
+        | [†] To let the process proceed on error,
+        |     set an environment variable named {} to "true" or "yes"
         | ==================================***==================================
         |
       """.stripMargin,
@@ -115,7 +115,7 @@ object MainOutputs {
         showPlatformConfiguration(platformConf),
         lorreConf.headHash.fold("head")(_.value),
         lorreConf.depth,
-        ignoreFailures._2.getOrElse("yes"),
+        ignoreFailures._2.getOrElse("no"),
         showDatabaseConfiguration,
         ignoreFailures._1
       )

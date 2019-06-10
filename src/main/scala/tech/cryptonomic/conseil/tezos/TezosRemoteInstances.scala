@@ -21,8 +21,8 @@ object TezosRemoteInstances {
 
       //creates an IO instance on top of the one for Futures
       implicit def ioRpcHandlerInstance(implicit context: TezosNodeContext): RpcHandler.Aux[IO, String, String, JsonString] =
-        new RpcHandler[IO, UrlPath, ResponseBody] {
-          val futureRpc = futureRpcHandlerInstance(context)
+        new RpcHandler[IO, UrlPath, JsonContent] {
+          val futureRpc = futureRpcHandlerInstance
 
           // payload is formally verified json
           type PostPayload = JsonString
@@ -43,12 +43,13 @@ object TezosRemoteInstances {
   /** Instances based on Akka toolkit*/
   object Akka {
     import com.typesafe.scalalogging.Logger
-    import cats.Monoid
     import scala.concurrent.Future
+    import scala.util.control.NoStackTrace
     import akka.actor.ActorSystem
     import akka.stream.ActorMaterializer
     import akka.http.scaladsl.Http
     import akka.http.scaladsl.model._
+    import cats.ApplicativeError
 
     /** A generic marker type for shutdown completion signals*/
     trait ShutdownComplete
@@ -75,8 +76,11 @@ object TezosRemoteInstances {
       }
 
       /** Allows to stop calling the service when a shutdown is initiated, short-circuiting the response */
-      def withRejectionControl[T, Container[_]](call: => Container[T])(implicit mono: Monoid[Container[T]]): Container[T] =
-        if (rejectingCalls.get) mono.empty else call
+      def withRejectionControl[T, Eff[_], Err](error: => Err)(call: => Eff[T])(implicit errorEffect: ApplicativeError[Eff, Err]): Eff[T] =
+        if (rejectingCalls.get)
+          errorEffect.raiseError(error)
+        else
+          call
 
     }
 
@@ -86,27 +90,17 @@ object TezosRemoteInstances {
     /** Mix-in this to get instances for async rpc calls on top of scala Future*/
     trait Futures {
       import cats.instances.future._
-      import cats.syntax.apply._
-      import scala.concurrent.ExecutionContext
-      import scala.util.control.NoStackTrace
       import akka.http.scaladsl.settings.ConnectionPoolSettings
 
       //support types
       type UrlPath = String
-      type ResponseBody = String
-
-      //might be actually unlawful, but we won't use it for append, only for empty
-      private implicit def futureMonoid[T](implicit ec: ExecutionContext) = new Monoid[Future[T]] {
-        override def combine(x: Future[T], y: Future[T]) = x *> y
-        override def empty: Future[T] = Future.failed(new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace)
-      }
-
+      type JsonContent = String
 
       /** The actual instance
        * @param context we need to convert to the fetcher, based on an implicit `TezosNodeContext`
        */
       implicit def futureRpcHandlerInstance(implicit context: TezosNodeContext) =
-        new RpcHandler[Future, UrlPath, ResponseBody] {
+        new RpcHandler[Future, UrlPath, JsonContent] {
           import cats.data.Kleisli
           import context._
 
@@ -123,8 +117,11 @@ object TezosRemoteInstances {
           // payload is formally verified json
           type PostPayload = JsonString
 
-          override def getQuery: Kleisli[Future, UrlPath, ResponseBody] = Kleisli {
-            command => withRejectionControl {
+          //used when the system should reject request for ongoing shutdown
+          lazy val rejected: Throwable = new IllegalStateException("The system is shutting down. No further request will be served") with NoStackTrace
+
+          override def getQuery: Kleisli[Future, UrlPath, JsonContent] = Kleisli {
+            command => withRejectionControl(error = rejected) {
               val url = translateCommandToUrl(command)
               val httpRequest = HttpRequest(HttpMethods.GET, url)
               logger.debug("Async querying URL {} for platform Tezos and network {}", url, tezosConfig.network)
@@ -140,8 +137,8 @@ object TezosRemoteInstances {
             }
           }
 
-          override def postQuery: Kleisli[Future, (UrlPath, Option[PostPayload]), ResponseBody] = Kleisli {
-            case (command, payload) => withRejectionControl {
+          override def postQuery: Kleisli[Future, (UrlPath, Option[PostPayload]), JsonContent] = Kleisli {
+            case (command, payload) => withRejectionControl(error = rejected) {
               val url = translateCommandToUrl(command)
               logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, tezosConfig.network, payload)
               val postedData = payload.getOrElse(JsonString.emptyObject)
