@@ -184,7 +184,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      accountsBlocksIndex.groupBy{case (id, blockRef) => blockRef._1}
+      accountsBlocksIndex.groupBy{ case (id, (blockHash, level)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -300,7 +300,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      keysBlocksIndex.groupBy { case (pkh, blockRef) => blockRef._1 }
+      keysBlocksIndex.groupBy { case (pkh, (blockHash, level)) => blockHash }
        .mapValues(_.keySet)
        .toMap
 

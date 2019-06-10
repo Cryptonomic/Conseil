@@ -280,8 +280,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       checkpoints =>
         logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain")
         val (pages, total) = tezosNodeOperator.getAccountsForBlocks(checkpoints)
-        // //custom progress tracking for accounts
-        // val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
 
         /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
         * The size and partition of results is driven by the NodeOperator itself, were each page contains a
