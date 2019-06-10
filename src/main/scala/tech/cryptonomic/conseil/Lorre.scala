@@ -92,7 +92,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (ignoreProcessFailures.forall(ignore => ignore == "true" || ignore == "yes"))
+      if (ignoreProcessFailures.exists(ignore => ignore == "true" || ignore == "yes"))
         processing.recover {
           //swallow the error and proceed with the default behaviour
           case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | DelegatesProcessingFailed(_, _)) =>
