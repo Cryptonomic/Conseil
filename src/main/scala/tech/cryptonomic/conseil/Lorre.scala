@@ -16,7 +16,6 @@ import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
-import cats.kernel.Monoid
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -93,14 +92,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (ignoreProcessFailures.forall(ignore => ignore == "false" || ignore == "no"))
-        processing
-      else
+      if (ignoreProcessFailures.forall(ignore => ignore == "true" || ignore == "yes"))
         processing.recover {
           //swallow the error and proceed with the default behaviour
-          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) =>
+          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | DelegatesProcessingFailed(_, _)) =>
             logger.error("Failed processing but will keep on going next cycle", f)
         }
+      else
+        processing
 
     Await.result(attemptedProcessing, atMost = Duration.Inf)
 
@@ -187,6 +186,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }
       })
     } transform {
+      case Failure(accountFailure @ AccountsProcessingFailed(_, _)) =>
+        Failure(accountFailure)
+      case Failure(delegateFailure @ DelegatesProcessingFailed(_, _)) =>
+        Failure(delegateFailure)
       case Failure(e) =>
         val error = "Could not fetch blocks from client"
         logger.error(error, e)
