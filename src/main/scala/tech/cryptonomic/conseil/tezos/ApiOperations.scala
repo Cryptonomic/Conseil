@@ -302,30 +302,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
     )
 
   /**
-    * Counts all entities in the db
-    * @param ec ExecutionContext needed to invoke the data fetching using async results
-    * @return Count with all amounts
-    */
-  def countAll(implicit ec: ExecutionContext): Future[Map[String, Int]] = {
-    dbHandle.run {
-      for {
-        blocks <- TezosDb.countRows(Tables.Blocks)
-        accounts <- TezosDb.countRows(Tables.Accounts)
-        operationGroups <- TezosDb.countRows(Tables.OperationGroups)
-        operations <- TezosDb.countRows(Tables.Operations)
-        fees <- TezosDb.countRows(Tables.Fees)
-      } yield
-        Map(
-          Tables.Blocks.baseTableRow.tableName -> blocks,
-          Tables.Accounts.baseTableRow.tableName -> accounts,
-          Tables.OperationGroups.baseTableRow.tableName -> operationGroups,
-          Tables.Operations.baseTableRow.tableName -> operations,
-          Tables.Fees.baseTableRow.tableName -> fees
-        )
-    }
-  }
-
-  /**
     * Runs DBIO action
     * @param  action action to be performed on db
     * @return result of DBIO action as a Future
