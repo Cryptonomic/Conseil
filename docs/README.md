@@ -40,6 +40,8 @@ Start `conseil` as:
 java -Xms512m -Xmx2g -Dconfig.file=conseil.conf -cp conseil.jar tech.cryptonomic.conseil.Conseil
 ```
 
+To run `conseil` with high cardinality attribute values caching required max heap size is `-Xmx4g`, but suggested is `-Xmx8g`. It also depends on amount of high cardinality attributes which are needed to be cached.
+
 A few things to note- `lorre` may take some time to catch up to the current block height depending on how long the chain is. During this process it may require more memory. Incremental updates are quick and not memory intensive after that. `lorre` will write data incrementally to the database, so `conseil` will be usable before it's fully updated.
 
 For examples of how we run these services check out the [Nautilus](https://github.com/Cryptonomic/Nautilus) repo.
