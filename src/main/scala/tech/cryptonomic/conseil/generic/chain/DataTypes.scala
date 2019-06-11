@@ -196,7 +196,7 @@ object DataTypes {
     orderBy: List[QueryOrdering] = List.empty,
     limit: Int = defaultLimitValue,
     output: OutputType = OutputType.json,
-    aggregation: Option[Aggregation] = None
+    aggregation: List[Aggregation] = List.empty
   )
 
   /** Class representing predicate used in aggregation */
@@ -243,7 +243,7 @@ object DataTypes {
     orderBy: Option[List[QueryOrdering]],
     limit: Option[Int],
     output: Option[OutputType],
-    aggregation: Option[ApiAggregation] = None
+    aggregation: Option[List[ApiAggregation]]
   ) {
     /** Method which validates query fields */
     def validate(entity: EntityPath, metadataService: MetadataService)(implicit ec: ExecutionContext):
@@ -256,7 +256,7 @@ object DataTypes {
         .withFieldConst(_.orderBy, orderBy.getOrElse(List.empty))
         .withFieldConst(_.limit, limit.getOrElse(defaultLimitValue))
         .withFieldConst(_.output, output.getOrElse(OutputType.json))
-        .withFieldConst(_.aggregation, aggregation.map(_.toAggregation))
+        .withFieldConst(_.aggregation, aggregation.toList.flatten.map(_.toAggregation))
         .transform
 
       val nonExistingFields = findNonExistingFields(query, entity, metadataService)

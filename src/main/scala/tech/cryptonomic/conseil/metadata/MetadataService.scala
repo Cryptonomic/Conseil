@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.metadata
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.tezos.MetadataCaching.CachingStatus
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.CollectionOps.{ExtendedFuture, ExtendedOptionalList}
 import tech.cryptonomic.conseil.util.ConfigUtil
@@ -20,6 +21,14 @@ class MetadataService(config: PlatformsConfiguration,
   // checks if attribute is valid
   def isAttributeValid(entity: String, attribute: String): Future[Boolean] =
     tezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)
+
+  // inits attributes cache
+  def initAttributesCache(): Future[CachingStatus] =
+    tezosPlatformDiscoveryOperations.initAttributesCount()
+
+  // fetches current caching status
+  def getAttributesCacheStatus: Future[CachingStatus] =
+    tezosPlatformDiscoveryOperations.getCachingStatus
 
   // fetches platforms
   def getPlatforms: List[Platform] = ConfigUtil

@@ -25,6 +25,8 @@ object OpenApiDoc extends DataEndpoints
     operationGroupByIdEndpoint,
     avgFeesEndpoint,
     operationsEndpoint,
+    initCacheEndpoint,
+    cacheStatusEndpoint,
     platformsEndpoint,
     networksEndpoint,
     entitiesEndpoint,

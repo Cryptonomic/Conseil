@@ -401,18 +401,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param table  slick table
     * @return       amount of rows in the table
     */
-  def countRows(table: TableQuery[_]): DBIO[Int] =
-    table.length.result
-
-  /**
-    * Counts number of rows in the given table
-    * @param table  slick table
-    * @return       amount of rows in the table
-    */
   def countRows(table: String)(implicit ec: ExecutionContext): DBIO[Int] =
-    sql"""SELECT COUNT(*) FROM #$table""".as[Int].map(_.head)
+    sql"""SELECT reltuples FROM pg_class WHERE relname = $table""".as[Int].map(_.head)
 
-  // Slick does not allow count operations on arbitrary column names
   /**
     * Counts number of distinct elements by given table and column
     * THIS METHOD IS VULNERABLE TO SQL INJECTION
@@ -462,13 +453,13 @@ object TezosDatabaseOperations extends LazyLogging {
     columns: List[String],
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
-    aggregation: Option[Aggregation] = None,
+    aggregation: List[Aggregation] = List.empty,
     limit: Int)
     (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
      makeQuery(table, columns, aggregation)
-       .addPredicates(aggregation.flatMap(_.getPredicate).toList ::: predicates)
+       .addPredicates(aggregation.flatMap(_.getPredicate) ::: predicates)
        .addGroupBy(aggregation, columns)
-       .addOrdering(ordering, aggregation)
+       .addOrdering(ordering)
        .addLimit(limit)
        .as[QueryResponse]
        .map(_.toList)
