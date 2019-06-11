@@ -103,10 +103,10 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
-        val aggregationFields = aggregation.map(_.field).toSet
         if(aggregation.isEmpty) {
           action
         } else {
+          val aggregationFields = aggregation.map(_.field).toSet
           concatenateSqlActions(action, makeGroupBy(columns.toSet.diff(aggregationFields).toList))
         }
       }
