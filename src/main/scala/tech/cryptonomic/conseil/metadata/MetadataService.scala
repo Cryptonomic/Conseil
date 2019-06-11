@@ -18,8 +18,8 @@ class MetadataService(config: PlatformsConfiguration,
                       tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
   // checks if attribute is valid
-  def isAttributeValid(tableName: String, columnName: String): Future[Boolean] =
-    tezosPlatformDiscoveryOperations.isAttributeValid(tableName, columnName)
+  def isAttributeValid(entity: String, attribute: String): Future[Boolean] =
+    tezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)
 
   // fetches platforms
   def getPlatforms: List[Platform] = ConfigUtil
