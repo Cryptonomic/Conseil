@@ -78,11 +78,11 @@ object DatabaseUtil {
         * @param ordering list of QueryOrdering to add
         * @return new SQLActionBuilder containing ordering statements
         */
-      def addOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
+      def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
         val queryOrdering = if (ordering.isEmpty) {
           List.empty
         } else {
-          List(makeOrdering(ordering, aggregation))
+          List(makeOrdering(ordering))
         }
         concatenateSqlActions(action, queryOrdering:_*)
       }
@@ -102,11 +102,12 @@ object DatabaseUtil {
         * @param columns     parameter containing columns which chich are being used in query
         * @return new SQLActionBuilder containing limit statement
         */
-      def addGroupBy(aggregation: Option[Aggregation], columns: List[String]): SQLActionBuilder = {
-        aggregation.fold(action) {
-          aggregates =>
-            val cols = columns.filterNot(_ == aggregates.field)
-          concatenateSqlActions(action, makeGroupBy(cols))
+      def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
+        if(aggregation.isEmpty) {
+          action
+        } else {
+          val aggregationFields = aggregation.map(_.field).toSet
+          concatenateSqlActions(action, makeGroupBy(columns.toSet.diff(aggregationFields).toList))
         }
       }
     }
@@ -132,9 +133,9 @@ object DatabaseUtil {
       * @param aggregation parameter containing info about field which has to be aggregated
       * @return SQLAction with basic query
       */
-    def makeQuery(table: String, columns: List[String], aggregation: Option[Aggregation]): SQLActionBuilder = {
+    def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
       val aggr = columns.foldLeft(List.empty[String]) {
-        case (acc, column) if aggregation.exists(_.field == column) => mapAggregationToSQL(aggregation.get.function, column) :: acc
+        case (acc, column) if aggregation.exists(_.field == column) => mapAggregationToSQL(aggregation.find(_.field == column).get.function, column) :: acc
         case (acc, column) => s"$column" :: acc
       }
       val cols = if (aggr.isEmpty) "*" else aggr.mkString(",")
@@ -146,14 +147,8 @@ object DatabaseUtil {
       * @param ordering list of ordering parameters
       * @return SQLAction with ordering
       */
-    def makeOrdering(ordering: List[QueryOrdering], aggregation: Option[Aggregation]): SQLActionBuilder = {
-      val orderingBy = ordering.map {
-        ord =>
-          val ordField =
-            if (aggregation.exists(_.field == ord.field)) mapAggregationToSQL(aggregation.get.function, aggregation.get.field)
-        else ord.field
-        s"$ordField ${ord.direction}"
-      }.mkString(",")
+    def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
+      val orderingBy = ordering.map(ord => s"${ord.field} ${ord.direction}").mkString(",")
       sql""" ORDER BY #$orderingBy"""
     }
 
@@ -178,11 +173,11 @@ object DatabaseUtil {
     /** maps aggregation operation to the SQL function*/
     private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String = {
       aggregationType match {
-        case AggregationType.sum => s"SUM($column)"
-        case AggregationType.count => s"COUNT($column)"
-        case AggregationType.max => s"MAX($column)"
-        case AggregationType.min => s"MIN($column)"
-        case AggregationType.avg => s"AVG($column)"
+        case AggregationType.sum => s"SUM($column) as sum_$column"
+        case AggregationType.count => s"COUNT($column) as count_$column"
+        case AggregationType.max => s"MAX($column) as max_$column"
+        case AggregationType.min => s"MIN($column) as min_$column"
+        case AggregationType.avg => s"AVG($column) as avg_$column"
       }
     }
 
