@@ -175,10 +175,12 @@ class TezosPlatformDiscoveryOperations(
         if (!cacheExpired(last)) {
           IO.pure(ent)
         } else {
-          for {
+          (for {
+            _ <- caching.putEntities(networkName, ent)
             updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
             _ <- caching.putAllEntities(updatedEntities)
-          } yield updatedEntities(CacheKey(networkName)).value
+          } yield ()).unsafeRunAsyncAndForget()
+          IO.pure(ent)
         }
       }
     } yield res.toList.flatten
@@ -249,12 +251,13 @@ class TezosPlatformDiscoveryOperations(
       case Some(CacheEntry(last, radixTree)) if !cacheExpired(last) =>
         IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
       case Some(CacheEntry(_, oldRadixTree)) =>
-        for {
+        (for {
           _ <- caching.putAttributeValues(tableName, columnName, oldRadixTree)
           attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
           radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
           _ <- caching.putAttributeValues(tableName, columnName, radixTree)
-        } yield radixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList
+        } yield ()).unsafeRunAsyncAndForget()
+        IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
       case None =>
         IO.pure(List.empty)
     }.unsafeToFuture()
@@ -290,7 +293,12 @@ class TezosPlatformDiscoveryOperations(
             if (!cacheExpired(last)) {
               IO.pure(attributes)
             } else {
-              IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes))).flatTap(caching.putAttributes(tableName, _))
+              (for {
+                _ <- caching.putAttributes(tableName, attributes)
+                updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
+                _ <- caching.putAttributes(tableName, updatedAttributes)
+              } yield ()).unsafeRunAsyncAndForget()
+              IO.pure(attributes)
             }
           }.sequence
         }.unsafeToFuture()
