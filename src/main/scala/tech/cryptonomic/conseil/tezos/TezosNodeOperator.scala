@@ -332,7 +332,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   }
 
   /**
-    * Fetches a single block from the chain, without waiting for the result
+    * Fetches a single block along with associated data from the chain, without waiting for the result
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
@@ -356,11 +356,35 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   }
 
   /**
-    * Gets the block head.
+    * Fetches a single block from the chain without associated data, without waiting for the result
+    * @param hash      Hash of the block
+    * @return          the block data wrapped in a `Future`
+    */
+  def getBlockOnly(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
+    import JsonDecoders.Circe.decodeLiftingTo
+    import JsonDecoders.Circe.Blocks._
+
+    val offsetString = offset.map(_.toString).getOrElse("")
+
+    node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
+      decodeLiftingTo[Future, BlockData](JS.sanitize(json))
+    }
+  }
+
+  /**
+    * Gets the block head along with associated data.
     * @return Block head
     */
   def getBlockHead(): Future[Block]= {
     getBlock(blockHeadHash)
+  }
+
+  /**
+    * Gets just the block head without associated data.
+    * @return Block head
+    */
+  def getBlockHeadOnly(): Future[BlockData]= {
+    getBlockOnly(blockHeadHash)
   }
 
   /**
