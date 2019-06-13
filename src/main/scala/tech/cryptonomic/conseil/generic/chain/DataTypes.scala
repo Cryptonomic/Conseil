@@ -241,7 +241,7 @@ object DataTypes {
   /** Enumeration for output types */
   object OutputType extends Enumeration {
     type OutputType = Value
-    val json, csv = Value
+    val json, csv, sql = Value
   }
 
   /** Enumeration for order direction */

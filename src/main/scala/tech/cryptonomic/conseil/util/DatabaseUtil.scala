@@ -139,7 +139,7 @@ object DatabaseUtil {
         case (acc, column) => s"$column" :: acc
       }
       val cols = if (aggr.isEmpty) "*" else aggr.mkString(",")
-      sql"""SELECT #$cols FROM #$table WHERE true """
+      sql"""SELECT #$cols FROM #$table WHERE true"""
     }
 
     /** Prepares ordering parameters
@@ -158,7 +158,7 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeLimit(limit: Int): SQLActionBuilder = {
-      sql""" LIMIT $limit"""
+      sql""" LIMIT #$limit"""
     }
 
     /** Prepares group by parameters

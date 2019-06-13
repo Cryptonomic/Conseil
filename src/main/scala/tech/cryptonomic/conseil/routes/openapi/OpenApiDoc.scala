@@ -51,7 +51,8 @@ object OpenApiDoc extends DataEndpoints
       documentation = invalidDocs.getOrElse(""),
       content = Map(
         "application/json" -> MediaType(None),
-        "text/csv" -> MediaType(None)
+        "text/csv" -> MediaType(None),
+        "text/plain" -> MediaType(None)
       )
     )
 
