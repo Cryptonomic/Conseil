@@ -30,7 +30,9 @@ trait TezosNodeFetchersLogging extends LazyLogging {
   }
 
   /* error logging for the decode operation, used when we expect the failure to be recovered */
-  protected def logWarnOnJsonDecoding[Eff[_] : Applicative](message: String): PartialFunction[Throwable, Eff[Unit]] = {
+  protected def logWarnOnJsonDecoding[Eff[_] : Applicative](message: String, ignore: Boolean = false): PartialFunction[Throwable, Eff[Unit]] = {
+    case decodingError: io.circe.Error if ignore =>
+      ().pure[Eff]
     case decodingError: io.circe.Error =>
       logger.warn(message, decodingError).pure[Eff]
     case t =>
@@ -191,7 +193,7 @@ trait BlocksDataFetchers {
       makeCommand = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals",
       decodeJson = json =>
         decodeLiftingTo[IO, List[ProtocolId]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover{
             //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
@@ -207,8 +209,9 @@ trait BlocksDataFetchers {
       makeCommand = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings",
       decodeJson = json =>
         decodeLiftingTo[IO, List[Voting.BakerRolls]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched baker rolls json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched baker rolls json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover {
+            //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
           }
     )
@@ -222,8 +225,9 @@ trait BlocksDataFetchers {
       makeCommand = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list",
       decodeJson = json =>
         decodeLiftingTo[IO, List[Voting.Ballot]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched ballot votes json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched ballot votes json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover {
+            //we recover parsing failures with an empty result, as we have no optionality here to lean on
             case NonFatal(_) => List.empty
           }
     )
