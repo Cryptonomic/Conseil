@@ -13,7 +13,8 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -222,12 +223,16 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
       val fetchCurrentQuorum =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
-          decodeLiftingTo[Future, Option[Int]](json)
+          var json2 = json
+          if(json=="") json2="0"
+          decodeLiftingTo[Future, Option[Int]](json2)
         }
 
-      val fetchCurrentProposal =
+      val fetchCurrentProposal: Future[Option[ProtocolId]] =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
-          decodeLiftingTo[Future, Option[ProtocolId]](json)
+          var json2 = json
+          if(json=="") json2="\"3M\""
+          decodeLiftingTo[Future, Option[ProtocolId]](json2)
         }
 
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
