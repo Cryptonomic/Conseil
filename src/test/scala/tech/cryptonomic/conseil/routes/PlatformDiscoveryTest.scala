@@ -230,33 +230,6 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
       }
     }
 
-    "expose endpoint for cache initialization" in {
-      // given
-      (tezosPlatformDiscoveryOperations.initAttributesCount _).when().returns(Future.successful(InProgress))
-
-      // when
-      Post("/v2/metadata/cache") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
-
-        // then
-        status shouldEqual StatusCodes.OK
-        entityAs[String] shouldBe "InProgress"
-      }
-    }
-
-    "expose endpoint for cache initialization status" in {
-      // given
-      (tezosPlatformDiscoveryOperations.getCachingStatus _).when().returns(Future.successful(NotStarted))
-
-      // when
-      Get("/v2/metadata/cache/status") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
-
-        // then
-        status shouldEqual StatusCodes.OK
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
-        entityAs[String] shouldBe "NotStarted"
-      }
-    }
-
 
   }
 }

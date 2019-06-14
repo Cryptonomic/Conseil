@@ -27,12 +27,6 @@ object PlatformDiscovery {
 class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging with PlatformDiscoveryEndpoints with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
-  /** Implementation of the route for cache initialization */
-  private lazy val initCacheRoute = initCacheEndpoint.implementedByAsync(_ => metadataService.initAttributesCache().map(_.toString))
-
-  /** Implementation of the route fo cache initialization status */
-  private lazy val cacheStatusRoute = cacheStatusEndpoint.implementedByAsync(_ => metadataService.getAttributesCacheStatus.map(_.toString))
-
   /** Metadata route implementation for platforms endpoint */
   private lazy val platformsRoute = platformsEndpoint.implementedBy(_ => metadataService.getPlatforms)
 
@@ -61,8 +55,6 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
   /** Concatenated metadata routes */
   val route: Route =
     concat(
-      initCacheRoute,
-      cacheStatusRoute,
       platformsRoute,
       networksRoute,
       entitiesRoute,

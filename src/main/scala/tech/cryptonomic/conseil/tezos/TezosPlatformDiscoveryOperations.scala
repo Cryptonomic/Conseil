@@ -177,6 +177,7 @@ class TezosPlatformDiscoveryOperations(
         } else {
           (for {
             _ <- caching.putEntities(networkName, ent)
+            _ <- IO.contextShift(executionContext).shift
             updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
             _ <- caching.putAllEntities(updatedEntities)
           } yield ()).unsafeRunAsyncAndForget()
@@ -253,6 +254,7 @@ class TezosPlatformDiscoveryOperations(
       case Some(CacheEntry(_, oldRadixTree)) =>
         (for {
           _ <- caching.putAttributeValues(tableName, columnName, oldRadixTree)
+          _ <- IO.contextShift(executionContext).shift
           attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
           radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
           _ <- caching.putAttributeValues(tableName, columnName, radixTree)
@@ -295,6 +297,7 @@ class TezosPlatformDiscoveryOperations(
             } else {
               (for {
                 _ <- caching.putAttributes(tableName, attributes)
+                _ <- IO.contextShift(executionContext).shift
                 updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
                 _ <- caching.putAttributes(tableName, updatedAttributes)
               } yield ()).unsafeRunAsyncAndForget()
@@ -360,40 +363,29 @@ class TezosPlatformDiscoveryOperations(
     distinctCount.getOrElse(maxCount) < maxCount
   }
 
-  /** Returns current cache initialization status */
-  def getCachingStatus: Future[CachingStatus] =
-    caching.getCachingStatus.unsafeToFuture()
-
   /** Starts initialization of attributes count cache */
-  private def startInitialization(): Unit = {
-    val result = for {
+  def initAttributesCache: Future[Unit] = {
+   val result = for {
       _ <- caching.updateCachingStatus(InProgress)
       entCache <- caching.getEntities(networkName)
       attributes <- caching.getAllAttributes
+      _ <- IO.contextShift(executionContext).shift
       updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(entC => getAllUpdatedAttributes(entC.value, attributes))
     } yield
-      updatedAttributes.map {
-        case (tableName, attr) =>
-          caching.putAttributes(tableName, attr)
-      }
-    result >> caching.updateCachingStatus(Finished)
-  }.unsafeRunAsyncAndForget()
+     updatedAttributes.map {
+       case (tableName, attr) =>
+         caching.putAttributes(tableName, attr)
+     }
 
-  /** Inits attribute counts */
-  def initAttributesCount(): Future[CachingStatus] = {
-    caching.getCachingStatus.flatMap {
-      case NotStarted =>
-        startInitialization()
-        IO.pure(InProgress)
-      case status =>
-        IO.pure(status)
-    }.unsafeToFuture()
-  }
+    result.flatMap(_.toList.sequence) >> caching.updateCachingStatus(Finished)
+  }.unsafeToFuture()
 
   /** Helper method for updating */
   private def getAllUpdatedAttributes(entities: List[Entity], attributes: Cache[List[Attribute]]): IO[Map[String, List[Attribute]]] = {
     val queries = attributes
-      .filterKeys(entities.map(_.name).toSet)
+      .filterKeys {
+        case CacheKey(key) => entities.map(_.name).toSet(key)
+      }
       .mapValues {
         case CacheEntry(_, attrs) => attrs
       }
