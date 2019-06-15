@@ -425,7 +425,7 @@ ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 ALTER TABLE ONLY public.delegated_contracts
-    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES public.delegates(pkh);
+    ADD CONSTRAINT contracts_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(account_id);
 
 ALTER TABLE ONLY public.delegates
     ADD CONSTRAINT delegates_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
