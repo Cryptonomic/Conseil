@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 class TezosNodeOperatorTest extends FlatSpec with MockFactory with Matchers with LazyLogging with ScalaFutures with IntegrationPatience {
   import ExecutionContext.Implicits.global
 
-  val config = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds)
+  val config = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds, 10 seconds)
 
   "getBlock" should "correctly fetch the genesis block" in {
     //given
