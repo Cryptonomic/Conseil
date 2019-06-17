@@ -74,13 +74,13 @@ object DataTypes {
 
   /** Drops aggregation prefixes from field name */
   private def dropAggregationPrefixes(fieldName: String): String = {
-    dropAnyOfPrefixes(fieldName, AggregationType.values.toList.map(_.toString + "_"))
+    dropAnyOfPrefixes(fieldName, AggregationType.prefixes)
   }
 
   /** Helper method for dropping prefixes from given string */
   private def dropAnyOfPrefixes(str: String, prefixes: List[String]): String = {
     prefixes.collectFirst {
-      case prefixToBeDropped if str.startsWith(prefixToBeDropped) => str.drop(prefixToBeDropped.length)
+      case prefixToBeDropped if str.startsWith(prefixToBeDropped) => str.stripPrefix(prefixToBeDropped)
     }.getOrElse(str)
   }
 
@@ -271,6 +271,8 @@ object DataTypes {
 
   /** Enumeration of aggregation functions */
   object AggregationType extends Enumeration {
+    /** Helper method for extracting prefixes needed for SQL */
+    def prefixes: List[String] = values.toList.map(_.toString + "_")
     type AggregationType = Value
     val sum, count, max, min, avg = Value
   }
