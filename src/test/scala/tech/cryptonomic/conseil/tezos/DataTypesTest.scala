@@ -156,12 +156,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(ApiAggregation(field = "valid"))
+        aggregation = Some(List(ApiAggregation(field = "valid")))
       )
 
       val result = query.validate("test", tpdo)
 
-      result.futureValue.right.get shouldBe Query(fields = List("valid"), aggregation = Some(Aggregation(field = "valid")))
+      result.futureValue.right.get shouldBe Query(fields = List("valid"), aggregation = List(Aggregation(field = "valid")))
     }
 
     "return error with incorrect aggregation field which exists in DB" in {
@@ -183,7 +183,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(ApiAggregation(field = "invalid"))
+        aggregation = Some(List(ApiAggregation(field = "invalid")))
       )
 
       val result = query.validate("test", tpdo)
@@ -210,7 +210,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(ApiAggregation(field = "invalid"))
+        aggregation = Some(List(ApiAggregation(field = "invalid")))
       )
 
       val result = query.validate("test", tpdo)
@@ -237,12 +237,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
         orderBy = None,
         limit = None,
         output = None,
-        aggregation = Some(ApiAggregation(field = "valid", function = AggregationType.count))
+        aggregation = Some(List(ApiAggregation(field = "valid", function = AggregationType.count)))
       )
 
       val result = query.validate("test", tpdo)
 
-      result.futureValue.right.get shouldBe Query(fields = List("valid"), aggregation = Some(Aggregation(field = "valid", function = AggregationType.count)))
+      result.futureValue.right.get shouldBe Query(fields = List("valid"), aggregation = List(Aggregation(field = "valid", function = AggregationType.count)))
     }
 
     "correctly transform predicate DateTime field as Long into ISO" in {
