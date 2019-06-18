@@ -57,7 +57,7 @@ object DataTypes {
     val fields = query.fields.map('query -> _) :::
       query.predicates.map('predicate -> _.field) :::
       query.orderBy.map('orderBy -> _.field) :::
-      query.aggregation.map('aggregation -> _.field).toList
+      query.aggregation.map('aggregation -> _.field)
 
     fields.traverse {
       case (source, field) => metadataService.isAttributeValid(path.entity, field).map((_, source, field))
@@ -107,21 +107,13 @@ object DataTypes {
                 attributes.find(_.name == predicate.field)
               }.toList
             }
-          }.map(attributes => doesPredicateContainValidAttribute(attributes.flatten))
+          }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
       } else {
         Future.successful(List.empty)
       }
     }
   }
 
-  /** Checks if any of the attributes is valid for predicate */
-  private def doesPredicateContainValidAttribute(attributes: List[Attribute]): List[InvalidPredicateFiltering] = {
-    if(attributes.exists(attr => attr.keyType == KeyType.UniqueKey || attr.dataType == DataType.DateTime || attr.sufficientForQuery.getOrElse(false))) {
-      List.empty
-    } else {
-      List(InvalidPredicateFiltering(s"Query needs to contain a predicate on UniqueKey or DateTime attribute"))
-    }
-  }
 
   /** Trait representing attribute validation errors */
   sealed trait AttributesValidationError extends Product with Serializable {
