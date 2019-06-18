@@ -259,7 +259,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
           decodeLiftingTo[Future, Option[Int]](json)
         }
 
-      val fetchCurrentProposal: Future[Option[ProtocolId]] =
+      val fetchCurrentProposal =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
           decodeLiftingTo[Future, Option[ProtocolId]](json)
         }
