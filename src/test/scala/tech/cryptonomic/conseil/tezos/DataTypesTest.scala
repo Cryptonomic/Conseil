@@ -273,7 +273,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val result = query.validate(testEntityPath, ms)
 
-      result.futureValue.left.get shouldBe a[List[InvalidPredicateFiltering]]
+      result.futureValue.left.get shouldBe List(InvalidPredicateFiltering("Query needs to contain a predicate on UniqueKey or DateTime attribute"))
     }
 
     "successfully validates aggregation for any dataType when COUNT function is used" in {
