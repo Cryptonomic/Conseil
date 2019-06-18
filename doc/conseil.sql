@@ -424,8 +424,9 @@ CREATE INDEX ix_proposals_protocol ON public.proposals USING btree (protocol_has
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
-ALTER TABLE ONLY public.delegated_contracts
-    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES public.delegates(pkh);
+-- Disabling this constraint due to Tezos node issues preventing some delegates from being fetched.
+--ALTER TABLE ONLY public.delegated_contracts
+--    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES public.delegates(pkh);
 
 ALTER TABLE ONLY public.delegated_contracts
     ADD CONSTRAINT contracts_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(account_id);
