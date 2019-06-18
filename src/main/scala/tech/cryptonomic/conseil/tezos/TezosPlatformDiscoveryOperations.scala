@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import cats.effect.IO
+import cats.effect.{ContextShift, IO}
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
@@ -21,7 +21,7 @@ object TezosPlatformDiscoveryOperations {
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration)
-    (implicit executionContext: ExecutionContext): TezosPlatformDiscoveryOperations =
+    (implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL)
 
   /** Maps type from DB to type used in query */
@@ -46,7 +46,7 @@ class TezosPlatformDiscoveryOperations(
   cacheOverrides: AttributeValuesCacheConfiguration,
   cacheTTL: FiniteDuration,
   networkName: String = "notUsed")
-  (implicit executionContext: ExecutionContext) {
+  (implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]) {
 
   import MetadataCaching._
   import cats.effect._
@@ -177,7 +177,7 @@ class TezosPlatformDiscoveryOperations(
         } else {
           (for {
             _ <- caching.putEntities(networkName, ent)
-            _ <- IO.contextShift(executionContext).shift
+            _ <- contextShift.shift
             updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
             _ <- caching.putAllEntities(updatedEntities)
           } yield ()).unsafeRunAsyncAndForget()
@@ -254,7 +254,7 @@ class TezosPlatformDiscoveryOperations(
       case Some(CacheEntry(_, oldRadixTree)) =>
         (for {
           _ <- caching.putAttributeValues(tableName, columnName, oldRadixTree)
-          _ <- IO.contextShift(executionContext).shift
+          _ <- contextShift.shift
           attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
           radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
           _ <- caching.putAttributeValues(tableName, columnName, radixTree)
@@ -297,7 +297,7 @@ class TezosPlatformDiscoveryOperations(
             } else {
               (for {
                 _ <- caching.putAttributes(tableName, attributes)
-                _ <- IO.contextShift(executionContext).shift
+                _ <- contextShift.shift
                 updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
                 _ <- caching.putAttributes(tableName, updatedAttributes)
               } yield ()).unsafeRunAsyncAndForget()
@@ -369,7 +369,7 @@ class TezosPlatformDiscoveryOperations(
       _ <- caching.updateCachingStatus(InProgress)
       entCache <- caching.getEntities(networkName)
       attributes <- caching.getAllAttributes
-      _ <- IO.contextShift(executionContext).shift
+      _ <- contextShift.shift
       updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(entC => getAllUpdatedAttributes(entC.value, attributes))
     } yield
      updatedAttributes.map {

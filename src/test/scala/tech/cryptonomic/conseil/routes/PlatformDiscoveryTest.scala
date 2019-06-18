@@ -11,11 +11,9 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.In
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
-import tech.cryptonomic.conseil.tezos.MetadataCaching.{InProgress, NotStarted}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
-import scala.concurrent.Future
 import scala.concurrent.Future.successful
 
 class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTest with MockFactory {
