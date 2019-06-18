@@ -401,7 +401,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @param hash      Hash of the block
     * @return          the block data wrapped in a `Future`
     */
-  def getBlockOnly(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
+  def getBareBlock(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
     import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Blocks._
 
@@ -424,8 +424,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * Gets just the block head without associated data.
     * @return Block head
     */
-  def getBlockHeadOnly(): Future[BlockData]= {
-    getBlockOnly(blockHeadHash)
+  def getBareBlockHead(): Future[BlockData]= {
+    getBareBlock(blockHeadHash)
   }
 
   /**
