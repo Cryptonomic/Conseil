@@ -256,16 +256,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
       val fetchCurrentQuorum =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
-          var json2 = json
-          if(json=="") json2="0"
-          decodeLiftingTo[Future, Option[Int]](json2)
+          decodeLiftingTo[Future, Option[Int]](json)
         }
 
       val fetchCurrentProposal: Future[Option[ProtocolId]] =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
-          var json2 = json
-          if(json=="") json2="\"3M\""
-          decodeLiftingTo[Future, Option[ProtocolId]](json2)
+          decodeLiftingTo[Future, Option[ProtocolId]](json)
         }
 
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
