@@ -390,7 +390,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
   }
 
-  /** Fetches a single block from the chain, without waiting for the result
+  /** Fetches a single block along with associated data from the chain, without waiting for the result
     * @param hash Hash of the block
     * @param offset an offset level to use from the passed hash, optionally
     * @return the block data
@@ -410,6 +410,21 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     getBlockWithAccounts(offset).map(_._1)
   }
 
+  /** Fetches a single block from the chain without associated data, without waiting for the result
+    * @param hash Hash of the block
+    * @param offset an offset level to use from the passed hash, optionally
+    * @return the block data
+    */
+  def getBareBlock[F[_] : MonadThrow](
+    hash: BlockHash,
+    offset: Option[Offset] = None
+  )(implicit
+    fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]]
+  ): F[BlockData] = {
+    implicit val blockFetcher = fetchProvider(hash)
+    fetcher.run(offset.getOrElse(0))
+  }
+
   /** Gets the block head.
     * @return Block head
     */
@@ -419,6 +434,15 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
     proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[Block] = getBlock(blockHeadHash)
+
+  /** Gets just the block head without associated data.
+    * @return Block head
+    */
+  def getBareBlockHead[F[_] : MonadThrow](
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]]
+  ): F[BlockData] =
+    getBareBlock(blockHeadHash)
+
 
   /** Gets all blocks from the head down to the oldest block not already in the database.
    *  @param fetchLocalMaxLevel should read the current top-level available for the chain, as stored in conseil

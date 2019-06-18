@@ -2169,6 +2169,37 @@ class TezosDatabaseOperationsTest
       result shouldBe List(Map("high" -> Some(2)))
     }
 
+    "should aggregate with multiple aggregations on the same field" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = List(
+        Aggregation("medium", AggregationType.sum, None),
+        Aggregation("medium", AggregationType.max, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("low", "medium", "high"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
+          aggregation = aggregate,
+          limit = 3)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("sum_medium" -> Some(5), "max_medium" -> Some(3), "low" -> Some(0), "high" -> Some(4)),
+        Map("sum_medium" -> Some(4), "max_medium" -> Some(4), "low" -> Some(0), "high" -> Some(8))
+      )
+    }
+
   }
 
  }
