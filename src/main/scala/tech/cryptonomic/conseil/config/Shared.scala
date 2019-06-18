@@ -21,7 +21,8 @@ final case class BatchFetchConfiguration(
   blockOperationsConcurrencyLevel: Int,
   blockPageSize: Int,
   blockPageProcessingTimeout: FiniteDuration,
-  accountPageProcessingTimeout: FiniteDuration
+  accountPageProcessingTimeout: FiniteDuration,
+  delegatePageProcessingTimeout: FiniteDuration
 )
 
 /** configurations related to a chain-node network calls */

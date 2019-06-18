@@ -300,7 +300,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
                 dataType = Some("hash"),
                 dataFormat = Some("dataFormat"),
                 valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
-                reference = Some(Map("0" -> "value1", "1" -> "other value"))))))))))
+                reference = Some(Map("0" -> "value1", "1" -> "other value")),
+                displayPriority = Some(1),
+                displayOrder = Some(2)))))))))
 
       // when
       val result = sut(overwrittenConfiguration).getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
@@ -318,7 +320,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         dataFormat = Some("dataFormat"),
         valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
         reference = Some(Map("0" -> "value1", "1" -> "other value")),
-        scale = Some(6))))
+        scale = Some(6),
+        displayPriority = Some(1),
+        displayOrder = Some(2))))
     }
 
     "filter out a hidden attribute" in {

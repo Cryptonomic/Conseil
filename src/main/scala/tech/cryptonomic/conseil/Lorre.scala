@@ -92,14 +92,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
      * Otherwise, any error will make Lorre proceed as expected by default (stop or wait for next cycle)
      */
     val attemptedProcessing =
-      if (ignoreProcessFailures.forall(ignore => ignore == "false" || ignore == "no"))
-        processing
-      else
+      if (ignoreProcessFailures.exists(ignore => ignore == "true" || ignore == "yes"))
         processing.recover {
           //swallow the error and proceed with the default behaviour
-          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _)) =>
+          case f@(AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | DelegatesProcessingFailed(_, _)) =>
             logger.error("Failed processing but will keep on going next cycle", f)
         }
+      else
+        processing
 
     Await.result(attemptedProcessing, atMost = Duration.Inf)
 
@@ -186,6 +186,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }
       })
     } transform {
+      case Failure(accountFailure @ AccountsProcessingFailed(_, _)) =>
+        Failure(accountFailure)
+      case Failure(delegateFailure @ DelegatesProcessingFailed(_, _)) =>
+        Failure(delegateFailure)
       case Failure(e) =>
         val error = "Could not fetch blocks from client"
         logger.error(error, e)
@@ -237,19 +241,26 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   /** Fetches and stores all accounts from the latest blocks stored in the database. */
   private[this] def processTezosAccounts(): Future[Done] = {
+    import cats.Monoid
     import cats.instances.list._
+    import cats.instances.int._
+    import cats.instances.option._
+    import cats.instances.tuple._
     import cats.syntax.functorFilter._
+    import cats.syntax.monoid._
 
     logger.info("Processing latest Tezos data for updated accounts...")
 
-    def logOutcome: PartialFunction[Try[(Int, Option[Int])], Unit] = {
-      case Success((accountsRows, delegateCheckpointRows)) =>
-        logger.info("{} accounts were touched on the database. Checkpoint stored for{} delegates.", accountsRows, delegateCheckpointRows.fold("")(" " + _))
+    def logFailure: PartialFunction[Try[_], Unit] = {
       case Failure(e) =>
         logger.error("Could not write accounts to the database")
     }
 
-    def processAccountsPage(accountsInfo: Future[List[BlockTagged[Map[AccountId, Account]]]]): Future[Int] =
+    def logOutcome: (Int, Option[Int]) => Unit =
+      (accountsRows, delegateCheckpointRows) =>
+        logger.info("{} accounts were touched on the database. Checkpoint stored for{} delegates.", accountsRows, delegateCheckpointRows.fold("")(" " + _))
+
+    def processAccountsPage(accountsInfo: Future[List[BlockTagged[Map[AccountId, Account]]]]): Future[(Int, Option[Int])] =
       accountsInfo.flatMap{
         taggedAccounts =>
           import TezosTypes.Syntax._
@@ -262,28 +273,25 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
                 delegateKeys.taggedWithBlock(blockHash, blockLevel)
           }
           db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, delegatesCheckpoint))
-            .andThen(logOutcome)
-            .map(_._1) // discard the checkpoints counts, not needed for progress count
+            .andThen(logFailure)
       }
 
     val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map {
       checkpoints =>
         logger.debug("I loaded all stored account references and will proceed to fetch updated information from the chain")
         val (pages, total) = tezosNodeOperator.getAccountsForBlocks(checkpoints)
-        //custom progress tracking for accounts
-        val logProgress = logProcessingProgress(entityName = "account", totalToProcess = total, processStartNanos = System.nanoTime()) _
 
         /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
         * The size and partition of results is driven by the NodeOperator itself, were each page contains a
         * "thunked" future of the result.
         * Such future will be actually started only as the page iterator is scanned, one element at the time
         */
-        pages.foldLeft(0) {
+        pages.foldLeft(Monoid[(Int, Option[Int])].empty) {
           (processed, nextPage) =>
             //wait for each page to load, before looking at the next, thus  starting the new computation
             val justDone = Await.result(processAccountsPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
-            processed + justDone <| logProgress
-        }
+            processed |+| justDone
+        } <| logOutcome.tupled
 
         checkpoints
     }
@@ -312,9 +320,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     logger.info("Processing latest Tezos data for account delegates...")
 
-    def logOutcome: PartialFunction[Try[Int], Unit] = {
-      case Success(delegateRows) =>
-        logger.info("{} delegates were touched on the database.", delegateRows)
+    def logOutcome: Int => Unit =
+      rows => logger.info("{} delegates were touched on the database.", rows)
+
+    def logFailure: PartialFunction[Try[_], Unit] = {
       case Failure(e) =>
         logger.error("Could not write delegates to the database")
     }
@@ -323,17 +332,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       delegatesInfo.flatMap{
         taggedDelegates =>
           db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates))
-            .andThen(logOutcome)
+            .andThen(logFailure)
       }
 
     val saveDelegates = db.run(TezosDb.getLatestDelegatesFromCheckpoint) map {
       checkpoints =>
         logger.debug("I loaded all stored delegate references and will proceed to fetch updated information from the chain")
         val (pages, total) = tezosNodeOperator.getDelegatesForBlocks(checkpoints)
-        //custom progress tracking for accounts
-        val logProgress = logProcessingProgress(entityName = "delegate", totalToProcess = total, processStartNanos = System.nanoTime()) _
 
-        /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
+       /* Process in a strictly sequential way, to avoid opening an unbounded number of requests on the http-client.
         * The size and partition of results is driven by the NodeOperator itself, were each page contains a
         * "thunked" future of the result.
         * Such future will be actually started only as the page iterator is scanned, one element at the time
@@ -341,9 +348,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         pages.foldLeft(0) {
           (processed, nextPage) =>
             //wait for each page to load, before looking at the next, thus  starting the new computation
-            val justDone = Await.result(processDelegatesPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
-            processed + justDone <| logProgress
-        }
+            val justDone = Await.result(processDelegatesPage(nextPage), atMost = batchingConf.delegatePageProcessingTimeout)
+            processed + justDone
+        } <| logOutcome
 
         checkpoints
     }
@@ -353,7 +360,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case Success(checkpoints) =>
         val processed = Some(checkpoints.keySet)
         logger.debug("Cleaning checkpointed delegates..")
-        Await.result(db.run(TezosDb.cleanDelegatesCheckpoint(processed)), atMost = batchingConf.accountPageProcessingTimeout)
+        Await.result(db.run(TezosDb.cleanDelegatesCheckpoint(processed)), atMost = batchingConf.delegatePageProcessingTimeout)
         logger.debug("Done cleaning checkpointed delegates.")
       case _ =>
         ()
