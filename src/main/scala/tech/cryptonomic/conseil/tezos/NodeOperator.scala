@@ -9,13 +9,11 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, Michelson
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import tech.cryptonomic.conseil.util.JsonUtil.fromJson
 import com.typesafe.scalalogging.LazyLogging
-import cats.{ApplicativeError, FlatMap, Functor, MonadError, Monoid, Show}
+import cats.{Applicative, ApplicativeError, FlatMap, Functor, MonadError, Monoid, Show}
 import cats.data.Reader
-import cats.syntax.applicative._
-import cats.syntax.apply._
-import cats.syntax.flatMap._
-import cats.syntax.functor._
+import cats.syntax.all._
 import cats.instances.string._
+import cats.instances.tuple._
 import cats.effect.Concurrent
 import scala.{Stream => _}
 import fs2.Stream
@@ -79,10 +77,10 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
     * Fetches the accounts identified by id
     *
     * @param accountIds the ids
-    * @param blockHash  the block storing the accounts, the head block if not specified
+    * @param blockHash  the block storing the accounts
     * @return           the list of accounts, indexed by AccountId
     */
-  def getAccountsForBlock[F[_] : MonadThrow](accountIds: List[AccountId], blockHash: BlockHash = blockHeadHash)
+  def getAccountsForBlock[F[_] : MonadThrow](accountIds: List[AccountId], blockHash: BlockHash)
     (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]): F[Map[AccountId, Account]] = {
       import TezosOptics.Accounts.{scriptLens, storageLens}
       import cats.instances.list._
@@ -110,149 +108,186 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration)
 
   }
 
-  /**
-    * Fetches the accounts identified by id
+  /* Generic loader of derived entities, associated with some block operation.
+   * Can be used to load accounts, delegates and similar entities.
+   * It requires :
+   * @param loadEntitiesByBlock will provide a function that actually loads data for keys
+   *        related to a single block, once given the reference block hash. It's a "function factory".
+   * @param keyIndex the mapping of all keys requested to the block they're referenced by
+   */
+  private def getBlockRelatedEntities[F[_] : ApplicativeThrow : Concurrent, Key, Entity](
+    loadEntitiesByBlock: Reader[BlockHash, Stream[F, Key] => Stream[F, (Key, Entity)]],
+    keyIndex: Map[Key, BlockReference]
+  ): Stream[F, BlockTagged[Map[Key, Entity]]] = {
+    import TezosTypes.Syntax._
+
+    val reverseIndex =
+      keyIndex.groupBy {
+        case (key, (blockHash, level)) => blockHash
+      }
+      .mapValues(_.keySet)
+      .toMap
+
+    val keyStreamsByBlock = reverseIndex.mapValues(keys => Stream.fromIterator(keys.iterator))
+
+   //for each hash in the map, get the stream of results and concat them all, keeping the order
+    keyStreamsByBlock.map {
+      case (hash, keys) =>
+        loadEntitiesByBlock(hash)(keys)
+    }
+    .fold(Stream.empty)(_ ++ _)
+    .groupAdjacentBy {
+      case (key, entity) => keyIndex(key) //create chunks having the same block reference, relying on how the stream is ordered
+    }
+    .map {
+      case ((hash, level), keyedEntitiesChunk) =>
+        val entitiesMap = keyedEntitiesChunk.foldLeft(Map.empty[Key, Entity]){_ + _} //collect to a map each chunk
+        entitiesMap.taggedWithBlock(hash, level) //tag with the block reference
+    }
+
+  }
+
+  /** Fetches the accounts identified by id, using a fetcher that should already
+    * take into account the block referencing the accounts.
     *
-    * @param accountIds the ids
-    * @param blockHash  the block storing the accounts, the head block if not specified
-    * @return           the stream of accounts, indexed by AccountId
+    * @param accountIds the ids for requested accounts
+    * @param fetcherForBlock data fetcher for accounts, built for given a reference block hash
+    * @return the stream of accounts, indexed by AccountId
     */
-  def getAccountsForBlock[F[_] : MonadThrow : Concurrent](accountIds: Stream[F, AccountId], blockHash: BlockHash)
-    (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]): Stream[F, (AccountId, Account)] = {
-      import TezosOptics.Accounts.{scriptLens, storageLens}
+  def getAccountsForBlock[F[_] : ApplicativeThrow : Concurrent](
+    accountIds: Stream[F, AccountId]
+  )(
+    implicit fetcherForBlock: NodeFetcherThrow[F, AccountId, Option[Account]]
+  ): Stream[F, (AccountId, Account)] = {
+    import TezosOptics.Accounts.{scriptLens, storageLens}
 
-      implicit val accountFetcher: DataFetcher.Aux[F, Throwable, AccountId, Option[Account], String] = fetchProvider(blockHash)
+    def parseMichelsonScripts(id: AccountId): Account => Account = withLoggingContext[Account, String](makeContext = _ => s"account with key hash ${id.id}") {
+      implicit ctx =>
+        val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema, String])
+        val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction, String])
 
-      def parseMichelsonScripts(id: AccountId): Account => Account = withLoggingContext[Account, String](makeContext = _ => s"account with key hash ${id.id}") {
-        implicit ctx =>
-          val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema, String])
-          val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction, String])
+        scriptAlter compose storageAlter
+    }
 
-          scriptAlter compose storageAlter
-      }
+    val logError: PartialFunction[Throwable, Stream[F, Unit]] = {
+      case err: Throwable =>
+        val sampleSize = 30
+        val logAction = accountIds
+          .take(sampleSize + 1)
+          .map(_.id)
+          .compile.toVector
+          .flatMap {
+            ids =>
+              val sample = if (ids.size <= sampleSize) ids else ids.dropRight(1) :+ "..."
+              logger.error(s"Could not get accounts' data for ids ${sample.mkString(",")}", err).pure
+          }
+        Stream.eval(logAction)
+    }
 
-      accountIds.parEvalMap(batchConf.accountFetchConcurrencyLevel)(
-        fetcher.tapWith((_, _)).run
-      )
-      .collect {
-        case (accountId, Some(account)) => accountId -> parseMichelsonScripts(accountId)(account)
-      }
-
+    /* Concurrently gets data, then logs any error, issue warns for missing data, eventually
+     * parses the account object, if all went well
+     */
+    accountIds.parEvalMap(batchConf.accountFetchConcurrencyLevel)(
+      fetcher.tapWith((_, _)).run
+    )
+    .onError(logError)
+    .evalTap {
+      case (accountId, maybeAccount) =>
+        Applicative[F].whenA(maybeAccount.isEmpty) {
+          logger.warn("The following account key was not found querying the {} node: {}", network, accountId).pure
+        }
+    }
+    .collect {
+      case (accountId, Some(account)) => accountId -> parseMichelsonScripts(accountId)(account)
+    }
   }
 
   /**
     * Get accounts for all the identifiers passed-in with the corresponding block
-    * @param accountsBlocksIndex a map from unique id to the [latest] block reference
-    * @return         Accounts with their corresponding block data
+    *
+    * @param accountsBlocksIndex a map from unique id to the referring block [reference]
+    * @return Accounts with their corresponding block data
     */
-  def getAccounts[F[_] : MonadThrow : Concurrent](
+  def getAccounts[F[_] : ApplicativeThrow : Concurrent](
     accountsBlocksIndex: Map[AccountId, BlockReference]
   )(
     implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
-  ): Stream[F, BlockTagged[Map[AccountId, Account]]] = {
-    import TezosTypes.Syntax._
-    import cats.syntax.applicativeError._
-
-    def notifyAnyLostIds(missing: Set[AccountId]) =
-      if (missing.nonEmpty) {
-        logger.warn(
-          "The following account keys were not found querying the {} node: {}",
-          network,
-          missing.map(_.id).mkString("\n", ",", "\n")
-        )
-      }
-
-    //uses the index to collect together Accounts matching the same block reference
-    def groupByLatestBlock(data: Map[AccountId, Account]): Iterable[BlockTagged[Map[AccountId, Account]]] =
-      data.groupBy {
-        case (id, _) => accountsBlocksIndex(id)
-      }.map {
-        case ((hash, level), accounts) => accounts.taggedWithBlock(hash, level)
-      }
-
-    //fetch accounts by requested ids and group them together with corresponding blocks
-    getAccountsForBlock(Stream.fromIterator(accountsBlocksIndex.keys.iterator), blockHeadHash)
-      .onError {
-        case err =>
-          val showSomeIds = accountsBlocksIndex.keys.take(30).map(_.id).mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
-          Stream.eval_(logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err).pure)
-      }
-      .fold(Map.empty[AccountId, Account]){_ + _} //this is collecting to a map the whole stream
-      .flatMap {
-        accountsMap =>
-          notifyAnyLostIds(accountsBlocksIndex.keySet -- accountsMap.keySet)
-          Stream.fromIterator(groupByLatestBlock(accountsMap).iterator) //gets back elements in a stream
-      }
-
-  }
+  ): Stream[F, BlockTagged[Map[AccountId, Account]]] =
+    getBlockRelatedEntities[F, AccountId, Account](
+      //maps the Reader, so that, applying it to a hash, it returns the block-specific fetch function
+      loadEntitiesByBlock = fetchProvider.map {
+        implicit fetcher => //pass this implicitly from the reader
+          (ids: Stream[F, AccountId]) => getAccountsForBlock(ids)
+      },
+      keyIndex = accountsBlocksIndex
+    )
 
   /**
-    * Fetches the delegates identified by public key hash
+    * Fetches the delegates identified by public key hash, using a fetcher that should already
+    * take into account the block referencing the delegate.
     *
-    * @param delegateKeys the pkhs
-    * @param blockHash    the block storing the delegates, the head block if not specified
-    * @return             the stream of delegates, indexed by PublicKeyHash
+    * @param delegateKeys the pkhs for requested delegates
+    * @param fetcherForBlock data fetcher for delegates, built for given a reference block hash
+    * @return the stream of delegates, indexed by PublicKeyHash
     */
-  def getDelegatesForBlock[F[_] : MonadThrow : Concurrent](delegateKeys: Stream[F, PublicKeyHash], blockHash: BlockHash)
-    (implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]]): Stream[F, (PublicKeyHash, Delegate)] = {
+  def getDelegatesForBlock[F[_] : ApplicativeThrow : Concurrent](
+    delegateKeys: Stream[F, PublicKeyHash]
+  )(
+    implicit fetcherForBlock: NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]
+  ): Stream[F, (PublicKeyHash, Delegate)] = {
 
-      implicit val delegateFetcher: DataFetcher.Aux[F, Throwable, PublicKeyHash, Option[Delegate], String] = fetchProvider(blockHash)
+    val logError: PartialFunction[Throwable, Stream[F, Unit]] = {
+      case err: Throwable =>
+        val sampleSize = 30
+        val logAction = delegateKeys
+          .take(sampleSize + 1)
+          .map(_.value)
+          .compile.toVector
+          .flatMap {
+            keys =>
+              val sample = if (keys.size <= sampleSize) keys else keys.dropRight(1) :+ "..."
+              logger.error(s"Could not get accounts' data for key hashes ${sample.mkString(",")}", err).pure
+          }
+        Stream.eval(logAction)
+    }
 
-      delegateKeys.parEvalMap(batchConf.delegateFetchConcurrencyLevel)(
-        fetcher.tapWith((_, _)).run
-      )
-      .collect {
-        case (pkh, Some(delegate)) => pkh -> delegate
-      }
-
+    /* Concurrently gets data, then logs any error, issue warns for missing data, eventually
+     * parses the delegate object, if all went well
+     */
+    delegateKeys.parEvalMap(batchConf.delegateFetchConcurrencyLevel)(
+      fetcher.tapWith((_, _)).run
+    )
+    .onError(logError)
+    .evalTap {
+      case (pkh, maybeDelegate) =>
+        Applicative[F].whenA(maybeDelegate.isEmpty){
+          logger.warn("The following delegate key was not found querying the {} node: {}", network, pkh).pure
+        }
+    }
+    .collect {
+      case (pkh, Some(delegate)) => pkh -> delegate
+    }
   }
 
-  //NOTE FACTOR THE DELEGATES AND ACCOUNTS FETCHING TO A COMMON CODE
   /**
     * Get delegates for all the identifiers passed-in with the corresponding block
-    * @param keysBlocksIndex a map from unique id to the [latest] block reference
+    *
+    * @param keysBlocksIndex a map from unique key hash to the referring block [reference]
     * @return Delegates with their corresponding block data
     */
   def getDelegates[F[_] : MonadThrow : Concurrent](
     keysBlocksIndex: Map[PublicKeyHash, BlockReference]
   )(
     implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]]
-  ): Stream[F, BlockTagged[Map[PublicKeyHash, Delegate]]] = {
-    import TezosTypes.Syntax._
-    import cats.syntax.applicativeError._
-
-    def notifyAnyLostIds(missing: Set[PublicKeyHash]) =
-      if (missing.nonEmpty) {
-        logger.warn(
-          "The following delegate keys were not found querying the {} node: {}",
-          network,
-          missing.map(_.value).mkString("\n", ",", "\n")
-        )
-      }
-
-    //uses the index to collect together Delegates matching the same block reference
-    def groupByLatestBlock(data: Map[PublicKeyHash, Delegate]): Iterable[BlockTagged[Map[PublicKeyHash, Delegate]]] =
-      data.groupBy {
-        case (pkh, _) => keysBlocksIndex(pkh)
-      }.map {
-        case ((hash, level), delegates) => delegates.taggedWithBlock(hash, level)
-      }
-
-    //fetch delegates by requested pkh and group them together with corresponding blocks
-    getDelegatesForBlock(Stream.fromIterator(keysBlocksIndex.keys.iterator), blockHeadHash)
-      .onError {
-        case err =>
-          val showSomeIds = keysBlocksIndex.keys.take(30).map(_.value).mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
-          Stream.eval_(logger.error(s"Could not get delegates' data for ids ${showSomeIds}", err).pure)
-      }
-      .fold(Map.empty[PublicKeyHash, Delegate]){_ + _} //this is collecting to a map the whole stream
-      .flatMap {
-        delegatesMap =>
-          notifyAnyLostIds(keysBlocksIndex.keySet -- delegatesMap.keySet)
-          Stream.fromIterator(groupByLatestBlock(delegatesMap).iterator) //gets back elements in a stream
-      }
-
-  }
+  ): Stream[F, BlockTagged[Map[PublicKeyHash, Delegate]]] =
+    getBlockRelatedEntities[F, PublicKeyHash, Delegate](
+      //maps the Reader, so that, applying it to a hash, it returns the block-specific fetch function
+      loadEntitiesByBlock = fetchProvider.map {
+        implicit fetcher => //pass this implicitly from the reader
+          (keys: Stream[F, PublicKeyHash]) => getDelegatesForBlock(keys)
+      },
+      keyIndex = keysBlocksIndex
+    )
 
   /**
     * Fetches operations for a block, without waiting for the result

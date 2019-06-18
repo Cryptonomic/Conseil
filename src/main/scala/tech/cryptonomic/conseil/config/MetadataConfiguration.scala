@@ -92,4 +92,6 @@ case class AttributeConfiguration(displayName: Option[String],
                                   dataFormat: Option[String] = None,
                                   valueMap: Option[Map[String, String]] = None,
                                   reference: Option[Map[String, String]] = None,
-                                  cacheConfig: Option[AttributeCacheConfiguration] = None)
+                                  cacheConfig: Option[AttributeCacheConfiguration] = None,
+                                  displayPriority: Option[Int] = None,
+                                  displayOrder: Option[Int] = None)

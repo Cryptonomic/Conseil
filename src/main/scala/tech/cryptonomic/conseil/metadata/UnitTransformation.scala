@@ -58,6 +58,8 @@ class UnitTransformation(overrides: MetadataConfiguration) {
       scale = overrideAttribute.flatMap(_.scale),
       dataType = overrideAttribute.flatMap(_.dataType).map(mapType).getOrElse(attribute.dataType),
       valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty),
-      reference = overrideAttribute.flatMap(_.reference).filter(_.nonEmpty))
+      reference = overrideAttribute.flatMap(_.reference).filter(_.nonEmpty),
+      displayPriority = overrideAttribute.flatMap(_.displayPriority),
+      displayOrder = overrideAttribute.flatMap(_.displayOrder))
   }
 }

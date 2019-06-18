@@ -390,5 +390,4 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   }
 
-
 }
