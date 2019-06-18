@@ -248,7 +248,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
       result.futureValue.left.get should contain theSameElementsAs List(InvalidAggregationField("invalid"), InvalidAggregationFieldForType("invalid"))
     }
 
-    "return error with field XXXXX" in {
+    "return error with when none of the fields in predicates are valid for querying" in {
       val attribute = Attribute(
         name = "InvalidAttribute",
         displayName = "Invalid",
@@ -273,7 +273,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       val result = query.validate(testEntityPath, ms)
 
-      result.futureValue.left.get shouldBe List(InvalidPredicateFiltering("None of attributes InvalidAttribute is valid for predicate"))
+      result.futureValue.left.get shouldBe List(InvalidPredicateFiltering("Query needs to contain a predicate on UniqueKey or DateTime attribute"))
     }
 
     "successfully validates aggregation for any dataType when COUNT function is used" in {

@@ -38,7 +38,7 @@ object PlatformDiscoveryTypes {
     scale: Option[Int] = None,
     reference: Option[Map[String, String]] = None,
     displayPriority: Option[Int] = None,
-    displayOrder: Option[Int] = None
+    displayOrder: Option[Int] = None,
     sufficientForQuery: Option[Boolean] = None
   )
 

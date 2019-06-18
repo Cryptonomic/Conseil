@@ -119,7 +119,7 @@ object DataTypes {
     if(attributes.exists(attr => attr.keyType == KeyType.UniqueKey || attr.dataType == DataType.DateTime || attr.sufficientForQuery.getOrElse(false))) {
       List.empty
     } else {
-      List(InvalidPredicateFiltering(s"None of attributes ${attributes.map(_.name).mkString(",")} is valid for predicate"))
+      List(InvalidPredicateFiltering(s"Query needs to contain a predicate on UniqueKey or DateTime attribute"))
     }
   }
 
@@ -259,22 +259,16 @@ object DataTypes {
         .withFieldConst(_.aggregation, aggregation.toList.flatten.map(_.toAggregation))
         .transform
 
-      val nonExistingFields = findNonExistingFields(query, entity, metadataService)
-      val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, metadataService)
-      val invalidPredicateFiltering = findInvalidPredicateFilteringFields(query, entity, metadataService)
-
-      for {
-        invalidNonExistingFields <- nonExistingFields
-        invalidAggregationFieldForTypes <- invalidTypeAggregationField
-        updatedQuery <- replaceTimestampInPredicates(entity, query, metadataService)
-        invalidPredicateFilteringFields <- invalidPredicateFiltering
-      } yield {
-        invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields match {
-          case Nil => Right(updatedQuery)
-          case wrongFields => Left(wrongFields)
-        }
+      (findNonExistingFields(query, entity, metadataService),
+      findInvalidAggregationTypeFields(query, entity, metadataService),
+      findInvalidPredicateFilteringFields(query, entity, metadataService),
+      replaceTimestampInPredicates(entity, query, metadataService)).mapN {
+        case (invalidNonExistingFields, invalidAggregationFieldForTypes, invalidPredicateFilteringFields, updatedQuery) =>
+          invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields match {
+            case Nil => Right(updatedQuery)
+            case wrongFields => Left(wrongFields)
+          }
       }
-
     }
   }
 

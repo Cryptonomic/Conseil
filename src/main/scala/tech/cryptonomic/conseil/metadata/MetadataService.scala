@@ -64,12 +64,14 @@ class MetadataService(config: PlatformsConfiguration,
   // fetches attributes with given function
   private def getAttributesHelper(path: EntityPath)(getAttributes: String => Future[Option[List[Attribute]]])
     (implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] = {
-    for {
-      exists <- exists(path)
-      attributes <- getAttributes(path.entity)
-    } yield attributes
-      .filter { _ => exists }
-      .mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
+    exists(path).flatMap {
+      case true =>
+      getAttributes(path.entity).map(
+        _.mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
+      )
+      case false =>
+      Future.successful(None)
+    }
   }
 
   // fetches attribute values
