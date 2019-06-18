@@ -6,8 +6,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.Aggregat
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, KeyType}
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -98,7 +98,7 @@ object DataTypes {
         .find(_.name == path.entity)
         .flatMap(_.limitedQuery)
         .getOrElse(false)
-      if(limitedQueryEntity) {
+      if (limitedQueryEntity) {
         query
           .predicates
           .traverse { predicate =>
@@ -120,6 +120,11 @@ object DataTypes {
     def message: String
   }
 
+  /** Trait representing query validation errors */
+  sealed trait QueryValidationError extends Product with Serializable {
+    def message: String
+  }
+
   /** Attribute shouldn't be queried because it is a high cardinality field */
   case class HighCardinalityAttribute(message: String) extends AttributesValidationError
 
@@ -128,11 +133,6 @@ object DataTypes {
 
   /** Attribute values should not be listed because minimal length is greater than filter length for given column  */
   case class InvalidAttributeFilterLength(message: String, minMatchLength: Int) extends AttributesValidationError
-
-  /** Trait representing query validation errors */
-  sealed trait QueryValidationError extends Product with Serializable {
-    def message: String
-  }
 
   /** Class which contains output type with the response */
   case class QueryResponseWithOutput(queryResponse: List[QueryResponse], output: OutputType)
@@ -252,10 +252,10 @@ object DataTypes {
         .transform
 
       (findNonExistingFields(query, entity, metadataService),
-      findInvalidAggregationTypeFields(query, entity, metadataService),
-      findInvalidPredicateFilteringFields(query, entity, metadataService),
-      replaceTimestampInPredicates(entity, query, metadataService)).mapN {
-        case (invalidNonExistingFields, invalidAggregationFieldForTypes, invalidPredicateFilteringFields, updatedQuery) =>
+        findInvalidAggregationTypeFields(query, entity, metadataService),
+        findInvalidPredicateFilteringFields(query, entity, metadataService),
+        replaceTimestampInPredicates(entity, query, metadataService)).mapN {
+        (invalidNonExistingFields, invalidAggregationFieldForTypes, invalidPredicateFilteringFields, updatedQuery) =>
           invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields match {
             case Nil => Right(updatedQuery)
             case wrongFields => Left(wrongFields)
