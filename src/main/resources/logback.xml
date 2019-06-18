@@ -11,11 +11,8 @@
 
     <logger name="com.base22" level="TRACE"/>
     <logger name="de.flapdoodle.embed.process" level="OFF"/>
-    <logger name="com.typesafe.slick" level="OFF"/>
-    <logger name="com.zaxxer.hikari" level="OFF"/>
-    <logger name="slick" level="OFF"/>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>
