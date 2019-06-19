@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, Predicate, QueryOrdering, QueryResponse}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 
 /**
   * Functions for writing Tezos data to a database.
@@ -455,16 +456,21 @@ object TezosDatabaseOperations extends LazyLogging {
     columns: List[String],
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
-    aggregation: List[Aggregation] = List.empty,
+    aggregation: List[Aggregation],
+    outputType: OutputType,
     limit: Int)
     (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
-     makeQuery(table, columns, aggregation)
+
+    val q = makeQuery(table, columns, aggregation)
        .addPredicates(aggregation.flatMap(_.getPredicate) ::: predicates)
        .addGroupBy(aggregation, columns)
        .addOrdering(ordering)
        .addLimit(limit)
-       .as[QueryResponse]
-       .map(_.toList)
+    if(outputType == OutputType.sql) {
+      DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
+    } else {
+      q.as[QueryResponse].map(_.toList)
+    }
   }
 
 }

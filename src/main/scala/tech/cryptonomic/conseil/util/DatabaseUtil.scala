@@ -157,7 +157,7 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeLimit(limit: Int): SQLActionBuilder = {
-      sql""" LIMIT $limit"""
+      sql""" LIMIT #$limit"""
     }
 
     /** Prepares group by parameters

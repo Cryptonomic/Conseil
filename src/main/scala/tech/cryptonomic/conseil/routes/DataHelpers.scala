@@ -29,6 +29,8 @@ trait DataHelpers
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
       complete(HttpEntity.Strict(ContentTypes.`text/csv(UTF-8)`, ByteString(queryResponse.convertTo[String])))
+    case Right(QueryResponseWithOutput(queryResponse, OutputType.sql)) =>
+      complete(HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, ByteString(queryResponse.head("sql").get.toString)))
     case Right(success) =>
       response(success)
   }
