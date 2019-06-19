@@ -160,7 +160,7 @@ trait BlocksDataFetchers {
       },
       decodeJson = json =>
         decodeLiftingTo[IO, Option[Int]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched current quorum json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched current quorum json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover {
             case NonFatal(_) => Option.empty
           }
@@ -178,7 +178,7 @@ trait BlocksDataFetchers {
       },
       decodeJson = json =>
         decodeLiftingTo[IO, Option[ProtocolId]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json"))
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
           .recover {
             case NonFatal(_) => Option.empty
           }
