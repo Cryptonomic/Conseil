@@ -456,7 +456,7 @@ object TezosDatabaseOperations extends LazyLogging {
     columns: List[String],
     predicates: List[Predicate],
     ordering: List[QueryOrdering],
-    aggregation: List[Aggregation] = List.empty,
+    aggregation: List[Aggregation],
     outputType: OutputType,
     limit: Int)
     (implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
