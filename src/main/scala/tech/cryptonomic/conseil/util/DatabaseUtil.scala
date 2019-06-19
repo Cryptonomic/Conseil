@@ -104,11 +104,11 @@ object DatabaseUtil {
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
-        val aggregationFieldsNotInColumns = columns.toSet.diff(aggregationFields).toList
-        if(aggregation.isEmpty || aggregationFieldsNotInColumns.isEmpty) {
+        val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).toList
+        if(aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
           action
         } else {
-          concatenateSqlActions(action, makeGroupBy(aggregationFieldsNotInColumns))
+          concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregationFields))
         }
       }
     }
