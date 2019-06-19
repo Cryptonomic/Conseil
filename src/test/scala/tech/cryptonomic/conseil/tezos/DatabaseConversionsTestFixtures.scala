@@ -7,7 +7,9 @@ trait DBConversionsData {
 
   val sampleScriptedContract =
     Scripted.Contracts(
-      code = Micheline("""[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""),
+      code = Micheline(
+        """[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""
+      ),
       storage = Micheline("""{"string":"hello"}""")
     )
 
@@ -15,7 +17,7 @@ trait DBConversionsData {
     Endorsement(
       level = 182308,
       metadata = EndorsementMetadata(
-        slots =List(29, 27, 20, 17),
+        slots = List(29, 27, 20, 17),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
         balance_updates = List(
           BalanceUpdate(
@@ -90,33 +92,31 @@ trait DBConversionsData {
       gas_limit = PositiveDecimal(10000),
       storage_limit = PositiveDecimal(257),
       public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
-      metadata =
-        ResultMetadata[OperationResult.Reveal](
-          balance_updates = List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
-              change = -10000L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "freezer",
-              category = Some("fees"),
-              delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-              level = Some(1561),
-              change = 10000L,
-              contract = None
-            )
+      metadata = ResultMetadata[OperationResult.Reveal](
+        balance_updates = List(
+          BalanceUpdate(
+            kind = "contract",
+            contract = Some(ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq")),
+            change = -10000L,
+            category = None,
+            delegate = None,
+            level = None
           ),
-          operation_result =
-            OperationResult.Reveal(
-              status = "applied",
-              consumed_gas = Some(Decimal(10000)),
-              errors = None
-            )
+          BalanceUpdate(
+            kind = "freezer",
+            category = Some("fees"),
+            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+            level = Some(1561),
+            change = 10000L,
+            contract = None
+          )
+        ),
+        operation_result = OperationResult.Reveal(
+          status = "applied",
+          consumed_gas = Some(Decimal(10000)),
+          errors = None
         )
+      )
     )
 
   val sampleTransaction =
@@ -148,91 +148,91 @@ trait DBConversionsData {
             contract = None
           )
         ),
-        operation_result =
-          OperationResult.Transaction(
-            status = "applied",
-            storage = Some(Micheline("""{"string":"world"}""")),
-            consumed_gas = Some(Decimal(11375)),
-            storage_size = Some(Decimal(46)),
-            allocated_destination_contract = None,
-            balance_updates = None,
-            big_map_diff = None,
-            originated_contracts = None,
-            paid_storage_size_diff = None,
-            errors = None
-          )
-      )
-  )
-
-val sampleOrigination =
-  Origination(
-    source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
-    fee = PositiveDecimal(1441),
-    counter = PositiveDecimal(407941),
-    gas_limit = PositiveDecimal(11362),
-    storage_limit = PositiveDecimal(323),
-    manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
-    balance = PositiveDecimal(1000000),
-    spendable = Some(false),
-    delegatable = Some(false),
-    delegate = None,
-    script = Some(sampleScriptedContract),
-    metadata = ResultMetadata(
-      balance_updates = List(
-        BalanceUpdate(
-          kind = "contract",
-          contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-          change = -1441L,
-          category = None,
-          delegate = None,
-          level = None
-        ),
-        BalanceUpdate(
-          kind = "freezer",
-          category = Some("fees"),
-          delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
-          level = Some(1583),
-          change = 1441L,
-          contract = None
-        )
-      ),
-      operation_result =
-        OperationResult.Origination(
+        operation_result = OperationResult.Transaction(
           status = "applied",
-          balance_updates = Some(List(
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-              change = -46000L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-              change = -257000L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
-              change = -1000000L,
-              category = None,
-              delegate = None,
-              level = None
-            ),
-            BalanceUpdate(
-              kind = "contract",
-              contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
-              change = 1000000L,
-              category = None,
-              delegate = None,
-              level = None
+          storage = Some(Micheline("""{"string":"world"}""")),
+          consumed_gas = Some(Decimal(11375)),
+          storage_size = Some(Decimal(46)),
+          allocated_destination_contract = None,
+          balance_updates = None,
+          big_map_diff = None,
+          originated_contracts = None,
+          paid_storage_size_diff = None,
+          errors = None
+        )
+      )
+    )
+
+  val sampleOrigination =
+    Origination(
+      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      fee = PositiveDecimal(1441),
+      counter = PositiveDecimal(407941),
+      gas_limit = PositiveDecimal(11362),
+      storage_limit = PositiveDecimal(323),
+      manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      balance = PositiveDecimal(1000000),
+      spendable = Some(false),
+      delegatable = Some(false),
+      delegate = None,
+      script = Some(sampleScriptedContract),
+      metadata = ResultMetadata(
+        balance_updates = List(
+          BalanceUpdate(
+            kind = "contract",
+            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+            change = -1441L,
+            category = None,
+            delegate = None,
+            level = None
+          ),
+          BalanceUpdate(
+            kind = "freezer",
+            category = Some("fees"),
+            delegate = Some(PublicKeyHash("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889")),
+            level = Some(1583),
+            change = 1441L,
+            contract = None
+          )
+        ),
+        operation_result = OperationResult.Origination(
+          status = "applied",
+          balance_updates = Some(
+            List(
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                change = -46000L,
+                category = None,
+                delegate = None,
+                level = None
+              ),
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                change = -257000L,
+                category = None,
+                delegate = None,
+                level = None
+              ),
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+                change = -1000000L,
+                category = None,
+                delegate = None,
+                level = None
+              ),
+              BalanceUpdate(
+                kind = "contract",
+                contract = Some(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4")),
+                change = 1000000L,
+                category = None,
+                delegate = None,
+                level = None
+              )
             )
-          )),
+          ),
           originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
           consumed_gas = Some(Decimal(11262)),
           storage_size = Some(Decimal(46)),
@@ -269,12 +269,11 @@ val sampleOrigination =
             contract = None
           )
         ),
-        operation_result =
-          OperationResult.Delegation(
-            status = "applied",
-            consumed_gas = Some(Decimal(10000)),
-            errors = None
-          )
+        operation_result = OperationResult.Delegation(
+          status = "applied",
+          consumed_gas = Some(Decimal(10000)),
+          errors = None
+        )
       )
     )
 

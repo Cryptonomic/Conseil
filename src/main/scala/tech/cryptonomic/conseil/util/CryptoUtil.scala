@@ -18,12 +18,12 @@ object CryptoUtil {
     */
   private def getBase58BytesForPrefix(prefix: String): Try[List[Byte]] = Try {
     prefix match {
-      case "tz1"    => List[Byte](6.toByte, 161.toByte, 159.toByte)
-      case "edpk"   => List[Byte](13.toByte, 15.toByte, 37.toByte, 217.toByte)
-      case "edsk"   => List[Byte](43.toByte, 246.toByte, 78.toByte, 7.toByte)
-      case "edsig"  => List[Byte](9.toByte, 245.toByte, 205.toByte, 134.toByte, 18.toByte)
-      case "op"     => List[Byte](5.toByte, 116.toByte)
-      case _        => throw new Exception(s"Could not find prefix for $prefix!")
+      case "tz1" => List[Byte](6.toByte, 161.toByte, 159.toByte)
+      case "edpk" => List[Byte](13.toByte, 15.toByte, 37.toByte, 217.toByte)
+      case "edsk" => List[Byte](43.toByte, 246.toByte, 78.toByte, 7.toByte)
+      case "edsig" => List[Byte](9.toByte, 245.toByte, 205.toByte, 134.toByte, 18.toByte)
+      case "op" => List[Byte](5.toByte, 116.toByte)
+      case _ => throw new Exception(s"Could not find prefix for $prefix!")
     }
   }
 
@@ -47,11 +47,11 @@ object CryptoUtil {
     * @return       Decoded bytes
     */
   def base58CheckDecode(s: String, prefix: String): Try[Seq[Byte]] =
-    getBase58BytesForPrefix(prefix).flatMap{ prefix =>
+    getBase58BytesForPrefix(prefix).flatMap { prefix =>
       Try {
         val charsToSlice = prefix.length
         val decoded = Base58Check.decode(s)
-        val decodedBytes = decoded._1  :: decoded._2.data.toList
+        val decodedBytes = decoded._1 :: decoded._2.data.toList
         decodedBytes.toArray.slice(charsToSlice, decodedBytes.length)
       }
     }

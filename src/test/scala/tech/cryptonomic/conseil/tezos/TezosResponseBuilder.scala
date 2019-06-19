@@ -35,7 +35,7 @@ object TezosResponseBuilder {
       "protocol": "PrihK96nBAFSxVL1GLJTVhu9YnzkMFiBeuJRPA8NwuZVZCE1L6i"
     }"""
 
-    val blockResponse: String =
+  val blockResponse: String =
     """{
       "protocol": "ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK",
       "chain_id": "NetXSzLHKwSumh7",

@@ -6,7 +6,12 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
+import tech.cryptonomic.conseil.config.Platforms.{
+  PlatformsConfiguration,
+  Tezos,
+  TezosConfiguration,
+  TezosNodeConfiguration
+}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
@@ -107,14 +112,21 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   )
 
   val fakeQPO: DataOperations = new DataOperations {
-    override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] =
+    override def queryWithPredicates(tableName: String, query: Query)(
+        implicit ec: ExecutionContext
+    ): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
   }
 
   val fakeQPP: DataPlatform = new DataPlatform(Map("tezos" -> fakeQPO), 1000)
   val cfg = PlatformsConfiguration(
     platforms = Map(
-      Tezos -> List(TezosConfiguration("alphanet", TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)))
+      Tezos -> List(
+            TezosConfiguration(
+              "alphanet",
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
+            )
+          )
     )
   )
 
@@ -128,81 +140,101 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
   "Query protocol" should {
 
-    "return a correct response with OK status code with POST" in {
-      (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
-      (metadataServiceStub.getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(accountAttributes)))
-      (metadataServiceStub.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
+      "return a correct response with OK status code with POST" in {
+        (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+        (metadataServiceStub
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
+          .when(*, *)
+          .returns(Future.successful(Some(accountAttributes)))
+        (metadataServiceStub
+          .getEntities(_: NetworkPath)(_: ExecutionContext))
+          .when(*, *)
+          .returns(Future.successful(Some(List(testEntity))))
 
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/v2/data/tezos/alphanet/accounts",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
-      )
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/tezos/alphanet/accounts",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
 
-      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
-        val resp = entityAs[String]
-        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
-        status shouldBe StatusCodes.OK
+        postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+          val resp = entityAs[String]
+          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          status shouldBe StatusCodes.OK
+        }
+      }
+
+      "return 404 NotFound status code for request for the not supported platform with POST" in {
+        (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+        (metadataServiceStub
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
+          .when(*, *)
+          .returns(Future.successful(Some(accountAttributes)))
+        (metadataServiceStub
+          .getEntities(_: NetworkPath)(_: ExecutionContext))
+          .when(*, *)
+          .returns(Future.successful(Some(List(testEntity))))
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+        postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
+      "return 404 NotFound status code for request for the not supported network with POST" in {
+        (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+        (metadataServiceStub
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
+          .when(*, *)
+          .returns(Future.successful(Some(accountAttributes)))
+        (metadataServiceStub
+          .getEntities(_: NetworkPath)(_: ExecutionContext))
+          .when(*, *)
+          .returns(Future.successful(Some(List(testEntity))))
+        val postRequest = HttpRequest(
+          HttpMethods.POST,
+          uri = "/v2/data/tezos/notSupportedNetwork/accounts",
+          entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest)
+        )
+        postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
+      "return a correct response with OK status code with GET" in {
+        val getRequest = HttpRequest(
+          HttpMethods.GET,
+          uri = "/v2/data/tezos/alphanet/accounts"
+        )
+
+        getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+          val resp = entityAs[String]
+          resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
+          status shouldBe StatusCodes.OK
+        }
+      }
+
+      "return 404 NotFound status code for request for the not supported platform with GET" in {
+        val getRequest = HttpRequest(
+          HttpMethods.GET,
+          uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
+        )
+        getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
+      }
+
+      "return 404 NotFound status code for request for the not supported network with GET" in {
+        val getRequest = HttpRequest(
+          HttpMethods.GET,
+          uri = "/v2/data/tezos/notSupportedNetwork/accounts"
+        )
+        getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
+          status shouldBe StatusCodes.NotFound
+        }
       }
     }
-
-    "return 404 NotFound status code for request for the not supported platform with POST" in {
-      (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
-      (metadataServiceStub.getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(accountAttributes)))
-      (metadataServiceStub.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
-      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
-        status shouldBe StatusCodes.NotFound
-      }
-    }
-
-    "return 404 NotFound status code for request for the not supported network with POST" in {
-      (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
-      (metadataServiceStub.getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(accountAttributes)))
-      (metadataServiceStub.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
-      val postRequest = HttpRequest(
-        HttpMethods.POST,
-        uri = "/v2/data/tezos/notSupportedNetwork/accounts",
-        entity = HttpEntity(MediaTypes.`application/json`, jsonStringRequest))
-      postRequest ~> addHeader("apiKey", "hooman") ~> postRoute ~> check {
-        status shouldBe StatusCodes.NotFound
-      }
-    }
-
-    "return a correct response with OK status code with GET" in {
-      val getRequest = HttpRequest(
-        HttpMethods.GET,
-        uri = "/v2/data/tezos/alphanet/accounts"
-      )
-
-      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
-        val resp = entityAs[String]
-        resp.filterNot(_.isWhitespace) shouldBe jsonStringResponse.filterNot(_.isWhitespace)
-        status shouldBe StatusCodes.OK
-      }
-    }
-
-    "return 404 NotFound status code for request for the not supported platform with GET" in {
-      val getRequest = HttpRequest(
-        HttpMethods.GET,
-        uri = "/v2/data/notSupportedPlatform/alphanet/accounts"
-      )
-      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
-        status shouldBe StatusCodes.NotFound
-      }
-    }
-
-    "return 404 NotFound status code for request for the not supported network with GET" in {
-      val getRequest = HttpRequest(
-        HttpMethods.GET,
-        uri = "/v2/data/tezos/notSupportedNetwork/accounts"
-      )
-      getRequest ~> addHeader("apiKey", "hooman") ~> getRoute ~> check {
-        status shouldBe StatusCodes.NotFound
-      }
-    }
-  }
 }

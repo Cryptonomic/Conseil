@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.util
 
-import scala.math.{sqrt, pow}
+import scala.math.{pow, sqrt}
 
 object MathUtil {
 
