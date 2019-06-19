@@ -271,6 +271,59 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
       result.futureValue.right.get shouldBe Query(predicates = List(Predicate(field = "valid", operation = OperationType.in, set = List(new Timestamp(123456789000L).toString))))
     }
+
+    "correctly validate query when aggregated field is used in orderBy" in {
+      val attribute = Attribute(
+        name = "validAttribute",
+        displayName = "Valid attribute",
+        dataType = DataType.String,
+        cardinality = None,
+        keyType = KeyType.NonKey,
+        entity = "test"
+      )
+      (tpdo.isAttributeValid _).when("test", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
+      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
+
+      val query = ApiQuery(
+        fields = Some(List("validAttribute")),
+        predicates = None,
+        orderBy = Some(List(QueryOrdering("count_validAttribute", direction = OrderDirection.asc))),
+        limit = None,
+        output = None,
+        aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
+      )
+
+      val result = query.validate("test", tpdo)
+
+      result.futureValue.right.get shouldBe Query(fields = List("validAttribute"),orderBy = List(QueryOrdering("count_validAttribute", OrderDirection.asc)), aggregation = List(Aggregation("validAttribute",AggregationType.count)))
+    }
+
+    "correctly validate query when aggregated field is used in predicate" in {
+      val attribute = Attribute(
+        name = "validAttribute",
+        displayName = "Valid attribute",
+        dataType = DataType.String,
+        cardinality = None,
+        keyType = KeyType.NonKey,
+        entity = "test"
+      )
+      (tpdo.isAttributeValid _).when("test", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
+      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
+
+      val query = ApiQuery(
+        fields = Some(List("validAttribute")),
+        predicates = Some(List(ApiPredicate("count_validAttribute", OperationType.in))),
+        orderBy = None,
+        limit = None,
+        output = None,
+        aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
+      )
+
+      val result = query.validate("test", tpdo)
+
+      result.futureValue.right.get shouldBe Query(fields = List("validAttribute"), predicates = List(Predicate("count_validAttribute", operation = OperationType.in)), aggregation = List(Aggregation("validAttribute",AggregationType.count)))
+    }
+
   }
 
 }

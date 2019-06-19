@@ -30,7 +30,9 @@ object PlatformDiscoveryTypes {
     dataFormat: Option[String] = None,
     valueMap: Option[Map[String, String]] = None,
     scale: Option[Int] = None,
-    reference: Option[Map[String, String]] = None
+    reference: Option[Map[String, String]] = None,
+    displayPriority: Option[Int] = None,
+    displayOrder: Option[Int] = None
   )
 
   /** Enumeration of data types */
