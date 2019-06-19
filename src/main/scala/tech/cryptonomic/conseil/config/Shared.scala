@@ -7,29 +7,29 @@ import scala.concurrent.duration.FiniteDuration
 final case class ServerConfiguration(hostname: String, port: Int, cacheTTL: FiniteDuration, maxQueryResultSize: Int)
 
 final case class LorreConfiguration(
-  sleepInterval: FiniteDuration,
-  bootupRetryInterval: FiniteDuration,
-  bootupConnectionCheckTimeout: FiniteDuration,
-  feeUpdateInterval: Int,
-  numberOfFeesAveraged: Int,
-  depth: Depth,
-  headHash: Option[BlockHash]
+    sleepInterval: FiniteDuration,
+    bootupRetryInterval: FiniteDuration,
+    bootupConnectionCheckTimeout: FiniteDuration,
+    feeUpdateInterval: Int,
+    numberOfFeesAveraged: Int,
+    depth: Depth,
+    headHash: Option[BlockHash]
 )
 
 final case class BatchFetchConfiguration(
-  accountConcurrencyLevel: Int,
-  blockOperationsConcurrencyLevel: Int,
-  blockPageSize: Int,
-  blockPageProcessingTimeout: FiniteDuration,
-  accountPageProcessingTimeout: FiniteDuration,
-  delegatePageProcessingTimeout: FiniteDuration
+    accountConcurrencyLevel: Int,
+    blockOperationsConcurrencyLevel: Int,
+    blockPageSize: Int,
+    blockPageProcessingTimeout: FiniteDuration,
+    accountPageProcessingTimeout: FiniteDuration,
+    delegatePageProcessingTimeout: FiniteDuration
 )
 
 /** configurations related to a chain-node network calls */
 final case class NetworkCallsConfiguration(
-  requestAwaitTime: FiniteDuration,
-  GETResponseEntityTimeout: FiniteDuration,
-  POSTResponseEntityTimeout: FiniteDuration
+    requestAwaitTime: FiniteDuration,
+    GETResponseEntityTimeout: FiniteDuration,
+    POSTResponseEntityTimeout: FiniteDuration
 )
 
 /** holds custom-verified lightbend configuration for the akka-http-client hostpool used to stream requests */

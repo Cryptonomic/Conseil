@@ -10,7 +10,6 @@ object JsonToMichelson {
 
   type Result[T] = Either[Throwable, T]
 
-  def convert[T <: MichelsonElement:Parser](json: String): Result[String] = {
+  def convert[T <: MichelsonElement: Parser](json: String): Result[String] =
     JsonParser.parse[T](json).map(_.render())
-  }
 }

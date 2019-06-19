@@ -8,6 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * Trait containing the interface for the Data
   */
 trait DataOperations {
+
   /** Interface method for querying with given predicates
     *
     * @param  tableName name of the table which we query

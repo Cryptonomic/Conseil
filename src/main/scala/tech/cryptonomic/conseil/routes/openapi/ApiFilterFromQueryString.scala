@@ -15,7 +15,7 @@ trait ApiFilterFromQueryString { self: algebra.JsonSchemaEntities =>
 
   /** Query params type alias */
   type QueryParams = (
-    Option[Int],
+      Option[Int],
       List[String],
       List[Int],
       List[String],
@@ -30,26 +30,26 @@ trait ApiFilterFromQueryString { self: algebra.JsonSchemaEntities =>
       List[String],
       Option[String],
       Option[String]
-    )
+  )
 
   /** Function for extracting query string with query params */
   private def filterQs: QueryString[QueryParams] = {
     val raw =
       qs[Option[Int]]("limit") &
-      qs[List[String]]("block_id") &
-      qs[List[Int]]("block_level") &
-      qs[List[String]]("block_netid") &
-      qs[List[String]]("block_protocol") &
-      qs[List[String]]("operation_id") &
-      qs[List[String]]("operation_source") &
-      qs[List[String]]("operation_destination") &
-      qs[List[String]]("operation_participant") &
-      qs[List[String]]("operation_kind") &
-      qs[List[String]]("account_id") &
-      qs[List[String]]("account_manager") &
-      qs[List[String]]("account_delegate") &
-      qs[Option[String]]("sort_by") &
-      qs[Option[String]]("order")
+          qs[List[String]]("block_id") &
+          qs[List[Int]]("block_level") &
+          qs[List[String]]("block_netid") &
+          qs[List[String]]("block_protocol") &
+          qs[List[String]]("operation_id") &
+          qs[List[String]]("operation_source") &
+          qs[List[String]]("operation_destination") &
+          qs[List[String]]("operation_participant") &
+          qs[List[String]]("operation_kind") &
+          qs[List[String]]("account_id") &
+          qs[List[String]]("account_manager") &
+          qs[List[String]]("account_delegate") &
+          qs[Option[String]]("sort_by") &
+          qs[Option[String]]("order")
     raw map (flatten(_))
   }
 

@@ -12,11 +12,7 @@ import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
 
 /** Trait with helpers needed for data routes */
-trait DataHelpers
-  extends Validation
-  with server.Endpoints
-  with server.JsonSchemaEntities
-  with DataEndpoints {
+trait DataHelpers extends Validation with server.Endpoints with server.JsonSchemaEntities with DataEndpoints {
 
   import io.circe._
   import io.circe.syntax._
@@ -24,7 +20,10 @@ trait DataHelpers
   import tech.cryptonomic.conseil.routes.openapi.CsvConversions._
 
   /** Function validating request for the query endpoint */
-  override def validated[A](response: A => Route, invalidDocs: Documentation): Either[List[QueryValidationError], A] => Route = {
+  override def validated[A](
+      response: A => Route,
+      invalidDocs: Documentation
+  ): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
@@ -42,37 +41,40 @@ trait DataHelpers
     case Right(None) => None
   }
 
-  override implicit def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
+  implicit override def qsFunctor: Functor[QueryString] = new Functor[QueryString] {
     override def map[From, To](f: QueryString[From])(map: From => To): QueryString[To] = new QueryString[To](
       f.directive.map(map)
     )
   }
 
-  override implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
+  implicit override def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput] =
     new JsonSchema[QueryResponseWithOutput] {
-      override def encoder: Encoder[QueryResponseWithOutput] = (a: QueryResponseWithOutput) =>
-          a.queryResponse.asJson(Encoder.encodeList(queryResponseSchema.encoder))
+      override def encoder: Encoder[QueryResponseWithOutput] =
+        (a: QueryResponseWithOutput) => a.queryResponse.asJson(Encoder.encodeList(queryResponseSchema.encoder))
 
       override def decoder: Decoder[QueryResponseWithOutput] = ???
     }
 
   /** Implementation of JSON encoder for Any */
-  def anyEncoder: Encoder[Any] = (a: Any) => a match {
-    case x: java.lang.String => Json.fromString(x)
-    case x: java.lang.Integer => Json.fromInt(x)
-    case x: java.sql.Timestamp => Json.fromLong(x.getTime)
-    case x: java.lang.Boolean => Json.fromBoolean(x)
-    case x: scala.collection.immutable.Vector[Any] => x.map(_.asJson(anyEncoder)).asJson //Due to type erasure, a recursive call is made here.
-    case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
-    case x: Tables.AccountsRow => x.asJson(accountsRowSchema.encoder)
-    case x: Tables.OperationGroupsRow => x.asJson(operationGroupsRowSchema.encoder)
-    case x: Tables.OperationsRow => x.asJson(operationsRowSchema.encoder)
-    case x: java.math.BigDecimal => Json.fromBigDecimal(x)
-    case x => Json.fromString(x.toString)
-  }
+  def anyEncoder: Encoder[Any] =
+    (a: Any) =>
+      a match {
+        case x: java.lang.String => Json.fromString(x)
+        case x: java.lang.Integer => Json.fromInt(x)
+        case x: java.sql.Timestamp => Json.fromLong(x.getTime)
+        case x: java.lang.Boolean => Json.fromBoolean(x)
+        case x: scala.collection.immutable.Vector[Any] =>
+          x.map(_.asJson(anyEncoder)).asJson //Due to type erasure, a recursive call is made here.
+        case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
+        case x: Tables.AccountsRow => x.asJson(accountsRowSchema.encoder)
+        case x: Tables.OperationGroupsRow => x.asJson(operationGroupsRowSchema.encoder)
+        case x: Tables.OperationsRow => x.asJson(operationsRowSchema.encoder)
+        case x: java.math.BigDecimal => Json.fromBigDecimal(x)
+        case x => Json.fromString(x.toString)
+      }
 
   /** JSON schema implementation for Any */
-  override implicit def anySchema: JsonSchema[Any] = new JsonSchema[Any] {
+  implicit override def anySchema: JsonSchema[Any] = new JsonSchema[Any] {
     override def encoder: Encoder[Any] = anyEncoder
 
     override def decoder: Decoder[Any] =
@@ -82,13 +84,20 @@ trait DataHelpers
   }
 
   /** Query response JSON schema implementation */
-  override implicit def queryResponseSchema: JsonSchema[QueryResponse] =
+  implicit override def queryResponseSchema: JsonSchema[QueryResponse] =
     new JsonSchema[QueryResponse] {
-      override def encoder: Encoder[QueryResponse] = (a: QueryResponse) =>
-          Json.obj(a.map(field => (field._1, field._2 match {
-            case Some(y) => y.asJson(anyEncoder)
-            case None => Json.Null
-          })).toList: _*)
+      override def encoder: Encoder[QueryResponse] =
+        (a: QueryResponse) =>
+          Json.obj(
+            a.map(
+                field =>
+                  (field._1, field._2 match {
+                    case Some(y) => y.asJson(anyEncoder)
+                    case None => Json.Null
+                  })
+              )
+              .toList: _*
+          )
 
       //Thisshouldn't actually be used anywhere, in any case we can go as far as
       //assume that anything in the value is coming from json, but nothing more
