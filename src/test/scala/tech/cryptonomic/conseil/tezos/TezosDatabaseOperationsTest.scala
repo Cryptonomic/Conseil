@@ -2200,6 +2200,50 @@ class TezosDatabaseOperationsTest
       )
     }
 
+    "should aggregate with single aggegation when there is only one field" in {
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2), "kind")
+      )
+
+      val aggregate = List(
+        Aggregation("medium", AggregationType.sum, None)
+      )
+
+      val predicates = List(
+        Predicate(
+          field = "medium",
+          operation = OperationType.gt,
+          set = List(2),
+          inverse = false
+        ),
+        Predicate(
+          field = "high",
+          operation = OperationType.lt,
+          set = List(5),
+          inverse = false
+        )
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("medium"),
+          predicates = predicates,
+          ordering = List.empty,
+          aggregation = aggregate,
+          limit = 1)
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("sum_medium" -> Some(3))
+      )
+    }
+
   }
 
  }
