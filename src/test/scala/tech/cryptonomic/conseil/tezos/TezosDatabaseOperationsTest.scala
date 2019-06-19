@@ -2243,6 +2243,7 @@ class TezosDatabaseOperationsTest
           predicates = List.empty,
           ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
           aggregation = aggregate,
+          outputType = OutputType.json,
           limit = 3)
       } yield found
 
