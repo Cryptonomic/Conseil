@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDire
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -36,10 +36,10 @@ object DataTypes {
   val defaultLimitValue: Int = 10000
 
   /** Replaces timestamp represented as Long in predicates with one understood by the SQL */
-  private def replaceTimestampInPredicates(entity: String, query: Query, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)
+  private def replaceTimestampInPredicates(path: EntityPath, query: Query, metadataService: MetadataService)
     (implicit executionContext: ExecutionContext): Future[Query] = {
     query.predicates.map { predicate =>
-      tezosPlatformDiscoveryOperations.getTableAttributesWithoutUpdatingCache(entity).map { maybeAttributes =>
+      metadataService.getTableAttributesWithoutUpdatingCache(path).map { maybeAttributes =>
         maybeAttributes.flatMap { attributes =>
           attributes.find(_.name == dropAggregationPrefixes(predicate.field)).map {
             case attribute if attribute.dataType == DataType.DateTime =>
@@ -52,7 +52,7 @@ object DataTypes {
   }
 
   /** Helper method for finding fields used in query that don't exist in the database */
-  private def findNonExistingFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
+  private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)
     (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {
     val fields = query.fields.map('query -> _) :::
       query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
@@ -61,7 +61,7 @@ object DataTypes {
 
     fields.traverse {
       case (source, field) =>
-        tezosPlatformDiscovery.isAttributeValid(entity, field).map((_, source, field))
+        metadataService.isAttributeValid(path.entity, field).map((_, source, field))
     }.map {
       _.collect {
         case (false, 'query, field) => InvalidQueryField(field)
@@ -85,12 +85,12 @@ object DataTypes {
   }
 
   /** Helper method for finding fields with invalid types in aggregation */
-  private def findInvalidAggregationTypeFields(query: Query, entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)
+  private def findInvalidAggregationTypeFields(query: Query, path: EntityPath, metadataService: MetadataService)
     (implicit ec: ExecutionContext): Future[List[InvalidAggregationFieldForType]] = {
     query
       .aggregation
       .traverse { aggregation =>
-        tezosPlatformDiscovery.getTableAttributesWithoutUpdatingCache(entity).map { attributesOpt =>
+        metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
           attributesOpt.flatMap { attributes =>
             attributes
               .find(_.name == aggregation.field)
@@ -101,8 +101,40 @@ object DataTypes {
       .map(_.flatten.collect { case (false, fieldName) => InvalidAggregationFieldForType(fieldName) }.toList)
   }
 
+  /** Helper method for finding if queries does not contain filters on key fields or datetime fields */
+  private def findInvalidPredicateFilteringFields(query: Query, path: EntityPath, metadataService: MetadataService)
+    (implicit ec: ExecutionContext): Future[List[InvalidPredicateFiltering]] = {
+    metadataService.getEntities(path.up).flatMap { entitiesOpt =>
+      val limitedQueryEntity = entitiesOpt
+        .toList
+        .flatten
+        .find(_.name == path.entity)
+        .flatMap(_.limitedQuery)
+        .getOrElse(false)
+      if (limitedQueryEntity) {
+        query
+          .predicates
+          .traverse { predicate =>
+            metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
+              attributesOpt.flatMap { attributes =>
+                attributes.find(_.name == predicate.field)
+              }.toList
+            }
+          }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
+      } else {
+        Future.successful(List.empty)
+      }
+    }
+  }
+
+
   /** Trait representing attribute validation errors */
   sealed trait AttributesValidationError extends Product with Serializable {
+    def message: String
+  }
+
+  /** Trait representing query validation errors */
+  sealed trait QueryValidationError extends Product with Serializable {
     def message: String
   }
 
@@ -114,11 +146,6 @@ object DataTypes {
 
   /** Attribute values should not be listed because minimal length is greater than filter length for given column  */
   case class InvalidAttributeFilterLength(message: String, minMatchLength: Int) extends AttributesValidationError
-
-  /** Trait representing query validation errors */
-  sealed trait QueryValidationError extends Product with Serializable {
-    def message: String
-  }
 
   /** Class which contains output type with the response */
   case class QueryResponseWithOutput(queryResponse: List[QueryResponse], output: OutputType)
@@ -163,6 +190,9 @@ object DataTypes {
 
   /** Class representing invalid field type used in aggregation */
   case class InvalidAggregationFieldForType(message: String) extends QueryValidationError
+
+  /** Class representing lack of key/datetime field usage in predicates */
+  case class InvalidPredicateFiltering(message: String) extends QueryValidationError
 
   /** Class representing query */
   case class Query(
@@ -221,7 +251,7 @@ object DataTypes {
     aggregation: Option[List[ApiAggregation]]
   ) {
     /** Method which validates query fields */
-    def validate(entity: String, tezosPlatformDiscovery: TezosPlatformDiscoveryOperations)(implicit ec: ExecutionContext):
+    def validate(entity: EntityPath, metadataService: MetadataService)(implicit ec: ExecutionContext):
     Future[Either[List[QueryValidationError], Query]] = {
 
       val patchedPredicates = predicates.getOrElse(List.empty).map(_.toPredicate)
@@ -234,20 +264,16 @@ object DataTypes {
         .withFieldConst(_.aggregation, aggregation.toList.flatten.map(_.toAggregation))
         .transform
 
-      val nonExistingFields = findNonExistingFields(query, entity, tezosPlatformDiscovery)
-      val invalidTypeAggregationField = findInvalidAggregationTypeFields(query, entity, tezosPlatformDiscovery)
-
-      for {
-        invalidNonExistingFields <- nonExistingFields
-        invalidAggregationFieldForTypes <- invalidTypeAggregationField
-        updatedQuery <- replaceTimestampInPredicates(entity, query, tezosPlatformDiscovery)
-      } yield {
-        invalidNonExistingFields ::: invalidAggregationFieldForTypes match {
-          case Nil => Right(updatedQuery)
-          case wrongFields => Left(wrongFields)
-        }
+      (findNonExistingFields(query, entity, metadataService),
+        findInvalidAggregationTypeFields(query, entity, metadataService),
+        findInvalidPredicateFilteringFields(query, entity, metadataService),
+        replaceTimestampInPredicates(entity, query, metadataService)).mapN {
+        (invalidNonExistingFields, invalidAggregationFieldForTypes, invalidPredicateFilteringFields, updatedQuery) =>
+          invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields match {
+            case Nil => Right(updatedQuery)
+            case wrongFields => Left(wrongFields)
+          }
       }
-
     }
   }
 

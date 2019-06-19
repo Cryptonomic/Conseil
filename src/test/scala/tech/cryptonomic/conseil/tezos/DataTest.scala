@@ -8,7 +8,9 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath}
 import tech.cryptonomic.conseil.routes.Data
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -77,6 +79,33 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     predicates = List.empty
   )
 
+  val accountAttributes = List(
+    Attribute(
+      name = "account_id",
+      displayName = "Account Id",
+      dataType = DataType.String,
+      cardinality = None,
+      keyType = KeyType.UniqueKey,
+      entity = "accounts"
+    ),
+    Attribute(
+      name = "spendable",
+      displayName = "Spendable",
+      dataType = DataType.Boolean,
+      cardinality = None,
+      keyType = KeyType.NonKey,
+      entity = "accounts"
+    ),
+    Attribute(
+      name = "counter",
+      displayName = "Counter",
+      dataType = DataType.Int,
+      cardinality = None,
+      keyType = KeyType.NonKey,
+      entity = "accounts"
+    )
+  )
+
   val fakeQPO: DataOperations = new DataOperations {
     override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
@@ -89,17 +118,21 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     )
   )
 
-  val tezosPlatformDiscoveryOperationsStub = stub[TezosPlatformDiscoveryOperations]
+  val testEntity = Entity("testEntity", "Test Entity", 0)
 
-  val postRoute: Route = new Data(cfg, fakeQPP, tezosPlatformDiscoveryOperationsStub)(ec).postRoute
+  val metadataServiceStub = stub[MetadataService]
 
-  val getRoute: Route = new Data(cfg, fakeQPP, tezosPlatformDiscoveryOperationsStub)(ec).getRoute
+  val postRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub)(ec).postRoute
+
+  val getRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub)(ec).getRoute
 
   "Query protocol" should {
 
     "return a correct response with OK status code with POST" in {
-      (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
-      (tezosPlatformDiscoveryOperationsStub.getTableAttributesWithoutUpdatingCache _).when(*).returns(Future.successful(None))
+      (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+      (metadataServiceStub.getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(accountAttributes)))
+      (metadataServiceStub.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
+
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/alphanet/accounts",
@@ -114,8 +147,9 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     }
 
     "return 404 NotFound status code for request for the not supported platform with POST" in {
-      (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
-      (tezosPlatformDiscoveryOperationsStub.getTableAttributesWithoutUpdatingCache _).when(*).returns(Future.successful(None))
+      (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+      (metadataServiceStub.getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(accountAttributes)))
+      (metadataServiceStub.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
@@ -126,8 +160,9 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
     }
 
     "return 404 NotFound status code for request for the not supported network with POST" in {
-      (tezosPlatformDiscoveryOperationsStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
-      (tezosPlatformDiscoveryOperationsStub.getTableAttributesWithoutUpdatingCache _).when(*).returns(Future.successful(None))
+      (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+      (metadataServiceStub.getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(accountAttributes)))
+      (metadataServiceStub.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
       val postRequest = HttpRequest(
         HttpMethods.POST,
         uri = "/v2/data/tezos/notSupportedNetwork/accounts",

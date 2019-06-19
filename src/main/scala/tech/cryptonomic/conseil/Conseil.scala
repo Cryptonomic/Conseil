@@ -60,7 +60,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       lazy val metadataService = new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
-      lazy val data = Data(platforms, tezosPlatformDiscoveryOperations, server)(tezosDispatcher)
+      lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
 
       val route = cors() {
         enableCORS {
