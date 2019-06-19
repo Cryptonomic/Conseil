@@ -17,6 +17,10 @@ class MetadataService(config: PlatformsConfiguration,
   cacheConfiguration: AttributeValuesCacheConfiguration,
   tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations) {
 
+  // checks if attribute is valid
+  def isAttributeValid(entity: String, attribute: String): Future[Boolean] =
+    tezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)
+
   // fetches entities
   def getEntities(path: NetworkPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Entity]]] = {
     if (exists(path))

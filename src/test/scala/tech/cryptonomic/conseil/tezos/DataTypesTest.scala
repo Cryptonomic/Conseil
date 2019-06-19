@@ -311,7 +311,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         dataType = DataType.DateTime, // only COUNT function can be used on types other than numeric and DateTime
         cardinality = None,
         keyType = KeyType.NonKey,
-        entity = "test"
+        entity = "testEntity"
       )
 
       (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
@@ -339,10 +339,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
         dataType = DataType.String,
         cardinality = None,
         keyType = KeyType.NonKey,
-        entity = "test"
+        entity = "testEntity"
       )
-      (tpdo.isAttributeValid _).when("test", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
-      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
+      (ms.isAttributeValid _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
+      (ms.getTableAttributesWithoutUpdatingCache (_: EntityPath)(_: ExecutionContext)).when(testEntityPath, *).returns(Future.successful(Some(List(attribute))))
+      (ms.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
 
       val query = ApiQuery(
         fields = Some(List("validAttribute")),
@@ -353,7 +354,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
       )
 
-      val result = query.validate("test", tpdo)
+      val result = query.validate(testEntityPath, ms)
 
       result.futureValue.right.get shouldBe Query(fields = List("validAttribute"),orderBy = List(QueryOrdering("count_validAttribute", OrderDirection.asc)), aggregation = List(Aggregation("validAttribute",AggregationType.count)))
     }
@@ -365,10 +366,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
         dataType = DataType.String,
         cardinality = None,
         keyType = KeyType.NonKey,
-        entity = "test"
+        entity = "testEntity"
       )
-      (tpdo.isAttributeValid _).when("test", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
-      (tpdo.getTableAttributesWithoutUpdatingCache _).when("test").returns(Future.successful(Some(List(attribute))))
+      (ms.isAttributeValid _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
+      (ms.getTableAttributesWithoutUpdatingCache (_: EntityPath)(_: ExecutionContext)).when(testEntityPath, *).returns(Future.successful(Some(List(attribute))))
+      (ms.getEntities(_: NetworkPath)(_: ExecutionContext)).when(*, *).returns(Future.successful(Some(List(testEntity))))
 
       val query = ApiQuery(
         fields = Some(List("validAttribute")),
@@ -379,7 +381,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
         aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
       )
 
-      val result = query.validate("test", tpdo)
+      val result = query.validate(testEntityPath, ms)
 
       result.futureValue.right.get shouldBe Query(fields = List("validAttribute"), predicates = List(Predicate("count_validAttribute", operation = OperationType.in)), aggregation = List(Aggregation("validAttribute",AggregationType.count)))
     }
