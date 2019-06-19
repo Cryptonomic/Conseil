@@ -41,7 +41,7 @@ object DataTypes {
     query.predicates.map { predicate =>
       metadataService.getTableAttributesWithoutUpdatingCache(path).map { maybeAttributes =>
         maybeAttributes.flatMap { attributes =>
-          attributes.find(_.name == predicate.field).map {
+          attributes.find(_.name == dropAggregationPrefixes(predicate.field)).map {
             case attribute if attribute.dataType == DataType.DateTime =>
               predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toString))
             case _ => predicate
@@ -55,12 +55,13 @@ object DataTypes {
   private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)
     (implicit ec: ExecutionContext): Future[List[QueryValidationError]] = {
     val fields = query.fields.map('query -> _) :::
-      query.predicates.map('predicate -> _.field) :::
-      query.orderBy.map('orderBy -> _.field) :::
+      query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
+      query.orderBy.map(orderBy => 'orderBy -> dropAggregationPrefixes(orderBy.field)) :::
       query.aggregation.map('aggregation -> _.field)
 
     fields.traverse {
-      case (source, field) => metadataService.isAttributeValid(path.entity, field).map((_, source, field))
+      case (source, field) =>
+        metadataService.isAttributeValid(path.entity, field).map((_, source, field))
     }.map {
       _.collect {
         case (false, 'query, field) => InvalidQueryField(field)
@@ -69,6 +70,18 @@ object DataTypes {
         case (false, 'aggregation, field) => InvalidAggregationField(field)
       }
     }
+  }
+
+  /** Drops aggregation prefixes from field name */
+  private def dropAggregationPrefixes(fieldName: String): String = {
+    dropAnyOfPrefixes(fieldName, AggregationType.prefixes)
+  }
+
+  /** Helper method for dropping prefixes from given string */
+  private def dropAnyOfPrefixes(str: String, prefixes: List[String]): String = {
+    prefixes.collectFirst {
+      case prefixToBeDropped if str.startsWith(prefixToBeDropped) => str.stripPrefix(prefixToBeDropped)
+    }.getOrElse(str)
   }
 
   /** Helper method for finding fields with invalid types in aggregation */
@@ -267,7 +280,7 @@ object DataTypes {
   /** Enumeration for output types */
   object OutputType extends Enumeration {
     type OutputType = Value
-    val json, csv = Value
+    val json, csv, sql = Value
   }
 
   /** Enumeration for order direction */
@@ -284,6 +297,8 @@ object DataTypes {
 
   /** Enumeration of aggregation functions */
   object AggregationType extends Enumeration {
+    /** Helper method for extracting prefixes needed for SQL */
+    def prefixes: List[String] = values.toList.map(_.toString + "_")
     type AggregationType = Value
     val sum, count, max, min, avg = Value
   }

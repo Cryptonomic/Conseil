@@ -134,11 +134,9 @@ object DatabaseUtil {
       * @return SQLAction with basic query
       */
     def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
-      val aggr = columns.foldLeft(List.empty[String]) {
-        case (acc, column) if aggregation.exists(_.field == column) => mapAggregationToSQL(aggregation.find(_.field == column).get.function, column) :: acc
-        case (acc, column) => s"$column" :: acc
-      }
-      val cols = if (aggr.isEmpty) "*" else aggr.mkString(",")
+      val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(aggr.function, aggr.field))
+      val aggr = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).toList
+      val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
       sql"""SELECT #$cols FROM #$table WHERE true """
     }
 
@@ -194,7 +192,11 @@ object DatabaseUtil {
         case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
         case OperationType.isnull => sql"ISNULL"
       }
-      concatenateSqlActions(op, sql" IS #${!inverse}")
+      if(inverse) {
+        concatenateSqlActions(op, sql" IS #${!inverse}")
+      } else {
+        op
+      }
     }
   }
 

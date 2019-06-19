@@ -14,29 +14,6 @@ trait PlatformDiscoveryEndpoints
   /** Common path for metadata endpoints */
   private val commonPath = path / "v2" / "metadata"
 
-  /** Endpoint for cache initialization */
-  def initCacheEndpoint: Endpoint[String, String] =
-    endpoint(
-      request = post(
-        url = commonPath / "cache",
-        headers = header("apiKey"),
-        entity = emptyRequest
-      ),
-      response = textResponse(),
-      tags = List("Cache")
-    )
-
-  /** Endpoint for cache initialization status */
-  def cacheStatusEndpoint: Endpoint[String, String] =
-  endpoint(
-    request = get(
-      url = commonPath / "cache" / "status",
-      headers = header("apiKey")
-    ),
-    response = textResponse(),
-    tags = List("Cache")
-  )
-
   /** Metadata platforms endpoint */
   def platformsEndpoint: Endpoint[String, List[PlatformDiscoveryTypes.Platform]] =
     endpoint(
