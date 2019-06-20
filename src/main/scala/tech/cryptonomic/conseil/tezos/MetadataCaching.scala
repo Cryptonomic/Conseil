@@ -36,11 +36,11 @@ object MetadataCaching {
   /** Initializes metadata caching */
   def empty[F[_]](implicit concurrent: Concurrent[F]): F[MetadataCaching[F]] =
     for {
-    cachingStatus <- Ref[F].of[CachingStatus](NotStarted)
-    attributesCache <- MVar[F].empty[AttributesCache]
-    entitiesCache <- MVar[F].empty[EntitiesCache]
-    attributeValuesCache <- MVar[F].empty[AttributeValuesCache]
-  } yield new MetadataCaching[F](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
+      cachingStatus <- Ref[F].of[CachingStatus](NotStarted)
+      attributesCache <- MVar[F].empty[AttributesCache]
+      entitiesCache <- MVar[F].empty[EntitiesCache]
+      attributeValuesCache <- MVar[F].empty[AttributeValuesCache]
+    } yield new MetadataCaching[F](cachingStatus, attributesCache, entitiesCache, attributeValuesCache)
 
   /** Returns current time in nanoseconds */
   def now: Long = System.nanoTime()
@@ -51,10 +51,10 @@ object MetadataCaching {
 
 /** Class providing caching for metadata */
 class MetadataCaching[F[_]](
-  cachingStatus: Ref[F, CachingStatus],
-  attributesCache: MVar[F, AttributesCache],
-  entitiesCache: MVar[F, EntitiesCache],
-  attributeValuesCache: MVar[F, AttributeValuesCache]
+    cachingStatus: Ref[F, CachingStatus],
+    attributesCache: MVar[F, AttributesCache],
+    entitiesCache: MVar[F, EntitiesCache],
+    attributeValuesCache: MVar[F, AttributeValuesCache]
 )(implicit monad: Monad[F]) {
 
   import cats.implicits._
@@ -67,7 +67,6 @@ class MetadataCaching[F[_]](
   def updateCachingStatus(status: CachingStatus): F[Unit] =
     cachingStatus.update(_ => status)
 
-
   /** Reads entities from cache */
   def getEntities: String => F[Option[CacheEntry[List[Entity]]]] =
     getFromCache(entitiesCache)
@@ -77,9 +76,8 @@ class MetadataCaching[F[_]](
     getFromCache(attributesCache)
 
   /** Generic method for getting value from cache */
-  private def getFromCache[A](cache: MVar[F, Cache[A]])(key: String): F[Option[CacheEntry[A]]] = {
+  private def getFromCache[A](cache: MVar[F, Cache[A]])(key: String): F[Option[CacheEntry[A]]] =
     cache.read.map(_.get(CacheKey(key)))
-  }
 
   /** Reads all attributes from cache */
   def getAllAttributes: F[AttributesCache] =
@@ -124,12 +122,11 @@ class MetadataCaching[F[_]](
     putIntoCache(makeKey(entity, attribute), radixTree)(attributeValuesCache)
 
   /** Generic method for putting value into cache */
-  private def putIntoCache[A](key: String, value: A)(cache: MVar[F, Cache[A]]): F[Unit] = {
+  private def putIntoCache[A](key: String, value: A)(cache: MVar[F, Cache[A]]): F[Unit] =
     for {
       ca <- cache.take
       _ <- cache.put(ca.updated(CacheKey(key), CacheEntry(now, value)))
     } yield ()
-  }
 
   /** Helper method for updating MVars */
   private def updateVar[T](mvar: MVar[F, T])(value: T): F[Unit] = mvar.take >> mvar.put(value)
@@ -141,4 +138,3 @@ class MetadataCaching[F[_]](
   def fillAttributeValuesCache(attributeValues: AttributeValuesCache): F[Boolean] =
     fillCache(attributeValues)(attributeValuesCache)
 }
-

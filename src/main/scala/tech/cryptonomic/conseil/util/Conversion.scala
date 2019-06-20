@@ -8,7 +8,9 @@ import cats.Id
   * in a single direction (i.e. it's not necessarily an invertible operation).
   * The conversion result is wrapped into a generic "effect" of type `F`
   */
-@implicitNotFound("A ${FROM} can't be converted to a ${F} of ${TO}, no `Conversion` instance available in the implicit scope")
+@implicitNotFound(
+  "A ${FROM} can't be converted to a ${F} of ${TO}, no `Conversion` instance available in the implicit scope"
+)
 trait Conversion[F[_], FROM, TO] {
 
   /** Takes a `FROM` object and retuns the `TO` object, with an effect `F`.*/

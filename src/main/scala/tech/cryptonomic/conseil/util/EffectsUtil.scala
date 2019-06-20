@@ -10,7 +10,6 @@ import cats.effect.ContextShift
 
 object EffectsUtil {
 
-
   def toIO[T](future: => Future[T]): IO[T] = IO.fromFuture(IO(future))
 
   /** Runs the db action converting the result to a lazy IO value */

@@ -18,10 +18,13 @@ import cats.data.Kleisli
   * @tparam Err the expected type of possible errors that the Eff-wrapped operations might raise
   */
 trait DataFetcher[Eff[_], Err] {
+
   /** the input type, e.g. ids of data */
   type In
+
   /** the output type, e.g. the decoded block data */
   type Out
+
   /** the encoded representation type used e.g. some Json representation */
   type Encoded
 
@@ -75,15 +78,14 @@ object DataFetcher {
     * 3. return the traversable collection containing paired input and output values, all wrapped in the effect F
     * The resulting effect will also encode a possible failure in virtue of the implicit MonadError instance that is provided
     */
-  def fetcher[Eff[_], In, Out, Err]
-    (implicit appErr: ApplicativeError[Eff, Err], flatMap: FlatMap[Eff], fetcher: DataFetcher.Aux[Eff, Err, In, Out, _]): Kleisli[Eff, In, Out] =
-    fetcher
-      .fetchData
-      .onError { case err => Kleisli.pure(fetcher.onDataFetchError(err)) }
+  def fetcher[Eff[_], In, Out, Err](
+      implicit appErr: ApplicativeError[Eff, Err],
+      flatMap: FlatMap[Eff],
+      fetcher: DataFetcher.Aux[Eff, Err, In, Out, _]
+  ): Kleisli[Eff, In, Out] =
+    fetcher.fetchData.onError { case err => Kleisli.pure(fetcher.onDataFetchError(err)) }
       .andThen(
-        fetcher
-          .decodeData
-          .onError { case err => Kleisli.pure(fetcher.onDecodingError(err)) }
+        fetcher.decodeData.onError { case err => Kleisli.pure(fetcher.onDecodingError(err)) }
       )
 
   /* An alias used to define function constraints on the internal dependent types (i.e. `I`, `O`, `E`)
@@ -113,9 +115,9 @@ object DataFetcher {
     * - returns the decodings in a tuple (Output1, Ouput2), e.g. the pair of operations and accounts
     */
   def multiDecodeFetcher[Eff[_]: Apply, Err, Input, Output, Output2, Encoding](
-    implicit
-    fetcher: Aux[Eff, Err, Input, Output, Encoding],
-    additionalDecode: Kleisli[Eff, Encoding, Output2]
+      implicit
+      fetcher: Aux[Eff, Err, Input, Output, Encoding],
+      additionalDecode: Kleisli[Eff, Encoding, Output2]
   ) = new DataFetcher[Eff, Err] {
     type In = Input
     type Out = (Output, Output2)
@@ -125,7 +127,6 @@ object DataFetcher {
 
     def decodeData = fetcher.decodeData.product(additionalDecode)
   }
-
 
   /** Provides a generic way to convert the effect-type of a data fetcher, if there's
     * a "natural transformation" `F ~> G` in scope
@@ -142,9 +143,9 @@ object DataFetcher {
           type Out = fa.Out
           type Encoded = fa.Encoded
 
-          def fetchData: Kleisli[G,Input,Encoding] = Kleisli.liftFunctionK(nat)(fa.fetchData)
+          def fetchData: Kleisli[G, Input, Encoding] = Kleisli.liftFunctionK(nat)(fa.fetchData)
 
-          def decodeData: Kleisli[G,Encoding,A] = Kleisli.liftFunctionK(nat)(fa.decodeData)
+          def decodeData: Kleisli[G, Encoding, A] = Kleisli.liftFunctionK(nat)(fa.decodeData)
         }
 
     }
@@ -165,22 +166,23 @@ object DataFetcher {
       * The use case is to create the simplest possible fetchers and compose extra conversions after the definition.
       * To enable the extension methods, you need to also `import cats.syntax.profunctor._`
       */
-    implicit def profunctorInstances[Eff[_] : Functor, Err, Encoding] =
+    implicit def profunctorInstances[Eff[_]: Functor, Err, Encoding] =
       new Profunctor[Aux[Eff, Err, ?, ?, Encoding]] {
-        override def dimap[A, B, C, D](fab: Aux[Eff, Err, A, B, Encoding])(f: C => A)(g: B => D): Aux[Eff, Err, C, D, Encoding] =
+        override def dimap[A, B, C, D](
+            fab: Aux[Eff, Err, A, B, Encoding]
+        )(f: C => A)(g: B => D): Aux[Eff, Err, C, D, Encoding] =
           new DataFetcher[Eff, Err] {
             type In = C
             type Out = D
             type Encoded = Encoding
 
-            def fetchData: Kleisli[Eff,C,Encoding] = fab.fetchData.local(f)
+            def fetchData: Kleisli[Eff, C, Encoding] = fab.fetchData.local(f)
 
-            def decodeData: Kleisli[Eff,Encoding,D] = fab.decodeData.map(g)
+            def decodeData: Kleisli[Eff, Encoding, D] = fab.decodeData.map(g)
 
           }
-    }
+      }
 
   }
-
 
 }

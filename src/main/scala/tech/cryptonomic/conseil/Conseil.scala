@@ -20,11 +20,16 @@ import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlat
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
+object Conseil
+    extends App
+    with LazyLogging
+    with EnableCORSDirectives
+    with ConseilAppConfig
+    with FailFastCirceSupport
+    with ConseilOutput {
 
   loadApplicationConfiguration(args) match {
     case Right((server, platforms, securityApi, verbose, metadataOverrides)) =>
-
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
           provide(apiKey)
@@ -46,7 +51,10 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
       lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(ApiOperations, metadataCaching, cacheOverrides, server.cacheTTL)(executionContext, contextShift)
+        TezosPlatformDiscoveryOperations(ApiOperations, metadataCaching, cacheOverrides, server.cacheTTL)(
+          executionContext,
+          contextShift
+        )
 
       tezosPlatformDiscoveryOperations.init().onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
@@ -58,38 +66,39 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
 
-      lazy val metadataService = new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
+      lazy val metadataService =
+        new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
 
       val route = cors() {
-        enableCORS {
-          validateApiKey { _ =>
-            logRequest("Conseil", Logging.DebugLevel) {
-              AppInfo.route
-            } ~
-              logRequest("Metadata Route", Logging.DebugLevel) {
-                platformDiscovery.route
+          enableCORS {
+            validateApiKey { _ =>
+              logRequest("Conseil", Logging.DebugLevel) {
+                AppInfo.route
               } ~
-              logRequest("Data Route", Logging.DebugLevel) {
-                data.getRoute ~ data.postRoute
+                logRequest("Metadata Route", Logging.DebugLevel) {
+                  platformDiscovery.route
+                } ~
+                logRequest("Data Route", Logging.DebugLevel) {
+                  data.getRoute ~ data.postRoute
+                }
+            } ~
+              options {
+                // Support for CORS pre-flight checks.
+                complete("Supported methods : GET and POST.")
               }
-          } ~
-            options {
-              // Support for CORS pre-flight checks.
-              complete("Supported methods : GET and POST.")
-            }
-        }
-      } ~
-        pathPrefix("docs") {
-          pathEndOrSingleSlash {
-            getFromResource("web/index.html")
           }
         } ~
-        pathPrefix("swagger-ui") {
-          getFromResourceDirectory("web/swagger-ui/")
-        } ~
-        Docs.route
+            pathPrefix("docs") {
+              pathEndOrSingleSlash {
+                getFromResource("web/index.html")
+              }
+            } ~
+            pathPrefix("swagger-ui") {
+              getFromResourceDirectory("web/swagger-ui/")
+            } ~
+            Docs.route
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       displayInfo(server)
@@ -102,8 +111,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(errors)
-    =>
+    case Left(errors) =>
     //nothing to do
   }
 

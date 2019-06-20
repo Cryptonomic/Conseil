@@ -18,6 +18,7 @@ object DatabaseUtil {
     * Utility object for generic query composition with SQL interpolation
     */
   object QueryBuilder {
+
     /** Concatenates SQLActionsBuilders
       * Slick does not support easy concatenation of actions so we need this function based on https://github.com/slick/slick/issues/1161
       *
@@ -25,7 +26,7 @@ object DatabaseUtil {
       * @param actions list of actions to concatenate
       * @return one SQLActionBuilder containing concatenated actions
       */
-    def concatenateSqlActions(acc: SQLActionBuilder, actions: SQLActionBuilder*): SQLActionBuilder = {
+    def concatenateSqlActions(acc: SQLActionBuilder, actions: SQLActionBuilder*): SQLActionBuilder =
       actions.foldLeft(acc) {
         case (accumulator, action) =>
           SQLActionBuilder(accumulator.queryParts ++ action.queryParts, (p: Unit, pp: PositionedParameters) => {
@@ -33,7 +34,6 @@ object DatabaseUtil {
             action.unitPConv.apply(p, pp)
           })
       }
-    }
 
     /** Creates SQLAction of sequence of values
       *
@@ -57,23 +57,25 @@ object DatabaseUtil {
     /** Implicit value that allows getting table row as Map[String, Any] */
     implicit val getMap: GetResult[QueryResponse] = GetResult[QueryResponse](positionedResult => {
       val metadata = positionedResult.rs.getMetaData
-      (1 to positionedResult.numColumns).map(i => {
-        val columnName = metadata.getColumnName(i).toLowerCase
-        val columnValue = positionedResult.nextObjectOption
-        columnName -> columnValue
-      }).toMap
+      (1 to positionedResult.numColumns)
+        .map(i => {
+          val columnName = metadata.getColumnName(i).toLowerCase
+          val columnValue = positionedResult.nextObjectOption
+          columnName -> columnValue
+        })
+        .toMap
     })
 
     /** Implicit class providing helper methods for SQLActionBuilder */
     implicit class SqlActionHelper(action: SQLActionBuilder) {
+
       /** Method for adding predicates to existing SQLAction
         *
         * @param predicates list of predicates to add
         * @return new SQLActionBuilder containing given predicates
         */
-      def addPredicates(predicates: List[Predicate]): SQLActionBuilder = {
-        concatenateSqlActions(action, makePredicates(predicates):_*)
-      }
+      def addPredicates(predicates: List[Predicate]): SQLActionBuilder =
+        concatenateSqlActions(action, makePredicates(predicates): _*)
 
       /** Method for adding ordering to existing SQLAction
         *
@@ -86,7 +88,7 @@ object DatabaseUtil {
         } else {
           List(makeOrdering(ordering))
         }
-        concatenateSqlActions(action, queryOrdering:_*)
+        concatenateSqlActions(action, queryOrdering: _*)
       }
 
       /** Method for adding limit to existing SQLAction
@@ -94,9 +96,8 @@ object DatabaseUtil {
         * @param limit limit to add
         * @return new SQLActionBuilder containing limit statement
         */
-      def addLimit(limit: Int): SQLActionBuilder = {
+      def addLimit(limit: Int): SQLActionBuilder =
         concatenateSqlActions(action, makeLimit(limit))
-      }
 
       /** Method for adding group by to existing SQLAction
         *
@@ -107,7 +108,7 @@ object DatabaseUtil {
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
         val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).toList
-        if(aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
+        if (aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
           action
         } else {
           concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregationFields))
@@ -123,7 +124,8 @@ object DatabaseUtil {
     def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
       predicates.map { predicate =>
         concatenateSqlActions(
-          predicate.precision.map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
+          predicate.precision
+            .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
             .getOrElse(sql""" AND #${predicate.field} """),
           mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
         )
@@ -158,21 +160,19 @@ object DatabaseUtil {
       * @param limit list of ordering parameters
       * @return SQLAction with ordering
       */
-    def makeLimit(limit: Int): SQLActionBuilder = {
+    def makeLimit(limit: Int): SQLActionBuilder =
       sql""" LIMIT #$limit"""
-    }
 
     /** Prepares group by parameters
       *
       * @param columns list of columns to be grouped
       * @return SQLAction with group by
       */
-    def makeGroupBy(columns: List[String]): SQLActionBuilder = {
+    def makeGroupBy(columns: List[String]): SQLActionBuilder =
       sql""" GROUP BY #${columns.mkString(",")}"""
-    }
 
     /** maps aggregation operation to the SQL function*/
-    private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String = {
+    private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
       aggregationType match {
         case AggregationType.sum => s"SUM($column) as sum_$column"
         case AggregationType.count => s"COUNT($column) as count_$column"
@@ -180,7 +180,6 @@ object DatabaseUtil {
         case AggregationType.min => s"MIN($column) as min_$column"
         case AggregationType.avg => s"AVG($column) as avg_$column"
       }
-    }
 
     /** maps operation type to SQL operation */
     private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
@@ -195,7 +194,7 @@ object DatabaseUtil {
         case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
         case OperationType.isnull => sql"ISNULL"
       }
-      if(inverse) {
+      if (inverse) {
         concatenateSqlActions(op, sql" IS #${!inverse}")
       } else {
         op

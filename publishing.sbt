@@ -23,7 +23,7 @@ git.useGitDescribe := true
 
 //defines how to extract the version from git tagging
 git.gitTagToVersionNumber := { tag: String =>
-  if(Versioning.releasePattern.findAllIn(tag).nonEmpty)
+  if (Versioning.releasePattern.findAllIn(tag).nonEmpty)
     Some(Versioning.generate(major = majorVersion, date = java.time.LocalDate.now, tag = tag))
   else
     None
@@ -38,21 +38,20 @@ lazy val gitTagCommand =
   Command.command(
     name = "gitTag",
     briefHelp = "will run the git tag command based on conseil versioning policy",
-    detail =
-    """ A command to call the "git tag" commands (from sbt-git) with custom args.
+    detail = """ A command to call the "git tag" commands (from sbt-git) with custom args.
       | Allows any automated environment (e.g. jenkins, travis) to call
       | "sbt gitTag" when a new release has been just published, bumping the versioning tag,
       | ready for pushing to the git repo.
       | In turn, sbt will pick the newly-minted tag for the new version definition.
-    """.stripMargin) {
-      state =>
-        val extracted = Project.extract(state)
-        val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
-        //we might want to check out only for non-snapshots?
-        println(s"About to tag the new release as '$tag'")
-        //we might want to read the message from the env or from a local file
-        val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
-        Command.process(command, state2)
+    """.stripMargin
+  ) { state =>
+    val extracted = Project.extract(state)
+    val (state2, tag) = extracted.runTask(prepareReleaseTag, state)
+    //we might want to check out only for non-snapshots?
+    println(s"About to tag the new release as '$tag'")
+    //we might want to read the message from the env or from a local file
+    val command = s"""git tag -a -m "release tagged using sbt gitTag" $tag"""
+    Command.process(command, state2)
   }
 
 ThisBuild / commands += gitTagCommand
@@ -87,6 +86,8 @@ licenses := List("gpl-3.0" -> new URL("https://www.gnu.org/licenses/gpl-3.0.txt"
 homepage := Some(url("https://cryptonomic.tech/"))
 
 // Remove all additional repository other than Maven Central from POM
-pomIncludeRepository := { _ => false }
+pomIncludeRepository := { _ =>
+  false
+}
 publishMavenStyle := true
 publishTo := sonatypePublishTo.value

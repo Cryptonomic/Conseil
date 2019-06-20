@@ -6,10 +6,10 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes
 
 /** Trait containing platform discovery endpoints definition */
 trait PlatformDiscoveryEndpoints
-  extends algebra.Endpoints
+    extends algebra.Endpoints
     with PlatformDiscoveryJsonSchemas
     with algebra.JsonSchemaEntities
-    with AttributesQueryValidation{
+    with AttributesQueryValidation {
 
   /** Common path for metadata endpoints */
   private val commonPath = path / "v2" / "metadata"
@@ -17,20 +17,20 @@ trait PlatformDiscoveryEndpoints
   /** Metadata platforms endpoint */
   def platformsEndpoint: Endpoint[String, List[PlatformDiscoveryTypes.Platform]] =
     endpoint(
-      request = get(
-        url = commonPath / "platforms" ,
-        headers = header("apiKey")),
-      response = jsonResponse[List[PlatformDiscoveryTypes.Platform]](docs = Some("Metadata endpoint for listing available platforms")),
+      request = get(url = commonPath / "platforms", headers = header("apiKey")),
+      response = jsonResponse[List[PlatformDiscoveryTypes.Platform]](
+        docs = Some("Metadata endpoint for listing available platforms")
+      ),
       tags = List("Metadata")
     )
 
   /** Metadata networks endpoint */
   def networksEndpoint: Endpoint[(String, String), Option[List[PlatformDiscoveryTypes.Network]]] =
     endpoint(
-      request = get(
-        url = commonPath / segment[String](name = "platform") / "networks",
-        headers = header("apiKey")),
-      response = jsonResponse[List[PlatformDiscoveryTypes.Network]](docs = Some("Metadata endpoint for listing available networks")).orNotFound(Some("Not found")),
+      request = get(url = commonPath / segment[String](name = "platform") / "networks", headers = header("apiKey")),
+      response = jsonResponse[List[PlatformDiscoveryTypes.Network]](
+        docs = Some("Metadata endpoint for listing available networks")
+      ).orNotFound(Some("Not found")),
       tags = List("Metadata")
     )
 
@@ -39,8 +39,11 @@ trait PlatformDiscoveryEndpoints
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / "entities",
-        headers = header("apiKey")),
-      response = jsonResponse[List[PlatformDiscoveryTypes.Entity]](docs = Some("Metadata endpoint for listing available entities")).orNotFound(Some("Not found")),
+        headers = header("apiKey")
+      ),
+      response = jsonResponse[List[PlatformDiscoveryTypes.Entity]](
+        docs = Some("Metadata endpoint for listing available entities")
+      ).orNotFound(Some("Not found")),
       tags = List("Metadata")
     )
 
@@ -48,33 +51,52 @@ trait PlatformDiscoveryEndpoints
   def attributesEndpoint: Endpoint[((String, String, String), String), Option[List[PlatformDiscoveryTypes.Attribute]]] =
     endpoint(
       request = get(
-        url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](name = "entity") / "attributes",
-        headers = header("apiKey")),
-      response = jsonResponse[List[PlatformDiscoveryTypes.Attribute]](docs = Some("Metadata endpoint for listing available attributes")).orNotFound(Some("Not found")),
+        url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
+                name = "entity"
+              ) / "attributes",
+        headers = header("apiKey")
+      ),
+      response = jsonResponse[List[PlatformDiscoveryTypes.Attribute]](
+        docs = Some("Metadata endpoint for listing available attributes")
+      ).orNotFound(Some("Not found")),
       tags = List("Metadata")
     )
 
   /** Metadata attributes values endpoint */
-  def attributesValuesEndpoint: Endpoint[((String, String, String), String, String), Option[Either[List[AttributesValidationError], List[String]]]] =
+  def attributesValuesEndpoint: Endpoint[((String, String, String), String, String), Option[
+    Either[List[AttributesValidationError], List[String]]
+  ]] =
     endpoint(
       request = get(
-        url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](name = "entity") / segment[String](name = "attribute"),
-        headers = header("apiKey")),
+        url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
+                name = "entity"
+              ) / segment[String](name = "attribute"),
+        headers = header("apiKey")
+      ),
       response = validatedAttributes[List[String]](
-        response = jsonResponse[List[String]](docs = Some("Metadata endpoint for listing available distinct values for given attribute")),
+        response = jsonResponse[List[String]](
+          docs = Some("Metadata endpoint for listing available distinct values for given attribute")
+        ),
         invalidDocs = Some("Cannot get the attributes!")
       ).orNotFound(Some("Not found")),
       tags = List("Metadata")
     )
 
   /** Metadata attributes values with filter endpoint */
-  def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), String), Option[Either[List[AttributesValidationError], List[String]]]] =
+  def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), String), Option[
+    Either[List[AttributesValidationError], List[String]]
+  ]] =
     endpoint(
       request = get(
-        url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](name = "entity") / segment[String](name = "attribute") / segment[String](name = "filter"),
-        headers = header("apiKey")),
+        url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
+                name = "entity"
+              ) / segment[String](name = "attribute") / segment[String](name = "filter"),
+        headers = header("apiKey")
+      ),
       response = validatedAttributes[List[String]](
-        response = jsonResponse[List[String]](docs = Some("Metadata endpoint for listing available distinct values for given attribute filtered")),
+        response = jsonResponse[List[String]](
+          docs = Some("Metadata endpoint for listing available distinct values for given attribute filtered")
+        ),
         invalidDocs = Some("Cannot get the attributes!")
       ).orNotFound(Some("Not found")),
       tags = List("Metadata")

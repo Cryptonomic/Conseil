@@ -7,27 +7,27 @@ import scala.concurrent.duration.FiniteDuration
 final case class ServerConfiguration(hostname: String, port: Int, cacheTTL: FiniteDuration, maxQueryResultSize: Int)
 
 final case class LorreConfiguration(
-  sleepInterval: FiniteDuration,
-  bootupRetryInterval: FiniteDuration,
-  bootupConnectionCheckTimeout: FiniteDuration,
-  feeUpdateInterval: Int,
-  numberOfFeesAveraged: Int,
-  depth: Depth,
-  headHash: Option[BlockHash]
+    sleepInterval: FiniteDuration,
+    bootupRetryInterval: FiniteDuration,
+    bootupConnectionCheckTimeout: FiniteDuration,
+    feeUpdateInterval: Int,
+    numberOfFeesAveraged: Int,
+    depth: Depth,
+    headHash: Option[BlockHash]
 )
 
 final case class BatchFetchConfiguration(
-  blockFetchConcurrencyLevel: Int,
-  accountFetchConcurrencyLevel: Int,
-  delegateFetchConcurrencyLevel: Int,
-  blockPageSize: Int,
-  accountPageSize: Int
+    blockFetchConcurrencyLevel: Int,
+    accountFetchConcurrencyLevel: Int,
+    delegateFetchConcurrencyLevel: Int,
+    blockPageSize: Int,
+    accountPageSize: Int
 )
 
 /** configurations related to a chain-node network calls */
 final case class NetworkTimeoutConfiguration(
-  GETResponseEntityTimeout: FiniteDuration,
-  POSTResponseEntityTimeout: FiniteDuration
+    GETResponseEntityTimeout: FiniteDuration,
+    POSTResponseEntityTimeout: FiniteDuration
 )
 
 /** holds custom-verified lightbend configuration for the akka-http-client hostpool used to stream requests */

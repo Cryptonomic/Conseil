@@ -35,11 +35,11 @@ object FeeOperations extends LazyLogging {
     * @param kind      The kind of operation being averaged over
     */
   final case class AverageFees(
-    low: Int,
-    medium: Int,
-    high: Int,
-    timestamp: java.sql.Timestamp,
-    kind: String
+      low: Int,
+      medium: Int,
+      high: Int,
+      timestamp: java.sql.Timestamp,
+      kind: String
   )
 
   /**

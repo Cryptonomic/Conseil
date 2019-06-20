@@ -5,14 +5,14 @@ import cats.arrow._
 import cats.data.Kleisli
 
 /** Defines operations to execute calls against a remote node
- *
- * For the sake of comprehension, we can compare a Kleisli[F, A, B] data-type
- * as a "special" function that wraps the result in some "effect" F, i.e. A => F[B]
- *
- * @tparam Eff the effect associated with execution (Future, IO, Either, Id...)
- * @tparam Command represents the input to identify the endpoint (e.g. a path string)
- * @tparam Reponse represents the output from the node (e.g. a json string)
- */
+  *
+  * For the sake of comprehension, we can compare a Kleisli[F, A, B] data-type
+  * as a "special" function that wraps the result in some "effect" F, i.e. A => F[B]
+  *
+  * @tparam Eff the effect associated with execution (Future, IO, Either, Id...)
+  * @tparam Command represents the input to identify the endpoint (e.g. a path string)
+  * @tparam Reponse represents the output from the node (e.g. a json string)
+  */
 trait RpcHandler[Eff[_], Command, Response] {
   import cats.data.Kleisli
 
@@ -34,22 +34,24 @@ object RpcHandler {
   type Aux[Eff[_], Command, Response, Payload] = RpcHandler[Eff, Command, Response] { type PostPayload = Payload }
 
   /** Factor method based on an implicit instance being available in scope */
-  def apply[Eff[_], Command, Response,  PostPayload](implicit rpc: Aux[Eff, Command, Response, PostPayload]) = rpc
+  def apply[Eff[_], Command, Response, PostPayload](implicit rpc: Aux[Eff, Command, Response, PostPayload]) = rpc
 
   /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
   def runGet[Eff[_], Command, Response](
-    command: Command
-  )(implicit
-    rpc: RpcHandler[Eff, Command, Response]
+      command: Command
+  )(
+      implicit
+      rpc: RpcHandler[Eff, Command, Response]
   ): Eff[Response] =
     rpc.getQuery.run(command)
 
   /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
   def runPost[Eff[_], Command, Response, PostPayload](
-    command: Command,
-    payload: Option[PostPayload] = None
-  )(implicit
-    rpc: Aux[Eff, Command, Response, PostPayload]
+      command: Command,
+      payload: Option[PostPayload] = None
+  )(
+      implicit
+      rpc: Aux[Eff, Command, Response, PostPayload]
   ): Eff[Response] =
     rpc.postQuery.run((command, payload))
 

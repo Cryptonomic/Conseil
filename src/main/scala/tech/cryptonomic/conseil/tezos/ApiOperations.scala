@@ -2,7 +2,14 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, OrderDirection, Predicate, Query, QueryOrdering, QueryResponse}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  OperationType,
+  OrderDirection,
+  Predicate,
+  Query,
+  QueryOrdering,
+  QueryResponse
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -54,25 +61,25 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param order                  Sort items ascending or descending
     */
   final case class Filter(
-                     limit: Option[Int] = Some(defaultLimit),
-                     blockIDs: Set[String] = Set.empty,
-                     levels: Set[Int] = Set.empty,
-                     chainIDs: Set[String] = Set.empty,
-                     protocols: Set[String] = Set.empty,
-                     operationGroupIDs: Set[String] = Set.empty,
-                     operationSources: Set[String] = Set.empty,
-                     operationDestinations: Set[String] = Set.empty,
-                     operationParticipants: Set[String] = Set.empty,
-                     operationKinds: Set[String] = Set.empty,
-                     accountIDs: Set[String] = Set.empty,
-                     accountManagers: Set[String] = Set.empty,
-                     accountDelegates: Set[String] = Set.empty,
-                     sortBy: Option[String] = None,
-                     order: Option[Sorting] = Some(DescendingSort)
-                   ) {
+      limit: Option[Int] = Some(defaultLimit),
+      blockIDs: Set[String] = Set.empty,
+      levels: Set[Int] = Set.empty,
+      chainIDs: Set[String] = Set.empty,
+      protocols: Set[String] = Set.empty,
+      operationGroupIDs: Set[String] = Set.empty,
+      operationSources: Set[String] = Set.empty,
+      operationDestinations: Set[String] = Set.empty,
+      operationParticipants: Set[String] = Set.empty,
+      operationKinds: Set[String] = Set.empty,
+      accountIDs: Set[String] = Set.empty,
+      accountManagers: Set[String] = Set.empty,
+      accountDelegates: Set[String] = Set.empty,
+      sortBy: Option[String] = None,
+      order: Option[Sorting] = Some(DescendingSort)
+  ) {
 
     /** transforms Filter into a Query with a set of predicates */
-    def toQuery: DataTypes.Query = {
+    def toQuery: DataTypes.Query =
       Query(
         fields = List.empty,
         predicates = List(
@@ -151,28 +158,27 @@ object ApiOperations extends DataOperations with MetadataOperations {
           QueryOrdering(o, direction)
         }.toList
       )
-    }
   }
 
   object Filter {
 
     /** builds a filter from incoming string-based parameters */
     def readParams(
-      limit: Option[Int],
-      blockIDs: Iterable[String],
-      levels: Iterable[Int],
-      chainIDs: Iterable[String],
-      protocols: Iterable[String],
-      operationGroupIDs: Iterable[String],
-      operationSources: Iterable[String],
-      operationDestinations: Iterable[String],
-      operationParticipants: Iterable[String],
-      operationKinds: Iterable[String],
-      accountIDs: Iterable[String],
-      accountManagers: Iterable[String],
-      accountDelegates: Iterable[String],
-      sortBy: Option[String],
-      order: Option[String]
+        limit: Option[Int],
+        blockIDs: Iterable[String],
+        levels: Iterable[Int],
+        chainIDs: Iterable[String],
+        protocols: Iterable[String],
+        operationGroupIDs: Iterable[String],
+        operationSources: Iterable[String],
+        operationDestinations: Iterable[String],
+        operationParticipants: Iterable[String],
+        operationKinds: Iterable[String],
+        accountIDs: Iterable[String],
+        accountManagers: Iterable[String],
+        accountDelegates: Iterable[String],
+        sortBy: Option[String],
+        order: Option[String]
     ): Filter =
       Filter(
         limit,
@@ -235,8 +241,8 @@ object ApiOperations extends DataOperations with MetadataOperations {
 
     dbHandle.run(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
-      blocks.headOption.map {
-        block => BlockResult(
+      blocks.headOption.map { block =>
+        BlockResult(
           block = block,
           operation_groups = groups
         )
@@ -253,17 +259,20 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return Operation group along with associated operations and accounts
     */
-  def fetchOperationGroup(operationGroupHash: String)(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
+  def fetchOperationGroup(
+      operationGroupHash: String
+  )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
-    } yield operations.map {
+    } yield
+      operations.map {
         case (opGroup, ops) =>
           OperationGroupResult(
             operation_group = opGroup,
             operations = ops
           )
-        }
+      }
 
     dbHandle.run(groupsMapIO)
   }
@@ -276,14 +285,13 @@ object ApiOperations extends DataOperations with MetadataOperations {
     */
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
     val fetchOperation =
-        Tables.Accounts
-          .filter(row => row.accountId === account_id.id)
-          .take(1)
-          .result
+      Tables.Accounts
+        .filter(row => row.accountId === account_id.id)
+        .take(1)
+        .result
 
-    dbHandle.run(fetchOperation).map{
-      accounts =>
-        accounts.headOption.map(AccountResult)
+    dbHandle.run(fetchOperation).map { accounts =>
+      accounts.headOption.map(AccountResult)
     }
   }
 
@@ -306,11 +314,10 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param  action action to be performed on db
     * @return result of DBIO action as a Future
     */
-  def runQuery[A](action: DBIO[A]): Future[A] = {
+  def runQuery[A](action: DBIO[A]): Future[A] =
     dbHandle.run {
       action
     }
-  }
 
   /** Executes the query with given predicates
     *
@@ -318,7 +325,9 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  override def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]] = {
+  override def queryWithPredicates(tableName: String, query: Query)(
+      implicit ec: ExecutionContext
+  ): Future[List[QueryResponse]] =
     runQuery(
       TezosDatabaseOperations.selectWithPredicates(
         tableName,
@@ -330,14 +339,12 @@ object ApiOperations extends DataOperations with MetadataOperations {
         query.limit
       )
     )
-  }
 
   /** Sanitizes predicate values so query is safe from SQL injection */
-  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] = {
+  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] =
     predicates.map { predicate =>
       predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
     }
-  }
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
@@ -346,4 +353,3 @@ object ApiOperations extends DataOperations with MetadataOperations {
   }
 
 }
-
