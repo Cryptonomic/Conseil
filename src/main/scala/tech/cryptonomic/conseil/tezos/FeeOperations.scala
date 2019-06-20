@@ -33,11 +33,11 @@ object FeeOperations extends LazyLogging {
     * @param kind      The kind of operation being averaged over
     */
   final case class AverageFees(
-    low: Int,
-    medium: Int,
-    high: Int,
-    timestamp: java.sql.Timestamp,
-    kind: String
+      low: Int,
+      medium: Int,
+      high: Int,
+      timestamp: java.sql.Timestamp,
+      kind: String
   )
 
   /**
@@ -53,12 +53,11 @@ object FeeOperations extends LazyLogging {
       dbWrites <- TezosDb.writeFees(fees.collect { case Some(fee) => fee })
     } yield dbWrites
 
-    db.run(computeAndStore)
-      .andThen{
-        case Success(Some(written)) => logger.info("Wrote {} average fees to the database.", written)
-        case Success(None) => logger.info("Wrote average fees to the database.")
-        case Failure(e) => logger.error("Could not write average fees to the database because", e)
-      }
+    db.run(computeAndStore).andThen {
+      case Success(Some(written)) => logger.info("Wrote {} average fees to the database.", written)
+      case Success(None) => logger.info("Wrote average fees to the database.")
+      case Failure(e) => logger.error("Could not write average fees to the database because", e)
+    }
 
   }
 

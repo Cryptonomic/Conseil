@@ -17,7 +17,8 @@ class UnitTransformation(overrides: MetadataConfiguration) {
         .flatMap(_.displayName)
         .getOrElse(platform.displayName),
       description = overridePlatform
-        .flatMap(_.description))
+        .flatMap(_.description)
+    )
   }
 
   // overrides network
@@ -29,7 +30,8 @@ class UnitTransformation(overrides: MetadataConfiguration) {
         .flatMap(_.displayName)
         .getOrElse(network.displayName),
       description = overrideNetwork
-        .flatMap(_.description))
+        .flatMap(_.description)
+    )
   }
 
   // overrides entity
@@ -40,22 +42,29 @@ class UnitTransformation(overrides: MetadataConfiguration) {
       displayName = overrideEntity
         .flatMap(_.displayName)
         .getOrElse(entity.displayName),
+      displayNamePlural = overrideEntity
+        .flatMap(_.displayNamePlural),
       description = overrideEntity
-        .flatMap(_.description))
+        .flatMap(_.description)
+    )
   }
 
   // overrides attribute
-  def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] = when(overrides.isVisible(path)) {
-    val overrideAttribute = overrides.attribute(path)
+  def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] =
+    when(overrides.isVisible(path)) {
+      val overrideAttribute = overrides.attribute(path)
 
-    attribute.copy(
-      displayName = overrideAttribute.flatMap(_.displayName).getOrElse(attribute.displayName),
-      description = overrideAttribute.flatMap(_.description),
-      placeholder = overrideAttribute.flatMap(_.placeholder),
-      dataFormat = overrideAttribute.flatMap(_.dataFormat),
-      scale = overrideAttribute.flatMap(_.scale),
-      dataType = overrideAttribute.flatMap(_.dataType).map(mapType).getOrElse(attribute.dataType),
-      valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty),
-      reference = overrideAttribute.flatMap(_.reference).filter(_.nonEmpty))
-  }
+      attribute.copy(
+        displayName = overrideAttribute.flatMap(_.displayName).getOrElse(attribute.displayName),
+        description = overrideAttribute.flatMap(_.description),
+        placeholder = overrideAttribute.flatMap(_.placeholder),
+        dataFormat = overrideAttribute.flatMap(_.dataFormat),
+        scale = overrideAttribute.flatMap(_.scale),
+        dataType = overrideAttribute.flatMap(_.dataType).map(mapType).getOrElse(attribute.dataType),
+        valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty),
+        reference = overrideAttribute.flatMap(_.reference).filter(_.nonEmpty),
+        displayPriority = overrideAttribute.flatMap(_.displayPriority),
+        displayOrder = overrideAttribute.flatMap(_.displayOrder)
+      )
+    }
 }

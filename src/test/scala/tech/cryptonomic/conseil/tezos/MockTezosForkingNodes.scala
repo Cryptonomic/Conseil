@@ -34,7 +34,10 @@ object MockTezosForkingNodes {
     case (2, 6) => "BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp"
     case (_, 7) => "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr"
     case (_, 8) => "BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u"
-    case _ => throw new IllegalArgumentException(s"no scenario defined to get a head hash for branch-$onBranch at level-$atLevel")
+    case _ =>
+      throw new IllegalArgumentException(
+        s"no scenario defined to get a head hash for branch-$onBranch at level-$atLevel"
+      )
   }
 
   /** currently defines batched-get in terms of async-get only */
@@ -42,7 +45,12 @@ object MockTezosForkingNodes {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    override def runBatchedGetQuery[ID](network: String, ids: List[ID], mapToCommand: ID => String, concurrencyLevel: Int): Future[List[(ID, String)]] =
+    override def runBatchedGetQuery[ID](
+        network: String,
+        ids: List[ID],
+        mapToCommand: ID => String,
+        concurrencyLevel: Int
+    ): Future[List[(ID, String)]] =
       Future.traverse(ids)(id => runAsyncGetQuery(network, mapToCommand(id)) map (id -> _))
 
     override def runGetQuery(network: String, command: String): Try[String] = ???
@@ -51,7 +59,11 @@ object MockTezosForkingNodes {
 
     override def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] = ???
 
-    override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String] = ???
+    override def runAsyncPostQuery(
+        network: String,
+        command: String,
+        payload: Option[JsonString] = None
+    ): Future[String] = ???
 
   }
 
@@ -71,7 +83,6 @@ object MockTezosForkingNodes {
       */
     def getNode(onBranch: Int, atLevel: Int, forkDetection: Option[String] = None) = new BaseMock {
 
-
       //the head should depend on the branch and time both
       val headHash = getHeadHash(onBranch, atLevel)
 
@@ -86,15 +97,25 @@ object MockTezosForkingNodes {
             //will return the block at offset 0
             getStoredBlock(0, onBranch, atLevel)
           case HashEndpointMatch(`headHash`, offset) if isValidOffset(offset) =>
-            getStoredBlock(offset.toInt, onBranch, atLevel)
-              .recoverWith { case ex: FileNotFoundException =>
-                Future.failed(new IllegalArgumentException(s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command", ex))
-              }
+            getStoredBlock(offset.toInt, onBranch, atLevel).recoverWith {
+              case ex: FileNotFoundException =>
+                Future.failed(
+                  new IllegalArgumentException(
+                    s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command",
+                    ex
+                  )
+                )
+            }
           case HashEndpointMatch(`forkedHash`, offset) if forkDetection.nonEmpty =>
-            getStoredBlock(offset.toInt, onBranch, atLevel, filePrefix = "fork")
-              .recoverWith { case ex: FileNotFoundException =>
-                Future.failed(new IllegalArgumentException(s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command", ex))
-              }
+            getStoredBlock(offset.toInt, onBranch, atLevel, filePrefix = "fork").recoverWith {
+              case ex: FileNotFoundException =>
+                Future.failed(
+                  new IllegalArgumentException(
+                    s"The node simulated for branch-$onBranch at level-$atLevel received an unexpected block offset request in $command",
+                    ex
+                  )
+                )
+            }
           case OperationsEndpointMatch(_) =>
             emptyBlockOperationsResult //ignoring the matched hash
           case VotesEndpointMatch(_, "current_quorum") =>
@@ -117,7 +138,11 @@ object MockTezosForkingNodes {
         * @return a full json string with the block information, or a failure if no file exists for such parameters
         */
       def getStoredBlock(offset: Int, branch: Int, level: Int, filePrefix: String = "head"): Future[String] =
-        Future(scala.io.Source.fromFile(s"src/test/resources/forking_tests/branch-$branch/level-$level/$filePrefix~$offset.json").mkString)
+        Future(
+          scala.io.Source
+            .fromFile(s"src/test/resources/forking_tests/branch-$branch/level-$level/$filePrefix~$offset.json")
+            .mkString
+        )
 
     }
   }

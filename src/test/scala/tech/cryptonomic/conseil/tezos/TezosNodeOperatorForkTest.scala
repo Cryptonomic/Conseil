@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import scala.concurrent.Future
 
 class TezosNodeOperatorForkTest
-  extends WordSpec
+    extends WordSpec
     with MockFactory
     with Matchers
     with ScalaFutures
@@ -28,7 +28,7 @@ class TezosNodeOperatorForkTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val config = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds)
+  val config = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds, 10 seconds)
 
   val mocks = MockTezosForkingNodes
 
@@ -81,94 +81,102 @@ class TezosNodeOperatorForkTest
 
   "The Node Operator" should {
 
-    "load blocks to save in the no-fork scenario" in {
-      //SCENARIO 1 on the scheme
-      lazy val nonForkingScenario = getNode(onBranch = 0, atLevel = 2)
-      val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
-      val sut = createTestOperator(nonForkingScenario)
+      "load blocks to save in the no-fork scenario" in {
+        //SCENARIO 1 on the scheme
+        lazy val nonForkingScenario = getNode(onBranch = 0, atLevel = 2)
+        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+        val sut = createTestOperator(nonForkingScenario)
 
-      import sut.{WriteBlock, BlockFetchingResults}
+        import sut.{BlockFetchingResults, WriteBlock}
 
-      val blockActions: BlockFetchingResults =
-        sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
-          .futureValue(timeout = Timeout(10 seconds))
+        val blockActions: BlockFetchingResults =
+          sut
+            .getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
+            .futureValue(timeout = Timeout(10 seconds))
 
-      blockActions should have size 3
+        blockActions should have size 3
 
-      forAll(blockActions) {
-        _._1 shouldBe a [WriteBlock] //ignore accounts
+        forAll(blockActions) {
+          _._1 shouldBe a[WriteBlock] //ignore accounts
+        }
+        blockActions collect {
+          case (WriteBlock(block), _) => block.data.hash.value
+        } should contain allOf (
+          "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+          "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+          "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM" //lvl 0
+        )
       }
-      blockActions collect {
-        case (WriteBlock(block), _) => block.data.hash.value
-      } should contain allOf (
-        "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
-        "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
-        "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
-      )
-    }
 
-    "load blocks to save in the single-fork scenario" in {
-      //SCENARIO 2 on the scheme
-      lazy val (singleForkScenario, timeFrame) = sequenceNodes(
-        getNode(onBranch = 0, atLevel = 2),
-        getNode(onBranch = 0, atLevel = 4),
-        getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"))
-      )
-      val sut = createTestOperator(singleForkScenario)
-      import sut.{WriteBlock, WriteAndMakeValidBlock, BlockFetchingResults}
+      "load blocks to save in the single-fork scenario" in {
+        //SCENARIO 2 on the scheme
+        lazy val (singleForkScenario, timeFrame) = sequenceNodes(
+          getNode(onBranch = 0, atLevel = 2),
+          getNode(onBranch = 0, atLevel = 4),
+          getNode(
+            onBranch = 1,
+            atLevel = 5,
+            forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")
+          )
+        )
+        val sut = createTestOperator(singleForkScenario)
+        import sut.{BlockFetchingResults, WriteAndMakeValidBlock, WriteBlock}
 
-      // we first build all the steps as unupplied functions that can be eventually composed together
-      // passing the result of each step to the next (needed to store required data on db)
-      //time 0
-      val step1 = testNextStep(sut) {
+        // we first build all the steps as unupplied functions that can be eventually composed together
+        // passing the result of each step to the next (needed to store required data on db)
+        //time 0
+        val step1 = testNextStep(sut) {
           val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
           val blockActions: BlockFetchingResults =
-            sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
+            sut
+              .getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
               .futureValue(timeout = Timeout(10 seconds))
 
           blockActions should have size 3
           forAll(blockActions) {
-            _._1 shouldBe a [WriteBlock]
+            _._1 shouldBe a[WriteBlock]
           }
           blockActions collect {
             case (WriteBlock(block), _) => block.data.hash.value
-          } should contain allOf(
+          } should contain allOf (
             "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
             "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
-            "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
+            "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM" //lvl 0
           )
 
           blockActions
         } _
 
-      //time 1
-      val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+        //time 1
+        val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
           val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
           val blockActions =
-            sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
+            sut
+              .getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
               .futureValue(timeout = Timeout(10 seconds))
 
           blockActions should have size 2
 
           forAll(blockActions) {
-            _._1 shouldBe a [WriteBlock]
+            _._1 shouldBe a[WriteBlock]
           }
 
           blockActions collect {
             case (WriteBlock(block), _) => block.data.hash.value
-          } should contain allOf(
+          } should contain allOf (
             "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
-            "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
+            "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o" //lvl 3
           )
 
           blockActions
         } _
 
-      //time 2
-      val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+        //time 2
+        val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
           val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
           val blockActions =
-            sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
+            sut
+              .getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
               .futureValue(timeout = Timeout(10 seconds))
 
           blockActions should have size 2
@@ -182,307 +190,346 @@ class TezosNodeOperatorForkTest
           blockActions
         } _
 
-      //here we compose all steps and run them, one after the other
-      (step1 andThen step2 andThen step3)(List.empty)
+        //here we compose all steps and run them, one after the other
+        (step1 andThen step2 andThen step3)(List.empty)
 
-      //double check that there's nothing more
-      timeFrame.next() shouldBe false
+        //double check that there's nothing more
+        timeFrame.next() shouldBe false
 
-    }
+      }
 
-    "load blocks to save in the single-alternating-fork scenario" in {
-      //SCENARIO 3 on the scheme
-      lazy val (singleForkAlternatingScenario, timeFrame) = sequenceNodes(
-        getNode(onBranch = 0, atLevel = 2),
-        getNode(onBranch = 0, atLevel = 4),
-        getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
-        getNode(onBranch = 0, atLevel = 6, forkDetection = Some("BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD")),
-        getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J"))
-      )
-
-      val sut = createTestOperator(singleForkAlternatingScenario)
-      import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock, BlockFetchingResults}
-
-      // we first build all the steps as unupplied functions that can be eventually composed together
-      // passing the result of each step to the next (needed to store required data on db)
-      //time 0
-      val step1 = testNextStep(sut) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
-        val blockActions: BlockFetchingResults =
-          sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
-
-        blockActions should have size 3
-        forAll(blockActions) {
-          _._1 shouldBe a [WriteBlock]
-        }
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain allOf(
-          "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
-          "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
-          "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
+      "load blocks to save in the single-alternating-fork scenario" in {
+        //SCENARIO 3 on the scheme
+        lazy val (singleForkAlternatingScenario, timeFrame) = sequenceNodes(
+          getNode(onBranch = 0, atLevel = 2),
+          getNode(onBranch = 0, atLevel = 4),
+          getNode(
+            onBranch = 1,
+            atLevel = 5,
+            forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")
+          ),
+          getNode(
+            onBranch = 0,
+            atLevel = 6,
+            forkDetection = Some("BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD")
+          ),
+          getNode(
+            onBranch = 1,
+            atLevel = 7,
+            forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")
+          )
         )
 
-        blockActions
-      } _
+        val sut = createTestOperator(singleForkAlternatingScenario)
+        import sut.{BlockFetchingResults, RevalidateBlock, WriteAndMakeValidBlock, WriteBlock}
 
-      //time 1
-      val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+        // we first build all the steps as unupplied functions that can be eventually composed together
+        // passing the result of each step to the next (needed to store required data on db)
+        //time 0
+        val step1 = testNextStep(sut) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+          val blockActions: BlockFetchingResults =
+            sut
+              .getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 2
-
-        forAll(blockActions) {
-          _._1 shouldBe a [WriteBlock]
-        }
-
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain allOf(
-          "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
-          "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
-        )
-
-        blockActions
-      } _
-
-      //time 2
-      val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
-
-        blockActions should have size 2
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
-
-        blockActions
-      } _
-
-      //time 3
-      val step4 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 6))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
-
-        blockActions should have size 3
-
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1" //lvl 6
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain only "BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD" //lvl 5
-        blockActions collect {
-          case (RevalidateBlock(block), _) => block.data.hash.value
-        } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi" //lvl 4
-
-        blockActions
-      } _
-
-      //time 4
-      val step5 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
-
-        blockActions should have size 4
-
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr" //lvl 7
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain only "BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J" //lvl 6
-        blockActions collect {
-          case (RevalidateBlock(block), _) => block.data.hash.value
-        } should contain allOf (
-          "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", //lvl 5
-          "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"  //lvl 4
-        )
-
-        blockActions
-      } _
-
-      //here we compose all steps and run them, one after the other
-      (step1 andThen step2 andThen step3 andThen step4 andThen step5)(List.empty)
-
-      //double check that there's nothing more
-      timeFrame.next() shouldBe false
-
-    }
-
-    "load blocks to save in the two-alternating-forks scenario" in {
-      //SCENARIO 4 on the scheme
-      lazy val (twoForksAlternatingScenario, timeFrame) = sequenceNodes(
-        getNode(onBranch = 0, atLevel = 2),
-        getNode(onBranch = 0, atLevel = 4),
-        getNode(onBranch = 1, atLevel = 5, forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")),
-        getNode(onBranch = 2, atLevel = 6, forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")),
-        getNode(onBranch = 1, atLevel = 7, forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")),
-        getNode(onBranch = 0, atLevel = 8, forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis"))
+          blockActions should have size 3
+          forAll(blockActions) {
+            _._1 shouldBe a[WriteBlock]
+          }
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+            "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+            "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM" //lvl 0
           )
 
-      val sut = createTestOperator(twoForksAlternatingScenario)
-      import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock, BlockFetchingResults}
+          blockActions
+        } _
 
-      // we first build all the steps as unupplied functions that can be eventually composed together
-      // passing the result of each step to the next (needed to store required data on db)
-      //time 0
-      val step1 = testNextStep(sut) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
-        val blockActions: BlockFetchingResults =
-          sut.getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+        //time 1
+        val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 3
-        forAll(blockActions) {
-          _._1 shouldBe a [WriteBlock]
-        }
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain allOf(
-          "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
-          "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
-          "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM"  //lvl 0
+          blockActions should have size 2
+
+          forAll(blockActions) {
+            _._1 shouldBe a[WriteBlock]
+          }
+
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
+            "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o" //lvl 3
+          )
+
+          blockActions
+        } _
+
+        //time 2
+        val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
+
+          blockActions should have size 2
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
+
+          blockActions
+        } _
+
+        //time 3
+        val step4 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 6))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
+
+          blockActions should have size 3
+
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1" //lvl 6
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain only "BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD" //lvl 5
+          blockActions collect {
+            case (RevalidateBlock(block), _) => block.data.hash.value
+          } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi" //lvl 4
+
+          blockActions
+        } _
+
+        //time 4
+        val step5 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
+
+          blockActions should have size 4
+
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr" //lvl 7
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain only "BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J" //lvl 6
+          blockActions collect {
+            case (RevalidateBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", //lvl 5
+            "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
+          )
+
+          blockActions
+        } _
+
+        //here we compose all steps and run them, one after the other
+        (step1 andThen step2 andThen step3 andThen step4 andThen step5)(List.empty)
+
+        //double check that there's nothing more
+        timeFrame.next() shouldBe false
+
+      }
+
+      "load blocks to save in the two-alternating-forks scenario" in {
+        //SCENARIO 4 on the scheme
+        lazy val (twoForksAlternatingScenario, timeFrame) = sequenceNodes(
+          getNode(onBranch = 0, atLevel = 2),
+          getNode(onBranch = 0, atLevel = 4),
+          getNode(
+            onBranch = 1,
+            atLevel = 5,
+            forkDetection = Some("BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z")
+          ),
+          getNode(
+            onBranch = 2,
+            atLevel = 6,
+            forkDetection = Some("BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt")
+          ),
+          getNode(
+            onBranch = 1,
+            atLevel = 7,
+            forkDetection = Some("BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J")
+          ),
+          getNode(
+            onBranch = 0,
+            atLevel = 8,
+            forkDetection = Some("BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis")
+          )
         )
 
-        blockActions
-      } _
+        val sut = createTestOperator(twoForksAlternatingScenario)
+        import sut.{BlockFetchingResults, RevalidateBlock, WriteAndMakeValidBlock, WriteBlock}
 
-      //time 1
-      val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+        // we first build all the steps as unupplied functions that can be eventually composed together
+        // passing the result of each step to the next (needed to store required data on db)
+        //time 0
+        val step1 = testNextStep(sut) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 2))
+          val blockActions: BlockFetchingResults =
+            sut
+              .getBlocks(reference = headHash -> 2, levelRange = 0 to 2, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 2
+          blockActions should have size 3
+          forAll(blockActions) {
+            _._1 shouldBe a[WriteBlock]
+          }
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BKy8NcuerruFgeCGAoUG3RfjhHf1diYjrgD2qAJ5rNwp2nRJ9H4", //lvl 2
+            "BMACW5bXgRNEsjnL3thC8BBWVpYr3qfu6xPNXqB2RpHdrph8KbG", //lvl 1
+            "BLockGenesisGenesisGenesisGenesisGenesis67853hJiJiM" //lvl 0
+          )
 
-        forAll(blockActions) {
-          _._1 shouldBe a [WriteBlock]
-        }
+          blockActions
+        } _
 
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain allOf(
-          "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
-          "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o"  //lvl 3
-        )
+        //time 1
+        val step2 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 4))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 4, levelRange = 3 to 4, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions
-      } _
+          blockActions should have size 2
 
-      //time 2
-      val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+          forAll(blockActions) {
+            _._1 shouldBe a[WriteBlock]
+          }
 
-        blockActions should have size 2
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi", //lvl 4
+            "BLvptJbhLUAZNwFd9TGwWNSEjwddeKJoz3qy1yfC8WiSKVUXA2o" //lvl 3
+          )
 
-        blockActions
-      } _
+          blockActions
+        } _
 
-      //time 3
-      val step4 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 2, atLevel = 6))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+        //time 2
+        val step3 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 5))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 5, levelRange = 5 to 5, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-        blockActions should have size 3
+          blockActions should have size 2
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp" //lvl 5
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain only "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
 
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp" //lvl 6
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain allOf (
-          "BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt", //lvl 5
-          "BLbJpro48vrgPpLRmiigYCkVJJRRC5uLkafnFsDZEQFuWBxdZiJ"  //lvl 4
-        )
+          blockActions
+        } _
 
-        blockActions
-      } _
+        //time 3
+        val step4 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 2, atLevel = 6))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 6, levelRange = 6 to 6, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-      //time 4
-      val step5 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+          blockActions should have size 3
 
-        blockActions should have size 4
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BMKRY5YvFhbwcLPsV3vfvYZ97ktSfu2eJTx2V21PfUxUEYXzTsp" //lvl 6
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BMBthHtaQT5vJJXWm3djp9CJrjgdSpouDJW1MMM2vLYyjdVeLnt", //lvl 5
+            "BLbJpro48vrgPpLRmiigYCkVJJRRC5uLkafnFsDZEQFuWBxdZiJ" //lvl 4
+          )
 
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr" //lvl 7
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain only "BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J" //lvl 6
-        blockActions collect {
-          case (RevalidateBlock(block), _) => block.data.hash.value
-        } should contain allOf (
-          "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", //lvl 5
-          "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z"  //lvl 4
-        )
+          blockActions
+        } _
 
-        blockActions
-      } _
+        //time 4
+        val step5 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 1, atLevel = 7))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 7, levelRange = 7 to 7, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-      //time 5
-      val step6 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
-        val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 8))
-        val blockActions =
-          sut.getBlocks(reference = headHash -> 8, levelRange = 8 to 8, followFork = true)
-            .futureValue(timeout = Timeout(10 seconds))
+          blockActions should have size 4
 
-        blockActions should have size 5
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BM7bFA88UaPfBEW2XPZGCaB1rH38tjx21J571JxvkFp3JvSuBpr" //lvl 7
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain only "BLGM6zuKbwxAYemB1zLAgdpmDcZMukztT7KLr6f1kK9djigNk6J" //lvl 6
+          blockActions collect {
+            case (RevalidateBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BLFaY9jHrkuxnQAQv3wJif6V7S6ekGHoxbCBmeuFyLixGAYm3Bp", //lvl 5
+            "BLTyS5z4VEPBQzReVLs4WxmpwfRZyczYybxp3CpeJrCBRw17p6z" //lvl 4
+          )
 
-        blockActions collect {
-          case (WriteBlock(block), _) => block.data.hash.value
-        } should contain only "BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u" //lvl 8
-        blockActions collect {
-          case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
-        } should contain allOf (
-          "BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis", //lvl 7
-          "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1", //lvl 6
-          "BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD"  //lvl 5
-        )
-        blockActions collect {
-          case (RevalidateBlock(block), _) => block.data.hash.value
-        } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi"  //lvl 4
+          blockActions
+        } _
 
-        blockActions
-      } _
+        //time 5
+        val step6 = testNextStep(sut, increaseTimeFrame = Some(timeFrame)) {
+          val headHash = BlockHash(mocks.getHeadHash(onBranch = 0, atLevel = 8))
+          val blockActions =
+            sut
+              .getBlocks(reference = headHash -> 8, levelRange = 8 to 8, followFork = true)
+              .futureValue(timeout = Timeout(10 seconds))
 
-      //here we compose all steps and run them, one after the other
-      (step1 andThen step2 andThen step3 andThen step4 andThen step5 andThen step6)(List.empty)
+          blockActions should have size 5
 
-      //double check that there's nothing more
-       timeFrame.next() shouldBe false
+          blockActions collect {
+            case (WriteBlock(block), _) => block.data.hash.value
+          } should contain only "BMeiBtFrXuVN7kcVaC4mt1dbncX2n8tb76qUeM4JCr97Cb7U84u" //lvl 8
+          blockActions collect {
+            case (WriteAndMakeValidBlock(block), _) => block.data.hash.value
+          } should contain allOf (
+            "BMKgJeHauF6JdDexxxzhFmmCFuyEokv5gfyvXfy68cVEHZUUZis", //lvl 7
+            "BMSw4mdnPTRpNtNoRBGpnYDGGH9pcxB2FHBxQeonyUunaV5bAz1", //lvl 6
+            "BM2sQM8aKp2vjTTvHifCyp1b1JVYuvcxcy2tU5mSYHnK6FfvfYD" //lvl 5
+          )
+          blockActions collect {
+            case (RevalidateBlock(block), _) => block.data.hash.value
+          } should contain only "BKpFANTnUBqVe8Hm4rUkNuYtJkg7PjLrHjkQaNQj7ph5Bi6qXVi" //lvl 4
+
+          blockActions
+        } _
+
+        //here we compose all steps and run them, one after the other
+        (step1 andThen step2 andThen step3 andThen step4 andThen step5 andThen step6)(List.empty)
+
+        //double check that there's nothing more
+        timeFrame.next() shouldBe false
+      }
+
     }
-
-  }
 
   /* Create an operator instance to test, using
    * - a custom node interface for scenario
@@ -501,12 +548,11 @@ class TezosNodeOperatorForkTest
    * The returned value allow to compose many steps one after another
    */
   private def testNextStep(
-    sut: TezosNodeOperator,
-    increaseTimeFrame: Option[MockTezosForkingNodes.Frame] = None
+      sut: TezosNodeOperator,
+      increaseTimeFrame: Option[MockTezosForkingNodes.Frame] = None
   )(
-    stepCode: => sut.BlockFetchingResults
-  )(existingResultsToStore: sut.BlockFetchingResults
-  ) = {
+      stepCode: => sut.BlockFetchingResults
+  )(existingResultsToStore: sut.BlockFetchingResults) = {
     store(sut)(existingResultsToStore).isReadyWithin(1.second) shouldBe true
     increaseTimeFrame.foreach(_.next() shouldBe true)
     stepCode
@@ -515,22 +561,22 @@ class TezosNodeOperatorForkTest
   /* Store rows on the db as blocks and invalidations*/
   private def store(sut: TezosNodeOperator)(actions: sut.BlockFetchingResults): Future[_] = {
     import slick.jdbc.PostgresProfile.api._
-    import sut.{WriteBlock, WriteAndMakeValidBlock, RevalidateBlock}
+    import sut.{RevalidateBlock, WriteAndMakeValidBlock, WriteBlock}
 
     val rows = actions collect {
-      case (WriteBlock(block), _) =>
-        toRow(block.data.hash, block.data.header.level)
-      case (WriteAndMakeValidBlock(block), _) =>
-        toRow(block.data.hash, block.data.header.level)
-    }
+          case (WriteBlock(block), _) =>
+            toRow(block.data.hash, block.data.header.level)
+          case (WriteAndMakeValidBlock(block), _) =>
+            toRow(block.data.hash, block.data.header.level)
+        }
 
     val addingBlocks = Tables.Blocks ++= rows
 
     val validationRows = actions collect {
-      case act @ ((WriteAndMakeValidBlock(_), _) | (RevalidateBlock(_), _)) =>
-        val validBlock = act._1.block
-        toValidRow(validBlock.data.hash, validBlock.data.header.level)
-    }
+          case act @ ((WriteAndMakeValidBlock(_), _) | (RevalidateBlock(_), _)) =>
+            val validBlock = act._1.block
+            toValidRow(validBlock.data.hash, validBlock.data.header.level)
+        }
 
     if (validationRows.isEmpty) {
       dbHandler.run(addingBlocks)
@@ -538,24 +584,27 @@ class TezosNodeOperatorForkTest
       val affectedLevels = validationRows.map(_.level)
 
       //prepare new entries for blocks that will need invalidation
-      val blocksToInvalidate = dbHandler.run(
-        Tables.Blocks
-          .filter(_.level inSet affectedLevels)
-          .map(row => (row.hash, row.level, true.bind))
-          .to[List]
-          .result
-      ).futureValue.map(Tables.InvalidatedBlocksRow.tupled)
+      val blocksToInvalidate = dbHandler
+        .run(
+          Tables.Blocks
+            .filter(_.level inSet affectedLevels)
+            .map(row => (row.hash, row.level, true.bind))
+            .to[List]
+            .result
+        )
+        .futureValue
+        .map(Tables.InvalidatedBlocksRow.tupled)
 
       //first invalidate all related existing rows, append the new invalidations
       val invalidate = Tables.InvalidatedBlocks
-        .filter(row => row.level inSet affectedLevels)
-        .map(_.isInvalidated)
-        .update(true) :: blocksToInvalidate.map(Tables.InvalidatedBlocks.insertOrUpdate)
+          .filter(row => row.level inSet affectedLevels)
+          .map(_.isInvalidated)
+          .update(true) :: blocksToInvalidate.map(Tables.InvalidatedBlocks.insertOrUpdate)
 
       //then rewrite only those that aren't invalid anymore
       val revalidate = validationRows.map(Tables.InvalidatedBlocks.insertOrUpdate)
 
-      dbHandler.run(DBIO.sequence( addingBlocks :: invalidate ::: revalidate))
+      dbHandler.run(DBIO.sequence(addingBlocks :: invalidate ::: revalidate))
 
     }
 
@@ -579,7 +628,7 @@ class TezosNodeOperatorForkTest
     InvalidatedBlocksRow(
       hash = hash.value,
       level = level,
-      isInvalidated = false,
+      isInvalidated = false
     )
 
 }

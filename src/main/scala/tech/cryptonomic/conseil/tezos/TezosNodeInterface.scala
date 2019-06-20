@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCalls
 import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
-import scala.util.{Try, Failure}
+import scala.util.{Failure, Try}
 import scala.util.control.NoStackTrace
 
 trait ShutdownComplete
@@ -34,10 +34,11 @@ trait TezosRPCInterface {
     * @return pairing of the correlation id with the string http response content
     */
   def runBatchedGetQuery[ID](
-    network: String,
-    ids: List[ID],
-    mapToCommand: ID => String,
-    concurrencyLevel: Int): Future[List[(ID, String)]]
+      network: String,
+      ids: List[ID],
+      mapToCommand: ID => String,
+      concurrencyLevel: Int
+  ): Future[List[(ID, String)]]
 
   /**
     * Runs an RPC call against the configured Tezos node using HTTP GET.
@@ -80,13 +81,21 @@ trait TezosRPCInterface {
 /**
   * Concrete implementation of the above.
   */
-class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCallsConfiguration, streamingConfig: HttpStreamingConfiguration)(implicit system: ActorSystem) extends TezosRPCInterface with LazyLogging {
+class TezosNodeInterface(
+    config: TezosConfiguration,
+    requestConfig: NetworkCallsConfiguration,
+    streamingConfig: HttpStreamingConfiguration
+)(implicit system: ActorSystem)
+    extends TezosRPCInterface
+    with LazyLogging {
   import config.nodeConfig
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   private[this] val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
-  private[this] lazy val rejected = new Failure(new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace)
+  private[this] lazy val rejected = new Failure(
+    new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace
+  )
 
   override def shutdown(): Future[ShutdownComplete] = {
     rejectingCalls.compareAndSet(false, true)
@@ -106,7 +115,7 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
     s"${nodeConfig.protocol}://${nodeConfig.hostname}:${nodeConfig.port}/${nodeConfig.pathPrefix}chains/main/$command"
 
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
-    Try{
+    Try {
       val url = translateCommandToUrl(command)
       logger.debug("Querying URL {} for platform Tezos and network {}", url, config.network)
       val responseFuture: Future[HttpResponse] =
@@ -136,52 +145,62 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
 
   }
 
-  override def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] = withRejectionControl {
-    Try {
-      val url = translateCommandToUrl(command)
-      logger.debug("Querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
-      val postedData = payload.getOrElse(JsonString.emptyObject)
-      val responseFuture: Future[HttpResponse] =
-        Http(system).singleRequest(
-          HttpRequest(
-            HttpMethods.POST,
-            url,
-            entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
+  override def runPostQuery(network: String, command: String, payload: Option[JsonString] = None): Try[String] =
+    withRejectionControl {
+      Try {
+        val url = translateCommandToUrl(command)
+        logger.debug("Querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
+        val postedData = payload.getOrElse(JsonString.emptyObject)
+        val responseFuture: Future[HttpResponse] =
+          Http(system).singleRequest(
+            HttpRequest(
+              HttpMethods.POST,
+              url,
+              entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
+            )
           )
-        )
-      val response: HttpResponse = Await.result(responseFuture, requestConfig.requestAwaitTime)
-      val responseBodyFuture = response.entity.toStrict(requestConfig.POSTResponseEntityTimeout).map(_.data).map(_.utf8String)
-      val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
-      logger.debug(s"Query result: $responseBody")
-      JsonString sanitize responseBody
+        val response: HttpResponse = Await.result(responseFuture, requestConfig.requestAwaitTime)
+        val responseBodyFuture =
+          response.entity.toStrict(requestConfig.POSTResponseEntityTimeout).map(_.data).map(_.utf8String)
+        val responseBody = Await.result(responseBodyFuture, requestConfig.requestAwaitTime)
+        logger.debug(s"Query result: $responseBody")
+        JsonString sanitize responseBody
 
+      }
     }
-  }
 
-  override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString]= None): Future[String] = withRejectionControl {
-    val url = translateCommandToUrl(command)
-    logger.debug("Async querying URL {} for platform Tezos and network {} with payload {}", url, config.network, payload)
-    val postedData = payload.getOrElse(JsonString.emptyObject)
-    val request = HttpRequest(
-      HttpMethods.POST,
-      url,
-      entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
-    )
-    for {
-      response <- Http(system).singleRequest(request)
-      strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
-    } yield {
-      val responseBody = strict.data.utf8String
-      logger.debug("Query results: {}", responseBody)
-      JsonString sanitize responseBody
+  override def runAsyncPostQuery(network: String, command: String, payload: Option[JsonString] = None): Future[String] =
+    withRejectionControl {
+      val url = translateCommandToUrl(command)
+      logger.debug(
+        "Async querying URL {} for platform Tezos and network {} with payload {}",
+        url,
+        config.network,
+        payload
+      )
+      val postedData = payload.getOrElse(JsonString.emptyObject)
+      val request = HttpRequest(
+        HttpMethods.POST,
+        url,
+        entity = HttpEntity(ContentTypes.`application/json`, postedData.json.getBytes())
+      )
+      for {
+        response <- Http(system).singleRequest(request)
+        strict <- response.entity.toStrict(requestConfig.POSTResponseEntityTimeout)
+      } yield {
+        val responseBody = strict.data.utf8String
+        logger.debug("Query results: {}", responseBody)
+        JsonString sanitize responseBody
+      }
     }
-  }
 
   /* Connection pool settings customized for streaming requests */
-  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(streamingConfig.pool)
+  protected[tezos] val streamingRequestsConnectionPooling: ConnectionPoolSettings = ConnectionPoolSettings(
+    streamingConfig.pool
+  )
 
   /* creates a connections pool based on the host network */
-  private[this] def getHostPoolFlow[T] = {
+  private[this] def getHostPoolFlow[T] =
     if (nodeConfig.protocol == "https")
       Http(system).cachedHostConnectionPoolHttps[T](
         host = nodeConfig.hostname,
@@ -194,60 +213,65 @@ class TezosNodeInterface(config: TezosConfiguration, requestConfig: NetworkCalls
         port = nodeConfig.port,
         settings = streamingRequestsConnectionPooling
       )
-  }
 
   /**
-  * Creates a stream that will produce http response content for the
-  * list of commands.
-  *
-  * @param network  Which Tezos network to go against
-  * @param ids  correlation ids for each request to send
-  * @param mapToCommand  extract a tezos command (uri fragment) from the id
-  * @param concurrencyLevel the concurrency in processing the responses
-  * @param ID a type that will be used to correlate each request with the response
-  * @return A stream source whose elements will be the response string, tupled with the correlation id,
-  *         used to match with the corresponding request
-  */
+    * Creates a stream that will produce http response content for the
+    * list of commands.
+    *
+    * @param network  Which Tezos network to go against
+    * @param ids  correlation ids for each request to send
+    * @param mapToCommand  extract a tezos command (uri fragment) from the id
+    * @param concurrencyLevel the concurrency in processing the responses
+    * @param ID a type that will be used to correlate each request with the response
+    * @return A stream source whose elements will be the response string, tupled with the correlation id,
+    *         used to match with the corresponding request
+    */
   private[this] def streamedGetQuery[CID](
-    network: String,
-    ids: List[CID],
-    mapToCommand: CID => String,
-    concurrencyLevel: Int): Source[(CID, String), akka.NotUsed] = withRejectionControl {
+      network: String,
+      ids: List[CID],
+      mapToCommand: CID => String,
+      concurrencyLevel: Int
+  ): Source[(CID, String), akka.NotUsed] = withRejectionControl {
 
-      val convertIdToUrl = mapToCommand andThen translateCommandToUrl
+    val convertIdToUrl = mapToCommand andThen translateCommandToUrl
 
-      //we need to thread the id all through the streaming http stages
-      val uris = Source(ids.map( id => (convertIdToUrl(id), id) ))
+    //we need to thread the id all through the streaming http stages
+    val uris = Source(ids.map(id => (convertIdToUrl(id), id)))
 
-      val toRequest: ((String, CID)) => (HttpRequest,CID) = { case (url, id) => {
+    val toRequest: ((String, CID)) => (HttpRequest, CID) = {
+      case (url, id) => {
         logger.debug("Will query: " + url)
-        (HttpRequest(uri = Uri(url)), id)}
+        (HttpRequest(uri = Uri(url)), id)
       }
+    }
 
-      uris.map(toRequest)
-        .via(getHostPoolFlow)
-        .mapAsyncUnordered(concurrencyLevel) {
-          case (tried, id) =>
-            Future.fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
-              .flatten
-              .map(entity => (entity, id))
-        }
-        .map{case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String)}
+    uris
+      .map(toRequest)
+      .via(getHostPoolFlow)
+      .mapAsyncUnordered(concurrencyLevel) {
+        case (tried, id) =>
+          Future
+            .fromTry(tried.map(_.entity.toStrict(requestConfig.GETResponseEntityTimeout)))
+            .flatten
+            .map(entity => (entity, id))
+      }
+      .map { case (content: HttpEntity.Strict, id) => (id, JsonString sanitize content.data.utf8String) }
   }
 
   override def runBatchedGetQuery[CID](
-    network: String,
-    ids: List[CID],
-    mapToCommand: CID => String,
-    concurrencyLevel: Int): Future[List[(CID, String)]] = {
-      val batchId = java.util.UUID.randomUUID()
-      logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
+      network: String,
+      ids: List[CID],
+      mapToCommand: CID => String,
+      concurrencyLevel: Int
+  ): Future[List[(CID, String)]] = {
+    val batchId = java.util.UUID.randomUUID()
+    logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
 
-      streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
-        .runFold(List.empty[(CID, String)])(_ :+ _)
-        .andThen {
-          case _ => logger.debug("{} - Batch completed", batchId)
-        }
-    }
+    streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
+      .runFold(List.empty[(CID, String)])(_ :+ _)
+      .andThen {
+        case _ => logger.debug("{} - Batch completed", batchId)
+      }
+  }
 
 }

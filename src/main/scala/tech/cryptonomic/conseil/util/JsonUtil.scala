@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.util
 
-import com.fasterxml.jackson.core.{JsonParser, JsonParseException}
+import com.fasterxml.jackson.core.{JsonParseException, JsonParser}
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -18,9 +18,8 @@ object JsonUtil {
   private val managerPubkeyAdaptation = """"manager_pubkey":"""
 
   /** convert alphanet schema field name to the zeronet one */
-  def adaptManagerPubkeyField(json: String): String = {
+  def adaptManagerPubkeyField(json: String): String =
     managerPubkeyMatcher.replaceAllIn(json, replacement = managerPubkeyAdaptation)
-  }
 
   /*
    * We're reducing visibility of the JsonString constuction (both class and object)
@@ -48,41 +47,44 @@ object JsonUtil {
     //verifies if the parser can proceed till the end
     @tailrec
     @throws[JsonParseException]("when content is not parseable, especially for not well-formed json")
-    private def validate(parser: JsonParser): Boolean = {
+    private def validate(parser: JsonParser): Boolean =
       parser.nextToken == null || validate(parser)
-    }
 
     /** A [[JsonString]] representing a json object with no attributes */
     lazy val emptyObject = JsonString("{}")
 
     /** add standard cleaning for input json */
-    def sanitize(s: String): String = s.filterNot(_.isControl).
-      replaceAll("""\\\\(u[a-zA-Z0-9]{1,4})""", "$1").
-      replaceAll("""\\(u[a-zA-Z0-9]{1,4})""", "$1")
+    def sanitize(s: String): String =
+      s.filterNot(_.isControl)
+        .replaceAll("""\\\\(u[a-zA-Z0-9]{1,4})""", "$1")
+        .replaceAll("""\\(u[a-zA-Z0-9]{1,4})""", "$1")
   }
 
   private val mapper = new ObjectMapper with ScalaObjectMapper
-    mapper.registerModule(DefaultScalaModule)
-      .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-      .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
-      .disable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+  mapper
+    .registerModule(DefaultScalaModule)
+    .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+    .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
+    .disable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
 
   def toJson[T](value: T): JsonString =
     JsonString(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value))
 
-  def toMap[V](json:String)(implicit m: Manifest[V]): Map[String, V] =
-    fromJson[Map[String,V]](json)
+  def toMap[V](json: String)(implicit m: Manifest[V]): Map[String, V] =
+    fromJson[Map[String, V]](json)
 
-  def toListOfMaps[V](json:String)(implicit m: Manifest[V]): List[Map[String, V]] =
-    fromJson[List[Map[String,V]]](json)
+  def toListOfMaps[V](json: String)(implicit m: Manifest[V]): List[Map[String, V]] =
+    fromJson[List[Map[String, V]]](json)
 
   def fromJson[T: Manifest](json: String): T =
     mapper.readValue[T](JsonString sanitize json)
 
   /** extractor object to read accountIds from a json string, based on the hash format*/
   object AccountIds {
+
     /** regular expression matching a valid account hash as a json string */
-    val AccountHashExpression: Regex = """"(tz[1-3]|KT1)[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{33}"""".r
+    val AccountHashExpression: Regex =
+      """"(tz[1-3]|KT1)[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{33}"""".r
 
     /** enables pattern matching with a variable number of matches */
     def unapplySeq(json: String): Option[List[String]] = {

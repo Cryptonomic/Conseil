@@ -7,26 +7,29 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
-import cats.effect.concurrent.MVar
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.config.ConseilAppConfig
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.{AttributeValuesCache, AttributesCache, EntitiesCache}
-import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
-object Conseil extends App with LazyLogging with EnableCORSDirectives with ConseilAppConfig with FailFastCirceSupport with ConseilOutput {
+object Conseil
+    extends App
+    with LazyLogging
+    with EnableCORSDirectives
+    with ConseilAppConfig
+    with FailFastCirceSupport
+    with ConseilOutput {
 
   loadApplicationConfiguration(args) match {
     case Right((server, platforms, securityApi, verbose, metadataOverrides)) =>
-
       val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
           provide(apiKey)
@@ -42,51 +45,60 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
       implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
-      val attributesCache = MVar[IO].empty[AttributesCache].unsafeRunSync()
-      val entitiesCache = MVar[IO].empty[EntitiesCache].unsafeRunSync()
-      val attributeValuesCache = MVar[IO].empty[AttributeValuesCache].unsafeRunSync()
+      val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
+
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
       lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(ApiOperations, attributesCache, entitiesCache, attributeValuesCache, cacheOverrides, server.cacheTTL)(executionContext)
+        TezosPlatformDiscoveryOperations(ApiOperations, metadataCaching, cacheOverrides, server.cacheTTL)(
+          executionContext,
+          contextShift
+        )
 
       tezosPlatformDiscoveryOperations.init().onComplete {
         case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
         case Success(_) => logger.info("Pre-caching successful!")
       }
-      lazy val metadataService = new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
+
+      tezosPlatformDiscoveryOperations.initAttributesCache.onComplete {
+        case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
+        case Success(_) => logger.info("Pre-caching attributes successful!")
+      }
+
+      lazy val metadataService =
+        new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
-      lazy val data = Data(platforms, tezosPlatformDiscoveryOperations, server)(tezosDispatcher)
+      lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
 
       val route = cors() {
-        enableCORS {
-          validateApiKey { _ =>
-            logRequest("Conseil", Logging.DebugLevel) {
-              AppInfo.route
+          enableCORS {
+            validateApiKey { _ =>
+              logRequest("Conseil", Logging.DebugLevel) {
+                AppInfo.route
+              } ~
+                logRequest("Metadata Route", Logging.DebugLevel) {
+                  platformDiscovery.route
+                } ~
+                logRequest("Data Route", Logging.DebugLevel) {
+                  data.getRoute ~ data.postRoute
+                }
             } ~
-            logRequest("Metadata Route", Logging.DebugLevel) {
-              platformDiscovery.route
-            } ~
-            logRequest("Data Route", Logging.DebugLevel) {
-              data.getRoute ~ data.postRoute
-            }
-          } ~
-          options {
-            // Support for CORS pre-flight checks.
-            complete("Supported methods : GET and POST.")
+              options {
+                // Support for CORS pre-flight checks.
+                complete("Supported methods : GET and POST.")
+              }
           }
-        }
-      } ~
-      pathPrefix("docs") {
-        pathEndOrSingleSlash {
-          getFromResource("web/index.html")
-        }
-      } ~
-      pathPrefix("swagger-ui") {
-        getFromResourceDirectory("web/swagger-ui/")
-      } ~
-      Docs.route
+        } ~
+            pathPrefix("docs") {
+              pathEndOrSingleSlash {
+                getFromResource("web/index.html")
+              }
+            } ~
+            pathPrefix("swagger-ui") {
+              getFromResourceDirectory("web/swagger-ui/")
+            } ~
+            Docs.route
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       displayInfo(server)
@@ -99,8 +111,7 @@ object Conseil extends App with LazyLogging with EnableCORSDirectives with Conse
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(errors)
-    =>
+    case Left(errors) =>
     //nothing to do
   }
 

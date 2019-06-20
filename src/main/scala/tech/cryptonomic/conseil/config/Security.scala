@@ -9,6 +9,7 @@ object Security {
     pureconfig.loadConfig[SecurityApi](namespace = "security.apiKeys.keys")
 
   final case class SecurityApi(keys: Set[String]) extends AnyVal with Product with Serializable {
+
     /**
       * Determines whether a given API key is valid.
       * @param candidateApiKey  The given API key

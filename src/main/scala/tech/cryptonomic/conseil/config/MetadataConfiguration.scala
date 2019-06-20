@@ -33,7 +33,8 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
   def entity(path: EntityPath): Option[EntityConfiguration] = network(path.up).flatMap(_.entities.get(path.entity))
 
   // fetches attribute based on a given path
-  def attribute(path: AttributePath): Option[AttributeConfiguration] = entity(path.up).flatMap(_.attributes.get(path.attribute))
+  def attribute(path: AttributePath): Option[AttributeConfiguration] =
+    entity(path.up).flatMap(_.attributes.get(path.attribute))
 
   // fetches all platforms
   def allPlatforms: Map[PlatformPath, PlatformConfiguration] = metadataConfiguration.map {
@@ -42,53 +43,67 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
 
   // fetches all networks
   def allNetworks: Map[NetworkPath, NetworkConfiguration] = allPlatforms.flatMap {
-    case (platformPath, platformConfiguration) => platformConfiguration.networks.map {
-      case (networkName, networkConfiguration) => (platformPath.addLevel(networkName), networkConfiguration)
-    }
+    case (platformPath, platformConfiguration) =>
+      platformConfiguration.networks.map {
+        case (networkName, networkConfiguration) => (platformPath.addLevel(networkName), networkConfiguration)
+      }
   }
 
   // fetches all entities
   def allEntities: Map[EntityPath, EntityConfiguration] = allNetworks.flatMap {
-    case (networkPath, networkConfiguration) => networkConfiguration.entities.map {
-      case (entityName, entityConfiguration) => (networkPath.addLevel(entityName), entityConfiguration)
-    }
+    case (networkPath, networkConfiguration) =>
+      networkConfiguration.entities.map {
+        case (entityName, entityConfiguration) => (networkPath.addLevel(entityName), entityConfiguration)
+      }
   }
 
   // fetches all attributes
   def allAttributes: Map[AttributePath, AttributeConfiguration] = allEntities.flatMap {
-    case (entityPath, entityConfiguration) => entityConfiguration.attributes.map {
-      case (attributeName, attributeConfiguration) => (entityPath.addLevel(attributeName), attributeConfiguration)
-    }
+    case (entityPath, entityConfiguration) =>
+      entityConfiguration.attributes.map {
+        case (attributeName, attributeConfiguration) => (entityPath.addLevel(attributeName), attributeConfiguration)
+      }
   }
 
 }
 
 // configuration for platform
-case class PlatformConfiguration(displayName: Option[String],
-                                 visible: Option[Boolean],
-                                 description: Option[String] = None,
-                                 networks: Map[NetworkName, NetworkConfiguration] = Map.empty)
+case class PlatformConfiguration(
+    displayName: Option[String],
+    visible: Option[Boolean],
+    description: Option[String] = None,
+    networks: Map[NetworkName, NetworkConfiguration] = Map.empty
+)
 
 // configuration for network
-case class NetworkConfiguration(displayName: Option[String],
-                                visible: Option[Boolean],
-                                description: Option[String] = None,
-                                entities: Map[EntityName, EntityConfiguration] = Map.empty)
+case class NetworkConfiguration(
+    displayName: Option[String],
+    visible: Option[Boolean],
+    description: Option[String] = None,
+    entities: Map[EntityName, EntityConfiguration] = Map.empty
+)
 
 // configuration for entity
-case class EntityConfiguration(displayName: Option[String],
-                               visible: Option[Boolean],
-                               description: Option[String] = None,
-                               attributes: Map[AttributeName, AttributeConfiguration] = Map.empty)
+case class EntityConfiguration(
+    displayName: Option[String],
+    displayNamePlural: Option[String],
+    visible: Option[Boolean],
+    description: Option[String] = None,
+    attributes: Map[AttributeName, AttributeConfiguration] = Map.empty
+)
 
 // configuration for attribute
-case class AttributeConfiguration(displayName: Option[String],
-                                  visible: Option[Boolean],
-                                  description: Option[String] = None,
-                                  placeholder: Option[String] = None,
-                                  scale: Option[Int] = None,
-                                  dataType: Option[String] = None,
-                                  dataFormat: Option[String] = None,
-                                  valueMap: Option[Map[String, String]] = None,
-                                  reference: Option[Map[String, String]] = None,
-                                  cacheConfig: Option[AttributeCacheConfiguration] = None)
+case class AttributeConfiguration(
+    displayName: Option[String],
+    visible: Option[Boolean],
+    description: Option[String] = None,
+    placeholder: Option[String] = None,
+    scale: Option[Int] = None,
+    dataType: Option[String] = None,
+    dataFormat: Option[String] = None,
+    valueMap: Option[Map[String, String]] = None,
+    reference: Option[Map[String, String]] = None,
+    cacheConfig: Option[AttributeCacheConfiguration] = None,
+    displayPriority: Option[Int] = None,
+    displayOrder: Option[Int] = None
+)
