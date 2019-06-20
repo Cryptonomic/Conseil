@@ -326,6 +326,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
         sanitizePredicates(query.predicates),
         query.orderBy,
         query.aggregation,
+        query.output,
         query.limit
       )
     )

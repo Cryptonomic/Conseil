@@ -67,7 +67,19 @@ trait BlocksDataFetchers {
   //common type for the fetchers
   type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]
 
-  def makeIOFetcherFromRpc[In, Decoded : Decoder](
+  /* verifies if the string is empty, guaranteeing null-safety and removing margins */
+  private def stringSafelyEmpty(s: String) = Option(s).forall(_.trim.isEmpty)
+
+  /* standard pattern to create a fetcher
+   * - based on rpc-handlers,
+   * - wrapping the output into IO
+   * - preparsing the input to define a command, i.e. a path fragment for the tezos endpoint
+   * @param makeCommand should read the input type and produce a string identifying the path to the tezos rpc api
+   * @param decodeJson how to actually convert the json string into the output Decoded type
+   * @tparam In the input to the fetcher
+   * @tparam Decoded the output, decoded from tezos json response
+   */
+  private def makeIOFetcherFromRpc[In, Decoded](
     makeCommand: In => String,
     decodeJson: String => IO[Decoded]
   ): IOFetcher[In, Decoded] = {
@@ -151,7 +163,9 @@ trait BlocksDataFetchers {
     DataFetcher.multiDecodeFetcher[IO, Throwable, BlockHash, List[OperationsGroup], List[AccountId], String]
 
   /** a fetcher for the current quorum of blocks */
-  implicit val currentQuorumFetcher =
+  implicit val currentQuorumFetcher = {
+    val defaultQuorum = "0"
+
     makeIOFetcherFromRpc[(BlockHash, Option[Offset]), Option[Int]](
       makeCommand = (hashRef: (BlockHash, Option[Offset])) => {
         val (hash, offset) = hashRef
@@ -159,16 +173,19 @@ trait BlocksDataFetchers {
         s"blocks/${hash.value}~$offsetString/votes/current_quorum",
       },
       decodeJson = json =>
-        decodeLiftingTo[IO, Option[Int]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched current quorum json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
+        decodeLiftingTo[IO, Option[Int]](if (stringSafelyEmpty(json)) defaultQuorum else json)
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched current quorum json from tezos node that I'm unable to decode: $json"))
           .recover {
             case NonFatal(_) => Option.empty
           }
     )
+  }
 
   /** a fetcher for the current proposals of blocks */
   implicit val currentProposalFetcher = {
     import JsonDecoders.Circe._
+
+    val defaultProposalId = """ "3M" """.trim
 
     makeIOFetcherFromRpc[(BlockHash, Option[Offset]), Option[ProtocolId]](
       makeCommand = (hashRef: (BlockHash, Option[Offset])) => {
@@ -177,8 +194,8 @@ trait BlocksDataFetchers {
         s"blocks/${hash.value}~$offsetString/votes/current_proposal",
       },
       decodeJson = json =>
-        decodeLiftingTo[IO, Option[ProtocolId]](json)
-          .onError(logWarnOnJsonDecoding[IO](s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json", ignore = Option(json).forall(_.trim.isEmpty)))
+        decodeLiftingTo[IO, Option[ProtocolId]](if (stringSafelyEmpty(json)) defaultProposalId else json)
+          .onError(logWarnOnJsonDecoding[IO](s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json"))
           .recover {
             case NonFatal(_) => Option.empty
           }

@@ -105,11 +105,12 @@ object DatabaseUtil {
         * @return new SQLActionBuilder containing limit statement
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
-        if(aggregation.isEmpty) {
+        val aggregationFields = aggregation.map(_.field).toSet
+        val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).toList
+        if(aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
           action
         } else {
-          val aggregationFields = aggregation.map(_.field).toSet
-          concatenateSqlActions(action, makeGroupBy(columns.toSet.diff(aggregationFields).toList))
+          concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregationFields))
         }
       }
     }
@@ -158,7 +159,7 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeLimit(limit: Int): SQLActionBuilder = {
-      sql""" LIMIT $limit"""
+      sql""" LIMIT #$limit"""
     }
 
     /** Prepares group by parameters
@@ -194,7 +195,11 @@ object DatabaseUtil {
         case OperationType.endsWith => sql"LIKE '%#${vals.head}'"
         case OperationType.isnull => sql"ISNULL"
       }
-      concatenateSqlActions(op, sql" IS #${!inverse}")
+      if(inverse) {
+        concatenateSqlActions(op, sql" IS #${!inverse}")
+      } else {
+        op
+      }
     }
   }
 

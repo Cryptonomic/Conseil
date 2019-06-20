@@ -6,8 +6,8 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.ConfigUtil
@@ -16,8 +16,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations, server: ServerConfiguration)(implicit ec: ExecutionContext): Data =
-    new Data(config, DataPlatform(server.maxQueryResultSize), tezosPlatformDiscoveryOperations)
+  def apply(config: PlatformsConfiguration, metadataService: MetadataService, server: ServerConfiguration)(implicit ec: ExecutionContext): Data =
+    new Data(config, DataPlatform(server.maxQueryResultSize), metadataService)
 }
 
 /**
@@ -26,7 +26,7 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations)
+class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, metadataService: MetadataService)
   (implicit apiExecutionContext: ExecutionContext)
   extends LazyLogging
   with DataHelpers {
@@ -40,7 +40,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
-      apiQuery.validate(entity, tezosPlatformDiscoveryOperations).flatMap { validationResult =>
+      apiQuery.validate(EntityPath(entity, NetworkPath(network, PlatformPath(platform))), metadataService).flatMap { validationResult =>
         validationResult.map { validQuery =>
           platformNetworkValidation(platform, network) {
             queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
