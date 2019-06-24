@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.tezos.Fees._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp

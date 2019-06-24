@@ -7,7 +7,7 @@ import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, DelegatesRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.Fees.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 trait TezosDataGeneration extends RandomGenerationKit {

@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
-import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.Fees.AverageFees
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext

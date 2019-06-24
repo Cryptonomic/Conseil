@@ -8,7 +8,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.tezos.Fees.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.RandomSeed

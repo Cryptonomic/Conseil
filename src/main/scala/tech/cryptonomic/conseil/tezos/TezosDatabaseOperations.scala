@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
-import tech.cryptonomic.conseil.tezos.FeeOperations._
+import tech.cryptonomic.conseil.tezos.Fees.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
@@ -18,6 +18,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 /**
   * Functions for writing Tezos data to a database.
   */
+@deprecated("Use TezosDatastore instead", "Since 0.1925.0009")
 object TezosDatabaseOperations extends LazyLogging {
 
   import DatabaseConversions._
