@@ -186,36 +186,50 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.DelegatesCheckpoint.distinctOn(_.delegatePkh).length.result
 
   /**
-    * Reads the account ids in the checkpoint table, considering
-    * only those at the latest block level (highest value)
+    * Reads the account ids in the checkpoint table,
+    * sorted by decreasing block-level
     * @return a database action that loads the list of relevant rows
     */
   def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[AccountId, BlockReference]] =
-    for {
-      ids <- Tables.AccountsCheckpoint.map(_.accountId).distinct.result
-      rows <- DBIO.sequence(ids.map { id =>
-        Tables.AccountsCheckpoint.filter(_.accountId === id).sortBy(_.blockLevel.desc).take(1).result.head
-      })
-    } yield
-      rows.map {
-        case Tables.AccountsCheckpointRow(id, blockId, level) => AccountId(id) -> (BlockHash(blockId), level)
-      }.toMap
+    Tables.AccountsCheckpoint
+      .sortBy(_.blockLevel.desc)
+      .result
+      .map(keepLatestAccountIds)
+
+  /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
+   * collects them in a map, skipping keys already added
+   * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
+   * We can think of optimizing this later, we're now optimizing on db queries
+   */
+  private def keepLatestAccountIds(checkpoints: Seq[Tables.AccountsCheckpointRow]): Map[AccountId, BlockReference] =
+    checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
+      val key = AccountId(row.accountId)
+      if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+    }
 
   /**
-    * Reads the delegate key hashes in the checkpoint table, considering
-    * only those at the latest block level (highest value)
+    * Reads the delegate key hashes in the checkpoint table,
+    * sorted by decreasing block-level
     * @return a database action that loads the list of relevant rows
     */
   def getLatestDelegatesFromCheckpoint(implicit ex: ExecutionContext): DBIO[Map[PublicKeyHash, BlockReference]] =
-    for {
-      keys <- Tables.DelegatesCheckpoint.map(_.delegatePkh).distinct.result
-      rows <- DBIO.sequence(keys.map { pkh =>
-        Tables.DelegatesCheckpoint.filter(_.delegatePkh === pkh).sortBy(_.blockLevel.desc).take(1).result.head
-      })
-    } yield
-      rows.map {
-        case Tables.DelegatesCheckpointRow(pkh, blockId, level) => PublicKeyHash(pkh) -> (BlockHash(blockId), level)
-      }.toMap
+    Tables.DelegatesCheckpoint
+      .sortBy(_.blockLevel.desc)
+      .result
+      .map(keepLatestDelegatesKeys)
+
+  /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
+   * collects them in a map, skipping keys already added
+   * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
+   * We can think of optimizing this later, we're now optimizing on db queries
+   */
+  private def keepLatestDelegatesKeys(
+      checkpoints: Seq[Tables.DelegatesCheckpointRow]
+  ): Map[PublicKeyHash, BlockReference] =
+    checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
+      val key = PublicKeyHash(row.delegatePkh)
+      if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+    }
 
   /**
     * Writes the blocks data to the database
