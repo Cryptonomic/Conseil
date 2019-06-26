@@ -5,7 +5,14 @@ import java.time.ZonedDateTime
 
 import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, DelegatesRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{
+  AccountsRow,
+  BalanceUpdatesRow,
+  BlocksRow,
+  DelegatesRow,
+  OperationGroupsRow,
+  OperationsRow
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.Fees.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
@@ -198,6 +205,37 @@ trait TezosDataGeneration extends RandomGenerationKit {
         contract = Some(ContractId(generateAlphaNumeric(10))),
         delegate = Some(PublicKeyHash(generateAlphaNumeric(10))),
         level = Some(randomSource.nextInt(100))
+      )
+    }
+
+  }
+
+  /* randomly populate a number of balance update rows, based on either a souce block or operation row */
+  def generateBalanceUpdatesRows(howMany: Int, sourceRow: Either[BlocksRow, OperationsRow])(
+      implicit randomSeed: RandomSeed
+  ): List[BalanceUpdatesRow] = {
+    require(
+      howMany > 0,
+      "the test can only generate a positive number of balance update rows, you asked for a non positive value"
+    )
+
+    val randomSource = new Random(randomSeed.seed)
+
+    //custom hash generator with predictable seed
+    val generateAlphaNumeric: Int => String = alphaNumericGenerator(randomSource)
+
+    List.fill(howMany) {
+      BalanceUpdatesRow(
+        id = 0,
+        kind = generateAlphaNumeric(10),
+        change = BigDecimal(randomSource.nextLong()),
+        category = Some(generateAlphaNumeric(10)),
+        contract = Some(generateAlphaNumeric(10)),
+        delegate = Some(generateAlphaNumeric(10)),
+        level = Some(BigDecimal(randomSource.nextInt(100))),
+        source = sourceRow.left.map(_ => "Block").map(_ => "Operation").merge,
+        sourceId = None,
+        sourceHash = sourceRow.swap.map(_.hash).toOption
       )
     }
 

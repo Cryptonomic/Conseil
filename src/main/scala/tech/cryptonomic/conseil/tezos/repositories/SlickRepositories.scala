@@ -43,6 +43,7 @@ import tech.cryptonomic.conseil.tezos.Tables.{
   RollsRow
 }
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, OutputType, Predicate, QueryOrdering}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 
 import cats.Applicative
 import slick.jdbc.PostgresProfile.api._
@@ -116,7 +117,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         predicates: List[Predicate],
         ordering: List[QueryOrdering],
         aggregation: List[Aggregation],
-        outputType: OutputType.type,
+        outputType: OutputType,
         limit: Int
     ) = {
       val q =

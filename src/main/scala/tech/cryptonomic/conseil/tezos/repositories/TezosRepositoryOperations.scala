@@ -21,7 +21,8 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   * The effect of the result is generic as well.
   */
 trait GenericQuerying[Eff[_], Table, Column, Value] {
-  import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, OutputType, Predicate, QueryOrdering}
+  import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, Predicate, QueryOrdering}
+  import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 
   /** Counts number of rows in the given table
     * @param table  table
@@ -72,7 +73,7 @@ trait GenericQuerying[Eff[_], Table, Column, Value] {
       predicates: List[Predicate],
       ordering: List[QueryOrdering],
       aggregation: List[Aggregation],
-      outputType: OutputType.type,
+      outputType: OutputType,
       limit: Int
   ): Eff[List[Map[Column, Option[Any]]]]
 
