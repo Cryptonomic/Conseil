@@ -32,18 +32,44 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
   private val testDb = Database.forConfig("testdb", config = ConfigFactory.parseString(inMemoryDb))
 
   "The Tezos Datastore Api" should {
-
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
 
+      //a function that constantly return ()
+      def unitFunction[T] = Function.const[Unit, T](()) _
+
+      /* creates a custom datastore where the underlying repos are mocks prepared with custom expecations */
+      def prepareDatastoreMockWithExpectactions(
+          blocksRepoExpectations: BlocksRepository[DBIO] => Any = unitFunction,
+          accountsRepoExpectations: AccountsRepository[DBIO] => Any = unitFunction,
+          votingRepoExpectations: VotingRepository[DBIO] => Any = unitFunction,
+          delegatesRepoExpectations: DelegatesRepository[DBIO] => Any = unitFunction,
+          operationsRepoExpectations: OperationsRepository[
+            DBIO,
+            OperationGroupsRow,
+            OperationsRow,
+            Int,
+            BalanceUpdatesRow
+          ] => Any = unitFunction
+      ): TezosDatastore = {
+        implicit val blocksRepo = mock[BlocksRepository[DBIO]]
+        implicit val accountsRepo = mock[AccountsRepository[DBIO]]
+        implicit val votingRepo = mock[VotingRepository[DBIO]]
+        implicit val delegatesRepo = mock[DelegatesRepository[DBIO]]
+        implicit val operationsRepo =
+          mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
+
+        blocksRepoExpectations(blocksRepo)
+        accountsRepoExpectations(accountsRepo)
+        votingRepoExpectations(votingRepo)
+        delegatesRepoExpectations(delegatesRepo)
+        operationsRepoExpectations(operationsRepo)
+
+        new TezosDatastore
+      }
+
       "store blocks only" in {
         //given
-        val blocksRepo = mock[BlocksRepository[DBIO]]
-        val accountsRepo = mock[AccountsRepository[DBIO]]
-        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
-        val votesRepo = mock[VotingRepository[DBIO]]
-        val delRepo = mock[DelegatesRepository[DBIO]]
-
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val maxLevel = 5
@@ -54,39 +80,45 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
           block -> List.empty[AccountId]
         }.toMap
 
-        //set expectations
-        (blocksRepo.writeBlocks _)
-          .expects(blockAccountsMap.keys.toList)
-          .returns(dbio(Some(generatedBlocks.size)))
-          .once
+        //set expectations and build the datastore
+        val sut = prepareDatastoreMockWithExpectactions(
+          blocksRepoExpectations = repo => {
+            (repo.writeBlocks _)
+              .expects(blockAccountsMap.keys.toList)
+              .returns(dbio(Some(generatedBlocks.size)))
+              .once
+          },
+          operationsRepoExpectations = repo => {
 
-        (opsRepo.writeOperationsGroups _)
-          .expects(
-            where(
-              (groups: List[OperationGroupsRow]) => groups.isEmpty
-            )
-          )
-          .returns(dbio(None))
-          .once
+            (repo.writeOperationsGroups _)
+              .expects(
+                where(
+                  (groups: List[OperationGroupsRow]) => groups.isEmpty
+                )
+              )
+              .returns(dbio(None))
+              .once
 
-        //once only for blocks-related updates
-        (opsRepo.writeUpdates _)
-          .expects(List.empty[BalanceUpdatesRow], None)
-          .returns(dbio(Option.empty[Int]))
-          .once
+            //once only for blocks-related updates
+            (repo.writeUpdates _)
+              .expects(List.empty[BalanceUpdatesRow], None)
+              .returns(dbio(Option.empty[Int]))
+              .once
+          },
+          accountsRepoExpectations = repo => {
+            (repo.writeAccountsCheckpoint _)
+              .expects(
+                where(
+                  (accountUpdates: List[(TezosTypes.BlockHash, Int, List[AccountId])]) =>
+                    accountUpdates.size == generatedBlocks.size &&
+                      accountUpdates.forall { case (_, _, accounts) => accounts.isEmpty }
+                )
+              )
+              .returns(dbio(Some(0)))
+          }
+        )
 
-        (accountsRepo.writeAccountsCheckpoint _)
-          .expects(
-            where(
-              (accountUpdates: List[(TezosTypes.BlockHash, Int, List[AccountId])]) =>
-                accountUpdates.size == generatedBlocks.size &&
-                  accountUpdates.forall { case (_, _, accounts) => accounts.isEmpty }
-            )
-          )
-          .returns(dbio(Some(0)))
-
-        //build the datastore
-        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+        // val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
 
         //when
         val action = sut.storeBlocksAndCheckpointAccounts(blockAccountsMap)
@@ -97,12 +129,6 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
 
       "store blocks with operations data" in {
         //given
-        val blocksRepo = mock[BlocksRepository[DBIO]]
-        val accountsRepo = mock[AccountsRepository[DBIO]]
-        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
-        val votesRepo = mock[VotingRepository[DBIO]]
-        val delRepo = mock[DelegatesRepository[DBIO]]
-
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val maxLevel = 5
@@ -123,47 +149,52 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
         //each operation group contains all sample operations
         val totalOperationsCount = Operations.sampleOperations.size * totalGroupsCount
 
-        //set expectations
-        var fakeOperationId = 0
+        //set expectations and build the datastore
+        val sut = prepareDatastoreMockWithExpectactions(
+          blocksRepoExpectations = repo => {
+            (repo.writeBlocks _)
+              .expects(*)
+              .returns(dbio(Some(generatedBlocks.size)))
+              .once
+          },
+          operationsRepoExpectations = repo => {
+            (repo.writeOperationsGroups _)
+              .expects(*)
+              .returns(dbio(None))
+              .once
 
-        (blocksRepo.writeBlocks _)
-          .expects(*)
-          .returns(dbio(Some(generatedBlocks.size)))
-          .once
+            var fakeOperationId = 0
 
-        (opsRepo.writeOperationsGroups _)
-          .expects(*)
-          .returns(dbio(None))
-          .once
+            (repo.writeOperationWithNewId _)
+              .expects(*)
+              .onCall((_: OperationsRow) => {
+                fakeOperationId += 1
+                dbio(fakeOperationId)
+              })
+              .repeated(totalOperationsCount)
+              .times
 
-        (opsRepo.writeOperationWithNewId _)
-          .expects(*)
-          .onCall((_: OperationsRow) => {
-            fakeOperationId += 1
-            dbio(fakeOperationId)
-          })
-          .repeated(totalOperationsCount)
-          .times
+            //once for blocks-related updates and the rest for operations-related updates
+            (repo.writeUpdates _)
+              .expects(*, *)
+              .returns(dbio(Option.empty[Int]))
+              .repeated(totalOperationsCount + 1)
+              .times
 
-        //once for blocks-related updates and the rest for operations-related updates
-        (opsRepo.writeUpdates _)
-          .expects(*, *)
-          .returns(dbio(Option.empty[Int]))
-          .repeated(totalOperationsCount + 1)
-          .times
+          },
+          accountsRepoExpectations = repo => {
+            (repo.writeAccountsCheckpoint _)
+              .expects(
+                where(
+                  (accountUpdates: List[(TezosTypes.BlockHash, Int, List[AccountId])]) =>
+                    accountUpdates.size == generatedBlocks.size &&
+                      accountUpdates.forall { case (_, _, accounts) => accounts.isEmpty }
+                )
+              )
+              .returns(dbio(Some(0)))
 
-        (accountsRepo.writeAccountsCheckpoint _)
-          .expects(
-            where(
-              (accountUpdates: List[(TezosTypes.BlockHash, Int, List[AccountId])]) =>
-                accountUpdates.size == generatedBlocks.size &&
-                  accountUpdates.forall { case (_, _, accounts) => accounts.isEmpty }
-            )
-          )
-          .returns(dbio(Some(0)))
-
-        //build the datastore
-        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+          }
+        )
 
         //when
         val action = sut.storeBlocksAndCheckpointAccounts(blockAccountsMap)
@@ -174,12 +205,6 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
 
       "store blocks with account ids to checkpoint" in {
         //given
-        val blocksRepo = mock[BlocksRepository[DBIO]]
-        val accountsRepo = mock[AccountsRepository[DBIO]]
-        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
-        val votesRepo = mock[VotingRepository[DBIO]]
-        val delRepo = mock[DelegatesRepository[DBIO]]
-
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
         //custom hash generator with predictable seed
         val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
@@ -196,38 +221,44 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
         //take the genesis into account
         val checkpointSize = (maxLevel + 1) * accountsPerBlock
 
-        (blocksRepo.writeBlocks _)
-          .expects(*)
-          .returns(dbio(Some(generatedBlocks.size)))
-          .once
+        //set expectations and build the datastore
+        val sut = prepareDatastoreMockWithExpectactions(
+          blocksRepoExpectations = repo => {
+            (repo.writeBlocks _)
+              .expects(*)
+              .returns(dbio(Some(generatedBlocks.size)))
+              .once
+          },
+          operationsRepoExpectations = repo => {
+            (repo.writeOperationsGroups _)
+              .expects(
+                where(
+                  (groups: List[OperationGroupsRow]) => groups.isEmpty
+                )
+              )
+              .returns(dbio(None))
+              .once
 
-        (opsRepo.writeOperationsGroups _)
-          .expects(
-            where(
-              (groups: List[OperationGroupsRow]) => groups.isEmpty
-            )
-          )
-          .returns(dbio(None))
-          .once
+            //once only for blocks-related updates
+            (repo.writeUpdates _)
+              .expects(List.empty[BalanceUpdatesRow], None)
+              .returns(dbio(Option.empty[Int]))
+              .once
 
-        //once only for blocks-related updates
-        (opsRepo.writeUpdates _)
-          .expects(List.empty[BalanceUpdatesRow], None)
-          .returns(dbio(Option.empty[Int]))
-          .once
+          },
+          accountsRepoExpectations = repo => {
+            (repo.writeAccountsCheckpoint _)
+              .expects(
+                where(
+                  (accountUpdates: List[(TezosTypes.BlockHash, Int, List[AccountId])]) =>
+                    accountUpdates.size == generatedBlocks.size &&
+                      accountUpdates.forall { case (_, _, ids) => ids.size == accountsPerBlock }
+                )
+              )
+              .returns(dbio(Some(checkpointSize)))
 
-        (accountsRepo.writeAccountsCheckpoint _)
-          .expects(
-            where(
-              (accountUpdates: List[(TezosTypes.BlockHash, Int, List[AccountId])]) =>
-                accountUpdates.size == generatedBlocks.size &&
-                  accountUpdates.forall { case (_, _, ids) => ids.size == accountsPerBlock }
-            )
-          )
-          .returns(dbio(Some(checkpointSize)))
-
-        //build the datastore
-        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+          }
+        )
 
         //when
         val action = sut.storeBlocksAndCheckpointAccounts(blockAccountsMap)
@@ -238,12 +269,6 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
 
       "store all voting data for multiple blocks" in {
         //given
-        val blocksRepo = mock[BlocksRepository[DBIO]]
-        val accountsRepo = mock[AccountsRepository[DBIO]]
-        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
-        val votesRepo = mock[VotingRepository[DBIO]]
-        val delRepo = mock[DelegatesRepository[DBIO]]
-
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val (expectedProposals, expectedRolls, expectedBallots) = (3, 2, 4)
@@ -253,24 +278,25 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
         val rollsToStore = (generatedBlock, Voting.generateBakersRolls(expectedRolls))
         val ballotsToStore = (generatedBlock, Voting.generateBallots(expectedBallots))
 
-        //set expectations
-        (votesRepo.writeVotingProposals _)
-          .expects(*)
-          .returns(dbio(Some(expectedProposals)))
-          .once
+        //set expectations and build the datastore
+        val sut = prepareDatastoreMockWithExpectactions(
+          votingRepoExpectations = repo => {
+            (repo.writeVotingProposals _)
+              .expects(*)
+              .returns(dbio(Some(expectedProposals)))
+              .once
 
-        (votesRepo.writeVotingRolls _)
-          .expects(*, generatedBlock)
-          .returns(dbio(Some(expectedRolls)))
-          .once
+            (repo.writeVotingRolls _)
+              .expects(*, generatedBlock)
+              .returns(dbio(Some(expectedRolls)))
+              .once
 
-        (votesRepo.writeVotingBallots _)
-          .expects(*, generatedBlock)
-          .returns(dbio(Some(expectedBallots)))
-          .once
-
-        //build the datastore
-        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+            (repo.writeVotingBallots _)
+              .expects(*, generatedBlock)
+              .returns(dbio(Some(expectedBallots)))
+              .once
+          }
+        )
 
         //when
         val action = sut.storeBlocksVotingDetails(proposalToStore, rollsToStore :: Nil, ballotsToStore :: Nil)
@@ -281,12 +307,6 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
 
       "store accounts and checkpoint associated delegates" in {
         //given
-        val blocksRepo = mock[BlocksRepository[DBIO]]
-        val accountsRepo = mock[AccountsRepository[DBIO]]
-        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
-        val votesRepo = mock[VotingRepository[DBIO]]
-        val delRepo = mock[DelegatesRepository[DBIO]]
-
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val expectedAccountsCount = 3
@@ -300,17 +320,19 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
           content = accountsInfo.content.values.flatMap(_.delegate.value).toList
         )
 
-        //set expectations
-        (accountsRepo.updateAccounts _)
-          .expects(*)
-          .returns(dbio(expectedAccountsCount))
-
-        (delRepo.writeDelegatesCheckpoint _)
-          .expects(*)
-          .returns(dbio(Some(expectedDelegateHashesCount)))
-
-        //build the datastore
-        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+        //set expectations and build the datastore
+        val sut = prepareDatastoreMockWithExpectactions(
+          accountsRepoExpectations = repo => {
+            (repo.updateAccounts _)
+              .expects(*)
+              .returns(dbio(expectedAccountsCount))
+          },
+          delegatesRepoExpectations = repo => {
+            (repo.writeDelegatesCheckpoint _)
+              .expects(*)
+              .returns(dbio(Some(expectedDelegateHashesCount)))
+          }
+        )
 
         //when
         val action = sut.storeAccountsAndCheckpointDelegates(accountsInfo :: Nil, delegateHashes :: Nil)
@@ -322,12 +344,6 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
 
       "store delegates and copy the contracts" in {
         //given
-        val blocksRepo = mock[BlocksRepository[DBIO]]
-        val accountsRepo = mock[AccountsRepository[DBIO]]
-        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
-        val votesRepo = mock[VotingRepository[DBIO]]
-        val delRepo = mock[DelegatesRepository[DBIO]]
-
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val expectedDelegatesCounts = 3
@@ -336,20 +352,21 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
         val accountHashes = generateHashes(howMany = expectedDelegatesCounts, ofLength = 10)
         val delegatesInfo = generateDelegates(accountHashes, block.data.hash, block.data.header.level)
 
-        //set expectations
-        (delRepo.updateDelegates _)
-          .expects(*)
-          .returns(dbio(expectedDelegatesCounts))
+        //set expectations and build the datastore
+        val sut = prepareDatastoreMockWithExpectactions(
+          delegatesRepoExpectations = repo => {
+            (repo.updateDelegates _)
+              .expects(*)
+              .returns(dbio(expectedDelegatesCounts))
 
-        val expectedContractIds = accountHashes.toSet.map(ContractId(_))
+            val expectedContractIds = accountHashes.toSet.map(ContractId(_))
 
-        (delRepo.copyAccountsAsDelegateContracts _)
-          .expects(expectedContractIds)
-          .returns(dbio(None))
-          .once
-
-        //build the datastore
-        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+            (repo.copyAccountsAsDelegateContracts _)
+              .expects(expectedContractIds)
+              .returns(dbio(None))
+              .once
+          }
+        )
 
         //when
         val action = sut.storeDelegatesAndCopyContracts(delegatesInfo :: Nil)
