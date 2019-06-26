@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.tezos.repositories
+package tech.cryptonomic.conseil.metadata
 
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
@@ -13,12 +13,12 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
   Predicate,
   QueryOrdering
 }
+import tech.cryptonomic.conseil.tezos.repositories.SlickRepositories
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
 import java.sql.Timestamp
 
-class SlickGenericQueryingTest
+class SlickMetadataQueryingTest
     extends WordSpec
-//    with TezosDataGeneration
     with InMemoryDatabase
     with ScalaFutures
     with Matchers
@@ -59,8 +59,36 @@ class SlickGenericQueryingTest
     )
   )
 
-  "The slick generic querying" should {
-      val sut = repos.genericQuerying
+  "The slick repositories object" should {
+      val examplePredicates = List(
+        Predicate(
+          field = "some_field",
+          operation = OperationType.in,
+          set = List(
+            "valid",
+            "valid_value",
+            "invalid*value",
+            "another;invalid,value",
+            "yet.another.value"
+          )
+        )
+      )
+
+      "correctly sanitize values for SQL" in {
+        val results = SlickRepositories.sanitizePredicates(examplePredicates).head.set
+        results should contain allElementsOf List(
+          "valid",
+          "valid_value",
+          "invalidvalue",
+          "anotherinvalidvalue",
+          "yet.another.value"
+        )
+        results.size shouldBe 5
+      }
+    }
+
+  "The slick metadata repository" should {
+      val sut = repos.metadataRepository
 
       "get all values from the table with nulls as nones" in {
 

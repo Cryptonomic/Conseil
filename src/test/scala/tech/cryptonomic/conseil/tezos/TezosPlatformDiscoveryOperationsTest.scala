@@ -19,6 +19,7 @@ import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.Fees.AverageFees
+import tech.cryptonomic.conseil.tezos.repositories.SlickRepositories
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
@@ -39,6 +40,7 @@ class TezosPlatformDiscoveryOperationsTest
   import tech.cryptonomic.conseil.config.Platforms._
 
   import scala.concurrent.ExecutionContext.Implicits.global
+  val slickRepos = new SlickRepositories
 
   val metadataOperations: MetadataOperations = new MetadataOperations {
     override def runQuery[A](action: dbio.DBIO[A]) = dbHandler.run(action)
@@ -48,7 +50,13 @@ class TezosPlatformDiscoveryOperationsTest
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds)
+  val sut = TezosPlatformDiscoveryOperations(
+    metadataOperations,
+    slickRepos.metadataRepository,
+    metadataCaching,
+    cacheConfiguration,
+    10 seconds
+  )
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -311,7 +319,7 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of values of kind attribute of Fees without filter" in {
         val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
-        metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
+        metadataOperations.runQuery(slickRepos.feesRepository.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
         sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
       }
@@ -319,7 +327,7 @@ class TezosPlatformDiscoveryOperationsTest
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
         val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-        dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
+        dbHandler.run(slickRepos.feesRepository.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
         sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(
           InvalidAttributeDataType("medium"),
@@ -330,7 +338,7 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list with one error when the minimum matching length is greater than match length" in {
         val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
-        dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+        dbHandler.run(slickRepos.feesRepository.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
         sut
           .listAttributeValues("fees", "kind", Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5)))
@@ -342,7 +350,7 @@ class TezosPlatformDiscoveryOperationsTest
       "return empty list when trying to sql inject" in {
         val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
 
-        dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
+        dbHandler.run(slickRepos.feesRepository.writeFees(List(avgFee))).isReadyWithin(5 seconds)
         // That's how the SLQ-injected string will look like:
         // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
         val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
@@ -359,7 +367,7 @@ class TezosPlatformDiscoveryOperationsTest
         )
 
         sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
-        dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
+        dbHandler.run(slickRepos.feesRepository.writeFees(avgFees)).isReadyWithin(5 seconds)
 
         sut.listAttributeValues("fees", "kind", None).futureValue.right.get should contain theSameElementsAs List(
           "example1",

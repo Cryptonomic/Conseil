@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
+import tech.cryptonomic.conseil.metadata.repositories.MetadataRepository
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,11 +24,12 @@ object TezosPlatformDiscoveryOperations {
 
   def apply(
       metadataOperations: MetadataOperations,
+      metadataRepository: MetadataRepository[DBIO, String, String, String],
       caching: MetadataCaching[IO],
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration
   )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): TezosPlatformDiscoveryOperations =
-    new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL)
+    new TezosPlatformDiscoveryOperations(metadataOperations, metadataRepository, caching, cacheOverrides, cacheTTL)
 
   /** Maps type from DB to type used in query */
   def mapType(tpe: String): DataType =
@@ -46,6 +48,7 @@ object TezosPlatformDiscoveryOperations {
 /** Class providing the implementation of the metadata calls with caching */
 class TezosPlatformDiscoveryOperations(
     metadataOperations: MetadataOperations,
+    metadataRepository: MetadataRepository[DBIO, String, String, String],
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
@@ -144,7 +147,7 @@ class TezosPlatformDiscoveryOperations(
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.map {
         case (table, column) =>
-          TezosDatabaseOperations.selectDistinct(table, column).map { values =>
+          metadataRepository.selectDistinct(table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
             CacheKey(makeKey(table, column)) -> CacheEntry(now, radixTree)
           }
@@ -215,7 +218,7 @@ class TezosPlatformDiscoveryOperations(
   private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] =
     DBIOAction.sequence {
       tables.map { table =>
-        TezosDatabaseOperations.countRows(table.name.name)
+        metadataRepository.countRows(table.name.name)
       }
     }
 
@@ -299,10 +302,10 @@ class TezosPlatformDiscoveryOperations(
     withFilter match {
       case Some(filter) =>
         metadataOperations.runQuery(
-          TezosDatabaseOperations.selectDistinctLike(tableName, column, ApiOperations.sanitizeForSql(filter))
+          metadataRepository.selectDistinctLike(tableName, column, filter)
         )
       case None =>
-        metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))
+        metadataOperations.runQuery(metadataRepository.selectDistinct(tableName, column))
     }
 
   /**
@@ -366,7 +369,7 @@ class TezosPlatformDiscoveryOperations(
     DBIOAction.sequence {
       columns.map { column =>
         if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
-          TezosDatabaseOperations.countDistinct(tableName, column.name).map { count =>
+          metadataRepository.countDistinct(tableName, column.name).map { count =>
             column.copy(cardinality = Some(count))
           }
         } else {

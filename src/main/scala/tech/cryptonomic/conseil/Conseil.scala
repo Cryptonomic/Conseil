@@ -15,7 +15,8 @@ import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
-import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosDatastore, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.tezos.repositories.SlickRepositories
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
@@ -40,18 +41,29 @@ object Conseil
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-
-      val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
-
       // This part is a temporary middle ground between current implementation and moving code to use IO
       implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
       val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
 
+      val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
+
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
+      val slickRepos = new SlickRepositories
+      import slickRepos._
+
+      lazy val apis = new ApiOperations
+      lazy val datastore = new TezosDatastore
+
       lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(ApiOperations, metadataCaching, cacheOverrides, server.cacheTTL)(
+        TezosPlatformDiscoveryOperations(
+          apis,
+          apis.metadataRepository,
+          metadataCaching,
+          cacheOverrides,
+          server.cacheTTL
+        )(
           executionContext,
           contextShift
         )
@@ -69,7 +81,7 @@ object Conseil
       lazy val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
-      lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
+      lazy val data = Data(platforms, metadataService, server, apis, datastore)(tezosDispatcher)
 
       val route = cors() {
           enableCORS {

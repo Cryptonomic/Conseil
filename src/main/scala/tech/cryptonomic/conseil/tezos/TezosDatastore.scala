@@ -117,6 +117,14 @@ class TezosDatastore(
 
   }
 
+  /** Reads the maximum level for a block in the db */
+  def fetchMaxStoredBlockLevel: DBIO[Option[Int]] =
+    blocksRepo.fetchMaxBlockLevel
+
+  /** Reads the operations under a group */
+  def fetchOperationsForGroup(groupHash: String): DBIO[Option[(OperationGroupsRow, Seq[OperationsRow])]] =
+    operationsRepo.operationsForGroup(groupHash)
+
   /** Writes blocks-related voting details to the database
     * @param proposals the list of proposals
     * @param blockBallots the list of ballots for the associated block

@@ -5,8 +5,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
+import tech.cryptonomic.conseil.metadata.repositories.MetadataRepository
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import slick.dbio.DBIO
 
+import scala.language.postfixOps
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
@@ -20,6 +23,11 @@ class TezosNodeOperatorTest
   import ExecutionContext.Implicits.global
 
   val config = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds, 10 seconds)
+  type MDRepository = MetadataRepository[DBIO, String, String, String]
+
+  implicit val metadataRepoStub = mock[MDRepository]
+
+  val apis = new ApiOperations()(metadataRepoStub)
 
   "getBlock" should "correctly fetch the genesis block" in {
       //given
@@ -29,7 +37,7 @@ class TezosNodeOperatorTest
         .when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe~")
         .returns(blockResponse)
 
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apis)
 
       //when
       val block: Future[TezosTypes.Block] =
@@ -80,7 +88,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apis)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks()
@@ -141,7 +149,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apis)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(Some(1))
@@ -201,7 +209,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apis)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] =

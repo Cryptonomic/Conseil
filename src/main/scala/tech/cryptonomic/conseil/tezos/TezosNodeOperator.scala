@@ -13,8 +13,7 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -59,7 +58,12 @@ object TezosNodeOperator {
   * @param batchConf          configuration for batched download of node data
   * @param fetchFutureContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(
+class TezosNodeOperator(
+    val node: TezosRPCInterface,
+    val network: String,
+    batchConf: BatchFetchConfiguration,
+    apis: ApiOperations
+)(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
     with BlocksDataFetchers
@@ -473,7 +477,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- ApiOperations.fetchMaxLevel
+      maxLevel <- apis.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -606,9 +610,10 @@ class TezosNodeSenderOperator(
     override val node: TezosRPCInterface,
     network: String,
     batchConf: BatchFetchConfiguration,
+    apis: ApiOperations,
     sodiumConf: SodiumConfiguration
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf)
+    extends TezosNodeOperator(node, network, batchConf, apis)
     with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._

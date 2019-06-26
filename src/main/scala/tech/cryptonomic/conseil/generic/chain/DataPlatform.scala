@@ -7,7 +7,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing default apply implementation */
 object DataPlatform {
-  def apply(maxQueryResultSize: Int): DataPlatform = new DataPlatform(Map("tezos" -> ApiOperations), maxQueryResultSize)
+  def apply(maxQueryResultSize: Int, apis: ApiOperations): DataPlatform =
+    new DataPlatform(Map("tezos" -> apis), maxQueryResultSize)
 }
 
 /** Class for validating if query protocol exists for the given platform

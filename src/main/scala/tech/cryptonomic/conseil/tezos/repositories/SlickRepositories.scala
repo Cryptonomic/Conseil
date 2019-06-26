@@ -44,13 +44,30 @@ import tech.cryptonomic.conseil.tezos.Tables.{
 }
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Aggregation, OutputType, Predicate, QueryOrdering}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.metadata.repositories.MetadataRepository
 
 import cats.Applicative
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.implicits._
 import scala.concurrent.ExecutionContext
 
+object SlickRepositories {
+
+  /** Sanitizes predicate values so query is safe from SQL injection */
+  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] =
+    predicates.map { predicate =>
+      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
+    }
+
+  /** Sanitizes string to be viable to paste into plain SQL */
+  def sanitizeForSql(str: String): String = {
+    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
+    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+  }
+}
+
 class SlickRepositories(implicit ec: ExecutionContext) {
+  import SlickRepositories._
   import DatabaseConversions._
 
   /**
@@ -81,7 +98,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         tableQuery.delete
     }
 
-  implicit val genericQuerying = new GenericQuerying[DBIO, String, String, String] {
+  implicit val metadataRepository = new MetadataRepository[DBIO, String, String, String] {
     import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 
     /** Type representing Map[String, Option[Any]] for query response */
@@ -106,10 +123,12 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         .map(_.toList)
 
     /* THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION */
-    override def selectDistinctLike(table: String, column: String, matchingString: String) =
-      sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
+    override def selectDistinctLike(table: String, column: String, matchingString: String) = {
+      val cleanMatch = sanitizeForSql(matchingString)
+      sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$cleanMatch%' AND #$column IS NOT NULL"""
         .as[String]
         .map(_.toList)
+    }
 
     override def selectWithPredicates(
         table: String,
@@ -122,7 +141,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     ) = {
       val q =
         makeQuery(table, columns, aggregation)
-          .addPredicates(aggregation.flatMap(_.getPredicate) ::: predicates)
+          .addPredicates(aggregation.flatMap(_.getPredicate) ::: sanitizePredicates(predicates))
           .addGroupBy(aggregation, columns)
           .addOrdering(ordering)
           .addLimit(limit)

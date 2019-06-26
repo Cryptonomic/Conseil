@@ -8,18 +8,26 @@ import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
-import tech.cryptonomic.conseil.tezos.ApiOperations
+import tech.cryptonomic.conseil.tezos.{ApiOperations, TezosDatastore}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.util.ConfigUtil
+
+import cats.implicits._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, metadataService: MetadataService, server: ServerConfiguration)(
+  def apply(
+      config: PlatformsConfiguration,
+      metadataService: MetadataService,
+      server: ServerConfiguration,
+      apis: ApiOperations,
+      datastore: TezosDatastore
+  )(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(config, DataPlatform(server.maxQueryResultSize), metadataService)
+    new Data(config, DataPlatform(server.maxQueryResultSize, apis), metadataService, apis, datastore)
 }
 
 /**
@@ -28,16 +36,20 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
+class Data(
+    config: PlatformsConfiguration,
+    queryProtocolPlatform: DataPlatform,
+    metadataService: MetadataService,
+    apis: ApiOperations,
+    datastore: TezosDatastore
+)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
-
-  import cats.instances.either._
-  import cats.instances.future._
-  import cats.instances.option._
   import cats.syntax.bitraverse._
   import cats.syntax.traverse._
+
+  implicit private val ds = datastore
 
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
@@ -71,7 +83,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchLatestBlock()
+        apis.fetchLatestBlock()
       }
   }
 
@@ -79,7 +91,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchBlock(BlockHash(hash))
+        apis.fetchBlock(BlockHash(hash))
       }
   }
 
@@ -95,7 +107,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
     case ((platform, network, accountId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchAccount(AccountId(accountId))
+        apis.fetchAccount(AccountId(accountId))
       }
   }
 
@@ -111,7 +123,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
     case ((platform, network, operationGroupId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchOperationGroup(operationGroupId)
+        apis.fetchOperationGroup(operationGroupId)
       }
   }
 

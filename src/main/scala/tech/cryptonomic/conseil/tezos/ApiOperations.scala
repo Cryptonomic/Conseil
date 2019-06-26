@@ -10,17 +10,14 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
   QueryOrdering,
   QueryResponse
 }
+import tech.cryptonomic.conseil.metadata.repositories.MetadataRepository
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
-  * Functionality for fetching data from the Conseil database.
-  */
-object ApiOperations extends DataOperations with MetadataOperations {
-
+/** Shared data */
+object ApiOperations {
   lazy val dbHandle: Database = DatabaseUtil.db
 
   /** Define sorting order for api queries */
@@ -208,6 +205,15 @@ object ApiOperations extends DataOperations with MetadataOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
   case class AccountResult(account: Tables.AccountsRow)
+}
+
+/**
+  * Functionality for fetching data from the Conseil database.
+  */
+class ApiOperations(implicit val metadataRepository: MetadataRepository[DBIO, String, String, String])
+    extends DataOperations
+    with MetadataOperations {
+  import ApiOperations._
 
   /**
     * Fetches the level of the most recent block stored in the database.
@@ -224,7 +230,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     *
     * @return Latest block.
     */
-  def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
+  def fetchLatestBlock()(implicit datastore: TezosDatastore, ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
     dbHandle.run(latestBlockIO())
 
   /**
@@ -261,10 +267,10 @@ object ApiOperations extends DataOperations with MetadataOperations {
     */
   def fetchOperationGroup(
       operationGroupHash: String
-  )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
+  )(implicit datastore: TezosDatastore, ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
-      operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)
+      operations <- datastore.fetchOperationsForGroup(operationGroupHash)
     } yield
       operations.map {
         case (opGroup, ops) =>
@@ -299,8 +305,11 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @param ec ExecutionContext needed to invoke the data fetching using async results
     * @return the most recent block, if one exists in the database.
     */
-  private[tezos] def latestBlockIO()(implicit ec: ExecutionContext): DBIO[Option[Tables.BlocksRow]] =
-    TezosDb.fetchMaxBlockLevel.flatMap(
+  private[tezos] def latestBlockIO()(
+      implicit datastore: TezosDatastore,
+      ec: ExecutionContext
+  ): DBIO[Option[Tables.BlocksRow]] =
+    datastore.fetchMaxStoredBlockLevel.flatMap(
       maxLevel =>
         Tables.Blocks
           .filter(_.level === maxLevel)
@@ -329,27 +338,15 @@ object ApiOperations extends DataOperations with MetadataOperations {
       implicit ec: ExecutionContext
   ): Future[List[QueryResponse]] =
     runQuery(
-      TezosDatabaseOperations.selectWithPredicates(
+      metadataRepository.selectWithPredicates(
         tableName,
         query.fields,
-        sanitizePredicates(query.predicates),
+        query.predicates,
         query.orderBy,
         query.aggregation,
         query.output,
         query.limit
       )
     )
-
-  /** Sanitizes predicate values so query is safe from SQL injection */
-  def sanitizePredicates(predicates: List[Predicate]): List[Predicate] =
-    predicates.map { predicate =>
-      predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
-    }
-
-  /** Sanitizes string to be viable to paste into plain SQL */
-  def sanitizeForSql(str: String): String = {
-    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
-    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
-  }
 
 }

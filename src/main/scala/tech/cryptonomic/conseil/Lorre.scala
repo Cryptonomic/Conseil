@@ -5,6 +5,7 @@ import akka.Done
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
   FeeOperations,
   ShutdownComplete,
   TezosErrors,
@@ -69,11 +70,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   //define all datastore services
   val tezosFees = new FeeOperations
   val tezosStore = new TezosDatastore
+  val apis = new ApiOperations
 
   val tezosNodeOperator = new TezosNodeOperator(
     new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
     tezosConf.network,
-    batchingConf
+    batchingConf,
+    apis
   )
 
   /** close resources for application stop */

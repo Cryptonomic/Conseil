@@ -132,11 +132,13 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
   val testEntity = Entity("testEntity", "Test Entity", 0)
 
+  val apisStub = stub[ApiOperations]
+  val datastoreStub = stub[TezosDatastore]
   val metadataServiceStub = stub[MetadataService]
 
-  val postRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub)(ec).postRoute
+  val postRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub, apisStub, datastoreStub)(ec).postRoute
 
-  val getRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub)(ec).getRoute
+  val getRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub, apisStub, datastoreStub)(ec).getRoute
 
   "Query protocol" should {
 
