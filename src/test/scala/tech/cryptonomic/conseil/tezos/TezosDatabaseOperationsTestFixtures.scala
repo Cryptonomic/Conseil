@@ -20,6 +20,15 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
 
+  /* randomly genrates hash strings */
+  def generateHashes(howMany: Int, ofLength: Int)(implicit randomSeed: RandomSeed): List[String] = {
+    require(howMany > 0, "the test can generates a positive number of hashes, you asked for a non positive value")
+
+    val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
+
+    List.fill(howMany)(generateHash(ofLength))
+  }
+
   /* randomly populate a number of fees */
   def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
     require(howMany > 0, "the test can generates a positive number of fees, you asked for a non positive value")

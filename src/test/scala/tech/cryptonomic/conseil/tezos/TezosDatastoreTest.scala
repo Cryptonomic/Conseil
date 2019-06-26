@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.tezos.repositories.{
   VotingRepository
 }
 import tech.cryptonomic.conseil.tezos.Tables.{BalanceUpdatesRow, OperationGroupsRow, OperationsRow}
-import tech.cryptonomic.conseil.tezos.TezosTypes.AccountId
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockTagged, ContractId}
 
 class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGeneration with ScalaFutures with Matchers {
 
@@ -235,6 +235,129 @@ class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGenerat
         //then
         testDb.run(action).futureValue shouldBe (Some(generatedBlocks.size), Some(checkpointSize))
       }
+
+      "store all voting data for multiple blocks" in {
+        //given
+        val blocksRepo = mock[BlocksRepository[DBIO]]
+        val accountsRepo = mock[AccountsRepository[DBIO]]
+        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
+        val votesRepo = mock[VotingRepository[DBIO]]
+        val delRepo = mock[DelegatesRepository[DBIO]]
+
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val (expectedProposals, expectedRolls, expectedBallots) = (3, 2, 4)
+
+        val generatedBlock = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+        val proposalToStore = Voting.generateProposals(expectedProposals, forBlock = generatedBlock)
+        val rollsToStore = (generatedBlock, Voting.generateBakersRolls(expectedRolls))
+        val ballotsToStore = (generatedBlock, Voting.generateBallots(expectedBallots))
+
+        //set expectations
+        (votesRepo.writeVotingProposals _)
+          .expects(*)
+          .returns(dbio(Some(expectedProposals)))
+          .once
+
+        (votesRepo.writeVotingRolls _)
+          .expects(*, generatedBlock)
+          .returns(dbio(Some(expectedRolls)))
+          .once
+
+        (votesRepo.writeVotingBallots _)
+          .expects(*, generatedBlock)
+          .returns(dbio(Some(expectedBallots)))
+          .once
+
+        //build the datastore
+        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+
+        //when
+        val action = sut.storeBlocksVotingDetails(proposalToStore, rollsToStore :: Nil, ballotsToStore :: Nil)
+
+        //then
+        testDb.run(action).futureValue shouldBe (Some(expectedProposals + expectedRolls + expectedBallots))
+      }
+
+      "store accounts and checkpoint associated delegates" in {
+        //given
+        val blocksRepo = mock[BlocksRepository[DBIO]]
+        val accountsRepo = mock[AccountsRepository[DBIO]]
+        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
+        val votesRepo = mock[VotingRepository[DBIO]]
+        val delRepo = mock[DelegatesRepository[DBIO]]
+
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedAccountsCount = 3
+        val expectedDelegateHashesCount = 3
+
+        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+        val accountsInfo = generateAccounts(expectedAccountsCount, block.data.hash, block.data.header.level)
+        val delegateHashes = BlockTagged(
+          block.data.hash,
+          block.data.header.level,
+          content = accountsInfo.content.values.flatMap(_.delegate.value).toList
+        )
+
+        //set expectations
+        (accountsRepo.updateAccounts _)
+          .expects(*)
+          .returns(dbio(expectedAccountsCount))
+
+        (delRepo.writeDelegatesCheckpoint _)
+          .expects(*)
+          .returns(dbio(Some(expectedDelegateHashesCount)))
+
+        //build the datastore
+        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+
+        //when
+        val action = sut.storeAccountsAndCheckpointDelegates(accountsInfo :: Nil, delegateHashes :: Nil)
+
+        //then
+        testDb.run(action).futureValue shouldBe (expectedAccountsCount, Some(expectedDelegateHashesCount))
+
+      }
+
+      "store delegates and copy the contracts" in {
+        //given
+        val blocksRepo = mock[BlocksRepository[DBIO]]
+        val accountsRepo = mock[AccountsRepository[DBIO]]
+        val opsRepo = mock[OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow]]
+        val votesRepo = mock[VotingRepository[DBIO]]
+        val delRepo = mock[DelegatesRepository[DBIO]]
+
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedDelegatesCounts = 3
+
+        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
+        val accountHashes = generateHashes(howMany = expectedDelegatesCounts, ofLength = 10)
+        val delegatesInfo = generateDelegates(accountHashes, block.data.hash, block.data.header.level)
+
+        //set expectations
+        (delRepo.updateDelegates _)
+          .expects(*)
+          .returns(dbio(expectedDelegatesCounts))
+
+        val expectedContractIds = accountHashes.toSet.map(ContractId(_))
+
+        (delRepo.copyAccountsAsDelegateContracts _)
+          .expects(expectedContractIds)
+          .returns(dbio(None))
+          .once
+
+        //build the datastore
+        val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
+
+        //when
+        val action = sut.storeDelegatesAndCopyContracts(delegatesInfo :: Nil)
+
+        //then
+        testDb.run(action).futureValue shouldBe expectedDelegatesCounts
+      }
+
     }
 
 }
