@@ -342,7 +342,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Writes ballots to the database */
   def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${ballots.length} ballots to the DB..""")
+    logger.info(s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..""")
     Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
   }
 
