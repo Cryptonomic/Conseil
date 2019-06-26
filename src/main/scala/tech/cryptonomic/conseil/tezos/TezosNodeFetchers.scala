@@ -72,7 +72,7 @@ trait BlocksDataFetchers {
     override val fetchData = {
       Kleisli(
         offsets => {
-          logger.info("Fetching blocks for offsets ${offsets.min} to ${offsets.max}")
+          logger.info(s"""Fetching blocks for offsets ${offsets.min} to ${offsets.max}""")
           node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
