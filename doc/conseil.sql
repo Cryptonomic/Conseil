@@ -189,13 +189,38 @@ CREATE TABLE public.balance_updates (
     category character varying
 );
 
+CREATE TABLE public.delegates (
+    pkh character varying PRIMARY KEY,
+    block_id character varying NOT NULL,
+    balance numeric,
+    frozen_balance numeric,
+    staking_balance numeric,
+    delegated_balance numeric,
+    deactivated boolean NOT NULL,
+    grace_period integer NOT NULL,
+    block_level integer DEFAULT '-1'::integer NOT NULL
+);
 
+CREATE TABLE public.delegated_contracts (
+    account_id character varying NOT NULL,
+    delegate_value character varying
+);
 --
 -- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.accounts_checkpoint (
     account_id character varying NOT NULL,
+    block_id character varying NOT NULL,
+    block_level integer DEFAULT '-1'::integer NOT NULL
+);
+
+--
+-- Name: delegates_checkpoint; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.delegates_checkpoint (
+    delegate_pkh character varying NOT NULL,
     block_id character varying NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL
 );
@@ -213,10 +238,10 @@ CREATE TABLE public.proposals (
 
 
 --
--- Name: bakers; Type: TABLE; Schema: public; Owner: -
+-- Name: rolls; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.bakers (
+CREATE TABLE public.rolls (
     pkh character varying NOT NULL,
     rolls integer NOT NULL,
     block_id character varying NOT NULL,
@@ -380,6 +405,12 @@ CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint USING btree (block_level);
 
 --
+-- Name: ix_delegates_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_delegates_checkpoint_block_level ON public.delegates_checkpoint USING btree (block_level);
+
+--
 -- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -393,12 +424,29 @@ CREATE INDEX ix_proposals_protocol ON public.proposals USING btree (protocol_has
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
+-- Disabling this constraint due to Tezos node issues preventing some delegates from being fetched.
+--ALTER TABLE ONLY public.delegated_contracts
+--    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES public.delegates(pkh);
+
+ALTER TABLE ONLY public.delegated_contracts
+    ADD CONSTRAINT contracts_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(account_id);
+
+ALTER TABLE ONLY public.delegates
+    ADD CONSTRAINT delegates_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
 --
 -- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts_checkpoint
     ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
+--
+-- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.delegates_checkpoint
+    ADD CONSTRAINT delegate_checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 
 --
@@ -411,11 +459,11 @@ ALTER TABLE ONLY public.proposals
 
 
 --
--- Name: bakers baker_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.bakers
-    ADD CONSTRAINT baker_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+ALTER TABLE ONLY public.rolls
+    ADD CONSTRAINT rolls_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 
 

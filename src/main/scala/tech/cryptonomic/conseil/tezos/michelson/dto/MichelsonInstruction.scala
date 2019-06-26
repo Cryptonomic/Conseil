@@ -24,12 +24,14 @@ sealed trait MichelsonInstruction extends MichelsonElement
 
 /* Class representing a simple Michelson instruction which can contains following expressions */
 case class MichelsonSingleInstruction(
-                                       name: String,
-                                       embeddedElements: List[MichelsonElement] = List.empty,
-                                       annotations: List[String] = List.empty) extends MichelsonInstruction
+    name: String,
+    embeddedElements: List[MichelsonElement] = List.empty,
+    annotations: List[String] = List.empty
+) extends MichelsonInstruction
 
 /* Class representing a sequence of Michelson instructions */
-case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty) extends MichelsonInstruction
+case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty)
+    extends MichelsonInstruction
 
 /* Class representing an empty Michelson instruction */
 case object MichelsonEmptyInstruction extends MichelsonInstruction

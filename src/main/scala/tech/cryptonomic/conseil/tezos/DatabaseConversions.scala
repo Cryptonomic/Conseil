@@ -3,10 +3,10 @@ package tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
-import tech.cryptonomic.conseil.util.Conversion._
-import cats.Show
+import cats.{Id, Show}
 import java.sql.Timestamp
 import monocle.Getter
+import io.scalaland.chimney.dsl._
 
 object DatabaseConversions {
 
@@ -14,7 +14,8 @@ object DatabaseConversions {
   private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
 
   //single field conversions
-  def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String = traversable.mkString("[", ",", "]")
+  def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String =
+    traversable.mkString("[", ",", "]")
 
   def extractBigDecimal(number: PositiveBigNumber): Option[BigDecimal] = number match {
     case PositiveDecimal(value) => Some(value)
@@ -39,26 +40,31 @@ object DatabaseConversions {
       )
   }
 
-  implicit val blockAccountsToAccountRows = new Conversion[List, BlockAccounts, Tables.AccountsRow] {
-    override def convert(from: BlockAccounts) = {
-      val BlockAccounts(hash, level, accounts) = from
-      accounts.map {
-        case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
-        Tables.AccountsRow(
-          accountId = id.id,
-          blockId = hash.value,
-          manager = manager.value,
-          spendable = spendable,
-          delegateSetable = delegate.setable,
-          delegateValue = delegate.value.map(_.value),
-          counter = counter,
-          script = script.map(_.code.expression),
-          storage = script.map(_.storage.expression),
-          balance = balance,
-          blockLevel = level
-        )
-      }.toList
+  implicit val blockAccountsToAccountRows =
+    new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
+      override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
+        val BlockTagged(hash, level, accounts) = from
+        accounts.map {
+          case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
+            Tables.AccountsRow(
+              accountId = id.id,
+              blockId = hash.value,
+              manager = manager.value,
+              spendable = spendable,
+              delegateSetable = delegate.setable,
+              delegateValue = delegate.value.map(_.value),
+              counter = counter,
+              script = script.map(_.code.expression),
+              storage = script.map(_.storage.expression),
+              balance = balance,
+              blockLevel = level
+            )
+        }.toList
+      }
     }
+
+  implicit val accountRowsToContractRows = new Conversion[Id, Tables.AccountsRow, Tables.DelegatedContractsRow] {
+    override def convert(from: Tables.AccountsRow) = from.into[Tables.DelegatedContractsRow].transform
   }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
@@ -98,7 +104,7 @@ object DatabaseConversions {
 
   implicit val blockToOperationGroupsRow = new Conversion[List, Block, Tables.OperationGroupsRow] {
     override def convert(from: Block) =
-      from.operationGroups.map{ og =>
+      from.operationGroups.map { og =>
         Tables.OperationGroupsRow(
           protocol = og.protocol,
           chainId = og.chain_id.map(_.id),
@@ -114,13 +120,13 @@ object DatabaseConversions {
   implicit val operationToOperationsRow = new Conversion[Id, (Block, OperationHash, Operation), Tables.OperationsRow] {
     override def convert(from: (Block, OperationHash, Operation)) =
       (convertEndorsement orElse
-      convertNonceRevelation orElse
-      convertActivateAccount orElse
-      convertReveal orElse
-      convertTransaction orElse
-      convertOrigination orElse
-      convertDelegation orElse
-      convertUnhandledOperations)(from)
+          convertNonceRevelation orElse
+          convertActivateAccount orElse
+          convertReveal orElse
+          convertTransaction orElse
+          convertOrigination orElse
+          convertDelegation orElse
+          convertUnhandledOperations)(from)
   }
 
   private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
@@ -163,7 +169,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
-    )
+      )
   }
 
   private val convertReveal: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
@@ -183,11 +189,15 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
-    )
+      )
   }
 
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)) =>
+    case (
+        block,
+        groupHash,
+        Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
+        ) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -207,11 +217,28 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
-    )
+      )
   }
 
   private val convertOrigination: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Origination(counter, fee, source, balance, gas_limit, storage_limit, mpk, delegatable, delegate, spendable, script, metadata)) =>
+    case (
+        block,
+        groupHash,
+        Origination(
+          counter,
+          fee,
+          source,
+          balance,
+          gas_limit,
+          storage_limit,
+          mpk,
+          delegatable,
+          delegate,
+          spendable,
+          script,
+          metadata
+        )
+        ) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -235,7 +262,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
-    )
+      )
   }
 
   private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
@@ -255,7 +282,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
-    )
+      )
   }
 
   private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
@@ -299,38 +326,41 @@ object DatabaseConversions {
     * @param hashing an optic instance to extract an optional reference hash value
     */
   implicit def anyToBalanceUpdates[T, Label](
-    implicit
-    balances: Getter[T, Map[Label, List[OperationMetadata.BalanceUpdate]]],
-    hashing: Getter[T, Option[String]],
-    showing: Show[Label]
+      implicit
+      balances: Getter[T, Map[Label, List[OperationMetadata.BalanceUpdate]]],
+      hashing: Getter[T, Option[String]],
+      showing: Show[Label]
   ) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
     import cats.syntax.show._
 
     override def convert(from: T) =
-      balances.get(from).flatMap {
-        case (tag, updates) =>
-          updates.map {
-            case OperationMetadata.BalanceUpdate(
-              kind,
-              change,
-              category,
-              contract,
-              delegate,
-              level
-            ) =>
-            Tables.BalanceUpdatesRow(
-              id = 0,
-              source = tag.show,
-              sourceHash = hashing.get(from),
-              kind = kind,
-              contract = contract.map(_.id),
-              change = BigDecimal(change),
-              level = level.map(BigDecimal(_)),
-              delegate = delegate.map(_.value),
-              category = category
-            )
-          }
-      }.toList
+      balances
+        .get(from)
+        .flatMap {
+          case (tag, updates) =>
+            updates.map {
+              case OperationMetadata.BalanceUpdate(
+                  kind,
+                  change,
+                  category,
+                  contract,
+                  delegate,
+                  level
+                  ) =>
+                Tables.BalanceUpdatesRow(
+                  id = 0,
+                  source = tag.show,
+                  sourceHash = hashing.get(from),
+                  kind = kind,
+                  contract = contract.map(_.id),
+                  change = BigDecimal(change),
+                  level = level.map(BigDecimal(_)),
+                  delegate = delegate.map(_.value),
+                  category = category
+                )
+            }
+        }
+        .toList
   }
 
   /** Utility alias when we need to keep related data paired together */
@@ -358,19 +388,53 @@ object DatabaseConversions {
 
   }
 
-  implicit val blockAccountsAssociationToCheckpointRow = new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
-    override def convert(from: (BlockHash, Int, List[AccountId])) = {
-      val (blockHash, blockLevel, ids) = from
-      ids.map(
-        accountId =>
-          Tables.AccountsCheckpointRow(
-            accountId = accountId.id,
-            blockId = blockHash.value,
-            blockLevel = blockLevel
-          )
-      )
+  implicit val blockAccountsAssociationToCheckpointRow =
+    new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
+      override def convert(from: (BlockHash, Int, List[AccountId])) = {
+        val (blockHash, blockLevel, ids) = from
+        ids.map(
+          accountId =>
+            Tables.AccountsCheckpointRow(
+              accountId = accountId.id,
+              blockId = blockHash.value,
+              blockLevel = blockLevel
+            )
+        )
+      }
+
     }
 
+  implicit val blockDelegatesAssociationToCheckpointRow =
+    new Conversion[List, (BlockHash, Int, List[PublicKeyHash]), Tables.DelegatesCheckpointRow] {
+      override def convert(from: (BlockHash, Int, List[PublicKeyHash])) = {
+        val (blockHash, blockLevel, pkhs) = from
+        pkhs.map(
+          keyHash =>
+            Tables.DelegatesCheckpointRow(
+              delegatePkh = keyHash.value,
+              blockId = blockHash.value,
+              blockLevel = blockLevel
+            )
+        )
+      }
+
+    }
+
+  implicit val delegateToRow = new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate), Tables.DelegatesRow] {
+    override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate)) = {
+      val (blockHash, blockLevel, keyHash, delegate) = from
+      Tables.DelegatesRow(
+        pkh = keyHash.value,
+        blockId = blockHash.value,
+        balance = extractBigDecimal(delegate.balance),
+        frozenBalance = extractBigDecimal(delegate.frozen_balance),
+        stakingBalance = extractBigDecimal(delegate.staking_balance),
+        delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+        deactivated = delegate.deactivated,
+        gracePeriod = delegate.grace_period,
+        blockLevel = blockLevel
+      )
+    }
   }
 
   implicit val proposalToRow = new Conversion[List, Voting.Proposal, Tables.ProposalsRow] {
@@ -406,14 +470,14 @@ object DatabaseConversions {
     }
   }
 
-  implicit val bakersToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.BakersRow] {
+  implicit val rollsToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.RollsRow] {
     override def convert(from: (Block, List[Voting.BakerRolls])) = {
       val (block, bakers) = from
       val blockHash = block.data.hash.value
       val blockLevel = block.data.header.level
       bakers.map {
         case Voting.BakerRolls(PublicKeyHash(hash), rolls) =>
-          Tables.BakersRow(
+          Tables.RollsRow(
             pkh = hash,
             rolls = rolls,
             blockId = blockHash,

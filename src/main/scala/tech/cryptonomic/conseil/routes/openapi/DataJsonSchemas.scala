@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes.openapi
 import endpoints.generic
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.ApiOperations.{BlockResult, OperationGroupResult, AccountResult}
+import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
 /** Trait containing Data endpoints JSON schemas */
@@ -81,7 +81,7 @@ trait DataJsonSchemas extends generic.JsonSchemas {
   implicit def anySchema: JsonSchema[Any]
 
   /** Query response schema */
-  implicit def queryResponseSchema: JsonSchema[List[QueryResponse]]
+  implicit def queryResponseSchema: JsonSchema[QueryResponse]
 
   /** Query response schema with output type */
   implicit def queryResponseSchemaWithOutputType: JsonSchema[QueryResponseWithOutput]

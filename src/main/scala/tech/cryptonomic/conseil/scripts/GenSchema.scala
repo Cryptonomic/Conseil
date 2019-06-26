@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.scripts
 
-import pureconfig.{ConfigFieldMapping, CamelCase, loadConfig}
+import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping}
 import pureconfig.generic.auto._
 import pureconfig.generic.ProductHint
 
@@ -29,25 +29,23 @@ object GenSchema extends App {
 
   val conseilDbConf = loadConfig[PostgresConfig](namespace = "conseildb.properties")
 
-  conseilDbConf.foreach {
-    cfg =>
-      println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")
-      slick.codegen.SourceCodeGenerator.main(
-        Array(
-          cfg.slickProfile,
-          cfg.jdbcDriver,
-          cfg.url,
-          cfg.dest,
-          cfg.`package`,
-          cfg.user,
-          cfg.password
-        )
+  conseilDbConf.foreach { cfg =>
+    println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")
+    slick.codegen.SourceCodeGenerator.main(
+      Array(
+        cfg.slickProfile,
+        cfg.jdbcDriver,
+        cfg.url,
+        cfg.dest,
+        cfg.`package`,
+        cfg.user,
+        cfg.password
       )
+    )
   }
 
-  conseilDbConf.left.foreach {
-    failures =>
-      sys.error(failures.toList.mkString("\n"))
+  conseilDbConf.left.foreach { failures =>
+    sys.error(failures.toList.mkString("\n"))
   }
 
 }
