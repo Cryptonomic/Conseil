@@ -69,7 +69,8 @@ trait BlocksDataFetchers {
     private def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
     //fetch a future stream of values
-    override val fetchData =
+    override val fetchData = {
+      logger.info("Fetching blocks")
       Kleisli(
         offsets =>
           node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError {
@@ -85,6 +86,7 @@ trait BlocksDataFetchers {
                 .pure[Future]
           }
       )
+    }
 
     // decode with `JsonDecoders`
     override val decodeData = Kleisli { json =>
@@ -115,7 +117,8 @@ trait BlocksDataFetchers {
 
     private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    override val fetchData =
+    override val fetchData = {
+      logger.info("Fetching operations")
       Kleisli(
         hashes =>
           node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
@@ -130,6 +133,7 @@ trait BlocksDataFetchers {
                 .pure[Future]
           }
       )
+    }
 
     override val decodeData = Kleisli(
       json =>

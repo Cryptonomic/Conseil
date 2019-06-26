@@ -303,8 +303,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map { checkpoints =>
-          logger.debug(
-            "I loaded all stored account references and will proceed to fetch updated information from the chain"
+          logger.info(
+            "I loaded all checkpointed accounts from the DB and will proceed to fetch updated accounts information from the chain"
           )
           val (pages, total) = tezosNodeOperator.getAccountsForBlocks(checkpoints)
 
@@ -323,17 +323,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           checkpoints
         }
 
-    logger.debug("Selecting all accounts touched in the checkpoint table, this might take a while...")
+    logger.info("Selecting all accounts touched in the checkpoint table, this might take a while...")
     saveAccounts.andThen {
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
         val processed = Some(checkpoints.keySet)
-        logger.debug("Cleaning checkpointed accounts..")
+        logger.info("Cleaning checkpointed accounts..")
         Await.result(
           db.run(TezosDb.cleanAccountsCheckpoint(processed)),
           atMost = batchingConf.accountPageProcessingTimeout
         )
-        logger.debug("Done cleaning checkpointed accounts.")
+        logger.info("Done cleaning checkpointed accounts.")
       case _ =>
         ()
     }.transform {
@@ -365,7 +365,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val saveDelegates = db.run(TezosDb.getLatestDelegatesFromCheckpoint) map { checkpoints =>
-          logger.debug(
+          logger.info(
             "I loaded all stored delegate references and will proceed to fetch updated information from the chain"
           )
           val (pages, total) = tezosNodeOperator.getDelegatesForBlocks(checkpoints)
@@ -389,12 +389,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       //additional cleanup, that can fail with no downsides
       case Success(checkpoints) =>
         val processed = Some(checkpoints.keySet)
-        logger.debug("Cleaning checkpointed delegates..")
+        logger.info("Cleaning checkpointed delegates..")
         Await.result(
           db.run(TezosDb.cleanDelegatesCheckpoint(processed)),
           atMost = batchingConf.delegatePageProcessingTimeout
         )
-        logger.debug("Done cleaning checkpointed delegates.")
+        logger.info("Done cleaning checkpointed delegates.")
       case _ =>
         ()
     }.transform {
