@@ -44,9 +44,6 @@ class TezosDatastore(
     * at the same time saving enough information about updated accounts to later fetch those accounts
     * @param blocksWithAccounts a map with new blocks as keys, and updated account ids as the values
     * @param ec a context for async combinations
-    * @param toOpGroups conversion to operation groups records from a block
-    * @param toBalanceUps conversion to balance updates records from a block
-    * @param toOperationsData conversion to operations records from a block
     * @return a database operation that returns counts for both added block records and accounts checkpointed
     */
   def storeBlocksAndCheckpointAccounts(

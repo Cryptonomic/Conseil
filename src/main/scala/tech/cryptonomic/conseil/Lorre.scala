@@ -63,7 +63,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   sys.addShutdownHook(shutdown())
 
   lazy val db = DatabaseUtil.db
-  //bring slick-based reposirtories in scope
+
+  //bring slick-based repositories in scope
   val repos = new SlickRepositories
   import repos._
 

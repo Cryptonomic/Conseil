@@ -50,6 +50,7 @@ object Conseil
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
+      //bring slick-based repositories in scope
       val slickRepos = new SlickRepositories
       import slickRepos._
 
