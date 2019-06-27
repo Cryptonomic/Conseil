@@ -80,39 +80,41 @@ object Conseil
       import routeUtil._
       val route = cors() {
         enableCORS {
-          extractClientIP { ip =>
-            implicit val correlationId: UUID = UUID.randomUUID()
-            recordResponseValues(ip)(materializer, correlationId) {
-              timeoutHandler {
-                validateApiKey { _ =>
-                  logRequest("Conseil", Logging.DebugLevel) {
-                    AppInfo.route
-                  } ~
-                    logRequest("Metadata Route", Logging.DebugLevel) {
-                      platformDiscovery.route
+          implicit val correlationId: UUID = UUID.randomUUID()
+          handleExceptions(loggingExceptionHandler) {
+            extractClientIP { ip =>
+              recordResponseValues(ip)(materializer, correlationId) {
+                timeoutHandler {
+                  validateApiKey { _ =>
+                    logRequest("Conseil", Logging.DebugLevel) {
+                      AppInfo.route
                     } ~
-                    logRequest("Data Route", Logging.DebugLevel) {
-                      data.getRoute ~ data.postRoute
+                      logRequest("Metadata Route", Logging.DebugLevel) {
+                        platformDiscovery.route
+                      } ~
+                      logRequest("Data Route", Logging.DebugLevel) {
+                        data.getRoute ~ data.postRoute
+                      }
+                  } ~
+                    options {
+                      // Support for CORS pre-flight checks.
+                      complete("Supported methods : GET and POST.")
                     }
-                } ~
-                  options {
-                    // Support for CORS pre-flight checks.
-                    complete("Supported methods : GET and POST.")
-                  }
+                }
               }
             }
-          }
 
-        } ~
-          pathPrefix("docs") {
-            pathEndOrSingleSlash {
-              getFromResource("web/index.html")
-            }
           } ~
-          pathPrefix("swagger-ui") {
-            getFromResourceDirectory("web/swagger-ui/")
-          } ~
-          Docs.route
+            pathPrefix("docs") {
+              pathEndOrSingleSlash {
+                getFromResource("web/index.html")
+              }
+            } ~
+            pathPrefix("swagger-ui") {
+              getFromResourceDirectory("web/swagger-ui/")
+            } ~
+            Docs.route
+        }
       }
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
