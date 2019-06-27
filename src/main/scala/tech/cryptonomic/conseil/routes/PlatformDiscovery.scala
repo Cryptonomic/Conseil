@@ -73,8 +73,8 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
     )
 
   override def validatedAttributes[A](
-      response: A => Route,
-      invalidDocs: Documentation
+    response: A => Route,
+    invalidDocs: Documentation
   ): Either[List[AttributesValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")

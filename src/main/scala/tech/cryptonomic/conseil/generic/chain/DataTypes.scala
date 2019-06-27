@@ -38,7 +38,7 @@ object DataTypes {
 
   /** Replaces timestamp represented as Long in predicates with one understood by the SQL */
   private def replaceTimestampInPredicates(path: EntityPath, query: Query, metadataService: MetadataService)(
-      implicit executionContext: ExecutionContext
+    implicit executionContext: ExecutionContext
   ): Future[Query] =
     query.predicates.map { predicate =>
       metadataService.getTableAttributesWithoutUpdatingCache(path).map { maybeAttributes =>
@@ -54,7 +54,7 @@ object DataTypes {
 
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): Future[List[QueryValidationError]] = {
     val fields = query.fields.map('query -> _) :::
           query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
@@ -86,7 +86,7 @@ object DataTypes {
 
   /** Helper method for finding fields with invalid types in aggregation */
   private def findInvalidAggregationTypeFields(query: Query, path: EntityPath, metadataService: MetadataService)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): Future[List[InvalidAggregationFieldForType]] =
     query.aggregation.traverse { aggregation =>
       metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
@@ -100,7 +100,7 @@ object DataTypes {
 
   /** Helper method for finding if queries does not contain filters on key fields or datetime fields */
   private def findInvalidPredicateFilteringFields(query: Query, path: EntityPath, metadataService: MetadataService)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): Future[List[InvalidPredicateFiltering]] =
     metadataService.getEntities(path.up).flatMap { entitiesOpt =>
       val limitedQueryEntity = entitiesOpt.toList.flatten
@@ -144,20 +144,20 @@ object DataTypes {
 
   /** Class representing predicate */
   case class Predicate(
-      field: String,
-      operation: OperationType,
-      set: List[Any] = List.empty,
-      inverse: Boolean = false,
-      precision: Option[Int] = None
+    field: String,
+    operation: OperationType,
+    set: List[Any] = List.empty,
+    inverse: Boolean = false,
+    precision: Option[Int] = None
   )
 
   /** Predicate which is received by the API */
   case class ApiPredicate(
-      field: String,
-      operation: OperationType,
-      set: Option[List[Any]] = Some(List.empty),
-      inverse: Option[Boolean] = Some(false),
-      precision: Option[Int] = None
+    field: String,
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
   ) {
 
     /** Method creating Predicate out of ApiPredicate which is received by the API */
@@ -188,28 +188,28 @@ object DataTypes {
 
   /** Class representing query */
   case class Query(
-      fields: List[String] = List.empty,
-      predicates: List[Predicate] = List.empty,
-      orderBy: List[QueryOrdering] = List.empty,
-      limit: Int = defaultLimitValue,
-      output: OutputType = OutputType.json,
-      aggregation: List[Aggregation] = List.empty
+    fields: List[String] = List.empty,
+    predicates: List[Predicate] = List.empty,
+    orderBy: List[QueryOrdering] = List.empty,
+    limit: Int = defaultLimitValue,
+    output: OutputType = OutputType.json,
+    aggregation: List[Aggregation] = List.empty
   )
 
   /** Class representing predicate used in aggregation */
   case class AggregationPredicate(
-      operation: OperationType,
-      set: List[Any] = List.empty,
-      inverse: Boolean = false,
-      precision: Option[Int] = None
+    operation: OperationType,
+    set: List[Any] = List.empty,
+    inverse: Boolean = false,
+    precision: Option[Int] = None
   )
 
   /** AggregationPredicate that is received by the API */
   case class ApiAggregationPredicate(
-      operation: OperationType,
-      set: Option[List[Any]] = Some(List.empty),
-      inverse: Option[Boolean] = Some(false),
-      precision: Option[Int] = None
+    operation: OperationType,
+    set: Option[List[Any]] = Some(List.empty),
+    inverse: Option[Boolean] = Some(false),
+    precision: Option[Int] = None
   ) {
 
     /** Transforms Aggregation predicate received form API into AggregationPredicate */
@@ -219,9 +219,9 @@ object DataTypes {
 
   /** Aggregation that is received by the API */
   case class ApiAggregation(
-      field: String,
-      function: AggregationType = AggregationType.sum,
-      predicate: Option[ApiAggregationPredicate] = None
+    field: String,
+    function: AggregationType = AggregationType.sum,
+    predicate: Option[ApiAggregationPredicate] = None
   ) {
 
     /** Transforms Aggregation received form API into Aggregation */
@@ -231,9 +231,9 @@ object DataTypes {
 
   /** Class representing aggregation */
   case class Aggregation(
-      field: String,
-      function: AggregationType = AggregationType.sum,
-      predicate: Option[AggregationPredicate] = None
+    field: String,
+    function: AggregationType = AggregationType.sum,
+    predicate: Option[AggregationPredicate] = None
   ) {
 
     /** Method extracting predicate from aggregation */
@@ -243,17 +243,17 @@ object DataTypes {
 
   /** Class representing query got through the REST API */
   case class ApiQuery(
-      fields: Option[List[String]],
-      predicates: Option[List[ApiPredicate]],
-      orderBy: Option[List[QueryOrdering]],
-      limit: Option[Int],
-      output: Option[OutputType],
-      aggregation: Option[List[ApiAggregation]]
+    fields: Option[List[String]],
+    predicates: Option[List[ApiPredicate]],
+    orderBy: Option[List[QueryOrdering]],
+    limit: Option[Int],
+    output: Option[OutputType],
+    aggregation: Option[List[ApiAggregation]]
   ) {
 
     /** Method which validates query fields */
     def validate(entity: EntityPath, metadataService: MetadataService)(
-        implicit ec: ExecutionContext
+      implicit ec: ExecutionContext
     ): Future[Either[List[QueryValidationError], Query]] = {
 
       val patchedPredicates = predicates.getOrElse(List.empty).map(_.toPredicate)

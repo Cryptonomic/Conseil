@@ -272,9 +272,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       } yield written
 
     def writeVotes(
-        proposals: List[Voting.Proposal],
-        blocksWithRolls: List[(Block, List[Voting.BakerRolls])],
-        blocksWithBallots: List[(Block, List[Voting.Ballot])]
+      proposals: List[Voting.Proposal],
+      blocksWithRolls: List[(Block, List[Voting.BakerRolls])],
+      blocksWithBallots: List[(Block, List[Voting.Ballot])]
     ): IO[Option[Int]] = {
       import slickeffect.implicits._
       import cats.syntax.foldable._
@@ -393,9 +393,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       * @param processed how many entities were processed at the current checkpoint
       */
     def logProcessingProgress(
-        entityName: String,
-        totalToProcess: Int,
-        processStartNanos: Long
+      entityName: String,
+      totalToProcess: Int,
+      processStartNanos: Long
     )(processed: Int): IO[Unit] =
       getNanos
         .map(_ - processStartNanos)

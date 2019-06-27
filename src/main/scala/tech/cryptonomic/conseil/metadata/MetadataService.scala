@@ -13,10 +13,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 // service class for metadata
 class MetadataService(
-    config: PlatformsConfiguration,
-    transformation: UnitTransformation,
-    cacheConfiguration: AttributeValuesCacheConfiguration,
-    tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
+  config: PlatformsConfiguration,
+  transformation: UnitTransformation,
+  cacheConfiguration: AttributeValuesCacheConfiguration,
+  tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
 ) {
 
   // checks if attribute is valid
@@ -34,25 +34,25 @@ class MetadataService(
 
   // fetches table attributes
   def getTableAttributes(
-      path: EntityPath
+    path: EntityPath
   )(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
     getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributes)
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(
-      path: EntityPath
+    path: EntityPath
   )(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
     getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
 
   // fetches attribute values
   def getAttributeValues(
-      platform: String,
-      network: String,
-      entity: String,
-      attribute: String,
-      filter: Option[String] = None
+    platform: String,
+    network: String,
+    entity: String,
+    attribute: String,
+    filter: Option[String] = None
   )(
-      implicit apiExecutionContext: ExecutionContext
+    implicit apiExecutionContext: ExecutionContext
   ): Future[Option[Either[List[DataTypes.AttributesValidationError], List[String]]]] = {
 
     val path = NetworkPath(network, PlatformPath(platform))
@@ -85,7 +85,7 @@ class MetadataService(
 
   // fetches attributes with given function
   private def getAttributesHelper(path: EntityPath)(
-      getAttributes: String => Future[Option[List[Attribute]]]
+    getAttributes: String => Future[Option[List[Attribute]]]
   )(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
     exists(path).flatMap {
       case true =>

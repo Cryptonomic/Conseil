@@ -79,9 +79,9 @@ object DataFetcher {
     * The resulting effect will also encode a possible failure in virtue of the implicit MonadError instance that is provided
     */
   def fetcher[Eff[_], In, Out, Err](
-      implicit appErr: ApplicativeError[Eff, Err],
-      flatMap: FlatMap[Eff],
-      fetcher: DataFetcher.Aux[Eff, Err, In, Out, _]
+    implicit appErr: ApplicativeError[Eff, Err],
+    flatMap: FlatMap[Eff],
+    fetcher: DataFetcher.Aux[Eff, Err, In, Out, _]
   ): Kleisli[Eff, In, Out] =
     fetcher.fetchData.onError { case err => Kleisli.pure(fetcher.onDataFetchError(err)) }
       .andThen(
@@ -115,9 +115,9 @@ object DataFetcher {
     * - returns the decodings in a tuple (Output1, Ouput2), e.g. the pair of operations and accounts
     */
   def multiDecodeFetcher[Eff[_]: Apply, Err, Input, Output, Output2, Encoding](
-      implicit
-      fetcher: Aux[Eff, Err, Input, Output, Encoding],
-      additionalDecode: Kleisli[Eff, Encoding, Output2]
+    implicit
+    fetcher: Aux[Eff, Err, Input, Output, Encoding],
+    additionalDecode: Kleisli[Eff, Encoding, Output2]
   ) = new DataFetcher[Eff, Err] {
     type In = Input
     type Out = (Output, Output2)
@@ -169,7 +169,7 @@ object DataFetcher {
     implicit def profunctorInstances[Eff[_]: Functor, Err, Encoding] =
       new Profunctor[Aux[Eff, Err, ?, ?, Encoding]] {
         override def dimap[A, B, C, D](
-            fab: Aux[Eff, Err, A, B, Encoding]
+          fab: Aux[Eff, Err, A, B, Encoding]
         )(f: C => A)(g: B => D): Aux[Eff, Err, C, D, Encoding] =
           new DataFetcher[Eff, Err] {
             type In = C

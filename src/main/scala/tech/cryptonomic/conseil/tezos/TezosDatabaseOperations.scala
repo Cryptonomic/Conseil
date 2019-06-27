@@ -51,7 +51,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeAccounts(
-      accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
+    accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   )(implicit ec: ExecutionContext): DBIO[Int] =
     DBIO
       .sequence(
@@ -128,7 +128,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Removes data from a accounts checkpoint table */
   def cleanAccountsCheckpoint(
-      ids: Option[Set[AccountId]] = None
+    ids: Option[Set[AccountId]] = None
   )(implicit ec: ExecutionContext): DBIO[Int] =
     cleanCheckpoint[
       AccountId,
@@ -144,7 +144,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Removes data from a delegates checkpoint table */
   def cleanDelegatesCheckpoint(
-      pkhs: Option[Set[PublicKeyHash]] = None
+    pkhs: Option[Set[PublicKeyHash]] = None
   )(implicit ec: ExecutionContext): DBIO[Int] =
     cleanCheckpoint[
       PublicKeyHash,
@@ -169,10 +169,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return the database action to run
     */
   def cleanCheckpoint[PK, Row, T <: Table[Row], CheckpointTable <: TableQuery[T]](
-      selection: Option[Set[PK]] = None,
-      tableQuery: CheckpointTable,
-      tableTotal: DBIO[Int],
-      applySelection: (CheckpointTable, Set[PK]) => Query[T, Row, Seq]
+    selection: Option[Set[PK]] = None,
+    tableQuery: CheckpointTable,
+    tableTotal: DBIO[Int],
+    applySelection: (CheckpointTable, Set[PK]) => Query[T, Row, Seq]
   )(implicit ec: ExecutionContext): DBIO[Int] =
     selection match {
       case Some(pks) =>
@@ -236,7 +236,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocksWithAccounts a map with new blocks as keys, and updated account ids as the values
     */
   def writeBlocksAndCheckpointAccounts(
-      blocksWithAccounts: Map[Block, List[AccountId]]
+    blocksWithAccounts: Map[Block, List[AccountId]]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     //ignore the account ids for storage, and prepare the checkpoint account data
     //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
@@ -257,8 +257,8 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that stores both arguments and return a tuple of the row counts inserted
     */
   def writeAccountsAndCheckpointDelegates(
-      accounts: List[BlockTagged[Map[AccountId, Account]]],
-      delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
+    accounts: List[BlockTagged[Map[AccountId, Account]]],
+    delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
   )(implicit ec: ExecutionContext): DBIO[(Int, Option[Int])] = {
     import slickeffect.implicits._
 
@@ -275,7 +275,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that stores delegates and returns the number of saved rows
     */
   def writeDelegatesAndCopyContracts(
-      delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
+    delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
     val delegatesUpdateAction = DBIO.sequence(
       delegates.flatMap {
@@ -302,7 +302,7 @@ object TezosDatabaseOperations extends LazyLogging {
    * into the delegated contracts tables, whose schema should match exactly
    */
   private def copyAccountsToDelegateContracts(
-      contractIds: Set[ContractId]
+    contractIds: Set[ContractId]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     val ids = contractIds.map(_.id)
     val inputAccounts = Tables.Accounts
@@ -337,7 +337,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return                     The average fees for a given operation kind, if it exists
     */
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
     def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[BigDecimal], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
@@ -372,7 +372,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return the operations and the collecting group, if there's one for the given hash, else `None`
     */
   def operationsForGroup(
-      groupHash: String
+    groupHash: String
   )(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
     (for {
       operation <- operationsByGroupHash(groupHash).extract
@@ -455,7 +455,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return               distinct elements in given column as a list
     */
   def selectDistinctLike(table: String, column: String, matchingString: String)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): DBIO[List[String]] =
     sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
       .as[String]
@@ -473,13 +473,13 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return               list of map of [string, any], which represents list of rows as a map of column name to value
     */
   def selectWithPredicates(
-      table: String,
-      columns: List[String],
-      predicates: List[Predicate],
-      ordering: List[QueryOrdering],
-      aggregation: List[Aggregation],
-      outputType: OutputType,
-      limit: Int
+    table: String,
+    columns: List[String],
+    predicates: List[Predicate],
+    ordering: List[QueryOrdering],
+    aggregation: List[Aggregation],
+    outputType: OutputType,
+    limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
 
     val q = makeQuery(table, columns, aggregation)

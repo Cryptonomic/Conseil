@@ -57,9 +57,9 @@ object JsonParser {
    *
    * */
   case class JsonType(
-      prim: String,
-      args: Option[List[Either[JsonExpression, Nil.type]]],
-      annots: Option[List[String]] = None
+    prim: String,
+    args: Option[List[Either[JsonExpression, Nil.type]]],
+    annots: Option[List[String]] = None
   ) extends JsonExpression {
     override def toMichelsonExpression =
       MichelsonType(
@@ -118,9 +118,9 @@ object JsonParser {
   }
 
   case class JsonSimpleInstruction(
-      prim: String,
-      args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None,
-      annots: Option[List[String]] = None
+    prim: String,
+    args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None,
+    annots: Option[List[String]] = None
   ) extends JsonInstruction {
     override def toMichelsonInstruction =
       MichelsonSingleInstruction(

@@ -51,10 +51,10 @@ object MetadataCaching {
 
 /** Class providing caching for metadata */
 class MetadataCaching[F[_]](
-    cachingStatus: Ref[F, CachingStatus],
-    attributesCache: MVar[F, AttributesCache],
-    entitiesCache: MVar[F, EntitiesCache],
-    attributeValuesCache: MVar[F, AttributeValuesCache]
+  cachingStatus: Ref[F, CachingStatus],
+  attributesCache: MVar[F, AttributesCache],
+  entitiesCache: MVar[F, EntitiesCache],
+  attributeValuesCache: MVar[F, AttributeValuesCache]
 )(implicit monad: Monad[F]) {
 
   import cats.implicits._

@@ -38,20 +38,20 @@ object RpcHandler {
 
   /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
   def runGet[Eff[_], Command, Response](
-      command: Command
+    command: Command
   )(
-      implicit
-      rpc: RpcHandler[Eff, Command, Response]
+    implicit
+    rpc: RpcHandler[Eff, Command, Response]
   ): Eff[Response] =
     rpc.getQuery.run(command)
 
   /** A static call that uses the implicit `RpcHandler` instance available for the expected parameter types */
   def runPost[Eff[_], Command, Response, PostPayload](
-      command: Command,
-      payload: Option[PostPayload] = None
+    command: Command,
+    payload: Option[PostPayload] = None
   )(
-      implicit
-      rpc: Aux[Eff, Command, Response, PostPayload]
+    implicit
+    rpc: Aux[Eff, Command, Response, PostPayload]
   ): Eff[Response] =
     rpc.postQuery.run((command, payload))
 

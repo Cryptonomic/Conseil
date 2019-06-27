@@ -27,10 +27,10 @@ trait LorreAppConfig {
   implicit private val blockHashRead: Read[BlockHash] = Read.reads(BlockHash)
 
   private case class ArgumentsConfig(
-      depth: Depth = Newest,
-      verbose: Boolean = false,
-      headHash: Option[BlockHash] = None,
-      network: String = ""
+    depth: Depth = Newest,
+    verbose: Boolean = false,
+    headHash: Option[BlockHash] = None,
+    network: String = ""
   )
 
   private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
@@ -60,7 +60,7 @@ trait LorreAppConfig {
 
   /** Reads all configuration upstart, will print all errors encountered during loading */
   protected def loadApplicationConfiguration(
-      commandLineArgs: Array[String]
+    commandLineArgs: Array[String]
   ): ConfigReader.Result[CombinedConfiguration] = {
 
     /** Use the pureconfig convention to handle configuration from the command line */
@@ -102,11 +102,11 @@ object LorreAppConfig {
 
   /** Collects all different aspects involved for Lorre */
   final case class CombinedConfiguration(
-      lorre: LorreConfiguration,
-      tezos: TezosConfiguration,
-      nodeTimeouts: NetworkTimeoutConfiguration,
-      streamingClientPool: HttpStreamingConfiguration,
-      batching: BatchFetchConfiguration,
-      verbose: VerboseOutput
+    lorre: LorreConfiguration,
+    tezos: TezosConfiguration,
+    nodeTimeouts: NetworkTimeoutConfiguration,
+    streamingClientPool: HttpStreamingConfiguration,
+    batching: BatchFetchConfiguration,
+    verbose: VerboseOutput
   )
 }

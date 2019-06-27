@@ -35,7 +35,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly generates a number of accounts with associated block data */
   def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(
-      implicit randomSeed: RandomSeed
+    implicit randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
@@ -58,7 +58,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly generates a number of delegates with associated block data */
   def generateDelegates(delegatedHashes: List[String], blockHash: BlockHash, blockLevel: Int)(
-      implicit randomSeed: RandomSeed
+    implicit randomSeed: RandomSeed
   ): BlockTagged[Map[PublicKeyHash, Delegate]] = {
     require(
       delegatedHashes.nonEmpty,
@@ -167,9 +167,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
   def generateSingleBlock(
-      atLevel: Int,
-      atTime: ZonedDateTime,
-      balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty
+    atLevel: Int,
+    atTime: ZonedDateTime,
+    balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty
   )(implicit randomSeed: RandomSeed): Block = {
     import TezosOptics.Blocks._
     import mouse.any._
@@ -256,7 +256,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create an operation group for each block passed in, using random values, with the requested copies of operations */
   def generateOperationGroup(block: Block, generateOperations: Boolean)(
-      implicit randomSeed: RandomSeed
+    implicit randomSeed: RandomSeed
   ): OperationsGroup = {
 
     //custom hash generator with predictable seed
@@ -274,7 +274,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create an empty operation group for each block passed in, using random values */
   def generateOperationGroupRows(
-      blocks: BlocksRow*
+    blocks: BlocksRow*
   )(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
     require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
 
@@ -298,9 +298,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create operations related to a specific group, with random data */
   def generateOperationsForGroup(
-      block: BlocksRow,
-      group: OperationGroupsRow,
-      howMany: Int = 3
+    block: BlocksRow,
+    group: OperationGroupsRow,
+    howMany: Int = 3
   ): List[Tables.OperationsRow] =
     List.fill(howMany) {
       Tables.OperationsRow(

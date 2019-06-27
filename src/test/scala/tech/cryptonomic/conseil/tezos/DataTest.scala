@@ -113,7 +113,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
   val fakeQPO: DataOperations = new DataOperations {
     override def queryWithPredicates(tableName: String, query: Query)(
-        implicit ec: ExecutionContext
+      implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
   }

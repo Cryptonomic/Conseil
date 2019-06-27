@@ -15,21 +15,21 @@ trait ApiFilterFromQueryString { self: algebra.JsonSchemaEntities =>
 
   /** Query params type alias */
   type QueryParams = (
-      Option[Int],
-      List[String],
-      List[Int],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      List[String],
-      Option[String],
-      Option[String]
+    Option[Int],
+    List[String],
+    List[Int],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    List[String],
+    Option[String],
+    Option[String]
   )
 
   /** Function for extracting query string with query params */

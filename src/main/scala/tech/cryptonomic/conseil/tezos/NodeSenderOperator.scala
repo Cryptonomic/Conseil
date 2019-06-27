@@ -69,9 +69,9 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return           Operation group enriched with a key reveal if necessary
     */
   def handleKeyRevealForOperations(
-      operations: List[AnyMap],
-      managerKey: ManagerKey,
-      keyStore: KeyStore
+    operations: List[AnyMap],
+    managerKey: ManagerKey,
+    keyStore: KeyStore
   ): List[AnyMap] =
     managerKey.key match {
       case Some(_) => operations
@@ -93,11 +93,11 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return           Forged operation bytes (as a hex string)
     */
   def forgeOperations[Eff[_]: PostHandler: Functor](
-      blockHead: Block,
-      account: Account,
-      operations: List[AnyMap],
-      keyStore: KeyStore,
-      fee: Option[Float]
+    blockHead: Block,
+    account: Account,
+    operations: List[AnyMap],
+    keyStore: KeyStore,
+    fee: Option[Float]
   ): Eff[String] = {
     val payload: AnyMap = fee match {
       case Some(feeAmt) =>
@@ -159,10 +159,10 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return                     Array of contract handles
     */
   def applyOperation[Eff[_]: PostHandler: Functor](
-      blockHead: Block,
-      operationGroupHash: String,
-      forgedOperationGroup: String,
-      signedOpGroup: SignedOperationGroup
+    blockHead: Block,
+    operationGroupHash: String,
+    forgedOperationGroup: String,
+    signedOpGroup: SignedOperationGroup
   ): Eff[AppliedOperation] = {
     val payload: AnyMap = Map(
       "pred_block" -> blockHead.data.header.predecessor,
@@ -200,15 +200,15 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return           The ID of the created operation group
     */
   def sendOperation[Eff[_]: PostHandler: MonadThrow](
-      operations: List[AnyMap],
-      keyStore: KeyStore,
-      fee: Option[Float]
+    operations: List[AnyMap],
+    keyStore: KeyStore,
+    fee: Option[Float]
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): Eff[OperationResult] =
     for {
       blockHead <- getBlockHead
@@ -232,16 +232,16 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return           The ID of the created operation group
     */
   def sendTransactionOperation[Eff[_]: PostHandler: MonadThrow](
-      keyStore: KeyStore,
-      to: String,
-      amount: Float,
-      fee: Float
+    keyStore: KeyStore,
+    to: String,
+    amount: Float,
+    fee: Float
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): Eff[OperationResult] = {
     val transactionMap: AnyMap = Map(
       "kind" -> "transaction",
@@ -261,15 +261,15 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return
     */
   def sendDelegationOperation[Eff[_]: PostHandler: MonadThrow](
-      keyStore: KeyStore,
-      delegate: String,
-      fee: Float
+    keyStore: KeyStore,
+    delegate: String,
+    fee: Float
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): Eff[OperationResult] = {
     val transactionMap: AnyMap = Map(
       "kind" -> "delegation",
@@ -290,18 +290,18 @@ class NodeSenderOperator(network: String, batchConf: BatchFetchConfiguration, so
     * @return
     */
   def sendOriginationOperation[Eff[_]: PostHandler: MonadThrow](
-      keyStore: KeyStore,
-      amount: Float,
-      delegate: String,
-      spendable: Boolean,
-      delegatable: Boolean,
-      fee: Float
+    keyStore: KeyStore,
+    amount: Float,
+    delegate: String,
+    spendable: Boolean,
+    delegatable: Boolean,
+    fee: Float
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[Eff, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[Eff, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[Eff, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): Eff[OperationResult] = {
     val transactionMap: AnyMap = Map(
       "kind" -> "origination",

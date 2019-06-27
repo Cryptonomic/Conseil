@@ -72,7 +72,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return           Accounts
     */
   def getAllAccountsForBlock[F[_]: GetHandler: MonadThrow](blockHash: BlockHash)(
-      implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
   ): F[Map[AccountId, Account]] =
     for {
       jsonEncodedAccounts <- RpcHandler.runGet(s"blocks/${blockHash.value}/context/contracts")
@@ -88,7 +88,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return           the list of accounts, indexed by AccountId
     */
   def getAccountsForBlock[F[_]: MonadThrow](accountIds: List[AccountId], blockHash: BlockHash)(
-      implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
   ): F[Map[AccountId, Account]] = {
     import TezosOptics.Accounts.{scriptLens, storageLens}
     import cats.instances.list._
@@ -126,16 +126,15 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
    * @param keyIndex the mapping of all keys requested to the block they're referenced by
    */
   private def getBlockRelatedEntities[F[_]: ApplicativeThrow: Concurrent, Key, Entity](
-      loadEntitiesByBlock: Reader[BlockHash, Stream[F, Key] => Stream[F, (Key, Entity)]],
-      keyIndex: Map[Key, BlockReference]
+    loadEntitiesByBlock: Reader[BlockHash, Stream[F, Key] => Stream[F, (Key, Entity)]],
+    keyIndex: Map[Key, BlockReference]
   ): Stream[F, BlockTagged[Map[Key, Entity]]] = {
     import TezosTypes.Syntax._
 
     val reverseIndex =
       keyIndex.groupBy {
         case (key, (blockHash, level)) => blockHash
-      }.mapValues(_.keySet)
-        .toMap
+      }.mapValues(_.keySet).toMap
 
     val keyStreamsByBlock = reverseIndex.mapValues(keys => Stream.fromIterator(keys.iterator))
 
@@ -164,9 +163,9 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return the stream of accounts, indexed by AccountId
     */
   def getAccountsForBlock[F[_]: ApplicativeThrow: Concurrent](
-      accountIds: Stream[F, AccountId]
+    accountIds: Stream[F, AccountId]
   )(
-      implicit fetcherForBlock: NodeFetcherThrow[F, AccountId, Option[Account]]
+    implicit fetcherForBlock: NodeFetcherThrow[F, AccountId, Option[Account]]
   ): Stream[F, (AccountId, Account)] = {
     import TezosOptics.Accounts.{scriptLens, storageLens}
 
@@ -219,9 +218,9 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return Accounts with their corresponding block data
     */
   def getAccounts[F[_]: ApplicativeThrow: Concurrent](
-      accountsBlocksIndex: Map[AccountId, BlockReference]
+    accountsBlocksIndex: Map[AccountId, BlockReference]
   )(
-      implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, AccountId, Option[Account]]]
   ): Stream[F, BlockTagged[Map[AccountId, Account]]] =
     getBlockRelatedEntities[F, AccountId, Account](
       //maps the Reader, so that, applying it to a hash, it returns the block-specific fetch function
@@ -242,9 +241,9 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return the stream of delegates, indexed by PublicKeyHash
     */
   def getDelegatesForBlock[F[_]: ApplicativeThrow: Concurrent](
-      delegateKeys: Stream[F, PublicKeyHash]
+    delegateKeys: Stream[F, PublicKeyHash]
   )(
-      implicit fetcherForBlock: NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]
+    implicit fetcherForBlock: NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]
   ): Stream[F, (PublicKeyHash, Delegate)] = {
 
     val logError: PartialFunction[Throwable, Stream[F, Unit]] = {
@@ -288,9 +287,9 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return Delegates with their corresponding block data
     */
   def getDelegates[F[_]: MonadThrow: Concurrent](
-      keysBlocksIndex: Map[PublicKeyHash, BlockReference]
+    keysBlocksIndex: Map[PublicKeyHash, BlockReference]
   )(
-      implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]]
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, PublicKeyHash, Option[Delegate]]]
   ): Stream[F, BlockTagged[Map[PublicKeyHash, Delegate]]] =
     getBlockRelatedEntities[F, PublicKeyHash, Delegate](
       //maps the Reader, so that, applying it to a hash, it returns the block-specific fetch function
@@ -308,7 +307,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return          The list of operations
     */
   def getAllOperationsForBlock[F[_]: ApplicativeThrow: FlatMap](block: BlockData)(
-      implicit operationsFetcher: NodeFetcherThrow[F, BlockHash, List[OperationsGroup]]
+    implicit operationsFetcher: NodeFetcherThrow[F, BlockHash, List[OperationsGroup]]
   ): F[List[OperationsGroup]] =
     if (isGenesis(block))
       List.empty.pure //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -320,7 +319,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return          The list of operations
     */
   def getAllOperationsAndAccountsForBlock[F[_]: ApplicativeThrow: FlatMap](block: BlockData)(
-      implicit additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])]
+    implicit additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])]
   ): F[(List[OperationsGroup], List[AccountId])] =
     if (isGenesis(block))
       (List.empty[OperationsGroup], List.empty[AccountId]).pure //This is a workaround for the Tezos node returning a 404 error when asked for the operations or accounts of the genesis blog, which seems like a bug.
@@ -328,12 +327,12 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
 
   /** Fetches current votes information at the specific block */
   def getCurrentVotesForBlock[F[_]: ApplicativeThrow: FlatMap](
-      block: BlockData,
-      offset: Option[Offset] = None
+    block: BlockData,
+    offset: Option[Offset] = None
   )(
-      implicit
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[CurrentVotes] =
     if (isGenesis(block)) CurrentVotes.empty.pure
     else {
@@ -344,10 +343,10 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
   def getVotingDetails[F[_]: MonadThrow](block: Block)(
-      implicit
-      proposalFetcher: NodeFetcherThrow[F, Block, List[ProtocolId]],
-      bakersFetch: NodeFetcherThrow[F, Block, List[Voting.BakerRolls]],
-      ballotsFetcher: NodeFetcherThrow[F, Block, List[Voting.Ballot]]
+    implicit
+    proposalFetcher: NodeFetcherThrow[F, Block, List[ProtocolId]],
+    bakersFetch: NodeFetcherThrow[F, Block, List[Voting.BakerRolls]],
+    ballotsFetcher: NodeFetcherThrow[F, Block, List[Voting.Ballot]]
   ): F[(Voting.Proposal, BlockWithMany[Voting.BakerRolls], BlockWithMany[Voting.Ballot])] = {
 
     //adapt the proposal protocols result to include the block
@@ -375,13 +374,13 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return the block data
     */
   private def getBlockWithAccounts[F[_]: MonadThrow](
-      offset: Option[Offset] = None
+    offset: Option[Offset] = None
   )(
-      implicit
-      blockDataFetcher: NodeFetcherThrow[F, Offset, BlockData],
-      additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetcher: NodeFetcherThrow[F, Offset, BlockData],
+    additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[(Block, List[AccountId])] = {
     import TezosTypes.Lenses._
 
@@ -413,14 +412,14 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return the block data
     */
   def getBlock[F[_]: MonadThrow](
-      hash: BlockHash,
-      offset: Option[Offset] = None
+    hash: BlockHash,
+    offset: Option[Offset] = None
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[Block] = {
     //bring the block fetcher for the specific reference hash into scope, so that each getBlockWithAccount can re-use it
     implicit val blockFetcher = blockDataFetchProvider(hash)
@@ -434,11 +433,11 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return the block data
     */
   def getBareBlock[F[_]: MonadThrow](
-      hash: BlockHash,
-      offset: Option[Offset] = None
+    hash: BlockHash,
+    offset: Option[Offset] = None
   )(
-      implicit
-      fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]]
+    implicit
+    fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]]
   ): F[BlockData] = {
     implicit val blockFetcher = fetchProvider(hash)
     fetcher.run(offset.getOrElse(0))
@@ -448,18 +447,18 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return Block head
     */
   def getBlockHead[F[_]: MonadThrow](
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[Block] = getBlock(blockHeadHash)
 
   /** Gets just the block head without associated data.
     * @return Block head
     */
   def getBareBlockHead[F[_]: MonadThrow](
-      implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]]
+    implicit fetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]]
   ): F[BlockData] =
     getBareBlock(blockHeadHash)
 
@@ -468,14 +467,14 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return Blocks and Account hashes involved
     */
   def getBlocksNotInDatabase[F[_]: MonadThrow: Concurrent](
-      fetchLocalMaxLevel: => F[Int]
+    fetchLocalMaxLevel: => F[Int]
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]],
-      resultMonoid: Monoid[BlockFetchingResults[F]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]],
+    resultMonoid: Monoid[BlockFetchingResults[F]]
   ): F[(BlockFetchingResults[F], Int)] =
     for {
       maxLevel <- fetchLocalMaxLevel
@@ -509,14 +508,14 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return Blocks and Account hashes involved, paired with the computed result size, based on a level range
     */
   def getLatestBlocks[F[_]: MonadThrow: Concurrent](
-      depth: Option[Int] = None,
-      headHash: Option[BlockHash] = None
+    depth: Option[Int] = None,
+    headHash: Option[BlockHash] = None
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): F[(BlockFetchingResults[F], Int)] =
     headHash.fold(getBlockHead)(getBlock(_)).map { maxHead =>
       val headLevel = maxHead.data.header.level
@@ -531,14 +530,14 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
     * @return the list of blocks with relative account ids touched in the operations
     */
   private def getBlocks[F[_]: MonadThrow: Concurrent](
-      reference: (BlockHash, Int),
-      levelRange: Range.Inclusive
+    reference: (BlockHash, Int),
+    levelRange: Range.Inclusive
   )(
-      implicit
-      blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
-      additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
-      quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
-      proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
+    implicit
+    blockDataFetchProvider: Reader[BlockHash, NodeFetcherThrow[F, Offset, BlockData]],
+    additionalDataFetcher: NodeFetcherThrow[F, BlockHash, (List[OperationsGroup], List[AccountId])],
+    quorumFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[Int]],
+    proposalFetcher: NodeFetcherThrow[F, (BlockHash, Option[Offset]), Option[ProtocolId]]
   ): BlockFetchingResults[F] = {
 
     val (hashRef, levelRef) = reference
@@ -584,7 +583,7 @@ class NodeOperator(val network: String, batchConf: BatchFetchConfiguration) exte
    *   specific block or account.
    */
   private[this] def toMichelsonScript[T <: MichelsonElement: Parser, CTX: Show](
-      json: String
+    json: String
   )(implicit tag: ClassTag[T], ctx: CTX): String = {
     import cats.syntax.show._
 

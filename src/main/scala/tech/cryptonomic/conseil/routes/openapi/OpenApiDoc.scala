@@ -39,8 +39,8 @@ object OpenApiDoc
     * In this case if query fails to validate it will return 400 Bad Request.
     * */
   override def validated[A](
-      response: List[OpenApiDoc.DocumentedResponse],
-      invalidDocs: Documentation
+    response: List[OpenApiDoc.DocumentedResponse],
+    invalidDocs: Documentation
   ): List[OpenApiDoc.DocumentedResponse] =
     response :+ OpenApiDoc.DocumentedResponse(
           status = 400,
@@ -75,8 +75,8 @@ object OpenApiDoc
     DocumentedJsonSchema.Primitive("Any - not yet supported")
 
   override def validatedAttributes[A](
-      response: List[OpenApiDoc.DocumentedResponse],
-      invalidDocs: Documentation
+    response: List[OpenApiDoc.DocumentedResponse],
+    invalidDocs: Documentation
   ): List[OpenApiDoc.DocumentedResponse] =
     response :+ OpenApiDoc.DocumentedResponse(
           status = 400,

@@ -98,8 +98,8 @@ class TezosRemoteInstancesTest
       .bracket(
         use = _ => IO(body)
       )(
-        release = binding =>
-          IO.fromFuture(IO(binding.terminate(10.seconds))).void <* IO(println("Test server terminated"))
+        release =
+          binding => IO.fromFuture(IO(binding.terminate(10.seconds))).void <* IO(println("Test server terminated"))
       )
       .unsafeRunTimed(20.seconds)
   }

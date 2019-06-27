@@ -29,7 +29,7 @@ object TezosRemoteInstances {
        * prevent the future being run ahead-of-time
        */
       implicit def ioRpcHandlerInstance(
-          implicit context: TezosNodeContext
+        implicit context: TezosNodeContext
       ): RpcHandler.Aux[IO, String, String, JsonString] =
         new RpcHandler[IO, UrlPath, JsonContent] {
           val futureRpc = futureRpcHandlerInstance
@@ -66,9 +66,9 @@ object TezosRemoteInstances {
 
     /** Describes configurations for the tezos node, needed to actually execute the calls */
     case class TezosNodeContext(
-        tezosConfig: TezosConfiguration,
-        timeoutConfig: NetworkTimeoutConfiguration,
-        streamingConfig: HttpStreamingConfiguration
+      tezosConfig: TezosConfiguration,
+      timeoutConfig: NetworkTimeoutConfiguration,
+      streamingConfig: HttpStreamingConfiguration
     )(implicit val system: ActorSystem) {
 
       object ShutdownComplete extends ShutdownComplete
@@ -87,7 +87,7 @@ object TezosRemoteInstances {
 
       /** Allows to stop calling the service when a shutdown is initiated, short-circuiting the response */
       def withRejectionControl[T, Eff[_], Err](
-          error: => Err
+        error: => Err
       )(call: => Eff[T])(implicit errorEffect: ApplicativeError[Eff, Err]): Eff[T] =
         if (rejectingCalls.get)
           errorEffect.raiseError(error)

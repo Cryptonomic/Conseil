@@ -27,11 +27,11 @@ trait TezosNodeOperatorTestImplicits {
     * and make them available implicitly
     */
   protected def withDummyFetchers[Eff[_]](
-      testCode: TestFetcher[Eff, BlockHash, (List[OperationsGroup], List[AccountId])] => TestFetcher[
-        Eff,
-        (BlockHash, Option[Offset]),
-        Option[Int]
-      ] => TestFetcher[Eff, (BlockHash, Option[Offset]), Option[TezosTypes.ProtocolId]] => Any
+    testCode: TestFetcher[Eff, BlockHash, (List[OperationsGroup], List[AccountId])] => TestFetcher[
+      Eff,
+      (BlockHash, Option[Offset]),
+      Option[Int]
+    ] => TestFetcher[Eff, (BlockHash, Option[Offset]), Option[TezosTypes.ProtocolId]] => Any
   )(implicit fk: Id ~> Eff) = {
     val extraBlockFetcher = dummyFetcher[Eff, BlockHash, (List[OperationsGroup], List[AccountId])](out = (Nil, Nil))
     val quorumFetcher =

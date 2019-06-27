@@ -31,8 +31,8 @@ trait TezosNodeFetchersLogging extends LazyLogging {
 
   /* error logging for the decode operation, used when we expect the failure to be recovered */
   protected def logWarnOnJsonDecoding[Eff[_]: Applicative](
-      message: String,
-      ignore: Boolean = false
+    message: String,
+    ignore: Boolean = false
   ): PartialFunction[Throwable, Eff[Unit]] = {
     case decodingError: io.circe.Error if ignore =>
       ().pure[Eff]
@@ -83,8 +83,8 @@ trait BlocksDataFetchers {
    * @tparam Decoded the output, decoded from tezos json response
    */
   private def makeIOFetcherFromRpc[In, Decoded](
-      makeCommand: In => String,
-      decodeJson: String => IO[Decoded]
+    makeCommand: In => String,
+    decodeJson: String => IO[Decoded]
   ): IOFetcher[In, Decoded] = {
     val genericCommandFetcher = new DataFetcher[IO, Throwable] {
 
@@ -308,8 +308,8 @@ trait AccountsDataFetchers {
   type IOFetcher[In, Out] = DataFetcher.Aux[IO, Throwable, In, Out, String]
 
   def makeIOFetcherFromRpc[In, Decoded: Decoder](
-      makeCommand: In => String,
-      decodeJson: String => IO[Decoded]
+    makeCommand: In => String,
+    decodeJson: String => IO[Decoded]
   ): IOFetcher[In, Decoded] = {
     val genericCommandFetcher = new DataFetcher[IO, Throwable] {
 
