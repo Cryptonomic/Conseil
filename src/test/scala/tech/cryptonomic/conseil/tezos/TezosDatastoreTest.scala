@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{Matchers, WordSpec}
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalamock.scalatest.MockFactory
 import com.typesafe.config.ConfigFactory
 import slick.jdbc.H2Profile.api._
@@ -17,7 +17,13 @@ import tech.cryptonomic.conseil.tezos.repositories.{
 import tech.cryptonomic.conseil.tezos.Tables.{BalanceUpdatesRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockTagged, ContractId}
 
-class TezosDatastoreTest extends WordSpec with MockFactory with TezosDataGeneration with ScalaFutures with Matchers {
+class TezosDatastoreTest
+    extends WordSpec
+    with MockFactory
+    with TezosDataGeneration
+    with ScalaFutures
+    with Matchers
+    with IntegrationPatience {
 
   private def dbio[T](t: T): DBIO[T] = DBIO.successful(t)
 
