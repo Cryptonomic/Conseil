@@ -51,7 +51,6 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
           requestMap <- requestInfoMap.take
           _ <- requestInfoMap.put(requestMap.filterNot(_._1 == correlationId))
         } yield requestMap(correlationId).logResponse(response)).unsafeRunAsyncAndForget()
-
         e.printStackTrace()
         complete(response)
     }
@@ -77,16 +76,14 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
     startTime: Long
   ) {
     def logResponse(response: HttpResponse): Unit = {
-
       MDC.put("httpMethod", httpMethod)
       MDC.put("requestBody", requestBody)
       MDC.put("clientIp", clientIp)
       MDC.put("path", path)
       MDC.put("apiVersion", apiVersion)
       MDC.put("apiKey", apiKey)
-      val requestStartTime = System.currentTimeMillis()
       val requestEndTime = System.currentTimeMillis()
-      val responseTime = requestEndTime - requestStartTime
+      val responseTime = requestEndTime - startTime
       MDC.put("responseTime", responseTime.toString)
       MDC.put("responseCode", response.status.value)
       asyncLogger.info("HTTP request")
@@ -98,15 +95,6 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
   object RequestValues {
     def fromCtxAndIp(ctx: RequestContext, ip: RemoteAddress)(implicit materializer: Materializer): RequestValues = {
       import scala.concurrent.duration._
-      //      val apiVersion = if (ctx.request.uri.path.toString().startsWith("/v2")) "v2" else "v1"
-      //      MDC.put("httpMethod", ctx.request.method.value)
-      //      MDC.put("requestBody", ctx.request.entity.toStrict(1000.millis).value.get.get.data.utf8String)
-      //      MDC.put("clientIp", ip.toOption.map(_.toString).getOrElse("unknown"))
-      //      MDC.put("path", ctx.request.uri.path.toString())
-      //      MDC.put("apiVersion", apiVersion)
-      //      MDC.put("apiKey", ctx.request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""))
-      //      val requestStartTime = System.currentTimeMillis()
-      //      MDC.put("tmpStartTime", requestStartTime.toString)
       RequestValues(
         httpMethod = ctx.request.method.value,
         requestBody = ctx.request.entity.toStrict(1000.millis).value.get.get.data.utf8String,
