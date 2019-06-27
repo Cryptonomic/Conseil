@@ -69,9 +69,10 @@ trait BlocksDataFetchers {
     private def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
 
     //fetch a future stream of values
-    override val fetchData =
+    override val fetchData = {
       Kleisli(
-        offsets =>
+        offsets => {
+          logger.info(s"""Fetching blocks for offsets ${offsets.min} to ${offsets.max}""")
           node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -84,7 +85,9 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
+    }
 
     // decode with `JsonDecoders`
     override val decodeData = Kleisli { json =>
@@ -115,9 +118,10 @@ trait BlocksDataFetchers {
 
     private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
 
-    override val fetchData =
+    override val fetchData = {
       Kleisli(
-        hashes =>
+        hashes => {
+          logger.info("Fetching operations")
           node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -129,7 +133,9 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
+    }
 
     override val decodeData = Kleisli(
       json =>
@@ -161,7 +167,8 @@ trait BlocksDataFetchers {
 
     override val fetchData =
       Kleisli(
-        hashes =>
+        hashes => {
+          logger.info("Fetching current quorum")
           node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -173,6 +180,7 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
 
     override val decodeData = Kleisli(
@@ -200,7 +208,8 @@ trait BlocksDataFetchers {
 
     override val fetchData =
       Kleisli(
-        hashes =>
+        hashes => {
+          logger.info("Fetching current proposal")
           node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -212,6 +221,7 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
 
     override val decodeData = Kleisli(
@@ -242,7 +252,8 @@ trait BlocksDataFetchers {
 
     override val fetchData =
       Kleisli(
-        blocks =>
+        blocks => {
+          logger.info("Fetching all proposals")
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -254,6 +265,7 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
 
     override val decodeData = Kleisli { json =>
@@ -284,7 +296,8 @@ trait BlocksDataFetchers {
 
     override val fetchData =
       Kleisli(
-        blocks =>
+        blocks => {
+          logger.info("Fetching bakers")
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -296,6 +309,7 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
 
     override val decodeData = Kleisli { json =>
@@ -326,7 +340,8 @@ trait BlocksDataFetchers {
 
     override val fetchData =
       Kleisli(
-        blocks =>
+        blocks => {
+          logger.info("Fetching ballots")
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
@@ -338,6 +353,7 @@ trait BlocksDataFetchers {
                 )
                 .pure[Future]
           }
+        }
       )
 
     override val decodeData = Kleisli { json =>
@@ -406,7 +422,8 @@ trait AccountsDataFetchers {
     private val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
 
     override val fetchData = Kleisli(
-      ids =>
+      ids => {
+        logger.info("Fetching accounts")
         node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency).onError {
           case err =>
             logger
@@ -418,6 +435,7 @@ trait AccountsDataFetchers {
               )
               .pure[Future]
         }
+      }
     )
 
     override def decodeData = Kleisli { json =>
@@ -441,7 +459,8 @@ trait AccountsDataFetchers {
     private val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
 
     override val fetchData = Kleisli(
-      keyHashes =>
+      keyHashes => {
+        logger.info("Fetching delegated contracts")
         node.runBatchedGetQuery(network, keyHashes, makeUrl, accountsFetchConcurrency).onError {
           case err =>
             logger
@@ -453,6 +472,7 @@ trait AccountsDataFetchers {
               )
               .pure[Future]
         }
+      }
     )
 
     override def decodeData = Kleisli { json =>
