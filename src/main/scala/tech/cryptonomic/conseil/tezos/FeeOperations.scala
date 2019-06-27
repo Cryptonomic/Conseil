@@ -2,10 +2,8 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
-//import tech.cryptonomic.conseil.Lorre.db
 import tech.cryptonomic.conseil.tezos.repositories.FeesRepository
 import scala.concurrent.ExecutionContext
-// import scala.util.{Failure, Success}
 
 /**
   * Helper classes and functions used for average fee calculations.
