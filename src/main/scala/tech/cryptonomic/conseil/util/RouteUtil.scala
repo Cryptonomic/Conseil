@@ -16,7 +16,6 @@ import org.slf4j.{LoggerFactory, MDC}
 
 class RouteUtil(implicit concurrent: Concurrent[IO]) {
 
-
   private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] = MVar.of[IO, Map[UUID, RequestValues]](Map.empty[UUID, RequestValues]).unsafeRunSync()
   /** Async logger */
   private val asyncLogger = LoggerFactory.getLogger("ASYNC_LOGGER")
@@ -29,7 +28,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
         requestMap <- requestInfoMap.take
         value = RequestValues.fromCtxAndIp(ctx, ip)
         _ <- requestInfoMap.put(requestMap.updated(correlationId, value))
-      } yield ()).unsafeToFuture()
+      } yield ()).unsafeRunSync()
 
       val response = BasicDirectives.mapResponse { resp =>
         (for {
