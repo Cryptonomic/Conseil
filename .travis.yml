@@ -1,4 +1,4 @@
 language: scala
 scala:
-   - 2.12.4
+   - 2.12.8
 after_success: "sbt coverage test coverageReport coveralls"
