@@ -423,7 +423,7 @@ trait AccountsDataFetchers {
 
     override val fetchData = Kleisli(
       ids => {
-        logger.info("Fetching accounts")
+        logger.info("Fetching accounts for block {}", referenceBlock.value)
         node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency).onError {
           case err =>
             logger
@@ -460,7 +460,7 @@ trait AccountsDataFetchers {
 
     override val fetchData = Kleisli(
       keyHashes => {
-        logger.info("Fetching delegated contracts")
+        logger.info("Fetching delegated contracts for block {}", referenceBlock.value)
         node.runBatchedGetQuery(network, keyHashes, makeUrl, accountsFetchConcurrency).onError {
           case err =>
             logger

@@ -303,6 +303,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val saveAccounts = db.run(TezosDb.getLatestAccountsFromCheckpoint) map { checkpoints =>
+          import cats.instances.future._
+          import cats.instances.list._
+          import cats.syntax.traverse._
+
           logger.info(
             "I loaded all checkpointed accounts from the DB and will proceed to fetch updated accounts information from the chain"
           )
@@ -312,13 +316,19 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
            * The size and partition of results is driven by the NodeOperator itself, were each page contains a
            * "thunked" future of the result.
            * Such future will be actually started only as the page iterator is scanned, one element at the time
+           *
+           * As pagination is now based on blocks, it's convenient to collect a relevant number of accounts
+           * first and then process them all
            */
-          pages.foldLeft(Monoid[(Int, Option[Int])].empty) { (processed, nextPage) =>
-            //wait for each page to load, before looking at the next, thus  starting the new computation
-            val justDone =
-              Await.result(processAccountsPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
-            processed |+| justDone
-          } <| logOutcome.tupled
+          pages
+            .grouped(100)
+            .map(_.toList.sequence.map(_.flatten))
+            .foldLeft(Monoid[(Int, Option[Int])].empty) { (processed, nextPage) =>
+              //wait for each page to load, before looking at the next, thus  starting the new computation
+              val justDone =
+                Await.result(processAccountsPage(nextPage), atMost = batchingConf.accountPageProcessingTimeout)
+              processed |+| justDone
+            } <| logOutcome.tupled
 
           checkpoints
         }
@@ -365,6 +375,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val saveDelegates = db.run(TezosDb.getLatestDelegatesFromCheckpoint) map { checkpoints =>
+          import cats.instances.future._
+          import cats.instances.list._
+          import cats.syntax.traverse._
+
           logger.info(
             "I loaded all stored delegate references and will proceed to fetch updated information from the chain"
           )
@@ -374,13 +388,19 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
            * The size and partition of results is driven by the NodeOperator itself, were each page contains a
            * "thunked" future of the result.
            * Such future will be actually started only as the page iterator is scanned, one element at the time
+           *
+           * As pagination is now based on accounts, it's convenient to collect a relevant number of delegates
+           * first and then process them all
            */
-          pages.foldLeft(0) { (processed, nextPage) =>
-            //wait for each page to load, before looking at the next, thus  starting the new computation
-            val justDone =
-              Await.result(processDelegatesPage(nextPage), atMost = batchingConf.delegatePageProcessingTimeout)
-            processed + justDone
-          } <| logOutcome
+          pages
+            .grouped(100)
+            .map(_.toList.sequence.map(_.flatten))
+            .foldLeft(0) { (processed, nextPage) =>
+              //wait for each page to load, before looking at the next, thus  starting the new computation
+              val justDone =
+                Await.result(processDelegatesPage(nextPage), atMost = batchingConf.delegatePageProcessingTimeout)
+              processed + justDone
+            } <| logOutcome
 
           checkpoints
         }

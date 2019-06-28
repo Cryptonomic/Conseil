@@ -29,7 +29,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeFees(fees: List[AverageFees]): DBIO[Option[Int]] = {
-    logger.info("Writing fees to DB..")
+    logger.info("Writing fees to DB...")
     Tables.Fees ++= fees.map(_.convertTo[Tables.FeesRow])
   }
 
@@ -42,7 +42,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeAccounts(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
-    logger.info(s"""Writing ${accountsInfo.length} accounts to DB..""")
+    logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
     DBIO
       .sequence(accountsInfo.flatMap { info =>
         info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
@@ -65,7 +65,7 @@ object TezosDatabaseOperations extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.BlockBalances._
     import Tables.{BalanceUpdatesRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
-    logger.info(s"""Writing ${blocks.length} block records to DB..""")
+    logger.info(s"""Writing ${blocks.length} block records to DB...""")
 
     //straightforward Database IO Actions waiting to be just run
     val saveBlocksAction = Tables.Blocks ++= blocks.map(_.convertTo[BlocksRow])
@@ -109,7 +109,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${accountIds.map(_._3).map(_.length).sum} account checkpoints to DB..""")
+    logger.info(s"""Writing ${accountIds.map(_._3).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
   }
 
@@ -119,7 +119,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${delegatesKeyHashes.map(_._3).map(_.length).sum} delegate checkpoints to DB..""")
+    logger.info(s"""Writing ${delegatesKeyHashes.map(_._3).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
   }
 
@@ -229,7 +229,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that loads the list of relevant rows
     */
   def getLatestDelegatesFromCheckpoint(implicit ex: ExecutionContext): DBIO[Map[PublicKeyHash, BlockReference]] = {
-    logger.info("Getting the latest delegates from checkpoints in the DB..")
+    logger.info("Getting the latest delegates from checkpoints in the DB...")
     Tables.DelegatesCheckpoint
       .sortBy(_.blockLevel.desc)
       .result
@@ -257,7 +257,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeBlocksAndCheckpointAccounts(
       blocksWithAccounts: Map[Block, List[AccountId]]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    logger.info("Writing blocks and account checkpoints to the DB..")
+    logger.info("Writing blocks and account checkpoints to the DB...")
     //ignore the account ids for storage, and prepare the checkpoint account data
     //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
     val (blocks, accountUpdates) =
@@ -282,7 +282,7 @@ object TezosDatabaseOperations extends LazyLogging {
   )(implicit ec: ExecutionContext): DBIO[(Int, Option[Int])] = {
     import slickeffect.implicits._
 
-    logger.info("Writing accounts and delegate checkpoints to the DB..")
+    logger.info("Writing accounts and delegate checkpoints to the DB...")
 
     //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
     Async[DBIO]
@@ -299,7 +299,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeDelegatesAndCopyContracts(
       delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
-    logger.info("Writing delegates to DB and copying contracts to delegates contracts table..")
+    logger.info("Writing delegates to DB and copying contracts to delegates contracts table...")
     val delegatesUpdateAction = DBIO.sequence(
       delegates.flatMap {
         case BlockTagged(blockHash, blockLevel, delegateMap) =>
@@ -327,7 +327,7 @@ object TezosDatabaseOperations extends LazyLogging {
   private def copyAccountsToDelegateContracts(
       contractIds: Set[ContractId]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    logger.info("Copying select accounts to delegates contracts table in DB..")
+    logger.info("Copying select accounts to delegates contracts table in DB...")
     val ids = contractIds.map(_.id)
     val inputAccounts = Tables.Accounts
       .filter(_.accountId inSet ids)
@@ -344,19 +344,19 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Writes proposals to the database */
   def writeVotingProposals(proposals: List[Voting.Proposal]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${proposals.length} voting proposals to the DB..""")
+    logger.info(s"""Writing ${proposals.length} voting proposals to the DB...""")
     Tables.Proposals ++= proposals.flatMap(_.convertToA[List, Tables.ProposalsRow])
   }
 
   /** Writes bakers to the database */
   def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${bakers.length} bakers to the DB..""")
+    logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
     Tables.Rolls ++= (block, bakers).convertToA[List, Tables.RollsRow]
   }
 
   /** Writes ballots to the database */
   def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..""")
+    logger.info(s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB...""")
     Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
   }
 
