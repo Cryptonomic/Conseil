@@ -50,7 +50,7 @@ trait MetadataRepository[Eff[_], Table, Column, Value] {
     * @param aggregation  optional aggregation
     * @param OutputType   the output representation of the results, enumerated as `OutputType`
     * @param limit        max number of rows fetched
-    * @return             list of map of [column, any], which represents list of rows as a map of column to possible value
+    * @return             list of map of [column, option[any]], which represents list of rows as a map of column to possible value
     */
   def selectWithPredicates(
       table: Table,
