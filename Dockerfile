@@ -8,9 +8,10 @@ WORKDIR /src
 RUN adduser --disabled-password --gecos '' builduser && su builduser
 RUN sbt clean assembly -J-Xss32m
 
-FROM test
+FROM openjdk:13-alpine
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
+COPY --from=0 /tmp/conseil.jar conseil.jar
 ADD ./src/main/resources/metadata/tezos.alphanet.conf /root/tezos.alphanet.conf
 ADD ./src/main/resources/metadata/tezos.mainnet.conf /root/tezos.mainnet.conf
 ADD ./src/main/resources/metadata.conf /root/metadata.conf
