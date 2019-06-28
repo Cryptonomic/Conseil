@@ -18,8 +18,6 @@ ADD ./src/main/resources/metadata.conf /root/metadata.conf
 ADD ./docker/template.conf /root/template.conf
 ADD ./docker/entrypoint.sh /root/entrypoint.sh
 RUN chmod +x /root/entrypoint.sh
-RUN pwd
-RUN ls
 
 
 ENTRYPOINT ["/root/entrypoint.sh"]
