@@ -133,7 +133,7 @@ object TezosDatabaseOperations extends LazyLogging {
       Tables.AccountsCheckpointRow,
       Tables.AccountsCheckpoint,
       TableQuery[Tables.AccountsCheckpoint]
-      ](
+    ](
       selection = ids,
       tableQuery = Tables.AccountsCheckpoint,
       tableTotal = getAccountsCheckpointSize(),
@@ -151,7 +151,7 @@ object TezosDatabaseOperations extends LazyLogging {
       Tables.DelegatesCheckpointRow,
       Tables.DelegatesCheckpoint,
       TableQuery[Tables.DelegatesCheckpoint]
-      ](
+    ](
       selection = pkhs,
       tableQuery = Tables.DelegatesCheckpoint,
       tableTotal = getDelegatesCheckpointSize(),
@@ -205,23 +205,24 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that loads the list of relevant rows
     */
   def getLatestAccountsFromCheckpoint(implicit ec: ExecutionContext): DBIO[Map[AccountId, BlockReference]] = {
+    /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
+     * collects them in a map, skipping keys already added
+     * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
+     * We can think of optimizing this later, we're now optimizing on db queries
+     */
+    def keepLatestAccountIds(checkpoints: Seq[Tables.AccountsCheckpointRow]): Map[AccountId, BlockReference] =
+      checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
+        val key = AccountId(row.accountId)
+        if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+      }
+
     logger.info("Getting the latest accounts from checkpoints in the DB...")
+
     Tables.AccountsCheckpoint
       .sortBy(_.blockLevel.desc)
       .result
       .map(keepLatestAccountIds)
   }
-
-  /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
-   * collects them in a map, skipping keys already added
-   * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
-   * We can think of optimizing this later, we're now optimizing on db queries
-   */
-  private def keepLatestAccountIds(checkpoints: Seq[Tables.AccountsCheckpointRow]): Map[AccountId, BlockReference] =
-    checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
-      val key = AccountId(row.accountId)
-      if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
-    }
 
   /**
     * Reads the delegate key hashes in the checkpoint table,
@@ -229,6 +230,19 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that loads the list of relevant rows
     */
   def getLatestDelegatesFromCheckpoint(implicit ex: ExecutionContext): DBIO[Map[PublicKeyHash, BlockReference]] = {
+    /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
+     * collects them in a map, skipping keys already added
+     * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
+     * We can think of optimizing this later, we're now optimizing on db queries
+     */
+    def keepLatestDelegatesKeys(
+        checkpoints: Seq[Tables.DelegatesCheckpointRow]
+    ): Map[PublicKeyHash, BlockReference] =
+      checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
+        val key = PublicKeyHash(row.delegatePkh)
+        if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+      }
+
     logger.info("Getting the latest delegates from checkpoints in the DB...")
     Tables.DelegatesCheckpoint
       .sortBy(_.blockLevel.desc)
@@ -236,38 +250,19 @@ object TezosDatabaseOperations extends LazyLogging {
       .map(keepLatestDelegatesKeys)
   }
 
-  /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
-   * collects them in a map, skipping keys already added
-   * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
-   * We can think of optimizing this later, we're now optimizing on db queries
-   */
-  private def keepLatestDelegatesKeys(
-      checkpoints: Seq[Tables.DelegatesCheckpointRow]
-  ): Map[PublicKeyHash, BlockReference] =
-    checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
-      val key = PublicKeyHash(row.delegatePkh)
-      if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
-    }
-
   /**
     * Writes the blocks data to the database
     * at the same time saving enough information about updated accounts to later fetch those accounts
-    * @param blocksWithAccounts a map with new blocks as keys, and updated account ids as the values
+    * @param blocks the blocks to save
+    * @param accountUpdates all the ids for accounts involved in some block operation
     */
   def writeBlocksAndCheckpointAccounts(
-      blocksWithAccounts: Map[Block, List[AccountId]]
+      blocks: List[Block],
+      accountUpdates: List[BlockTagged[List[AccountId]]]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
-    //ignore the account ids for storage, and prepare the checkpoint account data
-    //we do this on a single sweep over the list, pairing the results and then unzipping the outcome
-    val (blocks, accountUpdates) =
-      blocksWithAccounts.map {
-        case (block, accountIds) =>
-          block -> (block.data.hash, block.data.header.level, accountIds)
-      }.toList.unzip
-
     //sequence both operations in a single transaction
-    (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates)).transactionally
+    (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
   }
 
   /**
@@ -356,7 +351,9 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Writes ballots to the database */
   def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB...""")
+    logger.info(
+      s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..."""
+    )
     Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
   }
 
