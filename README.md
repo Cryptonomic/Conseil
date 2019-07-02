@@ -141,7 +141,10 @@ The project includes an automated test suite that gets improved constantly.  To 
 sbt test
 ```
 
-There's currently no need to have a database running to run the test-suite.
+There's currently no need to have a database running to run the test-suite. An embedded postgres db instance will automatically be downloaded and used during testing. Please make sure you have the libpq5 package installed, otherwise some of the unit tests using the embedded database may fail. For ubuntu the command should be
+```bash
+apt install libpq5
+```
 
 ## Custom Configurations
 
