@@ -68,6 +68,7 @@ object SlickRepositories {
   }
 }
 
+/** Provides repositories implicit instances based on slick and futures */
 class SlickRepositories(implicit ec: ExecutionContext) {
   import SlickRepositories._
   import DatabaseConversions._
@@ -106,25 +107,33 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     /** Type representing Map[String, Option[Any]] for query response */
     type QueryResponse = Map[String, Option[Any]]
 
-    /* THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION */
+    /** THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION
+      * @see [[tech.cryptonomic.conseil.tezos.repositories.MetadataRepository#countDistinct]]
+      */
     override def countDistinct(table: String, column: String) =
       sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #$table) AS temp"""
         .as[Int]
         .map(_.head)
 
-    /* THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION */
+    /** THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION
+      * @see [[tech.cryptonomic.conseil.tezos.repositories.MetadataRepository#countRows]]
+      */
     override def countRows(table: String) =
       sql"""SELECT reltuples FROM pg_class WHERE relname = $table"""
         .as[Int]
         .map(_.head)
 
-    /* THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION */
+    /** THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION
+      * @see [[tech.cryptonomic.conseil.tezos.repositories.MetadataRepository#selectDistinct]]
+      */
     override def selectDistinct(table: String, column: String) =
       sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column IS NOT NULL"""
         .as[String]
         .map(_.toList)
 
-    /* THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION */
+    /** THIS IMPLEMENTATION IS VULNERABLE TO SQL INJECTION
+      * @see [[tech.cryptonomic.conseil.tezos.repositories.MetadataRepository#selectDistinctLike]]
+      */
     override def selectDistinctLike(table: String, column: String, matchingString: String) = {
       val cleanMatch = sanitizeForSql(matchingString)
       sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$cleanMatch%' AND #$column IS NOT NULL"""
@@ -132,6 +141,9 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         .map(_.toList)
     }
 
+    /**
+      * @see [[tech.cryptonomic.conseil.tezos.repositories.MetadataRepository#selectWithPredicates]]
+      */
     override def selectWithPredicates(
         table: String,
         columns: List[String],
@@ -160,22 +172,28 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
   implicit val blocksRepository = new BlocksRepository[DBIO] with LazyLogging {
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.BlocksRepository#anyBlockAvailable]] */
     override def anyBlockAvailable =
       Blocks.exists.result
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.BlocksRepository#blockExists]] */
     override def blockExists(hash: BlockHash) =
       Blocks.findBy(_.hash).applied(hash.value).exists.result
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.BlocksRepository#fetchMaxBlockLevel]] */
     override def fetchMaxBlockLevel =
       Blocks
         .map(_.level)
         .max
         .result
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.BlocksRepository#writeBlocks]] */
     override def writeBlocks(blocks: List[Block]) = {
       logger.info(s"""Writing ${blocks.length} block records to DB...""")
       Blocks ++= blocks.map(_.convertTo[BlocksRow])
     }
+
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.BlocksRepository#blockAndOpsExists]] */
     override def blockAndOpsExists(hash: BlockHash) =
       Applicative[DBIO].map2(
         blockExists(hash),
@@ -191,6 +209,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       /** Precompiled fetch for Operations by Group */
       val operationsByGroupHash = Operations.findBy(_.operationGroupHash)
 
+      /** @see [[tech.cryptonomic.conseil.tezos.repositories.OperationsRepository#operationsForGroup]] */
       override def operationsForGroup(groupHash: String) =
         (for {
           operation <- operationsByGroupHash(groupHash).extract
@@ -205,12 +224,15 @@ class SlickRepositories(implicit ec: ExecutionContext) {
             .map(k => (k, keyed(k)))
         }
 
+      /** @see [[tech.cryptonomic.conseil.tezos.repositories.OperationsRepository#writeOperationWithNewId]] */
       override def writeOperationWithNewId(operation: OperationsRow) =
         Operations returning Operations.map(_.operationId) += operation
 
+      /** @see [[tech.cryptonomic.conseil.tezos.repositories.OperationsRepository#writeOperationsGroups]] */
       override def writeOperationsGroups(groups: List[OperationGroupsRow]) =
         OperationGroups ++= groups
 
+      /** @see [[tech.cryptonomic.conseil.tezos.repositories.OperationsRepository#writeUpdates]] */
       override def writeUpdates(updates: List[BalanceUpdatesRow], sourceOperation: Option[Int]) = {
         val updatesWithSource = updates.map(_.copy(sourceId = sourceOperation))
         BalanceUpdates ++= updatesWithSource
@@ -220,16 +242,21 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
   implicit val votingRepository = new VotingRepository[DBIO] with LazyLogging {
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.VotingRepository#writeVotingBallots]] */
     override def writeVotingBallots(ballots: List[Voting.Ballot], block: Block) = {
       logger.info(
         s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..."""
       )
       Ballots ++= (block, ballots).convertToA[List, BallotsRow]
     }
+
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.VotingRepository#writeVotingProposals]] */
     override def writeVotingProposals(proposals: List[Voting.Proposal]) = {
       logger.info(s"""Writing ${proposals.length} voting proposals to the DB...""")
       Proposals ++= proposals.flatMap(_.convertToA[List, ProposalsRow])
     }
+
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.VotingRepository#writeVotingRolls]] */
     override def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block) = {
       logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
       Rolls ++= (block, bakers).convertToA[List, RollsRow]
@@ -240,6 +267,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     import scala.math.{ceil, max}
     import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.FeesRepository#calculateAverageFees]] */
     override def calculateAverageFees(kind: FeesOpKind, numberOfFeesAveraged: Int) = {
       def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[BigDecimal], java.sql.Timestamp)]): AverageFees = {
         val values = fees.map {
@@ -267,6 +295,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       }
     }
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.FeesRepository#writeFees]] */
     override def writeFees(fees: List[AverageFees]) = {
       logger.info("Writing fees to DB...")
       Fees ++= fees.map(_.convertTo[FeesRow])
@@ -280,6 +309,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     private val getCheckpointSize =
       AccountsCheckpoint.distinctOn(_.accountId).length.result
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.AccountsRepository#cleanAccountsCheckpoint]] */
     override def cleanAccountsCheckpoint(ids: Option[Set[AccountId]] = None) = {
       logger.info("Cleaning the accounts checkpoint table...")
       cleanCheckpoint[
@@ -295,6 +325,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       )
     }
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.AccountsRepository#getLatestAccountsFromCheckpoint]] */
     override def getLatestAccountsFromCheckpoint = {
       /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
        * collects them in a map, skipping keys already added
@@ -315,6 +346,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         .map(keepLatestAccountIds)
     }
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.AccountsRepository#updateAccounts]] */
     override def updateAccounts(accountsInfo: List[BlockTagged[Map[AccountId, Account]]]) = {
       logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
       DBIO
@@ -324,6 +356,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         .map(_.sum)
     }
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.AccountsRepository#writeAccountsCheckpoint]] */
     override def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]) = {
       logger.info(s"""Writing ${accountIds.flatMap(_._3).size} account checkpoints to DB...""")
       AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, AccountsCheckpointRow])
@@ -336,6 +369,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     val getCheckpointSize =
       DelegatesCheckpoint.distinctOn(_.delegatePkh).length.result
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.DelegatesRepository#cleanDelegatesCheckpoint]] */
     override def cleanDelegatesCheckpoint(pkhs: Option[Set[PublicKeyHash]] = None) = {
       logger.info("Cleaning the delegate checkpoints table...")
       cleanCheckpoint[
@@ -350,6 +384,8 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         applySelection = (checkpoint, keySet) => checkpoint.filter(_.delegatePkh inSet keySet.map(_.value))
       )
     }
+
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.DelegatesRepository#copyAccountsAsDelegateContracts]] */
     override def copyAccountsAsDelegateContracts(contractsIds: Set[ContractId]) = {
       logger.info("Copying select accounts to delegates contracts table in DB...")
       val ids = contractsIds.map(_.id)
@@ -366,6 +402,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       } yield updated).transactionally
     }
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.DelegatesRepository#getLatestDelegatesFromCheckpoint]] */
     override def getLatestDelegatesFromCheckpoint = {
       /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
        * collects them in a map, skipping keys already added
@@ -387,6 +424,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         .map(keepLatestDelegatesKeys)
     }
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.DelegatesRepository#updateDelegates]] */
     override def updateDelegates(delegatesInfo: List[BlockTagged[Map[PublicKeyHash, Delegate]]]) =
       DBIO
         .sequence(
@@ -400,6 +438,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         )
         .map(_.sum)
 
+    /** @see [[tech.cryptonomic.conseil.tezos.repositories.DelegatesRepository#writeDelegatesCheckpoint]] */
     override def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]) = {
       logger.info(s"""Writing ${delegatesKeyHashes.flatMap(_._3).size} delegate checkpoints to DB...""")
       DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, DelegatesCheckpointRow])
