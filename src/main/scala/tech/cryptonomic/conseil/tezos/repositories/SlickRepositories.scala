@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   AccountId,
   Block,
   BlockHash,
+  BlockReference,
   BlockTagged,
   ContractId,
   Delegate,
@@ -50,6 +51,7 @@ import cats.Applicative
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.implicits._
 import scala.concurrent.ExecutionContext
+import com.typesafe.scalalogging.LazyLogging
 
 object SlickRepositories {
 
@@ -98,7 +100,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         tableQuery.delete
     }
 
-  implicit val metadataRepository = new MetadataRepository[DBIO, String, String, String] {
+  implicit val metadataRepository = new MetadataRepository[DBIO, String, String, String] with LazyLogging {
     import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 
     /** Type representing Map[String, Option[Any]] for query response */
@@ -156,7 +158,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
   }
 
-  implicit val blocksRepository = new BlocksRepository[DBIO] {
+  implicit val blocksRepository = new BlocksRepository[DBIO] with LazyLogging {
 
     override def anyBlockAvailable =
       Blocks.exists.result
@@ -170,9 +172,10 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         .max
         .result
 
-    override def writeBlocks(blocks: List[Block]) =
+    override def writeBlocks(blocks: List[Block]) = {
+      logger.info(s"""Writing ${blocks.length} block records to DB...""")
       Blocks ++= blocks.map(_.convertTo[BlocksRow])
-
+    }
     override def blockAndOpsExists(hash: BlockHash) =
       Applicative[DBIO].map2(
         blockExists(hash),
@@ -182,7 +185,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
   }
 
   implicit val operationsRepository =
-    new OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow] {
+    new OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow] with LazyLogging {
       import tech.cryptonomic.conseil.util.CollectionOps._
 
       /** Precompiled fetch for Operations by Group */
@@ -215,20 +218,25 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
     }
 
-  implicit val votingRepository = new VotingRepository[DBIO] {
+  implicit val votingRepository = new VotingRepository[DBIO] with LazyLogging {
 
-    override def writeVotingBallots(ballots: List[Voting.Ballot], block: Block) =
+    override def writeVotingBallots(ballots: List[Voting.Ballot], block: Block) = {
+      logger.info(
+        s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..."""
+      )
       Ballots ++= (block, ballots).convertToA[List, BallotsRow]
-
-    override def writeVotingProposals(proposals: List[Voting.Proposal]) =
+    }
+    override def writeVotingProposals(proposals: List[Voting.Proposal]) = {
+      logger.info(s"""Writing ${proposals.length} voting proposals to the DB...""")
       Proposals ++= proposals.flatMap(_.convertToA[List, ProposalsRow])
-
-    override def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block) =
+    }
+    override def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block) = {
+      logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
       Rolls ++= (block, bakers).convertToA[List, RollsRow]
-
+    }
   }
 
-  implicit val feesRepository = new FeesRepository[DBIO] {
+  implicit val feesRepository = new FeesRepository[DBIO] with LazyLogging {
     import scala.math.{ceil, max}
     import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -259,18 +267,21 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       }
     }
 
-    override def writeFees(fees: List[AverageFees]) =
+    override def writeFees(fees: List[AverageFees]) = {
+      logger.info("Writing fees to DB...")
       Fees ++= fees.map(_.convertTo[FeesRow])
+    }
 
   }
 
-  implicit val accountsRepository = new AccountsRepository[DBIO] {
+  implicit val accountsRepository = new AccountsRepository[DBIO] with LazyLogging {
 
     /* computes the number of distinct accounts present in the checkpoint table */
     private val getCheckpointSize =
       AccountsCheckpoint.distinctOn(_.accountId).length.result
 
-    override def cleanAccountsCheckpoint(ids: Option[Set[AccountId]] = None) =
+    override def cleanAccountsCheckpoint(ids: Option[Set[AccountId]] = None) = {
+      logger.info("Cleaning the accounts checkpoint table...")
       cleanCheckpoint[
         AccountId,
         AccountsCheckpointRow,
@@ -282,37 +293,51 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         tableTotal = getCheckpointSize,
         applySelection = (checkpoint, keySet) => checkpoint.filter(_.accountId inSet keySet.map(_.id))
       )
+    }
 
-    override def getLatestAccountsFromCheckpoint =
-      for {
-        ids <- AccountsCheckpoint.map(_.accountId).distinct.result
-        rows <- DBIO.sequence(ids.map { id =>
-          AccountsCheckpoint.filter(_.accountId === id).sortBy(_.blockLevel.desc).take(1).result.head
-        })
-      } yield
-        rows.map {
-          case AccountsCheckpointRow(id, blockId, level) => AccountId(id) -> (BlockHash(blockId), level)
-        }.toMap
+    override def getLatestAccountsFromCheckpoint = {
+      /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
+       * collects them in a map, skipping keys already added
+       * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
+       * We can think of optimizing this later, we're now optimizing on db queries
+       */
+      def keepLatestAccountIds(checkpoints: Seq[AccountsCheckpointRow]): Map[AccountId, BlockReference] =
+        checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
+          val key = AccountId(row.accountId)
+          if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+        }
 
-    override def updateAccounts(accountsInfo: List[BlockTagged[Map[AccountId, Account]]]) =
+      logger.info("Getting the latest accounts from checkpoints in the DB...")
+
+      AccountsCheckpoint
+        .sortBy(_.blockLevel.desc)
+        .result
+        .map(keepLatestAccountIds)
+    }
+
+    override def updateAccounts(accountsInfo: List[BlockTagged[Map[AccountId, Account]]]) = {
+      logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
       DBIO
         .sequence(accountsInfo.flatMap { info =>
           info.convertToA[List, AccountsRow].map(Accounts.insertOrUpdate)
         })
         .map(_.sum)
+    }
 
-    override def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]) =
+    override def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]) = {
+      logger.info(s"""Writing ${accountIds.flatMap(_._3).size} account checkpoints to DB...""")
       AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, AccountsCheckpointRow])
-
+    }
   }
 
-  implicit val delegatesRepository = new DelegatesRepository[DBIO] {
+  implicit val delegatesRepository = new DelegatesRepository[DBIO] with LazyLogging {
 
     /* computes the number of distinct accounts present in the checkpoint table */
     val getCheckpointSize =
       DelegatesCheckpoint.distinctOn(_.delegatePkh).length.result
 
-    override def cleanDelegatesCheckpoint(pkhs: Option[Set[PublicKeyHash]] = None) =
+    override def cleanDelegatesCheckpoint(pkhs: Option[Set[PublicKeyHash]] = None) = {
+      logger.info("Cleaning the delegate checkpoints table...")
       cleanCheckpoint[
         PublicKeyHash,
         DelegatesCheckpointRow,
@@ -324,8 +349,9 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         tableTotal = getCheckpointSize,
         applySelection = (checkpoint, keySet) => checkpoint.filter(_.delegatePkh inSet keySet.map(_.value))
       )
-
+    }
     override def copyAccountsAsDelegateContracts(contractsIds: Set[ContractId]) = {
+      logger.info("Copying select accounts to delegates contracts table in DB...")
       val ids = contractsIds.map(_.id)
       val inputAccounts = Accounts
         .filter(_.accountId inSet ids)
@@ -340,16 +366,26 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       } yield updated).transactionally
     }
 
-    override def getLatestDelegatesFromCheckpoint =
-      for {
-        keys <- DelegatesCheckpoint.map(_.delegatePkh).distinct.result
-        rows <- DBIO.sequence(keys.map { pkh =>
-          DelegatesCheckpoint.filter(_.delegatePkh === pkh).sortBy(_.blockLevel.desc).take(1).result.head
-        })
-      } yield
-        rows.map {
-          case DelegatesCheckpointRow(pkh, blockId, level) => PublicKeyHash(pkh) -> (BlockHash(blockId), level)
-        }.toMap
+    override def getLatestDelegatesFromCheckpoint = {
+      /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
+       * collects them in a map, skipping keys already added
+       * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
+       * We can think of optimizing this later, we're now optimizing on db queries
+       */
+      def keepLatestDelegatesKeys(
+          checkpoints: Seq[DelegatesCheckpointRow]
+      ): Map[PublicKeyHash, BlockReference] =
+        checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
+          val key = PublicKeyHash(row.delegatePkh)
+          if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+        }
+
+      logger.info("Getting the latest delegates from checkpoints in the DB...")
+      DelegatesCheckpoint
+        .sortBy(_.blockLevel.desc)
+        .result
+        .map(keepLatestDelegatesKeys)
+    }
 
     override def updateDelegates(delegatesInfo: List[BlockTagged[Map[PublicKeyHash, Delegate]]]) =
       DBIO
@@ -364,9 +400,10 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         )
         .map(_.sum)
 
-    override def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]) =
+    override def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]) = {
+      logger.info(s"""Writing ${delegatesKeyHashes.flatMap(_._3).size} delegate checkpoints to DB...""")
       DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, DelegatesCheckpointRow])
-
+    }
   }
 
 }

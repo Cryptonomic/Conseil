@@ -538,6 +538,8 @@ class TezosNodeOperator(
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
 
+    logger.info("Fetching block data in range: " + levelRange)
+
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList

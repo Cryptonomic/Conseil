@@ -27,6 +27,7 @@ import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api._
 import slickeffect.implicits._
 import scala.concurrent.ExecutionContext
+import com.typesafe.scalalogging.LazyLogging
 
 /**
   * Functions for writing Tezos data to a database.
@@ -38,7 +39,7 @@ class TezosDatastore(
     operationsRepo: OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow],
     votesRepo: VotingRepository[DBIO],
     delegatesRepo: DelegatesRepository[DBIO]
-) {
+) extends LazyLogging {
 
   /** Writes the blocks data to the database
     * at the same time saving enough information about updated accounts to later fetch those accounts
@@ -54,6 +55,8 @@ class TezosDatastore(
     import Conversion.Syntax._
     import tech.cryptonomic.conseil.tezos.BlockBalances._
     import DatabaseConversions._
+
+    logger.info("Writing blocks and account checkpoints to the DB...")
 
     //ignore the account ids for storage, and prepare the checkpoint account data
     val accountUpdates =
@@ -185,13 +188,15 @@ class TezosDatastore(
       delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
   )(
       implicit ec: ExecutionContext
-  ): DBIO[(Int, Option[Int])] =
+  ): DBIO[(Int, Option[Int])] = {
+    logger.info("Writing accounts and delegate checkpoints to the DB...")
     Async[DBIO]
       .tuple2(
         accountsRepo.updateAccounts(accounts),
         delegatesRepo.writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
       )
       .transactionally
+  }
 
   /** Reads the key hashes for delegates in the checkpoint, considering only those referencing the
     * highest block-level when there's more than one
@@ -217,6 +222,7 @@ class TezosDatastore(
   )(
       implicit ec: ExecutionContext
   ): DBIO[Int] = {
+    logger.info("Writing delegates to DB and copying contracts to delegates contracts table...")
 
     val referencedContracts = for {
       BlockTagged(_, _, delegatesMap) <- delegates
