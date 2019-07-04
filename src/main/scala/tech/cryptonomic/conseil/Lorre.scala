@@ -327,10 +327,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
    */
   private[this] def process(ids: Map[AccountId, BlockReference])(implicit mat: ActorMaterializer): Future[Done] = {
     import cats.Monoid
+    import cats.instances.future._
     import cats.instances.list._
     import cats.instances.int._
     import cats.instances.option._
     import cats.instances.tuple._
+    import cats.syntax.applicative._
+    import cats.syntax.apply._
     import cats.syntax.functorFilter._
     import cats.syntax.monoid._
 
@@ -364,6 +367,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         .andThen(logWriteFailure)
     }
 
+    def cleanup = {
+      //can fail with no real downsides
+      val processed = Some(ids.keySet)
+      logger.info("Cleaning {} processed accounts from the checkpoint...", processed.size)
+      db.run(TezosDb.cleanAccountsCheckpoint(processed)) <* logger.info("Done cleaning checkpointed accounts.").pure
+    }
+
     logger.info("Ready to fetch updated accounts information from the chain")
     val (pages, total) = tezosNodeOperator.getAccountsForBlocks(ids)
 
@@ -384,19 +394,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           processed |+| justDone
         } andThen logOutcome
 
-    saveAccounts.andThen {
-      //additional cleanup, that can fail with no downsides
-      case Success(checkpoints) =>
-        val processed = Some(ids.keySet)
-        logger.info("Cleaning processed accounts from the checkpoint...")
-        Await.result(
-          db.run(TezosDb.cleanAccountsCheckpoint(processed)),
-          atMost = batchingConf.accountPageProcessingTimeout
-        )
-        logger.info("Done cleaning checkpointed accounts.")
-      case _ =>
-        ()
-    }.transform {
+    (saveAccounts <* cleanup).transform {
       case Failure(e) =>
         val error = "I failed to fetch accounts from client and update them"
         logger.error(error, e)
@@ -412,6 +410,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     import cats.instances.future._
     import cats.syntax.flatMap._
     import cats.syntax.monoid._
+    import cats.syntax.applicative._
+    import cats.syntax.apply._
 
     logger.info("Processing latest Tezos data for account delegates...")
 
@@ -457,18 +457,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             } andThen logOutcome
         }
 
-    saveDelegates.andThen {
+    saveDelegates.flatTap {
+      checkpoints =>
       //additional cleanup, that can fail with no downsides
-      case Success(checkpoints) =>
         val processed = Some(checkpoints.keySet)
         logger.info("Cleaning checkpointed delegates..")
-        Await.result(
-          db.run(TezosDb.cleanDelegatesCheckpoint(processed)),
-          atMost = batchingConf.delegatePageProcessingTimeout
-        )
-        logger.info("Done cleaning checkpointed delegates.")
-      case _ =>
-        ()
+          db.run(TezosDb.cleanDelegatesCheckpoint(processed)) <* logger.info("Done cleaning checkpointed delegates.").pure
     }.transform {
       case Failure(e) =>
         val error = "I failed to fetch delegates from client and update them"
