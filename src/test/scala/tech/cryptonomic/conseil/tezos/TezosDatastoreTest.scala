@@ -82,15 +82,15 @@ class TezosDatastoreTest
 
         val generatedBlocks = generateBlocks(maxLevel, testReferenceDateTime)
 
-        val blockAccountsMap = generatedBlocks.map { block =>
-          block -> List.empty[AccountId]
-        }.toMap
+        val generatedAccounts = generatedBlocks.map { block =>
+          BlockTagged(block.data.hash, block.data.header.level, List.empty[AccountId])
+        }
 
         //set expectations and build the datastore
         val sut = prepareDatastoreMockWithExpectactions(
           blocksRepoExpectations = repo => {
             (repo.writeBlocks _)
-              .expects(blockAccountsMap.keys.toList)
+              .expects(generatedBlocks)
               .returns(dbio(Some(generatedBlocks.size)))
               .once
           },
@@ -124,10 +124,8 @@ class TezosDatastoreTest
           }
         )
 
-        // val sut = new TezosDatastore()(blocksRepo, accountsRepo, opsRepo, votesRepo, delRepo)
-
         //when
-        val action = sut.storeBlocksAndCheckpointAccounts(blockAccountsMap)
+        val action = sut.storeBlocksAndCheckpointAccounts(generatedBlocks, generatedAccounts)
 
         //then
         testDb.run(action).futureValue shouldBe (Some(generatedBlocks.size), Some(0))
@@ -147,9 +145,9 @@ class TezosDatastoreTest
                 block.copy(operationGroups = List(group))
             }
 
-        val blockAccountsMap = generatedBlocks.map { block =>
-          block -> List.empty[AccountId]
-        }.toMap
+        val generatedAccounts = generatedBlocks.map { block =>
+          BlockTagged(block.data.hash, block.data.header.level, List.empty[AccountId])
+        }
 
         val totalGroupsCount = generatedBlocks.map(_.operationGroups.size).sum
         //each operation group contains all sample operations
@@ -203,7 +201,7 @@ class TezosDatastoreTest
         )
 
         //when
-        val action = sut.storeBlocksAndCheckpointAccounts(blockAccountsMap)
+        val action = sut.storeBlocksAndCheckpointAccounts(generatedBlocks, generatedAccounts)
 
         //then
         testDb.run(action).futureValue shouldBe (Some(generatedBlocks.size), Some(0))
@@ -220,9 +218,10 @@ class TezosDatastoreTest
 
         val generatedBlocks = generateBlocks(maxLevel, testReferenceDateTime)
 
-        val blockAccountsMap = generatedBlocks.map { block =>
-          block -> List.fill(accountsPerBlock)(AccountId(generateHash(5)))
-        }.toMap
+        val generatedAccounts = generatedBlocks.map { block =>
+          val ids = List.fill(accountsPerBlock)(AccountId(generateHash(5)))
+          BlockTagged(block.data.hash, block.data.header.level, ids)
+        }
 
         //take the genesis into account
         val checkpointSize = (maxLevel + 1) * accountsPerBlock
@@ -267,7 +266,7 @@ class TezosDatastoreTest
         )
 
         //when
-        val action = sut.storeBlocksAndCheckpointAccounts(blockAccountsMap)
+        val action = sut.storeBlocksAndCheckpointAccounts(generatedBlocks, generatedAccounts)
 
         //then
         testDb.run(action).futureValue shouldBe (Some(generatedBlocks.size), Some(checkpointSize))

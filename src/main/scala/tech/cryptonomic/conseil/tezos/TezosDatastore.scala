@@ -48,7 +48,8 @@ class TezosDatastore(
     * @return a database operation that returns counts for both added block records and accounts checkpointed
     */
   def storeBlocksAndCheckpointAccounts(
-      blocksWithAccounts: Map[Block, List[AccountId]]
+      blocks: List[Block],
+      accountUpdates: List[BlockTagged[List[AccountId]]]
   )(
       implicit ec: ExecutionContext
   ): DBIO[(Option[Int], Option[Int])] = {
@@ -57,15 +58,6 @@ class TezosDatastore(
     import DatabaseConversions._
 
     logger.info("Writing blocks and account checkpoints to the DB...")
-
-    //ignore the account ids for storage, and prepare the checkpoint account data
-    val accountUpdates =
-      blocksWithAccounts.map {
-        case (block, accountIds) =>
-          (block.data.hash, block.data.header.level, accountIds)
-      }.toList
-
-    val blocks = blocksWithAccounts.keys.toList
 
     //straightforward Database IO Actions waiting to be just run
     val saveBlocks = blocksRepo.writeBlocks(blocks)
@@ -100,7 +92,7 @@ class TezosDatastore(
         )
         .map(_.combineAll)
 
-    val saveAccountCheckpoint = accountsRepo.writeAccountsCheckpoint(accountUpdates)
+    val saveAccountCheckpoint = accountsRepo.writeAccountsCheckpoint(accountUpdates.map(_.asTuple))
 
     Async[DBIO]
       .tuple5(
