@@ -391,19 +391,29 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
       }
 
-      "decode bakers vote listings" in {
+      "decode proposals elements" in {
+        val decoded =
+          decode[List[(ProtocolId, ProposalSupporters)]](s"""[["$validB58Hash", 1], ["$validB58Hash", 2]]""")
+        decoded shouldBe 'right
+        decoded.right.value should contain theSameElementsAs List(
+          ProtocolId(validB58Hash) -> 1,
+          ProtocolId(validB58Hash) -> 2
+        )
+      }
+
+      "decode bakers rolls" in {
         val decoded = decode[Voting.BakerRolls](s"""{"pkh":"$validB58Hash", "rolls":150}""")
         decoded shouldBe 'right
         decoded.right.value shouldBe Voting.BakerRolls(pkh = PublicKeyHash(validB58Hash), rolls = 150)
       }
 
-      "decode bakers vote listings even if rolls are json encoded as 'stringly' numbers" in {
+      "decode bakers rolls even if rolls are json encoded as 'stringly' numbers" in {
         val decoded = decode[Voting.BakerRolls](s"""{"pkh":"$validB58Hash", "rolls":"150"}""")
         decoded shouldBe 'right
         decoded.right.value shouldBe Voting.BakerRolls(pkh = PublicKeyHash(validB58Hash), rolls = 150)
       }
 
-      "fail to decode bakers vote listings for invalid fields" in {
+      "fail to decode bakers rolls for invalid fields" in {
         val failedHash = decode[Voting.BakerRolls](s"""{"pkh":"SinvalidB58Hash", "rolls":150}""")
         failedHash shouldBe 'left
         val failedRolls = decode[Voting.BakerRolls](s"""{"pkh":"$validB58Hash", "rolls":true}""")

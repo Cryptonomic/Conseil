@@ -852,16 +852,19 @@ class DatabaseConversionsTest
       "convert a Voting Proposal to a database row" in {
         import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Proposal
 
-        val sampleProposal = Proposal(protocols = ProtocolId("proto1") :: ProtocolId("proto2") :: Nil, block = block)
+        val sampleProposal =
+          Proposal(protocols = (ProtocolId("proto1"), 1) :: (ProtocolId("proto2"), 2) :: Nil, block = block)
 
         val expected = List(
           Tables.ProposalsRow(
             protocolHash = "proto1",
+            supporters = Some(1),
             blockId = block.data.hash.value,
             blockLevel = block.data.header.level
           ),
           Tables.ProposalsRow(
             protocolHash = "proto2",
+            supporters = Some(2),
             blockId = block.data.hash.value,
             blockLevel = block.data.header.level
           )

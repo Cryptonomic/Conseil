@@ -291,7 +291,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //adapt the proposal protocols result to include the block
     val fetchProposals =
-      fetch[Block, List[ProtocolId], Future, List, Throwable].map { proposalsList =>
+      fetch[Block, List[(ProtocolId, ProposalSupporters)], Future, List, Throwable].map { proposalsList =>
         proposalsList.map {
           case (block, protocols) => Voting.Proposal(protocols, block)
         }

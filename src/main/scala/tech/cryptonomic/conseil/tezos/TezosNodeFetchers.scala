@@ -246,14 +246,17 @@ trait BlocksDataFetchers {
 
     type Encoded = String
     type In = Block
-    type Out = List[ProtocolId]
+    type Out = List[(ProtocolId, ProposalSupporters)]
 
     private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
 
     override val fetchData =
       Kleisli(
         blocks => {
-          logger.info("Fetching all proposals protocols in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
+          logger.info(
+            "Fetching all proposals protocols in levels {}",
+            blocks.head.data.header.level to blocks.last.data.header.level
+          )
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
