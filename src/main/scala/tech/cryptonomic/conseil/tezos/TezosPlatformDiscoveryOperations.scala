@@ -34,7 +34,7 @@ object TezosPlatformDiscoveryOperations {
     tpe match {
       case "timestamp" => DataType.DateTime
       case "varchar" => DataType.String
-      case "int4" | "serial" => DataType.Int
+      case "int4" | "int" | "serial" => DataType.Int
       case "numeric" => DataType.Decimal
       case "bool" => DataType.Boolean
       case "hash" => DataType.Hash
