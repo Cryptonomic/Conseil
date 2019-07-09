@@ -201,7 +201,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         _ <- processVotesForBlocks(results.map { case (block, _) => block }) andThen logVotingOutcome
         delegateCheckpoints <- processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
-        _ <- processDelegatesForBlocks(delegateCheckpoints)  // same as above
+        _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
       } yield results.size
 
     }
@@ -328,27 +328,27 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   private[this] def processDelegatesForBlocks(
-    updates: List[BlockTagged[List[PublicKeyHash]]]
-    )(implicit mat: ActorMaterializer): Future[Done] = {
-      logger.info("Processing latest Tezos data for account delegates...")
+      updates: List[BlockTagged[List[PublicKeyHash]]]
+  )(implicit mat: ActorMaterializer): Future[Done] = {
+    logger.info("Processing latest Tezos data for account delegates...")
 
-      def keepMostRecent(associations: List[(PublicKeyHash, BlockReference)]): Map[PublicKeyHash, BlockReference] =
+    def keepMostRecent(associations: List[(PublicKeyHash, BlockReference)]): Map[PublicKeyHash, BlockReference] =
       associations.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, entry) =>
         val key = entry._1
         if (collected.contains(key)) collected else collected + (key -> entry._2)
       }
 
-      val sorted = updates.flatMap {
-        case BlockTagged(hash, level, ids) =>
+    val sorted = updates.flatMap {
+      case BlockTagged(hash, level, ids) =>
         ids.map(_ -> (hash, level))
-      }.sortBy {
-        case (id, (hash, level)) => level
-      }(Ordering[Int].reverse)
+    }.sortBy {
+      case (id, (hash, level)) => level
+    }(Ordering[Int].reverse)
 
-      val toBeFetched = keepMostRecent(sorted)
+    val toBeFetched = keepMostRecent(sorted)
 
-      DelegatesProcessor.process(toBeFetched)
-    }
+    DelegatesProcessor.process(toBeFetched)
+  }
 
   /** Fetches and stores all delegates from the latest blocks still in the checkpoint */
   private[this] def processTezosDelegatesCheckpoint(implicit mat: ActorMaterializer): Future[Done] = {
@@ -375,7 +375,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     /* Fetches the data from the chain node and stores accounts into the data store.
      * @param ids a pre-filtered map of account ids with latest block referring to them
      */
-    def process(ids: Map[AccountId, BlockReference])(implicit mat: ActorMaterializer): Future[List[BlockTagged[DelegateKeys]]] = {
+    def process(
+        ids: Map[AccountId, BlockReference]
+    )(implicit mat: ActorMaterializer): Future[List[BlockTagged[DelegateKeys]]] = {
       import cats.Monoid
       import cats.instances.future._
       import cats.instances.list._
@@ -401,7 +403,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def extractDelegatesInfo(
-        taggedAccounts: Seq[BlockTagged[AccountsIndex]]
+          taggedAccounts: Seq[BlockTagged[AccountsIndex]]
       ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
         val taggedList = taggedAccounts.toList
         val taggedDelegatesKeys = taggedList.map {
@@ -427,7 +429,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         //can fail with no real downsides
         val processed = Some(ids.keySet)
         logger.info("Cleaning {} processed accounts from the checkpoint...", ids.size)
-        db.run(TezosDb.cleanAccountsCheckpoint(processed)).map(cleaned => logger.info("Done cleaning {} accounts checkpoint rows.", cleaned))
+        db.run(TezosDb.cleanAccountsCheckpoint(processed))
+          .map(cleaned => logger.info("Done cleaning {} accounts checkpoint rows.", cleaned))
       }
 
       logger.info("Ready to fetch updated accounts information from the chain")
@@ -493,7 +496,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         //can fail with no real downsides
         val processed = Some(ids.keySet)
         logger.info("Cleaning {} processed delegates from the checkpoint...", ids.size)
-        db.run(TezosDb.cleanDelegatesCheckpoint(processed)).map(cleaned => logger.info("Done cleaning {} delegates checkpoint rows.", cleaned))
+        db.run(TezosDb.cleanDelegatesCheckpoint(processed))
+          .map(cleaned => logger.info("Done cleaning {} delegates checkpoint rows.", cleaned))
       }
 
       logger.info("Ready to fetch updated delegates information from the chain")
