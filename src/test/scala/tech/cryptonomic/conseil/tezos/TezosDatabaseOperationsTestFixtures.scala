@@ -393,7 +393,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       val protocolCounts = Array.fill(howMany)(1 + randomGen.nextInt(4))
 
       List.tabulate(howMany) { current =>
-        val protocols = List.fill(protocolCounts(current))(ProtocolId(generateHash(10)))
+        val protocols = List.fill(protocolCounts(current))((ProtocolId(generateHash(10)), randomGen.nextInt()))
         Proposal(
           protocols = protocols,
           block = forBlock

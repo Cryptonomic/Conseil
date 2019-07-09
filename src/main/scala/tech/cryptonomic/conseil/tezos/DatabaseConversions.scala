@@ -444,11 +444,12 @@ object DatabaseConversions {
       val blockHash = block.data.hash.value
       val blockLevel = block.data.header.level
       protocols.map {
-        case ProtocolId(id) =>
+        case (ProtocolId(id), supporters) =>
           Tables.ProposalsRow(
             protocolHash = id,
             blockId = blockHash,
-            blockLevel = blockLevel
+            blockLevel = blockLevel,
+            supporters = Some(supporters)
           )
       }
     }

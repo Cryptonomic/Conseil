@@ -1056,10 +1056,12 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val allProtocols = proposals.flatMap(_.protocols)
+        val allProtocols = proposals.flatMap(_.protocols).toMap
 
         forAll(dbProposals) { proposalRow =>
-          allProtocols should contain(ProtocolId(proposalRow.protocolHash))
+          val rowProtocol = ProtocolId(proposalRow.protocolHash)
+          allProtocols.keySet should contain(rowProtocol)
+          allProtocols(rowProtocol) shouldBe proposalRow.supporters.value
           proposalRow.blockId shouldBe block.data.hash.value
           proposalRow.blockLevel shouldBe block.data.header.level
         }

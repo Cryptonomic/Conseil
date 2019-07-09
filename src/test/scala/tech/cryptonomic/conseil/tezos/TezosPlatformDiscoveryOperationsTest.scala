@@ -279,7 +279,8 @@ class TezosPlatformDiscoveryOperationsTest
             List(
               Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
+              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
             )
           )
       }

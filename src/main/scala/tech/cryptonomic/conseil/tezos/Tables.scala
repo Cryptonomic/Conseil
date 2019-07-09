@@ -1233,23 +1233,25 @@ trait Tables {
   /** Entity class storing rows of table Proposals
     *  @param protocolHash Database column protocol_hash SqlType(varchar)
     *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4) */
-  case class ProposalsRow(protocolHash: String, blockId: String, blockLevel: Int)
+    *  @param blockLevel Database column block_level SqlType(int4)
+    *  @param supporters Database column supporters SqlType(int4), Default(None) */
+  case class ProposalsRow(protocolHash: String, blockId: String, blockLevel: Int, supporters: Option[Int] = None)
 
   /** GetResult implicit for fetching ProposalsRow objects using plain SQL queries */
-  implicit def GetResultProposalsRow(implicit e0: GR[String], e1: GR[Int]): GR[ProposalsRow] = GR { prs =>
-    import prs._
-    ProposalsRow.tupled((<<[String], <<[String], <<[Int]))
+  implicit def GetResultProposalsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[Int]]): GR[ProposalsRow] = GR {
+    prs =>
+      import prs._
+      ProposalsRow.tupled((<<[String], <<[String], <<[Int], <<?[Int]))
   }
 
   /** Table description of table proposals. Objects of this class serve as prototypes for rows in queries. */
   class Proposals(_tableTag: Tag) extends profile.api.Table[ProposalsRow](_tableTag, "proposals") {
-    def * = (protocolHash, blockId, blockLevel) <> (ProposalsRow.tupled, ProposalsRow.unapply)
+    def * = (protocolHash, blockId, blockLevel, supporters) <> (ProposalsRow.tupled, ProposalsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(protocolHash), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({ r =>
-        import r._; _1.map(_ => ProposalsRow.tupled((_1.get, _2.get, _3.get)))
+      ((Rep.Some(protocolHash), Rep.Some(blockId), Rep.Some(blockLevel), supporters)).shaped.<>({ r =>
+        import r._; _1.map(_ => ProposalsRow.tupled((_1.get, _2.get, _3.get, _4)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column protocol_hash SqlType(varchar) */
@@ -1260,6 +1262,9 @@ trait Tables {
 
     /** Database column block_level SqlType(int4) */
     val blockLevel: Rep[Int] = column[Int]("block_level")
+
+    /** Database column supporters SqlType(int4), Default(None) */
+    val supporters: Rep[Option[Int]] = column[Option[Int]]("supporters", O.Default(None))
 
     /** Foreign key referencing Blocks (database name proposal_block_id_fkey) */
     lazy val blocksFk = foreignKey("proposal_block_id_fkey", blockId, Blocks)(
