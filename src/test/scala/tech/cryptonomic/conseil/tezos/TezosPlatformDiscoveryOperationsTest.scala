@@ -224,6 +224,14 @@ class TezosPlatformDiscoveryOperationsTest
                 KeyType.NonKey,
                 "operations"
               ),
+              Attribute(
+                "originated_contracts",
+                "Originated contracts",
+                DataType.String,
+                None,
+                KeyType.NonKey,
+                "operations"
+              ),
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")

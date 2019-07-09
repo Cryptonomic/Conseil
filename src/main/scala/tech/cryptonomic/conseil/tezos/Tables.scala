@@ -965,6 +965,7 @@ trait Tables {
     *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
     *  @param storageSize Database column storage_size SqlType(numeric), Default(None)
     *  @param paidStorageSizeDiff Database column paid_storage_size_diff SqlType(numeric), Default(None)
+    *  @param originatedContracts Database column originated_contracts SqlType(varchar), Default(None)
     *  @param blockHash Database column block_hash SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp) */
@@ -997,6 +998,7 @@ trait Tables {
       consumedGas: Option[scala.math.BigDecimal] = None,
       storageSize: Option[scala.math.BigDecimal] = None,
       paidStorageSizeDiff: Option[scala.math.BigDecimal] = None,
+      originatedContracts: Option[String] = None,
       blockHash: String,
       blockLevel: Int,
       timestamp: java.sql.Timestamp
@@ -1042,6 +1044,7 @@ trait Tables {
       <<?[scala.math.BigDecimal],
       <<?[scala.math.BigDecimal],
       <<?[scala.math.BigDecimal],
+      <<?[String],
       <<[String],
       <<[Int],
       <<[java.sql.Timestamp]
@@ -1051,12 +1054,12 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
     def * =
-      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: blockHash :: blockLevel :: timestamp :: HNil)
+      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: timestamp :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: Rep
+      (Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
             .Some(blockHash) :: Rep.Some(blockLevel) :: Rep.Some(timestamp) :: HNil).shaped.<>(
         r =>
           OperationsRow(
@@ -1088,9 +1091,10 @@ trait Tables {
             r(25).asInstanceOf[Option[scala.math.BigDecimal]],
             r(26).asInstanceOf[Option[scala.math.BigDecimal]],
             r(27).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(28).asInstanceOf[Option[String]].get,
-            r(29).asInstanceOf[Option[Int]].get,
-            r(30).asInstanceOf[Option[java.sql.Timestamp]].get
+            r(28).asInstanceOf[Option[String]],
+            r(29).asInstanceOf[Option[String]].get,
+            r(30).asInstanceOf[Option[Int]].get,
+            r(31).asInstanceOf[Option[java.sql.Timestamp]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1183,6 +1187,9 @@ trait Tables {
     /** Database column paid_storage_size_diff SqlType(numeric), Default(None) */
     val paidStorageSizeDiff: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("paid_storage_size_diff", O.Default(None))
+
+    /** Database column originated_contracts SqlType(varchar), Default(None) */
+    val originatedContracts: Rep[Option[String]] = column[Option[String]]("originated_contracts", O.Default(None))
 
     /** Database column block_hash SqlType(varchar) */
     val blockHash: Rep[String] = column[String]("block_hash")
