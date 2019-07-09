@@ -105,5 +105,7 @@ case class AttributeConfiguration(
     reference: Option[Map[String, String]] = None,
     cacheConfig: Option[AttributeCacheConfiguration] = None,
     displayPriority: Option[Int] = None,
-    displayOrder: Option[Int] = None
+    displayOrder: Option[Int] = None,
+    currencySymbol: Option[String] = None,
+    currencySymbolCode: Option[Int] = None
 )
