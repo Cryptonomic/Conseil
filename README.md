@@ -6,6 +6,60 @@ Query API for the Tezos blockchain
 
 ## Running Conseil
 
+
+### Docker
+
+To build this project git clone it and run:
+
+```
+docker build -t conseil .
+```
+
+The Container can be configured using the following environment variables:
+
+Database Config:
+
+
+* DB_Host - default: db
+* DB_User - default: user
+* DB_Password - default: password
+* DB_Database: default: conseil
+
+
+
+Tezos Node Config:
+
+
+* XTZ_Scheme - http or https, default : http
+* XTZ_Host - default: node
+* XTZ_Prefix - prefix for api calls, default: ""
+* XTZ_Port - default 8732
+* XTZ_Network - default mainnet
+
+
+Conseil Config:
+
+
+* API_PORT - Conseil API port, default: 80
+
+Or, you can use your own config file, in which case specify the environment variable `CONFIG` with the path to your file
+
+To run Lorre ( the indexer ) run:
+
+```
+docker run conseil lorre
+```
+
+and Conseil ( the API ):
+
+```
+docker run conseil conseil
+```
+
+
+## Running Conseil - classic
+
+
 Conseil has two entry points:
 - `src/main/tech/cryptonomic/Conseil/Conseil.scala` runs a server exposing a RESTful API over blockchain data, stored in its own database.
 - `src/main/tech/cryptonomic/Conseil/Lorre.scala` is a background process that loops and synchronizes (Tezos) blockchain data to database.

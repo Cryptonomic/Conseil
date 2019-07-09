@@ -143,16 +143,16 @@ class TezosDatastore(
       case (block, ballots) => votesRepo.writeVotingBallots(ballots, block)
     }
 
-    DBIO
-      .sequence(
-        List(
-          saveProposals,
-          saveBakers.map(_.combineAll),
-          saveBallots.map(_.combineAll)
-        )
-      )
-      .map(_.combineAll)
+    /* combineAll reduce List[Option[Int]] => Option[Int] by summing all ints present
+     * |+| is shorthand syntax to sum Option[Int] together using Int's sums
+     * Any None in the operands will make the whole operation collapse in a None result
+     */
+    val combinedVoteWrites = (saveProposals, saveBakers, saveBallots).mapN(
+      (storedProposals, storedBakers, storedBallots) =>
+        storedProposals |+| storedBakers.combineAll |+| storedBallots.combineAll
+    )
 
+    combinedVoteWrites.transactionally
   }
 
   /** Reads the ids for accounts in the checkpoint, considering only those referencing the

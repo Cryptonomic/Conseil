@@ -179,7 +179,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     */
   private[this] def processTezosBlocks(): Future[Done] = {
     import cats.instances.future._
-    import cats.syntax.apply._
+    import cats.syntax.flatMap._
     import TezosTypes.Syntax._
 
     logger.info("Processing Tezos Blocks..")
@@ -223,7 +223,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       for {
         _ <- db.run(tezosStore.storeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         _ <- processVotesForBlocks(results.map { case (block, _) => block }) andThen logVotingOutcome
-        _ <- processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
+        delegateCheckpoints <- processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
+        _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
       } yield results.size
 
     }
@@ -243,7 +244,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
           .mapAsync(1) {
-            processBlocksPage(_) <* processTezosAccountsCheckpoint <* processTezosDelegates()
+            processBlocksPage(_) flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress
@@ -278,13 +279,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)
+   * @return the delegates key-hashes found for the accounts passed-in, grouped by block reference
    */
   private[this] def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]]
-  )(implicit mat: ActorMaterializer): Future[Done] = {
+  )(implicit mat: ActorMaterializer): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
     logger.info("Processing latest Tezos data for updated accounts...")
 
-    def keepLatestAccountIds(associations: List[(AccountId, BlockReference)]): Map[AccountId, BlockReference] =
+    def keepMostRecent(associations: List[(AccountId, BlockReference)]): Map[AccountId, BlockReference] =
       associations.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, entry) =>
         val key = entry._1
         if (collected.contains(key)) collected else collected + (key -> entry._2)
@@ -297,21 +299,21 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case (id, (hash, level)) => level
     }(Ordering[Int].reverse)
 
-    val toBeFetched = keepLatestAccountIds(sorted)
+    val toBeFetched = keepMostRecent(sorted)
 
-    process(toBeFetched)
+    AccountsProcessor.process(toBeFetched)
   }
 
   /** Fetches and stores all accounts from the latest blocks still in the checkpoint */
   private[this] def processTezosAccountsCheckpoint(implicit mat: ActorMaterializer): Future[Done] = {
-    logger.info("Selecting all accounts touched in the checkpoint table, this might take a while...")
+    logger.info("Selecting all accounts left in the checkpoint table...")
     db.run(tezosStore.fetchLatestAccountsFromCheckpoint) flatMap { checkpoints =>
       if (checkpoints.nonEmpty) {
         logger.info(
           "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated accounts information from the chain",
           checkpoints.size
         )
-        process(checkpoints)
+        AccountsProcessor.process(checkpoints).map(_ => Done)
       } else {
         logger.info("No data to fetch from the accounts checkpoint")
         Future.successful(Done)
@@ -319,161 +321,209 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
   }
 
-  /* Fetches the data from the chain node and stores accounts into the data store.
-   * @param ids a pre-filtered map of account ids with latest block referring to them
-   */
-  private[this] def process(ids: Map[AccountId, BlockReference])(implicit mat: ActorMaterializer): Future[Done] = {
-    import cats.Monoid
-    import cats.instances.list._
-    import cats.instances.int._
-    import cats.instances.option._
-    import cats.instances.tuple._
-    import cats.syntax.functorFilter._
-    import cats.syntax.monoid._
+  private[this] def processDelegatesForBlocks(
+      updates: List[BlockTagged[List[PublicKeyHash]]]
+  )(implicit mat: ActorMaterializer): Future[Done] = {
+    logger.info("Processing latest Tezos data for account delegates...")
 
-    def logWriteFailure: PartialFunction[Try[_], Unit] = {
-      case Failure(e) =>
-        logger.error("Could not write accounts to the database")
-    }
-
-    def logOutcome: PartialFunction[Try[(Int, Option[Int])], Unit] = {
-      case Success((accountsRows, delegateCheckpointRows)) =>
-        logger.info(
-          "{} accounts were touched on the database. Checkpoint stored for{} delegates.",
-          accountsRows,
-          delegateCheckpointRows.fold("")(" " + _)
-        )
-    }
-
-    def processAccountsPage(
-        taggedAccounts: Seq[BlockTagged[Map[AccountId, Account]]]
-    ): Future[(Int, Option[Int])] = {
-      import TezosTypes.Syntax._
-      val taggedList = taggedAccounts.toList
-      val delegatesCheckpoint = taggedList.map {
-        case BlockTagged(blockHash, blockLevel, accountsMap) =>
-          val delegateKeys = accountsMap.values.toList
-            .mapFilter(_.delegate.value)
-
-          delegateKeys.taggedWithBlock(blockHash, blockLevel)
+    def keepMostRecent(associations: List[(PublicKeyHash, BlockReference)]): Map[PublicKeyHash, BlockReference] =
+      associations.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, entry) =>
+        val key = entry._1
+        if (collected.contains(key)) collected else collected + (key -> entry._2)
       }
-      db.run(tezosStore.storeAccountsAndCheckpointDelegates(taggedList, delegatesCheckpoint))
-        .andThen(logWriteFailure)
-    }
 
-    logger.info("Ready to fetch updated accounts information from the chain")
-    val (pages, total) = tezosNodeOperator.getAccountsForBlocks(ids)
+    val sorted = updates.flatMap {
+      case BlockTagged(hash, level, ids) =>
+        ids.map(_ -> (hash, level))
+    }.sortBy {
+      case (id, (hash, level)) => level
+    }(Ordering[Int].reverse)
 
-    /* Streams the (unevaluated) incoming data, actually fetching the results.
-     * We use combinators to keep the ongoing requests' flow under control, taking advantage of
-     * akka-streams automatic backpressure control.
-     * The results are grouped to optimize for database storage.
-     * We do this to re-aggregate results from pages which are now based on single blocks,
-     * which would lead to inefficient storage performances as-is.
-     */
-    val saveAccounts = Source
-        .fromIterator(() => pages)
-        .mapAsync[List[BlockTagged[Map[AccountId, Account]]]](1)(identity)
-        .mapConcat(identity)
-        .grouped(batchingConf.blockPageSize)
-        .mapAsync(1)(processAccountsPage)
-        .runFold(Monoid[(Int, Option[Int])].empty) { (processed, justDone) =>
-          processed |+| justDone
-        } andThen logOutcome
+    val toBeFetched = keepMostRecent(sorted)
 
-    saveAccounts.andThen {
-      //additional cleanup, that can fail with no downsides
-      case Success(checkpoints) =>
-        val processed = Some(ids.keySet)
-        logger.info("Cleaning processed accounts from the checkpoint...")
-        Await.result(
-          db.run(tezosStore.removeAccountsFromCheckpoint(processed)),
-          atMost = batchingConf.accountPageProcessingTimeout
+    DelegatesProcessor.process(toBeFetched)
+  }
+
+  /** Fetches and stores all delegates from the latest blocks still in the checkpoint */
+  private[this] def processTezosDelegatesCheckpoint(implicit mat: ActorMaterializer): Future[Done] = {
+    logger.info("Selecting all delegates left in the checkpoint table...")
+    db.run(tezosStore.fetchLatestDelegatesFromCheckpoint) flatMap { checkpoints =>
+      if (checkpoints.nonEmpty) {
+        logger.info(
+          "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated delegates information from the chain",
+          checkpoints.size
         )
-        logger.info("Done cleaning checkpointed accounts.")
-      case _ =>
-        ()
-    }.transform {
-      case Failure(e) =>
-        val error = "I failed to fetch accounts from client and update them"
-        logger.error(error, e)
-        Failure(AccountsProcessingFailed(message = error, e))
-      case success => Success(Done)
+        DelegatesProcessor.process(checkpoints)
+      } else {
+        logger.info("No data to fetch from the delegates checkpoint")
+        Future.successful(Done)
+      }
     }
   }
 
-  /** Fetches and stores all delegates from the latest blocks stored in the database. */
-  private[this] def processTezosDelegates(): Future[Done] = {
-    import cats.Monoid
-    import cats.instances.int._
-    import cats.instances.future._
-    import cats.syntax.flatMap._
-    import cats.syntax.monoid._
+  private object AccountsProcessor {
 
-    logger.info("Processing latest Tezos data for account delegates...")
+    type AccountsIndex = Map[AccountId, Account]
+    type DelegateKeys = List[PublicKeyHash]
 
-    def logOutcome: PartialFunction[Try[Int], Unit] = {
-      case Success(rows) =>
-        logger.info("{} delegates were touched on the database.", rows)
-    }
+    /* Fetches the data from the chain node and stores accounts into the data store.
+     * @param ids a pre-filtered map of account ids with latest block referring to them
+     */
+    def process(
+        ids: Map[AccountId, BlockReference]
+    )(implicit mat: ActorMaterializer): Future[List[BlockTagged[DelegateKeys]]] = {
+      import cats.Monoid
+      import cats.instances.future._
+      import cats.instances.list._
+      import cats.instances.int._
+      import cats.instances.option._
+      import cats.instances.tuple._
+      import cats.syntax.flatMap._
+      import cats.syntax.functorFilter._
+      import cats.syntax.monoid._
 
-    def logWriteFailure: PartialFunction[Try[_], Unit] = {
-      case Failure(e) =>
-        logger.error("Could not write delegates to the database")
-    }
+      def logWriteFailure: PartialFunction[Try[_], Unit] = {
+        case Failure(e) =>
+          logger.error("Could not write accounts to the database")
+      }
 
-    def processDelegatesPage(
-        taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
-    ): Future[Int] =
-      db.run(tezosStore.storeDelegatesAndCopyContracts(taggedDelegates.toList))
-        .andThen(logWriteFailure)
-
-    val saveDelegates = db.run(tezosStore.fetchLatestDelegatesFromCheckpoint) flatTap { checkpoints =>
-          implicit val mat = ActorMaterializer()
-
+      def logOutcome: PartialFunction[Try[(Int, Option[Int], _)], Unit] = {
+        case Success((accountsRows, delegateCheckpointRows, _)) =>
           logger.info(
-            "I loaded all stored delegate references and will proceed to fetch updated information from the chain"
+            "{} accounts were touched on the database. Checkpoint stored for{} delegates.",
+            accountsRows,
+            delegateCheckpointRows.fold("")(" " + _)
           )
-          val (pages, total) = tezosNodeOperator.getDelegatesForBlocks(checkpoints)
+      }
 
-          /* Streams the (unevaluated) incoming data, actually fetching the results.
-           * We use combinators to keep the ongoing requests' flow under control, taking advantage of
-           * akka-streams automatic backpressure control.
-           * The results are grouped to optimize for database storage.
-           * We do this to re-aggregate results from pages which are now based on single blocks,
-           * which would lead to inefficient storage performances as-is.
-           */
-          Source
-            .fromIterator(() => pages)
-            .mapAsync[List[BlockTagged[Map[PublicKeyHash, Delegate]]]](1)(identity)
-            .mapConcat(identity)
-            .grouped(batchingConf.blockPageSize)
-            .mapAsync(1)(processDelegatesPage)
-            .runFold(Monoid[Int].empty) { (processed, justDone) =>
-              processed |+| justDone
-            } andThen logOutcome
+      def extractDelegatesInfo(
+          taggedAccounts: Seq[BlockTagged[AccountsIndex]]
+      ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
+        val taggedList = taggedAccounts.toList
+        val taggedDelegatesKeys = taggedList.map {
+          case BlockTagged(blockHash, blockLevel, accountsMap) =>
+            import TezosTypes.Syntax._
+            val delegateKeys = accountsMap.values.toList
+              .mapFilter(_.delegate.value)
+
+            delegateKeys.taggedWithBlock(blockHash, blockLevel)
         }
+        (taggedList, taggedDelegatesKeys)
+      }
 
-    saveDelegates.andThen {
-      //additional cleanup, that can fail with no downsides
-      case Success(checkpoints) =>
-        val processed = Some(checkpoints.keySet)
-        logger.info("Cleaning checkpointed delegates..")
-        Await.result(
-          db.run(tezosStore.removeDelegatesFromCheckpoint(processed)),
-          atMost = batchingConf.delegatePageProcessingTimeout
-        )
-        logger.info("Done cleaning checkpointed delegates.")
-      case _ =>
-        ()
-    }.transform {
-      case Failure(e) =>
-        val error = "I failed to fetch delegates from client and update them"
-        logger.error(error, e)
-        Failure(DelegatesProcessingFailed(message = error, e))
-      case success => Success(Done)
+      def processAccountsPage(
+          taggedAccounts: List[BlockTagged[AccountsIndex]],
+          taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
+      ): Future[(Int, Option[Int], List[BlockTagged[DelegateKeys]])] =
+        db.run(tezosStore.storeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys))
+          .map { case (accountWrites, delegateCheckpoints) => (accountWrites, delegateCheckpoints, taggedDelegateKeys) }
+          .andThen(logWriteFailure)
+
+      def cleanup[T] = (_: T) => {
+        //can fail with no real downsides
+        val processed = Some(ids.keySet)
+        logger.info("Cleaning {} processed accounts from the checkpoint...", ids.size)
+        db.run(tezosStore.removeAccountsFromCheckpoint(processed))
+          .map(cleaned => logger.info("Done cleaning {} accounts checkpoint rows.", cleaned))
+      }
+
+      logger.info("Ready to fetch updated accounts information from the chain")
+      val (pages, total) = tezosNodeOperator.getAccountsForBlocks(ids)
+
+      /* Streams the (unevaluated) incoming data, actually fetching the results.
+       * We use combinators to keep the ongoing requests' flow under control, taking advantage of
+       * akka-streams automatic backpressure control.
+       * The results are grouped to optimize for database storage.
+       * We do this to re-aggregate results from pages which are now based on single blocks,
+       * which would lead to inefficient storage performances as-is.
+       */
+      val saveAccounts = Source
+          .fromIterator(() => pages)
+          .mapAsync[List[BlockTagged[Map[AccountId, Account]]]](1)(identity)
+          .mapConcat(identity)
+          .grouped(batchingConf.blockPageSize)
+          .map(extractDelegatesInfo)
+          .mapAsync(1)((processAccountsPage _).tupled)
+          .runFold(Monoid[(Int, Option[Int], List[BlockTagged[DelegateKeys]])].empty) { (processed, justDone) =>
+            processed |+| justDone
+          } andThen logOutcome
+
+      (saveAccounts flatTap cleanup).transform {
+        case Success((_, _, delegateCheckpoints)) => Success(delegateCheckpoints)
+        case Failure(e) =>
+          val error = "I failed to fetch accounts from client and update them"
+          logger.error(error, e)
+          Failure(AccountsProcessingFailed(message = error, e))
+      }
     }
+  }
 
+  private object DelegatesProcessor {
+
+    /* Fetches the data from the chain node and stores delegates into the data store.
+     * @param ids a pre-filtered map of delegate hashes with latest block referring to them
+     */
+    def process(ids: Map[PublicKeyHash, BlockReference])(implicit mat: ActorMaterializer): Future[Done] = {
+      import cats.Monoid
+      import cats.instances.int._
+      import cats.instances.future._
+      import cats.syntax.monoid._
+      import cats.syntax.flatMap._
+
+      def logWriteFailure: PartialFunction[Try[_], Unit] = {
+        case Failure(e) =>
+          logger.error("Could not write delegates to the database")
+      }
+
+      def logOutcome: PartialFunction[Try[Int], Unit] = {
+        case Success(rows) =>
+          logger.info("{} delegates were touched on the database.", rows)
+      }
+
+      def processDelegatesPage(
+          taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
+      ): Future[Int] =
+        db.run(tezosStore.storeDelegatesAndCopyContracts(taggedDelegates.toList))
+          .andThen(logWriteFailure)
+
+      def cleanup[T] = (_: T) => {
+        //can fail with no real downsides
+        val processed = Some(ids.keySet)
+        logger.info("Cleaning {} processed delegates from the checkpoint...", ids.size)
+        db.run(tezosStore.removeDelegatesFromCheckpoint(processed))
+          .map(cleaned => logger.info("Done cleaning {} delegates checkpoint rows.", cleaned))
+      }
+
+      logger.info("Ready to fetch updated delegates information from the chain")
+      val (pages, total) = tezosNodeOperator.getDelegatesForBlocks(ids)
+
+      /* Streams the (unevaluated) incoming data, actually fetching the results.
+       * We use combinators to keep the ongoing requests' flow under control, taking advantage of
+       * akka-streams automatic backpressure control.
+       * The results are grouped to optimize for database storage.
+       * We do this to re-aggregate results from pages which are now based on single blocks,
+       * which would lead to inefficient storage performances as-is.
+       */
+      val saveDelegates =
+        Source
+          .fromIterator(() => pages)
+          .mapAsync[List[BlockTagged[Map[PublicKeyHash, Delegate]]]](1)(identity)
+          .mapConcat(identity)
+          .grouped(batchingConf.blockPageSize)
+          .mapAsync(1)(processDelegatesPage)
+          .runFold(Monoid[Int].empty) { (processed, justDone) =>
+            processed |+| justDone
+          } andThen logOutcome
+
+      (saveDelegates flatTap cleanup).transform {
+        case Failure(e) =>
+          val error = "I failed to fetch delegates from client and update them"
+          logger.error(error, e)
+          Failure(DelegatesProcessingFailed(message = error, e))
+        case success => Success(Done)
+      }
+
+    }
   }
 
   /** Keeps track of time passed between different partial checkpoints of some entity processing
