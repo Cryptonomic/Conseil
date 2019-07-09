@@ -225,8 +225,8 @@ class TezosPlatformDiscoveryOperationsTest
                 "operations"
               ),
               Attribute(
-                "origination_contracts",
-                "Origination contracts",
+                "originated_contracts",
+                "Originated contracts",
                 DataType.String,
                 None,
                 KeyType.NonKey,
