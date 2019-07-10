@@ -606,7 +606,7 @@ class DatabaseConversionsTest
           case Some(Decimal(bignumber)) => converted.paidStorageSizeDiff.value shouldBe bignumber
           case _ => converted.paidStorageSizeDiff shouldBe 'empty
         }
-        converted.originatedContracts.value shouldBe "[KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4]"
+        converted.originatedContracts.value shouldBe "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4,KT1Hx96yGgGk2q7Jmwm1dnYAMdRoLJNn5gnC"
 
         forAll(
           converted.level ::
