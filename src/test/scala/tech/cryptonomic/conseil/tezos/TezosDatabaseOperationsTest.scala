@@ -125,6 +125,7 @@ class TezosDatabaseOperationsTest
                 case PositiveDecimal(value) => Some(value)
                 case _ => None
               }
+              row.priority.value shouldEqual block.data.header.priority.value
           }
 
           val dbBlocksAndGroups =
@@ -1272,7 +1273,8 @@ class TezosDatabaseOperationsTest
             "meta_cycle_position" -> None,
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
-            "expected_commitment" -> None
+            "expected_commitment" -> None,
+            "priority" -> None
           ),
           Map(
             "operations_hash" -> None,
@@ -1299,7 +1301,8 @@ class TezosDatabaseOperationsTest
             "meta_cycle_position" -> None,
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
-            "expected_commitment" -> None
+            "expected_commitment" -> None,
+            "priority" -> None
           )
         )
       }

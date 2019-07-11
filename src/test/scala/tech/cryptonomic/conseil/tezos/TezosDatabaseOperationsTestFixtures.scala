@@ -130,6 +130,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
+            priority = Some(0),
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),

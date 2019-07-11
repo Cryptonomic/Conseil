@@ -156,9 +156,9 @@ CREATE TABLE public.blocks (
     meta_cycle_position integer,
     meta_voting_period integer,
     meta_voting_period_position integer,
-    expected_commitment boolean
+    expected_commitment boolean,
+    priority integer
 );
-
 
 --
 -- TOC entry 188 (class 1259 OID 7467507)
