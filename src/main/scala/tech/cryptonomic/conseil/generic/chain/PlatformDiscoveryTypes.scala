@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.generic.chain
 import tech.cryptonomic.conseil.generic.chain.DataTypes.InvalidPredicateFiltering
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.KeyType
+import tech.cryptonomic.conseil.metadata.{NetworkPath, PlatformPath}
 
 /**
   * Classes used for Platform routes
@@ -10,7 +11,9 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.Key
 object PlatformDiscoveryTypes {
 
   /** Case class representing network */
-  final case class Platform(name: String, displayName: String, description: Option[String] = None)
+  final case class Platform(name: String, displayName: String, description: Option[String] = None) {
+    val path = PlatformPath(name)
+  }
 
   /** Case class representing network */
   final case class Network(
@@ -19,7 +22,9 @@ object PlatformDiscoveryTypes {
       platform: String,
       network: String,
       description: Option[String] = None
-  )
+  ) {
+    lazy val path = NetworkPath(network, PlatformPath(platform))
+  }
 
   /** Case class representing single entity of a given network */
   final case class Entity(

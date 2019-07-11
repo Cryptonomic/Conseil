@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFactory {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,12 +30,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         )
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -55,8 +55,8 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
       "return error with incorrect query fields" in {
         (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -84,12 +84,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         )
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -117,13 +117,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         )
         (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
           .anyNumberOfTimes()
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -152,13 +152,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
           .anyNumberOfTimes()
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -178,8 +178,8 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
       "return error with incorrect orderBy fields" in {
         (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -208,12 +208,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -245,12 +245,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
         (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -279,12 +279,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true)) once ()
         (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false)) once ()
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -316,12 +316,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
         (ms.isAttributeValid _).when("testEntity", "InvalidAttribute").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity.copy(limitedQuery = Some(true))))))
 
         val query = ApiQuery(
@@ -350,13 +350,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
           .anyNumberOfTimes()
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -388,13 +388,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
         (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(List(attribute))))
           .anyNumberOfTimes()
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -427,12 +427,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         )
         (ms.isAttributeValid _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(testEntityPath, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(testEntityPath)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(
@@ -464,12 +464,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         )
         (ms.isAttributeValid _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
         (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(testEntityPath, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(testEntityPath)
           .returns(Future.successful(Some(List(attribute))))
         (ms
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val query = ApiQuery(

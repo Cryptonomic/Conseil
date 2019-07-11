@@ -21,7 +21,6 @@ import tech.cryptonomic.conseil.routes.Data
 import scala.concurrent.{ExecutionContext, Future}
 
 class DataTest extends WordSpec with Matchers with ScalatestRouteTest with ScalaFutures with MockFactory {
-  val ec: ExecutionContext = system.dispatcher
 
   val jsonStringRequest: String =
     """
@@ -134,21 +133,21 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
 
   val metadataServiceStub = stub[MetadataService]
 
-  val postRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub)(ec).postRoute
+  val postRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub).postRoute
 
-  val getRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub)(ec).getRoute
+  val getRoute: Route = new Data(cfg, fakeQPP, metadataServiceStub).getRoute
 
   "Query protocol" should {
 
       "return a correct response with OK status code with POST" in {
         (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
         (metadataServiceStub
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(accountAttributes)))
         (metadataServiceStub
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
 
         val postRequest = HttpRequest(
@@ -167,12 +166,12 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       "return 404 NotFound status code for request for the not supported platform with POST" in {
         (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
         (metadataServiceStub
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(accountAttributes)))
         (metadataServiceStub
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
         val postRequest = HttpRequest(
           HttpMethods.POST,
@@ -187,12 +186,12 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       "return 404 NotFound status code for request for the not supported network with POST" in {
         (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
         (metadataServiceStub
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath)(_: ExecutionContext))
-          .when(*, *)
+          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
+          .when(*)
           .returns(Future.successful(Some(accountAttributes)))
         (metadataServiceStub
-          .getEntities(_: NetworkPath)(_: ExecutionContext))
-          .when(*, *)
+          .getEntities(_: NetworkPath))
+          .when(*)
           .returns(Future.successful(Some(List(testEntity))))
         val postRequest = HttpRequest(
           HttpMethods.POST,
