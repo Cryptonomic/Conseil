@@ -249,7 +249,8 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups")
+              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
             )
           )
       }

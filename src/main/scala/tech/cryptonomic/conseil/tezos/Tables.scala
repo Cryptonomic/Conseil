@@ -876,33 +876,48 @@ trait Tables {
     *  @param hash Database column hash SqlType(varchar), PrimaryKey
     *  @param branch Database column branch SqlType(varchar)
     *  @param signature Database column signature SqlType(varchar), Default(None)
-    *  @param blockId Database column block_id SqlType(varchar) */
+    *  @param blockId Database column block_id SqlType(varchar)
+    *  @param blockLevel Database column block_level SqlType(int4) */
   case class OperationGroupsRow(
       protocol: String,
       chainId: Option[String] = None,
       hash: String,
       branch: String,
       signature: Option[String] = None,
-      blockId: String
+      blockId: String,
+      blockLevel: Int
   )
 
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
-  implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[OperationGroupsRow] =
-    GR { prs =>
-      import prs._
-      OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String]))
-    }
+  implicit def GetResultOperationGroupsRow(
+      implicit e0: GR[String],
+      e1: GR[Option[String]],
+      e2: GR[Int]
+  ): GR[OperationGroupsRow] = GR { prs =>
+    import prs._
+    OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String], <<[Int]))
+  }
 
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
     def * =
-      (protocol, chainId, hash, branch, signature, blockId) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
+      (protocol, chainId, hash, branch, signature, blockId, blockLevel) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(protocol), chainId, Rep.Some(hash), Rep.Some(branch), signature, Rep.Some(blockId))).shaped.<>(
+      (
+        (
+          Rep.Some(protocol),
+          chainId,
+          Rep.Some(hash),
+          Rep.Some(branch),
+          signature,
+          Rep.Some(blockId),
+          Rep.Some(blockLevel)
+        )
+      ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get)))
+          import r._; _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -925,12 +940,18 @@ trait Tables {
     /** Database column block_id SqlType(varchar) */
     val blockId: Rep[String] = column[String]("block_id")
 
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
+
     /** Foreign key referencing Blocks (database name block) */
     lazy val blocksFk = foreignKey("block", blockId, Blocks)(
       r => r.hash,
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
+
+    /** Index over (blockLevel) (database name ix_operation_groups_block_level) */
+    val index1 = index("ix_operation_groups_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table OperationGroups */
