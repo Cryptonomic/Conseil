@@ -69,15 +69,10 @@ class MetadataService(
   }
 
   // fetches entities
-  def getEntities(path: NetworkPath): Future[Option[List[Entity]]] =
-    successful(entities.get(path))
+  def getEntities(path: NetworkPath): Option[List[Entity]] = entities.get(path)
 
   // fetches table attributes
-  def getTableAttributes(
-      path: EntityPath
-  ): Future[Option[List[Attribute]]] = {
-    successful(tableAttributes.get(path))
-  }
+  def getTableAttributes(path: EntityPath): Option[List[Attribute]] = tableAttributes.get(path)
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
@@ -111,19 +106,17 @@ class MetadataService(
 
   private def exists(path: PlatformPath): Boolean = getPlatforms.exists(_.name == path.platform)
 
+  private def exists(path: EntityPath): Boolean =
+    getEntities(path.up).toList.flatten.exists(_.name == path.entity) && exists(path.up)
+
   // fetches attributes with given function
   private def getAttributesHelper(path: EntityPath)(
       getAttributes: String => Future[Option[List[Attribute]]]
   ): Future[Option[List[Attribute]]] =
-    exists(path).flatMap {
-      case true =>
-        getAttributes(path.entity).map(
-          _.mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
-        )
-      case false =>
-        Future.successful(None)
-    }
-
-  private def exists(path: EntityPath): Future[Boolean] =
-    getEntities(path.up).map(_.getOrElse(List.empty).exists(_.name == path.entity) && exists(path.up))
+    if (exists(path))
+      getAttributes(path.entity).map(
+        _.mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
+      )
+    else
+      Future.successful(None)
 }

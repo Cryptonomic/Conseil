@@ -101,24 +101,23 @@ object DataTypes {
   /** Helper method for finding if queries does not contain filters on key fields or datetime fields */
   private def findInvalidPredicateFilteringFields(query: Query, path: EntityPath, metadataService: MetadataService)(
       implicit ec: ExecutionContext
-  ): Future[List[InvalidPredicateFiltering]] =
-    metadataService.getEntities(path.up).flatMap { entitiesOpt =>
-      val limitedQueryEntity = entitiesOpt.toList.flatten
-        .find(_.name == path.entity)
-        .flatMap(_.limitedQuery)
-        .getOrElse(false)
-      if (limitedQueryEntity) {
-        query.predicates.traverse { predicate =>
-          metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
-            attributesOpt.flatMap { attributes =>
-              attributes.find(_.name == predicate.field)
-            }.toList
-          }
-        }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
-      } else {
-        Future.successful(List.empty)
-      }
+  ): Future[List[InvalidPredicateFiltering]] = {
+    val limitedQueryEntity = metadataService.getEntities(path.up).toList.flatten
+      .find(_.name == path.entity)
+      .flatMap(_.limitedQuery)
+      .getOrElse(false)
+    if (limitedQueryEntity) {
+      query.predicates.traverse { predicate =>
+        metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
+          attributesOpt.flatMap { attributes =>
+            attributes.find(_.name == predicate.field)
+          }.toList
+        }
+      }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
+    } else {
+      Future.successful(List.empty)
     }
+  }
 
   /** Trait representing attribute validation errors */
   sealed trait AttributesValidationError extends Product with Serializable {

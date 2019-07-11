@@ -148,7 +148,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
         (metadataServiceStub
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val postRequest = HttpRequest(
           HttpMethods.POST,
@@ -172,7 +172,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
         (metadataServiceStub
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
         val postRequest = HttpRequest(
           HttpMethods.POST,
           uri = "/v2/data/notSupportedPlatform/alphanet/accounts",
@@ -192,7 +192,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
         (metadataServiceStub
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
         val postRequest = HttpRequest(
           HttpMethods.POST,
           uri = "/v2/data/tezos/notSupportedNetwork/accounts",

@@ -36,7 +36,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -57,7 +57,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("invalid")),
@@ -90,7 +90,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = None,
@@ -124,7 +124,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = None,
@@ -159,7 +159,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = None,
@@ -180,7 +180,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = None,
@@ -214,7 +214,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -251,7 +251,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("invalid")),
@@ -285,7 +285,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -322,7 +322,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity.copy(limitedQuery = Some(true))))))
+          .returns(Some(List(testEntity.copy(limitedQuery = Some(true)))))
 
         val query = ApiQuery(
           fields = None,
@@ -357,7 +357,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -395,7 +395,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = None,
@@ -433,7 +433,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("validAttribute")),
@@ -470,7 +470,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
-          .returns(Future.successful(Some(List(testEntity))))
+          .returns(Some(List(testEntity)))
 
         val query = ApiQuery(
           fields = Some(List("validAttribute")),

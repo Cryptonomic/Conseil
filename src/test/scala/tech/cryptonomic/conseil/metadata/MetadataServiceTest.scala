@@ -206,7 +206,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
         // when
         val result =
-          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos")))
 
         // then
         result shouldBe Some(List(Entity("entity", "entity-name", 0)))
@@ -241,7 +241,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
         // when
         val result =
-          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos")))
 
         // then
         result shouldBe Some(List(Entity("entity", "overwritten name", 0)))
@@ -276,7 +276,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
         // when
         val result =
-          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos")))
 
         // then
         result shouldBe Some(List(Entity("entity", "entity-name", 0, Some("overwritten display name plural"))))
@@ -311,7 +311,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
         // when
         val result =
-          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos")))
 
         // then
         result shouldBe Some(List(Entity("entity", "entity-name", 0, None, Some("description"))))
@@ -346,7 +346,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
         // when
         val result =
-          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos")))
 
         // then
         result shouldBe Some(List.empty)
@@ -381,7 +381,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
 
         // when
         val result =
-          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+          sut(overwrittenConfiguration).getEntities(NetworkPath("mainnet", PlatformPath("tezos")))
 
         // then
         result shouldBe Some(List.empty)
@@ -390,7 +390,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
       "return None when fetching entities for a non existing platform" in {
         // when
         val result =
-          sut(Map.empty).getEntities(NetworkPath("mainnet", PlatformPath("non-existing-platform"))).futureValue
+          sut(Map.empty).getEntities(NetworkPath("mainnet", PlatformPath("non-existing-platform")))
 
         // then
         result shouldBe None
@@ -401,7 +401,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true)))
 
         // when
-        val result = sut(overriddenConfiguration).getEntities(NetworkPath("tezos", PlatformPath("mainnet"))).futureValue
+        val result = sut(overriddenConfiguration).getEntities(NetworkPath("tezos", PlatformPath("mainnet")))
 
         // then
         result shouldBe None
@@ -412,9 +412,8 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(true)))
 
         // when
-        val result = sut(overriddenConfiguration)
-          .getEntities(NetworkPath("non-existing-network", PlatformPath("tezos")))
-          .futureValue
+        val result =
+          sut(overriddenConfiguration).getEntities(NetworkPath("non-existing-network", PlatformPath("tezos")))
 
         // then
         result shouldBe None
@@ -432,7 +431,7 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         )
 
         // when
-        val result = sut(overriddenConfiguration).getEntities(NetworkPath("tezos", PlatformPath("mainnet"))).futureValue
+        val result = sut(overriddenConfiguration).getEntities(NetworkPath("tezos", PlatformPath("mainnet")))
 
         // then
         result shouldBe None
@@ -480,7 +479,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overwrittenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))
@@ -542,7 +540,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overwrittenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe Some(
@@ -611,7 +608,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overwrittenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe Some(List.empty)
@@ -659,7 +655,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overwrittenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe Some(List.empty)
@@ -677,7 +672,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(Map.empty)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("non-existing-platform"))))
-          .futureValue
 
         // then
         result shouldBe None
@@ -697,7 +691,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overriddenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe None
@@ -715,7 +708,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(Map.empty)
           .getTableAttributes(EntityPath("entity", NetworkPath("non-existing-network", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe None
@@ -743,7 +735,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overriddenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe None
@@ -759,7 +750,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(Map.empty)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe None
@@ -790,7 +780,6 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
         // when
         val result = sut(overriddenConfiguration)
           .getTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
-          .futureValue
 
         // then
         result shouldBe None
