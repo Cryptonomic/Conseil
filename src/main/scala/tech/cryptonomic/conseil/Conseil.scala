@@ -66,7 +66,8 @@ object Conseil
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
 
-      lazy val metadataService =
+      // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
+      val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
