@@ -114,7 +114,8 @@ object DatabaseConversions {
           hash = og.hash.value,
           branch = og.branch.value,
           signature = og.signature.map(_.value),
-          blockId = from.data.hash.value
+          blockId = from.data.hash.value,
+          blockLevel = from.data.header.level
         )
       }
   }

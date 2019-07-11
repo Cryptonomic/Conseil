@@ -226,7 +226,8 @@ CREATE TABLE public.operation_groups (
     hash character varying NOT NULL,
     branch character varying NOT NULL,
     signature character varying,
-    block_id character varying NOT NULL
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
 );
 
 
@@ -396,6 +397,7 @@ ALTER TABLE ONLY public.operations
 
 CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 
+CREATE INDEX ix_operation_groups_block_level ON public.operation_groups USING btree (block_level);
 
 --
 -- TOC entry 2065 (class 1259 OID 7467562)

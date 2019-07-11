@@ -290,7 +290,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
             hash = generateHash(10),
             branch = generateHash(10),
             signature = Some(s"sig${generateHash(10)}"),
-            blockId = block.hash
+            blockId = block.hash,
+            blockLevel = block.level
           )
       )
       .toList
