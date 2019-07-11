@@ -20,31 +20,24 @@ class MetadataService(
     tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
 )(implicit apiExecutionContext: ExecutionContext) {
 
-  private lazy val platforms = ConfigUtil
-    .getPlatforms(config)
-    .flatMap(platform => transformation.overridePlatform(platform, PlatformPath(platform.name)))
+  private val platforms = transformation.overridePlatforms(ConfigUtil.getPlatforms(config))
 
-  private lazy val networks = platforms.map { platform =>
-    platform.path ->
-      ConfigUtil
-        .getNetworks(config, platform.name)
-        .flatMap(network => transformation.overrideNetwork(network, platform.path.addLevel(network.name)))
+  private val networks = platforms.map { platform =>
+    platform.path -> transformation.overrideNetworks(platform.path, ConfigUtil.getNetworks(config, platform.name))
   }.toMap
 
-  private lazy val entities = {
+  private val entities = {
     lazy val allEntities = Await.result(tezosPlatformDiscoveryOperations.getEntities, 1 second)
 
     networks.values.flatten
       .map(_.path)
       .map(
-        networkPath =>
-          networkPath -> allEntities
-                .flatMap(entity => transformation.overrideEntity(entity, networkPath.addLevel(entity.name)))
+        networkPath => networkPath -> transformation.overrideEntities(networkPath, allEntities)
       )
       .toMap
   }
 
-  private lazy val tableAttributes = {
+  private val tableAttributes: Map[EntityPath, List[Attribute]] = {
     val networkPaths = entities.flatMap {
       case (networkPath: NetworkPath, entities: List[Entity]) =>
         entities.map(entity => networkPath.addLevel(entity.name))
@@ -53,7 +46,11 @@ class MetadataService(
     networkPaths.flatMap { path =>
       Await
         .result(
-          getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributes),
+          tezosPlatformDiscoveryOperations
+            .getTableAttributes(path.entity)
+            .map(
+              _.map(attributes => transformation.overrideAttributes(path, attributes))
+            ),
           1 second
         )
         .map(path -> _)
