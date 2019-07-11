@@ -34,7 +34,7 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides platform
-  def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path.up)) {
+  def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
     val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
 
     platform.copy(
@@ -95,13 +95,13 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
       )
     }
 
-  private def logDifferences(paths: List[Path], overridePahts: List[Path]): Unit = {
+  private def logDifferences(paths: List[Path], overriddenPaths: List[Path]): Unit = {
     paths
-      .filterNot(overridePahts.toSet)
-      .foreach(logger.warn("""There's a missing metadata overrides for "{}"""", _))
+      .filterNot(overriddenPaths.toSet)
+      .foreach(logger.warn("""There're missing metadata overrides for "{}"""", _))
 
-    overridePahts
+    overriddenPaths
       .filterNot(paths.toSet)
-      .foreach(logger.error("""Metadata overrides "{}" overrides nothing""", _))
+      .foreach(logger.error("""Metadata overrides "{}" override nothing""", _))
   }
 }

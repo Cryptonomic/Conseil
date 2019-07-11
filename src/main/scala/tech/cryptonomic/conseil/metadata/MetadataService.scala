@@ -20,13 +20,13 @@ class MetadataService(
     tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
 )(implicit apiExecutionContext: ExecutionContext) {
 
-  private val platforms = transformation.overridePlatforms(ConfigUtil.getPlatforms(config))
+  private lazy val platforms = transformation.overridePlatforms(ConfigUtil.getPlatforms(config))
 
-  private val networks = platforms.map { platform =>
+  private lazy val networks = platforms.map { platform =>
     platform.path -> transformation.overrideNetworks(platform.path, ConfigUtil.getNetworks(config, platform.name))
   }.toMap
 
-  private val entities = {
+  private lazy val entities = {
     lazy val allEntities = Await.result(tezosPlatformDiscoveryOperations.getEntities, 1 second)
 
     networks.values.flatten
@@ -37,7 +37,7 @@ class MetadataService(
       .toMap
   }
 
-  private val tableAttributes: Map[EntityPath, List[Attribute]] = {
+  private lazy val tableAttributes: Map[EntityPath, List[Attribute]] = {
     val networkPaths = entities.flatMap {
       case (networkPath: NetworkPath, entities: List[Entity]) =>
         entities.map(entity => networkPath.addLevel(entity.name))
