@@ -7,7 +7,6 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.CollectionOps.ExtendedOptionalList
 import tech.cryptonomic.conseil.util.ConfigUtil
-import tech.cryptonomic.conseil.util.OptionUtil.when
 
 import scala.concurrent.Future.successful
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -25,16 +24,17 @@ class MetadataService(
     .getPlatforms(config)
     .flatMap(platform => transformation.overridePlatform(platform, PlatformPath(platform.name)))
 
-  private lazy val networks = platforms.flatMap { platform =>
-    ConfigUtil
-      .getNetworks(config, platform.name)
-      .flatMap(network => transformation.overrideNetwork(network, platform.path.addLevel(network.name)))
-  }
+  private lazy val networks = platforms.map { platform =>
+    platform.path ->
+      ConfigUtil
+        .getNetworks(config, platform.name)
+        .flatMap(network => transformation.overrideNetwork(network, platform.path.addLevel(network.name)))
+  }.toMap
 
   private lazy val entities = {
     lazy val allEntities = Await.result(tezosPlatformDiscoveryOperations.getEntities, 1 second)
 
-    networks
+    networks.values.flatten
       .map(_.path)
       .map(
         networkPath =>
@@ -64,9 +64,7 @@ class MetadataService(
   def getPlatforms: List[Platform] = platforms
 
   // fetches networks
-  def getNetworks(path: PlatformPath): Option[List[Network]] = when(exists(path)) {
-    networks.filter(_.platform == path.platform)
-  }
+  def getNetworks(path: PlatformPath): Option[List[Network]] = networks.get(path)
 
   // fetches entities
   def getEntities(path: NetworkPath): Option[List[Entity]] = entities.get(path)
