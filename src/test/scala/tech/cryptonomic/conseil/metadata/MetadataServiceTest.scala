@@ -527,7 +527,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
                                         valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
                                         reference = Some(Map("0" -> "value1", "1" -> "other value")),
                                         displayPriority = Some(1),
-                                        displayOrder = Some(2)
+                                        displayOrder = Some(2),
+                                        currencySymbol = Some("ꜩ"),
+                                        currencySymbolCode = Some(42793)
                                       )
                                 )
                               )
@@ -559,7 +561,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
               reference = Some(Map("0" -> "value1", "1" -> "other value")),
               scale = Some(6),
               displayPriority = Some(1),
-              displayOrder = Some(2)
+              displayOrder = Some(2),
+              currencySymbol = Some("ꜩ"),
+              currencySymbolCode = Some(42793)
             )
           )
         )

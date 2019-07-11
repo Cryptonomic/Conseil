@@ -17,6 +17,9 @@ object DatabaseConversions {
   def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String =
     traversable.mkString("[", ",", "]")
 
+  def toCommaSeparated[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String =
+    traversable.mkString(",")
+
   def extractBigDecimal(number: PositiveBigNumber): Option[BigDecimal] = number match {
     case PositiveDecimal(value) => Some(value)
     case _ => None
@@ -259,6 +262,7 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
         paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
+        originatedContracts = metadata.operation_result.originated_contracts.map(_.map(_.id)).map(toCommaSeparated),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp)
@@ -443,11 +447,12 @@ object DatabaseConversions {
       val blockHash = block.data.hash.value
       val blockLevel = block.data.header.level
       protocols.map {
-        case ProtocolId(id) =>
+        case (ProtocolId(id), supporters) =>
           Tables.ProposalsRow(
             protocolHash = id,
             blockId = blockHash,
-            blockLevel = blockLevel
+            blockLevel = blockLevel,
+            supporters = Some(supporters)
           )
       }
     }

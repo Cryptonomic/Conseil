@@ -232,9 +232,17 @@ class TezosPlatformDiscoveryOperationsTest
                 KeyType.NonKey,
                 "operations"
               ),
+              Attribute(
+                "originated_contracts",
+                "Originated contracts",
+                DataType.String,
+                None,
+                KeyType.NonKey,
+                "operations"
+              ),
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "operations")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
             )
           )
       }
@@ -279,7 +287,8 @@ class TezosPlatformDiscoveryOperationsTest
             List(
               Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
+              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
             )
           )
       }
