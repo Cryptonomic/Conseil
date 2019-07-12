@@ -349,8 +349,8 @@ class TezosPlatformDiscoveryOperationsTest
           BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = false)))
         )
 
-        metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
-        metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
+        metadataOperations.runQuery(slickRepos.blocksRepository.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
+        metadataOperations.runQuery(slickRepos.accountsRepository.updateAccounts(accounts)).isReadyWithin(5 seconds)
 
         // expect
         sut.listAttributeValues("accounts", "spendable").futureValue.right.get shouldBe List("true", "false")
