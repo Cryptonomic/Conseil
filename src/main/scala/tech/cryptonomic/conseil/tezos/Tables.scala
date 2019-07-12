@@ -415,7 +415,8 @@ trait Tables {
     *  @param metaCyclePosition Database column meta_cycle_position SqlType(int4), Default(None)
     *  @param metaVotingPeriod Database column meta_voting_period SqlType(int4), Default(None)
     *  @param metaVotingPeriodPosition Database column meta_voting_period_position SqlType(int4), Default(None)
-    *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None) */
+    *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None)
+    *  @param priority Database column priority SqlType(int4), Default(None) */
   case class BlocksRow(
       level: Int,
       proto: Int,
@@ -441,7 +442,8 @@ trait Tables {
       metaCyclePosition: Option[Int] = None,
       metaVotingPeriod: Option[Int] = None,
       metaVotingPeriodPosition: Option[Int] = None,
-      expectedCommitment: Option[Boolean] = None
+      expectedCommitment: Option[Boolean] = None,
+      priority: Option[Int] = None
   )
 
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
@@ -480,20 +482,21 @@ trait Tables {
       <<?[Int],
       <<?[Int],
       <<?[Int],
-      <<?[Boolean]
+      <<?[Boolean],
+      <<?[Int]
     )
   }
 
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
     def * =
-      (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: HNil)
+      (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: HNil)
         .mapTo[BlocksRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(validationPass) :: Rep
-            .Some(fitness) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: HNil).shaped
+            .Some(fitness) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: HNil).shaped
         .<>(
           r =>
             BlocksRow(
@@ -521,7 +524,8 @@ trait Tables {
               r(21).asInstanceOf[Option[Int]],
               r(22).asInstanceOf[Option[Int]],
               r(23).asInstanceOf[Option[Int]],
-              r(24).asInstanceOf[Option[Boolean]]
+              r(24).asInstanceOf[Option[Boolean]],
+              r(25).asInstanceOf[Option[Int]]
             ),
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
@@ -601,6 +605,9 @@ trait Tables {
 
     /** Database column expected_commitment SqlType(bool), Default(None) */
     val expectedCommitment: Rep[Option[Boolean]] = column[Option[Boolean]]("expected_commitment", O.Default(None))
+
+    /** Database column priority SqlType(int4), Default(None) */
+    val priority: Rep[Option[Int]] = column[Option[Int]]("priority", O.Default(None))
 
     /** Uniqueness Index over (hash) (database name blocks_hash_key) */
     val index1 = index("blocks_hash_key", hash :: HNil, unique = true)
