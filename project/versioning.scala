@@ -15,11 +15,14 @@ object Versioning {
     * implement the logic for versioning explained in the build file
     * the tag parameter should have a format like:
     *
-    *   ci-release-1-3-d3a9863 <-- this latter part is the result of `git describe`
-    *   ^          ^
-    *   |          |- this is the version we care about
+    *                  *--------*
+    *                  |        | <-- this latter part is the result of `git describe`
+    * <free>-release-1-3-d3a9863           and should be missing on the release commit
+    *   ^            ^
+    *   |            |
+    *   |            *-- this is the version we care about
     *   |
-    *   |- freeform ('ci' would be the one used by sbt tagging)
+    *   *- freeform (year-month would be the one used by sbt tagging)
     */
   def generate(major: Int, date: LocalDate, tag: String): String = {
     val week = zeroPadded(2)(date.get(temporal.ChronoField.ALIGNED_WEEK_OF_YEAR).toString)
@@ -37,7 +40,8 @@ object Versioning {
   lazy val prepareReleaseTagDef = Def.task {
     val currentVersion = version.value
     val tag = currentVersion.split('.').last.dropWhile(_ == '0')
-    s"ci-release-$tag"
+    val date = LocalDate.now().formatted("%1$tY-%1$tB").toLowerCase
+    s"$date-release-$tag"
   }
 
 }
