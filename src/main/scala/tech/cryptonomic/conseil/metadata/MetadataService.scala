@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.metadata
 
 import scala.concurrent.duration._
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.generic.chain.DataTypes
+import tech.cryptonomic.conseil.generic.chain.{DataTypes, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.CollectionOps.ExtendedOptionalList
@@ -17,17 +17,17 @@ class MetadataService(
     config: PlatformsConfiguration,
     transformation: UnitTransformation,
     cacheConfiguration: AttributeValuesCacheConfiguration,
-    tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
+    platformDiscoveryOperations: PlatformDiscoveryOperations
 )(implicit apiExecutionContext: ExecutionContext) {
 
-  private lazy val platforms = transformation.overridePlatforms(ConfigUtil.getPlatforms(config))
+  private val platforms = transformation.overridePlatforms(ConfigUtil.getPlatforms(config))
 
-  private lazy val networks = platforms.map { platform =>
+  private val networks = platforms.map { platform =>
     platform.path -> transformation.overrideNetworks(platform.path, ConfigUtil.getNetworks(config, platform.name))
   }.toMap
 
-  private lazy val entities = {
-    lazy val allEntities = Await.result(tezosPlatformDiscoveryOperations.getEntities, 1 second)
+  private val entities = {
+    val allEntities = Await.result(platformDiscoveryOperations.getEntities, 1 second)
 
     networks.values.flatten
       .map(_.path)
@@ -37,7 +37,7 @@ class MetadataService(
       .toMap
   }
 
-  private lazy val tableAttributes: Map[EntityPath, List[Attribute]] = {
+  private val tableAttributes: Map[EntityPath, List[Attribute]] = {
     val networkPaths = entities.flatMap {
       case (networkPath: NetworkPath, entities: List[Entity]) =>
         entities.map(entity => networkPath.addLevel(entity.name))
@@ -46,7 +46,7 @@ class MetadataService(
     networkPaths.flatMap { path =>
       Await
         .result(
-          tezosPlatformDiscoveryOperations
+          platformDiscoveryOperations
             .getTableAttributes(path.entity)
             .map(
               _.map(attributes => transformation.overrideAttributes(path, attributes))
@@ -71,7 +71,7 @@ class MetadataService(
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
-    getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
+    getAttributesHelper(path)(platformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
 
   // fetches attribute values
   def getAttributeValues(
@@ -85,7 +85,7 @@ class MetadataService(
     val path = NetworkPath(network, PlatformPath(platform))
     if (exists(path)) {
       val attributePath = EntityPath(entity, path).addLevel(attribute)
-      tezosPlatformDiscoveryOperations
+      platformDiscoveryOperations
         .listAttributeValues(entity, attribute, filter, cacheConfiguration.getCacheConfiguration(attributePath))
         .map(Some(_))
     } else
@@ -94,7 +94,7 @@ class MetadataService(
 
   // checks if attribute is valid
   def isAttributeValid(entity: String, attribute: String): Future[Boolean] =
-    tezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)
+    platformDiscoveryOperations.isAttributeValid(entity, attribute)
 
   private def exists(path: NetworkPath): Boolean =
     getNetworks(path.up).getOrElse(List.empty).exists(_.network == path.network) && exists(path.up)

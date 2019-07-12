@@ -63,7 +63,7 @@ object DataTypes {
 
     fields.traverse {
       case (source, field) =>
-        metadataService.isAttributeValid(path.entity, field).map((_, source, field))
+        metadataService.attributeExists(path.entity, field).map((_, source, field))
     }.map {
       _.collect {
         case (false, 'query, field) => InvalidQueryField(field)

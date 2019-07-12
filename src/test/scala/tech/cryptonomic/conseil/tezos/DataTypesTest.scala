@@ -28,7 +28,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.UniqueKey,
           entity = "testEntity"
         )
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -53,7 +53,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
       }
 
       "return error with incorrect query fields" in {
-        (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false))
+        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false))
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
@@ -82,7 +82,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.UniqueKey,
           entity = "test"
         )
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -115,7 +115,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.UniqueKey,
           entity = "test"
         )
-        (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false))
+        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -150,7 +150,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "testEntity"
         )
 
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -176,7 +176,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
       }
 
       "return error with incorrect orderBy fields" in {
-        (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false))
+        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false))
         (ms
           .getEntities(_: NetworkPath))
           .when(*)
@@ -206,7 +206,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "test"
         )
 
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -243,7 +243,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "test"
         )
 
-        (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -276,8 +276,8 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.NonKey,
           entity = "test"
         )
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true)) once ()
-        (ms.isAttributeValid _).when("testEntity", "invalid").returns(Future.successful(false)) once ()
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true)) once ()
+        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false)) once ()
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -314,7 +314,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "test"
         )
 
-        (ms.isAttributeValid _).when("testEntity", "InvalidAttribute").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "InvalidAttribute").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -348,7 +348,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "test"
         )
 
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -386,7 +386,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "testEntity"
         )
 
-        (ms.isAttributeValid _).when("testEntity", "valid").returns(Future.successful(true))
+        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -425,7 +425,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.NonKey,
           entity = "testEntity"
         )
-        (ms.isAttributeValid _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
+        (ms.attributeExists _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(testEntityPath)
@@ -462,7 +462,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.NonKey,
           entity = "testEntity"
         )
-        (ms.isAttributeValid _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
+        (ms.attributeExists _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
         (ms
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(testEntityPath)

@@ -140,7 +140,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
   "Query protocol" should {
 
       "return a correct response with OK status code with POST" in {
-        (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+        (metadataServiceStub.attributeExists _).when(*, *).returns(Future.successful(true))
         (metadataServiceStub
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -164,7 +164,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       }
 
       "return 404 NotFound status code for request for the not supported platform with POST" in {
-        (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+        (metadataServiceStub.attributeExists _).when(*, *).returns(Future.successful(true))
         (metadataServiceStub
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
@@ -184,7 +184,7 @@ class DataTest extends WordSpec with Matchers with ScalatestRouteTest with Scala
       }
 
       "return 404 NotFound status code for request for the not supported network with POST" in {
-        (metadataServiceStub.isAttributeValid _).when(*, *).returns(Future.successful(true))
+        (metadataServiceStub.attributeExists _).when(*, *).returns(Future.successful(true))
         (metadataServiceStub
           .getTableAttributesWithoutUpdatingCache(_: EntityPath))
           .when(*)
