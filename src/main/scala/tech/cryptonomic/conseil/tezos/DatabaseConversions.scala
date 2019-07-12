@@ -9,7 +9,6 @@ import mouse.any._
 import java.sql.Timestamp
 import monocle.Getter
 import io.scalaland.chimney.dsl._
-import io.scalaland.chimney.Transformer
 
 object DatabaseConversions {
 
@@ -43,23 +42,23 @@ object DatabaseConversions {
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
         val BlockTagged(hash, level, accounts) = from
+        accounts.toList.map {
+          case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
+            Tables.AccountsRow(
+              accountId = id.id,
+              blockId = hash.value,
+              manager = manager.value,
+              spendable = spendable,
+              delegateSetable = delegate.setable,
+              delegateValue = delegate.value.map(_.value),
+              counter = counter,
+              script = script.map(_.code.expression),
+              storage = script.map(_.storage.expression),
+              balance = balance,
+              blockLevel = level
+            )
+        }
 
-        implicit val rowTransformer: Transformer[(AccountId, Account), Tables.AccountsRow] =
-          (entry: (AccountId, Account)) => {
-            val (id, acc) = entry
-            acc
-              .into[Tables.AccountsRow]
-              .withFieldConst(_.accountId, id.id)
-              .withFieldConst(_.blockId, hash.value)
-              .withFieldConst(_.blockLevel, BigDecimal(level))
-              .withFieldComputed(_.delegateSetable, _.delegate.setable)
-              .withFieldComputed(_.delegateValue, _.delegate.value.map((_.value)))
-              .withFieldComputed(_.script, _.script.map(_.code.expression))
-              .withFieldComputed(_.storage, _.script.map(_.storage.expression))
-              .transform
-          }
-
-        accounts.toList.transformInto[List[Tables.AccountsRow]]
       }
     }
 
@@ -69,52 +68,52 @@ object DatabaseConversions {
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
+      val header = from.data.header
       val metadata = discardGenesis.lift(from.data.metadata)
-      from
-        .into[Tables.BlocksRow]
-        .withFieldComputed(_.level, _.data.header.level)
-        .withFieldComputed(_.proto, _.data.header.proto)
-        .withFieldComputed(_.predecessor, _.data.header.predecessor.value)
-        .withFieldComputed(_.timestamp, _.data.header.timestamp |> toSql)
-        .withFieldComputed(_.validationPass, _.data.header.validation_pass)
-        .withFieldComputed(_.fitness, _.data.header.fitness |> toCommaSeparated)
-        .withFieldComputed(_.context, _.data.header.context.some)
-        .withFieldComputed(_.signature, _.data.header.signature)
-        .withFieldComputed(_.protocol, _.data.protocol)
-        .withFieldComputed(_.chainId, _.data.chain_id)
-        .withFieldComputed(_.hash, _.data.hash.value)
-        .withFieldComputed(_.operationsHash, _.data.header.operations_hash)
-        .withFieldConst(_.periodKind, metadata.map(_.voting_period_kind.toString))
-        .withFieldComputed(_.currentExpectedQuorum, _.votes.quorum)
-        .withFieldComputed(_.activeProposal, _.votes.active.map(_.id))
-        .withFieldConst(_.baker, metadata.map(_.baker.value))
-        .withFieldConst(_.nonceHash, metadata.flatMap(_.nonce_hash.map(_.value)))
-        .withFieldConst(_.consumedGas, metadata.flatMap(_.consumed_gas |> extractBigDecimal))
-        .withFieldConst(_.metaLevel, metadata.map(_.level.level))
-        .withFieldConst(_.metaLevelPosition, metadata.map(_.level.level_position))
-        .withFieldConst(_.metaCycle, metadata.map(_.level.cycle))
-        .withFieldConst(_.metaCyclePosition, metadata.map(_.level.cycle_position))
-        .withFieldConst(_.metaVotingPeriod, metadata.map(_.level.voting_period))
-        .withFieldConst(_.metaVotingPeriodPosition, metadata.map(_.level.voting_period_position))
-        .withFieldConst(_.expectedCommitment, metadata.map(_.level.expected_commitment))
-        .transform
+      val CurrentVotes(expectedQuorum, proposal) = from.votes
+      Tables.BlocksRow(
+        level = header.level,
+        proto = header.proto,
+        predecessor = header.predecessor.value,
+        timestamp = toSql(header.timestamp),
+        validationPass = header.validation_pass,
+        fitness = header.fitness.mkString(","),
+        context = header.context.some, //put in later
+        signature = header.signature,
+        protocol = from.data.protocol,
+        chainId = from.data.chain_id,
+        hash = from.data.hash.value,
+        operationsHash = header.operations_hash,
+        periodKind = metadata.map(_.voting_period_kind.toString),
+        currentExpectedQuorum = expectedQuorum,
+        activeProposal = proposal.map(_.id),
+        baker = metadata.map(_.baker.value),
+        nonceHash = metadata.flatMap(_.nonce_hash.map(_.value)),
+        consumedGas = metadata.flatMap(_.consumed_gas |> extractBigDecimal),
+        metaLevel = metadata.map(_.level.level),
+        metaLevelPosition = metadata.map(_.level.level_position),
+        metaCycle = metadata.map(_.level.cycle),
+        metaCyclePosition = metadata.map(_.level.cycle_position),
+        metaVotingPeriod = metadata.map(_.level.voting_period),
+        metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
+        expectedCommitment = metadata.map(_.level.expected_commitment)
+      )
     }
   }
 
   implicit val blockToOperationGroupsRow = new Conversion[List, Block, Tables.OperationGroupsRow] {
-    override def convert(from: Block) = {
-      val rowTransformation =
-        (og: OperationsGroup) => {
-          og.into[Tables.OperationGroupsRow]
-            .withFieldConst(_.blockId, from.data.hash.value)
-            .withFieldConst(_.blockLevel, from.data.header.level)
-            .withFieldComputed(_.chainId, _.chain_id.map(_.id))
-            .withFieldComputed(_.signature, _.signature.map(_.value))
-            .transform
-        }
-
-      from.operationGroups.map(rowTransformation)
-    }
+    override def convert(from: Block) =
+      from.operationGroups.map { og =>
+        Tables.OperationGroupsRow(
+          protocol = og.protocol,
+          chainId = og.chain_id.map(_.id),
+          hash = og.hash.value,
+          branch = og.branch.value,
+          signature = og.signature.map(_.value),
+          blockId = from.data.hash.value,
+          blockLevel = from.data.header.level
+        )
+      }
   }
 
   //Cannot directly convert a single operation to a row, because we need the block and operation-group info to build the database row
@@ -413,17 +412,17 @@ object DatabaseConversions {
   implicit val delegateToRow = new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate), Tables.DelegatesRow] {
     override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate)) = {
       val (blockHash, blockLevel, keyHash, delegate) = from
-      delegate
-        .into[Tables.DelegatesRow]
-        .withFieldConst(_.pkh, keyHash.value)
-        .withFieldConst(_.blockId, blockHash.value)
-        .withFieldConst(_.blockLevel, blockLevel)
-        .withFieldComputed(_.balance, _.balance |> extractBigDecimal)
-        .withFieldComputed(_.frozenBalance, _.frozen_balance |> extractBigDecimal)
-        .withFieldComputed(_.stakingBalance, _.staking_balance |> extractBigDecimal)
-        .withFieldComputed(_.delegatedBalance, _.delegated_balance |> extractBigDecimal)
-        .withFieldRenamed(_.grace_period, _.gracePeriod)
-        .transform
+      Tables.DelegatesRow(
+        pkh = keyHash.value,
+        blockId = blockHash.value,
+        balance = extractBigDecimal(delegate.balance),
+        frozenBalance = extractBigDecimal(delegate.frozen_balance),
+        stakingBalance = extractBigDecimal(delegate.staking_balance),
+        delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+        deactivated = delegate.deactivated,
+        gracePeriod = delegate.grace_period,
+        blockLevel = blockLevel
+      )
     }
   }
 
@@ -447,7 +446,6 @@ object DatabaseConversions {
   implicit val ballotsToRows = new Conversion[List, (Block, List[Voting.Ballot]), Tables.BallotsRow] {
     override def convert(from: (Block, List[Voting.Ballot])) = {
       val (block, ballots) = from
-
       ballots.map(
         _.into[Tables.BallotsRow]
           .withFieldConst(_.blockId, block.data.hash.value)
