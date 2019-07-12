@@ -83,6 +83,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
             validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
+            priority = None,
             context = "_",
             signature = None
           ),

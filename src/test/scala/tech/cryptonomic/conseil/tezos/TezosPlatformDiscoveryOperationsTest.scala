@@ -20,7 +20,8 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.Fees.AverageFees
 import tech.cryptonomic.conseil.tezos.repositories.SlickRepositories
-import tech.cryptonomic.conseil.util.ConfigUtil
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, BlockTagged, PublicKeyHash}
+import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -31,6 +32,7 @@ class TezosPlatformDiscoveryOperationsTest
     with InMemoryDatabase
     with MockFactory
     with Matchers
+    with TezosDataGeneration
     with ScalaFutures
     with OptionValues
     with IntegrationPatience
@@ -181,7 +183,8 @@ class TezosPlatformDiscoveryOperationsTest
                 KeyType.NonKey,
                 "blocks"
               ),
-              Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks")
+              Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
+              Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
             )
           )
       }
@@ -257,7 +260,8 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups")
+              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
             )
           )
       }
@@ -331,6 +335,25 @@ class TezosPlatformDiscoveryOperationsTest
         metadataOperations.runQuery(slickRepos.feesRepository.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
         sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
+      }
+
+      "return list of boolean values" in {
+        // given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
+        val account = Account(PublicKeyHash("a"), 12.34, true, AccountDelegate(true, None), None, 1)
+
+        val accounts = List(
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = true))),
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = false)))
+        )
+
+        metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
+        metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
+
+        // expect
+        sut.listAttributeValues("accounts", "spendable").futureValue.right.get shouldBe List("true", "false")
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {

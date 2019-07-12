@@ -133,7 +133,8 @@ class SlickMetadataQueryingTest
             "meta_cycle_position" -> None,
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
-            "expected_commitment" -> None
+            "expected_commitment" -> None,
+            "priority" -> None
           ),
           Map(
             "operations_hash" -> None,
@@ -160,7 +161,8 @@ class SlickMetadataQueryingTest
             "meta_cycle_position" -> None,
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
-            "expected_commitment" -> None
+            "expected_commitment" -> None,
+            "priority" -> None
           )
         )
       }

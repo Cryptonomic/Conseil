@@ -100,7 +100,8 @@ object DatabaseConversions {
         metaCyclePosition = metadata.map(_.level.cycle_position),
         metaVotingPeriod = metadata.map(_.level.voting_period),
         metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
-        expectedCommitment = metadata.map(_.level.expected_commitment)
+        expectedCommitment = metadata.map(_.level.expected_commitment),
+        priority = header.priority
       )
     }
   }
@@ -114,7 +115,8 @@ object DatabaseConversions {
           hash = og.hash.value,
           branch = og.branch.value,
           signature = og.signature.map(_.value),
-          blockId = from.data.hash.value
+          blockId = from.data.hash.value,
+          blockLevel = from.data.header.level
         )
       }
   }

@@ -146,6 +146,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
+            priority = Some(0),
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
@@ -337,7 +338,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
             hash = generateHash(10),
             branch = generateHash(10),
             signature = Some(s"sig${generateHash(10)}"),
-            blockId = block.hash
+            blockId = block.hash,
+            blockLevel = block.level
           )
       )
       .toList

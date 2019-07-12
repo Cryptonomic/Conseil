@@ -127,7 +127,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       * @see [[tech.cryptonomic.conseil.tezos.repositories.MetadataRepository#selectDistinct]]
       */
     override def selectDistinct(table: String, column: String) =
-      sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column IS NOT NULL"""
+      sql"""SELECT DISTINCT #$column::VARCHAR FROM #$table WHERE #$column IS NOT NULL"""
         .as[String]
         .map(_.toList)
 
@@ -136,7 +136,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
       */
     override def selectDistinctLike(table: String, column: String, matchingString: String) = {
       val cleanMatch = sanitizeForSql(matchingString)
-      sql"""SELECT DISTINCT #$column FROM #$table WHERE #$column LIKE '%#$cleanMatch%' AND #$column IS NOT NULL"""
+      sql"""SELECT DISTINCT #$column::VARCHAR FROM #$table WHERE #$column LIKE '%#$cleanMatch%' AND #$column IS NOT NULL"""
         .as[String]
         .map(_.toList)
     }

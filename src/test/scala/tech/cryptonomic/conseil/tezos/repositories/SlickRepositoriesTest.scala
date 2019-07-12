@@ -95,6 +95,7 @@ class SlickRepositoriesTest
                 case PositiveDecimal(value) => Some(value)
                 case _ => None
               }
+              row.priority.value shouldEqual block.data.header.priority.value
           }
         }
       }
