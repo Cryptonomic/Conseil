@@ -102,6 +102,7 @@ object TezosTypes {
       validation_pass: Int,
       operations_hash: Option[String],
       fitness: Seq[String],
+      priority: Option[Int],
       context: String,
       signature: Option[String]
   )
