@@ -4,6 +4,7 @@ import java.sql.Timestamp
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.Inspectors._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.util.{Conversion, RandomSeed}
 import Conversion.Syntax._
 import DatabaseConversions._
@@ -922,6 +923,47 @@ class DatabaseConversionsTest
             blockLevel = block.data.header.level
           )
         )
+      }
+
+      "convert an average fee to a database row" in {
+        val ts = new Timestamp(System.currentTimeMillis)
+        val fee = AverageFees(low = 0, medium = 5, high = 10, timestamp = ts, kind = "kind")
+
+        val converted = fee.convertTo[Tables.FeesRow]
+        converted should have {
+          'low (0)
+          'medium (5)
+          'high (10)
+          'timestamp (ts)
+          'kind ("kind")
+        }
+      }
+
+      "convert the accounts in a block to database rows" in {
+        val expectedCount = 2
+        val accountsMap = generateAccounts(howMany = expectedCount, block.data.hash, block.data.header.level)
+
+        val converted = accountsMap.convertToA[List, Tables.AccountsRow]
+
+        converted should have size expectedCount
+
+        import org.scalatest.Inspectors._
+
+        forAll(accountsMap.content.toList zip converted) {
+          case ((accountId, account), row) =>
+            row.accountId shouldBe accountId.id
+            row.blockId shouldBe block.data.hash.value
+            row.manager shouldBe account.manager.value
+            row.spendable shouldBe account.spendable
+            row.delegateSetable shouldBe account.delegate.setable
+            row.delegateValue shouldBe account.delegate.value.map(_.value)
+            row.counter shouldBe account.counter
+            row.script shouldBe account.script.map(_.code.expression)
+            row.storage shouldBe account.script.map(_.storage.expression)
+            row.balance shouldBe account.balance
+            row.blockLevel shouldBe block.data.header.level
+          }
+
       }
 
     }
