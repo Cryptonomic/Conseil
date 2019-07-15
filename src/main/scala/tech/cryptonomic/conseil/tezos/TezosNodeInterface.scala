@@ -9,7 +9,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
-import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
+import tech.cryptonomic.conseil.config.{HttpStreamingConfiguration, NetworkTimeoutConfiguration}
 import tech.cryptonomic.conseil.config.Platforms.TezosConfiguration
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
@@ -83,7 +83,7 @@ trait TezosRPCInterface {
   */
 class TezosNodeInterface(
   config: TezosConfiguration,
-  requestConfig: NetworkCallsConfiguration,
+  requestConfig: NetworkTimeoutConfiguration,
   streamingConfig: HttpStreamingConfiguration
 )(implicit system: ActorSystem)
     extends TezosRPCInterface
