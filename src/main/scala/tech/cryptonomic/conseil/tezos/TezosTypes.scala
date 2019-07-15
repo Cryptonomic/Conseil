@@ -52,6 +52,12 @@ object TezosTypes {
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
 
+  /** A block's offset from the current head or another reference level */
+  type Offset = Int
+
+  /** is the block the genesis? */
+  val isGenesis = (data: BlockData) => data.header.level == 0
+
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
 

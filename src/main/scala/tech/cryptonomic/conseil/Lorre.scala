@@ -52,7 +52,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   val LorreAppConfig.CombinedConfiguration(
     lorreConf,
     tezosConf,
-    callsConf,
+    timeoutConf,
     streamingClientConf,
     batchingConf,
     verbose
@@ -71,7 +71,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   lazy val db = DatabaseUtil.db
   val tezosNodeOperator = new TezosNodeOperator(
-    new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
+    new TezosNodeInterface(tezosConf, timeoutConf, streamingClientConf),
     tezosConf.network,
     batchingConf
   )
@@ -141,7 +141,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   displayInfo(tezosConf)
-  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
+  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, lorreConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
 
   try {
     checkTezosConnection()

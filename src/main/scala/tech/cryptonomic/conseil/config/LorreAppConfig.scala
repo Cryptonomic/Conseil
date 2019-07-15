@@ -75,7 +75,7 @@ trait LorreAppConfig {
       args <- readArgs(commandLineArgs)
       ArgumentsConfig(depth, verbose, headHash, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
-      nodeRequests <- loadConfig[NetworkTimeoutConfiguration]("")
+      nodeTimeouts <- loadConfig[NetworkTimeoutConfiguration]("")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
@@ -83,7 +83,7 @@ trait LorreAppConfig {
       CombinedConfiguration(
         lorre,
         TezosConfiguration(network, node),
-        nodeRequests,
+        nodeTimeouts,
         streamingClient,
         fetching,
         VerboseOutput(verbose)
@@ -104,7 +104,7 @@ object LorreAppConfig {
   final case class CombinedConfiguration(
     lorre: LorreConfiguration,
     tezos: TezosConfiguration,
-    nodeRequests: NetworkTimeoutConfiguration,
+    nodeTimeouts: NetworkTimeoutConfiguration,
     streamingClientPool: HttpStreamingConfiguration,
     batching: BatchFetchConfiguration,
     verbose: VerboseOutput
