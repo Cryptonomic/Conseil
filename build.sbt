@@ -1,7 +1,7 @@
 name := "Conseil"
 scalaVersion := "2.12.8"
 
-val akkaVersion = "2.5.21"
+val akkaVersion = "2.5.22"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
 val slickVersion = "3.3.0"
@@ -36,7 +36,9 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala"          % "2.9.6",
   "com.chuusai"                  %% "shapeless"                     % "2.3.3",
   "org.typelevel"                %% "cats-core"                     % catsVersion,
+  "org.typelevel"                %% "cats-effect"                   % "1.3.1",
   "org.typelevel"                %% "mouse"                         % "0.20",
+  "co.fs2"                       %% "fs2-core"                      % "1.0.4",
   "com.github.julien-truffaut"   %% "monocle-core"                  % monocleVersion exclude ("org.typelevel.cats", "cats-core"),
   "com.github.julien-truffaut"   %% "monocle-macro"                 % monocleVersion exclude ("org.typelevel.cats", "cats-core") exclude ("org.typelevel.cats", "cats-macros"),
   "org.julienrf"                 %% "endpoints-algebra"             % endpointsVersion,
