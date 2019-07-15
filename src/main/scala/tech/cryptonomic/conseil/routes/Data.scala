@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Companion object providing apply implementation */
 object Data {
   def apply(config: PlatformsConfiguration, metadataService: MetadataService, server: ServerConfiguration)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): Data =
     new Data(config, DataPlatform(server.maxQueryResultSize), metadataService)
 }
@@ -29,7 +29,7 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
-    implicit apiExecutionContext: ExecutionContext
+  implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
 
@@ -151,7 +151,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
 
   /** Function for validation of the platform and network with flatten */
   private def platformNetworkValidation[A](platform: String, network: String)(
-      operation: => Future[Option[A]]
+    operation: => Future[Option[A]]
   ): Future[Option[A]] =
     ConfigUtil
       .getNetworks(config, platform)

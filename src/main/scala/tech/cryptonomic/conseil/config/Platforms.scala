@@ -42,10 +42,10 @@ object Platforms extends LazyLogging {
 
   /** configurations to describe a tezos node */
   final case class TezosNodeConfiguration(
-      hostname: String,
-      port: Int,
-      protocol: String,
-      pathPrefix: String = ""
+    hostname: String,
+    port: Int,
+    protocol: String,
+    pathPrefix: String = ""
   )
 
   /** generic trait for any platform configuration, where each instance corresponds to a network available on that chain */

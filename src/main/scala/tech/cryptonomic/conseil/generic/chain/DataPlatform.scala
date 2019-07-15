@@ -27,7 +27,7 @@ class DataPlatform(operationsMap: Map[String, DataOperations], maxQueryResultSiz
     * @return query result as a option[map]
     * */
   def queryWithPredicates(platform: String, tableName: String, query: Query)(
-      implicit ec: ExecutionContext
+    implicit ec: ExecutionContext
   ): Future[Option[List[QueryResponse]]] =
     operationsMap
       .get(platform)

@@ -41,8 +41,8 @@ trait BlocksDataFetchers {
 
   /* reduces repetion in error handling, used when the failure is expected to be recovered */
   private def logWarnOnJsonDecoding[Encoded](
-      message: String,
-      ignore: Boolean = false
+    message: String,
+    ignore: Boolean = false
   ): PartialFunction[Throwable, Future[Unit]] = {
     case decodingError: io.circe.Error if ignore =>
       ().pure[Future]

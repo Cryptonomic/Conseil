@@ -23,7 +23,7 @@ object JsonDecoders {
       * This is not necessarily running any async operation
       */
     def decodeLiftingTo[Eff[_], A: io.circe.Decoder](
-        json: String
+      json: String
     )(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
       import io.circe.parser.decode
       import cats.instances.either._
@@ -38,9 +38,9 @@ object JsonDecoders {
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
     private def deriveDecoderFromString[T](
-        validateString: String => Boolean,
-        failedValidation: String,
-        decodedConstructor: String => T
+      validateString: String => Boolean,
+      failedValidation: String,
+      decodedConstructor: String => T
     ): Decoder[T] =
       Decoder.decodeString
         .map(_.trim)

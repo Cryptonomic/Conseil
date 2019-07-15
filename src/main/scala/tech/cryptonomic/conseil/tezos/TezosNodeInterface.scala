@@ -34,10 +34,10 @@ trait TezosRPCInterface {
     * @return pairing of the correlation id with the string http response content
     */
   def runBatchedGetQuery[ID](
-      network: String,
-      ids: List[ID],
-      mapToCommand: ID => String,
-      concurrencyLevel: Int
+    network: String,
+    ids: List[ID],
+    mapToCommand: ID => String,
+    concurrencyLevel: Int
   ): Future[List[(ID, String)]]
 
   /**
@@ -82,9 +82,9 @@ trait TezosRPCInterface {
   * Concrete implementation of the above.
   */
 class TezosNodeInterface(
-    config: TezosConfiguration,
-    requestConfig: NetworkCallsConfiguration,
-    streamingConfig: HttpStreamingConfiguration
+  config: TezosConfiguration,
+  requestConfig: NetworkCallsConfiguration,
+  streamingConfig: HttpStreamingConfiguration
 )(implicit system: ActorSystem)
     extends TezosRPCInterface
     with LazyLogging {
@@ -227,10 +227,10 @@ class TezosNodeInterface(
     *         used to match with the corresponding request
     */
   private[this] def streamedGetQuery[CID](
-      network: String,
-      ids: List[CID],
-      mapToCommand: CID => String,
-      concurrencyLevel: Int
+    network: String,
+    ids: List[CID],
+    mapToCommand: CID => String,
+    concurrencyLevel: Int
   ): Source[(CID, String), akka.NotUsed] = withRejectionControl {
 
     val convertIdToUrl = mapToCommand andThen translateCommandToUrl
@@ -259,10 +259,10 @@ class TezosNodeInterface(
   }
 
   override def runBatchedGetQuery[CID](
-      network: String,
-      ids: List[CID],
-      mapToCommand: CID => String,
-      concurrencyLevel: Int
+    network: String,
+    ids: List[CID],
+    mapToCommand: CID => String,
+    concurrencyLevel: Int
   ): Future[List[(CID, String)]] = {
     val batchId = java.util.UUID.randomUUID()
     logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)

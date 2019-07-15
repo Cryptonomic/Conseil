@@ -13,10 +13,10 @@ import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClie
 
 package tezos {
   case class CustomNodeInterface(override val streamingRequestsConnectionPooling: ConnectionPoolSettings)(
-      implicit system: ActorSystem,
-      tezosConf: TezosConfiguration,
-      reqConf: NetworkCallsConfiguration,
-      clientConf: HttpStreamingConfiguration
+    implicit system: ActorSystem,
+    tezosConf: TezosConfiguration,
+    reqConf: NetworkCallsConfiguration,
+    clientConf: HttpStreamingConfiguration
   ) extends TezosNodeInterface(tezosConf, reqConf, clientConf)(system)
 }
 

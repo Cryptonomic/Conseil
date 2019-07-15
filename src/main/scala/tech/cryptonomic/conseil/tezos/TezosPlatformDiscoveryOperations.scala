@@ -22,10 +22,10 @@ import scala.concurrent.{ExecutionContext, Future}
 object TezosPlatformDiscoveryOperations {
 
   def apply(
-      metadataOperations: MetadataOperations,
-      caching: MetadataCaching[IO],
-      cacheOverrides: AttributeValuesCacheConfiguration,
-      cacheTTL: FiniteDuration
+    metadataOperations: MetadataOperations,
+    caching: MetadataCaching[IO],
+    cacheOverrides: AttributeValuesCacheConfiguration,
+    cacheTTL: FiniteDuration
   )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL)
 
@@ -46,11 +46,11 @@ object TezosPlatformDiscoveryOperations {
 
 /** Class providing the implementation of the metadata calls with caching */
 class TezosPlatformDiscoveryOperations(
-    metadataOperations: MetadataOperations,
-    caching: MetadataCaching[IO],
-    cacheOverrides: AttributeValuesCacheConfiguration,
-    cacheTTL: FiniteDuration,
-    networkName: String = "notUsed"
+  metadataOperations: MetadataOperations,
+  caching: MetadataCaching[IO],
+  cacheOverrides: AttributeValuesCacheConfiguration,
+  cacheTTL: FiniteDuration,
+  networkName: String = "notUsed"
 )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]) {
 
   import MetadataCaching._
@@ -113,10 +113,10 @@ class TezosPlatformDiscoveryOperations(
 
   /** Makes attributes out of parameters */
   private def makeAttributes(
-      col: MColumn,
-      count: Int,
-      primaryKeys: Vector[Vector[MPrimaryKey]],
-      indexes: Vector[Vector[MIndexInfo]]
+    col: MColumn,
+    count: Int,
+    primaryKeys: Vector[Vector[MPrimaryKey]],
+    indexes: Vector[Vector[MIndexInfo]]
   ): Attribute =
     Attribute(
       name = col.name,
@@ -229,10 +229,10 @@ class TezosPlatformDiscoveryOperations(
     * @return Either list of attributes or list of errors
     * */
   def listAttributeValues(
-      tableName: String,
-      column: String,
-      withFilter: Option[String] = None,
-      attributesCacheConfig: Option[AttributeCacheConfiguration] = None
+    tableName: String,
+    column: String,
+    withFilter: Option[String] = None,
+    attributesCacheConfig: Option[AttributeCacheConfiguration] = None
   ): Future[Either[List[AttributesValidationError], List[String]]] =
     getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap { attrOpt =>
         val res = (attributesCacheConfig, withFilter) match {
@@ -265,10 +265,10 @@ class TezosPlatformDiscoveryOperations(
 
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(
-      tableName: String,
-      columnName: String,
-      attributeFilter: String,
-      maxResultLength: Int
+    tableName: String,
+    columnName: String,
+    attributeFilter: String,
+    maxResultLength: Int
   ): Future[List[String]] =
     caching
       .getAttributeValues(tableName, columnName)
@@ -411,8 +411,8 @@ class TezosPlatformDiscoveryOperations(
 
   /** Helper method for updating */
   private def getAllUpdatedAttributes(
-      entities: List[Entity],
-      attributes: Cache[List[Attribute]]
+    entities: List[Entity],
+    attributes: Cache[List[Attribute]]
   ): IO[Map[String, List[Attribute]]] = {
     val queries = attributes.filterKeys {
       case CacheKey(key) => entities.map(_.name).toSet(key)

@@ -21,8 +21,8 @@ trait DataHelpers extends Validation with server.Endpoints with server.JsonSchem
 
   /** Function validating request for the query endpoint */
   override def validated[A](
-      response: A => Route,
-      invalidDocs: Documentation
+    response: A => Route,
+    invalidDocs: Documentation
   ): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")

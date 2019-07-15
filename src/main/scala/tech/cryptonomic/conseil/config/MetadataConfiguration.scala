@@ -69,43 +69,43 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
 
 // configuration for platform
 case class PlatformConfiguration(
-    displayName: Option[String],
-    visible: Option[Boolean],
-    description: Option[String] = None,
-    networks: Map[NetworkName, NetworkConfiguration] = Map.empty
+  displayName: Option[String],
+  visible: Option[Boolean],
+  description: Option[String] = None,
+  networks: Map[NetworkName, NetworkConfiguration] = Map.empty
 )
 
 // configuration for network
 case class NetworkConfiguration(
-    displayName: Option[String],
-    visible: Option[Boolean],
-    description: Option[String] = None,
-    entities: Map[EntityName, EntityConfiguration] = Map.empty
+  displayName: Option[String],
+  visible: Option[Boolean],
+  description: Option[String] = None,
+  entities: Map[EntityName, EntityConfiguration] = Map.empty
 )
 
 // configuration for entity
 case class EntityConfiguration(
-    displayName: Option[String],
-    displayNamePlural: Option[String],
-    visible: Option[Boolean],
-    description: Option[String] = None,
-    attributes: Map[AttributeName, AttributeConfiguration] = Map.empty
+  displayName: Option[String],
+  displayNamePlural: Option[String],
+  visible: Option[Boolean],
+  description: Option[String] = None,
+  attributes: Map[AttributeName, AttributeConfiguration] = Map.empty
 )
 
 // configuration for attribute
 case class AttributeConfiguration(
-    displayName: Option[String],
-    visible: Option[Boolean],
-    description: Option[String] = None,
-    placeholder: Option[String] = None,
-    scale: Option[Int] = None,
-    dataType: Option[String] = None,
-    dataFormat: Option[String] = None,
-    valueMap: Option[Map[String, String]] = None,
-    reference: Option[Map[String, String]] = None,
-    cacheConfig: Option[AttributeCacheConfiguration] = None,
-    displayPriority: Option[Int] = None,
-    displayOrder: Option[Int] = None,
-    currencySymbol: Option[String] = None,
-    currencySymbolCode: Option[Int] = None
+  displayName: Option[String],
+  visible: Option[Boolean],
+  description: Option[String] = None,
+  placeholder: Option[String] = None,
+  scale: Option[Int] = None,
+  dataType: Option[String] = None,
+  dataFormat: Option[String] = None,
+  valueMap: Option[Map[String, String]] = None,
+  reference: Option[Map[String, String]] = None,
+  cacheConfig: Option[AttributeCacheConfiguration] = None,
+  displayPriority: Option[Int] = None,
+  displayOrder: Option[Int] = None,
+  currencySymbol: Option[String] = None,
+  currencySymbolCode: Option[Int] = None
 )

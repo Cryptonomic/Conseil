@@ -14,42 +14,42 @@ object PlatformDiscoveryTypes {
 
   /** Case class representing network */
   final case class Network(
-      name: String,
-      displayName: String,
-      platform: String,
-      network: String,
-      description: Option[String] = None
+    name: String,
+    displayName: String,
+    platform: String,
+    network: String,
+    description: Option[String] = None
   )
 
   /** Case class representing single entity of a given network */
   final case class Entity(
-      name: String,
-      displayName: String,
-      count: Int,
-      displayNamePlural: Option[String] = None,
-      description: Option[String] = None,
-      limitedQuery: Option[Boolean] = None
+    name: String,
+    displayName: String,
+    count: Int,
+    displayNamePlural: Option[String] = None,
+    description: Option[String] = None,
+    limitedQuery: Option[Boolean] = None
   )
 
   /** Case class representing single attribute of given entity from DB */
   final case class Attribute(
-      name: String,
-      displayName: String,
-      dataType: DataType,
-      cardinality: Option[Int],
-      keyType: KeyType,
-      entity: String,
-      description: Option[String] = None,
-      placeholder: Option[String] = None,
-      dataFormat: Option[String] = None,
-      valueMap: Option[Map[String, String]] = None,
-      scale: Option[Int] = None,
-      reference: Option[Map[String, String]] = None,
-      displayPriority: Option[Int] = None,
-      displayOrder: Option[Int] = None,
-      sufficientForQuery: Option[Boolean] = None,
-      currencySymbol: Option[String] = None,
-      currencySymbolCode: Option[Int] = None
+    name: String,
+    displayName: String,
+    dataType: DataType,
+    cardinality: Option[Int],
+    keyType: KeyType,
+    entity: String,
+    description: Option[String] = None,
+    placeholder: Option[String] = None,
+    dataFormat: Option[String] = None,
+    valueMap: Option[Map[String, String]] = None,
+    scale: Option[Int] = None,
+    reference: Option[Map[String, String]] = None,
+    displayPriority: Option[Int] = None,
+    displayOrder: Option[Int] = None,
+    sufficientForQuery: Option[Boolean] = None,
+    currencySymbol: Option[String] = None,
+    currencySymbolCode: Option[Int] = None
   ) {
 
     /** Checks if attribute is valid for predicate */
@@ -76,8 +76,8 @@ object PlatformDiscoveryTypes {
 
   /** Attribute cache configuration */
   final case class AttributeCacheConfiguration(
-      cached: Boolean = false,
-      minMatchLength: Int = 0,
-      maxResultSize: Int = Int.MaxValue
+    cached: Boolean = false,
+    minMatchLength: Int = 0,
+    maxResultSize: Int = Int.MaxValue
   )
 }

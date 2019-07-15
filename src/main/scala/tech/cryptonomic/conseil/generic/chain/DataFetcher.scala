@@ -83,8 +83,8 @@ object DataFetcher {
     * The resulting effect will also encode a possible failure in virtue of the implicit MonadError instance that is provided
     */
   def fetch[In, Out, Eff[_], Coll[_]: Traverse, Err](
-      implicit app: MonadError[Eff, Err],
-      fetcher: DataFetcher.Aux[Eff, Coll, Err, In, Out, _]
+    implicit app: MonadError[Eff, Err],
+    fetcher: DataFetcher.Aux[Eff, Coll, Err, In, Out, _]
   ): Kleisli[Eff, Coll[In], Coll[(In, Out)]] =
     fetcher.fetchData.onError { case err => Kleisli.pure(fetcher.onDataFetchError(err)) }
       .andThen(
@@ -121,8 +121,8 @@ object DataFetcher {
     * - returns the decodings in a tuple, where each pair of outputs is also paired to the corresponding input hash, i.e. (I -> (O, O2))
     */
   implicit def decodeBoth[Eff[_]: Apply, Coll[_], Err, Input, Output, Output2, Encoding](
-      fetcher: Aux[Eff, Coll, Err, Input, Output, Encoding],
-      additionalDecode: Kleisli[Eff, Encoding, Output2]
+    fetcher: Aux[Eff, Coll, Err, Input, Output, Encoding],
+    additionalDecode: Kleisli[Eff, Encoding, Output2]
   ) = new DataFetcher[Eff, Coll, Err] {
     type In = Input
     type Out = (Output, Output2)
@@ -157,10 +157,10 @@ object DataFetcher {
     *
     */
   def fetchMerge[Eff[_]: Monad, Coll[_]: Traverse: FunctorFilter, Err, Input, Output1, Output2, Output, Encoding1, Encoding2](
-      mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
-      mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
+    mf1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
+    mf2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
   )(
-      merge: (Output1, Output2) => Output = (o1: Output1, o2: Output2) => (o1, o2)
+    merge: (Output1, Output2) => Output = (o1: Output1, o2: Output2) => (o1, o2)
   )(implicit appErr: MonadError[Eff, Err]): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     fetchCombine(mf1, mf2) { (outs1: Coll[(Input, Output1)], outs2: Coll[(Input, Output2)]) =>
       outs1.mapFilter {
@@ -182,12 +182,12 @@ object DataFetcher {
     * of merging each element with matching input `In` into a single traversable of outputs
     */
   def fetchCombine[Eff[_]: Monad, Coll[_], Err, Input, Encoding1, Encoding2, Output1, Output2, Output](
-      fetcher1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
-      fetcher2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
+    fetcher1: Aux[Eff, Coll, Err, Input, Output1, Encoding1],
+    fetcher2: Aux[Eff, Coll, Err, Input, Output2, Encoding2]
   )(combine: (Coll[(Input, Output1)], Coll[(Input, Output2)]) => Coll[(Input, Output)])(
-      implicit
-      traverse: Traverse[Coll],
-      appErr: MonadError[Eff, Err]
+    implicit
+    traverse: Traverse[Coll],
+    appErr: MonadError[Eff, Err]
   ): Kleisli[Eff, Coll[Input], Coll[(Input, Output)]] =
     fetch(traverse, appErr, fetcher1)
       .product(fetch(traverse, appErr, fetcher2))

@@ -332,10 +332,10 @@ object DatabaseConversions {
     * @param hashing an optic instance to extract an optional reference hash value
     */
   implicit def anyToBalanceUpdates[T, Label](
-      implicit
-      balances: Getter[T, Map[Label, List[OperationMetadata.BalanceUpdate]]],
-      hashing: Getter[T, Option[String]],
-      showing: Show[Label]
+    implicit
+    balances: Getter[T, Map[Label, List[OperationMetadata.BalanceUpdate]]],
+    hashing: Getter[T, Option[String]],
+    showing: Show[Label]
   ) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
     import cats.syntax.show._
 

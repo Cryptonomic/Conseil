@@ -33,9 +33,9 @@ sealed trait MichelsonExpression extends MichelsonElement
  *    MichelsonType("pair", List(MichelsonIntConstant(0), MichelsonEmptyExpression))
  * */
 case class MichelsonType(
-    prim: String,
-    args: List[MichelsonExpression] = List.empty,
-    annotations: List[String] = List.empty
+  prim: String,
+  args: List[MichelsonExpression] = List.empty,
+  annotations: List[String] = List.empty
 ) extends MichelsonExpression
 
 /* Class representing an int constant */

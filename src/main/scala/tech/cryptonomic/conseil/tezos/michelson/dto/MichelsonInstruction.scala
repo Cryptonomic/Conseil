@@ -24,9 +24,9 @@ sealed trait MichelsonInstruction extends MichelsonElement
 
 /* Class representing a simple Michelson instruction which can contains following expressions */
 case class MichelsonSingleInstruction(
-    name: String,
-    embeddedElements: List[MichelsonElement] = List.empty,
-    annotations: List[String] = List.empty
+  name: String,
+  embeddedElements: List[MichelsonElement] = List.empty,
+  annotations: List[String] = List.empty
 ) extends MichelsonInstruction
 
 /* Class representing a sequence of Michelson instructions */

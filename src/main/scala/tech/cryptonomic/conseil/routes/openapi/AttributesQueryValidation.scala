@@ -10,7 +10,7 @@ trait AttributesQueryValidation {
 
   /** Method for validating attribute query requests */
   def validatedAttributes[A](
-      response: Response[A],
-      invalidDocs: Documentation
+    response: Response[A],
+    invalidDocs: Documentation
   ): Response[Either[List[AttributesValidationError], A]]
 }

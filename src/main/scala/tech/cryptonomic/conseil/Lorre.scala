@@ -169,7 +169,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     /* will store a single page of block results */
     def processBlocksPage(
-        results: tezosNodeOperator.BlockFetchingResults
+      results: tezosNodeOperator.BlockFetchingResults
     )(implicit mat: ActorMaterializer): Future[Int] = {
       def logBlockOutcome[A]: PartialFunction[Try[Option[A]], Unit] = {
         case Success(accountsCount) =>
@@ -288,7 +288,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
    * @return the delegates key-hashes found for the accounts passed-in, grouped by block reference
    */
   private[this] def processAccountsForBlocks(
-      updates: List[BlockTagged[List[AccountId]]]
+    updates: List[BlockTagged[List[AccountId]]]
   )(implicit mat: ActorMaterializer): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
     logger.info("Processing latest Tezos data for updated accounts...")
 
@@ -328,7 +328,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   private[this] def processDelegatesForBlocks(
-      updates: List[BlockTagged[List[PublicKeyHash]]]
+    updates: List[BlockTagged[List[PublicKeyHash]]]
   )(implicit mat: ActorMaterializer): Future[Done] = {
     logger.info("Processing latest Tezos data for account delegates...")
 
@@ -376,7 +376,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
      * @param ids a pre-filtered map of account ids with latest block referring to them
      */
     def process(
-        ids: Map[AccountId, BlockReference]
+      ids: Map[AccountId, BlockReference]
     )(implicit mat: ActorMaterializer): Future[List[BlockTagged[DelegateKeys]]] = {
       import cats.Monoid
       import cats.instances.future._
@@ -403,7 +403,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def extractDelegatesInfo(
-          taggedAccounts: Seq[BlockTagged[AccountsIndex]]
+        taggedAccounts: Seq[BlockTagged[AccountsIndex]]
       ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
         val taggedList = taggedAccounts.toList
         val taggedDelegatesKeys = taggedList.map {
@@ -418,8 +418,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def processAccountsPage(
-          taggedAccounts: List[BlockTagged[AccountsIndex]],
-          taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
+        taggedAccounts: List[BlockTagged[AccountsIndex]],
+        taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
       ): Future[(Int, Option[Int], List[BlockTagged[DelegateKeys]])] =
         db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys))
           .map { case (accountWrites, delegateCheckpoints) => (accountWrites, delegateCheckpoints, taggedDelegateKeys) }
@@ -487,7 +487,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def processDelegatesPage(
-          taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
+        taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
       ): Future[Int] =
         db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates.toList))
           .andThen(logWriteFailure)
@@ -541,7 +541,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * @param processed how many entities were processed at the current checkpoint
     */
   private[this] def logProcessingProgress(entityName: String, totalToProcess: Int, processStartNanos: Long)(
-      processed: Int
+    processed: Int
   ): Unit = {
     val elapsed = System.nanoTime() - processStartNanos
     val progress = processed.toDouble / totalToProcess

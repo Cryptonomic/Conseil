@@ -55,7 +55,7 @@ object ConfigUtil {
 
     /** extract a custom class type from the generic lightbend-config value failing with a `FailureReason` */
     def readAndFailWithFailureReason[T](
-        value: ConfigValue
+      value: ConfigValue
     )(implicit reader: ConfigReader[T]): Either[FailureReason, T] =
       reader.from(value).left.map(reasonFromReadFailures)
 
@@ -112,7 +112,7 @@ object ConfigUtil {
       ConfigReader[ConfigObject].emap { confObj =>
         //polymorphic config reader for each platform, that will use the appropriate ConfigurationType reader for each platform type
         def extractConfigList[P <: BlockchainPlatform](platform: P)(
-            implicit reader: ConfigReader[List[platform.ConfigurationType]]
+          implicit reader: ConfigReader[List[platform.ConfigurationType]]
         ): Either[FailureReason, (P, List[PlatformConfiguration])] =
           readAndFailWithFailureReason[List[platform.ConfigurationType]](confObj.get(platform.name)).map(platform -> _)
 
@@ -140,8 +140,8 @@ object ConfigUtil {
       loadConfigForEntryPath(namespace, "akka.http.host-connection-pool").map(HttpStreamingConfiguration)
 
     private def loadConfigForEntryPath(
-        namespace: String,
-        referenceEntryPath: String
+      namespace: String,
+      referenceEntryPath: String
     ): Either[ConfigReaderFailures, Config] = {
       //read a conseil-specific entry into the expected path for the config
       def loadValidatedConfig(rootConfig: Config): Either[ConfigReaderFailures, Config] =

@@ -47,26 +47,26 @@ trait Tables {
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
   case class AccountsRow(
-      accountId: String,
-      blockId: String,
-      manager: String,
-      spendable: Boolean,
-      delegateSetable: Boolean,
-      delegateValue: Option[String] = None,
-      counter: Int,
-      script: Option[String] = None,
-      storage: Option[String] = None,
-      balance: scala.math.BigDecimal,
-      blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1")
+    accountId: String,
+    blockId: String,
+    manager: String,
+    spendable: Boolean,
+    delegateSetable: Boolean,
+    delegateValue: Option[String] = None,
+    counter: Int,
+    script: Option[String] = None,
+    storage: Option[String] = None,
+    balance: scala.math.BigDecimal,
+    blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1")
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
   implicit def GetResultAccountsRow(
-      implicit e0: GR[String],
-      e1: GR[Boolean],
-      e2: GR[Option[String]],
-      e3: GR[Int],
-      e4: GR[scala.math.BigDecimal]
+    implicit e0: GR[String],
+    e1: GR[Boolean],
+    e2: GR[Option[String]],
+    e3: GR[Int],
+    e4: GR[scala.math.BigDecimal]
   ): GR[AccountsRow] = GR { prs =>
     import prs._
     AccountsRow.tupled(
@@ -245,26 +245,26 @@ trait Tables {
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param category Database column category SqlType(varchar), Default(None) */
   case class BalanceUpdatesRow(
-      id: Int,
-      source: String,
-      sourceId: Option[Int] = None,
-      sourceHash: Option[String] = None,
-      kind: String,
-      contract: Option[String] = None,
-      change: scala.math.BigDecimal,
-      level: Option[scala.math.BigDecimal] = None,
-      delegate: Option[String] = None,
-      category: Option[String] = None
+    id: Int,
+    source: String,
+    sourceId: Option[Int] = None,
+    sourceHash: Option[String] = None,
+    kind: String,
+    contract: Option[String] = None,
+    change: scala.math.BigDecimal,
+    level: Option[scala.math.BigDecimal] = None,
+    delegate: Option[String] = None,
+    category: Option[String] = None
   )
 
   /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
   implicit def GetResultBalanceUpdatesRow(
-      implicit e0: GR[Int],
-      e1: GR[String],
-      e2: GR[Option[Int]],
-      e3: GR[Option[String]],
-      e4: GR[scala.math.BigDecimal],
-      e5: GR[Option[scala.math.BigDecimal]]
+    implicit e0: GR[Int],
+    e1: GR[String],
+    e2: GR[Option[Int]],
+    e3: GR[Option[String]],
+    e4: GR[scala.math.BigDecimal],
+    e5: GR[Option[scala.math.BigDecimal]]
   ): GR[BalanceUpdatesRow] = GR { prs =>
     import prs._
     BalanceUpdatesRow.tupled(
@@ -418,43 +418,43 @@ trait Tables {
     *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None)
     *  @param priority Database column priority SqlType(int4), Default(None) */
   case class BlocksRow(
-      level: Int,
-      proto: Int,
-      predecessor: String,
-      timestamp: java.sql.Timestamp,
-      validationPass: Int,
-      fitness: String,
-      context: Option[String] = None,
-      signature: Option[String] = None,
-      protocol: String,
-      chainId: Option[String] = None,
-      hash: String,
-      operationsHash: Option[String] = None,
-      periodKind: Option[String] = None,
-      currentExpectedQuorum: Option[Int] = None,
-      activeProposal: Option[String] = None,
-      baker: Option[String] = None,
-      nonceHash: Option[String] = None,
-      consumedGas: Option[scala.math.BigDecimal] = None,
-      metaLevel: Option[Int] = None,
-      metaLevelPosition: Option[Int] = None,
-      metaCycle: Option[Int] = None,
-      metaCyclePosition: Option[Int] = None,
-      metaVotingPeriod: Option[Int] = None,
-      metaVotingPeriodPosition: Option[Int] = None,
-      expectedCommitment: Option[Boolean] = None,
-      priority: Option[Int] = None
+    level: Int,
+    proto: Int,
+    predecessor: String,
+    timestamp: java.sql.Timestamp,
+    validationPass: Int,
+    fitness: String,
+    context: Option[String] = None,
+    signature: Option[String] = None,
+    protocol: String,
+    chainId: Option[String] = None,
+    hash: String,
+    operationsHash: Option[String] = None,
+    periodKind: Option[String] = None,
+    currentExpectedQuorum: Option[Int] = None,
+    activeProposal: Option[String] = None,
+    baker: Option[String] = None,
+    nonceHash: Option[String] = None,
+    consumedGas: Option[scala.math.BigDecimal] = None,
+    metaLevel: Option[Int] = None,
+    metaLevelPosition: Option[Int] = None,
+    metaCycle: Option[Int] = None,
+    metaCyclePosition: Option[Int] = None,
+    metaVotingPeriod: Option[Int] = None,
+    metaVotingPeriodPosition: Option[Int] = None,
+    expectedCommitment: Option[Boolean] = None,
+    priority: Option[Int] = None
   )
 
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(
-      implicit e0: GR[Int],
-      e1: GR[String],
-      e2: GR[java.sql.Timestamp],
-      e3: GR[Option[String]],
-      e4: GR[Option[Int]],
-      e5: GR[Option[scala.math.BigDecimal]],
-      e6: GR[Option[Boolean]]
+    implicit e0: GR[Int],
+    e1: GR[String],
+    e2: GR[java.sql.Timestamp],
+    e3: GR[Option[String]],
+    e4: GR[Option[Int]],
+    e5: GR[Option[scala.math.BigDecimal]],
+    e6: GR[Option[Boolean]]
   ): GR[BlocksRow] = GR { prs =>
     import prs._
     BlocksRow(
@@ -626,8 +626,8 @@ trait Tables {
 
   /** GetResult implicit for fetching DelegatedContractsRow objects using plain SQL queries */
   implicit def GetResultDelegatedContractsRow(
-      implicit e0: GR[String],
-      e1: GR[Option[String]]
+    implicit e0: GR[String],
+    e1: GR[Option[String]]
   ): GR[DelegatedContractsRow] = GR { prs =>
     import prs._
     DelegatedContractsRow.tupled((<<[String], <<?[String]))
@@ -679,23 +679,23 @@ trait Tables {
     *  @param gracePeriod Database column grace_period SqlType(int4)
     *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
   case class DelegatesRow(
-      pkh: String,
-      blockId: String,
-      balance: Option[scala.math.BigDecimal] = None,
-      frozenBalance: Option[scala.math.BigDecimal] = None,
-      stakingBalance: Option[scala.math.BigDecimal] = None,
-      delegatedBalance: Option[scala.math.BigDecimal] = None,
-      deactivated: Boolean,
-      gracePeriod: Int,
-      blockLevel: Int = -1
+    pkh: String,
+    blockId: String,
+    balance: Option[scala.math.BigDecimal] = None,
+    frozenBalance: Option[scala.math.BigDecimal] = None,
+    stakingBalance: Option[scala.math.BigDecimal] = None,
+    delegatedBalance: Option[scala.math.BigDecimal] = None,
+    deactivated: Boolean,
+    gracePeriod: Int,
+    blockLevel: Int = -1
   )
 
   /** GetResult implicit for fetching DelegatesRow objects using plain SQL queries */
   implicit def GetResultDelegatesRow(
-      implicit e0: GR[String],
-      e1: GR[Option[scala.math.BigDecimal]],
-      e2: GR[Boolean],
-      e3: GR[Int]
+    implicit e0: GR[String],
+    e1: GR[Option[scala.math.BigDecimal]],
+    e2: GR[Boolean],
+    e3: GR[Int]
   ): GR[DelegatesRow] = GR { prs =>
     import prs._
     DelegatesRow.tupled(
@@ -886,20 +886,20 @@ trait Tables {
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int4) */
   case class OperationGroupsRow(
-      protocol: String,
-      chainId: Option[String] = None,
-      hash: String,
-      branch: String,
-      signature: Option[String] = None,
-      blockId: String,
-      blockLevel: Int
+    protocol: String,
+    chainId: Option[String] = None,
+    hash: String,
+    branch: String,
+    signature: Option[String] = None,
+    blockId: String,
+    blockLevel: Int
   )
 
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
   implicit def GetResultOperationGroupsRow(
-      implicit e0: GR[String],
-      e1: GR[Option[String]],
-      e2: GR[Int]
+    implicit e0: GR[String],
+    e1: GR[Option[String]],
+    e2: GR[Int]
   ): GR[OperationGroupsRow] = GR { prs =>
     import prs._
     OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String], <<[Int]))
@@ -998,49 +998,49 @@ trait Tables {
     *  @param blockLevel Database column block_level SqlType(int4)
     *  @param timestamp Database column timestamp SqlType(timestamp) */
   case class OperationsRow(
-      operationId: Int,
-      operationGroupHash: String,
-      kind: String,
-      level: Option[Int] = None,
-      delegate: Option[String] = None,
-      slots: Option[String] = None,
-      nonce: Option[String] = None,
-      pkh: Option[String] = None,
-      secret: Option[String] = None,
-      source: Option[String] = None,
-      fee: Option[scala.math.BigDecimal] = None,
-      counter: Option[scala.math.BigDecimal] = None,
-      gasLimit: Option[scala.math.BigDecimal] = None,
-      storageLimit: Option[scala.math.BigDecimal] = None,
-      publicKey: Option[String] = None,
-      amount: Option[scala.math.BigDecimal] = None,
-      destination: Option[String] = None,
-      parameters: Option[String] = None,
-      managerPubkey: Option[String] = None,
-      balance: Option[scala.math.BigDecimal] = None,
-      spendable: Option[Boolean] = None,
-      delegatable: Option[Boolean] = None,
-      script: Option[String] = None,
-      storage: Option[String] = None,
-      status: Option[String] = None,
-      consumedGas: Option[scala.math.BigDecimal] = None,
-      storageSize: Option[scala.math.BigDecimal] = None,
-      paidStorageSizeDiff: Option[scala.math.BigDecimal] = None,
-      originatedContracts: Option[String] = None,
-      blockHash: String,
-      blockLevel: Int,
-      timestamp: java.sql.Timestamp
+    operationId: Int,
+    operationGroupHash: String,
+    kind: String,
+    level: Option[Int] = None,
+    delegate: Option[String] = None,
+    slots: Option[String] = None,
+    nonce: Option[String] = None,
+    pkh: Option[String] = None,
+    secret: Option[String] = None,
+    source: Option[String] = None,
+    fee: Option[scala.math.BigDecimal] = None,
+    counter: Option[scala.math.BigDecimal] = None,
+    gasLimit: Option[scala.math.BigDecimal] = None,
+    storageLimit: Option[scala.math.BigDecimal] = None,
+    publicKey: Option[String] = None,
+    amount: Option[scala.math.BigDecimal] = None,
+    destination: Option[String] = None,
+    parameters: Option[String] = None,
+    managerPubkey: Option[String] = None,
+    balance: Option[scala.math.BigDecimal] = None,
+    spendable: Option[Boolean] = None,
+    delegatable: Option[Boolean] = None,
+    script: Option[String] = None,
+    storage: Option[String] = None,
+    status: Option[String] = None,
+    consumedGas: Option[scala.math.BigDecimal] = None,
+    storageSize: Option[scala.math.BigDecimal] = None,
+    paidStorageSizeDiff: Option[scala.math.BigDecimal] = None,
+    originatedContracts: Option[String] = None,
+    blockHash: String,
+    blockLevel: Int,
+    timestamp: java.sql.Timestamp
   )
 
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(
-      implicit e0: GR[Int],
-      e1: GR[String],
-      e2: GR[Option[Int]],
-      e3: GR[Option[String]],
-      e4: GR[Option[scala.math.BigDecimal]],
-      e5: GR[Option[Boolean]],
-      e6: GR[java.sql.Timestamp]
+    implicit e0: GR[Int],
+    e1: GR[String],
+    e2: GR[Option[Int]],
+    e3: GR[Option[String]],
+    e4: GR[Option[scala.math.BigDecimal]],
+    e5: GR[Option[Boolean]],
+    e6: GR[java.sql.Timestamp]
   ): GR[OperationsRow] = GR { prs =>
     import prs._
     OperationsRow(
