@@ -34,7 +34,7 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides platform
-  def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
+  private def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
     val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
 
     platform.copy(
@@ -47,7 +47,7 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides network
-  def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {
+  private def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {
     val overrideNetwork = overrides.network(path)
 
     network.copy(
@@ -60,7 +60,7 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides entity
-  def overrideEntity(entity: Entity, path: EntityPath): Option[Entity] = when(overrides.isVisible(path)) {
+  private def overrideEntity(entity: Entity, path: EntityPath): Option[Entity] = when(overrides.isVisible(path)) {
     val overrideEntity = overrides.entity(path)
 
     entity.copy(
@@ -75,7 +75,7 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides attribute
-  def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] =
+  private def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] =
     when(overrides.isVisible(path)) {
       val overrideAttribute = overrides.attribute(path)
 

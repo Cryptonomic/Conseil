@@ -147,23 +147,6 @@ class TezosPlatformDiscoveryOperations(
       }
     }.map(_.toMap)
 
-  /** Checks if attribute is valid for given entity
-    *
-    * @param tableName  name of the table(entity) which needs to be checked
-    * @param columnName name of the column(attribute) which needs to be checked
-    * @return boolean which tells us if attribute is valid for given entity
-    */
-  override def isAttributeValid(tableName: String, columnName: String): Future[Boolean] =
-    caching
-      .getAttributes(tableName)
-      .map { attributesOpt =>
-        attributesOpt.exists {
-          case CacheEntry(_, attributes) =>
-            attributes.exists(_.name == columnName)
-        }
-      }
-      .unsafeToFuture()
-
   /**
     * Extracts entities in the DB for the given network
     *

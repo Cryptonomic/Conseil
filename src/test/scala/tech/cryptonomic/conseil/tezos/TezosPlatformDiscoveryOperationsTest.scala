@@ -386,15 +386,6 @@ class TezosPlatformDiscoveryOperationsTest
         sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List("example1")
 
       }
-
-      "should validate correctly fields" in {
-        sut.isAttributeValid("fees", "low").futureValue shouldBe true
-      }
-
-      "should return false when there will be field not existing in the DB" in {
-        sut.isAttributeValid("fees", "WRONG").futureValue shouldBe false
-      }
-
     }
 
 }

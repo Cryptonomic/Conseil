@@ -4,8 +4,6 @@ import scala.concurrent.duration._
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.generic.chain.{DataTypes, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.util.CollectionOps.ExtendedOptionalList
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.Future.successful
@@ -37,7 +35,7 @@ class MetadataService(
       .toMap
   }
 
-  private val tableAttributes: Map[EntityPath, List[Attribute]] = {
+  private val attributes: Map[EntityPath, List[Attribute]] = {
     val networkPaths = entities.flatMap {
       case (networkPath: NetworkPath, entities: List[Entity]) =>
         entities.map(entity => networkPath.addLevel(entity.name))
@@ -67,7 +65,7 @@ class MetadataService(
   def getEntities(path: NetworkPath): Option[List[Entity]] = entities.get(path)
 
   // fetches table attributes
-  def getTableAttributes(path: EntityPath): Option[List[Attribute]] = tableAttributes.get(path)
+  def getTableAttributes(path: EntityPath): Option[List[Attribute]] = attributes.get(path)
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
@@ -92,17 +90,17 @@ class MetadataService(
       successful(None)
   }
 
-  // checks if attribute is valid
-  def isAttributeValid(entity: String, attribute: String): Future[Boolean] =
-    platformDiscoveryOperations.isAttributeValid(entity, attribute)
-
-  private def exists(path: NetworkPath): Boolean =
-    getNetworks(path.up).getOrElse(List.empty).exists(_.network == path.network) && exists(path.up)
-
-  private def exists(path: PlatformPath): Boolean = getPlatforms.exists(_.name == path.platform)
-
-  private def exists(path: EntityPath): Boolean =
-    getEntities(path.up).toList.flatten.exists(_.name == path.entity) && exists(path.up)
+  // checks if path exists
+  def exists(path: Path): Boolean = path match {
+    case attributePath: AttributePath =>
+      attributes.getOrElse(attributePath.up, List.empty).exists(_.name == attributePath.attribute)
+    case entityPath: EntityPath =>
+      entities.getOrElse(entityPath.up, List.empty).exists(_.name == entityPath.entity)
+    case networkPath: NetworkPath =>
+      networks.getOrElse(networkPath.up, List.empty).exists(_.network == networkPath.network)
+    case platformPath: PlatformPath =>
+      platforms.exists(_.name == platformPath.platform)
+  }
 
   // fetches attributes with given function
   private def getAttributesHelper(path: EntityPath)(
@@ -110,7 +108,7 @@ class MetadataService(
   ): Future[Option[List[Attribute]]] =
     if (exists(path))
       getAttributes(path.entity).map(
-        _.mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
+        _.map(attributes => transformation.overrideAttributes(path, attributes))
       )
     else
       Future.successful(None)

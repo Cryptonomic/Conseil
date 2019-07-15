@@ -10,6 +10,7 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService}
 
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -55,22 +56,19 @@ object DataTypes {
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)(
       implicit ec: ExecutionContext
-  ): Future[List[QueryValidationError]] = {
+  ): List[QueryValidationError] = {
     val fields = query.fields.map('query -> _) :::
           query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
           query.orderBy.map(orderBy => 'orderBy -> dropAggregationPrefixes(orderBy.field)) :::
           query.aggregation.map('aggregation -> _.field)
 
-    fields.traverse {
-      case (source, field) =>
-        metadataService.attributeExists(path.entity, field).map((_, source, field))
-    }.map {
-      _.collect {
-        case (false, 'query, field) => InvalidQueryField(field)
-        case (false, 'predicate, field) => InvalidPredicateField(field)
-        case (false, 'orderBy, field) => InvalidOrderByField(field)
-        case (false, 'aggregation, field) => InvalidAggregationField(field)
-      }
+    fields.map {
+      case (source, field) => (metadataService.exists(path.addLevel(field)), source, field)
+    }.collect {
+      case (false, 'query, field) => InvalidQueryField(field)
+      case (false, 'predicate, field) => InvalidPredicateField(field)
+      case (false, 'orderBy, field) => InvalidOrderByField(field)
+      case (false, 'aggregation, field) => InvalidAggregationField(field)
     }
   }
 
@@ -102,7 +100,10 @@ object DataTypes {
   private def findInvalidPredicateFilteringFields(query: Query, path: EntityPath, metadataService: MetadataService)(
       implicit ec: ExecutionContext
   ): Future[List[InvalidPredicateFiltering]] = {
-    val limitedQueryEntity = metadataService.getEntities(path.up).toList.flatten
+    val limitedQueryEntity = metadataService
+      .getEntities(path.up)
+      .toList
+      .flatten
       .find(_.name == path.entity)
       .flatMap(_.limitedQuery)
       .getOrElse(false)
@@ -115,7 +116,7 @@ object DataTypes {
         }
       }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
     } else {
-      Future.successful(List.empty)
+      successful(List.empty)
     }
   }
 
@@ -267,7 +268,7 @@ object DataTypes {
         .transform
 
       (
-        findNonExistingFields(query, entity, metadataService),
+        successful(findNonExistingFields(query, entity, metadataService)),
         findInvalidAggregationTypeFields(query, entity, metadataService),
         findInvalidPredicateFilteringFields(query, entity, metadataService),
         replaceTimestampInPredicates(entity, query, metadataService)

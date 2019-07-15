@@ -4,19 +4,40 @@ import java.sql.Timestamp
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import tech.cryptonomic.conseil.config.Platforms
+import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
-import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
+import tech.cryptonomic.conseil.metadata._
 
-import scala.concurrent.Future
-
-class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFactory {
+class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFactory with BeforeAndAfterEach {
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  val ms = stub[MetadataService]
-  val testEntityPath = EntityPath("testEntity", NetworkPath("testNetwork", PlatformPath("testPlatform")))
+  val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
+  val cacheOverrides = stub[AttributeValuesCacheConfiguration]
+
+  def createMetadataService(stubbing: => Unit = ()): MetadataService = {
+    stubbing
+
+    new MetadataService(
+      PlatformsConfiguration(
+        Map(
+          Platforms.Tezos -> List(
+                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"))
+              )
+        )
+      ),
+      new TransparentUnitTransformation(),
+      cacheOverrides,
+      platformDiscoveryOperations
+    )
+  }
+
+  val testEntityPath = EntityPath("testEntity", NetworkPath("alphanet", PlatformPath("tezos")))
   val testEntity = Entity("testEntity", "Test Entity", 0)
+
+  override protected def beforeEach(): Unit = platformDiscoveryOperations.clear()
 
   "DataTypes" should {
       "validate correct query field" in {
@@ -28,15 +49,10 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.UniqueKey,
           entity = "testEntity"
         )
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(attribute)
+        }
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -47,17 +63,12 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
-        result.futureValue.right.get shouldBe Query(fields = List("valid"))
-
+        val result = query.validate(testEntityPath, metadataService).futureValue
+        result.right.get shouldBe Query(fields = List("valid"))
       }
 
       "return error with incorrect query fields" in {
-        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        platformDiscoveryOperations.addEntity(testEntity)
 
         val query = ApiQuery(
           fields = Some(List("invalid")),
@@ -68,7 +79,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, createMetadataService())
 
         result.futureValue.left.get shouldBe List(InvalidQueryField("invalid"))
       }
@@ -80,17 +91,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           dataType = DataType.Int,
           cardinality = None,
           keyType = KeyType.UniqueKey,
-          entity = "test"
+          entity = "testEntity"
         )
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(attribute)
+        }
 
         val query = ApiQuery(
           fields = None,
@@ -101,9 +108,9 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService).futureValue
 
-        result.futureValue.right.get shouldBe Query(predicates = List(Predicate("valid", OperationType.in)))
+        result.right.get shouldBe Query(predicates = List(Predicate("valid", OperationType.in)))
       }
 
       "return error with incorrect predicate fields" in {
@@ -115,16 +122,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.UniqueKey,
           entity = "test"
         )
-        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-          .anyNumberOfTimes()
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        platformDiscoveryOperations.addEntity(testEntity)
 
         val query = ApiQuery(
           fields = None,
@@ -135,7 +133,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, createMetadataService())
 
         result.futureValue.left.get shouldBe List(InvalidPredicateField("invalid"))
       }
@@ -150,16 +148,10 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "testEntity"
         )
 
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-          .anyNumberOfTimes()
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(attribute)
+        }
 
         val query = ApiQuery(
           fields = None,
@@ -170,17 +162,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(orderBy = List(QueryOrdering("valid", OrderDirection.asc)))
       }
 
       "return error with incorrect orderBy fields" in {
-        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        platformDiscoveryOperations.addEntity(testEntity)
 
         val query = ApiQuery(
           fields = None,
@@ -191,7 +179,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, createMetadataService())
 
         result.futureValue.left.get shouldBe List(InvalidOrderByField("invalid"))
       }
@@ -203,18 +191,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           dataType = DataType.Int,
           cardinality = None,
           keyType = KeyType.UniqueKey,
-          entity = "test"
+          entity = "testEntity"
         )
 
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -225,7 +208,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = Some(List(ApiAggregation(field = "valid")))
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
           fields = List("valid"),
@@ -240,18 +223,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           dataType = DataType.String,
           cardinality = None,
           keyType = KeyType.UniqueKey,
-          entity = "test"
+          entity = "testEntity"
         )
 
-        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = Some(List("invalid")),
@@ -262,7 +240,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = Some(List(ApiAggregation(field = "invalid")))
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.left.get shouldBe List(InvalidAggregationFieldForType("invalid"))
       }
@@ -274,18 +252,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           dataType = DataType.String,
           cardinality = None,
           keyType = KeyType.NonKey,
-          entity = "test"
+          entity = "testEntity"
         )
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true)) once ()
-        (ms.attributeExists _).when("testEntity", "invalid").returns(Future.successful(false)) once ()
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -296,10 +269,10 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = Some(List(ApiAggregation(field = "invalid")))
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.left.get should contain theSameElementsAs List(
-          InvalidAggregationField("invalid"),
+          InvalidQueryField("valid"),
           InvalidAggregationFieldForType("invalid")
         )
       }
@@ -311,18 +284,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           dataType = DataType.String,
           cardinality = None,
           keyType = KeyType.NonKey,
-          entity = "test"
+          entity = "testEntity"
         )
 
-        (ms.attributeExists _).when("testEntity", "InvalidAttribute").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity.copy(limitedQuery = Some(true)))))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity.copy(limitedQuery = Some(true)))
+        }
 
         val query = ApiQuery(
           fields = None,
@@ -333,7 +301,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.left.get.head shouldBe a[InvalidPredicateFiltering]
       }
@@ -345,19 +313,13 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           dataType = DataType.String, // only COUNT function can be used on types other than numeric and DateTime
           cardinality = None,
           keyType = KeyType.UniqueKey,
-          entity = "test"
+          entity = "testEntity"
         )
 
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-          .anyNumberOfTimes()
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = Some(List("valid")),
@@ -368,7 +330,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = Some(List(ApiAggregation(field = "valid", function = AggregationType.count)))
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
           fields = List("valid"),
@@ -386,16 +348,10 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           entity = "testEntity"
         )
 
-        (ms.attributeExists _).when("testEntity", "valid").returns(Future.successful(true))
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(*)
-          .returns(Future.successful(Some(List(attribute))))
-          .anyNumberOfTimes()
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = None,
@@ -407,7 +363,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
           predicates = List(
@@ -425,15 +381,11 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.NonKey,
           entity = "testEntity"
         )
-        (ms.attributeExists _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(testEntityPath)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = Some(List("validAttribute")),
@@ -444,7 +396,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
           fields = List("validAttribute"),
@@ -462,15 +414,11 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           keyType = KeyType.NonKey,
           entity = "testEntity"
         )
-        (ms.attributeExists _).when("testEntity", "validAttribute").returns(Future.successful(true)).anyNumberOfTimes()
-        (ms
-          .getTableAttributesWithoutUpdatingCache(_: EntityPath))
-          .when(testEntityPath)
-          .returns(Future.successful(Some(List(attribute))))
-        (ms
-          .getEntities(_: NetworkPath))
-          .when(*)
-          .returns(Some(List(testEntity)))
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
 
         val query = ApiQuery(
           fields = Some(List("validAttribute")),
@@ -481,7 +429,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
           aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
         )
 
-        val result = query.validate(testEntityPath, ms)
+        val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
           fields = List("validAttribute"),
@@ -491,5 +439,4 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
       }
 
     }
-
 }
