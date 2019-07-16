@@ -106,6 +106,8 @@ object JsonDecoders {
 
     /* Collects definitions to decode delegates and their contracts */
     object Delegates {
+      import Numbers._
+      import Scripts._
       //reusing much of the values used in operations
       implicit private val conf = Derivation.tezosDerivationConfig
 
@@ -144,6 +146,8 @@ object JsonDecoders {
     /* Collects definitions to decode blocks and their components */
     object Blocks {
       // we need to decode BalanceUpdates
+      import Numbers._
+      import Operations._
       implicit private val conf = Derivation.tezosDerivationConfig
 
       val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
@@ -200,6 +204,8 @@ object JsonDecoders {
      * Import this in scope to be able to call `io.circe.parser.decode[T](json)` for a valid type of operation
      */
     object Operations {
+      import Scripts._
+      import Numbers._
 
       /* decode any json value to its string representation wrapped in a Error*/
       implicit val errorDecoder: Decoder[OperationResult.Error] =
@@ -248,6 +254,7 @@ object JsonDecoders {
 
     /* Collects definitions to decode accounts and their components */
     object Accounts {
+      import Scripts._
       implicit private val conf = Derivation.tezosDerivationConfig
 
       implicit val delegateDecoder: Decoder[AccountDelegate] = deriveDecoder
