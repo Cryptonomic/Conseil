@@ -13,8 +13,7 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -291,7 +290,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //adapt the proposal protocols result to include the block
     val fetchProposals =
-      fetch[Block, List[ProtocolId], Future, List, Throwable].map { proposalsList =>
+      fetch[Block, List[(ProtocolId, ProposalSupporters)], Future, List, Throwable].map { proposalsList =>
         proposalsList.map {
           case (block, protocols) => Voting.Proposal(protocols, block)
         }

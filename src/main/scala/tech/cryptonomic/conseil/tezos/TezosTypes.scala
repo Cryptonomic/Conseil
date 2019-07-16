@@ -52,6 +52,9 @@ object TezosTypes {
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
 
+  /** use to remove ambiguities about the meaning in voting proposals usage */
+  type ProposalSupporters = Int
+
   final case class PublicKey(value: String) extends AnyVal
 
   final case class PublicKeyHash(value: String) extends AnyVal
@@ -99,6 +102,7 @@ object TezosTypes {
       validation_pass: Int,
       operations_hash: Option[String],
       fitness: Seq[String],
+      priority: Option[Int],
       context: String,
       signature: Option[String]
   )
@@ -504,7 +508,7 @@ object TezosTypes {
   object Voting {
 
     final case class Vote(value: String) extends AnyVal
-    final case class Proposal(protocols: List[ProtocolId], block: Block)
+    final case class Proposal(protocols: List[(ProtocolId, ProposalSupporters)], block: Block)
     final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
   }

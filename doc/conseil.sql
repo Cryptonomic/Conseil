@@ -156,9 +156,9 @@ CREATE TABLE public.blocks (
     meta_cycle_position integer,
     meta_voting_period integer,
     meta_voting_period_position integer,
-    expected_commitment boolean
+    expected_commitment boolean,
+    priority integer
 );
-
 
 --
 -- TOC entry 188 (class 1259 OID 7467507)
@@ -226,7 +226,8 @@ CREATE TABLE public.operation_groups (
     hash character varying NOT NULL,
     branch character varying NOT NULL,
     signature character varying,
-    block_id character varying NOT NULL
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL
 );
 
 
@@ -264,6 +265,7 @@ CREATE TABLE public.operations (
     consumed_gas numeric,
     storage_size numeric,
     paid_storage_size_diff numeric,
+    originated_contracts character varying,
     block_hash character varying NOT NULL,
     block_level integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
@@ -301,7 +303,8 @@ ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.ope
 CREATE TABLE public.proposals (
     protocol_hash character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level integer NOT NULL
+    block_level integer NOT NULL,
+    supporters integer
 );
 
 
@@ -395,6 +398,7 @@ ALTER TABLE ONLY public.operations
 
 CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 
+CREATE INDEX ix_operation_groups_block_level ON public.operation_groups USING btree (block_level);
 
 --
 -- TOC entry 2065 (class 1259 OID 7467562)

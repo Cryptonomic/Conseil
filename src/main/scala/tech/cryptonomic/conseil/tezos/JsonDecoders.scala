@@ -137,8 +137,8 @@ object JsonDecoders {
         Decoder.decodeList[BakerRolls]
       implicit val ballotsDecoder: Decoder[List[Ballot]] =
         Decoder.decodeList[Ballot]
-      implicit val protocolIdsDecoder: Decoder[List[ProtocolId]] =
-        Decoder.decodeList[ProtocolId]
+      implicit val proposalsDecoder: Decoder[List[(ProtocolId, ProposalSupporters)]] =
+        Decoder.decodeList[(ProtocolId, ProposalSupporters)]
     }
 
     /* Collects definitions to decode blocks and their components */

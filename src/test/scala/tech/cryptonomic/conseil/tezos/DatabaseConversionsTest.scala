@@ -121,7 +121,8 @@ class DatabaseConversionsTest
           'metaCyclePosition (metadata.map(_.level.cycle_position)),
           'metaVotingPeriod (metadata.map(_.level.voting_period)),
           'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
-          'expectedCommitment (metadata.map(_.level.expected_commitment))
+          'expectedCommitment (metadata.map(_.level.expected_commitment)),
+          'priority (block.data.header.priority)
         )
 
         metadata.map(_.consumed_gas) match {
@@ -333,6 +334,7 @@ class DatabaseConversionsTest
               converted.status ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -376,6 +378,7 @@ class DatabaseConversionsTest
               converted.status ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -419,6 +422,7 @@ class DatabaseConversionsTest
               converted.status ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -477,6 +481,7 @@ class DatabaseConversionsTest
               converted.script ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -544,6 +549,7 @@ class DatabaseConversionsTest
               converted.spendable ::
               converted.delegatable ::
               converted.script ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -601,6 +607,7 @@ class DatabaseConversionsTest
           case Some(Decimal(bignumber)) => converted.paidStorageSizeDiff.value shouldBe bignumber
           case _ => converted.paidStorageSizeDiff shouldBe 'empty
         }
+        converted.originatedContracts.value shouldBe "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4,KT1Hx96yGgGk2q7Jmwm1dnYAMdRoLJNn5gnC"
 
         forAll(
           converted.level ::
@@ -670,6 +677,7 @@ class DatabaseConversionsTest
               converted.script ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -713,6 +721,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -756,6 +765,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -799,6 +809,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -842,6 +853,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -852,16 +864,19 @@ class DatabaseConversionsTest
       "convert a Voting Proposal to a database row" in {
         import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Proposal
 
-        val sampleProposal = Proposal(protocols = ProtocolId("proto1") :: ProtocolId("proto2") :: Nil, block = block)
+        val sampleProposal =
+          Proposal(protocols = (ProtocolId("proto1"), 1) :: (ProtocolId("proto2"), 2) :: Nil, block = block)
 
         val expected = List(
           Tables.ProposalsRow(
             protocolHash = "proto1",
+            supporters = Some(1),
             blockId = block.data.hash.value,
             blockLevel = block.data.header.level
           ),
           Tables.ProposalsRow(
             protocolHash = "proto2",
+            supporters = Some(2),
             blockId = block.data.hash.value,
             blockLevel = block.data.header.level
           )
