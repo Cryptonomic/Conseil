@@ -1,7 +1,9 @@
 package tech.cryptonomic.conseil.tezos
 
-import scala.util.Try
+import io.circe.HCursor
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+
+import scala.util.Try
 
 /** This expose decoders for json conversions */
 object JsonDecoders {
@@ -12,29 +14,25 @@ object JsonDecoders {
     import cats.ApplicativeError
     import cats.syntax.functor._
     import io.circe.Decoder
-    import io.circe.generic.extras._
-    import io.circe.generic.extras.semiauto._
     import io.circe.generic.extras.Configuration
+    import io.circe.generic.extras.semiauto._
 
     type JsonDecoded[T] = Either[Error, T]
 
     /** Helper to decode json and convert to any effectful result that can
-      *  raise errors, as implied with the type class contraint
+      * raise errors, as implied with the type class contraint
       * This is not necessarily running any async operation
       */
     def decodeLiftingTo[Eff[_], A: io.circe.Decoder](
         json: String
     )(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
-      import io.circe.parser.decode
       import cats.instances.either._
-      import cats.syntax.either._
       import cats.syntax.bifunctor._
+      import cats.syntax.either._
+      import io.circe.parser.decode
 
       decode[A](json).leftWiden[Throwable].raiseOrPure[Eff]
     }
-
-    /* local definition of a base-58-check string wrapper, to allow parsing validation */
-    final private case class Base58Check(content: String) extends AnyVal
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */
     private def deriveDecoderFromString[T](
@@ -46,6 +44,9 @@ object JsonDecoders {
         .map(_.trim)
         .ensure(validateString, failedValidation)
         .map(decodedConstructor)
+
+    /* local definition of a base-58-check string wrapper, to allow parsing validation */
+    final private case class Base58Check(content: String) extends AnyVal
 
     /* decode only base58check-encoded strings */
     implicit private val base58CheckDecoder: Decoder[Base58Check] =
@@ -106,8 +107,6 @@ object JsonDecoders {
     /* Collects definitions to decode delegates and their contracts */
     object Delegates {
       //reusing much of the values used in operations
-      import Numbers._
-      import Scripts._
       implicit private val conf = Derivation.tezosDerivationConfig
 
       implicit val contractDelegateDecoder: Decoder[ContractDelegate] = deriveDecoder
@@ -118,7 +117,9 @@ object JsonDecoders {
 
     /* Collects definitions to decode voting data and their components */
     object Votes {
+
       import Voting._
+
       implicit private val conf = Derivation.tezosDerivationConfig
 
       private val admittedVotes = Set("yay", "nay", "pass")
@@ -143,8 +144,6 @@ object JsonDecoders {
     /* Collects definitions to decode blocks and their components */
     object Blocks {
       // we need to decode BalanceUpdates
-      import Numbers._
-      import Operations._
       implicit private val conf = Derivation.tezosDerivationConfig
 
       val genesisMetadataDecoder: Decoder[GenesisMetadata.type] = deriveDecoder
@@ -201,8 +200,6 @@ object JsonDecoders {
      * Import this in scope to be able to call `io.circe.parser.decode[T](json)` for a valid type of operation
      */
     object Operations {
-      import Scripts._
-      import Numbers._
 
       /* decode any json value to its string representation wrapped in a Error*/
       implicit val errorDecoder: Decoder[OperationResult.Error] =
@@ -224,6 +221,26 @@ object JsonDecoders {
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] = deriveDecoder
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] = deriveDecoder
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
+      implicit val internalOpResultsDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
+        (c: HCursor) => {
+          c.downField("kind").as[String].flatMap {
+            case "reveal" =>
+              c.as[InternalOperationResults.InternalRevealResult]
+            case "transaction" =>
+              c.as[InternalOperationResults.InternalTransactionResult]
+            case "delegation" =>
+              c.as[InternalOperationResults.InternalDelegationResult]
+            case "origination" =>
+              c.as[InternalOperationResults.InternalOriginationResult]
+          }
+        }
+      implicit val internalRevealResultDecoder: Decoder[InternalOperationResults.InternalRevealResult] = deriveDecoder
+      implicit val internalTransactionResultDecoder: Decoder[InternalOperationResults.InternalTransactionResult] =
+        deriveDecoder
+      implicit val internalOriginationResultDecoder: Decoder[InternalOperationResults.InternalOriginationResult] =
+        deriveDecoder
+      implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.InternalDelegationResult] =
+        deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
 
@@ -231,7 +248,6 @@ object JsonDecoders {
 
     /* Collects definitions to decode accounts and their components */
     object Accounts {
-      import Scripts._
       implicit private val conf = Derivation.tezosDerivationConfig
 
       implicit val delegateDecoder: Decoder[AccountDelegate] = deriveDecoder
@@ -239,4 +255,5 @@ object JsonDecoders {
     }
 
   }
+
 }

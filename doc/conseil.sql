@@ -266,7 +266,8 @@ CREATE TABLE public.operations (
     paid_storage_size_diff numeric,
     block_hash character varying NOT NULL,
     block_level integer NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    internal boolean NOT NULL
 );
 
 

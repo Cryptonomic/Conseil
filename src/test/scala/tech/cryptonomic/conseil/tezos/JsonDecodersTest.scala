@@ -341,7 +341,18 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
       }
 
-      "decode an transaction operation from json" in new OperationsJsonData {
+    "decode an transaction with internal transaction result operation from json" in new OperationsJsonData {
+      val decoded = decode[Operation](adaptManagerPubkeyField(transactionWithInternalTransactionJson))
+      decoded shouldBe 'right
+
+      val operation = decoded.right.value
+      operation shouldBe a[Transaction]
+      operation shouldEqual transactionWithInternalTransactionResult
+
+    }
+
+
+    "decode an transaction operation from json" in new OperationsJsonData {
         val decoded = decode[Operation](adaptManagerPubkeyField(transactionJson))
         decoded shouldBe 'right
 

@@ -225,8 +225,9 @@ class TezosPlatformDiscoveryOperationsTest
                 "operations"
               ),
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "operations")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
+              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations")
             )
           )
       }

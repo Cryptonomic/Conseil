@@ -223,8 +223,11 @@ trait Tables {
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (accountId) (database name ix_accounts_checkpoint_account_id) */
+    val index1 = index("ix_accounts_checkpoint_account_id", accountId)
+
     /** Index over (blockLevel) (database name ix_accounts_checkpoint_block_level) */
-    val index1 = index("ix_accounts_checkpoint_block_level", blockLevel)
+    val index2 = index("ix_accounts_checkpoint_block_level", blockLevel)
   }
 
   /** Collection-like TableQuery object for table AccountsCheckpoint */
@@ -964,7 +967,8 @@ trait Tables {
     *  @param paidStorageSizeDiff Database column paid_storage_size_diff SqlType(numeric), Default(None)
     *  @param blockHash Database column block_hash SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int4)
-    *  @param timestamp Database column timestamp SqlType(timestamp) */
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param internal Database column internal SqlType(bool) */
   case class OperationsRow(
       operationId: Int,
       operationGroupHash: String,
@@ -996,7 +1000,8 @@ trait Tables {
       paidStorageSizeDiff: Option[scala.math.BigDecimal] = None,
       blockHash: String,
       blockLevel: Int,
-      timestamp: java.sql.Timestamp
+      timestamp: java.sql.Timestamp,
+      internal: Boolean
   )
 
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
@@ -1007,7 +1012,8 @@ trait Tables {
       e3: GR[Option[String]],
       e4: GR[Option[scala.math.BigDecimal]],
       e5: GR[Option[Boolean]],
-      e6: GR[java.sql.Timestamp]
+      e6: GR[java.sql.Timestamp],
+      e7: GR[Boolean]
   ): GR[OperationsRow] = GR { prs =>
     import prs._
     OperationsRow(
@@ -1041,20 +1047,21 @@ trait Tables {
       <<?[scala.math.BigDecimal],
       <<[String],
       <<[Int],
-      <<[java.sql.Timestamp]
+      <<[java.sql.Timestamp],
+      <<[Boolean]
     )
   }
 
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
     def * =
-      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: blockHash :: blockLevel :: timestamp :: HNil)
+      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: blockHash :: blockLevel :: timestamp :: internal :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: Rep
-            .Some(blockHash) :: Rep.Some(blockLevel) :: Rep.Some(timestamp) :: HNil).shaped.<>(
+            .Some(blockHash) :: Rep.Some(blockLevel) :: Rep.Some(timestamp) :: Rep.Some(internal) :: HNil).shaped.<>(
         r =>
           OperationsRow(
             r(0).asInstanceOf[Option[Int]].get,
@@ -1087,7 +1094,8 @@ trait Tables {
             r(27).asInstanceOf[Option[scala.math.BigDecimal]],
             r(28).asInstanceOf[Option[String]].get,
             r(29).asInstanceOf[Option[Int]].get,
-            r(30).asInstanceOf[Option[java.sql.Timestamp]].get
+            r(30).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(31).asInstanceOf[Option[Boolean]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1190,6 +1198,9 @@ trait Tables {
     /** Database column timestamp SqlType(timestamp) */
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
 
+    /** Database column internal SqlType(bool) */
+    val internal: Rep[Boolean] = column[Boolean]("internal")
+
     /** Foreign key referencing Blocks (database name fk_blockhashes) */
     lazy val blocksFk = foreignKey("fk_blockhashes", blockHash :: HNil, Blocks)(
       r => r.hash :: HNil,
@@ -1204,11 +1215,17 @@ trait Tables {
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (blockLevel) (database name ix_operations_block_level) */
+    val index1 = index("ix_operations_block_level", blockLevel :: HNil)
+
     /** Index over (destination) (database name ix_operations_destination) */
-    val index1 = index("ix_operations_destination", destination :: HNil)
+    val index2 = index("ix_operations_destination", destination :: HNil)
 
     /** Index over (source) (database name ix_operations_source) */
-    val index2 = index("ix_operations_source", source :: HNil)
+    val index3 = index("ix_operations_source", source :: HNil)
+
+    /** Index over (timestamp) (database name ix_operations_timestamp) */
+    val index4 = index("ix_operations_timestamp", timestamp :: HNil)
   }
 
   /** Collection-like TableQuery object for table Operations */

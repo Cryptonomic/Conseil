@@ -130,7 +130,7 @@ object DatabaseConversions {
   }
 
   private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Endorsement(level, metadata)) =>
+    case (block, groupHash, e @ Endorsement(level, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -140,7 +140,8 @@ object DatabaseConversions {
         slots = Some(metadata.slots).map(concatenateToString),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = e.internal
       )
   }
 
@@ -154,12 +155,13 @@ object DatabaseConversions {
         nonce = Some(nonce.value),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
   private val convertActivateAccount: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, ActivateAccount(pkh, secret, metadata)) =>
+    case (block, groupHash, a @ ActivateAccount(pkh, secret, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -168,12 +170,13 @@ object DatabaseConversions {
         secret = Some(secret.value),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = a.internal
       )
   }
 
   private val convertReveal: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
+    case (block, groupHash, r @ Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -188,7 +191,8 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = r.internal
       )
   }
 
@@ -196,7 +200,7 @@ object DatabaseConversions {
     case (
         block,
         groupHash,
-        Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
+        t @ Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
         ) =>
       Tables.OperationsRow(
         operationId = 0,
@@ -216,7 +220,8 @@ object DatabaseConversions {
         paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = t.internal
       )
   }
 
@@ -224,7 +229,7 @@ object DatabaseConversions {
     case (
         block,
         groupHash,
-        Origination(
+        o @ Origination(
           counter,
           fee,
           source,
@@ -261,12 +266,13 @@ object DatabaseConversions {
         paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = o.internal
       )
   }
 
   private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
+    case (block, groupHash, d @ Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -281,7 +287,8 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = d.internal
       )
   }
 
@@ -300,20 +307,9 @@ object DatabaseConversions {
         kind = kind,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = op.internal
       )
-  }
-
-  implicit val blockToOperationsRow = new Conversion[List, Block, Tables.OperationsRow] {
-    import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-    override def convert(from: Block) =
-      from.operationGroups.flatMap { group =>
-        group.contents.map { op =>
-          (from, group.hash, op).convertTo[Tables.OperationsRow]
-        }
-      }
-
   }
 
   /** Not all operations have some form of balance updates... we're ignoring some type, like ballots,
@@ -366,6 +362,74 @@ object DatabaseConversions {
   /** Utility alias when we need to keep related data paired together */
   type OperationTablesData = (Tables.OperationsRow, List[Tables.BalanceUpdatesRow])
 
+  /** */
+  implicit val internalOperationResultToOperation =
+    new Conversion[Id, InternalOperationResults.InternalOperationResult, Operation] {
+      override def convert(from: InternalOperationResults.InternalOperationResult): Id[Operation] =
+        // counter/fee/gas_limit/storage_limit are not in internal operations results,
+        // so values below are going to be discarded during transformation Operation -> OperationRow
+        from match {
+          case reveal: InternalOperationResults.InternalRevealResult =>
+            reveal
+              .into[Reveal]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, List.empty, None))
+              .transform
+          case transaction: InternalOperationResults.InternalTransactionResult =>
+            transaction
+              .into[Transaction]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(
+                _.metadata,
+                ResultMetadata[OperationResult.Transaction](
+                  transaction.result,
+                  transaction.result.balance_updates.getOrElse(List.empty),
+                  None
+                )
+              )
+              .transform
+
+          case origination: InternalOperationResults.InternalOriginationResult =>
+            origination
+              .into[Origination]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(
+                _.metadata,
+                ResultMetadata[OperationResult.Origination](
+                  origination.result,
+                  origination.result.balance_updates.getOrElse(List.empty),
+                  None
+                )
+              )
+              .transform
+
+          case delegation: InternalOperationResults.InternalDelegationResult =>
+            delegation
+              .into[Delegation]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(
+                _.metadata,
+                ResultMetadata[OperationResult.Delegation](delegation.result, List.empty, None)
+              )
+              .transform
+        }
+    }
+
+  def appendToFile(str: String) =
+    scala.tools.nsc.io.Path("/tmp/my.log").createFile().appendAll("\n" + str)
+
   /** Will convert to paired list of operations with related balance updates
     * with one HUGE CAVEAT: both have only temporary, meaningless, `sourceId`s
     *
@@ -379,10 +443,24 @@ object DatabaseConversions {
 
     override def convert(from: Block) =
       from.operationGroups.flatMap { group =>
-        group.contents.map { op =>
+        group.contents.flatMap { op =>
+          val internalOperationResults = op match {
+            case r: Reveal => r.metadata.internal_operation_results.toList.flatten
+            case t: Transaction => t.metadata.internal_operation_results.toList.flatten
+            case o: Origination => o.metadata.internal_operation_results.toList.flatten
+            case d: Delegation => d.metadata.internal_operation_results.toList.flatten
+            case _ => List.empty
+          }
+
+          val internalRows = internalOperationResults.map { oop =>
+            val op = oop.convertTo[Operation]
+            (from, group.hash, op)
+              .convertTo[Tables.OperationsRow]
+              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op.convertToA[List, Tables.BalanceUpdatesRow]
+          }
           val operationRow = (from, group.hash, op).convertTo[Tables.OperationsRow]
           val balanceUpdateRows = op.convertToA[List, Tables.BalanceUpdatesRow]
-          (operationRow, balanceUpdateRows)
+          (operationRow, balanceUpdateRows) :: internalRows
         }
       }
 
