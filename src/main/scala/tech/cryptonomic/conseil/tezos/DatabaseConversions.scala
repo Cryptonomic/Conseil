@@ -30,6 +30,13 @@ object DatabaseConversions {
     case _ => None
   }
 
+  def extractBallot(ballot: Vote): Option[String] = ballot match {
+    case Pass => Some("pass")
+    case Yay => Some("yay")
+    case Nay => Some("nay")
+    case _ => None
+  }
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -131,6 +138,7 @@ object DatabaseConversions {
           convertTransaction orElse
           convertOrigination orElse
           convertDelegation orElse
+          convertBallot orElse
           convertUnhandledOperations)(from)
   }
 
@@ -291,13 +299,25 @@ object DatabaseConversions {
       )
   }
 
+  private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Ballot(ballot)) =>
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "ballot",
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        ballot = extractBallot(ballot)
+      )
+  }
+
   private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, op) =>
       val kind = op match {
         case DoubleEndorsementEvidence => "double_endorsement_evidence"
         case DoubleBakingEvidence => "double_baking_evidence"
         case Proposals => "proposals"
-        case Ballot => "ballot"
         case _ => ""
       }
       Tables.OperationsRow(
