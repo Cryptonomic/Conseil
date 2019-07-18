@@ -97,11 +97,11 @@ object DatabaseUtil {
       def addLimit(limit: Int): SQLActionBuilder =
         concatenateSqlActions(action, makeLimit(limit))
 
-      /** Method for adding group by to existing SQLAction
+      /** Method for adding GROUP BY to existing SQLAction
         *
         * @param aggregation parameter containing info about field which has to be aggregated
         * @param columns     parameter containing columns which chich are being used in query
-        * @return new SQLActionBuilder containing limit statement
+        * @return new SQLActionBuilder containing GROUP BY  statement
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
@@ -110,6 +110,18 @@ object DatabaseUtil {
           action
         } else {
           concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregationFields))
+        }
+      }
+      /** Method for adding HAVING to existing SQLAction
+        *
+        * @param aggregation parameter containing info about field which has to be aggregated
+        * @return new SQLActionBuilder containing HAVING statement
+        */
+      def addHaving(aggregation: List[Aggregation]): SQLActionBuilder = {
+        if(aggregation.flatMap(_.getPredicate.toList).isEmpty) {
+          action
+        } else {
+          makeHaving(aggregation)
         }
       }
     }
@@ -137,7 +149,10 @@ object DatabaseUtil {
       * @return SQLAction with basic query
       */
     def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
-      val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(aggr.function, aggr.field))
+      val aggregationFields = aggregation
+        .map { aggr =>
+          mapAggregationToSQL(aggr.function, aggr.field) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
+        }
       val aggr = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).toList
       val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
       sql"""SELECT #$cols FROM #$table WHERE true """
@@ -169,14 +184,41 @@ object DatabaseUtil {
     def makeGroupBy(columns: List[String]): SQLActionBuilder =
       sql""" GROUP BY #${columns.mkString(",")}"""
 
+    /** Prepares HAVING parameters
+      *
+      * @param aggregation list of aggregations
+      * @return SQLAction with HAVING
+      */
+    def makeHaving(aggregation: List[Aggregation]): SQLActionBuilder = {
+      concatenateSqlActions(sql""" HAVING true""",
+      aggregation.flatMap { aggregation =>
+        aggregation.getPredicate.toList.map { predicate =>
+          concatenateSqlActions(
+            sql""" AND #${mapAggregationToSQL(aggregation.function, aggregation.field)} """,
+            mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+          )
+        }
+      }:_*)
+    }
+
     /** maps aggregation operation to the SQL function*/
     private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
       aggregationType match {
-        case AggregationType.sum => s"SUM($column) as sum_$column"
-        case AggregationType.count => s"COUNT($column) as count_$column"
-        case AggregationType.max => s"MAX($column) as max_$column"
-        case AggregationType.min => s"MIN($column) as min_$column"
-        case AggregationType.avg => s"AVG($column) as avg_$column"
+        case AggregationType.sum => s"SUM($column)"
+        case AggregationType.count => s"COUNT($column)"
+        case AggregationType.max => s"MAX($column)"
+        case AggregationType.min => s"MIN($column)"
+        case AggregationType.avg => s"AVG($column)"
+      }
+
+    /** maps aggregation operation to the SQL alias */
+    private def mapAggregationToAlias(aggregationType: AggregationType, column: String): String =
+      aggregationType match {
+        case AggregationType.sum => s"sum_$column"
+        case AggregationType.count => s"count_$column"
+        case AggregationType.max => s"max_$column"
+        case AggregationType.min => s"min_$column"
+        case AggregationType.avg => s"avg_$column"
       }
 
     /** maps operation type to SQL operation */
