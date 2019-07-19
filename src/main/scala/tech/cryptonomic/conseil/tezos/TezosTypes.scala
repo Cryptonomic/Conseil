@@ -254,10 +254,8 @@ object TezosTypes {
 // Internal operations result definitions
   object InternalOperationResults {
 
-    sealed trait InternalOperationResult {
-      val source: ContractId
-      val kind: String
-      val nonce: Int
+    sealed trait InternalOperationResult extends Product with Serializable {
+      def nonce: Int
     }
 
     case class InternalRevealResult(

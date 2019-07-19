@@ -106,9 +106,9 @@ object JsonDecoders {
 
     /* Collects definitions to decode delegates and their contracts */
     object Delegates {
+      //reusing much of the values used in operations
       import Numbers._
       import Scripts._
-      //reusing much of the values used in operations
       implicit private val conf = Derivation.tezosDerivationConfig
 
       implicit val contractDelegateDecoder: Decoder[ContractDelegate] = deriveDecoder
