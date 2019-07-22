@@ -433,9 +433,6 @@ object DatabaseConversions {
         }
     }
 
-  def appendToFile(str: String) =
-    scala.tools.nsc.io.Path("/tmp/my.log").createFile().appendAll("\n" + str)
-
   /** Will convert to paired list of operations with related balance updates
     * with one HUGE CAVEAT: both have only temporary, meaningless, `sourceId`s
     *
