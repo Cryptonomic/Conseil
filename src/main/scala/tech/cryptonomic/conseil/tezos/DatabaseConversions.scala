@@ -375,7 +375,7 @@ object DatabaseConversions {
         // counter/fee/gas_limit/storage_limit are not in internal operations results,
         // so values below are going to be discarded during transformation Operation -> OperationRow
         from match {
-          case reveal: InternalOperationResults.InternalRevealResult =>
+          case reveal: InternalOperationResults.Reveal =>
             reveal
               .into[Reveal]
               .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
@@ -384,7 +384,7 @@ object DatabaseConversions {
               .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
               .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, List.empty, None))
               .transform
-          case transaction: InternalOperationResults.InternalTransactionResult =>
+          case transaction: InternalOperationResults.Transaction =>
             transaction
               .into[Transaction]
               .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
@@ -401,7 +401,7 @@ object DatabaseConversions {
               )
               .transform
 
-          case origination: InternalOperationResults.InternalOriginationResult =>
+          case origination: InternalOperationResults.Origination =>
             origination
               .into[Origination]
               .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
@@ -418,7 +418,7 @@ object DatabaseConversions {
               )
               .transform
 
-          case delegation: InternalOperationResults.InternalDelegationResult =>
+          case delegation: InternalOperationResults.Delegation =>
             delegation
               .into[Delegation]
               .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))

@@ -227,25 +227,14 @@ object JsonDecoders {
       implicit val transactionMetadataDecoder: Decoder[ResultMetadata[OperationResult.Transaction]] = deriveDecoder
       implicit val originationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Origination]] = deriveDecoder
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
-      implicit val internalOpResultsDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
-        (c: HCursor) => {
-          c.downField("kind").as[String].flatMap {
-            case "reveal" =>
-              c.as[InternalOperationResults.InternalRevealResult]
-            case "transaction" =>
-              c.as[InternalOperationResults.InternalTransactionResult]
-            case "delegation" =>
-              c.as[InternalOperationResults.InternalDelegationResult]
-            case "origination" =>
-              c.as[InternalOperationResults.InternalOriginationResult]
-          }
-        }
-      implicit val internalRevealResultDecoder: Decoder[InternalOperationResults.InternalRevealResult] = deriveDecoder
-      implicit val internalTransactionResultDecoder: Decoder[InternalOperationResults.InternalTransactionResult] =
+      implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
         deriveDecoder
-      implicit val internalOriginationResultDecoder: Decoder[InternalOperationResults.InternalOriginationResult] =
+      implicit val internalRevealResultDecoder: Decoder[InternalOperationResults.Reveal] = deriveDecoder
+      implicit val internalTransactionResultDecoder: Decoder[InternalOperationResults.Transaction] =
         deriveDecoder
-      implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.InternalDelegationResult] =
+      implicit val internalOriginationResultDecoder: Decoder[InternalOperationResults.Origination] =
+        deriveDecoder
+      implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.Delegation] =
         deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder

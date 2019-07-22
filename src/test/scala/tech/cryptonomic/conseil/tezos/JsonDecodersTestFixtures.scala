@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
 import TezosTypes._
-import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.InternalTransactionResult
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 /* defines example tezos json definitions of delegates and related contracts with the typed counterparts used in the tests */
@@ -546,7 +545,6 @@ trait OperationsJsonData {
     |  }
     |}""".stripMargin
 
-  //ignores the internal_operation_result
   val expectedReveal =
     Reveal(
       source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
@@ -581,7 +579,7 @@ trait OperationsJsonData {
         ),
         internal_operation_results = Some(
           List(
-            InternalOperationResults.InternalRevealResult(
+            InternalOperationResults.Reveal(
               result = OperationResult.Reveal("applied", Some(Decimal(10000)), None),
               public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
               nonce = 1234,
@@ -619,7 +617,7 @@ trait OperationsJsonData {
       balance_updates = List(),
       internal_operation_results = Some(
         List(
-          InternalTransactionResult(
+          InternalOperationResults.Transaction(
             "transaction",
             ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
             0,

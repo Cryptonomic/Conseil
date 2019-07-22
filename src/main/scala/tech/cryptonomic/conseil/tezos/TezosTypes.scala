@@ -258,7 +258,7 @@ object TezosTypes {
       def nonce: Int
     }
 
-    case class InternalRevealResult(
+    case class Reveal(
         kind: String,
         source: ContractId,
         nonce: Int,
@@ -266,7 +266,7 @@ object TezosTypes {
         result: OperationResult.Reveal
     ) extends InternalOperationResult
 
-    case class InternalTransactionResult(
+    case class Transaction(
         kind: String,
         source: ContractId,
         nonce: Int,
@@ -276,7 +276,7 @@ object TezosTypes {
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
-    case class InternalOriginationResult(
+    case class Origination(
         kind: String,
         source: ContractId,
         nonce: Int,
@@ -289,7 +289,7 @@ object TezosTypes {
         result: OperationResult.Origination
     ) extends InternalOperationResult
 
-    case class InternalDelegationResult(
+    case class Delegation(
         kind: String,
         source: ContractId,
         nonce: Int,
