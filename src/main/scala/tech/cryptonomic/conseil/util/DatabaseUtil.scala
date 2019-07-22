@@ -121,7 +121,7 @@ object DatabaseUtil {
         if(aggregation.flatMap(_.getPredicate.toList).isEmpty) {
           action
         } else {
-          makeHaving(aggregation)
+          concatenateSqlActions(action, makeHaving(aggregation))
         }
       }
     }
