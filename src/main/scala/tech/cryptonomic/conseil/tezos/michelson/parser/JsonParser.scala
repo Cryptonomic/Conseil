@@ -58,7 +58,7 @@ object JsonParser {
    * */
   case class JsonType(
       prim: String,
-      args: Option[List[Either[JsonExpression, Nil.type]]],
+      args: Option[List[Either[JsonExpression, List[JsonInstruction]]]],
       annots: Option[List[String]] = None
   ) extends JsonExpression {
     override def toMichelsonExpression =
@@ -66,7 +66,8 @@ object JsonParser {
         prim,
         args.getOrElse(List.empty).map {
           case Left(jsonExpression) => jsonExpression.toMichelsonExpression
-          case Right(_) => MichelsonEmptyExpression
+          case Right(jsonInstructions) =>
+            MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction)).normalized
         },
         annots.getOrElse(List.empty)
       )
