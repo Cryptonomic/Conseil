@@ -542,6 +542,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
        */
       val saveAccounts = node
         .getAccounts[IO](ids)
+        .prefetchN(batchingConf.accountPageSize)
         .chunkN(batchingConf.accountPageSize)
         .map(extractDelegatesInfo)
         .evalMap((processAccountsPage _).tupled)
@@ -592,8 +593,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val saveDelegates =
         node
           .getDelegates[IO](ids)
+          .prefetchN(batchingConf.accountPageSize)
           .chunkN(batchingConf.accountPageSize)
-          .map(processDelegatesPage)
+          .evalMap(processDelegatesPage)
           .compile
           .foldMonoid
           .flatMap { rowCount =>

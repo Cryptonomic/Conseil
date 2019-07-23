@@ -11,6 +11,7 @@ import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonStri
 import TezosTypes._
 import cats._
 import cats.arrow._
+import cats.syntax.flatMap._
 import io.circe.Decoder
 
 trait TezosNodeFetchersLogging extends LazyLogging {
@@ -92,6 +93,7 @@ trait BlocksDataFetchers {
 
       //fetch json from the passed-in URL fragment command
       override val fetchData = Kleisli { command =>
+        IO(logger.info("Fetching data from tezos node for path: {}", command)) >>
         RpcHandler
           .runGet[IO, String, Encoded](command)
           .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
@@ -134,6 +136,7 @@ trait BlocksDataFetchers {
       type Error = Throwable
 
       override val fetchData = Kleisli { command =>
+        IO(logger.info("Fetching data from tezos node for path: {}", command)) >>
         RpcHandler
           .runGet[IO, String, Encoded](command)
           .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
@@ -291,7 +294,7 @@ trait AccountsDataFetchers {
   implicit def tezosContext: TezosNodeContext
 
   //common type for the fetchers
-  type IOFetcher[In, Out] = DataFetcher.Aux[IO, In, Out, String, Throwable]
+  type IOFetcher[In, Out] = DataFetcher.Std[IO, In, Out]
 
   def makeIOFetcherFromRpc[In, Decoded: Decoder](
     makeCommand: In => String,
@@ -304,6 +307,7 @@ trait AccountsDataFetchers {
 
       //fetch json from the passed-in URL fragment command
       override val fetchData = Kleisli { command =>
+        IO(logger.info("Fetching data from tezos node for path: {}", command)) >>
         RpcHandler
           .runGet[IO, String, Encoded](command)
           .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
