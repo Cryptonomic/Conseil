@@ -4,7 +4,6 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.testkit.TestKit
-import akka.stream.ActorMaterializer
 import tech.cryptonomic.conseil.generic.rpc.RpcHandler
 import cats.effect.IO
 import com.typesafe.config.ConfigFactory
@@ -26,8 +25,7 @@ class TezosRpcTest
   "The IOEff RpcHander" should {
       import TezosRpc.Cats.IOEff._
 
-      "GET json data from a web server" in withMockServer {
-        mockServer =>
+      "GET json data from a web server" in withMockServer { mockServer =>
         //given
         import LocalNodeContext._
 
@@ -35,8 +33,8 @@ class TezosRpcTest
 
         mockServer.stubFor(
           get(urlPathMatching(s"/.*/$testPath")) willReturn (
-            aResponse() withBody(dummyJsonObject) withHeader("Content-Type", "application/json")
-          )
+                aResponse() withBody (dummyJsonObject) withHeader ("Content-Type", "application/json")
+              )
         )
 
         //when
@@ -46,8 +44,7 @@ class TezosRpcTest
         result shouldEqual dummyJsonObject
       }
 
-      "POST json data from a web server" in withMockServer {
-        mockServer =>
+      "POST json data from a web server" in withMockServer { mockServer =>
         //given
         import LocalNodeContext._
 
@@ -55,8 +52,8 @@ class TezosRpcTest
 
         mockServer.stubFor(
           post(urlPathMatching(s"/.*/$testPath")) willReturn (
-            aResponse() withBody(dummyJsonObject) withHeader("Content-Type", "application/json")
-          )
+                aResponse() withBody (dummyJsonObject) withHeader ("Content-Type", "application/json")
+              )
         )
 
         val payload = JsonUtil.JsonString.wrapString("""{"number": 10}""").toOption.ensuring(_.nonEmpty)
@@ -85,7 +82,10 @@ class TezosRpcTest
       )
 
     val timeouts =
-      NetworkTimeoutConfiguration(requestAwaitTime = 1.second, GETResponseEntityTimeout = 1.second, POSTResponseEntityTimeout = 1.second)
+      NetworkTimeoutConfiguration(
+        GETResponseEntityTimeout = 1.second,
+        POSTResponseEntityTimeout = 1.second
+      )
 
     val streamingConf = HttpStreamingConfiguration(ConfigFactory.load())
 
@@ -99,10 +99,9 @@ class TezosRpcTest
 
     IO(new WireMockServer(9999))
       .bracket(
-        use = srv => IO(srv.start()) >>  IO(println("Test server started")) >> IO(body(srv))
+        use = srv => IO(srv.start()) >> IO(println("Test server started")) >> IO(body(srv))
       )(
-        release =
-          srv => IO(srv.stop()) <* IO(println("Test server stopped"))
+        release = srv => IO(srv.stop()) <* IO(println("Test server stopped"))
       )
       .unsafeRunTimed(20.seconds)
   }

@@ -52,6 +52,11 @@ object TezosTypes {
   /** convenience alias to simplify declarations of block hash+level tuples */
   type BlockReference = (BlockHash, Int)
 
+  implicit val blockRefEq = new cats.Eq[BlockReference] {
+    override def eqv(x: BlockReference, y: BlockReference): Boolean =
+      x == y
+  }
+
   /** A block's offset from the current head or another reference level */
   type Offset = Int
 

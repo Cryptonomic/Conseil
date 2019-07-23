@@ -17,17 +17,15 @@ final case class LorreConfiguration(
 )
 
 final case class BatchFetchConfiguration(
+  blockConcurrencyLevel: Int,
   accountConcurrencyLevel: Int,
-  blockOperationsConcurrencyLevel: Int,
+  delegateConcurrencyLevel: Int,
   blockPageSize: Int,
-  blockPageProcessingTimeout: FiniteDuration,
-  accountPageProcessingTimeout: FiniteDuration,
-  delegatePageProcessingTimeout: FiniteDuration
+  accountPageSize: Int
 )
 
 /** configurations related to a chain-node network calls */
 final case class NetworkTimeoutConfiguration(
-  requestAwaitTime: FiniteDuration,
   GETResponseEntityTimeout: FiniteDuration,
   POSTResponseEntityTimeout: FiniteDuration
 )

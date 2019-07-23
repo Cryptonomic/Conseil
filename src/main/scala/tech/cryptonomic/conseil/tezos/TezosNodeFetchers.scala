@@ -3,232 +3,198 @@ package tech.cryptonomic.conseil.tezos
 import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import tech.cryptonomic.conseil.generic.chain.DataFetcher
+import tech.cryptonomic.conseil.generic.rpc.{DataFetcher, RpcHandler}
+import tech.cryptonomic.conseil.tezos.TezosRpc.Akka.TezosNodeContext
 import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
-import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
+import cats._
+import cats.arrow._
+import io.circe.Decoder
+
+trait TezosNodeFetchersLogging extends LazyLogging {
+  import cats.syntax.applicative._
+
+  /* error logging for the fetch operation */
+  protected def logErrorOnJsonFetching[Eff[_]: Applicative](message: String): PartialFunction[Throwable, Eff[Unit]] = {
+    case t => logger.error(message, t).pure[Eff]
+  }
+
+  /* error logging for the decode operation, used when the failure not recoverable */
+  protected def logErrorOnJsonDecoding[Eff[_]: Applicative](message: String): PartialFunction[Throwable, Eff[Unit]] = {
+    case decodingError: io.circe.Error =>
+      logger.error(message, decodingError).pure[Eff]
+    case t =>
+      logger.error("Something unexpected failed while decoding json", t).pure[Eff]
+  }
+
+  /* error logging for the decode operation, used when we expect the failure to be recovered */
+  protected def logWarnOnJsonDecoding[Eff[_]: Applicative](
+    message: String,
+    ignore: Boolean = false
+  ): PartialFunction[Throwable, Eff[Unit]] = {
+    case decodingError: io.circe.Error if ignore =>
+      ().pure[Eff]
+    case decodingError: io.circe.Error =>
+      logger.warn(message, decodingError).pure[Eff]
+    case t =>
+      logger.error("Something unexpected failed while decoding json", t).pure[Eff]
+  }
+
+}
+
+object BlocksDataFetchers {
+  import com.typesafe.scalalogging.Logger
+
+  def apply(rpc: TezosNodeContext) =
+    new BlocksDataFetchers with TezosRpc.Cats.IOEff with TezosNodeFetchersLogging {
+      implicit override lazy val tezosContext = rpc
+      override lazy val logger = Logger[BlocksDataFetchers.type]
+    }
+
+}
 
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
-  //we require the cabability to log
-  self: LazyLogging =>
-  import cats.instances.future._
+  //we require the cabability to log and the rpc handlers
+  self: TezosNodeFetchersLogging with TezosRpc.Cats.IOEff =>
   import cats.syntax.applicativeError._
-  import cats.syntax.applicative._
+  import cats.effect.IO
+  import DataFetcher.Instances._
   import JsonDecoders.Circe.decodeLiftingTo
 
-  implicit def fetchFutureContext: ExecutionContext
+  implicit def tezosContext: TezosNodeContext
 
-  /** the tezos network to connect to */
-  def network: String
+  //common type for the fetchers
+  type IOFetcher[In, Out] = DataFetcher.Std[IO, In, Out]
 
-  /** the tezos interface to query */
-  def node: TezosRPCInterface
+  /* verifies if the string is empty, guaranteeing null-safety and removing margins */
+  private def stringSafelyEmpty(s: String) = Option(s).forall(_.trim.isEmpty)
 
-  /** parallelism in the multiple requests decoding on the RPC interface */
-  def fetchConcurrency: Int
+  /* standard pattern to create a fetcher
+   * - based on rpc-handlers,
+   * - wrapping the output into IO
+   * - preparsing the input to define a command, i.e. a path fragment for the tezos endpoint
+   * @param makeCommand should read the input type and produce a string identifying the path to the tezos rpc api
+   * @param decodeJson how to actually convert the json string into the output Decoded type
+   * @tparam In the input to the fetcher
+   * @tparam Decoded the output, decoded from tezos json response
+   */
+  private def makeIOFetcherFromRpc[In, Decoded](
+    makeCommand: In => String,
+    decodeJson: String => IO[Decoded]
+  ): IOFetcher[In, Decoded] = {
+    val genericCommandFetcher = new DataFetcher[IO, String, Decoded] {
 
-  /* reduces repetion in error handling */
-  private def logErrorOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
-    case decodingError: io.circe.Error =>
-      logger.error(message, decodingError).pure[Future]
-    case t =>
-      logger.error("Something unexpected failed while decoding json", t).pure[Future]
+      type Encoded = String
+      type Error = Throwable
+
+      //fetch json from the passed-in URL fragment command
+      override val fetchData = Kleisli { command =>
+        RpcHandler
+          .runGet[IO, String, Encoded](command)
+          .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+      }
+
+      // decode with `JsonDecoders`
+      override val decodeData = Kleisli(decodeJson)
+
+    }
+
+    //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
+    Profunctor[IOFetcher].lmap(genericCommandFetcher)(makeCommand)
   }
 
-  /* reduces repetion in error handling, used when the failure is expected to be recovered */
-  private def logWarnOnJsonDecoding[Encoded](
-    message: String,
-    ignore: Boolean = false
-  ): PartialFunction[Throwable, Future[Unit]] = {
-    case decodingError: io.circe.Error if ignore =>
-      ().pure[Future]
-    case decodingError: io.circe.Error =>
-      logger.warn(message, decodingError).pure[Future]
-    case t =>
-      logger.error("Something unexpected failed while decoding json", t).pure[Future]
-  }
-
-  //common type alias to simplify signatures
-  private type FutureFetcher = DataFetcher[Future, List, Throwable]
-
-  /** untyped alias to clarify intent */
-  type Offset = Int
-
-  /** a fetcher of blocks */
-  implicit def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
+  /** a fetcher for blocks, based on a reference hash and offset */
+  implicit val blocksFetcher: IOFetcher[(BlockHash, Offset), BlockData] = {
     import JsonDecoders.Circe.Blocks._
 
-    type Encoded = String
-    type In = Offset
-    type Out = BlockData
+    makeIOFetcherFromRpc[(BlockHash, Offset), BlockData](
+      makeCommand = { case (hashRef, offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}" },
+      decodeJson = json =>
+        decodeLiftingTo[IO, BlockData](json)
+          .onError(
+            logErrorOnJsonDecoding[IO](
+              s"I fetched a block definition from tezos node that I'm unable to decode: $json"
+            )
+          )
+    )
+  }
 
-    private def makeUrl = (offset: Offset) => s"blocks/${hashRef.value}~${String.valueOf(offset)}"
+  /** a fetcher of operation groups from block hashes */
+  implicit val operationGroupFetcher: IOFetcher[BlockHash, List[OperationsGroup]] = {
+    import JsonDecoders.Circe.Operations._
 
-    //fetch a future stream of values
-    override val fetchData = {
-      Kleisli(
-        offsets => {
-          logger.info(s"""Fetching blocks for offsets ${offsets.min} to ${offsets.max}""")
-          node.runBatchedGetQuery(network, offsets, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching blocks data from {}, for offsets {} from the {}. The error says {}",
-                  network,
-                  offsets.onBounds((first, last) => s"$first to $last").getOrElse("unspecified"),
-                  hashRef,
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
+    val makeCommand = (hash: BlockHash) => s"blocks/${hash.value}/operations"
+
+    val fetcher = new DataFetcher[IO, String, List[List[OperationsGroup]]] {
+
+      type Encoded = String
+      type Error = Throwable
+
+      override val fetchData = Kleisli { command =>
+        RpcHandler
+          .runGet[IO, String, Encoded](command)
+          .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+      }
+
+      override val decodeData = Kleisli { json =>
+        decodeLiftingTo[IO, List[List[OperationsGroup]]](adaptManagerPubkeyField(JsonString.sanitize(json)))
+          .onError(
+            logErrorOnJsonDecoding[IO](
+              s"I fetched some operations json from tezos node that I'm unable to decode into operation groups: $json"
+            )
+          )
+      }
     }
 
-    // decode with `JsonDecoders`
-    override val decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Out](json)
-        .onError(
-          logErrorOnJsonDecoding(s"I fetched a block definition from tezos node that I'm unable to decode: $json")
-        )
-    }
-
+    //adapt the fetcher to accept the real input and return the flattened output, by pre-parsing the input and transforming the output with `dimap`
+    Profunctor[IOFetcher].dimap(fetcher)(makeCommand)(_.flatten)
   }
 
   /** decode account ids from operation json results with the `cats.Id` effect, i.e. a total function with no effect */
-  val accountIdsJsonDecode: Kleisli[Id, String, List[AccountId]] =
+  implicit private val accountIdsJsonDecode: Kleisli[IO, String, List[AccountId]] =
     Kleisli[Id, String, List[AccountId]] {
       case JsonUtil.AccountIds(id, ids @ _*) =>
         (id :: ids.toList).distinct.map(AccountId)
       case _ =>
         List.empty
-    }
+    }.lift[IO]
 
-  /** a fetcher of operation groups from block hashes */
-  implicit val operationGroupFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Operations._
-
-    type Encoded = String
-    type In = BlockHash
-    type Out = List[OperationsGroup]
-
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/operations"
-
-    override val fetchData = {
-      Kleisli(
-        hashes => {
-          logger.info("Fetching operations")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching operations from {}, for blocks {}. The error says {}",
-                  network,
-                  hashes.map(_.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-    }
-
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, List[Out]](adaptManagerPubkeyField(JsonString.sanitize(json)))
-          .map(_.flatten)
-          .onError(
-            logErrorOnJsonDecoding(
-              s"I fetched some operations json from tezos node that I'm unable to decode into operation groups: $json"
-            )
-          )
-    )
-
-  }
-
-  // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher
-
-  /** A derived fetcher that reads block hashes to get both the operation groups and the account ids from the same returned json */
+  /** An implicitly derived fetcher that reads block hashes to get both the operation groups and the account ids from the same returned json */
   implicit val operationsWithAccountsFetcher =
-    DataFetcher.decodeBoth(operationGroupFetcher, accountIdsJsonDecode.lift[Future])
+    DataFetcher.multiDecodeFetcher[IO, BlockHash, List[OperationsGroup], List[AccountId], String, Throwable]
 
   /** a fetcher for the current quorum of blocks */
-  implicit val currentQuorumFetcher = new FutureFetcher {
+  implicit val currentQuorumFetcher = {
+    val defaultQuorum = "0"
 
-    type Encoded = String
-    type In = BlockHash
-    type Out = Option[Int]
-
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_quorum"
-
-    override val fetchData =
-      Kleisli(
-        hashes => {
-          logger.info("Fetching current quorum")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching quorums from {}, for blocks {}. The error says {}",
-                  network,
-                  hashes.map(_.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, Out](json)
+    makeIOFetcherFromRpc[(BlockHash, Offset), Option[Int]](
+      makeCommand = { case (hashRef, offset) => s"blocks/${hashRef.value}~$offset/votes/current_quorum" },
+      decodeJson = json =>
+        decodeLiftingTo[IO, Option[Int]](if (stringSafelyEmpty(json)) defaultQuorum else json)
           .onError(
-            logWarnOnJsonDecoding(s"I fetched current quorum json from tezos node that I'm unable to decode: $json")
+            logWarnOnJsonDecoding[IO](s"I fetched current quorum json from tezos node that I'm unable to decode: $json")
           )
           .recover {
             case NonFatal(_) => Option.empty
           }
     )
-
   }
 
   /** a fetcher for the current proposals of blocks */
-  implicit val currentProposalFetcher = new FutureFetcher {
+  implicit val currentProposalFetcher = {
     import JsonDecoders.Circe._
 
-    type Encoded = String
-    type In = BlockHash
-    type Out = Option[ProtocolId]
+    val defaultProposalId = """ "3M" """.trim
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/current_proposal"
-
-    override val fetchData =
-      Kleisli(
-        hashes => {
-          logger.info("Fetching current proposal")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching current proposals from {}, for blocks {}. The error says {}",
-                  network,
-                  hashes.map(_.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = Kleisli(
-      json =>
-        decodeLiftingTo[Future, Out](json)
+    makeIOFetcherFromRpc[(BlockHash, Offset), Option[ProtocolId]](
+      makeCommand = { case (hashRef, offset) => s"blocks/${hashRef.value}~$offset/votes/current_proposal" },
+      decodeJson = json =>
+        decodeLiftingTo[IO, Option[ProtocolId]](if (stringSafelyEmpty(json)) defaultProposalId else json)
           .onError(
-            logWarnOnJsonDecoding(
+            logWarnOnJsonDecoding[IO](
               s"I fetched a proposal protocol json from tezos node that I'm unable to decode: $json"
             )
           )
@@ -236,259 +202,162 @@ trait BlocksDataFetchers {
             case NonFatal(_) => Option.empty
           }
     )
-
   }
 
   /** a fetcher for all proposals for blocks */
-  implicit val proposalsFetcher = new FutureFetcher {
+  implicit val proposalsFetcher = {
     import JsonDecoders.Circe._
-    import cats.instances.future._
 
-    type Encoded = String
-    type In = Block
-    type Out = List[(ProtocolId, ProposalSupporters)]
-
-    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals"
-
-    override val fetchData =
-      Kleisli(
-        blocks => {
-          logger.info(
-            "Fetching all proposals protocols in levels {}",
-            blocks.head.data.header.level to blocks.last.data.header.level
+    makeIOFetcherFromRpc[Block, List[(ProtocolId, ProposalSupporters)]](
+      makeCommand = (block: Block) => s"blocks/${block.data.hash.value}/votes/proposals",
+      decodeJson = json =>
+        decodeLiftingTo[IO, List[(ProtocolId, ProposalSupporters)]](json)
+          .onError(
+            logWarnOnJsonDecoding[IO](
+              s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json",
+              ignore = stringSafelyEmpty(json)
+            )
           )
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching proposals details from {}, for blocks {}. The error says {}",
-                  network,
-                  blocks.map(_.data.hash.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
+          .recover {
+            //we recover parsing failures with an empty result, as we have no optionality here to lean on
+            case NonFatal(_) => List.empty
           }
-        }
-      )
-
-    override val decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Out](json)
-        .onError(
-          logWarnOnJsonDecoding(
-            s"I fetched voting proposal protocols json from tezos node that I'm unable to decode: $json",
-            ignore = Option(json).forall(_.trim.isEmpty)
-          )
-        )
-        .recover {
-          //we recover parsing failures with an empty result, as we have no optionality here to lean on
-          case NonFatal(_) => List.empty
-        }
-    }
+    )
   }
 
   /** a fetcher of baker rolls for blocks */
-  implicit val bakersFetcher = new FutureFetcher {
+  implicit val bakersFetcher = {
     import JsonDecoders.Circe.Votes._
-    import cats.instances.future._
 
-    type Encoded = String
-    type In = Block
-    type Out = List[Voting.BakerRolls]
-
-    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings"
-
-    override val fetchData =
-      Kleisli(
-        blocks => {
-          logger.info("Fetching bakers in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching baker rolls from {}, for blocks {}. The error says {}",
-                  network,
-                  blocks.map(_.data.hash.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Out](json)
-        .onError(
-          logWarnOnJsonDecoding(
-            s"I fetched baker rolls json from tezos node that I'm unable to decode: $json",
-            ignore = Option(json).forall(_.trim.isEmpty)
+    makeIOFetcherFromRpc[Block, List[Voting.BakerRolls]](
+      makeCommand = (block: Block) => s"blocks/${block.data.hash.value}/votes/listings",
+      decodeJson = json =>
+        decodeLiftingTo[IO, List[Voting.BakerRolls]](json)
+          .onError(
+            logWarnOnJsonDecoding[IO](
+              s"I fetched baker rolls json from tezos node that I'm unable to decode: $json",
+              ignore = stringSafelyEmpty(json)
+            )
           )
-        )
-        .recover {
-          //we recover parsing failures with an empty result, as we have no optionality here to lean on
-          case NonFatal(_) => List.empty
-        }
-    }
+          .recover {
+            //we recover parsing failures with an empty result, as we have no optionality here to lean on
+            case NonFatal(_) => List.empty
+          }
+    )
   }
 
   /** a fetcher of ballot votes for blocks */
-  implicit val ballotsFetcher = new FutureFetcher {
+  implicit val ballotsFetcher = {
     import JsonDecoders.Circe.Votes._
-    import cats.instances.future._
 
-    type Encoded = String
-    type In = Block
-    type Out = List[Voting.Ballot]
-
-    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list"
-
-    override val fetchData =
-      Kleisli(
-        blocks => {
-          logger.info("Fetching ballots in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
-          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching ballot votes from {}, for blocks {}. The error says {}",
-                  network,
-                  blocks.map(_.data.hash.value).mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Out](json)
-        .onError(
-          logWarnOnJsonDecoding(
-            s"I fetched ballot votes json from tezos node that I'm unable to decode: $json",
-            ignore = Option(json).forall(_.trim.isEmpty)
+    makeIOFetcherFromRpc[Block, List[Voting.Ballot]](
+      makeCommand = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot_list",
+      decodeJson = json =>
+        decodeLiftingTo[IO, List[Voting.Ballot]](json)
+          .onError(
+            logWarnOnJsonDecoding[IO](
+              s"I fetched ballot votes json from tezos node that I'm unable to decode: $json",
+              ignore = stringSafelyEmpty(json)
+            )
           )
-        )
-        .recover {
-          //we recover parsing failures with an empty result, as we have no optionality here to lean on
-          case NonFatal(_) => List.empty
-        }
-    }
+          .recover {
+            //we recover parsing failures with an empty result, as we have no optionality here to lean on
+            case NonFatal(_) => List.empty
+          }
+    )
   }
 
 }
 
+object AccountsDataFetchers {
+  import com.typesafe.scalalogging.Logger
+
+  def apply(rpc: TezosNodeContext) =
+    new AccountsDataFetchers with TezosRpc.Cats.IOEff with TezosNodeFetchersLogging {
+      implicit override lazy val tezosContext = rpc
+      override lazy val logger = Logger[AccountsDataFetchers.type]
+    }
+}
+
 /** Defines intances of `DataFetcher` for accounts-related data */
 trait AccountsDataFetchers {
-  //we require the cabability to log
-  self: LazyLogging =>
-  import cats.instances.future._
+  //we require the cabability to log and the rpc handlers
+  self: TezosNodeFetchersLogging with TezosRpc.Cats.IOEff =>
   import cats.syntax.applicativeError._
-  import cats.syntax.applicative._
+  import cats.effect.IO
+  import DataFetcher.Instances._
   import JsonDecoders.Circe.decodeLiftingTo
 
-  implicit def fetchFutureContext: ExecutionContext
+  implicit def tezosContext: TezosNodeContext
 
-  /* reduces repetion in error handling */
-  private def logWarnOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
-    case decodingError: io.circe.Error =>
-      logger.warn(message, decodingError).pure[Future]
-    case t =>
-      logger.error("Something unexpected failed while decoding json", t).pure[Future]
+  //common type for the fetchers
+  type IOFetcher[In, Out] = DataFetcher.Aux[IO, In, Out, String, Throwable]
+
+  def makeIOFetcherFromRpc[In, Decoded: Decoder](
+    makeCommand: In => String,
+    decodeJson: String => IO[Decoded]
+  ): IOFetcher[In, Decoded] = {
+    val genericCommandFetcher = new DataFetcher[IO, String, Decoded] {
+
+      type Encoded = String
+      type Error = Throwable
+
+      //fetch json from the passed-in URL fragment command
+      override val fetchData = Kleisli { command =>
+        RpcHandler
+          .runGet[IO, String, Encoded](command)
+          .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+      }
+
+      // decode with `JsonDecoders`
+      override val decodeData = Kleisli(decodeJson)
+
+    }
+
+    //adapt the fetcher to accept the actual input, by pre-parsing it with `lmap` over the command factory
+    Profunctor[IOFetcher].lmap(genericCommandFetcher)(makeCommand)
   }
 
-  /* reduces repetion in error handling */
-  private def logErrorOnJsonDecoding[Encoded](message: String): PartialFunction[Throwable, Future[Unit]] = {
-    case decodingError: io.circe.Error =>
-      logger.warn(message, decodingError).pure[Future]
-    case t =>
-      logger.error("Something unexpected failed while decoding json", t).pure[Future]
-  }
-
-  /** the tezos network to connect to */
-  def network: String
-
-  /** the tezos interface to query */
-  def node: TezosRPCInterface
-
-  /** parallelism in the multiple requests decoding on the RPC interface */
-  def accountsFetchConcurrency: Int
-
-  //common type alias to simplify signatures
-  private type FutureFetcher = DataFetcher[Future, List, Throwable]
-
-  implicit def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+  /** a fetcher for accounts, dependent on a specific block hash reference */
+  implicit val accountsFetcher: IOFetcher[(BlockHash, AccountId), Option[Account]] = {
     import JsonDecoders.Circe.Accounts._
+    import cats.syntax.option._
 
-    type Encoded = String
-    type In = AccountId
-    type Out = Option[Account]
-
-    private val makeUrl = (id: AccountId) => s"blocks/${referenceBlock.value}/context/contracts/${id.id}"
-
-    override val fetchData = Kleisli(
-      ids => {
-        logger.info("Fetching accounts for block {}", referenceBlock.value)
-        node.runBatchedGetQuery(network, ids, makeUrl, accountsFetchConcurrency).onError {
-          case err =>
-            logger
-              .error(
-                "I encountered problems while fetching account data from {}, for ids {}. The error says {}",
-                network,
-                ids.map(_.id).mkString(", "),
-                err.getMessage
-              )
-              .pure[Future]
-        }
-      }
+    makeIOFetcherFromRpc[(BlockHash, AccountId), Option[Account]](
+      makeCommand = { case (blockRef, id) => s"blocks/${blockRef.value}/context/contracts/${id.id}" },
+      decodeJson = json =>
+        decodeLiftingTo[IO, Account](json)
+          .onError(
+            logWarnOnJsonDecoding[IO](s"I fetched an account json from tezos node that I'm unable to decode: $json")
+          )
+          .map(_.some)
+          .recover {
+            //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
+            case NonFatal(_) => Option.empty
+          }
     )
-
-    override def decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Account](json)
-        .map(Some(_))
-        .onError(logWarnOnJsonDecoding(s"I fetched an account json from tezos node that I'm unable to decode: $json"))
-        .recover {
-          //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
-          case NonFatal(_) => Option.empty
-        }
-    }
   }
 
-  implicit def delegateFetcher(referenceBlock: BlockHash) = new FutureFetcher {
+  /** a fetcher for delegates, dependent on a specific block hash reference */
+  implicit val delegateFetcher: IOFetcher[(BlockHash, PublicKeyHash), Option[Delegate]] = {
     import JsonDecoders.Circe.Delegates._
+    import cats.syntax.option._
 
-    type Encoded = String
-    type In = PublicKeyHash
-    type Out = Option[Delegate]
-
-    private val makeUrl = (pkh: PublicKeyHash) => s"blocks/${referenceBlock.value}/context/delegates/${pkh.value}"
-
-    override val fetchData = Kleisli(
-      keyHashes => {
-        logger.info("Fetching delegated contracts for block {}", referenceBlock.value)
-        node.runBatchedGetQuery(network, keyHashes, makeUrl, accountsFetchConcurrency).onError {
-          case err =>
-            logger
-              .error(
-                "I encountered problems while fetching delegates data from {}, for pkhs {}. The error says {}",
-                network,
-                keyHashes.map(_.value).mkString(", "),
-                err.getMessage
-              )
-              .pure[Future]
-        }
-      }
+    makeIOFetcherFromRpc[(BlockHash, PublicKeyHash), Option[Delegate]](
+      makeCommand = { case (blockRef, pkh) => s"blocks/${blockRef.value}/context/delegates/${pkh.value}" },
+      decodeJson = json =>
+        decodeLiftingTo[IO, Delegate](json)
+          .onError(
+            logErrorOnJsonDecoding[IO](
+              s"I fetched an account delegate json from tezos node that I'm unable to decode: $json"
+            )
+          )
+          .map(_.some)
+          .recover {
+            //we need to consider that a delegate failed to be written in the chain, though we have its reference in some account
+            case NonFatal(_) => Option.empty
+          }
     )
-
-    override def decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Delegate](json)
-        .map(Some(_))
-        .onError(
-          logErrorOnJsonDecoding(s"I fetched an account delegate json from tezos node that I'm unable to decode: $json")
-        )
-        .recover {
-          //we need to consider that some accounts failed to be written in the chain, though we have ids in the block
-          case NonFatal(_) => Option.empty
-        }
-    }
   }
 
 }
