@@ -17,6 +17,8 @@
 
     <logger name="com.base22" level="TRACE"/>
     <logger name="de.flapdoodle.embed.process" level="OFF"/>
+    <logger name="tech.cryptonomic.conseil.tezos.BlocksDataFetchers" level="WARN"/>
+    <logger name="tech.cryptonomic.conseil.tezos.AccountsDataFetchers" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />
