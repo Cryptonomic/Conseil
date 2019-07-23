@@ -135,7 +135,7 @@ object DatabaseConversions {
   }
 
   private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, e @ Endorsement(level, metadata)) =>
+    case (block, groupHash, Endorsement(level, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -146,7 +146,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = e.internal
+        internal = false
       )
   }
 
@@ -166,7 +166,7 @@ object DatabaseConversions {
   }
 
   private val convertActivateAccount: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, a @ ActivateAccount(pkh, secret, metadata)) =>
+    case (block, groupHash, ActivateAccount(pkh, secret, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -176,12 +176,12 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = a.internal
+        internal = false
       )
   }
 
   private val convertReveal: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, r @ Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
+    case (block, groupHash, Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -197,7 +197,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = r.internal
+        internal = false
       )
   }
 
@@ -205,7 +205,7 @@ object DatabaseConversions {
     case (
         block,
         groupHash,
-        t @ Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
+        Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
         ) =>
       Tables.OperationsRow(
         operationId = 0,
@@ -226,7 +226,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = t.internal
+        internal = false
       )
   }
 
@@ -234,7 +234,7 @@ object DatabaseConversions {
     case (
         block,
         groupHash,
-        o @ Origination(
+        Origination(
           counter,
           fee,
           source,
@@ -273,12 +273,12 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = o.internal
+        internal = false
       )
   }
 
   private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, d @ Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
+    case (block, groupHash, Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -294,7 +294,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = d.internal
+        internal = false
       )
   }
 
@@ -314,7 +314,7 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = op.internal
+        internal = false
       )
   }
 

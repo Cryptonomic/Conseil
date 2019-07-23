@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import io.circe.HCursor
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 import scala.util.Try

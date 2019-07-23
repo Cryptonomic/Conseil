@@ -162,10 +162,7 @@ object TezosTypes {
   }
 
   /** root of the operation hiearchy */
-  sealed trait Operation extends Product with Serializable {
-    val internal: Boolean = false
-  }
-
+  sealed trait Operation extends Product with Serializable
   //operations definition
 
   final case class Endorsement(
