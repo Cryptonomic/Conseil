@@ -22,17 +22,17 @@ case class PlatformPath(platform: String, up: EmptyPath = EmptyPath()) extends P
 // case class representing a path for a network
 case class NetworkPath(network: String, up: PlatformPath) extends Path {
   override def addLevel(entity: String): EntityPath = EntityPath(entity, this)
-  override def toString: String = s"${up.toString} / $network"
+  override def toString: String = s"$up / $network"
 }
 
 // case class representing a path for an entity
 case class EntityPath(entity: String, up: NetworkPath) extends Path {
   override def addLevel(attribute: String): AttributePath = AttributePath(attribute, this)
-  override def toString: String = s"${up.toString} / $entity"
+  override def toString: String = s"$up / $entity"
 }
 
 // case class representing a path for an attribute
 case class AttributePath(attribute: String, up: EntityPath) extends Path {
   override def addLevel(nextLabel: String): Path = throw new NotImplementedError()
-  override def toString: String = s"${up.toString} / $attribute"
+  override def toString: String = s"$up / $attribute"
 }

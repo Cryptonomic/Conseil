@@ -96,12 +96,10 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
     }
 
   private def logDifferences(paths: List[Path], overriddenPaths: List[Path]): Unit = {
-    paths
-      .filterNot(overriddenPaths.toSet)
+    (paths.toSet diff overriddenPaths.toSet)
       .foreach(logger.warn("""There're missing metadata overrides for "{}"""", _))
 
-    overriddenPaths
-      .filterNot(paths.toSet)
+    (overriddenPaths.toSet diff paths.toSet)
       .foreach(logger.error("""Metadata overrides "{}" override nothing""", _))
   }
 }

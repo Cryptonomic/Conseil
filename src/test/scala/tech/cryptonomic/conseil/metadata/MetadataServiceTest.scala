@@ -4,7 +4,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
 import tech.cryptonomic.conseil.config._
@@ -12,15 +12,14 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.{H
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 
-import scala.concurrent.Future
-
 class MetadataServiceTest
     extends WordSpec
     with Matchers
     with ScalatestRouteTest
     with MockFactory
     with ScalaFutures
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with OneInstancePerTest {
 
   implicit override val patienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
 
@@ -41,11 +40,6 @@ class MetadataServiceTest
       cacheOverrides,
       platformDiscoveryOperations
     )
-
-  override protected def beforeEach(): Unit = {
-    super.beforeEach()
-    platformDiscoveryOperations.clear()
-  }
 
   "The metadata service" should {
 

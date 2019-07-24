@@ -3,8 +3,8 @@ package tech.cryptonomic.conseil.metadata
 import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes
 
-class TransparentUnitTransformation(overrides: MetadataConfiguration = MetadataConfiguration(Map.empty))
-    extends UnitTransformation(overrides) {
+/* UnitTransformation implementation for test purposes. It overrides nothing. */
+object TransparentUnitTransformation extends UnitTransformation(MetadataConfiguration(Map.empty)) {
   override def overridePlatforms(
       platforms: List[PlatformDiscoveryTypes.Platform]
   ): List[PlatformDiscoveryTypes.Platform] = platforms

@@ -4,14 +4,20 @@ import java.sql.Timestamp
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.metadata._
 
-class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFactory with BeforeAndAfterEach {
+class DataTypesTest
+    extends WordSpec
+    with Matchers
+    with ScalaFutures
+    with MockFactory
+    with BeforeAndAfterEach
+    with OneInstancePerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
@@ -28,7 +34,7 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
               )
         )
       ),
-      new TransparentUnitTransformation(),
+      TransparentUnitTransformation,
       cacheOverrides,
       platformDiscoveryOperations
     )
@@ -36,8 +42,6 @@ class DataTypesTest extends WordSpec with Matchers with ScalaFutures with MockFa
 
   val testEntityPath = EntityPath("testEntity", NetworkPath("alphanet", PlatformPath("tezos")))
   val testEntity = Entity("testEntity", "Test Entity", 0)
-
-  override protected def beforeEach(): Unit = platformDiscoveryOperations.clear()
 
   "DataTypes" should {
       "validate correct query field" in {

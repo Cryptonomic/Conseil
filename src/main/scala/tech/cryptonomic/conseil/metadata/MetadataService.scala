@@ -1,12 +1,14 @@
 package tech.cryptonomic.conseil.metadata
 
-import scala.concurrent.duration._
+import cats.implicits._
+import cats.syntax.all._
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.generic.chain.{DataTypes, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.generic.chain.{DataTypes, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.Future.successful
+import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
@@ -25,7 +27,7 @@ class MetadataService(
   }.toMap
 
   private val entities = {
-    val allEntities = Await.result(platformDiscoveryOperations.getEntities, 1 second)
+    val allEntities = Await.result(platformDiscoveryOperations.getEntities, 2 second)
 
     networks.values.flatten
       .map(_.path)
@@ -41,18 +43,13 @@ class MetadataService(
         entities.map(entity => networkPath.addLevel(entity.name))
     }.toSet
 
-    networkPaths.flatMap { path =>
-      Await
-        .result(
-          platformDiscoveryOperations
-            .getTableAttributes(path.entity)
-            .map(
-              _.map(attributes => transformation.overrideAttributes(path, attributes))
-            ),
-          1 second
-        )
-        .map(path -> _)
-    }.toMap
+    val result = networkPaths.map { path =>
+      platformDiscoveryOperations
+        .getTableAttributes(path.entity)
+        .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))
+    }
+
+    Await.result(Future.sequence(result).map(_.toMap), 10 seconds)
   }
 
   // fetches platforms

@@ -148,7 +148,7 @@ class DataTest
               )
         )
       ),
-      new TransparentUnitTransformation(),
+      TransparentUnitTransformation,
       cacheOverrides,
       platformDiscoveryOperations
     )
