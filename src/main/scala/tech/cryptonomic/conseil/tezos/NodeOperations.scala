@@ -70,17 +70,16 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
       keyBlockIndexing.groupBy {
         case (key, (blockHash, level)) => blockHash
       }.mapValues(_.keySet.iterator |> Stream.fromIterator[Eff, Key])
-      .map {
-        case (hash, keys) =>
-          Stream.constant[Eff, BlockHash](hash).zip(keys)
-      }.reduce(_ ++ _)
+        .map {
+          case (hash, keys) =>
+            Stream.constant[Eff, BlockHash](hash).zip(keys)
+        }
+        .reduce(_ ++ _)
 
-    entitiesStreamLoad(keyStream)
-    .groupAdjacentBy {
+    entitiesStreamLoad(keyStream).groupAdjacentBy {
       case (key, entity) =>
         keyBlockIndexing(key) //create chunks having the same block reference, relying on how the stream is ordered
-    }
-    .map {
+    }.map {
       case ((hash, level), keyedEntitiesChunk) =>
         val entitiesMap = keyedEntitiesChunk.foldLeft(Map.empty[Key, Entity]) { _ + _ } //collect to a map each chunk
         entitiesMap.taggedWithBlock(hash, level) //tag with the block reference

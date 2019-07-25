@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.util
 import scala.concurrent.duration.{Duration, NANOSECONDS}
-import cats.{Monad, Id}
+import cats.{Id, Monad}
 import cats.implicits._
 import cats.effect.IO
 import scala.concurrent.ExecutionContext
@@ -21,7 +21,7 @@ class IOMeteringLogger(log: String => IO[Unit])(implicit ec: ExecutionContext) e
 /** Utility class to add time metering of code blocks and logging the details
   * @param log is the function that actually does the logging
   */
-  abstract class MeteringLogger[Eff[_] : Monad](log: String => Eff[Unit]) {
+abstract class MeteringLogger[Eff[_]: Monad](log: String => Eff[Unit]) {
 
   def currentMonotoneTime: Eff[Long]
 
@@ -30,11 +30,12 @@ class IOMeteringLogger(log: String => IO[Unit])(implicit ec: ExecutionContext) e
     * @param block the code to measure
     * @return the result of execuding the wrapped code
     */
-  def metered[T](logDescription: => String)(block: => Eff[T]): Eff[T] = for {
-    start <- currentMonotoneTime
-    result <- block
-    end <- currentMonotoneTime
-    lapse = Duration(end - start, NANOSECONDS).toMillis
-    _ <- log(s"$logDescription took $lapse milliseconds")
-  } yield result
+  def metered[T](logDescription: => String)(block: => Eff[T]): Eff[T] =
+    for {
+      start <- currentMonotoneTime
+      result <- block
+      end <- currentMonotoneTime
+      lapse = Duration(end - start, NANOSECONDS).toMillis
+      _ <- log(s"$logDescription took $lapse milliseconds")
+    } yield result
 }
