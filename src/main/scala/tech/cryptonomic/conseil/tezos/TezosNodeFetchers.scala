@@ -94,9 +94,9 @@ trait BlocksDataFetchers {
       //fetch json from the passed-in URL fragment command
       override val fetchData = Kleisli { command =>
         IO(logger.info("Fetching data from tezos node for path: {}", command)) >>
-        RpcHandler
-          .runGet[IO, String, Encoded](command)
-          .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+          RpcHandler
+            .runGet[IO, String, Encoded](command)
+            .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
       }
 
       // decode with `JsonDecoders`
@@ -137,9 +137,9 @@ trait BlocksDataFetchers {
 
       override val fetchData = Kleisli { command =>
         IO(logger.info("Fetching data from tezos node for path: {}", command)) >>
-        RpcHandler
-          .runGet[IO, String, Encoded](command)
-          .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+          RpcHandler
+            .runGet[IO, String, Encoded](command)
+            .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
       }
 
       override val decodeData = Kleisli { json =>
@@ -308,9 +308,9 @@ trait AccountsDataFetchers {
       //fetch json from the passed-in URL fragment command
       override val fetchData = Kleisli { command =>
         IO(logger.info("Fetching data from tezos node for path: {}", command)) >>
-        RpcHandler
-          .runGet[IO, String, Encoded](command)
-          .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
+          RpcHandler
+            .runGet[IO, String, Encoded](command)
+            .onError(logErrorOnJsonFetching[IO](s"I failed to fetch the json from tezos node for path: $command"))
       }
 
       // decode with `JsonDecoders`

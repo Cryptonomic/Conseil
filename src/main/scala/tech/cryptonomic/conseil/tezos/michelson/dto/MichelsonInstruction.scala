@@ -31,7 +31,9 @@ case class MichelsonSingleInstruction(
 
 /* Class representing a sequence of Michelson instructions */
 case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty)
-    extends MichelsonInstruction
+    extends MichelsonInstruction {
+  lazy val normalized: MichelsonInstruction = if (instructions.isEmpty) MichelsonEmptyInstruction else this
+}
 
 /* Class representing an empty Michelson instruction */
 case object MichelsonEmptyInstruction extends MichelsonInstruction

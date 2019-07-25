@@ -996,7 +996,8 @@ trait Tables {
     *  @param originatedContracts Database column originated_contracts SqlType(varchar), Default(None)
     *  @param blockHash Database column block_hash SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int4)
-    *  @param timestamp Database column timestamp SqlType(timestamp) */
+    *  @param timestamp Database column timestamp SqlType(timestamp)
+    *  @param internal Database column internal SqlType(bool) */
   case class OperationsRow(
     operationId: Int,
     operationGroupHash: String,
@@ -1029,7 +1030,8 @@ trait Tables {
     originatedContracts: Option[String] = None,
     blockHash: String,
     blockLevel: Int,
-    timestamp: java.sql.Timestamp
+    timestamp: java.sql.Timestamp,
+    internal: Boolean
   )
 
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
@@ -1040,7 +1042,8 @@ trait Tables {
     e3: GR[Option[String]],
     e4: GR[Option[scala.math.BigDecimal]],
     e5: GR[Option[Boolean]],
-    e6: GR[java.sql.Timestamp]
+    e6: GR[java.sql.Timestamp],
+    e7: GR[Boolean]
   ): GR[OperationsRow] = GR { prs =>
     import prs._
     OperationsRow(
@@ -1075,20 +1078,21 @@ trait Tables {
       <<?[String],
       <<[String],
       <<[Int],
-      <<[java.sql.Timestamp]
+      <<[java.sql.Timestamp],
+      <<[Boolean]
     )
   }
 
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
     def * =
-      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: timestamp :: HNil)
+      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: timestamp :: internal :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
-            .Some(blockHash) :: Rep.Some(blockLevel) :: Rep.Some(timestamp) :: HNil).shaped.<>(
+            .Some(blockHash) :: Rep.Some(blockLevel) :: Rep.Some(timestamp) :: Rep.Some(internal) :: HNil).shaped.<>(
         r =>
           OperationsRow(
             r(0).asInstanceOf[Option[Int]].get,
@@ -1122,7 +1126,8 @@ trait Tables {
             r(28).asInstanceOf[Option[String]],
             r(29).asInstanceOf[Option[String]].get,
             r(30).asInstanceOf[Option[Int]].get,
-            r(31).asInstanceOf[Option[java.sql.Timestamp]].get
+            r(31).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(32).asInstanceOf[Option[Boolean]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1227,6 +1232,9 @@ trait Tables {
 
     /** Database column timestamp SqlType(timestamp) */
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+
+    /** Database column internal SqlType(bool) */
+    val internal: Rep[Boolean] = column[Boolean]("internal")
 
     /** Foreign key referencing Blocks (database name fk_blockhashes) */
     lazy val blocksFk = foreignKey("fk_blockhashes", blockHash :: HNil, Blocks)(

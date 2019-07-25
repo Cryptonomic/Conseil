@@ -59,9 +59,9 @@ object FeeOperations extends LazyLogging {
       //logs and re-throws
       case err => IO(logger.error("Could not write average fees to the database because", err))
     }.flatTap(
-        //logs result ignoring the log operation's return value
-        written => IO(logger.info("Wrote{} average fees to the database.", written.fold("")(" " + _)))
-      )
+      //logs result ignoring the log operation's return value
+      written => IO(logger.info("Wrote{} average fees to the database.", written.fold("")(" " + _)))
+    )
 
   }
 

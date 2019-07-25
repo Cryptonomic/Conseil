@@ -1,17 +1,17 @@
 package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
-import TezosTypes._
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
-  import JsonDecoders.Circe._
   import JsonDecoders.Circe.Accounts._
-  import JsonDecoders.Circe.Scripts._
   import JsonDecoders.Circe.Numbers._
   import JsonDecoders.Circe.Operations._
+  import JsonDecoders.Circe.Scripts._
   import JsonDecoders.Circe.Votes._
+  import JsonDecoders.Circe._
   import io.circe.parser.decode
 
   "the json decoders" should {
@@ -341,13 +341,13 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
       }
 
-      "decode an transaction operation from json" in new OperationsJsonData {
-        val decoded = decode[Operation](adaptManagerPubkeyField(transactionJson))
+      "decode an transaction with internal transaction result operation from json" in new OperationsJsonData {
+        val decoded = decode[Operation](adaptManagerPubkeyField(transactionWithInternalTransactionJson))
         decoded shouldBe 'right
 
         val operation = decoded.right.value
         operation shouldBe a[Transaction]
-        operation shouldEqual expectedTransaction
+        operation shouldEqual transactionWithInternalTransactionResult
 
       }
 

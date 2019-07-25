@@ -312,7 +312,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
         blockHash = block.hash,
         blockLevel = block.level,
         timestamp = block.timestamp,
-        level = Some(block.level)
+        level = Some(block.level),
+        internal = false
       )
     }
 
@@ -328,7 +329,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
           blockHash = block.hash,
           blockLevel = block.level,
           timestamp = new Timestamp(block.timestamp.getTime + index),
-          level = Some(block.level)
+          level = Some(block.level),
+          internal = false
         )
     }
 
