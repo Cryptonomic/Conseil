@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.time.ZonedDateTime
+
 import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
@@ -50,7 +52,7 @@ object TezosTypes {
   }
 
   /** convenience alias to simplify declarations of block hash+level tuples */
-  type BlockReference = (BlockHash, Int)
+  type BlockReference = (BlockHash, Int, ZonedDateTime)
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -360,6 +362,7 @@ object TezosTypes {
   final case class BlockTagged[T](
       blockHash: BlockHash,
       blockLevel: Int,
+      timestamp: java.time.ZonedDateTime,
       content: T
   ) {
     val asTuple = (blockHash, blockLevel, content)
@@ -467,7 +470,7 @@ object TezosTypes {
     implicit class BlockTagger[T](val content: T) extends AnyVal {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
-      def taggedWithBlock(hash: BlockHash, level: Int): BlockTagged[T] = BlockTagged(hash, level, content)
+      def taggedWithBlock(hash: BlockHash, level: Int, timestamp: java.time.ZonedDateTime): BlockTagged[T] = BlockTagged(hash, level, timestamp, content)
     }
 
   }

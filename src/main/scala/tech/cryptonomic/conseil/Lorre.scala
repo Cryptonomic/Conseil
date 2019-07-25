@@ -194,8 +194,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val (blocks, accountUpdates) =
         results.map {
           case (block, accountIds) =>
-            block -> accountIds.taggedWithBlock(block.data.hash, block.data.header.level)
-        }.toList.unzip
+            block -> accountIds.taggedWithBlock(block.data.hash, block.data.header.level, block.data.header.timestamp)
+        }.unzip
 
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
@@ -299,10 +299,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val sorted = updates.flatMap {
-      case BlockTagged(hash, level, ids) =>
-        ids.map(_ -> (hash, level))
+      case BlockTagged(hash, level, timestamp, ids) =>
+        ids.map(_ -> (hash, level, timestamp))
     }.sortBy {
-      case (id, (hash, level)) => level
+      case (id, (hash, level, timestamp)) => level
     }(Ordering[Int].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
@@ -339,10 +339,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val sorted = updates.flatMap {
-      case BlockTagged(hash, level, ids) =>
-        ids.map(_ -> (hash, level))
+      case BlockTagged(hash, level, timestamp, ids) =>
+        ids.map(_ -> (hash, level, timestamp))
     }.sortBy {
-      case (id, (hash, level)) => level
+      case (id, (hash, level, timestamp)) => level
     }(Ordering[Int].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
@@ -407,12 +407,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
         val taggedList = taggedAccounts.toList
         val taggedDelegatesKeys = taggedList.map {
-          case BlockTagged(blockHash, blockLevel, accountsMap) =>
+          case BlockTagged(blockHash, blockLevel, timestamp, accountsMap) =>
             import TezosTypes.Syntax._
             val delegateKeys = accountsMap.values.toList
               .mapFilter(_.delegate.value)
 
-            delegateKeys.taggedWithBlock(blockHash, blockLevel)
+            delegateKeys.taggedWithBlock(blockHash, blockLevel, timestamp)
         }
         (taggedList, taggedDelegatesKeys)
       }

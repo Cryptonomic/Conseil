@@ -60,6 +60,21 @@ CREATE TABLE public.accounts (
 );
 
 
+CREATE TABLE public.accounts_history (
+    account_id character varying NOT NULL,
+    block_id character varying NOT NULL,
+    manager character varying NOT NULL,
+    spendable boolean NOT NULL,
+    delegate_setable boolean NOT NULL,
+    delegate_value character varying,
+    counter integer NOT NULL,
+    script character varying,
+    storage character varying,
+    balance numeric NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    asof timestamp without time zone NOT NULL
+);
+
 --
 -- TOC entry 189 (class 1259 OID 7467513)
 -- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -

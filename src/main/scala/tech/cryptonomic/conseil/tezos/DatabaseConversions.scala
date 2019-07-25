@@ -46,7 +46,7 @@ object DatabaseConversions {
   implicit val blockAccountsToAccountRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, accounts) = from
+        val BlockTagged(hash, level, timestamp, accounts) = from
         accounts.map {
           case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
             Tables.AccountsRow(
