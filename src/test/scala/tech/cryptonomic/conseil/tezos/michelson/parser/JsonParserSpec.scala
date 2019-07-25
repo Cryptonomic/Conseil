@@ -310,7 +310,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |}""".stripMargin
 
       parse[MichelsonExpression](json) should equal(
-        Right(MichelsonType("Pair", List(MichelsonIntConstant(0), MichelsonEmptyExpression)))
+        Right(MichelsonType("Pair", List(MichelsonIntConstant(0), MichelsonEmptyInstruction)))
       )
     }
 
@@ -347,6 +347,42 @@ class JsonParserSpec extends FlatSpec with Matchers {
               MichelsonType("contract", List(MichelsonType("unit"))),
               MichelsonInstructionSequence(List(MichelsonSingleInstruction("DUP")))
             )
+          )
+        )
+      )
+    }
+
+    it should "parse MichelsonExpression with both MichelsonExpression and MichelsonInstruction as arguments" in {
+      val json =
+        """{
+          |  "prim": "Pair",
+          |  "args": [
+          |    [
+          |      {
+          |        "prim": "Elt",
+          |        "args": [
+          |          {
+          |            "int": "0"
+          |          }
+          |        ]
+          |      }
+          |    ],
+          |    {
+          |      "string": "Author: Teckhua Chiang, Company: Cryptonomic"
+          |    }
+          |  ]
+          |}
+          |""".stripMargin
+
+      parse[MichelsonExpression](json) should equal(
+        Right(
+          MichelsonType(
+            "Pair",
+            List(
+              MichelsonInstructionSequence(List(MichelsonSingleInstruction("Elt", List(MichelsonIntConstant(0))))),
+              MichelsonStringConstant("Author: Teckhua Chiang, Company: Cryptonomic")
+            ),
+            List()
           )
         )
       )
