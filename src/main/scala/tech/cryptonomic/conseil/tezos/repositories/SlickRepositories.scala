@@ -101,7 +101,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
         tableQuery.delete
     }
 
-  implicit val metadataRepository = new MetadataRepository[DBIO, String, String, String] with LazyLogging {
+  implicit object metadataRepository extends MetadataRepository[DBIO, String, String, String] with LazyLogging {
     import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 
     /** Type representing Map[String, Option[Any]] for query response */
@@ -170,7 +170,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
   }
 
-  implicit val blocksRepository = new BlocksRepository[DBIO] with LazyLogging {
+  implicit object blocksRepository extends BlocksRepository[DBIO] with LazyLogging {
 
     /** @see [[tech.cryptonomic.conseil.tezos.repositories.BlocksRepository#anyBlockAvailable]] */
     override def anyBlockAvailable =
@@ -202,8 +202,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
   }
 
-  implicit val operationsRepository =
-    new OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow] with LazyLogging {
+  implicit object operationsRepository extends OperationsRepository[DBIO, OperationGroupsRow, OperationsRow, Int, BalanceUpdatesRow] with LazyLogging {
       import tech.cryptonomic.conseil.util.CollectionOps._
 
       /** Precompiled fetch for Operations by Group */
@@ -240,7 +239,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
     }
 
-  implicit val votingRepository = new VotingRepository[DBIO] with LazyLogging {
+  implicit object votingRepository extends VotingRepository[DBIO] with LazyLogging {
 
     /** @see [[tech.cryptonomic.conseil.tezos.repositories.VotingRepository#writeVotingBallots]] */
     override def writeVotingBallots(ballots: List[Voting.Ballot], block: Block) = {
@@ -263,7 +262,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     }
   }
 
-  implicit val feesRepository = new FeesRepository[DBIO] with LazyLogging {
+  implicit object feesRepository extends FeesRepository[DBIO] with LazyLogging {
     import scala.math.{ceil, max}
     import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
@@ -303,7 +302,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
 
   }
 
-  implicit val accountsRepository = new AccountsRepository[DBIO] with LazyLogging {
+  implicit object accountsRepository extends AccountsRepository[DBIO] with LazyLogging {
 
     /* computes the number of distinct accounts present in the checkpoint table */
     private val getCheckpointSize =
@@ -363,7 +362,7 @@ class SlickRepositories(implicit ec: ExecutionContext) {
     }
   }
 
-  implicit val delegatesRepository = new DelegatesRepository[DBIO] with LazyLogging {
+  implicit object delegatesRepository extends DelegatesRepository[DBIO] with LazyLogging {
 
     /* computes the number of distinct accounts present in the checkpoint table */
     val getCheckpointSize =
