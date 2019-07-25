@@ -65,25 +65,26 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
     import TezosTypes.Syntax._
     import mouse.any._
 
-    val keyStreamsByBlock: Map[BlockHash, Stream[Eff, Key]] =
+    //for each hash in the map, get the stream of results and concat them all, keeping the order
+    val keyStream: Stream[Eff, (BlockHash, Key)] =
       keyBlockIndexing.groupBy {
         case (key, (blockHash, level)) => blockHash
       }.mapValues(_.keySet.iterator |> Stream.fromIterator[Eff, Key])
-
-    //for each hash in the map, get the stream of results and concat them all, keeping the order
-    keyStreamsByBlock.map {
-      case (hash, keys) =>
-        entitiesStreamLoad(keys.map(hash -> _))
-    }.fold(Stream.empty)(_ ++ _)
-      .groupAdjacentBy {
-        case (key, entity) =>
-          keyBlockIndexing(key) //create chunks having the same block reference, relying on how the stream is ordered
-      }
       .map {
-        case ((hash, level), keyedEntitiesChunk) =>
-          val entitiesMap = keyedEntitiesChunk.foldLeft(Map.empty[Key, Entity]) { _ + _ } //collect to a map each chunk
-          entitiesMap.taggedWithBlock(hash, level) //tag with the block reference
-      }
+        case (hash, keys) =>
+          Stream.constant[Eff, BlockHash](hash).zip(keys)
+      }.reduce(_ ++ _)
+
+    entitiesStreamLoad(keyStream)
+    .groupAdjacentBy {
+      case (key, entity) =>
+        keyBlockIndexing(key) //create chunks having the same block reference, relying on how the stream is ordered
+    }
+    .map {
+      case ((hash, level), keyedEntitiesChunk) =>
+        val entitiesMap = keyedEntitiesChunk.foldLeft(Map.empty[Key, Entity]) { _ + _ } //collect to a map each chunk
+        entitiesMap.taggedWithBlock(hash, level) //tag with the block reference
+    }
 
   }
 
