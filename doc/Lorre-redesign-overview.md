@@ -78,7 +78,7 @@ def main() {
   import AsyncLoggers._
 
   //add extra imports to provide extra type classes for Future: i.e. FlatMap
-  import cats.....
+  import cats[...]
 
   //call the service using the instance, implicitly
   service.serviceCallNeedingLogging[Future](input): Future[(ReturnType, String)]
@@ -204,27 +204,27 @@ val ioBasedHandler: RpcHandler[IO, String, String] = RpcHandler.functionK(future
 This generic abstract trait defines how to read data from a tezos node and convert the json to an expected scala type.
 
 ```scala
-trait DataFetcher[Eff[_], Err] {
-  type In
-  type Out
+trait DataFetcher[Eff[_], In, Out] {
+
   type Encoded
+  type Error
 
   def fetchData: Kleisli[Eff, In, Encoded]
 
   def decodeData: Kleisli[Eff, Encoded, Out]
 
-  def onDataFetchError: Err => Unit = Function.const(())
+  def onDataFetchError: Error => Unit = Function.const(())
 
-  def onDecodingError: Err => Unit = Function.const(())
+  def onDecodingError: Error => Unit = Function.const(())
 
 }
 ```
 It's parametric on
 - `Eff` the output wrapper used to describe effectful responses (e.g. IO, Future, Try, ...)
-- `Err` the type of a possible error, used to be match upon and handle operation failures with custom handling
-- `In` internal input type (not visible in the trait definition), used to identify the tezos endpoint when making a request, e.g. the offset used to identify a specific block relative to the head, or an account id for a block level
-- `Out` internal output type (not visible in the trait definition), representing the final object returned by the complete fetch operation, as decoded from the remote call format
+- `In` the input type, used to identify the tezos endpoint when making a request, e.g. the offset used to identify a specific block relative to the head, or an account id for a block level
+- `Out` the output type, representing the final object returned by the complete fetch operation, as decoded from the remote call format
 - `Encoded` internal type (not visible in the trait definition), used to define how the response from a remote call is actually encoded. Almost always a `String` containing some json payload.
+- `Err` internal type of a possible error (not visible in the trait definition), used to be matched upon to react to operation failures with custom handling, e.g. `Throwable`
 
 The exposed methods describes
 - the 2 phases of fetching a remote object: get the data from tezos as an encoded content, decode the content
@@ -240,24 +240,26 @@ Same as for the RpcHandler, the companion object provides the necessary function
 ```scala
 object DataFetcher {
 
-  def fetcher[Eff[_], In, Out, Err](implicit
-    appErr: ApplicativeError[Eff, Err],
-    flatMap: FlatMap[Eff],
-    fetcher: DataFetcher.Aux[Eff, Err, In, Out, _]
-  ): Kleisli[Eff, In, Out] = ...
+  def fetcher[Eff[_], In, Out, Err](
+    implicit fetcher: Aux[Eff, In, Out, _, Err],
+    flatMapper: FlatMap[Eff],
+    errorHandling: ApplicativeError[Eff, Err]
+  ): Kleisli[Eff, In, Out] = [...]
 
-  type Aux[Eff[_], Err, Input, Output, Encoding] = ...
+  type Aux[Eff[_], In, Out, Encoding, Err] = [...]
 
-  def multiDecodeFetcher[Eff[_]: Apply, Err, Input, Output, Output2, Encoding](
+  type Std[Eff[_], In, Out] = Aux[Eff, In, Out, String, Throwable]
+
+  def multiDecodeFetcher[Eff[_]: Apply, In, Out, Out2, Encoding, Err](
     implicit
-    fetcher: Aux[Eff, Err, Input, Output, Encoding],
-    additionalDecode: Kleisli[Eff, Encoding, Output2]
-  ): Aux[Eff, Err, Input, (Output, Output2), Encoding] = ...
+    fetcher: Aux[Eff, In, Out, Encoding, Err],
+    additionalDecode: Kleisli[Eff, Encoding, Out2]
+  ): Aux[Eff[_], In, (Out, Out2), Encoding, Err] = [...]
 
 
   def functionK[F[_], G[_], Err, Input, Encoding](
     implicit nat: F ~> G
-  ): FunctionK[Aux[F, Err, Input, ?, Encoding], Aux[G, Err, Input, ?, Encoding]] = ...
+  ): FunctionK[Aux[F, Err, Input, ?, Encoding], Aux[G, Err, Input, ?, Encoding]] = [...]
 
 }
 ```
@@ -266,40 +268,64 @@ object DataFetcher {
 
 Here we see the usual type alias needed to "expose" the internal types in signatures for implicit requirements, using the "Aux pattern"
 
-`type Aux[Eff[_], Err, Input, Output, Encoding]`
+`type Aux[Eff[_], In, Out, Encoding, Err]`
 
 essentially outlines all the types for a specific instance of data-fetcher.
+
+*Std*
+
+Is an alias to easily identify the most common fetcher in conseil which uses a `String` as the encoded json format, and `Throwable` as possible errors raised by the fetching operations
+
+`type Std[Eff[_], In, Out]`
 
 *fetcher*
 
 The main function available is `fetcher`: it makes use of an implicit DataFetcher of requested effect, error, input, output, enconding types.
 The returned value is a Kleisli function that converts `In => Eff[Out]`, where the `Eff` effect wrapper can actually fail with error `Err`.
 
-Additional requirements for `Eff` are exposed.
+Additional requirements for `Eff` are exposed, such as `Monad`, `Concurrent`, or whatever is needed in the implementation.
 
-An example of usage is how to load accounts
+An example of usage is how to load voting data for blocks
 
 ```scala
-  def getAccountsForBlock[Eff[_] : ApplicativeThrow : Concurrent](
-    accountIds: Stream[F, AccountId]
-  )(
-    implicit fetcherForBlock: DataFetcher.Aux[Eff, Throwable, AccountId, Option[Account], String]
-  ): Stream[F, (AccountId, Account)] = {
+  def getAccountsForBlock[Eff[_]: Concurrent: DataFetcher.Std[?[_], (BlockHash, AccountId), Option[Account]]](
+    accountIds: Stream[Eff, (BlockHash, AccountId)]
+  ): Stream[Eff, (AccountId, Account)] = {
+    import TezosOptics.Accounts.{scriptLens, storageLens}
 
-    accountIds.parEvalMap(batchConf.accountFetchConcurrencyLevel)(
-      fetcher.tapWith((_, _)).run // tapWith returns both the input and the output, combined with the passed-in function
-    )
-    .collect {
-      case (accountId, Some(account)) => accountId -> account
-    }
+    /* Shows part of the hashes that failed to parse */
+    val logError: PartialFunction[Throwable, Stream[Eff, Unit]] = [...]
+
+    def parseMichelsonScripts(id: AccountId): Account => Account = [...]
+
+    accountIds
+      .parEvalMap(accountConcurrencyLevel) {
+        fetcher.tapWith((_, _)).run
+      }
+      .onError(logError)
+      [...]
+      .collect {
+        case ((_, accountId), Some(account)) => accountId -> parseMichelsonScripts(accountId)(account)
+      }
+  }
 
   ```
+Here we have a `Stream` of ids and an implicit fetcher from `(BlockHash, AccountId)` to `Option[Account]`, wrapped in the `Eff`.
+We use the `fetcher` method to get a reference to the Kleisli function, that we `tapWith` to tuple both the `(BlockHash, AccountId)` provided and the corresponding `Account` on the output.
+Finally we run the function for each id in the stream, and collect only those found (keeping only when the option is `Some(account)`.
 
-Here we have a `Stream` of ids and an implicit fetcher from `AccountId` to `Option[Account]`, wrapped in the `Eff`.
-We use the `fetcher` method to get a reference to the Kleisli function, that we `tapWith` to tuple both `AccountId` and corresponding `Account` on the output.
-Finally we run the function for each id in the stream, and collect only those found (keeping only when the option is `Some`).
+Having the `fetcher` kleisli, as seen here, provides many possible combinators/operators to act on the actual effectful function, before running it. E.g. in the code we use multiple fetchers that take the same head hash and offset to provide a tuple of different voting data, making use of the fact that a kleisli fetcher has Applicative semantic to make parallel calls with effects, like we do with the Voting data calls below.
 
-Having the `fetcher` kleisli, as seen here, provides many possible combinators/operators to act on the actual effectful function, before running it. E.g. in the code we use multiple fetchers that take the same head hash and offset to provide a tuple of different voting data, making use of the fact that a kleisli fetcher has Applicative semantic to make parallel calls with effects.
+```scala
+  def getVotingDetails[Eff[_]: MonadThrow](block: Block)(
+    implicit
+    proposalFetcher: DataFetcher.Std[Eff, Block, List[(ProtocolId, ProposalSupporters)]],
+    bakersFetch: DataFetcher.Std[Eff, Block, List[Voting.BakerRolls]],
+    ballotsFetcher: DataFetcher.Std[Eff, Block, List[Voting.Ballot]]
+  ): Eff[(Voting.Proposal, BlockWithMany[Voting.BakerRolls], BlockWithMany[Voting.Ballot])] = [...]
+```
+
+We can see that the implicit fetchers can be defined as type bounds, as for the first example, or as paramters, as with the second. We use paramters for votes to distinguish between different fetchers through the name.
 
 *multiDecodFetcher*
 
@@ -307,7 +333,7 @@ We provide this combinator on an existing fetcher, to actually fetch the same js
 
 This turns useful to read the same json from the `/operations` endpoint and extract both operation groups and account ids. The input is implicitly passed, so having the appropriate fetcher and decoder in scope allow us to write
 ```scala
-val oeprationsWithAccountsFetcher = DataFetcher.multiDecodeFetcher[IO, Throwable, BlockHash, List[OperationsGroup], List[AccountId], String]
+val operationsWithAccountsFetcher = DataFetcher.multiDecodeFetcher[IO, BlockHash, List[OperationsGroup], List[AccountId], String, Throwable]
 ```
 
 The type inference will do the rest by itself, looking for the appropriate input types in scope.
@@ -322,7 +348,7 @@ Once again the example is that if we have an implicit `cats.effect.IO ~> zio.Tas
 
 Finally, in the `DataFetcher.Instances` submodule (a scala `object`) we define an implicit instance of
 
-`Profunctor[Aux[Eff, Err, ?, ?, Encoding]]`
+`Profunctor[Aux[Eff, ?, ?, Encoding, Err]]`
 
 This strangely named type class provides the same useful combinators on input and outputs as shown for kleisli, in the rpc-handler examples.
 
@@ -333,10 +359,10 @@ How do we make use of this? Let's make an example with the operation groups in a
 import DataFetcher.Instances._
 
 //used to get a type conforming to the expected type parameters numbers for profunctors (in & out)
-type IOFetcher[In, Out] = Aux[IO, Throwable, In, Out, String]
+type IOFetcher[In, Out] = DataFetcher.Std[IO, In, Out]
 
 //we start with a simple definition of a DataFetcher that takes a string (url fragment), and returns a decoded List[List[OperationGroup]]
-val rawFetcher: IOFetcher[String, List[List[OperationGroup]]] = ...
+val rawFetcher: IOFetcher[String, List[List[OperationGroup]]] = [...]
 
 //we can the use dimap to both adapt input to a block hash reference, and output to a flattened List
 
@@ -366,15 +392,15 @@ The data-fetchers are defined essentially using the same pattern in the `BlockDa
 
 The fetch part is using an internal rpc-handler to make the remote calls, and eventually adapt/convert input/output, based on the type we need.
 
-#### NodeOperator
+#### NodeOperations
 
-The operator methods are now generic in the effect type `F`, and each method will have its own requirement in the signatures.
+The operator methods are now generic in the effect type `Eff`, and each method will have its own requirement in the signatures.
 
-This implies that technically we can build a single NodeOperator instance and use it with different data-fetchers instances in scope, to provide a different effect implementation. Right now we're using `cats.effect.IO` as the effect type, but we could easily swap it if needed.
+This implies that technically we can build a single `NodeOperations` instance and use it with different data-fetchers instances in scope, to provide a different effect implementation. Right now we're using `cats.effect.IO` as the effect type, but we could easily swap it if needed.
 
-We could go as far as provide locally-scoped instances and make calls on the NodeOperator that return Futures or else, as long as the signature type class bounds are fullfilled.
+We could go as far as provide locally-scoped instances and make calls on the NodeOperations that return Futures or else, as long as the signature type class bounds are fullfilled.
 
-Each method requires such bound as are necessary in the operations performed in the method (e.g. `Functor` to use `map`, `ApplicativeError` to use `onError`, `Monad` to use `flatMap` and so on).
+Each method requires such bound as necessary in the operations performed in the method (e.g. `Functor` to use `map`, `ApplicativeError` to use `onError`, `Monad` to use `flatMap` and so on).
 
 #### Streaming Lorre
 
@@ -392,10 +418,10 @@ The final step use once more a similar definition to read delegate hashes, fetch
 
 Finally the combined IO program is eventually run, executing the effects and possibly failing.
 
-To make the app definition consistent, most effectful operations (like logging, thread sleeps, reading the system clock) are wrapped into IO, and composed with the rest using IO combinators (`flatMap`, `*>`, `<*`, ...).
+To make the app definition consistent, most effectful operations (like logging, thread sleeps, reading the system clock) are wrapped into IO, and composed with the rest using IO combinators (`flatMap`, `>>`, `*>`, `<*`, ...).
 
 The streaming elements (be them blocks, accounts, ...) are "chunked" to be processed in small batches, the size of which is defined via configuration. This enables database batching operations to be actually used. At the same time, the asynchronous rpc calls are done concurrently, so that each element will not actually block the wait for the previous during this operation, but will be fetched together, up to a configured concurrency level.
 
-The resulting code is currently contained in a massive method called `processBlocks(...)`, which defines several internal methods to decompose the process, and then puts it all together.
+The resulting code is currently contained in a massive method called `processTezosBlocks([...])`, which defines several internal methods to decompose the process, and then puts it all together.
 
 This means that Lorre code is not well-organized at the moment, yet the PR will be proposed as-is to release the rather sooner than later, with the propotion to refactor it later, in smaller steps, in whatever manner is deemed most valuable.
