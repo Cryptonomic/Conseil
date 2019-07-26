@@ -10,7 +10,7 @@ import scopt.OptionParser
 /** wraps all configuration needed to run Conseil */
 trait ConseilAppConfig {
 
-  type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, VerboseOutput, MetadataConfiguration)
+  type Configurations = (ServerConfiguration, PlatformsConfiguration, SecurityApi, VerboseOutput, MetadataConfiguration, Option[NautilusCloudConfiguration])
 
   /** Lazily reads all configuration upstart, will print all errors encountered during loading */
   private val argsParser = new OptionParser[VerboseOutput]("conseil") {
@@ -37,7 +37,8 @@ trait ConseilAppConfig {
       platforms <- loadConfig[PlatformsConfiguration](namespace = "platforms")
       metadataOverrides <- loadConfig[MetadataConfiguration]
       securityApi <- Security()
-    } yield (server, platforms, securityApi, verbose, metadataOverrides)
+      nautilusCloud <- loadConfig[Option[NautilusCloudConfiguration]]("nautilus-cloud")
+    } yield (server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud)
 
     //something went wrong
     loadedConf.left.foreach { failures =>
