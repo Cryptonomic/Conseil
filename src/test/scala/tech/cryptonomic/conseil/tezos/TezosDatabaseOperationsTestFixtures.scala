@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
+  import TezosTypes.Voting.Vote
 
   /* randomly populate a number of fees */
   def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
@@ -721,9 +722,14 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
+    val sampleBallot =
+      Ballot(
+        ballot = Vote("yay")
+      )
+
     val sampleOperations =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-          DoubleEndorsementEvidence :: DoubleBakingEvidence :: Proposals :: Ballot :: Nil
+          DoubleEndorsementEvidence :: DoubleBakingEvidence :: Proposals :: sampleBallot :: Nil
 
   }
 

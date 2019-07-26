@@ -819,13 +819,14 @@ class DatabaseConversionsTest
 
       "convert a Ballot operation to a database row" in {
 
-        val converted = (block, groupHash, Ballot: Operation).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleBallot: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
         converted.blockHash shouldBe block.data.hash.value
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
+        converted.ballot shouldBe Some("yay")
         converted.kind shouldBe "ballot"
 
         forAll(

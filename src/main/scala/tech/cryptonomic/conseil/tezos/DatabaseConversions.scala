@@ -30,10 +30,8 @@ object DatabaseConversions {
     case _ => None
   }
 
-  def extractBallot(ballot: Vote): Option[String] = ballot match {
-    case Pass => Some("pass")
-    case Yay => Some("yay")
-    case Nay => Some("nay")
+  def extractBallot(ballot: Voting.Vote): Option[String] = ballot match {
+    case Voting.Vote(vote) => Some(vote)
     case _ => None
   }
 

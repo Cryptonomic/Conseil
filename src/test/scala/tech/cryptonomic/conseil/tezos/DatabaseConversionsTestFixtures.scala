@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.OperationMetadata.BalanceUpdate
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 trait DBConversionsData {
 
@@ -277,6 +278,11 @@ trait DBConversionsData {
           errors = None
         )
       )
+    )
+
+  val sampleBallot =
+    Ballot(
+      ballot = Vote("yay")
     )
 
 }

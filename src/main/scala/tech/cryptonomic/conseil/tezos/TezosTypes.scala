@@ -233,12 +233,7 @@ object TezosTypes {
   final case object DoubleEndorsementEvidence extends Operation
   final case object DoubleBakingEvidence extends Operation
   final case object Proposals extends Operation
-  final case class Ballot(ballot: Vote) extends Operation
-
-  sealed trait Vote extends Product with Serializable
-  final case object Pass extends Vote
-  final case object Yay extends Vote
-  final case object Nay extends Vote
+  final case class Ballot(ballot: Voting.Vote) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
 
