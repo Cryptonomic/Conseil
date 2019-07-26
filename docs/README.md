@@ -334,13 +334,17 @@ Specifies the maximum number of records to return.
 
 Sort condition, multiple may be supplied for a single query. Inner object(s) will contain `field` and `direction` properties. The former is `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response, the latter is one of 'asc', 'desc'.
 
+It is possible to sort on aggregated results, in this case the `field` value would be "function_fieldname", for example `sum_balance`. See query samples below.
+
 #### `aggregation`
 
-It is possible to apply an aggregation function to a single field of the result set. The aggregation object contains the following properties:
+It is possible to apply an aggregation function to a field of the result set. The aggregation object contains the following properties:
 
 - `field` – `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response.
 - `function` – one of: sum, count, max, min, avg.
 - `predicate` – same definition as the predicate object described above. This gets translated into a `HAVING` condition in the underlying SQL.
+
+Multiple fields can be aggregated and the same field can be aggregated with different functions in the same request. See examples below.
 
 #### `output`
 
@@ -366,8 +370,8 @@ Send this query to `/v2/data/tezos/<network>/blocks` Note that `orderBy` below e
 {
     "fields": ["baker", "level"],
     "predicates": [{ "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false }],
-    "orderBy": [{ "field": "level", "direction": "desc" }],
-    "aggregation": { "field": "level", "function": "count" },
+    "orderBy": [{ "field": "count_level", "direction": "desc" }],
+    "aggregation": [{ "field": "level", "function": "count" }],
     "limit": 50,
     "output": "csv"
 }
@@ -381,8 +385,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 {
     "fields": ["delegate_value", "balance"],
     "predicates": [{ "field": "delegate_value", "set": [], "operation": "isnull", "inverse": true }],
-    "orderBy": [{ "field": "balance", "direction": "desc" }],
-    "aggregation": { "field": "balance", "function": "sum" },
+    "orderBy": [{ "field": "sum_balance", "direction": "desc" }],
+    "aggregation": [{ "field": "balance", "function": "sum" }],
     "limit": 50,
     "output": "csv"
 }
@@ -396,8 +400,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 {
     "fields": ["delegate_value", "account_id"],
     "predicates": [{ "field": "delegate_value", "set": [], "operation": "isnull", "inverse": true }],
-    "orderBy": [{ "field": "account_id", "direction": "desc" }],
-    "aggregation": { "field": "account_id", "function": "count" },
+    "orderBy": [{ "field": "count_account_id", "direction": "desc" }],
+    "aggregation": [{ "field": "account_id", "function": "count" }],
     "limit": 50,
     "output": "csv"
 }
@@ -405,7 +409,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 
 #### Top 20 Bakers by roll count
 
-Send this query to `/v2/data/tezos/<network>/bakers`
+Send this query to `/v2/data/tezos/<network>/rolls`
 
 ```json
 {
@@ -429,7 +433,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
     "fields": ["account_id"],
     "predicates": [
         { "field": "account_id", "set": ["KT1"], "operation": "startsWith", "inverse": false },
-        { "field": "script", "set": [], "operation": "isnull", "inverse": true },
+        { "field": "script", "set": [], "operation": "isnull", "inverse": true }
     ],
     "limit": 10000,
     "output": "csv"
@@ -448,8 +452,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "destination", "set": ["KT1"], "operation": "startsWith", "inverse": false },
         { "field": "parameters", "set": [], "operation": "isnull", "inverse": true }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 10,
     "output": "csv"
 }
@@ -466,8 +470,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "kind", "set": ["origination"], "operation": "eq", "inverse": false },
         { "field": "script", "set": [], "operation": "isnull", "inverse": true }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 10,
     "output": "csv"
 }
@@ -479,19 +483,20 @@ Send this query to `/v2/data/tezos/<network>/operations`
 
 ```json
 {
-    "fields": ["source", "amount"],
+    "fields": ["source", "amount", "fee"],
     "predicates": [
         { "field": "kind", "set": ["transaction"], "operation": "eq", "inverse": false },
         { "field": "timestamp", "set": [1546300800000, 1577836799000], "operation": "between", "inverse": false }
     ],
-    "orderBy": [{ "field": "amount", "direction": "desc" }],
-    "aggregation": { "field": "amount", "function": "sum" },
+    "orderBy": [{ "field": "sum_amount", "direction": "desc" }],
+    "aggregation": [{ "field": "amount", "function": "sum" }, { "field": "fee", "function": "avg" }
+    ],
     "limit": 50,
     "output": "csv"
 }
 ```
 
-#### Fees by block level, transaction kind in April 2019
+#### Fees by block level for transaction operations in April 2019
 
 Send this query to `/v2/data/tezos/<network>/operations`
 
@@ -502,8 +507,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
         { "field": "fee", "set": [0], "operation": "gt", "inverse": false }
     ],
-    "orderBy": [{ "field": "fee", "direction": "desc" }],
-    "aggregation": { "field": "fee", "function": "sum" },
+    "orderBy": [{ "field": "sum_fee", "direction": "desc" }],
+    "aggregation": [{ "field": "fee", "function": "sum" }, { "field": "fee", "function": "avg" }],
     "limit": 100000,
     "output": "csv"
 }
@@ -519,8 +524,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
     "predicates": [
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 20,
     "output": "csv"
 }
@@ -537,8 +542,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
         { "field": "kind", "set": ["transaction", "origination", "delegation", "activation", "reveal"], "operation": "in", "inverse": false }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 100,
     "output": "csv"
 }
@@ -555,8 +560,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
         { "field": "script", "set": [], "operation": "isnull", "inverse": false },
         { "field": "balance", "set": [0], "operation": "gt", "inverse": false }
     ],
-    "orderBy": [{ "field": "account_id", "direction": "desc" }],
-    "aggregation": { "field": "account_id", "function": "count" },
+    "orderBy": [{ "field": "count_account_id", "direction": "desc" }],
+    "aggregation": [{ "field": "account_id", "function": "count" }],
     "limit": 20,
     "output": "csv"
 }
@@ -572,8 +577,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
     "predicates": [
         { "field": "script", "set": [], "operation": "isnull", "inverse": false }
     ],
-    "orderBy": [{ "field": "balance", "direction": "desc" }],
-    "aggregation": { "field": "balance", "function": "sum" },
+    "orderBy": [{ "field": "sum_balance", "direction": "desc" }],
+    "aggregation": [{ "field": "balance", "function": "sum" }],
     "limit": 20,
     "output": "csv"
 }

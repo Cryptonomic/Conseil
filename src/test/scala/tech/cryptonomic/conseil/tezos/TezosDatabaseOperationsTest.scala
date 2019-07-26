@@ -125,6 +125,7 @@ class TezosDatabaseOperationsTest
                 case PositiveDecimal(value) => Some(value)
                 case _ => None
               }
+              row.priority.value shouldEqual block.data.header.priority.value
           }
 
           val dbBlocksAndGroups =
@@ -1056,10 +1057,12 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val allProtocols = proposals.flatMap(_.protocols)
+        val allProtocols = proposals.flatMap(_.protocols).toMap
 
         forAll(dbProposals) { proposalRow =>
-          allProtocols should contain(ProtocolId(proposalRow.protocolHash))
+          val rowProtocol = ProtocolId(proposalRow.protocolHash)
+          allProtocols.keySet should contain(rowProtocol)
+          allProtocols(rowProtocol) shouldBe proposalRow.supporters.value
           proposalRow.blockId shouldBe block.data.hash.value
           proposalRow.blockLevel shouldBe block.data.header.level
         }
@@ -1268,7 +1271,8 @@ class TezosDatabaseOperationsTest
             "meta_cycle_position" -> None,
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
-            "expected_commitment" -> None
+            "expected_commitment" -> None,
+            "priority" -> None
           ),
           Map(
             "operations_hash" -> None,
@@ -1295,7 +1299,8 @@ class TezosDatabaseOperationsTest
             "meta_cycle_position" -> None,
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
-            "expected_commitment" -> None
+            "expected_commitment" -> None,
+            "priority" -> None
           )
         )
       }
@@ -2674,9 +2679,9 @@ class TezosDatabaseOperationsTest
             columns = List("medium"),
             predicates = predicates,
             ordering = List.empty,
-            outputType = OutputType.json,
             aggregation = aggregate,
-            limit = 1
+            limit = 1,
+            outputType = OutputType.json
           )
         } yield found
 

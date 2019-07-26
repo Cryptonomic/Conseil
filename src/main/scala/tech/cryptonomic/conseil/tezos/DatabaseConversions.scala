@@ -17,6 +17,9 @@ object DatabaseConversions {
   def concatenateToString[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String =
     traversable.mkString("[", ",", "]")
 
+  def toCommaSeparated[A, T[_] <: scala.collection.GenTraversableOnce[_]](traversable: T[A]): String =
+    traversable.mkString(",")
+
   def extractBigDecimal(number: PositiveBigNumber): Option[BigDecimal] = number match {
     case PositiveDecimal(value) => Some(value)
     case _ => None
@@ -97,7 +100,8 @@ object DatabaseConversions {
         metaCyclePosition = metadata.map(_.level.cycle_position),
         metaVotingPeriod = metadata.map(_.level.voting_period),
         metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
-        expectedCommitment = metadata.map(_.level.expected_commitment)
+        expectedCommitment = metadata.map(_.level.expected_commitment),
+        priority = header.priority
       )
     }
   }
@@ -120,7 +124,8 @@ object DatabaseConversions {
           hash = og.hash.value,
           branch = og.branch.value,
           signature = og.signature.map(_.value),
-          blockId = from.data.hash.value
+          blockId = from.data.hash.value,
+          blockLevel = from.data.header.level
         )
       }
   }
@@ -149,7 +154,8 @@ object DatabaseConversions {
         slots = Some(metadata.slots).map(concatenateToString),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -163,7 +169,8 @@ object DatabaseConversions {
         nonce = Some(nonce.value),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -177,7 +184,8 @@ object DatabaseConversions {
         secret = Some(secret.value),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -197,7 +205,8 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -225,7 +234,8 @@ object DatabaseConversions {
         paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -268,9 +278,11 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
         paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
+        originatedContracts = metadata.operation_result.originated_contracts.map(_.map(_.id)).map(toCommaSeparated),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -290,7 +302,8 @@ object DatabaseConversions {
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
   }
 
@@ -309,20 +322,9 @@ object DatabaseConversions {
         kind = kind,
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
-        timestamp = toSql(block.data.header.timestamp)
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false
       )
-  }
-
-  implicit val blockToOperationsRow = new Conversion[List, Block, Tables.OperationsRow] {
-    import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-    override def convert(from: Block) =
-      from.operationGroups.flatMap { group =>
-        group.contents.map { op =>
-          (from, group.hash, op).convertTo[Tables.OperationsRow]
-        }
-      }
-
   }
 
   /** Not all operations have some form of balance updates... we're ignoring some type, like ballots,
@@ -375,6 +377,71 @@ object DatabaseConversions {
   /** Utility alias when we need to keep related data paired together */
   type OperationTablesData = (Tables.OperationsRow, List[Tables.BalanceUpdatesRow])
 
+  /** */
+  implicit val internalOperationResultToOperation =
+    new Conversion[Id, InternalOperationResults.InternalOperationResult, Operation] {
+      override def convert(from: InternalOperationResults.InternalOperationResult): Id[Operation] =
+        // counter/fee/gas_limit/storage_limit are not in internal operations results,
+        // so values below are going to be discarded during transformation Operation -> OperationRow
+        from match {
+          case reveal: InternalOperationResults.Reveal =>
+            reveal
+              .into[Reveal]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.metadata, ResultMetadata[OperationResult.Reveal](reveal.result, List.empty, None))
+              .transform
+          case transaction: InternalOperationResults.Transaction =>
+            transaction
+              .into[Transaction]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(
+                _.metadata,
+                ResultMetadata[OperationResult.Transaction](
+                  transaction.result,
+                  transaction.result.balance_updates.getOrElse(List.empty),
+                  None
+                )
+              )
+              .transform
+
+          case origination: InternalOperationResults.Origination =>
+            origination
+              .into[Origination]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(
+                _.metadata,
+                ResultMetadata[OperationResult.Origination](
+                  origination.result,
+                  origination.result.balance_updates.getOrElse(List.empty),
+                  None
+                )
+              )
+              .transform
+
+          case delegation: InternalOperationResults.Delegation =>
+            delegation
+              .into[Delegation]
+              .withFieldConst(_.counter, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.fee, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.gas_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(_.storage_limit, InvalidPositiveDecimal("Discarded"))
+              .withFieldConst(
+                _.metadata,
+                ResultMetadata[OperationResult.Delegation](delegation.result, List.empty, None)
+              )
+              .transform
+        }
+    }
+
   /** Will convert to paired list of operations with related balance updates
     * with one HUGE CAVEAT: both have only temporary, meaningless, `sourceId`s
     *
@@ -388,10 +455,24 @@ object DatabaseConversions {
 
     override def convert(from: Block) =
       from.operationGroups.flatMap { group =>
-        group.contents.map { op =>
+        group.contents.flatMap { op =>
+          val internalOperationResults = op match {
+            case r: Reveal => r.metadata.internal_operation_results.toList.flatten
+            case t: Transaction => t.metadata.internal_operation_results.toList.flatten
+            case o: Origination => o.metadata.internal_operation_results.toList.flatten
+            case d: Delegation => d.metadata.internal_operation_results.toList.flatten
+            case _ => List.empty
+          }
+
+          val internalRows = internalOperationResults.map { oop =>
+            val op = oop.convertTo[Operation]
+            (from, group.hash, op)
+              .convertTo[Tables.OperationsRow]
+              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op.convertToA[List, Tables.BalanceUpdatesRow]
+          }
           val operationRow = (from, group.hash, op).convertTo[Tables.OperationsRow]
           val balanceUpdateRows = op.convertToA[List, Tables.BalanceUpdatesRow]
-          (operationRow, balanceUpdateRows)
+          (operationRow, balanceUpdateRows) :: internalRows
         }
       }
 
@@ -452,11 +533,12 @@ object DatabaseConversions {
       val blockHash = block.data.hash.value
       val blockLevel = block.data.header.level
       protocols.map {
-        case ProtocolId(id) =>
+        case (ProtocolId(id), supporters) =>
           Tables.ProposalsRow(
             protocolHash = id,
             blockId = blockHash,
-            blockLevel = blockLevel
+            blockLevel = blockLevel,
+            supporters = Some(supporters)
           )
       }
     }

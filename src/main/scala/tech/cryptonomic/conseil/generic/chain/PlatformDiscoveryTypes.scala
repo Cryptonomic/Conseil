@@ -47,7 +47,9 @@ object PlatformDiscoveryTypes {
       reference: Option[Map[String, String]] = None,
       displayPriority: Option[Int] = None,
       displayOrder: Option[Int] = None,
-      sufficientForQuery: Option[Boolean] = None
+      sufficientForQuery: Option[Boolean] = None,
+      currencySymbol: Option[String] = None,
+      currencySymbolCode: Option[Int] = None
   ) {
 
     /** Checks if attribute is valid for predicate */
@@ -62,7 +64,8 @@ object PlatformDiscoveryTypes {
   /** Enumeration of data types */
   object DataType extends Enumeration {
     type DataType = Value
-    val Enum, Hex, Binary, Date, DateTime, String, Hash, AccountAddress, Int, LargeInt, Decimal, Boolean = Value
+    val Enum, Hex, Binary, Date, DateTime, String, Hash, AccountAddress, Int, LargeInt, Decimal, Currency, Boolean =
+      Value
   }
 
   /** Enumeration of key types */

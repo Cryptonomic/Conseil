@@ -1,17 +1,17 @@
 package tech.cryptonomic.conseil.tezos
 
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
-import TezosTypes._
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
-  import JsonDecoders.Circe._
   import JsonDecoders.Circe.Accounts._
-  import JsonDecoders.Circe.Scripts._
   import JsonDecoders.Circe.Numbers._
   import JsonDecoders.Circe.Operations._
+  import JsonDecoders.Circe.Scripts._
   import JsonDecoders.Circe.Votes._
+  import JsonDecoders.Circe._
   import io.circe.parser.decode
 
   "the json decoders" should {
@@ -341,13 +341,13 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
       }
 
-      "decode an transaction operation from json" in new OperationsJsonData {
-        val decoded = decode[Operation](adaptManagerPubkeyField(transactionJson))
+      "decode an transaction with internal transaction result operation from json" in new OperationsJsonData {
+        val decoded = decode[Operation](adaptManagerPubkeyField(transactionWithInternalTransactionJson))
         decoded shouldBe 'right
 
         val operation = decoded.right.value
         operation shouldBe a[Transaction]
-        operation shouldEqual expectedTransaction
+        operation shouldEqual transactionWithInternalTransactionResult
 
       }
 
@@ -391,19 +391,29 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
       }
 
-      "decode bakers vote listings" in {
+      "decode proposals elements" in {
+        val decoded =
+          decode[List[(ProtocolId, ProposalSupporters)]](s"""[["$validB58Hash", 1], ["$validB58Hash", 2]]""")
+        decoded shouldBe 'right
+        decoded.right.value should contain theSameElementsAs List(
+          ProtocolId(validB58Hash) -> 1,
+          ProtocolId(validB58Hash) -> 2
+        )
+      }
+
+      "decode bakers rolls" in {
         val decoded = decode[Voting.BakerRolls](s"""{"pkh":"$validB58Hash", "rolls":150}""")
         decoded shouldBe 'right
         decoded.right.value shouldBe Voting.BakerRolls(pkh = PublicKeyHash(validB58Hash), rolls = 150)
       }
 
-      "decode bakers vote listings even if rolls are json encoded as 'stringly' numbers" in {
+      "decode bakers rolls even if rolls are json encoded as 'stringly' numbers" in {
         val decoded = decode[Voting.BakerRolls](s"""{"pkh":"$validB58Hash", "rolls":"150"}""")
         decoded shouldBe 'right
         decoded.right.value shouldBe Voting.BakerRolls(pkh = PublicKeyHash(validB58Hash), rolls = 150)
       }
 
-      "fail to decode bakers vote listings for invalid fields" in {
+      "fail to decode bakers rolls for invalid fields" in {
         val failedHash = decode[Voting.BakerRolls](s"""{"pkh":"SinvalidB58Hash", "rolls":150}""")
         failedHash shouldBe 'left
         val failedRolls = decode[Voting.BakerRolls](s"""{"pkh":"$validB58Hash", "rolls":true}""")

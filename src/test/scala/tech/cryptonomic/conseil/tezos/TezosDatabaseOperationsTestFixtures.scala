@@ -130,6 +130,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
+            priority = Some(0),
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
@@ -290,7 +291,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
             hash = generateHash(10),
             branch = generateHash(10),
             signature = Some(s"sig${generateHash(10)}"),
-            blockId = block.hash
+            blockId = block.hash,
+            blockLevel = block.level
           )
       )
       .toList
@@ -310,7 +312,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
         blockHash = block.hash,
         blockLevel = block.level,
         timestamp = block.timestamp,
-        level = Some(block.level)
+        level = Some(block.level),
+        internal = false
       )
     }
 
@@ -326,7 +329,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
           blockHash = block.hash,
           blockLevel = block.level,
           timestamp = new Timestamp(block.timestamp.getTime + index),
-          level = Some(block.level)
+          level = Some(block.level),
+          internal = false
         )
     }
 
@@ -393,7 +397,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       val protocolCounts = Array.fill(howMany)(1 + randomGen.nextInt(4))
 
       List.tabulate(howMany) { current =>
-        val protocols = List.fill(protocolCounts(current))(ProtocolId(generateHash(10)))
+        val protocols = List.fill(protocolCounts(current))((ProtocolId(generateHash(10)), randomGen.nextInt()))
         Proposal(
           protocols = protocols,
           block = forBlock

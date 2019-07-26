@@ -321,7 +321,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //adapt the proposal protocols result to include the block
     val fetchProposals =
-      fetch[Block, List[ProtocolId], Future, List, Throwable].map { proposalsList =>
+      fetch[Block, List[(ProtocolId, ProposalSupporters)], Future, List, Throwable].map { proposalsList =>
         proposalsList.map {
           case (block, protocols) => Voting.Proposal(protocols, block)
         }
@@ -746,6 +746,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       levelRange: Range.Inclusive
   ): Future[BlockFetchingResults] = {
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
+
+    logger.info("Fetching block data in range: " + levelRange)
 
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)

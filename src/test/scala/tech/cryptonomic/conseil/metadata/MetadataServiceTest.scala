@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.metadata
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
@@ -15,6 +16,8 @@ import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import scala.concurrent.Future.successful
 
 class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest with MockFactory with ScalaFutures {
+
+  implicit override val patienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
 
   "The metadata service" should {
 
@@ -524,7 +527,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
                                         valueMap = Some(Map("0" -> "value1", "1" -> "other value")),
                                         reference = Some(Map("0" -> "value1", "1" -> "other value")),
                                         displayPriority = Some(1),
-                                        displayOrder = Some(2)
+                                        displayOrder = Some(2),
+                                        currencySymbol = Some("ꜩ"),
+                                        currencySymbolCode = Some(42793)
                                       )
                                 )
                               )
@@ -556,7 +561,9 @@ class MetadataServiceTest extends WordSpec with Matchers with ScalatestRouteTest
               reference = Some(Map("0" -> "value1", "1" -> "other value")),
               scale = Some(6),
               displayPriority = Some(1),
-              displayOrder = Some(2)
+              displayOrder = Some(2),
+              currencySymbol = Some("ꜩ"),
+              currencySymbolCode = Some(42793)
             )
           )
         )

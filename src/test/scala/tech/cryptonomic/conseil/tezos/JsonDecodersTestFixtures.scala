@@ -545,7 +545,6 @@ trait OperationsJsonData {
     |  }
     |}""".stripMargin
 
-  //ignores the internal_operation_result
   val expectedReveal =
     Reveal(
       source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
@@ -577,9 +576,145 @@ trait OperationsJsonData {
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
           errors = None
+        ),
+        internal_operation_results = Some(
+          List(
+            InternalOperationResults.Reveal(
+              result = OperationResult.Reveal("applied", Some(Decimal(10000)), None),
+              public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
+              nonce = 1234,
+              source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+              kind = "reveal"
+            )
+          )
         )
       )
     )
+
+  val transactionWithInternalTransactionResult = Transaction(
+    counter = PositiveDecimal(120917),
+    amount = PositiveDecimal(0),
+    fee = PositiveDecimal(0),
+    gas_limit = PositiveDecimal(2215),
+    storage_limit = PositiveDecimal(0),
+    source = ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
+    destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
+    parameters = Some(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")),
+    metadata = ResultMetadata(
+      operation_result = OperationResult.Transaction(
+        status = "applied",
+        allocated_destination_contract = None,
+        balance_updates = None,
+        big_map_diff = None,
+        consumed_gas = Some(Decimal(2008)),
+        originated_contracts = None,
+        paid_storage_size_diff = None,
+        storage = Some(Micheline("""{"prim":"Unit"}""")),
+        storage_size = Some(Decimal(69)),
+        errors = None
+      ),
+      balance_updates = List(),
+      internal_operation_results = Some(
+        List(
+          InternalOperationResults.Transaction(
+            "transaction",
+            ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
+            0,
+            PositiveDecimal(1000),
+            ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
+            Some(Micheline("""{"prim":"Unit"}""")),
+            OperationResult.Transaction(
+              status = "applied",
+              allocated_destination_contract = None,
+              balance_updates = Some(
+                List(
+                  BalanceUpdate(
+                    kind = "contract",
+                    change = -1000,
+                    category = None,
+                    contract = Some(ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH")),
+                    delegate = None,
+                    level = None
+                  ),
+                  BalanceUpdate(
+                    kind = "contract",
+                    change = 1000,
+                    category = None,
+                    contract = Some(ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN")),
+                    delegate = None,
+                    level = None
+                  )
+                )
+              ),
+              big_map_diff = None,
+              consumed_gas = Some(Decimal(107)),
+              originated_contracts = None,
+              paid_storage_size_diff = None,
+              storage = None,
+              storage_size = None,
+              errors = None
+            )
+          )
+        )
+      )
+    )
+  )
+
+  val transactionWithInternalTransactionJson =
+    """
+      |{
+      |    "kind": "transaction",
+      |    "source": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN",
+      |    "fee": "0",
+      |    "counter": "120917",
+      |    "gas_limit": "2215",
+      |    "storage_limit": "0",
+      |    "amount": "0",
+      |    "destination": "KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH",
+      |    "parameters": {
+      |        "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
+      |    },
+      |    "metadata": {
+      |        "balance_updates": [],
+      |        "operation_result": {
+      |            "status": "applied",
+      |            "storage": {
+      |                "prim": "Unit"
+      |            },
+      |            "consumed_gas": "2008",
+      |            "storage_size": "69"
+      |        },
+      |        "internal_operation_results": [
+      |            {
+      |                "kind": "transaction",
+      |                "source": "KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH",
+      |                "nonce": 0,
+      |                "amount": "1000",
+      |                "destination": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN",
+      |                "parameters": {
+      |                    "prim": "Unit"
+      |                },
+      |                "result": {
+      |                    "status": "applied",
+      |                    "balance_updates": [
+      |                        {
+      |                            "kind": "contract",
+      |                            "contract": "KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH",
+      |                            "change": "-1000"
+      |                        },
+      |                        {
+      |                            "kind": "contract",
+      |                            "contract": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN",
+      |                            "change": "1000"
+      |                        }
+      |                    ],
+      |                    "consumed_gas": "107"
+      |                }
+      |            }
+      |        ]
+      |    }
+      |}
+    """.stripMargin
 
   //used to check if internal errors are correctly decoded
   val failedRevealJson =

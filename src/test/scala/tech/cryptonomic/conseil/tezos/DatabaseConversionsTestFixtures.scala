@@ -233,7 +233,9 @@ trait DBConversionsData {
               )
             )
           ),
-          originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
+          originated_contracts = Some(
+            ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4") :: ContractId("KT1Hx96yGgGk2q7Jmwm1dnYAMdRoLJNn5gnC") :: Nil
+          ),
           consumed_gas = Some(Decimal(11262)),
           storage_size = Some(Decimal(46)),
           paid_storage_size_diff = Some(Decimal(46)),
