@@ -13,27 +13,26 @@ import pureconfig.generic.auto._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
 object Security extends ErrorAccumulatingCirceSupport {
 
   /** Keys cache */
   private val nautilusCloudKeys: Ref[IO, Set[String]] = Ref.of[IO, Set[String]](Set.empty).unsafeRunSync()
 
-  def updateKeys(ncc: NautilusCloudConfiguration)
-    (implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit = {
+  def updateKeys(
+      ncc: NautilusCloudConfiguration
+  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit =
     for {
       apiKeys <- Http()
         .singleRequest(
           HttpRequest(uri = makeUri(ncc))
             .withHeaders(RawHeader("X-Api-Key", ncc.key))
-        ).flatMap(Unmarshal(_).to[Set[String]])
-      _ <- nautilusCloudKeys.update (_ => apiKeys).unsafeToFuture()
+        )
+        .flatMap(Unmarshal(_).to[Set[String]])
+      _ <- nautilusCloudKeys.update(_ => apiKeys).unsafeToFuture()
     } yield ()
-  }
 
-  private def makeUri(ncc: NautilusCloudConfiguration): String = {
+  private def makeUri(ncc: NautilusCloudConfiguration): String =
     s"${ncc.host}:${ncc.port}/${ncc.path}"
-  }
 
   /** creates security data from configuration */
   def apply(): Either[pureconfig.error.ConfigReaderFailures, SecurityApi] =
@@ -48,7 +47,7 @@ object Security extends ErrorAccumulatingCirceSupport {
       * @return True is valid, false otherwise.
       */
     def validateApiKey(candidateApiKey: String): Future[Boolean] =
-      nautilusCloudKeys.get.map(ncKeys => (ncKeys ++ keys) (candidateApiKey)).unsafeToFuture()
+      nautilusCloudKeys.get.map(ncKeys => (ncKeys ++ keys)(candidateApiKey)).unsafeToFuture()
   }
 
 }

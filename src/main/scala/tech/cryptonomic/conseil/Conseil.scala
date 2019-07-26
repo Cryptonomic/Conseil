@@ -31,7 +31,6 @@ object Conseil
 
   loadApplicationConfiguration(args) match {
     case Right((server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud)) =>
-
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -41,7 +40,7 @@ object Conseil
 
       val validateApiKey: Directive[Tuple1[String]] = headerValueByName("apikey").tflatMap[Tuple1[String]] {
         case Tuple1(apiKey) =>
-        onComplete(securityApi.validateApiKey(apiKey)).flatMap {
+          onComplete(securityApi.validateApiKey(apiKey)).flatMap {
             case Success(true) => provide(apiKey)
             case _ => complete((Unauthorized, "Incorrect API key"))
           }
