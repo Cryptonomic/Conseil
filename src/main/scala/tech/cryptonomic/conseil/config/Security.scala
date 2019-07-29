@@ -32,10 +32,10 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
         )
         .flatMap(Unmarshal(_).to[Set[String]])
       _ <- nautilusCloudKeys.set(apiKeys).unsafeToFuture()
-    } yield apiKeys
+    } yield ()
 
     update onComplete {
-      case Success(apiKeys) => logger.info("Managed to update api keys with {}", apiKeys)
+      case Success(_) => logger.info("Managed to update API keys")
       case Failure(exception) => logger.error("Error during API keys update", exception)
     }
   }
