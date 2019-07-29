@@ -8,20 +8,23 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
 import cats.effect.IO
 import cats.effect.concurrent.Ref
+import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import pureconfig.generic.auto._
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
-object Security extends ErrorAccumulatingCirceSupport {
+object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
 
   /** Keys cache */
   private val nautilusCloudKeys: Ref[IO, Set[String]] = Ref.of[IO, Set[String]](Set.empty).unsafeRunSync()
 
+  /** Updates API keys from Nautilus-Cloud endpoint */
   def updateKeys(
       ncc: NautilusCloudConfiguration
-  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit =
-    for {
+  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: Materializer): Unit = {
+    val update = for {
       apiKeys <- Http()
         .singleRequest(
           HttpRequest(uri = makeUri(ncc))
@@ -29,7 +32,12 @@ object Security extends ErrorAccumulatingCirceSupport {
         )
         .flatMap(Unmarshal(_).to[Set[String]])
       _ <- nautilusCloudKeys.update(_ => apiKeys).unsafeToFuture()
-    } yield ()
+    } yield logger.info(s"Managed to update api keys with $apiKeys")
+    update onComplete {
+      case Success(_) => ()
+      case Failure(exception) => logger.error("Error during API keys update", exception)
+    }
+  }
 
   private def makeUri(ncc: NautilusCloudConfiguration): String =
     s"${ncc.host}:${ncc.port}/${ncc.path}"
