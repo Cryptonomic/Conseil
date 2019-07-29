@@ -31,10 +31,11 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
             .withHeaders(RawHeader("X-Api-Key", ncc.key))
         )
         .flatMap(Unmarshal(_).to[Set[String]])
-      _ <- nautilusCloudKeys.update(_ => apiKeys).unsafeToFuture()
-    } yield logger.info(s"Managed to update api keys with $apiKeys")
+      _ <- nautilusCloudKeys.set(apiKeys).unsafeToFuture()
+    } yield apiKeys
+
     update onComplete {
-      case Success(_) => ()
+      case Success(apiKeys) => logger.info("Managed to update api keys with {}", apiKeys)
       case Failure(exception) => logger.error("Error during API keys update", exception)
     }
   }
@@ -55,7 +56,7 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
       * @return True is valid, false otherwise.
       */
     def validateApiKey(candidateApiKey: String): Future[Boolean] =
-      nautilusCloudKeys.get.map(ncKeys => (ncKeys ++ keys)(candidateApiKey)).unsafeToFuture()
+      nautilusCloudKeys.get.map(ncKeys => (ncKeys ++ keys).contains(candidateApiKey)).unsafeToFuture()
   }
 
 }

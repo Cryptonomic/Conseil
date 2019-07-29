@@ -34,7 +34,7 @@ object Conseil
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-      nautilusCloud.map { ncc =>
+      nautilusCloud.foreach { ncc =>
         system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
       }
 
@@ -45,7 +45,7 @@ object Conseil
             case _ => complete((Unauthorized, "Incorrect API key"))
           }
         case _ =>
-          complete((Unauthorized, "Incorrect API key"))
+          complete((Unauthorized, "Missing API key"))
       }
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
