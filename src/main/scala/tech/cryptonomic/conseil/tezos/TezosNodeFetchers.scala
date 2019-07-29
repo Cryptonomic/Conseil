@@ -167,7 +167,7 @@ trait BlocksDataFetchers {
 
   /** An implicitly derived fetcher that reads block hashes to get both the operation groups and the account ids from the same returned json */
   implicit val operationsWithAccountsFetcher =
-    DataFetcher.multiDecodeFetcher[IO, BlockHash, List[OperationsGroup], List[AccountId], String, Throwable]
+    DataFetcher.addMultiDecoding[IO, BlockHash, List[OperationsGroup], List[AccountId], String, Throwable]
 
   /** a fetcher for the current quorum of blocks */
   implicit val currentQuorumFetcher = {

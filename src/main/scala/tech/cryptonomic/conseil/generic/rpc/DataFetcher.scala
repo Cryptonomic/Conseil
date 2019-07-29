@@ -76,7 +76,7 @@ object DataFetcher {
     * 3. return the traversable collection containing paired input and output values, all wrapped in the effect F
     * The resulting effect will also encode a possible failure in virtue of the implicit MonadError instance that is provided
     */
-  def fetcher[Eff[_], In, Out, Err](
+  def getFetcher[Eff[_], In, Out, Err](
     implicit fetcher: Aux[Eff, In, Out, _, Err],
     flatMapper: FlatMap[Eff],
     errorHandling: ApplicativeError[Eff, Err]
@@ -118,7 +118,7 @@ object DataFetcher {
     * - decodes the json string both as a list of operations and a list of accounts, extracted from the operations data
     * - returns the decodings in a tuple (Output1, Ouput2), e.g. the pair of operations and accounts
     */
-  def multiDecodeFetcher[Eff[_]: Apply, In, Out, Out2, Encoding, Err](
+  def addMultiDecoding[Eff[_]: Apply, In, Out, Out2, Encoding, Err](
     implicit
     fetcher: Aux[Eff, In, Out, Encoding, Err],
     additionalDecode: Kleisli[Eff, Encoding, Out2]

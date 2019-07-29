@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.generic.rpc.{DataFetcher, RpcHandler}
-import tech.cryptonomic.conseil.generic.rpc.DataFetcher.fetcher
+import tech.cryptonomic.conseil.generic.rpc.DataFetcher.getFetcher
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
@@ -136,7 +136,7 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
     hash: BlockHash,
     offset: Option[Offset] = None
   ): Eff[BlockData] =
-    fetcher.run(hash -> offset.getOrElse(0))
+    getFetcher.run(hash -> offset.getOrElse(0))
 
   /**
     * Gets the block head along with associated data.
@@ -178,7 +178,7 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
     if (isGenesis(block))
       (List.empty[OperationsGroup], List.empty[AccountId]).pure[Eff]
     else
-      fetcher.run(block.hash)
+    getFetcher.run(block.hash)
 
   /**
     * Fetches current votes information at the specific block
@@ -199,8 +199,8 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
     if (isGenesis(block))
       CurrentVotes.empty.pure[Eff]
     else {
-      val fetchCurrentQuorum: Kleisli[Eff, BlockCoordinates, Option[Int]] = fetcher
-      val fetchCurrentProposal: Kleisli[Eff, BlockCoordinates, Option[ProtocolId]] = fetcher
+      val fetchCurrentQuorum: Kleisli[Eff, BlockCoordinates, Option[Int]] = getFetcher
+      val fetchCurrentProposal: Kleisli[Eff, BlockCoordinates, Option[ProtocolId]] = getFetcher
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes(_, _)).run(block.hash -> offset.getOrElse(0))
     }
 
@@ -292,7 +292,7 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
      */
     accountIds
       .parEvalMap(accountConcurrencyLevel) {
-        fetcher.tapWith((_, _)).run
+        getFetcher.tapWith((_, _)).run
       }
       .onError(logError)
       .evalTap {
@@ -358,7 +358,7 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
      */
     delegateKeys
       .parEvalMap(delegateConcurrencyLevel) {
-        fetcher.tapWith((_, _)).run
+        getFetcher.tapWith((_, _)).run
       }
       .onError(logError)
       .evalTap {
@@ -399,15 +399,15 @@ class NodeOperations(val network: String, batchConf: BatchFetchConfiguration) ex
 
     //adapt the proposal protocols result to include the block
     val fetchProposals =
-      fetcher[Eff, Block, List[(ProtocolId, ProposalSupporters)], Throwable].tapWith {
+      getFetcher[Eff, Block, List[(ProtocolId, ProposalSupporters)], Throwable].tapWith {
         case (block, protocols) => Voting.Proposal(protocols, block)
       }
 
     val fetchBakers =
-      fetcher[Eff, Block, List[Voting.BakerRolls], Throwable].tapWith(_ -> _)
+      getFetcher[Eff, Block, List[Voting.BakerRolls], Throwable].tapWith(_ -> _)
 
     val fetchBallots =
-      fetcher[Eff, Block, List[Voting.Ballot], Throwable].tapWith(_ -> _)
+      getFetcher[Eff, Block, List[Voting.Ballot], Throwable].tapWith(_ -> _)
 
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input block
