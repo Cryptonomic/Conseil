@@ -297,13 +297,13 @@ trait ApiOperations extends DataOperations with MetadataOperations {
     * @return The account
     */
   def fetchAccount(account_id: AccountId)(implicit ec: ExecutionContext): Future[Option[AccountResult]] = {
-    val fetchOperation =
-      Tables.Accounts
-        .filter(row => row.accountId === account_id.id)
-        .take(1)
-        .result
+    val fetchAction = for {
+      accounts <- Tables.Accounts if accounts.accountId === account_id.id
+      (_, invalidEntry) <- accounts.blocksFk joinLeft Tables.InvalidatedBlocks on (_.hash === _.hash)
+      if invalidEntry.fold(true.bind)(entry => !entry.isInvalidated)
+    } yield accounts
 
-    dbHandle.run(fetchOperation).map { accounts =>
+    dbHandle.run(fetchAction.take(1).result).map { accounts =>
       accounts.headOption.map(AccountResult)
     }
   }

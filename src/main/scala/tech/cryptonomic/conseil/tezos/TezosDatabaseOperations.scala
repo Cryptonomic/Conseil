@@ -16,8 +16,12 @@ import cats._
 import cats.implicits._
 import cats.data.Kleisli
 import cats.effect.Async
+import mouse.any._
 import slickeffect.implicits._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.tezos.Tables.OperationGroupsRow
+import tech.cryptonomic.conseil.tezos.Tables.OperationsRow
+import cats.syntax.IfApplyOps
 
 /**
   * Functions for writing Tezos data to a database.
@@ -339,8 +343,6 @@ object TezosDatabaseOperations extends LazyLogging {
       accounts: List[BlockTagged[Map[AccountId, Account]]],
       delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
   )(implicit ec: ExecutionContext): DBIO[(Int, Option[Int])] = {
-    import slickeffect.implicits._
-
     logger.info("Writing accounts and delegate checkpoints to the DB...")
 
     //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
@@ -430,6 +432,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
+
     def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[BigDecimal], java.sql.Timestamp)]): AverageFees = {
       val values = fees.map {
         case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
@@ -439,21 +442,38 @@ object TezosDatabaseOperations extends LazyLogging {
       AverageFees(max(m - s, 0), m, m + s, ts, kind)
     }
 
-    val opQuery =
-      Tables.Operations
-        .filter(_.kind === kind)
-        .map(o => (o.fee, o.timestamp))
-        .distinct
-        .sortBy { case (_, ts) => ts.desc }
-        .take(numberOfFeesAveraged)
-        .result
-
-    opQuery.map { timestampedFees =>
-      timestampedFees.headOption.map {
-        case (_, latest) =>
-          computeAverage(latest, timestampedFees)
+    /* Joins operations with groups to get the block reference and
+     * then with invalidated blocks to check if the block reference is valid.
+     * It only uses the fees and timestamps if selected rows to compute the
+     * stats, sorting by timestamp and limiting the results
+     */
+    Tables.Operations
+      .map(op => (op.operationGroupHash, op.kind, op.fee, op.timestamp))
+      .filter(_._2 === kind)
+      .join(Tables.OperationGroups.map(gr => (gr.hash, gr.blockId)))
+      .on(_._1 === _._1)
+      .joinLeft(Tables.InvalidatedBlocks)
+      .on {
+        case ((_, group), invalid) => group._2 === invalid.hash
       }
-    }
+      .filter {
+        case ((_, _), invalid) => invalid.fold(true.bind)(entry => !entry.isInvalidated)
+      }
+      .map {
+        case (((opGroup, opKind, opFee, opTime), _), _) => (opFee, opTime)
+      }
+      .distinct
+      .sortBy {
+        case (_, ts) => ts.desc
+      }
+      .take(numberOfFeesAveraged)
+      .result
+      .map { timestampedFees =>
+        timestampedFees.headOption.map {
+          case (_, latest) =>
+            computeAverage(latest, timestampedFees)
+        }
+      }
   }
 
   /**
@@ -464,11 +484,15 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def operationsForGroup(
       groupHash: String
-  )(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] =
-    (for {
+  )(implicit ec: ExecutionContext): DBIO[Option[(Tables.OperationGroupsRow, Seq[Tables.OperationsRow])]] = {
+    import slickeffect.implicits._
+
+    val query = for {
       operation <- operationsByGroupHash(groupHash).extract
       group <- operation.operationGroupsFk
-    } yield (group, operation)).result.map { pairs =>
+    } yield (group, operation)
+
+    val queryResult = query.result.map { pairs =>
       /*
        * we first collect all de-normalized pairs under the common group and then extract the
        * only key-value from the resulting map
@@ -477,6 +501,19 @@ object TezosDatabaseOperations extends LazyLogging {
       keyed.keys.headOption
         .map(k => (k, keyed(k)))
     }
+
+    //now we add a check to see if the reference block for the group is yet valid
+    val invalidationCheck: DBIO[Boolean] = queryResult.flatMap {
+      case Some((group, ops)) => blockIsInInvalidatedState(BlockHash(group.blockId)).map(!_)
+      case _ => false.pure[DBIO]
+    }
+
+    invalidationCheck.ifA(
+      ifTrue = queryResult,
+      ifFalse = Option.empty.pure[DBIO]
+    )
+
+  }
 
   /**
     * Checks if a block for this hash and related operations are stored on db
@@ -521,6 +558,10 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Precompiled fetch for Operations by Group */
   val operationsByGroupHash =
     Tables.Operations.findBy(_.operationGroupHash)
+
+  /** Precompiled fetch for invalidated Blocks */
+  val invalidatedBlockByHash =
+    Tables.InvalidatedBlocks.findBy(_.hash)
 
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
   private[tezos] def fetchMaxBlockLevel: DBIO[Int] =

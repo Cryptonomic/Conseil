@@ -141,6 +141,14 @@ class TezosPlatformDiscoveryOperations(
       .flatten
       .exists(_.column.contains(column.name))
 
+  /**
+    * NOTE: The current values won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
+    * This might lead to relatively rare inconsistencies if one value
+    * is returned from the query that doesn't actually belong to any valid
+    * entity because the forking made the entity invalid.
+    */
   private def preCacheAttributeValues: DBIO[AttributeValuesCache] =
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.map {
@@ -195,7 +203,11 @@ class TezosPlatformDiscoveryOperations(
     result.unsafeToFuture()
   }
 
-  /** Method querying slick metadata tables for entities */
+  /** Method querying slick metadata tables for entities
+    * NOTE: The current count won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
+    */
   private def preCacheEntities: DBIO[EntitiesCache] = {
     val result = for {
       tables <- MTable.getTables(Some(""), Some("public"), Some(""), Some(Seq("TABLE")))
@@ -212,7 +224,11 @@ class TezosPlatformDiscoveryOperations(
   private def makeDisplayName(name: String): String =
     name.capitalize.replace("_", " ")
 
-  /** Query for counting rows in the table */
+  /** Query for counting rows in the table
+    * NOTE: The current count won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
+    */
   private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] =
     DBIOAction.sequence {
       tables.map { table =>
@@ -291,6 +307,13 @@ class TezosPlatformDiscoveryOperations(
 
   /** Makes list of possible string values of the attributes
     *
+    * NOTE: The current values won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
+    * This might lead to relatively rare inconsistencies if one value
+    * is returned from the query that doesn't actually belong to any valid
+    * entity because the forking made the entity invalid.
+    *
     * @param  tableName  name of the table from which we extract attributes
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
@@ -308,6 +331,9 @@ class TezosPlatformDiscoveryOperations(
 
   /**
     * Extracts attributes in the DB for the given table name
+    * NOTE: The attributes count won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
     *
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
@@ -358,11 +384,19 @@ class TezosPlatformDiscoveryOperations(
       }
       .unsafeToFuture()
 
-  /** Runs query and attributes with updated counts */
+  /** Runs query and attributes with updated counts
+    * NOTE: The current count won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
+    */
   private def getUpdatedAttributes(tableName: String, columns: List[Attribute]): Future[List[Attribute]] =
     metadataOperations.runQuery(getUpdatedAttributesQuery(tableName, columns))
 
-  /** Query for returning partial attributes with updated counts */
+  /** Query for returning partial attributes with updated counts
+    * NOTE: The current count won't consider that some entities
+    * might have been actually invalidated during a previous chain fork
+    * as conseil is not removing those entries.
+    */
   private def getUpdatedAttributesQuery(tableName: String, columns: List[Attribute]): DBIO[List[Attribute]] =
     DBIOAction.sequence {
       columns.map { column =>
