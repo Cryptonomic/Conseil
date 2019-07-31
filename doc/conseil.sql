@@ -72,7 +72,7 @@ CREATE TABLE public.accounts_history (
     storage character varying,
     balance numeric NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL,
-    asof timestamp without time zone NOT NULL
+    asof timestamp with time zone NOT NULL
 );
 
 --
@@ -83,7 +83,8 @@ CREATE TABLE public.accounts_history (
 CREATE TABLE public.accounts_checkpoint (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL
+    block_level integer DEFAULT '-1'::integer NOT NULL,
+    asof timestamp with time zone NOT NULL
 );
 
 

@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
 
 import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
@@ -34,7 +34,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(
+  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int, time: Instant = testReferenceTimestamp.toInstant)(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
@@ -53,7 +53,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel)
+    accounts.taggedWithBlock(blockHash, blockLevel, time)
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -85,7 +85,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel)
+    delegates.taggedWithBlock(blockHash, blockLevel, Instant.ofEpochSecond(0))
   }
 
   /* randomly populate a number of blocks based on a level range */

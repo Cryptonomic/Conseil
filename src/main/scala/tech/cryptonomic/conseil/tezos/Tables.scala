@@ -81,18 +81,19 @@ trait Tables {
   /** Entity class storing rows of table AccountsCheckpoint
     *  @param accountId Database column account_id SqlType(varchar)
     *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
-  case class AccountsCheckpointRow(accountId: String, blockId: String, blockLevel: Int = -1)
+    *  @param blockLevel Database column block_level SqlType(int4), Default(-1)
+    *  @param asof Database column asof SqlType(timestamptz) */
+  case class AccountsCheckpointRow(accountId: String, blockId: String, blockLevel: Int = -1, asof: java.sql.Timestamp)
   /** GetResult implicit for fetching AccountsCheckpointRow objects using plain SQL queries */
-  implicit def GetResultAccountsCheckpointRow(implicit e0: GR[String], e1: GR[Int]): GR[AccountsCheckpointRow] = GR{
+  implicit def GetResultAccountsCheckpointRow(implicit e0: GR[String], e1: GR[Int], e2: GR[java.sql.Timestamp]): GR[AccountsCheckpointRow] = GR{
     prs => import prs._
-      AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int]))
+      AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<[java.sql.Timestamp]))
   }
   /** Table description of table accounts_checkpoint. Objects of this class serve as prototypes for rows in queries. */
   class AccountsCheckpoint(_tableTag: Tag) extends profile.api.Table[AccountsCheckpointRow](_tableTag, "accounts_checkpoint") {
-    def * = (accountId, blockId, blockLevel) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
+    def * = (accountId, blockId, blockLevel, asof) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({r=>import r._; _1.map(_=> AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel), Rep.Some(asof))).shaped.<>({r=>import r._; _1.map(_=> AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column account_id SqlType(varchar) */
     val accountId: Rep[String] = column[String]("account_id")
@@ -100,6 +101,8 @@ trait Tables {
     val blockId: Rep[String] = column[String]("block_id")
     /** Database column block_level SqlType(int4), Default(-1) */
     val blockLevel: Rep[Int] = column[Int]("block_level", O.Default(-1))
+    /** Database column asof SqlType(timestamptz) */
+    val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
 
     /** Foreign key referencing Blocks (database name checkpoint_block_id_fkey) */
     lazy val blocksFk = foreignKey("checkpoint_block_id_fkey", blockId, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
@@ -124,7 +127,7 @@ trait Tables {
     *  @param storage Database column storage SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
-    *  @param asof Database column asof SqlType(timestamp) */
+    *  @param asof Database column asof SqlType(timestamptz) */
   case class AccountsHistoryRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, storage: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"), asof: java.sql.Timestamp)
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
   implicit def GetResultAccountsHistoryRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal], e5: GR[java.sql.Timestamp]): GR[AccountsHistoryRow] = GR{
@@ -159,7 +162,7 @@ trait Tables {
     val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
     /** Database column block_level SqlType(numeric), Default(-1) */
     val blockLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
-    /** Database column asof SqlType(timestamp) */
+    /** Database column asof SqlType(timestamptz) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
   }
   /** Collection-like TableQuery object for table AccountsHistory */

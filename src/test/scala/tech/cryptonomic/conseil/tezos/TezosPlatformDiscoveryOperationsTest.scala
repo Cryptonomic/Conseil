@@ -337,8 +337,8 @@ class TezosPlatformDiscoveryOperationsTest
         val account = Account(PublicKeyHash("a"), 12.34, true, AccountDelegate(true, None), None, 1)
 
         val accounts = List(
-          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = true))),
-          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = false)))
+          BlockTagged(basicBlocks.data.hash, 1, testReferenceDateTime.toInstant, Map(AccountId("id-1") -> account.copy(spendable = true))),
+          BlockTagged(basicBlocks.data.hash, 1, testReferenceDateTime.toInstant, Map(AccountId("id-2") -> account.copy(spendable = false)))
         )
 
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)

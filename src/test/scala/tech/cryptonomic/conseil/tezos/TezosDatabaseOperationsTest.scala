@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
@@ -400,8 +401,9 @@ class TezosDatabaseOperationsTest
 
         //generate data
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
+        val time = Instant.ofEpochMilli(0)
         val ids =
-          blocks.map(block => (BlockHash(block.hash), block.level, List.fill(idPerBlock)(AccountId(generateHash(5)))))
+          blocks.map(block => (BlockHash(block.hash), block.level, time, List.fill(idPerBlock)(AccountId(generateHash(5)))))
 
         //store and write
         val populateAndFetch = for {
@@ -418,7 +420,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedIdsData = ids.flatMap { case (hash, level, accounts) => accounts.map((hash, level, _)) }
+        val flattenedIdsData = ids.flatMap { case (hash, level, time, accounts) => accounts.map((hash, level, _)) }
 
         forAll(checkpointRows.zip(flattenedIdsData)) {
           case (row, (hash, level, accountId)) =>
@@ -443,15 +445,15 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
         )
 
         val populateAndTest = for {
@@ -480,15 +482,15 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
         )
 
         val inSelection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4))
@@ -679,7 +681,7 @@ class TezosDatabaseOperationsTest
         //generate data
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
         val keys = blocks.map(
-          block => (BlockHash(block.hash), block.level, List.fill(pkPerBlock)(PublicKeyHash(generateHash(5))))
+          block => (BlockHash(block.hash), block.level, testReferenceTimestamp.toInstant, List.fill(pkPerBlock)(PublicKeyHash(generateHash(5))))
         )
 
         //store and write
@@ -697,7 +699,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedKeysData = keys.flatMap { case (hash, level, keys) => keys.map((hash, level, _)) }
+        val flattenedKeysData = keys.flatMap { case (hash, level, time, keys) => keys.map((hash, level, _)) }
 
         forAll(checkpointRows.zip(flattenedKeysData)) {
           case (row, (hash, level, keyHash)) =>
@@ -802,29 +804,29 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
         )
 
-        def entry(accountAtIndex: Int, atLevel: Int) =
-          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+        def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
+          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, time.toInstant)
 
         //expecting only the following to remain
         val expected =
           Map(
-            entry(accountAtIndex = 1, atLevel = 1),
-            entry(accountAtIndex = 2, atLevel = 3),
-            entry(accountAtIndex = 3, atLevel = 4),
-            entry(accountAtIndex = 4, atLevel = 2),
-            entry(accountAtIndex = 5, atLevel = 4),
-            entry(accountAtIndex = 6, atLevel = 5)
+            entry(accountAtIndex = 1, atLevel = 1, time = testReferenceTimestamp),
+            entry(accountAtIndex = 2, atLevel = 3, time = testReferenceTimestamp),
+            entry(accountAtIndex = 3, atLevel = 4, time = testReferenceTimestamp),
+            entry(accountAtIndex = 4, atLevel = 2, time = testReferenceTimestamp),
+            entry(accountAtIndex = 5, atLevel = 4, time = testReferenceTimestamp),
+            entry(accountAtIndex = 6, atLevel = 5, time = testReferenceTimestamp)
           )
 
         val populateAndFetch = for {
@@ -864,7 +866,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Instant.ofEpochMilli(0))
 
         //expecting only the following to remain
         val expected =
