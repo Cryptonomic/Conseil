@@ -166,7 +166,6 @@ object TezosTypes {
 
   /** root of the operation hiearchy */
   sealed trait Operation extends Product with Serializable
-
   //operations definition
 
   final case class Endorsement(
@@ -239,7 +238,6 @@ object TezosTypes {
   final case object Ballot extends Operation
 
   //metadata definitions, both shared or specific to operation kind
-
   final case class EndorsementMetadata(
       slots: List[Int],
       delegate: PublicKeyHash,
@@ -249,8 +247,57 @@ object TezosTypes {
   //for now we ignore internal results, as it gets funny as sitting naked on a wasps' nest
   final case class ResultMetadata[RESULT](
       operation_result: RESULT,
-      balance_updates: List[OperationMetadata.BalanceUpdate]
+      balance_updates: List[OperationMetadata.BalanceUpdate],
+      internal_operation_results: Option[List[InternalOperationResults.InternalOperationResult]] = None
   )
+
+// Internal operations result definitions
+  object InternalOperationResults {
+
+    sealed trait InternalOperationResult extends Product with Serializable {
+      def nonce: Int
+    }
+
+    case class Reveal(
+        kind: String,
+        source: ContractId,
+        nonce: Int,
+        public_key: PublicKey,
+        result: OperationResult.Reveal
+    ) extends InternalOperationResult
+
+    case class Transaction(
+        kind: String,
+        source: ContractId,
+        nonce: Int,
+        amount: PositiveBigNumber,
+        destination: ContractId,
+        parameters: Option[Micheline],
+        result: OperationResult.Transaction
+    ) extends InternalOperationResult
+
+    case class Origination(
+        kind: String,
+        source: ContractId,
+        nonce: Int,
+        manager_pubkey: PublicKeyHash,
+        balance: PositiveBigNumber,
+        spendable: Option[Boolean],
+        delegatable: Option[Boolean],
+        delegate: Option[PublicKeyHash],
+        script: Option[Scripted.Contracts],
+        result: OperationResult.Origination
+    ) extends InternalOperationResult
+
+    case class Delegation(
+        kind: String,
+        source: ContractId,
+        nonce: Int,
+        delegate: Option[PublicKeyHash],
+        result: OperationResult.Delegation
+    ) extends InternalOperationResult
+
+  }
 
   //generic metadata, used whenever balance updates are the only thing inside
   final case class BalanceUpdatesMetadata(

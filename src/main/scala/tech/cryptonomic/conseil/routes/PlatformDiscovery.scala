@@ -39,12 +39,12 @@ class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionC
   }
 
   /** Metadata route implementation for entities endpoint */
-  private lazy val entitiesRoute = entitiesEndpoint.implementedByAsync {
+  private lazy val entitiesRoute = entitiesEndpoint.implementedBy {
     case (platform, network, _) => metadataService.getEntities(NetworkPath(network, PlatformPath(platform)))
   }
 
   /** Metadata route implementation for attributes endpoint */
-  private lazy val attributesRoute = attributesEndpoint.implementedByAsync {
+  private lazy val attributesRoute = attributesEndpoint.implementedBy {
     case ((platform, network, entity), _) =>
       metadataService.getTableAttributes(EntityPath(entity, NetworkPath(network, PlatformPath(platform))))
   }

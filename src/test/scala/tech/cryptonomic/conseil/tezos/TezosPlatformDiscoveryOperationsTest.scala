@@ -237,7 +237,8 @@ class TezosPlatformDiscoveryOperationsTest
               ),
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
+              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
+              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations")
             )
           )
       }
@@ -409,15 +410,6 @@ class TezosPlatformDiscoveryOperationsTest
         sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List("example1")
 
       }
-
-      "should validate correctly fields" in {
-        sut.isAttributeValid("fees", "low").futureValue shouldBe true
-      }
-
-      "should return false when there will be field not existing in the DB" in {
-        sut.isAttributeValid("fees", "WRONG").futureValue shouldBe false
-      }
-
     }
 
 }
