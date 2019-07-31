@@ -915,6 +915,27 @@ class TezosDatabaseOperationsTest
 
       }
 
+      "fetch nothing if looking up an operations with their group for an invalidated block" in {
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val group = generateOperationGroupRows(block).head
+        val ops = generateOperationsForGroup(block, group)
+        val invalidated = Tables.InvalidatedBlocksRow(block.hash, block.level, true)
+
+        val populateAndFetch = for {
+          _ <- Tables.Blocks += block
+          _ <- Tables.OperationGroups += group
+          _ <- Tables.InvalidatedBlocks += invalidated
+          ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+          result <- sut.operationsForGroup(group.hash)
+        } yield (result, ids)
+
+        val (groupedOperations, operationIds) = dbHandler.run(populateAndFetch).futureValue
+
+        groupedOperations shouldBe None
+      }
+
       "compute correct average fees from stored operations" in {
         //generate data
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
@@ -947,6 +968,83 @@ class TezosDatabaseOperationsTest
         //expectations
         val (mu, sigma) = (153, 332)
         val latest = new Timestamp(ops.map(_.timestamp.getTime).max)
+
+        val expected = AverageFees(
+          low = 0,
+          medium = mu,
+          high = mu + sigma,
+          timestamp = latest,
+          kind = ops.head.kind
+        )
+
+        //check
+        val feesCalculation = sut.calculateAverageFees(ops.head.kind, feesToConsider)
+
+        dbHandler.run(feesCalculation).futureValue.value shouldEqual expected
+
+      }
+
+      "ignore an invalidated block's operations when computing average fees" in {
+        //generate data
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+        val blocks = generateBlockRows(2, testReferenceTimestamp).take(2)
+        val groups = generateOperationGroupRows(blocks: _*)
+
+        val ops = blocks.zip(groups).map {
+          case (block, group) =>
+
+            val rnd = new Random(randomSeed.seed)
+
+            val fees =
+              if (block.level == 0)
+                Seq(
+                  Some(BigDecimal(35.23)),
+                  Some(BigDecimal(12.01)),
+                  Some(BigDecimal(2.22)),
+                  Some(BigDecimal(150.01)),
+                  None,
+                  Some(BigDecimal(1020.30)),
+                  Some(BigDecimal(1.00)),
+                  None
+                )
+              else
+                Seq(
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble)),
+                  Some(BigDecimal(rnd.nextDouble))
+                )
+            wrapFeesWithOperations(fees, block, group)
+        }.flatten
+
+        //invalidates blocks after the first level
+        val invalidated = blocks.map {
+          block => Tables.InvalidatedBlocksRow(block.hash, block.level, block.level > 0)
+        }
+
+        val populate = for {
+          _ <- Tables.Blocks ++= blocks
+          _ <- Tables.OperationGroups ++= groups
+          _ <- Tables.InvalidatedBlocks ++= invalidated
+          ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        } yield ids
+
+        dbHandler.run(populate).futureValue should have size (ops.size)
+
+        //expectations using only level 1
+        // mu = 152.59625
+        // std-dev = 331.4
+        // the sample std-dev should be 354.3, using correction formula
+        val (mu, sigma) = (153, 332)
+        val latest = new Timestamp(
+          ops.filter(_.level == Some(0))
+            .map(_.timestamp.getTime)
+            .max
+        )
 
         val expected = AverageFees(
           low = 0,
