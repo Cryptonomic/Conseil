@@ -16,27 +16,27 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, DelegatedContracts.schema, Delegates.schema, DelegatesCheckpoint.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema, Rolls.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, AccountsHistory.schema, BalanceUpdates.schema, Ballots.schema, Blocks.schema, DelegatedContracts.schema, Delegates.schema, DelegatesCheckpoint.schema, Fees.schema, OperationGroups.schema, Operations.schema, Proposals.schema, Rolls.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
   /** Entity class storing rows of table Accounts
-    *  @param accountId Database column account_id SqlType(varchar), PrimaryKey
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param manager Database column manager SqlType(varchar)
-    *  @param spendable Database column spendable SqlType(bool)
-    *  @param delegateSetable Database column delegate_setable SqlType(bool)
-    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param counter Database column counter SqlType(int4)
-    *  @param script Database column script SqlType(varchar), Default(None)
-    *  @param storage Database column storage SqlType(varchar), Default(None)
-    *  @param balance Database column balance SqlType(numeric)
-    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
+   *  @param accountId Database column account_id SqlType(varchar), PrimaryKey
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param manager Database column manager SqlType(varchar)
+   *  @param spendable Database column spendable SqlType(bool)
+   *  @param delegateSetable Database column delegate_setable SqlType(bool)
+   *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
+   *  @param counter Database column counter SqlType(int4)
+   *  @param script Database column script SqlType(varchar), Default(None)
+   *  @param storage Database column storage SqlType(varchar), Default(None)
+   *  @param balance Database column balance SqlType(numeric)
+   *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
   case class AccountsRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, storage: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"))
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
   implicit def GetResultAccountsRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal]): GR[AccountsRow] = GR{
     prs => import prs._
-      AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
+    AccountsRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal]))
   }
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
   class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
@@ -79,15 +79,15 @@ trait Tables {
   lazy val Accounts = new TableQuery(tag => new Accounts(tag))
 
   /** Entity class storing rows of table AccountsCheckpoint
-    *  @param accountId Database column account_id SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4), Default(-1)
-    *  @param asof Database column asof SqlType(timestamptz) */
+   *  @param accountId Database column account_id SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1)
+   *  @param asof Database column asof SqlType(timestamptz) */
   case class AccountsCheckpointRow(accountId: String, blockId: String, blockLevel: Int = -1, asof: java.sql.Timestamp)
   /** GetResult implicit for fetching AccountsCheckpointRow objects using plain SQL queries */
   implicit def GetResultAccountsCheckpointRow(implicit e0: GR[String], e1: GR[Int], e2: GR[java.sql.Timestamp]): GR[AccountsCheckpointRow] = GR{
     prs => import prs._
-      AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<[java.sql.Timestamp]))
+    AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<[java.sql.Timestamp]))
   }
   /** Table description of table accounts_checkpoint. Objects of this class serve as prototypes for rows in queries. */
   class AccountsCheckpoint(_tableTag: Tag) extends profile.api.Table[AccountsCheckpointRow](_tableTag, "accounts_checkpoint") {
@@ -116,23 +116,23 @@ trait Tables {
   lazy val AccountsCheckpoint = new TableQuery(tag => new AccountsCheckpoint(tag))
 
   /** Entity class storing rows of table AccountsHistory
-    *  @param accountId Database column account_id SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param manager Database column manager SqlType(varchar)
-    *  @param spendable Database column spendable SqlType(bool)
-    *  @param delegateSetable Database column delegate_setable SqlType(bool)
-    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param counter Database column counter SqlType(int4)
-    *  @param script Database column script SqlType(varchar), Default(None)
-    *  @param storage Database column storage SqlType(varchar), Default(None)
-    *  @param balance Database column balance SqlType(numeric)
-    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
-    *  @param asof Database column asof SqlType(timestamptz) */
+   *  @param accountId Database column account_id SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param manager Database column manager SqlType(varchar)
+   *  @param spendable Database column spendable SqlType(bool)
+   *  @param delegateSetable Database column delegate_setable SqlType(bool)
+   *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
+   *  @param counter Database column counter SqlType(int4)
+   *  @param script Database column script SqlType(varchar), Default(None)
+   *  @param storage Database column storage SqlType(varchar), Default(None)
+   *  @param balance Database column balance SqlType(numeric)
+   *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
+   *  @param asof Database column asof SqlType(timestamptz) */
   case class AccountsHistoryRow(accountId: String, blockId: String, manager: String, spendable: Boolean, delegateSetable: Boolean, delegateValue: Option[String] = None, counter: Int, script: Option[String] = None, storage: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"), asof: java.sql.Timestamp)
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
   implicit def GetResultAccountsHistoryRow(implicit e0: GR[String], e1: GR[Boolean], e2: GR[Option[String]], e3: GR[Int], e4: GR[scala.math.BigDecimal], e5: GR[java.sql.Timestamp]): GR[AccountsHistoryRow] = GR{
     prs => import prs._
-      AccountsHistoryRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.sql.Timestamp]))
+    AccountsHistoryRow.tupled((<<[String], <<[String], <<[String], <<[Boolean], <<[Boolean], <<?[String], <<[Int], <<?[String], <<?[String], <<[scala.math.BigDecimal], <<[scala.math.BigDecimal], <<[java.sql.Timestamp]))
   }
   /** Table description of table accounts_history. Objects of this class serve as prototypes for rows in queries. */
   class AccountsHistory(_tableTag: Tag) extends profile.api.Table[AccountsHistoryRow](_tableTag, "accounts_history") {
@@ -169,21 +169,21 @@ trait Tables {
   lazy val AccountsHistory = new TableQuery(tag => new AccountsHistory(tag))
 
   /** Entity class storing rows of table BalanceUpdates
-    *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
-    *  @param source Database column source SqlType(varchar)
-    *  @param sourceId Database column source_id SqlType(int4), Default(None)
-    *  @param sourceHash Database column source_hash SqlType(varchar), Default(None)
-    *  @param kind Database column kind SqlType(varchar)
-    *  @param contract Database column contract SqlType(varchar), Default(None)
-    *  @param change Database column change SqlType(numeric)
-    *  @param level Database column level SqlType(numeric), Default(None)
-    *  @param delegate Database column delegate SqlType(varchar), Default(None)
-    *  @param category Database column category SqlType(varchar), Default(None) */
+   *  @param id Database column id SqlType(serial), AutoInc, PrimaryKey
+   *  @param source Database column source SqlType(varchar)
+   *  @param sourceId Database column source_id SqlType(int4), Default(None)
+   *  @param sourceHash Database column source_hash SqlType(varchar), Default(None)
+   *  @param kind Database column kind SqlType(varchar)
+   *  @param contract Database column contract SqlType(varchar), Default(None)
+   *  @param change Database column change SqlType(numeric)
+   *  @param level Database column level SqlType(numeric), Default(None)
+   *  @param delegate Database column delegate SqlType(varchar), Default(None)
+   *  @param category Database column category SqlType(varchar), Default(None) */
   case class BalanceUpdatesRow(id: Int, source: String, sourceId: Option[Int] = None, sourceHash: Option[String] = None, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None)
   /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
   implicit def GetResultBalanceUpdatesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[Int]], e3: GR[Option[String]], e4: GR[scala.math.BigDecimal], e5: GR[Option[scala.math.BigDecimal]]): GR[BalanceUpdatesRow] = GR{
     prs => import prs._
-      BalanceUpdatesRow.tupled((<<[Int], <<[String], <<?[Int], <<?[String], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
+    BalanceUpdatesRow.tupled((<<[Int], <<[String], <<?[Int], <<?[String], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
   }
   /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
   class BalanceUpdates(_tableTag: Tag) extends profile.api.Table[BalanceUpdatesRow](_tableTag, "balance_updates") {
@@ -216,15 +216,15 @@ trait Tables {
   lazy val BalanceUpdates = new TableQuery(tag => new BalanceUpdates(tag))
 
   /** Entity class storing rows of table Ballots
-    *  @param pkh Database column pkh SqlType(varchar)
-    *  @param ballot Database column ballot SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4) */
+   *  @param pkh Database column pkh SqlType(varchar)
+   *  @param ballot Database column ballot SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4) */
   case class BallotsRow(pkh: String, ballot: String, blockId: String, blockLevel: Int)
   /** GetResult implicit for fetching BallotsRow objects using plain SQL queries */
   implicit def GetResultBallotsRow(implicit e0: GR[String], e1: GR[Int]): GR[BallotsRow] = GR{
     prs => import prs._
-      BallotsRow.tupled((<<[String], <<[String], <<[String], <<[Int]))
+    BallotsRow.tupled((<<[String], <<[String], <<[String], <<[Int]))
   }
   /** Table description of table ballots. Objects of this class serve as prototypes for rows in queries. */
   class Ballots(_tableTag: Tag) extends profile.api.Table[BallotsRow](_tableTag, "ballots") {
@@ -248,37 +248,37 @@ trait Tables {
   lazy val Ballots = new TableQuery(tag => new Ballots(tag))
 
   /** Entity class storing rows of table Blocks
-    *  @param level Database column level SqlType(int4)
-    *  @param proto Database column proto SqlType(int4)
-    *  @param predecessor Database column predecessor SqlType(varchar)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param validationPass Database column validation_pass SqlType(int4)
-    *  @param fitness Database column fitness SqlType(varchar)
-    *  @param context Database column context SqlType(varchar), Default(None)
-    *  @param signature Database column signature SqlType(varchar), Default(None)
-    *  @param protocol Database column protocol SqlType(varchar)
-    *  @param chainId Database column chain_id SqlType(varchar), Default(None)
-    *  @param hash Database column hash SqlType(varchar)
-    *  @param operationsHash Database column operations_hash SqlType(varchar), Default(None)
-    *  @param periodKind Database column period_kind SqlType(varchar), Default(None)
-    *  @param currentExpectedQuorum Database column current_expected_quorum SqlType(int4), Default(None)
-    *  @param activeProposal Database column active_proposal SqlType(varchar), Default(None)
-    *  @param baker Database column baker SqlType(varchar), Default(None)
-    *  @param nonceHash Database column nonce_hash SqlType(varchar), Default(None)
-    *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
-    *  @param metaLevel Database column meta_level SqlType(int4), Default(None)
-    *  @param metaLevelPosition Database column meta_level_position SqlType(int4), Default(None)
-    *  @param metaCycle Database column meta_cycle SqlType(int4), Default(None)
-    *  @param metaCyclePosition Database column meta_cycle_position SqlType(int4), Default(None)
-    *  @param metaVotingPeriod Database column meta_voting_period SqlType(int4), Default(None)
-    *  @param metaVotingPeriodPosition Database column meta_voting_period_position SqlType(int4), Default(None)
-    *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None)
-    *  @param priority Database column priority SqlType(int4), Default(None) */
+   *  @param level Database column level SqlType(int4)
+   *  @param proto Database column proto SqlType(int4)
+   *  @param predecessor Database column predecessor SqlType(varchar)
+   *  @param timestamp Database column timestamp SqlType(timestamp)
+   *  @param validationPass Database column validation_pass SqlType(int4)
+   *  @param fitness Database column fitness SqlType(varchar)
+   *  @param context Database column context SqlType(varchar), Default(None)
+   *  @param signature Database column signature SqlType(varchar), Default(None)
+   *  @param protocol Database column protocol SqlType(varchar)
+   *  @param chainId Database column chain_id SqlType(varchar), Default(None)
+   *  @param hash Database column hash SqlType(varchar)
+   *  @param operationsHash Database column operations_hash SqlType(varchar), Default(None)
+   *  @param periodKind Database column period_kind SqlType(varchar), Default(None)
+   *  @param currentExpectedQuorum Database column current_expected_quorum SqlType(int4), Default(None)
+   *  @param activeProposal Database column active_proposal SqlType(varchar), Default(None)
+   *  @param baker Database column baker SqlType(varchar), Default(None)
+   *  @param nonceHash Database column nonce_hash SqlType(varchar), Default(None)
+   *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
+   *  @param metaLevel Database column meta_level SqlType(int4), Default(None)
+   *  @param metaLevelPosition Database column meta_level_position SqlType(int4), Default(None)
+   *  @param metaCycle Database column meta_cycle SqlType(int4), Default(None)
+   *  @param metaCyclePosition Database column meta_cycle_position SqlType(int4), Default(None)
+   *  @param metaVotingPeriod Database column meta_voting_period SqlType(int4), Default(None)
+   *  @param metaVotingPeriodPosition Database column meta_voting_period_position SqlType(int4), Default(None)
+   *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None)
+   *  @param priority Database column priority SqlType(int4), Default(None) */
   case class BlocksRow(level: Int, proto: Int, predecessor: String, timestamp: java.sql.Timestamp, validationPass: Int, fitness: String, context: Option[String] = None, signature: Option[String] = None, protocol: String, chainId: Option[String] = None, hash: String, operationsHash: Option[String] = None, periodKind: Option[String] = None, currentExpectedQuorum: Option[Int] = None, activeProposal: Option[String] = None, baker: Option[String] = None, nonceHash: Option[String] = None, consumedGas: Option[scala.math.BigDecimal] = None, metaLevel: Option[Int] = None, metaLevelPosition: Option[Int] = None, metaCycle: Option[Int] = None, metaCyclePosition: Option[Int] = None, metaVotingPeriod: Option[Int] = None, metaVotingPeriodPosition: Option[Int] = None, expectedCommitment: Option[Boolean] = None, priority: Option[Int] = None)
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
   implicit def GetResultBlocksRow(implicit e0: GR[Int], e1: GR[String], e2: GR[java.sql.Timestamp], e3: GR[Option[String]], e4: GR[Option[Int]], e5: GR[Option[scala.math.BigDecimal]], e6: GR[Option[Boolean]]): GR[BlocksRow] = GR{
     prs => import prs._
-      BlocksRow(<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Boolean], <<?[Int])
+    BlocksRow(<<[Int], <<[Int], <<[String], <<[java.sql.Timestamp], <<[Int], <<[String], <<?[String], <<?[String], <<[String], <<?[String], <<[String], <<?[String], <<?[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Int], <<?[Boolean], <<?[Int])
   }
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
@@ -348,13 +348,13 @@ trait Tables {
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
   /** Entity class storing rows of table DelegatedContracts
-    *  @param accountId Database column account_id SqlType(varchar)
-    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None) */
+   *  @param accountId Database column account_id SqlType(varchar)
+   *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None) */
   case class DelegatedContractsRow(accountId: String, delegateValue: Option[String] = None)
   /** GetResult implicit for fetching DelegatedContractsRow objects using plain SQL queries */
   implicit def GetResultDelegatedContractsRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[DelegatedContractsRow] = GR{
     prs => import prs._
-      DelegatedContractsRow.tupled((<<[String], <<?[String]))
+    DelegatedContractsRow.tupled((<<[String], <<?[String]))
   }
   /** Table description of table delegated_contracts. Objects of this class serve as prototypes for rows in queries. */
   class DelegatedContracts(_tableTag: Tag) extends profile.api.Table[DelegatedContractsRow](_tableTag, "delegated_contracts") {
@@ -376,20 +376,20 @@ trait Tables {
   lazy val DelegatedContracts = new TableQuery(tag => new DelegatedContracts(tag))
 
   /** Entity class storing rows of table Delegates
-    *  @param pkh Database column pkh SqlType(varchar), PrimaryKey
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param balance Database column balance SqlType(numeric), Default(None)
-    *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
-    *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
-    *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
-    *  @param deactivated Database column deactivated SqlType(bool)
-    *  @param gracePeriod Database column grace_period SqlType(int4)
-    *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
+   *  @param pkh Database column pkh SqlType(varchar), PrimaryKey
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param balance Database column balance SqlType(numeric), Default(None)
+   *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
+   *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
+   *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
+   *  @param deactivated Database column deactivated SqlType(bool)
+   *  @param gracePeriod Database column grace_period SqlType(int4)
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
   case class DelegatesRow(pkh: String, blockId: String, balance: Option[scala.math.BigDecimal] = None, frozenBalance: Option[scala.math.BigDecimal] = None, stakingBalance: Option[scala.math.BigDecimal] = None, delegatedBalance: Option[scala.math.BigDecimal] = None, deactivated: Boolean, gracePeriod: Int, blockLevel: Int = -1)
   /** GetResult implicit for fetching DelegatesRow objects using plain SQL queries */
   implicit def GetResultDelegatesRow(implicit e0: GR[String], e1: GR[Option[scala.math.BigDecimal]], e2: GR[Boolean], e3: GR[Int]): GR[DelegatesRow] = GR{
     prs => import prs._
-      DelegatesRow.tupled((<<[String], <<[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<[Boolean], <<[Int], <<[Int]))
+    DelegatesRow.tupled((<<[String], <<[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<[Boolean], <<[Int], <<[Int]))
   }
   /** Table description of table delegates. Objects of this class serve as prototypes for rows in queries. */
   class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, "delegates") {
@@ -423,14 +423,14 @@ trait Tables {
   lazy val Delegates = new TableQuery(tag => new Delegates(tag))
 
   /** Entity class storing rows of table DelegatesCheckpoint
-    *  @param delegatePkh Database column delegate_pkh SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
+   *  @param delegatePkh Database column delegate_pkh SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
   case class DelegatesCheckpointRow(delegatePkh: String, blockId: String, blockLevel: Int = -1)
   /** GetResult implicit for fetching DelegatesCheckpointRow objects using plain SQL queries */
   implicit def GetResultDelegatesCheckpointRow(implicit e0: GR[String], e1: GR[Int]): GR[DelegatesCheckpointRow] = GR{
     prs => import prs._
-      DelegatesCheckpointRow.tupled((<<[String], <<[String], <<[Int]))
+    DelegatesCheckpointRow.tupled((<<[String], <<[String], <<[Int]))
   }
   /** Table description of table delegates_checkpoint. Objects of this class serve as prototypes for rows in queries. */
   class DelegatesCheckpoint(_tableTag: Tag) extends profile.api.Table[DelegatesCheckpointRow](_tableTag, "delegates_checkpoint") {
@@ -455,16 +455,16 @@ trait Tables {
   lazy val DelegatesCheckpoint = new TableQuery(tag => new DelegatesCheckpoint(tag))
 
   /** Entity class storing rows of table Fees
-    *  @param low Database column low SqlType(int4)
-    *  @param medium Database column medium SqlType(int4)
-    *  @param high Database column high SqlType(int4)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param kind Database column kind SqlType(varchar) */
+   *  @param low Database column low SqlType(int4)
+   *  @param medium Database column medium SqlType(int4)
+   *  @param high Database column high SqlType(int4)
+   *  @param timestamp Database column timestamp SqlType(timestamp)
+   *  @param kind Database column kind SqlType(varchar) */
   case class FeesRow(low: Int, medium: Int, high: Int, timestamp: java.sql.Timestamp, kind: String)
   /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
   implicit def GetResultFeesRow(implicit e0: GR[Int], e1: GR[java.sql.Timestamp], e2: GR[String]): GR[FeesRow] = GR{
     prs => import prs._
-      FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String]))
+    FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String]))
   }
   /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
   class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, "fees") {
@@ -487,18 +487,18 @@ trait Tables {
   lazy val Fees = new TableQuery(tag => new Fees(tag))
 
   /** Entity class storing rows of table OperationGroups
-    *  @param protocol Database column protocol SqlType(varchar)
-    *  @param chainId Database column chain_id SqlType(varchar), Default(None)
-    *  @param hash Database column hash SqlType(varchar), PrimaryKey
-    *  @param branch Database column branch SqlType(varchar)
-    *  @param signature Database column signature SqlType(varchar), Default(None)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4) */
+   *  @param protocol Database column protocol SqlType(varchar)
+   *  @param chainId Database column chain_id SqlType(varchar), Default(None)
+   *  @param hash Database column hash SqlType(varchar), PrimaryKey
+   *  @param branch Database column branch SqlType(varchar)
+   *  @param signature Database column signature SqlType(varchar), Default(None)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4) */
   case class OperationGroupsRow(protocol: String, chainId: Option[String] = None, hash: String, branch: String, signature: Option[String] = None, blockId: String, blockLevel: Int)
   /** GetResult implicit for fetching OperationGroupsRow objects using plain SQL queries */
   implicit def GetResultOperationGroupsRow(implicit e0: GR[String], e1: GR[Option[String]], e2: GR[Int]): GR[OperationGroupsRow] = GR{
     prs => import prs._
-      OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String], <<[Int]))
+    OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String], <<[Int]))
   }
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
   class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
@@ -531,44 +531,44 @@ trait Tables {
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
   /** Entity class storing rows of table Operations
-    *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
-    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
-    *  @param kind Database column kind SqlType(varchar)
-    *  @param level Database column level SqlType(int4), Default(None)
-    *  @param delegate Database column delegate SqlType(varchar), Default(None)
-    *  @param slots Database column slots SqlType(varchar), Default(None)
-    *  @param nonce Database column nonce SqlType(varchar), Default(None)
-    *  @param pkh Database column pkh SqlType(varchar), Default(None)
-    *  @param secret Database column secret SqlType(varchar), Default(None)
-    *  @param source Database column source SqlType(varchar), Default(None)
-    *  @param fee Database column fee SqlType(numeric), Default(None)
-    *  @param counter Database column counter SqlType(numeric), Default(None)
-    *  @param gasLimit Database column gas_limit SqlType(numeric), Default(None)
-    *  @param storageLimit Database column storage_limit SqlType(numeric), Default(None)
-    *  @param publicKey Database column public_key SqlType(varchar), Default(None)
-    *  @param amount Database column amount SqlType(numeric), Default(None)
-    *  @param destination Database column destination SqlType(varchar), Default(None)
-    *  @param parameters Database column parameters SqlType(varchar), Default(None)
-    *  @param managerPubkey Database column manager_pubkey SqlType(varchar), Default(None)
-    *  @param balance Database column balance SqlType(numeric), Default(None)
-    *  @param spendable Database column spendable SqlType(bool), Default(None)
-    *  @param delegatable Database column delegatable SqlType(bool), Default(None)
-    *  @param script Database column script SqlType(varchar), Default(None)
-    *  @param storage Database column storage SqlType(varchar), Default(None)
-    *  @param status Database column status SqlType(varchar), Default(None)
-    *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
-    *  @param storageSize Database column storage_size SqlType(numeric), Default(None)
-    *  @param paidStorageSizeDiff Database column paid_storage_size_diff SqlType(numeric), Default(None)
-    *  @param originatedContracts Database column originated_contracts SqlType(varchar), Default(None)
-    *  @param blockHash Database column block_hash SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param internal Database column internal SqlType(bool) */
+   *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
+   *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
+   *  @param kind Database column kind SqlType(varchar)
+   *  @param level Database column level SqlType(int4), Default(None)
+   *  @param delegate Database column delegate SqlType(varchar), Default(None)
+   *  @param slots Database column slots SqlType(varchar), Default(None)
+   *  @param nonce Database column nonce SqlType(varchar), Default(None)
+   *  @param pkh Database column pkh SqlType(varchar), Default(None)
+   *  @param secret Database column secret SqlType(varchar), Default(None)
+   *  @param source Database column source SqlType(varchar), Default(None)
+   *  @param fee Database column fee SqlType(numeric), Default(None)
+   *  @param counter Database column counter SqlType(numeric), Default(None)
+   *  @param gasLimit Database column gas_limit SqlType(numeric), Default(None)
+   *  @param storageLimit Database column storage_limit SqlType(numeric), Default(None)
+   *  @param publicKey Database column public_key SqlType(varchar), Default(None)
+   *  @param amount Database column amount SqlType(numeric), Default(None)
+   *  @param destination Database column destination SqlType(varchar), Default(None)
+   *  @param parameters Database column parameters SqlType(varchar), Default(None)
+   *  @param managerPubkey Database column manager_pubkey SqlType(varchar), Default(None)
+   *  @param balance Database column balance SqlType(numeric), Default(None)
+   *  @param spendable Database column spendable SqlType(bool), Default(None)
+   *  @param delegatable Database column delegatable SqlType(bool), Default(None)
+   *  @param script Database column script SqlType(varchar), Default(None)
+   *  @param storage Database column storage SqlType(varchar), Default(None)
+   *  @param status Database column status SqlType(varchar), Default(None)
+   *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
+   *  @param storageSize Database column storage_size SqlType(numeric), Default(None)
+   *  @param paidStorageSizeDiff Database column paid_storage_size_diff SqlType(numeric), Default(None)
+   *  @param originatedContracts Database column originated_contracts SqlType(varchar), Default(None)
+   *  @param blockHash Database column block_hash SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4)
+   *  @param timestamp Database column timestamp SqlType(timestamp)
+   *  @param internal Database column internal SqlType(bool) */
   case class OperationsRow(operationId: Int, operationGroupHash: String, kind: String, level: Option[Int] = None, delegate: Option[String] = None, slots: Option[String] = None, nonce: Option[String] = None, pkh: Option[String] = None, secret: Option[String] = None, source: Option[String] = None, fee: Option[scala.math.BigDecimal] = None, counter: Option[scala.math.BigDecimal] = None, gasLimit: Option[scala.math.BigDecimal] = None, storageLimit: Option[scala.math.BigDecimal] = None, publicKey: Option[String] = None, amount: Option[scala.math.BigDecimal] = None, destination: Option[String] = None, parameters: Option[String] = None, managerPubkey: Option[String] = None, balance: Option[scala.math.BigDecimal] = None, spendable: Option[Boolean] = None, delegatable: Option[Boolean] = None, script: Option[String] = None, storage: Option[String] = None, status: Option[String] = None, consumedGas: Option[scala.math.BigDecimal] = None, storageSize: Option[scala.math.BigDecimal] = None, paidStorageSizeDiff: Option[scala.math.BigDecimal] = None, originatedContracts: Option[String] = None, blockHash: String, blockLevel: Int, timestamp: java.sql.Timestamp, internal: Boolean)
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[Int]], e3: GR[Option[String]], e4: GR[Option[scala.math.BigDecimal]], e5: GR[Option[Boolean]], e6: GR[java.sql.Timestamp], e7: GR[Boolean]): GR[OperationsRow] = GR{
     prs => import prs._
-      OperationsRow(<<[Int], <<[String], <<[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[scala.math.BigDecimal], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[Boolean], <<?[Boolean], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<[String], <<[Int], <<[java.sql.Timestamp], <<[Boolean])
+    OperationsRow(<<[Int], <<[String], <<[String], <<?[Int], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[scala.math.BigDecimal], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[Boolean], <<?[Boolean], <<?[String], <<?[String], <<?[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<[String], <<[Int], <<[java.sql.Timestamp], <<[Boolean])
   }
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
@@ -661,15 +661,15 @@ trait Tables {
   lazy val Operations = new TableQuery(tag => new Operations(tag))
 
   /** Entity class storing rows of table Proposals
-    *  @param protocolHash Database column protocol_hash SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4)
-    *  @param supporters Database column supporters SqlType(int4), Default(None) */
+   *  @param protocolHash Database column protocol_hash SqlType(varchar)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4)
+   *  @param supporters Database column supporters SqlType(int4), Default(None) */
   case class ProposalsRow(protocolHash: String, blockId: String, blockLevel: Int, supporters: Option[Int] = None)
   /** GetResult implicit for fetching ProposalsRow objects using plain SQL queries */
   implicit def GetResultProposalsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[Int]]): GR[ProposalsRow] = GR{
     prs => import prs._
-      ProposalsRow.tupled((<<[String], <<[String], <<[Int], <<?[Int]))
+    ProposalsRow.tupled((<<[String], <<[String], <<[Int], <<?[Int]))
   }
   /** Table description of table proposals. Objects of this class serve as prototypes for rows in queries. */
   class Proposals(_tableTag: Tag) extends profile.api.Table[ProposalsRow](_tableTag, "proposals") {
@@ -696,15 +696,15 @@ trait Tables {
   lazy val Proposals = new TableQuery(tag => new Proposals(tag))
 
   /** Entity class storing rows of table Rolls
-    *  @param pkh Database column pkh SqlType(varchar)
-    *  @param rolls Database column rolls SqlType(int4)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4) */
+   *  @param pkh Database column pkh SqlType(varchar)
+   *  @param rolls Database column rolls SqlType(int4)
+   *  @param blockId Database column block_id SqlType(varchar)
+   *  @param blockLevel Database column block_level SqlType(int4) */
   case class RollsRow(pkh: String, rolls: Int, blockId: String, blockLevel: Int)
   /** GetResult implicit for fetching RollsRow objects using plain SQL queries */
   implicit def GetResultRollsRow(implicit e0: GR[String], e1: GR[Int]): GR[RollsRow] = GR{
     prs => import prs._
-      RollsRow.tupled((<<[String], <<[Int], <<[String], <<[Int]))
+    RollsRow.tupled((<<[String], <<[Int], <<[String], <<[Int]))
   }
   /** Table description of table rolls. Objects of this class serve as prototypes for rows in queries. */
   class Rolls(_tableTag: Tag) extends profile.api.Table[RollsRow](_tableTag, "rolls") {
