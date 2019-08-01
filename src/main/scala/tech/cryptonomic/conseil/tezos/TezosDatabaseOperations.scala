@@ -2,7 +2,9 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
+import slick.jdbc.SQLActionBuilder
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.CollectionOps._
@@ -16,12 +18,10 @@ import cats._
 import cats.implicits._
 import cats.data.Kleisli
 import cats.effect.Async
-import mouse.any._
 import slickeffect.implicits._
-import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
-import tech.cryptonomic.conseil.tezos.Tables.OperationGroupsRow
-import tech.cryptonomic.conseil.tezos.Tables.OperationsRow
-import cats.syntax.IfApplyOps
+import mouse.any._
+import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder
+import ch.qos.logback.classic.db.names.TableName
 
 /**
   * Functions for writing Tezos data to a database.
@@ -647,14 +647,29 @@ object TezosDatabaseOperations extends LazyLogging {
       outputType: OutputType,
       limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
+    /* this will get into scope the conversion needed from TableRef to a full TableQuery
+     * so that we can ask for it using only the table name string
+     */
+    import tech.cryptonomic.conseil.tezos.DatabaseQueries._
 
-    val q = makeQuery(table, columns, aggregation)
-      .addPredicates(aggregation.flatMap(_.getPredicate) ::: predicates)
-      .addGroupBy(aggregation, columns)
-      .addOrdering(ordering)
-      .addLimit(limit)
+    val allPredicates = aggregation.flatMap(_.getPredicate) ::: predicates
+    val aggregationFields = aggregation.flatMap(_.getPredicate.map(_.field))
+    val toSqlString = (builder: SQLActionBuilder) => {
+      import builder._
+      if (queryParts.length == 1 && queryParts(0).isInstanceOf[String]) queryParts(0).asInstanceOf[String]
+      else queryParts.iterator.map(String.valueOf).mkString
+    }
+    val logGeneratedQuery = (builder: SQLActionBuilder) =>
+      logger.debug("Query with predicates generated for {} is:\n {}", table, toSqlString(builder))
+
+    val q = makeQuery(table, columns, aggregation)(TableRef(table))
+        .addPredicates(table, allPredicates)
+        .addGroupBy(table, aggregation, columns)
+        .addOrdering(table, ordering, aggregationFields.toSet)
+        .addLimit(limit) <| logGeneratedQuery
+
     if (outputType == OutputType.sql) {
-      DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
+      DBIO.successful(List(Map("sql" -> Some(toSqlString(q)))))
     } else {
       q.as[QueryResponse].map(_.toList)
     }

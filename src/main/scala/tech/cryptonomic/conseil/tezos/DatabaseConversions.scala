@@ -331,6 +331,12 @@ object DatabaseConversions {
     * thus we can't extract from those anyway.
     * We get back an empty List, where not applicable
     * We define a typeclass/trait that encodes the availability of balance updates, to reuse it for operations as well as blocks
+    * Example usages: in a separate module/object, both Blocks and Operations defines the appropriate lenses,
+    * the block also adds his hash to put into the `sourceHash`, while the operations leave it empty.
+    * In the latter case, the operation needs first be stored to get a db PK that will be then set on
+    * the converted  updates rows' `sourceId` field  in a second step.
+    * All of this to handle the fact that blocks and operations have differening key types, which needs be written
+    * differently in the row.
     * @tparam T the source type that contains the balance updates values
     * @tparam Label the source Label type, which has a `Show` contraint, to be representable as a string
     * @param balances an optic instance that lets extract the Map of tagged updates from the source

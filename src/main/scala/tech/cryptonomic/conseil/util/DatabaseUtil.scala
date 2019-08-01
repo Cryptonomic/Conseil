@@ -5,6 +5,7 @@ import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.tezos.Tables
 
 /**
   * Utility functions and members for common database operations.
@@ -12,10 +13,35 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
 object DatabaseUtil {
   lazy val db = Database.forConfig("conseildb")
 
+  trait QueryBuilder[+T <: Table[_]] {
+    def makeQuery(
+        table: String,
+        columns: List[String],
+        aggregation: List[Aggregation]
+    ): SQLActionBuilder
+
+    /* use this to know how the blocks invalidation table is named*/
+    protected lazy val invalidatedTableName =
+      Tables.InvalidatedBlocks.baseTableRow.tableName
+
+    /* use this to know how the invalidation column in the corresponding table is named*/
+    protected lazy val invalidatedColumnName =
+      Tables.InvalidatedBlocks.baseTableRow.isInvalidated.column.toString
+
+    /* use this to know how the foreign key to blocks in the invalidation table is named*/
+    protected lazy val blockFKColumnName =
+      Tables.InvalidatedBlocks.baseTableRow.hash.column.toString
+
+  }
+
   /**
     * Utility object for generic query composition with SQL interpolation
     */
   object QueryBuilder {
+
+    def fullyQualifyColumn(table: String) = (col: String) => s"$table.$col"
+    def fullyQualifyPredicate(table: String) =
+      (predicate: Predicate) => predicate.copy(field = fullyQualifyColumn(table)(predicate.field))
 
     /** Concatenates SQLActionsBuilders
       * Slick does not support easy concatenation of actions so we need this function based on https://github.com/slick/slick/issues/1161
@@ -69,24 +95,34 @@ object DatabaseUtil {
 
       /** Method for adding predicates to existing SQLAction
         *
+        * @param table the main table name
         * @param predicates list of predicates to add
         * @return new SQLActionBuilder containing given predicates
         */
-      def addPredicates(predicates: List[Predicate]): SQLActionBuilder =
-        concatenateSqlActions(action, makePredicates(predicates): _*)
+      def addPredicates(table: String, predicates: List[Predicate]): SQLActionBuilder =
+        concatenateSqlActions(action, makePredicates(predicates.map(fullyQualifyPredicate(table))): _*)
 
       /** Method for adding ordering to existing SQLAction
         *
+        * @param table the main table name
         * @param ordering list of QueryOrdering to add
         * @return new SQLActionBuilder containing ordering statements
         */
-      def addOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-        val queryOrdering = if (ordering.isEmpty) {
-          List.empty
+      def addOrdering(
+          table: String,
+          ordering: List[QueryOrdering],
+          fieldForAggregation: Set[String]
+      ): SQLActionBuilder = {
+        val qualify = fullyQualifyColumn(table)
+        if (ordering.isEmpty) {
+          action
         } else {
-          List(makeOrdering(ordering))
+          val qualified = ordering.collect {
+            case q @ QueryOrdering(field, dir) if fieldForAggregation(field) => q.copy(field = qualify(field))
+            case q => q
+          }
+          concatenateSqlActions(action, makeOrdering(qualified))
         }
-        concatenateSqlActions(action, queryOrdering: _*)
       }
 
       /** Method for adding limit to existing SQLAction
@@ -99,13 +135,15 @@ object DatabaseUtil {
 
       /** Method for adding group by to existing SQLAction
         *
+        * @param table the main table name
         * @param aggregation parameter containing info about field which has to be aggregated
         * @param columns     parameter containing columns which chich are being used in query
         * @return new SQLActionBuilder containing limit statement
         */
-      def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
+      def addGroupBy(table: String, aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
+        val qualify = fullyQualifyColumn(table)
         val aggregationFields = aggregation.map(_.field).toSet
-        val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).toList
+        val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).map(qualify).toList
         if (aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
           action
         } else {
@@ -134,14 +172,16 @@ object DatabaseUtil {
       * @param table   table on which query will be executed
       * @param columns columns which are selected from teh table
       * @param aggregation parameter containing info about field which has to be aggregated
+      * @param builder is an implicit instance needed to actually make the query
+      * @tparam T is a type placeholder for a real table definition needed to find a query builder
       * @return SQLAction with basic query
       */
-    def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
-      val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(aggr.function, aggr.field))
-      val aggr = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).toList
-      val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
-      sql"""SELECT #$cols FROM #$table WHERE true """
-    }
+    def makeQuery[T <: Table[_]](
+        table: String,
+        columns: List[String],
+        aggregation: List[Aggregation]
+    )(implicit builder: QueryBuilder[T]): SQLActionBuilder =
+      builder.makeQuery(table, columns, aggregation)
 
     /** Prepares ordering parameters
       *
@@ -149,7 +189,7 @@ object DatabaseUtil {
       * @return SQLAction with ordering
       */
     def makeOrdering(ordering: List[QueryOrdering]): SQLActionBuilder = {
-      val orderingBy = ordering.map(ord => s"${ord.field} ${ord.direction}").mkString(",")
+      val orderingBy = ordering.map(ord => s"${ord.field} ${ord.direction}").mkString(", ")
       sql""" ORDER BY #$orderingBy"""
     }
 
@@ -167,20 +207,20 @@ object DatabaseUtil {
       * @return SQLAction with group by
       */
     def makeGroupBy(columns: List[String]): SQLActionBuilder =
-      sql""" GROUP BY #${columns.mkString(",")}"""
+      sql""" GROUP BY #${columns.mkString(", ")}"""
 
     /** maps aggregation operation to the SQL function*/
-    private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
+    def mapAggregationToSQL(qualify: String => String)(aggregationType: AggregationType, column: String): String =
       aggregationType match {
-        case AggregationType.sum => s"SUM($column) as sum_$column"
-        case AggregationType.count => s"COUNT($column) as count_$column"
-        case AggregationType.max => s"MAX($column) as max_$column"
-        case AggregationType.min => s"MIN($column) as min_$column"
-        case AggregationType.avg => s"AVG($column) as avg_$column"
+        case AggregationType.sum => s"SUM(${qualify(column)}) as sum_$column"
+        case AggregationType.count => s"COUNT(${qualify(column)}) as count_$column"
+        case AggregationType.max => s"MAX(${qualify(column)}) as max_$column"
+        case AggregationType.min => s"MIN(${qualify(column)}) as min_$column"
+        case AggregationType.avg => s"AVG(${qualify(column)}) as avg_$column"
       }
 
     /** maps operation type to SQL operation */
-    private def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
+    def mapOperationToSQL(operation: OperationType, inverse: Boolean, vals: List[String]): SQLActionBuilder = {
       val op = operation match {
         case OperationType.between => sql"BETWEEN '#${vals.head}' AND '#${vals(1)}'"
         case OperationType.in => concatenateSqlActions(sql"IN ", insertValuesIntoSqlAction(vals))

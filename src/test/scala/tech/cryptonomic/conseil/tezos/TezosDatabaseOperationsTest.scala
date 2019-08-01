@@ -990,40 +990,42 @@ class TezosDatabaseOperationsTest
         val blocks = generateBlockRows(2, testReferenceTimestamp).take(2)
         val groups = generateOperationGroupRows(blocks: _*)
 
-        val ops = blocks.zip(groups).map {
-          case (block, group) =>
+        val ops = blocks
+          .zip(groups)
+          .map {
+            case (block, group) =>
+              val rnd = new Random(randomSeed.seed)
 
-            val rnd = new Random(randomSeed.seed)
-
-            val fees =
-              if (block.level == 0)
-                Seq(
-                  Some(BigDecimal(35.23)),
-                  Some(BigDecimal(12.01)),
-                  Some(BigDecimal(2.22)),
-                  Some(BigDecimal(150.01)),
-                  None,
-                  Some(BigDecimal(1020.30)),
-                  Some(BigDecimal(1.00)),
-                  None
-                )
-              else
-                Seq(
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble)),
-                  Some(BigDecimal(rnd.nextDouble))
-                )
-            wrapFeesWithOperations(fees, block, group)
-        }.flatten
+              val fees =
+                if (block.level == 0)
+                  Seq(
+                    Some(BigDecimal(35.23)),
+                    Some(BigDecimal(12.01)),
+                    Some(BigDecimal(2.22)),
+                    Some(BigDecimal(150.01)),
+                    None,
+                    Some(BigDecimal(1020.30)),
+                    Some(BigDecimal(1.00)),
+                    None
+                  )
+                else
+                  Seq(
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble)),
+                    Some(BigDecimal(rnd.nextDouble))
+                  )
+              wrapFeesWithOperations(fees, block, group)
+          }
+          .flatten
 
         //invalidates blocks after the first level
-        val invalidated = blocks.map {
-          block => Tables.InvalidatedBlocksRow(block.hash, block.level, block.level > 0)
+        val invalidated = blocks.map { block =>
+          Tables.InvalidatedBlocksRow(block.hash, block.level, block.level > 0)
         }
 
         val populate = for {
@@ -1041,7 +1043,8 @@ class TezosDatabaseOperationsTest
         // the sample std-dev should be 354.3, using correction formula
         val (mu, sigma) = (153, 332)
         val latest = new Timestamp(
-          ops.filter(_.level == Some(0))
+          ops
+            .filter(_.level == Some(0))
             .map(_.timestamp.getTime)
             .max
         )
@@ -2232,21 +2235,23 @@ class TezosDatabaseOperationsTest
         type AnyMap = Map[String, Any]
 
         import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
+        import tech.cryptonomic.conseil.tezos.DatabaseQueries._
+
         val columns = List("level", "proto", "protocol", "hash")
         val tableName = Tables.Blocks.baseTableRow.tableName
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
-          generatedQuery <- makeQuery(tableName, columns, List.empty).as[AnyMap]
+          generatedQuery <- makeQuery(tableName, columns, List.empty)(TableRef(tableName)).as[AnyMap]
         } yield generatedQuery
 
         val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
         val expectedQueryResult = dbHandler
           .run(
-            sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true"""
+            sql"""SELECT #${columns(0)}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true"""
               .as[AnyMap]
           )
           .futureValue
-        generatedQueryResult shouldBe expectedQueryResult
+        generatedQueryResult should contain theSameElementsAs expectedQueryResult
       }
 
       "get map from a block table and sort by level in ascending order" in {
@@ -2406,7 +2411,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should aggregate with COUNT function" in {
+      "aggregate with COUNT function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2438,7 +2443,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should aggregate with MAX function" in {
+      "aggregate with MAX function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2470,7 +2475,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should aggregate with MIN function" in {
+      "aggregate with MIN function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2502,7 +2507,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should aggregate with SUM function" in {
+      "aggregate with SUM function" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2534,7 +2539,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should aggregate with SUM function and order by SUM()" in {
+      "aggregate with SUM function and order by SUM()" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2566,7 +2571,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should order correctly by the field not existing in query)" in {
+      "order correctly by the field not existing in query)" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2595,7 +2600,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should correctly check use between in the timestamps" in {
+      "correctly check use between in the timestamps" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(2), "kind"),
@@ -2631,7 +2636,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
+      "correctly execute BETWEEN operation using numeric comparison instead of lexicographical" in {
         val feesTmp = List(
           FeesRow(0, 0, 0, new Timestamp(0), "kind"),
           FeesRow(0, 0, 10, new Timestamp(3), "kind"),
@@ -2663,7 +2668,7 @@ class TezosDatabaseOperationsTest
         result shouldBe List(Map("high" -> Some(2)))
       }
 
-      "should return correct query when asked for SQL" in {
+      "return correct query when asked for SQL" in {
         val predicates = List(
           Predicate(
             field = "medium",
@@ -2692,7 +2697,7 @@ class TezosDatabaseOperationsTest
         )
 
         val expectedQuery =
-          "SELECT SUM(medium) as sum_medium,low,high FROM fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
+          "SELECT SUM(fees.medium) as sum_medium, fees.low, fees.high FROM fees WHERE true  AND fees.medium = '4' IS false AND fees.low BETWEEN '0' AND '1' GROUP BY fees.low, fees.high ORDER BY sum_medium desc LIMIT 3"
         val populateAndTest = for {
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
@@ -2711,7 +2716,7 @@ class TezosDatabaseOperationsTest
         result shouldBe List(Map("sql" -> Some(expectedQuery)))
       }
 
-      "should aggregate with multiple aggregations on the same field" in {
+      "aggregate with multiple aggregations on the same field" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
@@ -2744,7 +2749,7 @@ class TezosDatabaseOperationsTest
         )
       }
 
-      "should aggregate with single aggegation when there is only one field" in {
+      "aggregate with single aggegation when there is only one field" in {
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(1), "kind"),
