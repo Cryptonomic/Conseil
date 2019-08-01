@@ -106,19 +106,20 @@ object DatabaseUtil {
         *
         * @param table the main table name
         * @param ordering list of QueryOrdering to add
+        * @param nonAggregateFields fields not used for aggregate values
         * @return new SQLActionBuilder containing ordering statements
         */
       def addOrdering(
           table: String,
           ordering: List[QueryOrdering],
-          fieldForAggregation: Set[String]
+          nonAggregateFields: Set[String]
       ): SQLActionBuilder = {
         val qualify = fullyQualifyColumn(table)
         if (ordering.isEmpty) {
           action
         } else {
           val qualified = ordering.collect {
-            case q @ QueryOrdering(field, dir) if fieldForAggregation(field) => q.copy(field = qualify(field))
+            case q @ QueryOrdering(field, dir) if nonAggregateFields(field) => q.copy(field = qualify(field))
             case q => q
           }
           concatenateSqlActions(action, makeOrdering(qualified))

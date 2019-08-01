@@ -653,7 +653,7 @@ object TezosDatabaseOperations extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.DatabaseQueries._
 
     val allPredicates = aggregation.flatMap(_.getPredicate) ::: predicates
-    val aggregationFields = aggregation.flatMap(_.getPredicate.map(_.field))
+    val nonAggregatedFields = columns.toSet diff aggregation.flatMap(_.getPredicate.map(_.field)).toSet
     val toSqlString = (builder: SQLActionBuilder) => {
       import builder._
       if (queryParts.length == 1 && queryParts(0).isInstanceOf[String]) queryParts(0).asInstanceOf[String]
@@ -665,7 +665,7 @@ object TezosDatabaseOperations extends LazyLogging {
     val q = makeQuery(table, columns, aggregation)(TableRef(table))
         .addPredicates(table, allPredicates)
         .addGroupBy(table, aggregation, columns)
-        .addOrdering(table, ordering, aggregationFields.toSet)
+        .addOrdering(table, ordering, nonAggregatedFields)
         .addLimit(limit) <| logGeneratedQuery
 
     if (outputType == OutputType.sql) {
