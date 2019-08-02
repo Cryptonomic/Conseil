@@ -59,7 +59,7 @@ Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to det
 
 ### Configuration
 
-`conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Typesafe Config](https://github.com/lightbend/config) github page.
+`conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Lightbend Config](https://github.com/lightbend/config) github page.
 
 ### Metadata overrides
 
