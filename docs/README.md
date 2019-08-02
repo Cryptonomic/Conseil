@@ -86,7 +86,7 @@ These overrides are available at all levels.
 - `currency-symbol`: Associated with Currency type fields, contains currency symbol or code, for example, 'XTZ', or 'ꜩ'
 - `currency-symbol-code`: Same as `currency-symbol`, but stores the Unicode code point of the currency symbol, for 'ꜩ' it would be `42793`
 - `data-format`: Presently used to customize date format. String contents of this item have no impact on how the data is sent or queried, it would be up to the implementing UI to interpret this content.
-- `display-order`: Hints to a UI as to the order in which the fields should appear by default.
+- `display-order`: Hints to a UI as to the order in which the fields should appear by default. Lower ordered items would be presented first.
 - `display-priority`: Hints to the UI the relative priority of the data, allowing lower priority information that could be removed due to space constraints while keeping more relevant things in view.
 - `data-type`: One of: DateTime, String, Int, Decimal, Boolean, Hash, AccountAddress, Currency.
 - `placeholder`: Intended to be used for sample values that might appear as placeholder text in search boxes.
