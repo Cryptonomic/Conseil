@@ -441,6 +441,37 @@ class DataTypesTest
           aggregation = List(Aggregation("validAttribute", AggregationType.count))
         )
       }
+      "correctly aggregate field with currency data type" in {
+        val attribute = Attribute(
+          name = "valid",
+          displayName = "Valid",
+          dataType = DataType.Currency,
+          cardinality = None,
+          keyType = KeyType.UniqueKey,
+          entity = "testEntity"
+        )
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
+
+        val query = ApiQuery(
+          fields = Some(List("valid")),
+          predicates = None,
+          orderBy = None,
+          limit = None,
+          output = None,
+          aggregation = Some(List(ApiAggregation(field = "valid")))
+        )
+
+        val result = query.validate(testEntityPath, metadataService)
+
+        result.futureValue.right.get shouldBe Query(
+          fields = List("valid"),
+          aggregation = List(Aggregation("valid", AggregationType.sum))
+        )
+      }
 
     }
 }
