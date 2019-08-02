@@ -2,7 +2,7 @@
 
 A blockchain indexer & API for building decentralized applications, currently focused on Tezos.
 
-Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the backbone of Cryptonomic's product offerings. The [Arronax](https://arronax-beta.cryptonomic.tech) block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &ndash; a Typescript wrapper with a Tezos node interface.
+Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the backbone of Cryptonomic's product offerings. The [Arronax](https://arronax-beta.cryptonomic.tech) block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &mdash; a Typescript wrapper with a Tezos node interface.
 
 ## Components
 
