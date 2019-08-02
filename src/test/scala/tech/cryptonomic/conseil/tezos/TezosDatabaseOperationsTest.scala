@@ -1598,6 +1598,243 @@ class TezosDatabaseOperationsTest
         )
       }
 
+      "get map from a block table and ignore invalidated blocks in results" in {
+        val columns = List("level", "proto")
+        val predicates = List()
+        val sortBy = List(
+          QueryOrdering(
+            field = "level",
+            direction = OrderDirection.asc
+          )
+        )
+
+        val invalidatedHash = "aQeGrbXCmF"
+
+        val blocksTmp2 = blocksTmp.head.copy(level = 2, proto = 2, hash = invalidatedHash) :: blocksTmp
+        val invalidations =
+          blocksTmp2.map { block =>
+            Tables.InvalidatedBlocksRow(
+              hash = block.hash,
+              level = block.level,
+              isInvalidated = block.hash == invalidatedHash
+            )
+          }.take(2)
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks ++= blocksTmp2
+          _ <- Tables.InvalidatedBlocks ++= invalidations
+          found <- sut.selectWithPredicates(
+            Tables.Blocks.baseTableRow.tableName,
+            columns,
+            predicates,
+            sortBy,
+            List.empty,
+            OutputType.json,
+            3
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+        result shouldBe List(
+          Map("level" -> Some(0), "proto" -> Some(1)),
+          Map("level" -> Some(1), "proto" -> Some(1))
+        )
+      }
+
+      "get map from balance updates complex query ignoring those for invalidated blocks" in {
+        val columns = List("source", "kind")
+        val predicates = List(
+          Predicate(
+            field = "kind",
+            operation = OperationType.in,
+            set = List("freezer", "contract"),
+            inverse = false
+          )
+        )
+        val sortBy = List(
+          QueryOrdering(
+            field = "id",
+            direction = OrderDirection.asc
+          )
+        )
+
+        val invalidatedHash = "aQeGrbXCmF"
+        val blocksTmp2 = blocksTmp.head.copy(level = 2, proto = 2, hash = invalidatedHash) :: blocksTmp
+        val invalidations =
+          blocksTmp2.map { block =>
+            Tables.InvalidatedBlocksRow(
+              hash = block.hash,
+              level = block.level,
+              isInvalidated = block.hash == invalidatedHash
+            )
+          }.take(2)
+
+        val group = Tables.OperationGroupsRow(
+          protocol = "protocol",
+          hash = "groupHash",
+          branch = "branch",
+          blockId = invalidatedHash,
+          blockLevel = 2
+        )
+
+        val invalidatedOperation = Tables.OperationsRow(
+          operationId = 0,
+          operationGroupHash = group.hash,
+          kind = "kind",
+          blockHash = invalidatedHash,
+          blockLevel = 2,
+          timestamp = new Timestamp(0),
+          internal = false
+        )
+
+        val updates = List(
+          Tables.BalanceUpdatesRow(
+            id = 0,
+            source = "block",
+            sourceHash = Some(blocksTmp.head.hash),
+            kind = "contract",
+            contract = Some("contractHash"),
+            change = 5000
+          ),
+          Tables.BalanceUpdatesRow(
+            id = 1,
+            source = "block",
+            sourceHash = Some(invalidatedHash),
+            kind = "freezer",
+            change = -100
+          ),
+          Tables.BalanceUpdatesRow(
+            id = 2,
+            source = "operation",
+            sourceId = Some(invalidatedOperation.operationId),
+            kind = "freezer",
+            change = -100
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks ++= blocksTmp2
+          _ <- Tables.OperationGroups += group
+          _ <- Tables.Operations += invalidatedOperation
+          _ <- Tables.BalanceUpdates ++= updates
+          _ <- Tables.InvalidatedBlocks ++= invalidations
+          found <- sut.selectWithPredicates(
+            Tables.BalanceUpdates.baseTableRow.tableName,
+            columns,
+            predicates,
+            sortBy,
+            List.empty,
+            OutputType.json,
+            3
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+        result shouldBe List(
+          Map("source" -> Some("block"), "kind" -> Some("contract"))
+        )
+      }
+
+      "get map from delegated contracts query ignoring those for invalidated blocks" in {
+        val columns = List()
+        val predicates = List()
+        val sortBy = List(
+          QueryOrdering(
+            field = "delegate_value",
+            direction = OrderDirection.asc
+          )
+        )
+
+        val invalidatedHash = "aQeGrbXCmF"
+        val blocksTmp2 = blocksTmp.head.copy(level = 2, proto = 2, hash = invalidatedHash) :: blocksTmp
+        val invalidations =
+          blocksTmp2.map { block =>
+            Tables.InvalidatedBlocksRow(
+              hash = block.hash,
+              level = block.level,
+              isInvalidated = block.hash == invalidatedHash
+            )
+          }.take(2)
+
+        val delegates = List(
+          Tables.DelegatesRow(
+            pkh = "PKH-INV",
+            deactivated = false,
+            gracePeriod = 0,
+            blockId = invalidatedHash,
+            blockLevel = 2
+          ),
+          Tables.DelegatesRow(
+            pkh = "PKH",
+            deactivated = false,
+            gracePeriod = 0,
+            blockId = blocksTmp.head.hash,
+            blockLevel = blocksTmp.head.level
+          )
+        )
+
+        val accounts = List(
+          Tables.AccountsRow(
+            accountId = "accountid",
+            manager = "",
+            spendable = false,
+            delegateSetable = false,
+            counter = 0,
+            balance = 0,
+            blockId = blocksTmp.head.hash,
+            blockLevel = blocksTmp.head.level
+          ),
+          Tables.AccountsRow(
+            accountId = "accountid2",
+            manager = "",
+            spendable = false,
+            delegateSetable = false,
+            counter = 0,
+            balance = 0,
+            blockId = blocksTmp.last.hash,
+            blockLevel = blocksTmp.last.level
+          )
+        )
+
+        val contracts = List(
+          Tables.DelegatedContractsRow(
+            accountId = accounts.head.accountId,
+            delegateValue = Some("PKH")
+          ),
+          Tables.DelegatedContractsRow(
+            accountId = accounts.head.accountId,
+            delegateValue = Some("PKH-INV")
+          ),
+          Tables.DelegatedContractsRow(
+            accountId = accounts.last.accountId,
+            delegateValue = Some("PKH")
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks ++= blocksTmp2
+          _ <- Tables.InvalidatedBlocks ++= invalidations
+          _ <- Tables.Accounts ++= accounts
+          _ <- Tables.Delegates ++= delegates
+          _ <- Tables.DelegatedContracts ++= contracts
+          found <- sut.selectWithPredicates(
+            Tables.DelegatedContracts.baseTableRow.tableName,
+            columns,
+            predicates,
+            sortBy,
+            List.empty,
+            OutputType.json,
+            3
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+        result shouldBe List(
+          Map("account_id" -> Some("accountid"), "delegate_value" -> Some("PKH")),
+          Map("account_id" -> Some("accountid2"), "delegate_value" -> Some("PKH"))
+        )
+      }
+
       "get map from a block table with predicate" in {
         val columns = List("level", "proto", "protocol", "hash")
         val predicates = List(
@@ -2012,6 +2249,7 @@ class TezosDatabaseOperationsTest
           Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
         )
       }
+
       "get map from a block table with datetime field" in {
         val columns = List("level", "proto", "protocol", "hash", "timestamp")
         val predicates = List(
@@ -2047,6 +2285,7 @@ class TezosDatabaseOperationsTest
           )
         )
       }
+
       "get map from a block table with startsWith predicate" in {
         val columns = List("level", "proto", "protocol", "hash")
         val predicates = List(
@@ -2076,6 +2315,7 @@ class TezosDatabaseOperationsTest
           Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
         )
       }
+
       "get empty map from a block table with startsWith predicate" in {
         val columns = List("level", "proto", "protocol", "hash")
         val predicates = List(
@@ -2103,6 +2343,7 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe 'empty
       }
+
       "get map from a block table with endsWith predicate" in {
         val columns = List("level", "proto", "protocol", "hash")
         val predicates = List(
@@ -2231,7 +2472,7 @@ class TezosDatabaseOperationsTest
         result shouldBe 'empty
       }
 
-      "return the same results for the same query" in {
+      "return the same results as a manually built query" in {
         type AnyMap = Map[String, Any]
 
         import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._

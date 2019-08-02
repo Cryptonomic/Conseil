@@ -68,17 +68,31 @@ object DatabaseQueries extends LazyLogging {
       val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(qualify)(aggr.function, aggr.field))
       val projection = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).map(qualify).toList
       val cols = if (projection.isEmpty) qualify("*") else projection.mkString(", ")
+
       val balances = Tables.BalanceUpdates.baseTableRow
       val operations = Tables.Operations.baseTableRow
-      sql"""SELECT #$cols FROM #$table LEFT OUTER JOIN #$invalidatedTableName
-          | ON #${balances.sourceHash.column} = #$invalidatedColumnName
-          | WHERE COALESCE(#$invalidatedColumnName, false) is false
-          | UNION
-          | SELECT #$cols FROM #$table JOIN #${operations.tableName}
-          | ON #${balances.sourceId.column} = #${operations.operationId.column}
-          | LEFT OUTER JOIN #$invalidatedTableName
-          | ON #${operations.blockHash.column} = #$invalidatedColumnName
-          | WHERE COALESCE(#$invalidatedColumnName, false) is false """.stripMargin
+      val sourceCol = balances.source.column.toString()
+      val nestedOperationIdColumn = operations.operationId.column.toString().split('.').last
+
+      val nestedQuery =
+        s"""SELECT ${operations.operationId.column} FROM ${operations.tableName}
+         | LEFT OUTER JOIN $invalidatedTableName ON ${operations.blockHash.column} = $blockFKColumnName
+         | WHERE COALESCE($invalidatedColumnName, false) is false""".stripMargin
+
+      val blockJoin =
+        s"LEFT OUTER JOIN $invalidatedTableName ON ${balances.sourceHash.column} = $blockFKColumnName"
+      val nestedResultJoin =
+        s"LEFT OUTER JOIN valid_operation ON ${balances.sourceId.column} = valid_operation.$nestedOperationIdColumn"
+
+      sql"""WITH valid_operation AS (
+          |   #$nestedQuery
+          | )
+          | SELECT #$cols FROM #$table #$blockJoin #$nestedResultJoin
+          | WHERE (
+          |   #$sourceCol = 'block' AND COALESCE(#$invalidatedColumnName, false) is false
+          | ) OR (
+          |   #$sourceCol IN ('operation', 'operation_result') AND valid_operation.#$nestedOperationIdColumn is not null
+          | ) """.stripMargin
     }
   }
 
@@ -108,10 +122,10 @@ object DatabaseQueries extends LazyLogging {
       Tables.DelegatedContracts.baseTableRow.tableName ->
           blockValidityCheckerBuilder[Tables.DelegatedContracts](
             tableJoiner = (inv, fk) => {
-              val accounts = Tables.Accounts.baseTableRow
+              val delegates = Tables.Delegates.baseTableRow
               val delegated = Tables.DelegatedContracts.baseTableRow
-              s"""JOIN ${accounts.tableName} ON ${delegated.accountId.column} = ${accounts.accountId.column}
-                | LEFT OUTER JOIN $inv ON ${accounts.blockId.column} = $fk"""
+              s"""JOIN ${delegates.tableName} ON ${delegated.delegateValue.column} = ${delegates.pkh.column}
+                | LEFT OUTER JOIN $inv ON ${delegates.blockId.column} = $fk""".stripMargin
             }
           ),
       Tables.Delegates.baseTableRow.tableName ->
