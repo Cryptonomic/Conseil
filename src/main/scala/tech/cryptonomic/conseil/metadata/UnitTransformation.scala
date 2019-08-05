@@ -1,16 +1,41 @@
 package tech.cryptonomic.conseil.metadata
 
-import tech.cryptonomic.conseil.config.MetadataConfiguration
+import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.config.{MetadataConfiguration, PlatformConfiguration}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity, Network, Platform}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations.mapType
 import tech.cryptonomic.conseil.util.OptionUtil.when
 
 // class for applying overrides configurations
-class UnitTransformation(overrides: MetadataConfiguration) {
+class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
+
+  // overrides platforms
+  def overridePlatforms(platforms: List[Platform]): List[Platform] = {
+    logDifferences(platforms.map(_.path), overrides.allPlatforms.keys.toList)
+    platforms.flatMap(platform => overridePlatform(platform, PlatformPath(platform.name)))
+  }
+
+  // overrides networks
+  def overrideNetworks(platformPath: PlatformPath, networks: List[Network]): List[Network] = {
+    logDifferences(networks.map(_.path), overrides.networks(platformPath).keys.toList)
+    networks.flatMap(network => overrideNetwork(network, network.path))
+  }
+
+  // overrides entities
+  def overrideEntities(networkPath: NetworkPath, entities: List[Entity]): List[Entity] = {
+    logDifferences(entities.map(entity => networkPath.addLevel(entity.name)), overrides.entities(networkPath).keys.toList)
+    entities.flatMap(entity => overrideEntity(entity, networkPath.addLevel(entity.name)))
+  }
+
+  // overrides attributes
+  def overrideAttributes(path: EntityPath, attributes: List[Attribute]): List[Attribute] = {
+    logDifferences(attributes.map(attribute => path.addLevel(attribute.name)), overrides.attributes(path).keys.toList)
+    attributes.flatMap(attribute => overrideAttribute(attribute, path.addLevel(attribute.name)))
+  }
 
   // overrides platform
-  def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
-    val overridePlatform = overrides.platform(path)
+  private def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
+    val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
 
     platform.copy(
       displayName = overridePlatform
@@ -22,7 +47,7 @@ class UnitTransformation(overrides: MetadataConfiguration) {
   }
 
   // overrides network
-  def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {
+  private def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {
     val overrideNetwork = overrides.network(path)
 
     network.copy(
@@ -35,7 +60,7 @@ class UnitTransformation(overrides: MetadataConfiguration) {
   }
 
   // overrides entity
-  def overrideEntity(entity: Entity, path: EntityPath): Option[Entity] = when(overrides.isVisible(path)) {
+  private def overrideEntity(entity: Entity, path: EntityPath): Option[Entity] = when(overrides.isVisible(path)) {
     val overrideEntity = overrides.entity(path)
 
     entity.copy(
@@ -50,7 +75,7 @@ class UnitTransformation(overrides: MetadataConfiguration) {
   }
 
   // overrides attribute
-  def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] =
+  private def overrideAttribute(attribute: Attribute, path: AttributePath): Option[Attribute] =
     when(overrides.isVisible(path)) {
       val overrideAttribute = overrides.attribute(path)
 
@@ -69,4 +94,12 @@ class UnitTransformation(overrides: MetadataConfiguration) {
         currencySymbolCode = overrideAttribute.flatMap(_.currencySymbolCode)
       )
     }
+
+  private def logDifferences(paths: List[Path], overriddenPaths: List[Path]): Unit = {
+    (paths.toSet diff overriddenPaths.toSet)
+      .foreach(logger.warn("""There're missing metadata overrides for "{}"""", _))
+
+    (overriddenPaths.toSet diff paths.toSet)
+      .foreach(logger.error("""Metadata overrides "{}" override nothing""", _))
+  }
 }

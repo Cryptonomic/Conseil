@@ -4,13 +4,8 @@ import cats.effect.{ContextShift, IO}
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{
-  AttributesValidationError,
-  HighCardinalityAttribute,
-  InvalidAttributeDataType,
-  InvalidAttributeFilterLength
-}
-import tech.cryptonomic.conseil.generic.chain.MetadataOperations
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
@@ -46,12 +41,12 @@ object TezosPlatformDiscoveryOperations {
 
 /** Class providing the implementation of the metadata calls with caching */
 class TezosPlatformDiscoveryOperations(
-  metadataOperations: MetadataOperations,
-  caching: MetadataCaching[IO],
-  cacheOverrides: AttributeValuesCacheConfiguration,
-  cacheTTL: FiniteDuration,
-  networkName: String = "notUsed"
-)(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]) {
+    metadataOperations: MetadataOperations,
+    caching: MetadataCaching[IO],
+    cacheOverrides: AttributeValuesCacheConfiguration,
+    cacheTTL: FiniteDuration,
+    networkName: String = "notUsed"
+)(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]) extends PlatformDiscoveryOperations {
 
   import MetadataCaching._
   import cats.effect._
@@ -152,29 +147,12 @@ class TezosPlatformDiscoveryOperations(
       }
     }.map(_.toMap)
 
-  /** Checks if attribute is valid for given entity
-    *
-    * @param tableName  name of the table(entity) which needs to be checked
-    * @param columnName name of the column(attribute) which needs to be checked
-    * @return boolean which tells us if attribute is valid for given entity
-    */
-  def isAttributeValid(tableName: String, columnName: String): Future[Boolean] =
-    caching
-      .getAttributes(tableName)
-      .map { attributesOpt =>
-        attributesOpt.exists {
-          case CacheEntry(_, attributes) =>
-            attributes.exists(_.name == columnName)
-        }
-      }
-      .unsafeToFuture()
-
   /**
     * Extracts entities in the DB for the given network
     *
     * @return list of entities as a Future
     */
-  def getEntities: Future[List[Entity]] = {
+  override def getEntities: Future[List[Entity]] = {
     val result = for {
       entities <- caching.getEntities(networkName)
       res <- entities.traverse {
@@ -228,11 +206,11 @@ class TezosPlatformDiscoveryOperations(
     * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
     * */
-  def listAttributeValues(
-    tableName: String,
-    column: String,
-    withFilter: Option[String] = None,
-    attributesCacheConfig: Option[AttributeCacheConfiguration] = None
+  override def listAttributeValues(
+      tableName: String,
+      column: String,
+      withFilter: Option[String] = None,
+      attributesCacheConfig: Option[AttributeCacheConfiguration] = None
   ): Future[Either[List[AttributesValidationError], List[String]]] =
     getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap { attrOpt =>
         val res = (attributesCacheConfig, withFilter) match {
@@ -312,7 +290,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] =
+  override def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] =
     caching.getCachingStatus.map { status =>
       if (status == Finished) {
         caching
@@ -350,7 +328,7 @@ class TezosPlatformDiscoveryOperations(
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] =
+  override def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] =
     caching
       .getAttributes(tableName)
       .map { attrOpt =>

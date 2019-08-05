@@ -45,3 +45,13 @@ object Natural {
 }
 
 final case class VerboseOutput(on: Boolean) extends AnyVal
+
+/** configuration for fetching keys from nautilus cloud instance */
+final case class NautilusCloudConfiguration(
+    host: String,
+    port: Int,
+    path: String,
+    key: String,
+    delay: FiniteDuration,
+    interval: FiniteDuration
+)

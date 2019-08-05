@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Types.{AttributeName, EntityName, NetworkName, PlatformName}
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.AttributeCacheConfiguration
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{AttributeCacheConfiguration, Network}
 import tech.cryptonomic.conseil.metadata._
 
 object Types {
@@ -41,6 +41,11 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
     case (platformName, platformConfiguration) => PlatformPath(platformName) -> platformConfiguration
   }
 
+  // fetches networks based on a given path
+  def networks(path: PlatformPath): Map[NetworkPath, NetworkConfiguration] = allNetworks.collect {
+    case (networkPath @ NetworkPath(_, `path`), networkConfiguration) => networkPath -> networkConfiguration
+  }
+
   // fetches all networks
   def allNetworks: Map[NetworkPath, NetworkConfiguration] = allPlatforms.flatMap {
     case (platformPath, platformConfiguration) =>
@@ -49,12 +54,20 @@ case class MetadataConfiguration(metadataConfiguration: Map[PlatformName, Platfo
       }
   }
 
+  def entities(networkPath: NetworkPath): Map[EntityPath, EntityConfiguration] = allEntities.collect {
+    case (entityPath @ EntityPath(_, `networkPath`), entityConfiguration) => entityPath -> entityConfiguration
+  }
+
   // fetches all entities
   def allEntities: Map[EntityPath, EntityConfiguration] = allNetworks.flatMap {
     case (networkPath, networkConfiguration) =>
       networkConfiguration.entities.map {
         case (entityName, entityConfiguration) => (networkPath.addLevel(entityName), entityConfiguration)
       }
+  }
+
+  def attributes(path: EntityPath): Map[AttributePath, AttributeConfiguration] = allAttributes.collect {
+    case (attributePath @ AttributePath(_, `path`), attributeConfiguration) => attributePath -> attributeConfiguration
   }
 
   // fetches all attributes
