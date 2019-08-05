@@ -254,8 +254,8 @@ CREATE TABLE public.operations (
     originated_contracts character varying,
     block_hash character varying NOT NULL,
     block_level integer NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL,
-    ballot character varying
+    ballot character varying,
+    "timestamp" timestamp without time zone NOT NULL
 );
 
 
