@@ -90,7 +90,7 @@ These overrides are available at all levels.
 - `display-priority`: Hints to the UI the relative priority of the data, allowing lower priority information that could be removed due to space constraints while keeping more relevant things in view. In contrast to order, lower priority items would be dropped off the view first.
 - `data-type`: One of: DateTime, String, Int, Decimal, Boolean, Hash, AccountAddress, Currency.
 - `placeholder`: Intended to be used for sample values that might appear as placeholder text in search boxes.
-- `reference`
+- `reference`: Associates the field with an attribute of another entity. This is effectively a foreign key reference.
 - `scale`: Used with Decimal and Currency types to scale the value for display. This number is an `int` power of 10.
 
 
