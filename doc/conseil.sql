@@ -582,8 +582,8 @@ ALTER TABLE ONLY public.operations
 -- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.operations
-    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash) REFERENCES public.operation_groups(hash);
+--ALTER TABLE ONLY public.operations
+--    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash) REFERENCES public.operation_groups(hash);
 
 
 --
