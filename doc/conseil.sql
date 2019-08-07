@@ -342,8 +342,8 @@ ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval
 -- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.operation_groups
-    ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (hash);
+--ALTER TABLE ONLY public.operation_groups
+--    ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (hash);
 
 
 --
@@ -609,4 +609,3 @@ ALTER TABLE ONLY public.rolls
 --
 -- PostgreSQL database dump complete
 --
-
