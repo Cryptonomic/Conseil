@@ -30,6 +30,7 @@ object DataTypes {
       case AggregationType.max | AggregationType.min =>
         Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
       case AggregationType.avg | AggregationType.sum => Set(DataType.Decimal, DataType.Int, DataType.LargeInt)(dataType)
+      case AggregationType.datePart => dataType == DataType.DateTime
     }
   }
 
@@ -221,19 +222,21 @@ object DataTypes {
   case class ApiAggregation(
       field: String,
       function: AggregationType = AggregationType.sum,
-      predicate: Option[ApiAggregationPredicate] = None
+      predicate: Option[ApiAggregationPredicate] = None,
+      format: Option[String] = None
   ) {
 
     /** Transforms Aggregation received form API into Aggregation */
     def toAggregation: Aggregation =
-      Aggregation(field, function, predicate.map(_.toAggregationPredicate))
+      Aggregation(field, function, predicate.map(_.toAggregationPredicate), format)
   }
 
   /** Class representing aggregation */
   case class Aggregation(
       field: String,
       function: AggregationType = AggregationType.sum,
-      predicate: Option[AggregationPredicate] = None
+      predicate: Option[AggregationPredicate] = None,
+      format: Option[String] = None
   ) {
 
     /** Method extracting predicate from aggregation */
@@ -306,7 +309,7 @@ object DataTypes {
     /** Helper method for extracting prefixes needed for SQL */
     def prefixes: List[String] = values.toList.map(_.toString + "_")
     type AggregationType = Value
-    val sum, count, max, min, avg = Value
+    val sum, count, max, min, avg, datePart = Value
   }
 
 }

@@ -2820,6 +2820,120 @@ class TezosDatabaseOperationsTest
       )
     }
 
+    "should aggregate with datePart aggregation" in {
+      val oneDay = 3600 * 24 * 1000
+      val feesTmp = List(
+        FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 4, 8, new Timestamp(1 + oneDay), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(3 + oneDay), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(1 + oneDay * 2), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2 + oneDay * 2), "kind")
+      )
+
+      val aggregate = List(
+        Aggregation("timestamp", AggregationType.datePart, None, Some("YYYY-MM-DD")),
+        Aggregation("medium", AggregationType.count, None, None)
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("medium"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("count_medium", OrderDirection.desc)),
+          aggregation = aggregate,
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("date_part_timestamp" -> Some("1970-01-02"), "count_medium" -> Some(3)),
+        Map("date_part_timestamp" -> Some("1970-01-03"), "count_medium" -> Some(2)),
+        Map("date_part_timestamp" -> Some("1970-01-01"), "count_medium" -> Some(1))
+      )
+
+    }
+
+    "should map date with datePart aggregation when it is only type of aggregation" in {
+      val oneDay = 3600 * 24 * 1000
+      val feesTmp = List(
+        FeesRow(0, 1, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
+        FeesRow(0, 4, 4, new Timestamp(3 + oneDay), "kind"),
+        FeesRow(0, 5, 4, new Timestamp(1 + oneDay * 2), "kind"),
+        FeesRow(0, 6, 4, new Timestamp(2 + oneDay * 2), "kind")
+      )
+
+      val aggregate = List(
+        Aggregation("timestamp", AggregationType.datePart, None, Some("YYYY-MM-DD"))
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("medium"),
+          predicates = List.empty,
+          ordering = List(QueryOrdering("date_part_timestamp", OrderDirection.desc)),
+          aggregation = aggregate,
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("date_part_timestamp" -> Some("1970-01-03"), "medium" -> Some(5)),
+        Map("date_part_timestamp" -> Some("1970-01-03"), "medium" -> Some(6)),
+        Map("date_part_timestamp" -> Some("1970-01-02"), "medium" -> Some(4)),
+        Map("date_part_timestamp" -> Some("1970-01-02"), "medium" -> Some(3)),
+        Map("date_part_timestamp" -> Some("1970-01-02"), "medium" -> Some(2)),
+        Map("date_part_timestamp" -> Some("1970-01-01"), "medium" -> Some(1))
+      )
+    }
+
+
+    "should not fail when aggregation type is not datePart" in {
+      val oneDay = 3600 * 24 * 1000
+      val feesTmp = List(
+        FeesRow(0, 1, 4, new Timestamp(0), "kind"),
+        FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
+        FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
+        FeesRow(0, 4, 4, new Timestamp(3 + oneDay), "kind"),
+        FeesRow(0, 5, 4, new Timestamp(1 + oneDay * 2), "kind"),
+        FeesRow(0, 6, 4, new Timestamp(2 + oneDay * 2), "kind")
+      )
+
+      val aggregate = List(
+        Aggregation("high", AggregationType.sum, None, Some("YYYY-MM-DD"))
+      )
+
+      val populateAndTest = for {
+        _ <- Tables.Fees ++= feesTmp
+        found <- sut.selectWithPredicates(
+          table = Tables.Fees.baseTableRow.tableName,
+          columns = List("high"),
+          predicates = List.empty,
+          ordering = List.empty,
+          aggregation = aggregate,
+          outputType = OutputType.json,
+          limit = 10
+        )
+      } yield found
+
+      val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+      result shouldBe List(
+        Map("sum_high" -> Some(28))
+      )
+    }
   }
 
 }

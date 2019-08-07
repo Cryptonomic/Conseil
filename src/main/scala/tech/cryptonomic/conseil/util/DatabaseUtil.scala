@@ -105,7 +105,10 @@ object DatabaseUtil {
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
-        val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).toList
+        val datePartAggregations = aggregation.collect { case aggr if aggr.function == AggregationType.datePart =>
+          mapAggregationToAlias(aggr.function, aggr.field)
+        }
+        val columnsWithoutAggregationFields = datePartAggregations ::: columns.toSet.diff(aggregationFields).toList
         if (aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
           action
         } else {
@@ -150,8 +153,12 @@ object DatabaseUtil {
       */
     def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
       val aggregationFields = aggregation
-        .map { aggr =>
-          mapAggregationToSQL(aggr.function, aggr.field) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
+        .map {
+          case aggr if aggr.function == AggregationType.datePart && aggr.format.isDefined  =>
+            val format = aggr.format.get
+            makeAggregationFormat(aggr.field, format) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
+          case aggr =>
+            mapAggregationToSQL(aggr.function, aggr.field) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
         }
       val aggr = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).toList
       val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
@@ -201,6 +208,10 @@ object DatabaseUtil {
       }:_*)
     }
 
+    private def makeAggregationFormat(field: String, format: String) = {
+      s"to_char($field, '$format')"
+    }
+
     /** maps aggregation operation to the SQL function*/
     private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
       aggregationType match {
@@ -219,6 +230,7 @@ object DatabaseUtil {
         case AggregationType.max => s"max_$column"
         case AggregationType.min => s"min_$column"
         case AggregationType.avg => s"avg_$column"
+        case AggregationType.datePart => s"date_part_$column"
       }
 
     /** maps operation type to SQL operation */

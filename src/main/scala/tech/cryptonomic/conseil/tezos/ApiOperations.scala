@@ -8,7 +8,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
   Predicate,
   Query,
   QueryOrdering,
-  QueryResponse
+  QueryResponse,
+  Aggregation
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -334,7 +335,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
         query.fields,
         sanitizePredicates(query.predicates),
         query.orderBy,
-        query.aggregation,
+        sanitizeAggregations(query.aggregation),
         query.output,
         query.limit
       )
@@ -346,10 +347,21 @@ object ApiOperations extends DataOperations with MetadataOperations {
       predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
     }
 
+  /** Sanitizes aggregation format so query is safe from SQL injection */
+  def sanitizeAggregations(aggregations: List[Aggregation]): List[Aggregation] =
+    aggregations.map { aggregation =>
+      aggregation.copy(format = aggregation.format.map(sanitizeDatePartAggregation))
+    }
+
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
     val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
     str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
   }
 
+  /** Sanitizes datePart aggregate function*/
+  def sanitizeDatePartAggregation(str: String): String = {
+    val supportedCharacters = Set('Y', 'M', 'D', 'A', '-')
+    str.filter(supportedCharacters)
+  }
 }
