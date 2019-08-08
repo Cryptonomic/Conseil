@@ -342,8 +342,8 @@ ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval
 -- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
---ALTER TABLE ONLY public.operation_groups
---    ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (hash);
+ALTER TABLE public.operation_groups
+    ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (block_id, hash);
 
 
 --
@@ -575,15 +575,6 @@ ALTER TABLE ONLY public.delegates
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
-
-
---
--- TOC entry 2083 (class 2606 OID 7467626)
--- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
---ALTER TABLE ONLY public.operations
---    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash) REFERENCES public.operation_groups(hash);
 
 
 --
