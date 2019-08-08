@@ -7,10 +7,10 @@ import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
-import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
+import tech.cryptonomic.conseil.metadata
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, Path, PlatformPath}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.util.ConfigUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -35,27 +35,26 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
 
   import cats.instances.either._
   import cats.instances.future._
-  import cats.instances.option._
   import cats.syntax.bitraverse._
-  import cats.syntax.traverse._
 
   /** V2 Route implementation for query endpoint */
   val postRoute: Route = queryEndpoint.implementedByAsync {
     case ((platform, network, entity), apiQuery, _) =>
-      apiQuery.validate(EntityPath(entity, NetworkPath(network, PlatformPath(platform))), metadataService).flatMap {
-        validationResult =>
+      val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
+
+      pathValidation(path) {
+        apiQuery.validate(path, metadataService).flatMap { validationResult =>
           validationResult.map { validQuery =>
-            platformNetworkValidation(platform, network) {
-              queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
-                queryResponseOpt.map { queryResponses =>
-                  QueryResponseWithOutput(
-                    queryResponses,
-                    validQuery.output
-                  )
-                }
+            queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
+              queryResponseOpt.map { queryResponses =>
+                QueryResponseWithOutput(
+                  queryResponses,
+                  validQuery.output
+                )
               }
             }
           }.left.map(Future.successful).bisequence.map(eitherOptionOps)
+        }
       }
   }
 
@@ -153,12 +152,13 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
   private def platformNetworkValidation[A](platform: String, network: String)(
       operation: => Future[Option[A]]
   ): Future[Option[A]] =
-    ConfigUtil
-      .getNetworks(config, platform)
-      .find(_.network == network)
-      .map { _ =>
-        operation
-      }
-      .sequence
-      .map(_.flatten)
+    pathValidation(NetworkPath(network, PlatformPath(platform)))(operation)
+
+  private def pathValidation[A](path: metadata.Path)(
+      operation: => Future[Option[A]]
+  ): Future[Option[A]] =
+    if (metadataService.exists(path))
+      operation
+    else
+      Future.successful(None)
 }

@@ -10,6 +10,7 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService}
 
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -28,8 +29,9 @@ object DataTypes {
     {
       case AggregationType.count => true
       case AggregationType.max | AggregationType.min =>
-        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
-      case AggregationType.avg | AggregationType.sum => Set(DataType.Decimal, DataType.Int, DataType.LargeInt)(dataType)
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime, DataType.Currency)(dataType)
+      case AggregationType.avg | AggregationType.sum =>
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.Currency)(dataType)
       case AggregationType.datePart => dataType == DataType.DateTime
     }
   }
@@ -54,24 +56,23 @@ object DataTypes {
     }.sequence.map(pred => query.copy(predicates = pred.flatten))
 
   /** Helper method for finding fields used in query that don't exist in the database */
-  private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)(
-      implicit ec: ExecutionContext
-  ): Future[List[QueryValidationError]] = {
+  private def findNonExistingFields(
+      query: Query,
+      path: EntityPath,
+      metadataService: MetadataService
+  ): List[QueryValidationError] = {
     val fields = query.fields.map('query -> _) :::
           query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
           query.orderBy.map(orderBy => 'orderBy -> dropAggregationPrefixes(orderBy.field)) :::
           query.aggregation.map('aggregation -> _.field)
 
-    fields.traverse {
-      case (source, field) =>
-        metadataService.isAttributeValid(path.entity, field).map((_, source, field))
-    }.map {
-      _.collect {
-        case (false, 'query, field) => InvalidQueryField(field)
-        case (false, 'predicate, field) => InvalidPredicateField(field)
-        case (false, 'orderBy, field) => InvalidOrderByField(field)
-        case (false, 'aggregation, field) => InvalidAggregationField(field)
-      }
+    fields.map {
+      case (source, field) => (metadataService.exists(path.addLevel(field)), source, field)
+    }.collect {
+      case (false, 'query, field) => InvalidQueryField(field)
+      case (false, 'predicate, field) => InvalidPredicateField(field)
+      case (false, 'orderBy, field) => InvalidOrderByField(field)
+      case (false, 'aggregation, field) => InvalidAggregationField(field)
     }
   }
 
@@ -102,24 +103,26 @@ object DataTypes {
   /** Helper method for finding if queries does not contain filters on key fields or datetime fields */
   private def findInvalidPredicateFilteringFields(query: Query, path: EntityPath, metadataService: MetadataService)(
       implicit ec: ExecutionContext
-  ): Future[List[InvalidPredicateFiltering]] =
-    metadataService.getEntities(path.up).flatMap { entitiesOpt =>
-      val limitedQueryEntity = entitiesOpt.toList.flatten
-        .find(_.name == path.entity)
-        .flatMap(_.limitedQuery)
-        .getOrElse(false)
-      if (limitedQueryEntity) {
-        query.predicates.traverse { predicate =>
-          metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
-            attributesOpt.flatMap { attributes =>
-              attributes.find(_.name == predicate.field)
-            }.toList
-          }
-        }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
-      } else {
-        Future.successful(List.empty)
-      }
+  ): Future[List[InvalidPredicateFiltering]] = {
+    val limitedQueryEntity = metadataService
+      .getEntities(path.up)
+      .toList
+      .flatten
+      .find(_.name == path.entity)
+      .flatMap(_.limitedQuery)
+      .getOrElse(false)
+    if (limitedQueryEntity) {
+      query.predicates.traverse { predicate =>
+        metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
+          attributesOpt.flatMap { attributes =>
+            attributes.find(_.name == predicate.field)
+          }.toList
+        }
+      }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
+    } else {
+      successful(List.empty)
     }
+  }
 
   /** Trait representing attribute validation errors */
   sealed trait AttributesValidationError extends Product with Serializable {
@@ -271,7 +274,7 @@ object DataTypes {
         .transform
 
       (
-        findNonExistingFields(query, entity, metadataService),
+        successful(findNonExistingFields(query, entity, metadataService)),
         findInvalidAggregationTypeFields(query, entity, metadataService),
         findInvalidPredicateFilteringFields(query, entity, metadataService),
         replaceTimestampInPredicates(entity, query, metadataService)
