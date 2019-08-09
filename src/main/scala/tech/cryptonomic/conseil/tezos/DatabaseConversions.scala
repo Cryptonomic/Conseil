@@ -313,7 +313,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        ballot = extractBallot(ballot)
+        ballot = extractBallot(ballot),
+        internal = false
       )
   }
 
