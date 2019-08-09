@@ -240,6 +240,7 @@ CREATE TABLE public.operations (
     parameters character varying,
     manager_pubkey character varying,
     balance numeric,
+    proposal character varying,
     spendable boolean,
     delegatable boolean,
     script character varying,

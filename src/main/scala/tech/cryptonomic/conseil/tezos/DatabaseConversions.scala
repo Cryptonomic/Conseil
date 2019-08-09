@@ -35,6 +35,11 @@ object DatabaseConversions {
     case _ => None
   }
 
+  def extractContractId(id: Option[ContractId]) : Option[String] = id match {
+    case Some(ContractId(id)) => Some(id)
+    case _ => None
+  }
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -304,8 +309,9 @@ object DatabaseConversions {
       )
   }
 
+
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -314,7 +320,9 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         ballot = extractBallot(ballot),
-        internal = false
+        internal = false,
+        proposal = proposal,
+        source = extractContractId(source)
       )
   }
 

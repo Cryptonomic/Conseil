@@ -726,7 +726,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleBallot =
       Ballot(
-        ballot = Vote("yay")
+        ballot = Vote("yay"),
+        proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
+        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
       )
 
     val sampleOperations =

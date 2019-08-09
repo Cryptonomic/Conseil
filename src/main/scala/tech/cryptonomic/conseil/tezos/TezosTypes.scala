@@ -232,7 +232,11 @@ object TezosTypes {
   final case object DoubleEndorsementEvidence extends Operation
   final case object DoubleBakingEvidence extends Operation
   final case object Proposals extends Operation
-  final case class Ballot(ballot: Voting.Vote) extends Operation
+  final case class Ballot(
+      ballot: Voting.Vote,
+      proposal: Option[String],
+      source: Option[ContractId],
+  ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
@@ -259,6 +263,8 @@ object TezosTypes {
         kind: String,
         source: ContractId,
         nonce: Int,
+
+
         public_key: PublicKey,
         result: OperationResult.Reveal
     ) extends InternalOperationResult
