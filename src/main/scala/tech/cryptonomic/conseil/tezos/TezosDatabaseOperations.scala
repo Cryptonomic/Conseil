@@ -510,8 +510,9 @@ object TezosDatabaseOperations extends LazyLogging {
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
 
     val q = makeQuery(table, columns, aggregation)
-      .addPredicates(aggregation.flatMap(_.getPredicate) ::: predicates)
+      .addPredicates(predicates)
       .addGroupBy(aggregation, columns)
+      .addHaving(aggregation)
       .addOrdering(ordering)
       .addLimit(limit)
     if (outputType == OutputType.sql) {

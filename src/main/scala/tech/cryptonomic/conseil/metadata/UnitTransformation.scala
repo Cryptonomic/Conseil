@@ -22,14 +22,14 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides entities
-  def overrideEntities(networkPath: NetworkPath, entities: List[Entity]): List[Entity] = {
-    logDifferences(entities.map(entity => networkPath.addLevel(entity.name)), overrides.entities(networkPath).keys.toList)
+  def overrideEntities(networkPath: NetworkPath, entities: List[Entity], shouldLog: Boolean = true): List[Entity] = {
+    if(shouldLog) logDifferences(entities.map(entity => networkPath.addLevel(entity.name)), overrides.entities(networkPath).keys.toList)
     entities.flatMap(entity => overrideEntity(entity, networkPath.addLevel(entity.name)))
   }
 
   // overrides attributes
-  def overrideAttributes(path: EntityPath, attributes: List[Attribute]): List[Attribute] = {
-    logDifferences(attributes.map(attribute => path.addLevel(attribute.name)), overrides.attributes(path).keys.toList)
+  def overrideAttributes(path: EntityPath, attributes: List[Attribute], shouldLog: Boolean = true): List[Attribute] = {
+    if(shouldLog) logDifferences(attributes.map(attribute => path.addLevel(attribute.name)), overrides.attributes(path).keys.toList)
     attributes.flatMap(attribute => overrideAttribute(attribute, path.addLevel(attribute.name)))
   }
 

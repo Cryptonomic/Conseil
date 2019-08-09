@@ -29,8 +29,9 @@ object DataTypes {
     {
       case AggregationType.count => true
       case AggregationType.max | AggregationType.min =>
-        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
-      case AggregationType.avg | AggregationType.sum => Set(DataType.Decimal, DataType.Int, DataType.LargeInt)(dataType)
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime, DataType.Currency)(dataType)
+      case AggregationType.avg | AggregationType.sum =>
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.Currency)(dataType)
     }
   }
 
@@ -54,8 +55,10 @@ object DataTypes {
     }.sequence.map(pred => query.copy(predicates = pred.flatten))
 
   /** Helper method for finding fields used in query that don't exist in the database */
-  private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)(
-      implicit ec: ExecutionContext
+  private def findNonExistingFields(
+      query: Query,
+      path: EntityPath,
+      metadataService: MetadataService
   ): List[QueryValidationError] = {
     val fields = query.fields.map('query -> _) :::
           query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
