@@ -2,8 +2,10 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 11.4
--- Dumped by pg_dump version 11.4
+-- Dumped from database version 9.5.17
+-- Dumped by pg_dump version 11.4 (Ubuntu 11.4-1.pgdg18.04+1)
+
+-- Started on 2019-06-27 13:32:57 EDT
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17,6 +19,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- TOC entry 196 (class 1255 OID 7467460)
 -- Name: truncate_tables(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -34,9 +37,11 @@ BEGIN
 END;
 $$;
 
+
 SET default_with_oids = false;
 
 --
+-- TOC entry 181 (class 1259 OID 7467461)
 -- Name: accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -56,6 +61,7 @@ CREATE TABLE public.accounts (
 
 
 --
+-- TOC entry 189 (class 1259 OID 7467513)
 -- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -67,6 +73,7 @@ CREATE TABLE public.accounts_checkpoint (
 
 
 --
+-- TOC entry 186 (class 1259 OID 7467492)
 -- Name: balance_updates; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -85,6 +92,7 @@ CREATE TABLE public.balance_updates (
 
 
 --
+-- TOC entry 195 (class 1259 OID 7467548)
 -- Name: balance_updates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -97,6 +105,8 @@ CREATE SEQUENCE public.balance_updates_id_seq
 
 
 --
+-- TOC entry 2211 (class 0 OID 0)
+-- Dependencies: 195
 -- Name: balance_updates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
@@ -104,6 +114,7 @@ ALTER SEQUENCE public.balance_updates_id_seq OWNED BY public.balance_updates.id;
 
 
 --
+-- TOC entry 193 (class 1259 OID 7467539)
 -- Name: ballots; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -116,6 +127,7 @@ CREATE TABLE public.ballots (
 
 
 --
+-- TOC entry 182 (class 1259 OID 7467468)
 -- Name: blocks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -148,8 +160,8 @@ CREATE TABLE public.blocks (
     priority integer
 );
 
-
 --
+-- TOC entry 188 (class 1259 OID 7467507)
 -- Name: delegated_contracts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -160,6 +172,7 @@ CREATE TABLE public.delegated_contracts (
 
 
 --
+-- TOC entry 187 (class 1259 OID 7467498)
 -- Name: delegates; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -177,6 +190,7 @@ CREATE TABLE public.delegates (
 
 
 --
+-- TOC entry 190 (class 1259 OID 7467520)
 -- Name: delegates_checkpoint; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -188,6 +202,7 @@ CREATE TABLE public.delegates_checkpoint (
 
 
 --
+-- TOC entry 183 (class 1259 OID 7467474)
 -- Name: fees; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -201,6 +216,7 @@ CREATE TABLE public.fees (
 
 
 --
+-- TOC entry 184 (class 1259 OID 7467480)
 -- Name: operation_groups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -216,6 +232,7 @@ CREATE TABLE public.operation_groups (
 
 
 --
+-- TOC entry 185 (class 1259 OID 7467486)
 -- Name: operations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -240,7 +257,6 @@ CREATE TABLE public.operations (
     parameters character varying,
     manager_pubkey character varying,
     balance numeric,
-    proposal character varying,
     spendable boolean,
     delegatable boolean,
     script character varying,
@@ -252,13 +268,13 @@ CREATE TABLE public.operations (
     originated_contracts character varying,
     block_hash character varying NOT NULL,
     block_level integer NOT NULL,
-    ballot character varying,
-    internal boolean NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    internal boolean NOT NULL
 );
 
 
 --
+-- TOC entry 194 (class 1259 OID 7467545)
 -- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -271,6 +287,8 @@ CREATE SEQUENCE public.operations_operation_id_seq
 
 
 --
+-- TOC entry 2212 (class 0 OID 0)
+-- Dependencies: 194
 -- Name: operations_operation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
@@ -278,6 +296,7 @@ ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.ope
 
 
 --
+-- TOC entry 191 (class 1259 OID 7467527)
 -- Name: proposals; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -290,6 +309,7 @@ CREATE TABLE public.proposals (
 
 
 --
+-- TOC entry 192 (class 1259 OID 7467533)
 -- Name: rolls; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -302,6 +322,7 @@ CREATE TABLE public.rolls (
 
 
 --
+-- TOC entry 2051 (class 2604 OID 7467550)
 -- Name: balance_updates id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -309,6 +330,7 @@ ALTER TABLE ONLY public.balance_updates ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- TOC entry 2050 (class 2604 OID 7467547)
 -- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -316,6 +338,7 @@ ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval
 
 
 --
+-- TOC entry 2063 (class 2606 OID 7467552)
 -- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -324,6 +347,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
+-- TOC entry 2056 (class 2606 OID 7467554)
 -- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -332,6 +356,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- TOC entry 2073 (class 2606 OID 7467560)
 -- Name: balance_updates balance_updates_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -340,6 +365,7 @@ ALTER TABLE ONLY public.balance_updates
 
 
 --
+-- TOC entry 2060 (class 2606 OID 7467556)
 -- Name: blocks blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -348,6 +374,7 @@ ALTER TABLE ONLY public.blocks
 
 
 --
+-- TOC entry 2075 (class 2606 OID 7467506)
 -- Name: delegates delegates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -356,6 +383,7 @@ ALTER TABLE ONLY public.delegates
 
 
 --
+-- TOC entry 2071 (class 2606 OID 7467558)
 -- Name: operations operationId; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -364,13 +392,16 @@ ALTER TABLE ONLY public.operations
 
 
 --
+-- TOC entry 2064 (class 1259 OID 7467561)
 -- Name: fki_block; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
 
+CREATE INDEX ix_operation_groups_block_level ON public.operation_groups USING btree (block_level);
 
 --
+-- TOC entry 2065 (class 1259 OID 7467562)
 -- Name: fki_fk_blockhashes; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -378,6 +409,7 @@ CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
 
 
 --
+-- TOC entry 2057 (class 1259 OID 7467563)
 -- Name: ix_accounts_block_level; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -385,6 +417,7 @@ CREATE INDEX ix_accounts_block_level ON public.accounts USING btree (block_level
 
 
 --
+-- TOC entry 2076 (class 1259 OID 7499961)
 -- Name: ix_accounts_checkpoint_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -392,6 +425,7 @@ CREATE INDEX ix_accounts_checkpoint_account_id ON public.accounts_checkpoint USI
 
 
 --
+-- TOC entry 2077 (class 1259 OID 7467568)
 -- Name: ix_accounts_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -399,6 +433,7 @@ CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint US
 
 
 --
+-- TOC entry 2058 (class 1259 OID 7467564)
 -- Name: ix_accounts_manager; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -406,6 +441,7 @@ CREATE INDEX ix_accounts_manager ON public.accounts USING btree (manager);
 
 
 --
+-- TOC entry 2061 (class 1259 OID 7467565)
 -- Name: ix_blocks_level; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -413,6 +449,7 @@ CREATE INDEX ix_blocks_level ON public.blocks USING btree (level);
 
 
 --
+-- TOC entry 2078 (class 1259 OID 7467569)
 -- Name: ix_delegates_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -420,13 +457,7 @@ CREATE INDEX ix_delegates_checkpoint_block_level ON public.delegates_checkpoint 
 
 
 --
--- Name: ix_operation_groups_block_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operation_groups_block_level ON public.operation_groups USING btree (block_level);
-
-
---
+-- TOC entry 2066 (class 1259 OID 7551880)
 -- Name: ix_operations_block_level; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -434,6 +465,7 @@ CREATE INDEX ix_operations_block_level ON public.operations USING btree (block_l
 
 
 --
+-- TOC entry 2067 (class 1259 OID 7467566)
 -- Name: ix_operations_destination; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -441,6 +473,7 @@ CREATE INDEX ix_operations_destination ON public.operations USING btree (destina
 
 
 --
+-- TOC entry 2068 (class 1259 OID 7467567)
 -- Name: ix_operations_source; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -448,6 +481,7 @@ CREATE INDEX ix_operations_source ON public.operations USING btree (source);
 
 
 --
+-- TOC entry 2069 (class 1259 OID 7552181)
 -- Name: ix_operations_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -455,6 +489,7 @@ CREATE INDEX ix_operations_timestamp ON public.operations USING btree ("timestam
 
 
 --
+-- TOC entry 2079 (class 1259 OID 7467570)
 -- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -462,6 +497,7 @@ CREATE INDEX ix_proposals_protocol ON public.proposals USING btree (protocol_has
 
 
 --
+-- TOC entry 2080 (class 2606 OID 7467571)
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -470,6 +506,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- TOC entry 2091 (class 2606 OID 7467611)
 -- Name: ballots ballot_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -478,6 +515,7 @@ ALTER TABLE ONLY public.ballots
 
 
 --
+-- TOC entry 2081 (class 2606 OID 7467616)
 -- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -486,6 +524,7 @@ ALTER TABLE ONLY public.operation_groups
 
 
 --
+-- TOC entry 2087 (class 2606 OID 7467591)
 -- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -494,6 +533,7 @@ ALTER TABLE ONLY public.accounts_checkpoint
 
 
 --
+-- TOC entry 2086 (class 2606 OID 7467581)
 -- Name: delegated_contracts contracts_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -502,6 +542,7 @@ ALTER TABLE ONLY public.delegated_contracts
 
 
 --
+-- TOC entry 2085 (class 2606 OID 7467576)
 -- Name: delegated_contracts contracts_delegate_pkh_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -510,6 +551,7 @@ ALTER TABLE ONLY public.delegated_contracts
 
 
 --
+-- TOC entry 2088 (class 2606 OID 7467596)
 -- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -518,6 +560,7 @@ ALTER TABLE ONLY public.delegates_checkpoint
 
 
 --
+-- TOC entry 2084 (class 2606 OID 7467586)
 -- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -526,22 +569,15 @@ ALTER TABLE ONLY public.delegates
 
 
 --
+-- TOC entry 2082 (class 2606 OID 7467621)
 -- Name: operations fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
 
-
 --
--- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.operations
-    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash) REFERENCES public.operation_groups(hash);
-
-
---
+-- TOC entry 2089 (class 2606 OID 7467601)
 -- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -550,6 +586,7 @@ ALTER TABLE ONLY public.proposals
 
 
 --
+-- TOC entry 2090 (class 2606 OID 7467606)
 -- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -557,6 +594,8 @@ ALTER TABLE ONLY public.rolls
     ADD CONSTRAINT rolls_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
 
 
+-- Completed on 2019-06-27 13:33:00 EDT
+
 --
 -- PostgreSQL database dump complete
---
+-
