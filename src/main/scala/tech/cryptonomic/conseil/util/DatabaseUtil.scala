@@ -134,12 +134,12 @@ object DatabaseUtil {
       def addLimit(limit: Int): SQLActionBuilder =
         concatenateSqlActions(action, makeLimit(limit))
 
-      /** Method for adding group by to existing SQLAction
+      /** Method for adding GROUP BY to existing SQLAction
         *
         * @param table the main table name
         * @param aggregation parameter containing info about field which has to be aggregated
         * @param columns     parameter containing columns which chich are being used in query
-        * @return new SQLActionBuilder containing limit statement
+        * @return new SQLActionBuilder containing GROUP BY  statement
         */
       def addGroupBy(table: String, aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
         val qualify = fullyQualifyColumn(table)
@@ -151,6 +151,20 @@ object DatabaseUtil {
           concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregationFields))
         }
       }
+
+      /** Method for adding HAVING to existing SQLAction
+        *
+        * @param aggregation parameter containing info about field which has to be aggregated
+        * @return new SQLActionBuilder containing HAVING statement
+        */
+      def addHaving(table: String, aggregation: List[Aggregation]): SQLActionBuilder = {
+        val qualify = fullyQualifyColumn(table)
+
+        if (aggregation.exists(_.getPredicate.nonEmpty))
+          concatenateSqlActions(action, makeHaving(qualify)(aggregation))
+        else action
+      }
+
     }
 
     /** Prepares predicates and transforms them into SQLActionBuilders
@@ -210,14 +224,42 @@ object DatabaseUtil {
     def makeGroupBy(columns: List[String]): SQLActionBuilder =
       sql""" GROUP BY #${columns.mkString(", ")}"""
 
+    /** Prepares HAVING parameters
+      *
+      * @param aggregation list of aggregations
+      * @return SQLAction with HAVING
+      */
+    def makeHaving(qualify: String => String)(aggregation: List[Aggregation]): SQLActionBuilder =
+      concatenateSqlActions(
+        sql""" HAVING true""",
+        aggregation.flatMap { aggregation =>
+          aggregation.getPredicate.toList.map { predicate =>
+            concatenateSqlActions(
+              sql""" AND #${mapAggregationToSQL(qualify)(aggregation.function, aggregation.field)} """,
+              mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+            )
+          }
+        }: _*
+      )
+
     /** maps aggregation operation to the SQL function*/
     def mapAggregationToSQL(qualify: String => String)(aggregationType: AggregationType, column: String): String =
       aggregationType match {
-        case AggregationType.sum => s"SUM(${qualify(column)}) as sum_$column"
-        case AggregationType.count => s"COUNT(${qualify(column)}) as count_$column"
-        case AggregationType.max => s"MAX(${qualify(column)}) as max_$column"
-        case AggregationType.min => s"MIN(${qualify(column)}) as min_$column"
-        case AggregationType.avg => s"AVG(${qualify(column)}) as avg_$column"
+        case AggregationType.sum => s"SUM(${qualify(column)})"
+        case AggregationType.count => s"COUNT(${qualify(column)})"
+        case AggregationType.max => s"MAX(${qualify(column)})"
+        case AggregationType.min => s"MIN(${qualify(column)})"
+        case AggregationType.avg => s"AVG(${qualify(column)})"
+      }
+
+    /** maps aggregation operation to the SQL alias */
+    def mapAggregationToAlias(aggregationType: AggregationType, column: String): String =
+      aggregationType match {
+        case AggregationType.sum => s"sum_$column"
+        case AggregationType.count => s"count_$column"
+        case AggregationType.max => s"max_$column"
+        case AggregationType.min => s"min_$column"
+        case AggregationType.avg => s"avg_$column"
       }
 
     /** maps operation type to SQL operation */

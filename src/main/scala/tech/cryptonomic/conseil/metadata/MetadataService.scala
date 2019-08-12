@@ -61,8 +61,28 @@ class MetadataService(
   // fetches entities
   def getEntities(path: NetworkPath): Option[List[Entity]] = entities.get(path)
 
+  // gets current entities
+  def getCurrentEntities(path: NetworkPath): Future[Option[List[Entity]]] =
+    platformDiscoveryOperations.getEntities.map { allEntities =>
+      if (exists(path))
+        Some(transformation.overrideEntities(path, allEntities, shouldLog = false))
+      else
+        None
+    }
+
   // fetches table attributes
   def getTableAttributes(path: EntityPath): Option[List[Attribute]] = attributes.get(path)
+
+  // fetches current attributes
+  def getCurrentTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] =
+    platformDiscoveryOperations.getTableAttributes(path.entity).map { maybeAttributes =>
+      maybeAttributes.flatMap { attributes =>
+        if (exists(path))
+          Some(transformation.overrideAttributes(path, attributes, shouldLog = false))
+        else
+          None
+      }
+    }
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =

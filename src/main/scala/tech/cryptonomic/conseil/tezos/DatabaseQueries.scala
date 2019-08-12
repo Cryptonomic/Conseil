@@ -21,7 +21,13 @@ object DatabaseQueries extends LazyLogging {
   private def simpleQueryBuilder[T <: Table[_]]: QueryBuilder[T] =
     (table, columns, aggregation) => {
       val qualify = fullyQualifyColumn(table)
-      val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(qualify)(aggr.function, aggr.field))
+      val aggregationFields =
+        aggregation.map { aggr =>
+          mapAggregationToSQL(qualify)(aggr.function, aggr.field) + " as " + mapAggregationToAlias(
+            aggr.function,
+            aggr.field
+          )
+        }
       val projection = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).map(qualify).toList
       val cols = if (projection.isEmpty) qualify("*") else projection.mkString(", ")
       sql"""SELECT #$cols FROM #$table WHERE true """
@@ -45,7 +51,13 @@ object DatabaseQueries extends LazyLogging {
         aggregation: List[DataTypes.Aggregation]
     ) = {
       val qualify = fullyQualifyColumn(table)
-      val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(qualify)(aggr.function, aggr.field))
+      val aggregationFields =
+        aggregation.map { aggr =>
+          mapAggregationToSQL(qualify)(aggr.function, aggr.field) + " as " + mapAggregationToAlias(
+            aggr.function,
+            aggr.field
+          )
+        }
       val projection = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).map(qualify).toList
       val cols = if (projection.isEmpty) qualify("*") else projection.mkString(", ")
       val invalidationFrom = tableJoiner(invalidatedTableName, blockFKColumnName)
@@ -65,7 +77,13 @@ object DatabaseQueries extends LazyLogging {
         aggregation: List[DataTypes.Aggregation]
     ) = {
       val qualify = fullyQualifyColumn(table)
-      val aggregationFields = aggregation.map(aggr => mapAggregationToSQL(qualify)(aggr.function, aggr.field))
+      val aggregationFields =
+        aggregation.map { aggr =>
+          mapAggregationToSQL(qualify)(aggr.function, aggr.field) + " as " + mapAggregationToAlias(
+            aggr.function,
+            aggr.field
+          )
+        }
       val projection = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).map(qualify).toList
       val cols = if (projection.isEmpty) qualify("*") else projection.mkString(", ")
 

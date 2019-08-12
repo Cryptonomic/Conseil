@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.util.RandomSeed
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
+import scala.annotation.meta.field
 
 class TezosDatabaseOperationsTest
     extends WordSpec
@@ -2373,6 +2374,7 @@ class TezosDatabaseOperationsTest
           Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
         )
       }
+
       "get empty map from a block table with endsWith predicate" in {
         val columns = List("level", "proto", "protocol", "hash")
         val predicates = List(
@@ -2413,6 +2415,7 @@ class TezosDatabaseOperationsTest
         script = None,
         balance = BigDecimal(1.45)
       )
+
       "get one element when correctly rounded value" in {
         val columns = List("account_id", "balance")
         val predicates = List(
@@ -2442,6 +2445,7 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue.map(_.mapValues(_.toString))
         result shouldBe List(Map("account_id" -> "Some(1)", "balance" -> "Some(1.45)"))
       }
+
       "get empty list of elements when correctly rounded value does not match" in {
         val columns = List("account_id", "balance")
         val predicates = List(
@@ -2934,11 +2938,22 @@ class TezosDatabaseOperationsTest
         )
 
         val aggregate = List(
-          Aggregation("medium", AggregationType.sum, None)
+          Aggregation(
+            field = "medium",
+            function = AggregationType.sum,
+            predicate = Some(
+              AggregationPredicate(
+                operation = OperationType.gt,
+                set = List(50),
+                inverse = true,
+                precision = None
+              )
+            )
+          )
         )
 
         val expectedQuery =
-          "SELECT SUM(fees.medium) as sum_medium, fees.low, fees.high FROM fees WHERE true  AND fees.medium = '4' IS false AND fees.low BETWEEN '0' AND '1' GROUP BY fees.low, fees.high ORDER BY sum_medium desc LIMIT 3"
+          "SELECT SUM(fees.medium) as sum_medium, fees.low, fees.high FROM fees WHERE true  AND fees.medium = '4' IS false AND fees.low BETWEEN '0' AND '1' GROUP BY fees.low, fees.high HAVING true AND SUM(fees.medium) > '50' IS false ORDER BY sum_medium desc LIMIT 3"
         val populateAndTest = for {
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
@@ -3033,6 +3048,132 @@ class TezosDatabaseOperationsTest
 
         result shouldBe List(
           Map("sum_medium" -> Some(3))
+        )
+      }
+
+      "aggregate with correct predicate field when aggregation is using predicate" in {
+        val feesTmp = List(
+          FeesRow(0, 2, 4, new Timestamp(0), "kind1"),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind2"),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind1"),
+          FeesRow(0, 2, 4, new Timestamp(3), "kind4")
+        )
+
+        val aggregate = List(
+          Aggregation(
+            field = "medium",
+            function = AggregationType.count,
+            Some(
+              AggregationPredicate(
+                operation = OperationType.gt,
+                set = List(1),
+                inverse = false
+              )
+            )
+          )
+        )
+
+        val predicates = List(
+          Predicate(
+            field = "high",
+            operation = OperationType.lt,
+            set = List(5),
+            inverse = false
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Fees ++= feesTmp
+          found <- sut.selectWithPredicates(
+            table = Tables.Fees.baseTableRow.tableName,
+            columns = List("medium", "kind"),
+            predicates = predicates,
+            ordering = List.empty,
+            aggregation = aggregate,
+            limit = 4,
+            outputType = OutputType.json
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "count_medium" -> Some(2),
+            "kind" -> Some("kind1")
+          )
+        )
+      }
+
+      "aggregate correctly with multiple aggregation fields with predicate" in {
+        val feesTmp = List(
+          FeesRow(0, 2, 4, new Timestamp(0), "kind1"),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind2"),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind1"),
+          FeesRow(0, 2, 4, new Timestamp(3), "kind2"),
+          FeesRow(1, 2, 4, new Timestamp(4), "kind3")
+        )
+
+        val aggregate = List(
+          Aggregation(
+            field = "medium",
+            function = AggregationType.count,
+            Some(
+              AggregationPredicate(
+                operation = OperationType.gt,
+                set = List(0),
+                inverse = false
+              )
+            )
+          ),
+          Aggregation(
+            field = "low",
+            function = AggregationType.sum,
+            Some(
+              AggregationPredicate(
+                operation = OperationType.eq,
+                set = List(0),
+                inverse = false
+              )
+            )
+          )
+        )
+
+        val predicates = List(
+          Predicate(
+            field = "high",
+            operation = OperationType.lt,
+            set = List(5),
+            inverse = false
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Fees ++= feesTmp
+          found <- sut.selectWithPredicates(
+            table = Tables.Fees.baseTableRow.tableName,
+            columns = List("low", "medium", "kind"),
+            predicates = predicates,
+            ordering = List.empty,
+            aggregation = aggregate,
+            limit = 5,
+            outputType = OutputType.json
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "sum_low" -> Some(0),
+            "count_medium" -> Some(2),
+            "kind" -> Some("kind1")
+          ),
+          Map(
+            "sum_low" -> Some(0),
+            "count_medium" -> Some(1),
+            "kind" -> Some("kind2")
+          )
         )
       }
 

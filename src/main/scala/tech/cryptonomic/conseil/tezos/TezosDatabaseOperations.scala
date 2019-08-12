@@ -652,7 +652,6 @@ object TezosDatabaseOperations extends LazyLogging {
      */
     import tech.cryptonomic.conseil.tezos.DatabaseQueries._
 
-    val allPredicates = aggregation.flatMap(_.getPredicate) ::: predicates
     val nonAggregatedFields = columns.toSet diff aggregation.flatMap(_.getPredicate.map(_.field)).toSet
     val toSqlString = (builder: SQLActionBuilder) => {
       import builder._
@@ -663,8 +662,9 @@ object TezosDatabaseOperations extends LazyLogging {
       logger.debug("Query with predicates generated for {} is:\n {}", table, toSqlString(builder))
 
     val q = makeQuery(table, columns, aggregation)(TableRef(table))
-        .addPredicates(table, allPredicates)
+        .addPredicates(table, predicates)
         .addGroupBy(table, aggregation, columns)
+        .addHaving(table, aggregation)
         .addOrdering(table, ordering, nonAggregatedFields)
         .addLimit(limit) <| logGeneratedQuery
 
