@@ -16,11 +16,13 @@ object TransparentUnitTransformation extends UnitTransformation(MetadataConfigur
 
   override def overrideEntities(
       networkPath: NetworkPath,
-      entities: List[PlatformDiscoveryTypes.Entity]
+      entities: List[PlatformDiscoveryTypes.Entity],
+      shouldLog: Boolean
   ): List[PlatformDiscoveryTypes.Entity] = entities
 
   override def overrideAttributes(
       path: EntityPath,
-      attributes: List[PlatformDiscoveryTypes.Attribute]
+      attributes: List[PlatformDiscoveryTypes.Attribute],
+      shouldLog: Boolean
   ): List[PlatformDiscoveryTypes.Attribute] = attributes
 }
