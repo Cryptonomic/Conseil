@@ -576,10 +576,8 @@ ALTER TABLE ONLY public.delegates
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
 
---
 -- TOC entry 2089 (class 2606 OID 7467601)
 -- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.proposals
     ADD CONSTRAINT proposal_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
@@ -598,4 +596,4 @@ ALTER TABLE ONLY public.rolls
 
 --
 -- PostgreSQL database dump complete
--
+--`
