@@ -4,16 +4,11 @@ import cats.effect.{ContextShift, IO}
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{
-  AttributesValidationError,
-  HighCardinalityAttribute,
-  InvalidAttributeDataType,
-  InvalidAttributeFilterLength
-}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
+import tech.cryptonomic.conseil.metadata.{AttributePath, AttributeValuesCacheConfiguration, EntityPath}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,9 +20,10 @@ object TezosPlatformDiscoveryOperations {
       metadataOperations: MetadataOperations,
       caching: MetadataCaching[IO],
       cacheOverrides: AttributeValuesCacheConfiguration,
-      cacheTTL: FiniteDuration
+      cacheTTL: FiniteDuration,
+      highCardinalityLimit: Int = 1000
   )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): TezosPlatformDiscoveryOperations =
-    new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL)
+    new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
 
   /** Maps type from DB to type used in query */
   def mapType(tpe: String): DataType =
@@ -50,6 +46,7 @@ class TezosPlatformDiscoveryOperations(
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
+    highCardinalityLimit: Int,
     networkName: String = "notUsed"
 )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO])
     extends PlatformDiscoveryOperations {
@@ -213,31 +210,30 @@ class TezosPlatformDiscoveryOperations(
     * @return Either list of attributes or list of errors
     * */
   override def listAttributeValues(
-      tableName: String,
-      column: String,
+      attributePath: AttributePath,
       withFilter: Option[String] = None,
       attributesCacheConfig: Option[AttributeCacheConfiguration] = None
   ): Future[Either[List[AttributesValidationError], List[String]]] =
-    getTableAttributesWithoutUpdatingCache(tableName) map (_.flatMap(_.find(_.name == column))) flatMap { attrOpt =>
+    getTableAttributesWithoutUpdatingCache(attributePath.up) map (_.flatMap(_.find(_.name == attributePath.attribute))) flatMap { attrOpt =>
         val res = (attributesCacheConfig, withFilter) match {
           case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter))
               if cached =>
             Either.cond(
               test = attributeFilter.length >= minMatchLength,
-              right = getAttributeValuesFromCache(tableName, column, attributeFilter, maxResultLength),
-              left = Future.successful(List(InvalidAttributeFilterLength(column, minMatchLength)))
+              right = getAttributeValuesFromCache(attributePath.up.entity, attributePath.attribute, attributeFilter, maxResultLength),
+              left = Future.successful(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength)))
             )
 
           case _ =>
             val invalidDataTypeValidationResult =
-              if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(column)) else None
+              if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(attributePath.attribute)) else None
             val highCardinalityValidationResult =
-              if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(column)) else None
+              if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(attributePath.attribute)) else None
             val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
             Either.cond(
               test = validationErrors.isEmpty,
               right = attrOpt
-                .map(attr => makeAttributesQuery(tableName, attr.name, withFilter))
+                .map(attr => makeAttributesQuery(attributePath.up.entity, attr.name, withFilter))
                 .toList
                 .sequence
                 .map(_.flatten),
@@ -296,11 +292,11 @@ class TezosPlatformDiscoveryOperations(
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  override def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] =
+  override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching.getCachingStatus.map { status =>
       if (status == Finished) {
         caching
-          .getAttributes(tableName)
+          .getAttributes(entityPath.entity)
           .flatMap { attributesOpt =>
             attributesOpt.map {
               case CacheEntry(last, attributes) =>
@@ -308,10 +304,10 @@ class TezosPlatformDiscoveryOperations(
                   IO.pure(attributes)
                 } else {
                   (for {
-                    _ <- caching.putAttributes(tableName, attributes)
+                    _ <- caching.putAttributes(entityPath.entity, attributes)
                     _ <- contextShift.shift
-                    updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(tableName, attributes)))
-                    _ <- caching.putAttributes(tableName, updatedAttributes)
+                    updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(entityPath, attributes)))
+                    _ <- caching.putAttributes(entityPath.entity, updatedAttributes)
                   } yield ()).unsafeRunAsyncAndForget()
                   IO.pure(attributes)
                 }
@@ -320,7 +316,7 @@ class TezosPlatformDiscoveryOperations(
           .unsafeToFuture()
       } else {
         // if caching is not finished cardinality should be set to None
-        getTableAttributesWithoutUpdatingCache(tableName).map(_.map(_.map(_.copy(cardinality = None))))
+        getTableAttributesWithoutUpdatingCache(entityPath).map(_.map(_.map(_.copy(cardinality = None))))
       }
     }.unsafeToFuture().flatten
 
@@ -334,24 +330,29 @@ class TezosPlatformDiscoveryOperations(
     * @param  tableName name of the table from which we extract attributes
     * @return list of attributes as a Future
     */
-  override def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] =
+  override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching
-      .getAttributes(tableName)
+      .getAttributes(entityPath.entity)
       .map { attrOpt =>
         attrOpt.map(_.value)
       }
       .unsafeToFuture()
 
   /** Runs query and attributes with updated counts */
-  private def getUpdatedAttributes(tableName: String, columns: List[Attribute]): Future[List[Attribute]] =
-    metadataOperations.runQuery(getUpdatedAttributesQuery(tableName, columns))
+  private def getUpdatedAttributes(entityPath: EntityPath, columns: List[Attribute]): Future[List[Attribute]] =
+    metadataOperations.runQuery(getUpdatedAttributesQuery(entityPath, columns))
 
   /** Query for returning partial attributes with updated counts */
-  private def getUpdatedAttributesQuery(tableName: String, columns: List[Attribute]): DBIO[List[Attribute]] =
+  private def getUpdatedAttributesQuery(entityPath: EntityPath, columns: List[Attribute]): DBIO[List[Attribute]] =
     DBIOAction.sequence {
       columns.map { column =>
-        if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
-          TezosDatabaseOperations.countDistinct(tableName, column.name).map { count =>
+        val attributePath = AttributePath(column.name, entityPath)
+        val cardinalityHint = cacheOverrides.getCardinalityHint(attributePath)
+        if(cardinalityHint.exists(_ > highCardinalityLimit)) {
+          DBIOAction.successful(column.copy(cardinality = cardinalityHint))
+        }
+        else if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
+          TezosDatabaseOperations.countDistinct(entityPath.entity, column.name).map { count =>
             column.copy(cardinality = Some(count))
           }
         } else {
@@ -403,7 +404,10 @@ class TezosPlatformDiscoveryOperations(
     }.mapValues {
       case CacheEntry(_, attrs) => attrs
     }.map {
-      case (entityName, attrs) => getUpdatedAttributesQuery(entityName.key, attrs).map(entityName.key -> _)
+      case (entityName, attrs) =>
+        DBIO.sequence(attrs.map { attr =>
+          TezosDatabaseOperations.countDistinct(entityName.key, attr.name).map(cnt => attr.copy(cardinality = Some(cnt)))
+        }).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries)
     IO.fromFuture(IO(metadataOperations.runQuery(action))).map(_.toMap)
