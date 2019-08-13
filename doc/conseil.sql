@@ -537,6 +537,7 @@ ALTER TABLE ONLY public.operations
 --
 -- TOC entry 2089 (class 2606 OID 7467601)
 -- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
 
 ALTER TABLE ONLY public.proposals
     ADD CONSTRAINT proposal_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);

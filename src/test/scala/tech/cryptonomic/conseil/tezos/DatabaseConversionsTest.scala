@@ -838,7 +838,8 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.ballot shouldBe Some("yay")
-        converted.kind shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
+        converted.kind shouldBe "ballot"
+        converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
         converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
         converted.cycle shouldBe extractCycle(block)
 
