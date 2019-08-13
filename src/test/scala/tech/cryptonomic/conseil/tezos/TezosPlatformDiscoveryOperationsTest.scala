@@ -212,6 +212,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
+              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
@@ -238,9 +239,8 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
-              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("ballot", "Ballot", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations")
+              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations")
             )
           )
       }

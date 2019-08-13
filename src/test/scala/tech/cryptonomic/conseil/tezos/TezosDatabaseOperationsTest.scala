@@ -198,7 +198,7 @@ class TezosDatabaseOperationsTest
               case "proposals" =>
                 operationGroup.contents.find(_ == Proposals)
               case "ballot" =>
-                operationGroup.contents.find(_ == Ballot)
+                operationGroup.contents.find(_.isInstanceOf[Ballot])
               case _ => None
             }
 
