@@ -6,6 +6,7 @@ import io.circe._
 import io.circe.generic.auto._
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
+import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.EmbeddedElement.toMichelsonElement
 
 import scala.collection.immutable.{List, Nil}
 
@@ -38,6 +39,17 @@ object JsonParser {
     def toMichelsonExpression: MichelsonExpression
   }
 
+  type EmbeddedElement = Either[Either[JsonExpression, JsonInstruction], List[JsonInstruction]]
+
+  object EmbeddedElement {
+    def toMichelsonElement(embeddedElement: EmbeddedElement): MichelsonElement = embeddedElement match {
+      case Left(Left(jsonExpression)) => jsonExpression.toMichelsonExpression
+      case Left(Right(jsonInstruction)) => jsonInstruction.toMichelsonInstruction.normalized
+      case Right(Nil) => MichelsonEmptyInstruction
+      case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
+    }
+  }
+
   /*
    * Wrapper for type
    *
@@ -58,25 +70,13 @@ object JsonParser {
    * */
   case class JsonType(
       prim: String,
-      args: Option[List[Either[Either[JsonExpression, JsonInstruction], List[JsonInstruction]]]],
+      args: Option[List[EmbeddedElement]],
       annots: Option[List[String]] = None
   ) extends JsonExpression {
     override def toMichelsonExpression =
       MichelsonType(
         prim,
-        args.getOrElse(List.empty).map {
-          case Left(single) =>
-            single match {
-              case Left(jsonExpression) => jsonExpression.toMichelsonExpression
-              case Right(jsonInstruction) =>
-                jsonInstruction.toMichelsonInstruction match {
-                  case it: MichelsonInstructionSequence => it.normalized
-                  case it => it
-                }
-            }
-          case Right(jsonInstructions) =>
-            MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction)).normalized
-        },
+        args.getOrElse(List.empty).map(toMichelsonElement),
         annots.getOrElse(List.empty)
       )
   }
@@ -98,19 +98,14 @@ object JsonParser {
 
   case class JsonSimpleInstruction(
       prim: String,
-      args: Option[List[Either[Either[JsonExpression, JsonInstruction], List[JsonInstruction]]]] = None,
+      args: Option[List[EmbeddedElement]] = None,
       annots: Option[List[String]] = None
   ) extends JsonInstruction {
     override def toMichelsonInstruction =
       MichelsonSingleInstruction(
         name = prim,
         annotations = annots.getOrElse(List.empty),
-        embeddedElements = args.getOrElse(List.empty).map {
-          case Left(Left(jsonExpression)) => jsonExpression.toMichelsonExpression
-          case Left(Right(jsonInstruction)) => jsonInstruction.toMichelsonInstruction.normalized
-          case Right(Nil) => MichelsonEmptyInstruction
-          case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
-        }
+        embeddedElements = args.getOrElse(List.empty).map(toMichelsonElement)
       )
   }
 
