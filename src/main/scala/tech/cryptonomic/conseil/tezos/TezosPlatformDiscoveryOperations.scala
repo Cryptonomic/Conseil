@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationErr
 import tech.cryptonomic.conseil.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.metadata.{AttributePath, AttributeValuesCacheConfiguration, EntityPath}
+import tech.cryptonomic.conseil.metadata._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,7 +21,7 @@ object TezosPlatformDiscoveryOperations {
       caching: MetadataCaching[IO],
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration,
-      highCardinalityLimit: Int = 1000
+      highCardinalityLimit: Int
   )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): TezosPlatformDiscoveryOperations =
     new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
 
@@ -348,6 +348,7 @@ class TezosPlatformDiscoveryOperations(
       columns.map { column =>
         val attributePath = AttributePath(column.name, entityPath)
         val cardinalityHint = cacheOverrides.getCardinalityHint(attributePath)
+        println(s"$column : $cardinalityHint")
         if(cardinalityHint.exists(_ > highCardinalityLimit)) {
           DBIOAction.successful(column.copy(cardinality = cardinalityHint))
         }
@@ -405,9 +406,9 @@ class TezosPlatformDiscoveryOperations(
       case CacheEntry(_, attrs) => attrs
     }.map {
       case (entityName, attrs) =>
-        DBIO.sequence(attrs.map { attr =>
-          TezosDatabaseOperations.countDistinct(entityName.key, attr.name).map(cnt => attr.copy(cardinality = Some(cnt)))
-        }).map(entityName.key -> _)
+        // dummy entity path because at this level network and platform are not checked
+        val entityPath = EntityPath(entityName.key, NetworkPath(networkName, PlatformPath("tezos")))
+        getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries)
     IO.fromFuture(IO(metadataOperations.runQuery(action))).map(_.toMap)
