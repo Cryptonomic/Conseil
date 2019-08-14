@@ -311,7 +311,6 @@ class DatabaseConversionsTest
         converted.level.value shouldBe sampleEndorsement.level
         converted.delegate.value shouldBe sampleEndorsement.metadata.delegate.value
         converted.slots.value shouldBe "[29,27,20,17]"
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.nonce ::
@@ -355,7 +354,6 @@ class DatabaseConversionsTest
         converted.kind shouldBe "seed_nonce_revelation"
         converted.level.value shouldBe sampleNonceRevelation.level
         converted.nonce.value shouldBe sampleNonceRevelation.nonce.value
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.delegate ::
@@ -400,7 +398,6 @@ class DatabaseConversionsTest
         converted.kind shouldBe "activate_account"
         converted.pkh.value shouldBe sampleAccountActivation.pkh.value
         converted.secret.value shouldBe sampleAccountActivation.secret.value
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -466,7 +463,6 @@ class DatabaseConversionsTest
           case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
           case _ => converted.consumedGas shouldBe 'empty
         }
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -539,8 +535,6 @@ class DatabaseConversionsTest
           case Some(Decimal(bignumber)) => converted.paidStorageSizeDiff.value shouldBe bignumber
           case _ => converted.paidStorageSizeDiff shouldBe 'empty
         }
-        converted.cycle shouldBe extractCycle(block)
-
 
         forAll(
           converted.level ::
@@ -614,7 +608,6 @@ class DatabaseConversionsTest
           case _ => converted.paidStorageSizeDiff shouldBe 'empty
         }
         converted.originatedContracts.value shouldBe "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4,KT1Hx96yGgGk2q7Jmwm1dnYAMdRoLJNn5gnC"
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -666,7 +659,6 @@ class DatabaseConversionsTest
           case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
           case _ => converted.consumedGas shouldBe 'empty
         }
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -703,7 +695,6 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "double_endorsement_evidence"
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -748,7 +739,6 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "double_baking_evidence"
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -793,7 +783,6 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "proposals"
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
@@ -841,7 +830,6 @@ class DatabaseConversionsTest
         converted.kind shouldBe "ballot"
         converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
         converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
-        converted.cycle shouldBe extractCycle(block)
 
         forAll(
           converted.level ::
