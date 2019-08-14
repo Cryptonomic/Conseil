@@ -30,16 +30,6 @@ object DatabaseConversions {
     case _ => None
   }
 
-  def extractBallot(ballot: Voting.Vote): Option[String] = ballot match {
-    case Voting.Vote(vote) => Some(vote)
-    case _ => None
-  }
-
-  def extractContractId(id: Option[ContractId]) : Option[String] = id match {
-    case Some(ContractId(id)) => Some(id)
-    case _ => None
-  }
-
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -319,10 +309,10 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        ballot = extractBallot(ballot),
+        ballot = Some(ballot.value),
         internal = false,
         proposal = proposal,
-        source = extractContractId(source)
+        source = source.map(_.id)
       )
   }
 
