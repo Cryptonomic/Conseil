@@ -46,7 +46,7 @@ class TezosPlatformDiscoveryOperationsTest
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds)
+  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds, 100)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
