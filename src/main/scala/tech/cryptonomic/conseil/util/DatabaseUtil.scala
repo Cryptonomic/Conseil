@@ -105,8 +105,10 @@ object DatabaseUtil {
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
-        val datePartAggregations = aggregation.collect { case aggr if aggr.function == AggregationType.datePart =>
-          mapAggregationToAlias(aggr.function, aggr.field)
+        // datePart aggregations need to be used with alias in group by clause
+        val datePartAggregations = aggregation.collect {
+          case aggr if aggr.function == AggregationType.datePart =>
+            mapAggregationToAlias(aggr.function, aggr.field)
         }
         val columnsWithoutAggregationFields = datePartAggregations ::: columns.toSet.diff(aggregationFields).toList
         if (aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
@@ -148,19 +150,18 @@ object DatabaseUtil {
       *
       * @param table   table on which query will be executed
       * @param columns columns which are selected from teh table
-      * @param aggregation parameter containing info about field which has to be aggregated
+      * @param aggregations parameter containing info about field which has to be aggregated
       * @return SQLAction with basic query
       */
-    def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
-      val aggregationFields = aggregation
+    def makeQuery(table: String, columns: List[String], aggregations: List[Aggregation]): SQLActionBuilder = {
+      val aggregationFields = aggregations
         .map {
-          case aggr if aggr.function == AggregationType.datePart && aggr.format.isDefined  =>
-            val format = aggr.format.get
-            makeAggregationFormat(aggr.field, format) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
-          case aggr =>
-            mapAggregationToSQL(aggr.function, aggr.field) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
+          case Aggregation(field, AggregationType.datePart, _, Some(format)) =>
+            makeAggregationFormat(field, format) + " as " + mapAggregationToAlias(AggregationType.datePart, field)
+          case aggregation =>
+            mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(aggregation.function, aggregation.field)
         }
-      val aggr = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).toList
+      val aggr = aggregationFields ::: columns.toSet.diff(aggregations.map(_.field).toSet).toList
       val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
       sql"""SELECT #$cols FROM #$table WHERE true """
     }
@@ -208,7 +209,7 @@ object DatabaseUtil {
       }:_*)
     }
 
-    private def makeAggregationFormat(field: String, format: String) = {
+    private def makeAggregationFormat(field: String, format: String): String = {
       s"to_char($field, '$format')"
     }
 

@@ -2821,7 +2821,7 @@ class TezosDatabaseOperationsTest
     }
 
     "should aggregate with datePart aggregation" in {
-      val oneDay = 3600 * 24 * 1000
+      val oneDay = Duration(1, DAYS).toMillis
       val feesTmp = List(
         FeesRow(0, 2, 4, new Timestamp(0), "kind"),
         FeesRow(0, 4, 8, new Timestamp(1 + oneDay), "kind"),
@@ -2860,7 +2860,7 @@ class TezosDatabaseOperationsTest
     }
 
     "should map date with datePart aggregation when it is only type of aggregation" in {
-      val oneDay = 3600 * 24 * 1000
+      val oneDay = Duration(1, DAYS).toMillis
       val feesTmp = List(
         FeesRow(0, 1, 4, new Timestamp(0), "kind"),
         FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
@@ -2900,8 +2900,8 @@ class TezosDatabaseOperationsTest
     }
 
 
-    "should not fail when aggregation type is not datePart" in {
-      val oneDay = 3600 * 24 * 1000
+    "should ignore format when aggregation type is not datePart" in {
+      val oneDay = Duration(1, DAYS).toMillis
       val feesTmp = List(
         FeesRow(0, 1, 4, new Timestamp(0), "kind"),
         FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
