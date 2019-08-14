@@ -838,7 +838,6 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
-              converted.source ::
               converted.fee ::
               converted.counter ::
               converted.gasLimit ::
