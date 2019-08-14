@@ -838,7 +838,6 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
-              converted.source ::
               converted.fee ::
               converted.counter ::
               converted.gasLimit ::
@@ -849,7 +848,6 @@ class DatabaseConversionsTest
               converted.parameters ::
               converted.managerPubkey ::
               converted.balance ::
-              converted.proposal ::
               converted.spendable ::
               converted.delegatable ::
               converted.script ::
@@ -858,7 +856,6 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
-              converted.ballot ::
               Nil
         ) {
           _ shouldBe 'empty
