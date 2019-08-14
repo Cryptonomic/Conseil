@@ -821,15 +821,15 @@ class DatabaseConversionsTest
 
         val converted = (block, groupHash, sampleBallot: Operation).convertTo[Tables.OperationsRow]
 
+        converted.kind shouldBe "ballot"
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
+        converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
         converted.blockHash shouldBe block.data.hash.value
         converted.blockLevel shouldBe block.data.header.level
-        converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.ballot shouldBe Some("yay")
-        converted.kind shouldBe "ballot"
+        converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
-        converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
 
         forAll(
           converted.level ::
@@ -838,6 +838,7 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
+              converted.source ::
               converted.fee ::
               converted.counter ::
               converted.gasLimit ::
