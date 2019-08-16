@@ -236,7 +236,8 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
-              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations")
+              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations")
             )
           )
       }
