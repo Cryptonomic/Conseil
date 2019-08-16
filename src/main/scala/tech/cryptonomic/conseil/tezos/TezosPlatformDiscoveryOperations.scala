@@ -289,7 +289,7 @@ class TezosPlatformDiscoveryOperations(
   /**
     * Extracts attributes in the DB for the given table name
     *
-    * @param  tableName name of the table from which we extract attributes
+    * @param  entityPath path to the table from which we extract attributes
     * @return list of attributes as a Future
     */
   override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] =
@@ -327,7 +327,7 @@ class TezosPlatformDiscoveryOperations(
   /**
     * Extracts attributes in the DB for the given table name without updating counts
     *
-    * @param  tableName name of the table from which we extract attributes
+    * @param  entityPath path of the table from which we extract attributes
     * @return list of attributes as a Future
     */
   override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
