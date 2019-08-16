@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.metadata
-import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, Path, PlatformPath}
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 

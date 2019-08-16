@@ -70,25 +70,13 @@ object DatabaseConversions {
 
   implicit val blockAccountsToAccountHistoryRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsHistoryRow] {
-      override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, timestamp, accounts) = from
-        accounts.map {
-          case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
-            Tables.AccountsHistoryRow(
-              accountId = id.id,
-              blockId = hash.value,
-              manager = manager.value,
-              spendable = spendable,
-              delegateSetable = delegate.setable,
-              delegateValue = delegate.value.map(_.value),
-              counter = counter,
-              script = script.map(_.code.expression),
-              storage = script.map(_.storage.expression),
-              balance = balance,
-              blockLevel = level,
-              asof = Timestamp.from(timestamp)
-            )
-        }.toList
+      override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] = {
+        val BlockTagged(_, _, timestamp, _) = from
+        blockAccountsToAccountRows.convert(from).map {
+          _.into[Tables.AccountsHistoryRow]
+            .withFieldConst(_.asof, Timestamp.from(timestamp))
+            .transform
+        }
       }
     }
 
