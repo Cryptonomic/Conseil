@@ -403,7 +403,7 @@ class TezosDatabaseOperationsTest
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
         val time = Instant.ofEpochMilli(0)
         val ids =
-          blocks.map(block => (BlockHash(block.hash), block.level, time, List.fill(idPerBlock)(AccountId(generateHash(5)))))
+          blocks.map(block => (BlockHash(block.hash), block.level, Some(time), List.fill(idPerBlock)(AccountId(generateHash(5)))))
 
         //store and write
         val populateAndFetch = for {
@@ -681,7 +681,7 @@ class TezosDatabaseOperationsTest
         //generate data
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
         val keys = blocks.map(
-          block => (BlockHash(block.hash), block.level, testReferenceTimestamp.toInstant, List.fill(pkPerBlock)(PublicKeyHash(generateHash(5))))
+          block => (BlockHash(block.hash), block.level, Some(testReferenceTimestamp.toInstant), List.fill(pkPerBlock)(PublicKeyHash(generateHash(5))))
         )
 
         //store and write
@@ -816,7 +816,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, time.toInstant)
+          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant))
 
         //expecting only the following to remain
         val expected =
@@ -866,7 +866,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Instant.ofEpochMilli(0))
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None)
 
         //expecting only the following to remain
         val expected =

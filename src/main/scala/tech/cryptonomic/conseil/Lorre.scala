@@ -194,7 +194,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val (blocks, accountUpdates) =
         results.map {
           case (block, accountIds) =>
-            block -> accountIds.taggedWithBlock(block.data.hash, block.data.header.level, block.data.header.timestamp.toInstant)
+            block -> accountIds.taggedWithBlock(block.data.hash, block.data.header.level, Some(block.data.header.timestamp.toInstant))
         }.unzip
 
       for {

@@ -53,7 +53,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel, time)
+    accounts.taggedWithBlock(blockHash, blockLevel, Some(time))
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -85,7 +85,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel, Instant.ofEpochSecond(0))
+    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)))
   }
 
   /* randomly populate a number of blocks based on a level range */
