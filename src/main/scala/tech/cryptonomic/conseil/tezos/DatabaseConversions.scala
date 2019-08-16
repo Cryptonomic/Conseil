@@ -30,6 +30,11 @@ object DatabaseConversions {
     case _ => None
   }
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractCycle(block: Block): Option[Int] =
+    discardGenesis.lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
+      .map(_.level.cycle) //this is Option[Int]
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -147,7 +152,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -162,7 +168,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -177,7 +184,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -198,7 +206,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -227,7 +236,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -274,7 +284,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -295,7 +306,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
@@ -312,7 +324,8 @@ object DatabaseConversions {
         ballot = Some(ballot.value),
         internal = false,
         proposal = proposal,
-        source = source.map(_.id)
+        source = source.map(_.id),
+        cycle = extractCycle(block)
       )
   }
 
@@ -331,7 +344,8 @@ object DatabaseConversions {
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
-        internal = false
+        internal = false,
+        cycle = extractCycle(block)
       )
   }
 
