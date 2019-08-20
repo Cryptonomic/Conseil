@@ -311,6 +311,8 @@ class DatabaseConversionsTest
         converted.level.value shouldBe sampleEndorsement.level
         converted.delegate.value shouldBe sampleEndorsement.metadata.delegate.value
         converted.slots.value shouldBe "[29,27,20,17]"
+        converted.branch shouldBe block.operationGroups.find(x => x.hash == groupHash).get.branch
+        converted.numberOfSlots shouldBe Some(sampleEndorsement.metadata.slots.length)
 
         forAll(
           converted.nonce ::
