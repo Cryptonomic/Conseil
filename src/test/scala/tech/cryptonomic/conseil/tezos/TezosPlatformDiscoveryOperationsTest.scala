@@ -239,7 +239,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("branch","Branch", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("mumber_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations")
+              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations")
         )
           )
       }

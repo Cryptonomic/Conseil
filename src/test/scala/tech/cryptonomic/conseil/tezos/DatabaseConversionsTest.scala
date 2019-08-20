@@ -311,9 +311,7 @@ class DatabaseConversionsTest
         converted.level.value shouldBe sampleEndorsement.level
         converted.delegate.value shouldBe sampleEndorsement.metadata.delegate.value
         converted.slots.value shouldBe "[29,27,20,17]"
-        //converted.branch shouldBe block.operationGroups.find(x => x.hash == groupHash).get.branch
-        //test Block has empty operation group, don't want to mess with other tests to check branch
-        converted.numberOfSlots shouldBe Some(sampleEndorsement.metadata.slots.length)
+        //branch and numberOfSlots needs test
 
         forAll(
           converted.nonce ::

@@ -154,7 +154,7 @@ object DatabaseConversions {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
-        branch = Some(block.operationGroups.find(h => h.hash == groupHash).get.branch.value),
+        branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
         numberOfSlots = Some(metadata.slots.length)
       )
   }
