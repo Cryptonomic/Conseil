@@ -12,6 +12,8 @@ import slick.dbio
 import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
+import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
@@ -233,8 +235,11 @@ class TezosPlatformDiscoveryOperationsTest
               ),
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
-              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations")
+              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations")
             )
           )
       }
