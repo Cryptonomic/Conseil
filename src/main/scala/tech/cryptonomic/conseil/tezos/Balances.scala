@@ -55,6 +55,7 @@ object OperationBalances {
       Map.empty
   }
 
+
   implicit def opsBalanceHashGetter[OP <: Operation] = Getter[OP, Option[String]](Function.const(Option.empty))
 
 }

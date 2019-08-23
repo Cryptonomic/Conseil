@@ -80,7 +80,8 @@ CREATE TABLE public.balance_updates (
     change numeric NOT NULL,
     level numeric,
     delegate character varying,
-    category character varying
+    category character varying,
+    operation_group_hash character varying
 );
 
 

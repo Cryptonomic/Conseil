@@ -122,18 +122,19 @@ trait Tables {
     *  @param change Database column change SqlType(numeric)
     *  @param level Database column level SqlType(numeric), Default(None)
     *  @param delegate Database column delegate SqlType(varchar), Default(None)
-    *  @param category Database column category SqlType(varchar), Default(None) */
-  case class BalanceUpdatesRow(id: Int, source: String, sourceId: Option[Int] = None, sourceHash: Option[String] = None, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None)
+    *  @param category Database column category SqlType(varchar), Default(None)
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar), Default(None) */
+  case class BalanceUpdatesRow(id: Int, source: String, sourceId: Option[Int] = None, sourceHash: Option[String] = None, kind: String, contract: Option[String] = None, change: scala.math.BigDecimal, level: Option[scala.math.BigDecimal] = None, delegate: Option[String] = None, category: Option[String] = None, operationGroupHash: Option[String] = None)
   /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
   implicit def GetResultBalanceUpdatesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Option[Int]], e3: GR[Option[String]], e4: GR[scala.math.BigDecimal], e5: GR[Option[scala.math.BigDecimal]]): GR[BalanceUpdatesRow] = GR{
     prs => import prs._
-      BalanceUpdatesRow.tupled((<<[Int], <<[String], <<?[Int], <<?[String], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String]))
+      BalanceUpdatesRow.tupled((<<[Int], <<[String], <<?[Int], <<?[String], <<[String], <<?[String], <<[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[String], <<?[String], <<?[String]))
   }
   /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
   class BalanceUpdates(_tableTag: Tag) extends profile.api.Table[BalanceUpdatesRow](_tableTag, "balance_updates") {
-    def * = (id, source, sourceId, sourceHash, kind, contract, change, level, delegate, category) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
+    def * = (id, source, sourceId, sourceHash, kind, contract, change, level, delegate, category, operationGroupHash) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(id), Rep.Some(source), sourceId, sourceHash, Rep.Some(kind), contract, Rep.Some(change), level, delegate, category)).shaped.<>({r=>import r._; _1.map(_=> BalanceUpdatesRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6, _7.get, _8, _9, _10)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(id), Rep.Some(source), sourceId, sourceHash, Rep.Some(kind), contract, Rep.Some(change), level, delegate, category, operationGroupHash)).shaped.<>({r=>import r._; _1.map(_=> BalanceUpdatesRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6, _7.get, _8, _9, _10, _11)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(serial), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
@@ -155,6 +156,8 @@ trait Tables {
     val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
     /** Database column category SqlType(varchar), Default(None) */
     val category: Rep[Option[String]] = column[Option[String]]("category", O.Default(None))
+    /** Database column operation_group_hash SqlType(varchar), Default(None) */
+    val operationGroupHash: Rep[Option[String]] = column[Option[String]]("operation_group_hash", O.Default(None))
   }
   /** Collection-like TableQuery object for table BalanceUpdates */
   lazy val BalanceUpdates = new TableQuery(tag => new BalanceUpdates(tag))
