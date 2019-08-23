@@ -591,7 +591,6 @@ trait OperationsJsonData {
       )
     )
 
-
   val transactionWithInternalTransactionResult = Transaction(
     counter = PositiveDecimal(120917),
     amount = PositiveDecimal(0),
@@ -661,7 +660,6 @@ trait OperationsJsonData {
     )
   )
 
-
   val transactionWithInternalTransactionJson =
     """
       |{
@@ -717,7 +715,6 @@ trait OperationsJsonData {
       |    }
       |}
     """.stripMargin
-
 
   //used to check if internal errors are correctly decoded
   val failedRevealJson =

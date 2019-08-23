@@ -3,13 +3,15 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  Field,
+  FormattedField,
   OperationType,
   OrderDirection,
   Predicate,
   Query,
   QueryOrdering,
   QueryResponse,
-  Aggregation
+  SimpleField
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -335,7 +337,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
         query.fields,
         sanitizePredicates(query.predicates),
         query.orderBy,
-        sanitizeAggregations(query.aggregation),
+        query.aggregation,
         query.output,
         query.limit
       )
@@ -348,9 +350,11 @@ object ApiOperations extends DataOperations with MetadataOperations {
     }
 
   /** Sanitizes aggregation format so query is safe from SQL injection */
-  def sanitizeAggregations(aggregations: List[Aggregation]): List[Aggregation] =
-    aggregations.map { aggregation =>
-      aggregation.copy(format = aggregation.format.map(sanitizeDatePartAggregation))
+  def sanitizeAggregations(fields: List[Field]): List[Field] =
+    fields.map {
+      case sf: SimpleField => sf
+      case FormattedField(field, function, format) =>
+        FormattedField(sanitizeForSql(field), function, sanitizeDatePartAggregation(format))
     }
 
   /** Sanitizes string to be viable to paste into plain SQL */

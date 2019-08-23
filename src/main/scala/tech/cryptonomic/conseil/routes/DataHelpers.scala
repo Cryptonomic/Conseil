@@ -7,6 +7,8 @@ import akka.util.ByteString
 import cats.Functor
 import endpoints.akkahttp.server
 import endpoints.algebra.Documentation
+import io.circe.Decoder.Result
+import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.routes.openapi.{DataEndpoints, Validation}
 import tech.cryptonomic.conseil.tezos.Tables
@@ -32,6 +34,22 @@ trait DataHelpers extends Validation with server.Endpoints with server.JsonSchem
       complete(HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, ByteString(queryResponse.head("sql").get.toString)))
     case Right(success) =>
       response(success)
+  }
+
+  implicit override val fieldSchema: JsonSchema[Field] = new JsonSchema[DataTypes.Field] {
+    override def encoder: Encoder[Field] = new Encoder[Field] {
+      override def apply(a: Field): Json = a match {
+        case SimpleField(field) => field.asJson
+        case ff: FormattedField => ff.asJson(formattedFieldSchema.encoder)
+      }
+    }
+
+    override def decoder: Decoder[Field] = new Decoder[Field] {
+      override def apply(c: HCursor): Result[Field] = c.value match {
+        case jsonString if jsonString.isString => Right(SimpleField(jsonString.asString.get))
+        case formattedField => formattedField.as[FormattedField](formattedFieldSchema.decoder)
+      }
+    }
   }
 
   /** Function extracting option out of Right */
