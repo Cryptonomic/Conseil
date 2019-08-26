@@ -366,6 +366,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
   /** Sanitizes datePart aggregate function*/
   def sanitizeDatePartAggregation(str: String): String = {
     val supportedCharacters = Set('Y', 'M', 'D', 'A', '-')
-    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+    str.filter(c => !c.isWhitespace || supportedCharacters.contains(c))
   }
 }
