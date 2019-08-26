@@ -162,12 +162,12 @@ object DatabaseUtil {
             aggregation.field
           )
       }
-      val ccc = columns.map {
+      val columnNames = columns.map {
         case SimpleField(field) => field
         case FormattedField(field, function, format) =>
           makeAggregationFormat(field, format) + " as " + mapFormatToAlias(function, field)
       }
-      val aggr = aggregationFields ::: ccc.toSet.diff(aggregations.map(_.field).toSet).toList
+      val aggr = aggregationFields ::: columnNames.toSet.diff(aggregations.map(_.field).toSet).toList
       val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
       sql"""SELECT #$cols FROM #$table WHERE true """
     }

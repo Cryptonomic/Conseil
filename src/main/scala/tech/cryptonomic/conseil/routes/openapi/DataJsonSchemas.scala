@@ -11,15 +11,11 @@ trait DataJsonSchemas extends generic.JsonSchemas {
 
   /** API field schema */
   implicit val fieldSchema: JsonSchema[Field] //=
-//    genericJsonSchema[Field]
-//
-//  implicit lazy val simpleSchema: JsonSchema[SimpleField] =
-//    genericJsonSchema[SimpleField]
-//
+
   implicit lazy val formattedFieldSchema: JsonSchema[FormattedField] =
     genericJsonSchema[FormattedField]
 
-  /** Fprmat types schema */
+  /** Format types schema */
   implicit lazy val formatTypesSchema: JsonSchema[FormatType.Value] =
     enumeration(FormatType.values.toSeq)(_.toString)
 

@@ -334,7 +334,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     runQuery(
       TezosDatabaseOperations.selectWithPredicates(
         tableName,
-        query.fields,
+        sanitizeFields(query.fields),
         sanitizePredicates(query.predicates),
         query.orderBy,
         query.aggregation,
@@ -350,9 +350,9 @@ object ApiOperations extends DataOperations with MetadataOperations {
     }
 
   /** Sanitizes aggregation format so query is safe from SQL injection */
-  def sanitizeAggregations(fields: List[Field]): List[Field] =
+  def sanitizeFields(fields: List[Field]): List[Field] =
     fields.map {
-      case sf: SimpleField => sf
+      case SimpleField(field) => SimpleField(sanitizeForSql(field))
       case FormattedField(field, function, format) =>
         FormattedField(sanitizeForSql(field), function, sanitizeDatePartAggregation(format))
     }
@@ -366,6 +366,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
   /** Sanitizes datePart aggregate function*/
   def sanitizeDatePartAggregation(str: String): String = {
     val supportedCharacters = Set('Y', 'M', 'D', 'A', '-')
-    str.filter(supportedCharacters)
+    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
   }
 }
