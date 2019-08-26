@@ -348,7 +348,6 @@ class TezosPlatformDiscoveryOperations(
       columns.map { column =>
         val attributePath = AttributePath(column.name, entityPath)
         val cardinalityHint = cacheOverrides.getCardinalityHint(attributePath)
-        println(s"$column : $cardinalityHint")
         if(cardinalityHint.exists(_ > highCardinalityLimit)) {
           DBIOAction.successful(column.copy(cardinality = cardinalityHint))
         }
