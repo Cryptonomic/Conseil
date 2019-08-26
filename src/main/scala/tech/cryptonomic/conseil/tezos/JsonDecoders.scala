@@ -205,6 +205,7 @@ object JsonDecoders {
     object Operations {
       import Scripts._
       import Numbers._
+      import Votes._
 
       /* decode any json value to its string representation wrapped in a Error*/
       implicit val errorDecoder: Decoder[OperationResult.Error] =

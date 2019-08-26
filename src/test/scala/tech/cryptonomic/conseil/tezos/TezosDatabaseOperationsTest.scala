@@ -166,41 +166,41 @@ class TezosDatabaseOperationsTest
 
           dbOperations should have size (generatedGroups.map(_.contents.size).sum)
 
-          forAll(dbOperations) {
-            case (groupRow, opRow) =>
-              val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
-              val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
-              //figure out common fields
-              opRow.operationId should be > -1
-              opRow.operationGroupHash shouldEqual operationGroup.hash.value
-              opRow.blockHash shouldEqual operationBlock.data.hash.value
-              opRow.timestamp shouldEqual Timestamp.from(operationBlock.data.header.timestamp.toInstant)
-              //figure out the correct sub-type
-              val operationMatch = opRow.kind match {
-                case "endorsement" =>
-                  operationGroup.contents.find(_.isInstanceOf[Endorsement])
-                case "seed_nonce_revelation" =>
-                  operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
-                case "activate_account" =>
-                  operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
-                case "reveal" =>
-                  operationGroup.contents.find(_.isInstanceOf[Reveal])
-                case "transaction" =>
-                  operationGroup.contents.find(_.isInstanceOf[Transaction])
-                case "origination" =>
-                  operationGroup.contents.find(_.isInstanceOf[Origination])
-                case "delegation" =>
-                  operationGroup.contents.find(_.isInstanceOf[Delegation])
-                case "double_endorsement_evidence" =>
-                  operationGroup.contents.find(_ == DoubleEndorsementEvidence)
-                case "double_baking_evidence" =>
-                  operationGroup.contents.find(_ == DoubleBakingEvidence)
-                case "proposals" =>
-                  operationGroup.contents.find(_ == Proposals)
-                case "ballot" =>
-                  operationGroup.contents.find(_ == Ballot)
-                case _ => None
-              }
+        forAll(dbOperations) {
+          case (groupRow, opRow) =>
+            val operationBlock = generatedBlocks.find(_.operationGroups.head.hash.value == groupRow.hash).value
+            val operationGroup = generatedGroups.find(_.hash.value == groupRow.hash).value
+            //figure out common fields
+            opRow.operationId should be > -1
+            opRow.operationGroupHash shouldEqual operationGroup.hash.value
+            opRow.blockHash shouldEqual operationBlock.data.hash.value
+            opRow.timestamp shouldEqual Timestamp.from(operationBlock.data.header.timestamp.toInstant)
+            //figure out the correct sub-type
+            val operationMatch = opRow.kind match {
+              case "endorsement" =>
+                operationGroup.contents.find(_.isInstanceOf[Endorsement])
+              case "seed_nonce_revelation" =>
+                operationGroup.contents.find(_.isInstanceOf[SeedNonceRevelation])
+              case "activate_account" =>
+                operationGroup.contents.find(_.isInstanceOf[ActivateAccount])
+              case "reveal" =>
+                operationGroup.contents.find(_.isInstanceOf[Reveal])
+              case "transaction" =>
+                operationGroup.contents.find(_.isInstanceOf[Transaction])
+              case "origination" =>
+                operationGroup.contents.find(_.isInstanceOf[Origination])
+              case "delegation" =>
+                operationGroup.contents.find(_.isInstanceOf[Delegation])
+              case "double_endorsement_evidence" =>
+                operationGroup.contents.find(_ == DoubleEndorsementEvidence)
+              case "double_baking_evidence" =>
+                operationGroup.contents.find(_ == DoubleBakingEvidence)
+              case "proposals" =>
+                operationGroup.contents.find(_ == Proposals)
+              case "ballot" =>
+                operationGroup.contents.find(_.isInstanceOf[Ballot])
+              case _ => None
+            }
 
               operationMatch shouldBe 'defined
 
