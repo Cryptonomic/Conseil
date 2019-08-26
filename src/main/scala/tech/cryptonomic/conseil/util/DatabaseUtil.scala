@@ -106,7 +106,6 @@ object DatabaseUtil {
         */
       def addGroupBy(aggregation: List[Aggregation], columns: List[Field]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
-        // datePart aggregations need to be used with alias in group by clause
         val cols = columns.map {
           case SimpleField(field) => field
           case FormattedField(field, function, _) =>
@@ -157,8 +156,6 @@ object DatabaseUtil {
       */
     def makeQuery(table: String, columns: List[Field], aggregations: List[Aggregation]): SQLActionBuilder = {
       val aggregationFields = aggregations.map {
-//          case Aggregation(field, AggregationType.datePart, _, Some(format)) =>
-//            makeAggregationFormat(field, format) + " as " + mapAggregationToAlias(AggregationType.datePart, field)
         aggregation =>
           mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
             aggregation.function,
