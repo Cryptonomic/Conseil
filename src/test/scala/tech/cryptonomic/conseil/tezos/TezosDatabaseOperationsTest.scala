@@ -225,7 +225,7 @@ class TezosDatabaseOperationsTest
             val generatedUpdateRows =
             operation
               .convertToA[List, Tables.BalanceUpdatesRow]
-              .map(_.copy(sourceId = Some(opRow.operationId)))
+              .map(_.copy(sourceId = Some(opRow.operationId), operationGroupHash = Some(opRow.operationGroupHash)))
 
             //reset the generated id for matching
             val dbUpdateRows = dbHandler
