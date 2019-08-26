@@ -352,7 +352,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
       )
     }
 
-    it should "parse MichelsonExpression with both MichelsonExpression and MichelsonInstruction as arguments" in {
+  it should "parse MichelsonExpression with both MichelsonExpression and MichelsonInstruction as arguments" in {
       val json =
         """{
           |  "prim": "Pair",
@@ -384,6 +384,16 @@ class JsonParserSpec extends FlatSpec with Matchers {
             ),
             List()
           )
+        )
+      )
+    }
+
+  it should "parse MichelsonInstruction represented as simple string" in {
+      val json = """{"string":"hello"}"""
+
+      parse[MichelsonInstruction](json) should equal(
+        Right(
+          MichelsonStringConstant("hello")
         )
       )
     }
