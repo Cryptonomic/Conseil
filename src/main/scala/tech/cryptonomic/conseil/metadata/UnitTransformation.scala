@@ -34,17 +34,18 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
   }
 
   // overrides platform
-  private def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
-    val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
+  private def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] =
+    when(overrides.isVisible(path)) {
+      val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
 
-    platform.copy(
-      displayName = overridePlatform
-        .flatMap(_.displayName)
-        .getOrElse(platform.displayName),
-      description = overridePlatform
-        .flatMap(_.description)
-    )
-  }
+      platform.copy(
+        displayName = overridePlatform
+          .flatMap(_.displayName)
+          .getOrElse(platform.displayName),
+        description = overridePlatform
+          .flatMap(_.description)
+      )
+    }
 
   // overrides network
   private def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {

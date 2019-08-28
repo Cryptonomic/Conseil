@@ -166,11 +166,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
-    def parseMichelsonScripts(account: Account): Account = {
+    def parseMichelsonScripts: Account => Account = {
       val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (scriptAlter compose storageAlter)(account)
+      scriptAlter compose storageAlter
     }
 
     fetchedAccounts.map(
@@ -545,12 +545,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     val proposalsStateFetch =
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
-    def parseMichelsonScripts(block: Block): Block = {
+    def parseMichelsonScripts: Block => Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (codeAlter compose storageAlter compose parametersAlter)(block)
+      codeAlter compose storageAlter compose parametersAlter
     }
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations

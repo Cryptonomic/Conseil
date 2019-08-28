@@ -85,4 +85,8 @@ object OpenApiDoc
             "application/json" -> MediaType(schema = Some(Schema.Array(Schema.simpleString, None)))
           )
         )
+
+  /** API field schema */
+  implicit override val fieldSchema: DocumentedJsonSchema =
+    DocumentedJsonSchema.Primitive("Either String or FormattedField")
 }

@@ -7,11 +7,22 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms
-import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, Tezos, TezosConfiguration, TezosNodeConfiguration}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse}
+import tech.cryptonomic.conseil.config.Platforms.{
+  PlatformsConfiguration,
+  Tezos,
+  TezosConfiguration,
+  TezosNodeConfiguration
+}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
-import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, TestPlatformDiscoveryOperations, TransparentUnitTransformation, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TestPlatformDiscoveryOperations,
+  TransparentUnitTransformation,
+  UnitTransformation
+}
 import tech.cryptonomic.conseil.routes.Data
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -81,7 +92,7 @@ class DataTest
   )
 
   val fieldQuery = Query(
-    fields = List("account_id", "spendable", "counter"),
+    fields = List(SimpleField("account_id"), SimpleField("spendable"), SimpleField("counter")),
     predicates = List.empty
   )
 

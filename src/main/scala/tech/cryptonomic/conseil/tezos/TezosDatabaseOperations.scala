@@ -501,7 +501,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def selectWithPredicates(
       table: String,
-      columns: List[String],
+      columns: List[Field],
       predicates: List[Predicate],
       ordering: List[QueryOrdering],
       aggregation: List[Aggregation],
