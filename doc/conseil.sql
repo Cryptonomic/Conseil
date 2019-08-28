@@ -258,6 +258,7 @@ CREATE TABLE public.operations (
     block_level integer NOT NULL,
     ballot character varying,
     internal boolean NOT NULL,
+    period integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
