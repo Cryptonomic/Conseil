@@ -185,7 +185,7 @@ class TezosPlatformDiscoveryOperationsTest
         sut.getTableAttributes("operations").futureValue shouldBe
           Some(
             List(
-              Attribute("branch","Branch", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
@@ -245,7 +245,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
             )
-        )
+          )
       }
 
       "return list of attributes of operation groups" in {
