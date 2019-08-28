@@ -220,6 +220,8 @@ CREATE TABLE public.operation_groups (
 --
 
 CREATE TABLE public.operations (
+    branch character varying,
+    number_of_slots integer,
     cycle integer,
     operation_id integer NOT NULL,
     operation_group_hash character varying NOT NULL,
