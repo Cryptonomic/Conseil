@@ -196,7 +196,9 @@ CREATE TABLE public.fees (
     medium integer NOT NULL,
     high integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    kind character varying NOT NULL
+    kind character varying NOT NULL,
+    cycle integer,
+    level integer
 );
 
 

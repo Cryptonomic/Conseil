@@ -39,13 +39,7 @@ object DatabaseConversions {
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
     override def convert(from: AverageFees) =
-      Tables.FeesRow(
-        low = from.low,
-        medium = from.medium,
-        high = from.high,
-        timestamp = from.timestamp,
-        kind = from.kind
-      )
+      from.into[Tables.FeesRow].transform
   }
 
   implicit val blockAccountsToAccountRows =

@@ -953,7 +953,9 @@ class TezosDatabaseOperationsTest
           medium = mu,
           high = mu + sigma,
           timestamp = latest,
-          kind = ops.head.kind
+          kind = ops.head.kind,
+          cycle = None,
+          level = Some(0)
         )
 
         //check
@@ -1022,7 +1024,9 @@ class TezosDatabaseOperationsTest
           medium = mu,
           high = mu,
           timestamp = latest,
-          kind = ops.head.kind
+          kind = ops.head.kind,
+          cycle = None,
+          level = Some(0)
         )
         //check
         val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
