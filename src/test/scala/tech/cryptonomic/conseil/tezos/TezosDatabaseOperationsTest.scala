@@ -955,7 +955,7 @@ class TezosDatabaseOperationsTest
           timestamp = latest,
           kind = ops.head.kind,
           cycle = None,
-          level = Some(0)
+          level = Some(block.level)
         )
 
         //check
