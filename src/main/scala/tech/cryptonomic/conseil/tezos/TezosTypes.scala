@@ -231,7 +231,11 @@ object TezosTypes {
 
   final case object DoubleEndorsementEvidence extends Operation
   final case object DoubleBakingEvidence extends Operation
-  final case object Proposals extends Operation
+  final case class Proposals(
+      source: Option[ContractId],
+      period: Option[Int],
+      proposals: Option[List[String]])
+    extends Operation
   final case class Ballot(
       ballot: Voting.Vote,
       proposal: Option[String],

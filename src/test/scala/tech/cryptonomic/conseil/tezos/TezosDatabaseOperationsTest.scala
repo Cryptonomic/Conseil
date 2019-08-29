@@ -196,7 +196,7 @@ class TezosDatabaseOperationsTest
               case "double_baking_evidence" =>
                 operationGroup.contents.find(_ == DoubleBakingEvidence)
               case "proposals" =>
-                operationGroup.contents.find(_ == Proposals)
+                operationGroup.contents.find(_.isInstanceOf[Proposals])
               case "ballot" =>
                 operationGroup.contents.find(_.isInstanceOf[Ballot])
               case _ => None

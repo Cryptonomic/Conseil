@@ -137,6 +137,7 @@ object DatabaseConversions {
           convertOrigination orElse
           convertDelegation orElse
           convertBallot orElse
+          convertProposals orElse
           convertUnhandledOperations)(from)
   }
 
@@ -331,12 +332,29 @@ object DatabaseConversions {
       )
   }
 
+  private val convertProposals: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Proposals(source, period, proposals)) =>
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "proposals",
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        proposal = proposals.map(x => concatenateToString(x)),
+        source = source.map(_.id),
+        cycle = extractCycle(block),
+        period = period
+      )
+
+  }
+
   private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, op) =>
       val kind = op match {
         case DoubleEndorsementEvidence => "double_endorsement_evidence"
         case DoubleBakingEvidence => "double_baking_evidence"
-        case Proposals => "proposals"
         case _ => ""
       }
       Tables.OperationsRow(

@@ -287,4 +287,10 @@ trait DBConversionsData {
       source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
     )
 
+  val sampleProposals =
+    Proposals(
+      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+      period = Some(10),
+      proposals = Some(List("Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z"))
+    )
 }
