@@ -784,7 +784,7 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "proposals"
-        converted.source shouldBe Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+        converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
         //converted.period shouldBe Some(10)
         converted.proposal shouldBe Some("[\"Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z\"]")
 
