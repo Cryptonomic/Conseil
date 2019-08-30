@@ -199,7 +199,7 @@ class TezosPlatformDiscoveryOperationsTest
               ),
               Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("delegate", "Delegate", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
               Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
@@ -263,7 +263,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
+              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
             )
           )

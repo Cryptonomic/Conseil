@@ -786,7 +786,7 @@ class DatabaseConversionsTest
         converted.kind shouldBe "proposals"
         converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
         converted.period shouldBe Some(10)
-        converted.proposal shouldBe Some("List(Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z)")
+        converted.proposal shouldBe Some("[Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z]")
 
         forAll(
           converted.level ::
