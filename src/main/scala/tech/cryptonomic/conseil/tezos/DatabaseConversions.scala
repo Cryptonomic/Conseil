@@ -32,7 +32,8 @@ object DatabaseConversions {
 
   //Note, cycle 0 starts at the level 2 block
   def extractCycle(block: Block): Option[Int] =
-    discardGenesis.lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
+    discardGenesis
+      .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle) //this is Option[Int]
 
   //implicit conversions to database row types
@@ -313,7 +314,6 @@ object DatabaseConversions {
         cycle = extractCycle(block)
       )
   }
-
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Ballot(ballot, proposal, source)) =>
