@@ -155,12 +155,11 @@ object DatabaseUtil {
       * @return SQLAction with basic query
       */
     def makeQuery(table: String, columns: List[Field], aggregations: List[Aggregation]): SQLActionBuilder = {
-      val aggregationFields = aggregations.map {
-        aggregation =>
-          mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
-            aggregation.function,
-            aggregation.field
-          )
+      val aggregationFields = aggregations.map { aggregation =>
+        mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
+          aggregation.function,
+          aggregation.field
+        )
       }
       val columnNames = columns.map {
         case SimpleField(field) => field

@@ -311,6 +311,7 @@ class DatabaseConversionsTest
         converted.level.value shouldBe sampleEndorsement.level
         converted.delegate.value shouldBe sampleEndorsement.metadata.delegate.value
         converted.slots.value shouldBe "[29,27,20,17]"
+        //branch and numberOfSlots needs test
 
         forAll(
           converted.nonce ::

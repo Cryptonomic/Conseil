@@ -235,7 +235,7 @@ object TezosTypes {
   final case class Ballot(
       ballot: Voting.Vote,
       proposal: Option[String],
-      source: Option[ContractId],
+      source: Option[ContractId]
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
@@ -263,8 +263,6 @@ object TezosTypes {
         kind: String,
         source: ContractId,
         nonce: Int,
-
-
         public_key: PublicKey,
         result: OperationResult.Reveal
     ) extends InternalOperationResult
