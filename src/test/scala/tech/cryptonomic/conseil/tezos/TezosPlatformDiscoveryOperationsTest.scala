@@ -297,9 +297,9 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
               Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "rolls")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
             )
-          )
+          ) 
       }
 
       "return list of attributes of ballots" in {
