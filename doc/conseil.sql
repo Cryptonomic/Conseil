@@ -80,7 +80,8 @@ CREATE TABLE public.balance_updates (
     change numeric NOT NULL,
     level numeric,
     delegate character varying,
-    category character varying
+    category character varying,
+    operation_group_hash character varying
 );
 
 
@@ -257,6 +258,7 @@ CREATE TABLE public.operations (
     block_level integer NOT NULL,
     ballot character varying,
     internal boolean NOT NULL,
+    period integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -462,6 +464,18 @@ CREATE INDEX ix_operations_timestamp ON public.operations USING btree ("timestam
 --
 
 CREATE INDEX ix_operations_delegate ON public.operations USING btree ("delegate");
+
+--
+-- Name: ix_rolls_block_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
+
+--
+-- Name: ix_rolls_block_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rolls_block_level ON public.rolls USING btree (block_level);
 
 
 --
