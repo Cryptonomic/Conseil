@@ -80,7 +80,8 @@ CREATE TABLE public.balance_updates (
     change numeric NOT NULL,
     level numeric,
     delegate character varying,
-    category character varying
+    category character varying,
+    operation_group_hash character varying
 );
 
 
@@ -257,6 +258,7 @@ CREATE TABLE public.operations (
     block_level integer NOT NULL,
     ballot character varying,
     internal boolean NOT NULL,
+    period integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
