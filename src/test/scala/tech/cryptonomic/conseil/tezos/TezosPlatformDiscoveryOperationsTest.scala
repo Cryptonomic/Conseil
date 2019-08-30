@@ -212,17 +212,6 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("status", "Status", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
               Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute(
-                "operation_group_hash",
-                "Operation group hash",
-                DataType.String,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
               Attribute(
                 "paid_storage_size_diff",
                 "Paid storage size diff",
