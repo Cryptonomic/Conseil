@@ -542,9 +542,14 @@ ALTER TABLE ONLY public.delegates
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
 
+--
+-- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operations
+    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES public.operation_groups(hash, block_id);
 
 --
--- TOC entry 2089 (class 2606 OID 7467601)
 -- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
