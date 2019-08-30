@@ -595,5 +595,4 @@ object DatabaseConversions {
       }
     }
   }
-
 }
