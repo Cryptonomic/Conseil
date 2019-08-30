@@ -202,40 +202,42 @@ class TezosDatabaseOperationsTest
                 case _ => None
               }
 
-          operationMatch shouldBe 'defined
+              operationMatch shouldBe 'defined
 
-            val operation = operationMatch.value
+              val operation = operationMatch.value
 
-            /* Convert both the generated operation to a tables row representation
-             * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
-             * that the conversion itself is correct
-             */
-            import DatabaseConversions._
-            import tech.cryptonomic.conseil.util.Conversion.Syntax._
-            //used as a constraint to read balance updates from operations
-            import tech.cryptonomic.conseil.tezos.OperationBalances._
-            import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
+              /* Convert both the generated operation to a tables row representation
+               * Comparing those for correctness makes sense as long as we guarantee with testing elsewhere
+               * that the conversion itself is correct
+               */
+              import DatabaseConversions._
+              import tech.cryptonomic.conseil.util.Conversion.Syntax._
+              //used as a constraint to read balance updates from operations
+              import tech.cryptonomic.conseil.tezos.OperationBalances._
+              import tech.cryptonomic.conseil.tezos.SymbolSourceLabels.Show._
 
-            val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
-            //skip the id, to take into account that it's only generated on save
-            generatedConversion shouldEqual opRow.copy(operationId = 0)
+              val generatedConversion = (operationBlock, operationGroup.hash, operation).convertTo[Tables.OperationsRow]
+              //skip the id, to take into account that it's only generated on save
+              generatedConversion shouldEqual opRow.copy(operationId = 0)
 
-            /* check stored balance updates */
-            //convert and set the real stored operation id
-            val generatedUpdateRows =
-            operation
-              .convertToA[List, Tables.BalanceUpdatesRow]
-              .map(_.copy(sourceId = Some(opRow.operationId), operationGroupHash = Some(opRow.operationGroupHash)))
+              /* check stored balance updates */
+              //convert and set the real stored operation id
+              val generatedUpdateRows =
+                operation
+                  .convertToA[List, Tables.BalanceUpdatesRow]
+                  .map(_.copy(sourceId = Some(opRow.operationId), operationGroupHash = Some(opRow.operationGroupHash)))
 
-            //reset the generated id for matching
-            val dbUpdateRows = dbHandler
-              .run(
-                Tables.BalanceUpdates.filter(_.sourceId === opRow.operationId).result
-              )
-              .futureValue
-              .map(_.copy(id = 0))
+              //reset the generated id for matching
+              val dbUpdateRows = dbHandler
+                .run(
+                  Tables.BalanceUpdates.filter(_.sourceId === opRow.operationId).result
+                )
+                .futureValue
+                .map(_.copy(id = 0))
 
-            dbUpdateRows should contain theSameElementsAs generatedUpdateRows
+              dbUpdateRows should contain theSameElementsAs generatedUpdateRows
+
+          }
         }
 
       }
