@@ -1,6 +1,13 @@
 name := "Conseil"
 scalaVersion := "2.12.8"
 
+lazy val conseil = (project in file("."))
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings
+    // other settings here
+  )
+
 val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
@@ -9,6 +16,7 @@ val catsVersion = "1.6.0"
 val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
 val circeVersion = "0.11.1"
+val http4sVersion = "0.20.10"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -64,10 +72,13 @@ libraryDependencies ++= Seq(
   "com.rklaehn"                  %% "radixtree"                     % "0.5.1",
   "com.typesafe.akka"            %% "akka-testkit"                  % akkaVersion % Test exclude ("com.typesafe", "config"),
   "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
-  "org.scalatest"                %% "scalatest"                     % "3.0.5" % Test,
-  "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
-  "org.scalamock"                %% "scalamock"                     % "4.1.0" % Test,
-  "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % Test
+  "org.scalatest"                %% "scalatest"                     % "3.0.5" % "it, test",
+  "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
+  "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
+  "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % "it, test",
+  "org.http4s"                   %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
+  "org.http4s"                   %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
+  "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest
 )
 
 excludeDependencies ++= Seq(
