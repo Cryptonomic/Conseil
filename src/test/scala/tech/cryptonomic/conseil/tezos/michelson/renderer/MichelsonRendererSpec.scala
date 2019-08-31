@@ -27,7 +27,8 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     }
 
   it should "render MichelsonType with string constant including JSON" in {
-      MichelsonType("some", List(MichelsonStringConstant("""{"key": "value"}"""))).render() shouldBe """(some "{\"key\": \"value\"}")"""
+      MichelsonType("some", List(MichelsonStringConstant("""{"key": "value"}""")))
+        .render() shouldBe """(some "{\"key\": \"value\"}")"""
     }
 
   it should "render MichelsonType with bytes constant" in {

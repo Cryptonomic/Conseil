@@ -196,7 +196,7 @@ class TezosDatabaseOperationsTest
                 case "double_baking_evidence" =>
                   operationGroup.contents.find(_ == DoubleBakingEvidence)
                 case "proposals" =>
-                  operationGroup.contents.find(_ == Proposals)
+                  operationGroup.contents.find(_.isInstanceOf[Proposals])
                 case "ballot" =>
                   operationGroup.contents.find(_.isInstanceOf[Ballot])
                 case _ => None
@@ -225,7 +225,7 @@ class TezosDatabaseOperationsTest
               val generatedUpdateRows =
                 operation
                   .convertToA[List, Tables.BalanceUpdatesRow]
-                  .map(_.copy(sourceId = Some(opRow.operationId)))
+                  .map(_.copy(sourceId = Some(opRow.operationId), operationGroupHash = Some(opRow.operationGroupHash)))
 
               //reset the generated id for matching
               val dbUpdateRows = dbHandler

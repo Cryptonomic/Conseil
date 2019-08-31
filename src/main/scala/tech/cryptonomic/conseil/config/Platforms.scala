@@ -45,7 +45,8 @@ object Platforms extends LazyLogging {
       hostname: String,
       port: Int,
       protocol: String,
-      pathPrefix: String = ""
+      pathPrefix: String = "",
+      chainEnv: String = "main"
   )
 
   /** generic trait for any platform configuration, where each instance corresponds to a network available on that chain */
