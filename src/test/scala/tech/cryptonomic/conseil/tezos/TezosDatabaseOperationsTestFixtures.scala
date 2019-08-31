@@ -29,7 +29,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
         medium = medium,
         high = high,
         timestamp = new Timestamp(startAt.getTime + current),
-        kind = "kind"
+        kind = "kind",
+        level = None,
+        cycle = None
       )
     }.toList
   }

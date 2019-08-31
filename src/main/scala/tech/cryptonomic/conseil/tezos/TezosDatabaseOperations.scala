@@ -368,28 +368,29 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[BigDecimal], java.sql.Timestamp)]): AverageFees = {
+    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
       val values = fees.map {
-        case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
+        case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }
       val m: Int = ceil(mean(values)).toInt
       val s: Int = ceil(stdev(values)).toInt
-      AverageFees(max(m - s, 0), m, m + s, ts, kind)
+
+      AverageFees(max(m - s, 0), m, m + s, ts, kind, cycle, level)
     }
 
     val opQuery =
       Tables.Operations
         .filter(_.kind === kind)
-        .map(o => (o.fee, o.timestamp))
+        .map(o => (o.fee, o.timestamp, o.cycle, o.level))
         .distinct
-        .sortBy { case (_, ts) => ts.desc }
+        .sortBy { case (_, ts, _, _) => ts.desc }
         .take(numberOfFeesAveraged)
         .result
 
     opQuery.map { timestampedFees =>
       timestampedFees.headOption.map {
-        case (_, latest) =>
-          computeAverage(latest, timestampedFees)
+        case (_, latest, cycle, level) =>
+          computeAverage(latest, cycle, level, timestampedFees)
       }
     }
   }

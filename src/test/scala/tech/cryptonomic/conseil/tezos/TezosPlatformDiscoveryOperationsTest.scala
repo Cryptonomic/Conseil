@@ -109,7 +109,9 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
               Attribute("high", "High", DataType.Int, None, KeyType.NonKey, "fees"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
-              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees")
+              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
+              Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
             )
           )
       }
@@ -323,7 +325,7 @@ class TezosPlatformDiscoveryOperationsTest
   "listAttributeValues" should {
 
       "return list of values of kind attribute of Fees without filter" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
         sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
@@ -349,7 +351,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
@@ -361,7 +363,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list with one error when the minimum matching length is greater than match length" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
         sut
@@ -372,7 +374,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return empty list when trying to sql inject" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
         // That's how the SLQ-injected string will look like:
@@ -386,8 +388,8 @@ class TezosPlatformDiscoveryOperationsTest
       }
       "correctly apply the filter" in {
         val avgFees = List(
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1"),
-          AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
+          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None),
+          AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
         )
 
         sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
