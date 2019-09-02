@@ -28,24 +28,24 @@ object DataEndpointsClientProbe {
     val timer = IO.timer(scala.concurrent.ExecutionContext.global)
 
     /* We might wanna start with only 10k blocks */
-    private val runLorre =
-      Process(Seq("sbt", "runLorre -d 10000 -h BLc7tKfzia9hnaY1YTMS6RkDniQBoApM4EjKFRLucsuHbiy3eqt prodnet"))
+    private def runLorre(network: String) =
+      Seq("sbt", s"runLorre -d 10000 -h BLc7tKfzia9hnaY1YTMS6RkDniQBoApM4EjKFRLucsuHbiy3eqt $network")
     private val runConseil = Process(Seq("sbt", "runConseil -v"))
     private def grepConseilPID(): String = (Seq("jps", "-m") #| Seq("grep", "runConseil")).!!.split(" ").head
     private def stopPid(pid: String) = Seq("kill", "-2", pid).!
 
-    private def syncData = IO((runLorre !).ensuring(_ == 0, "lorre failed to load correctly"))
+    private def syncData(network: String) = IO((runLorre(network).!).ensuring(_ == 0, "lorre failed to load correctly"))
 
-    private def startConseil(shouldSync: Boolean): IO[Process] =
+    private def startConseil(syncNetwork: Option[String]): IO[Process] =
       for {
-        _ <- if (shouldSync) syncData else IO(0)
+        _ <- if (syncNetwork.nonEmpty) syncData(syncNetwork.get) else IO(0)
         proc <- IO(runConseil.run())
         _ <- IO(println("waiting for conseil to start"))
         _ <- timer.sleep(30.seconds)
       } yield proc
 
-    def usingConseil[A](shouldSync: Boolean = false)(testBlock: => IO[A]) =
-      startConseil(shouldSync).bracket(
+    def usingConseil[A](syncNetwork: Option[String] = None)(testBlock: => IO[A]) =
+      startConseil(syncNetwork).bracket(
         use = _ => testBlock
       )(
         release = _ =>
@@ -64,9 +64,12 @@ object DataEndpointsClientProbe {
 
   private val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
-  def runRegressionSuite(shouldSync: Boolean = true): IO[Unit] =
+  /** will run the regression suite against the given endpoints
+    * @param syncToNetwork if a network name is provided, a Lorre instance will load data to the local db from the specified network
+    */
+  def runRegressionSuite(syncToNetwork: Option[String] = None): IO[Unit] =
     Setup
-      .usingConseil(shouldSync) {
+      .usingConseil(syncToNetwork) {
         infoEndpoint *>
         blockHeadEndpoint
       }
