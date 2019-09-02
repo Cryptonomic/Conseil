@@ -76,13 +76,15 @@ object TezosDatabaseOperations extends LazyLogging {
     val saveGroupsAction = Tables.OperationGroups ++= blocks.flatMap(_.convertToA[List, OperationGroupsRow])
 
     //a function that takes a row to save and creates an action to do that, returning the new id
-    val saveOperationGetNewId = Kleisli[DBIO, OperationsRow, Int] {
-      Tables.Operations returning Tables.Operations.map(_.operationId) += _
+    val saveOperationGetNewId = Kleisli[DBIO, OperationsRow, (String, Int)] {
+      Tables.Operations returning Tables.Operations.map(o => (o.operationGroupHash, o.operationId)) += _
     }
     //a function that takes rows to save with an operation id, and creates an action to do that
-    val saveBalanceUpdatesForOperationId = Kleisli[DBIO, (Int, List[BalanceUpdatesRow]), Option[Int]] {
-      case (operationRowId, balanceRows) =>
-        Tables.BalanceUpdates ++= balanceRows.map(_.copy(sourceId = Some(operationRowId)))
+    val saveBalanceUpdatesForOperationId = Kleisli[DBIO, ((String, Int), List[BalanceUpdatesRow]), Option[Int]] {
+      case ((operationGroupHash, operationRowId), balanceRows) =>
+        Tables.BalanceUpdates ++= balanceRows.map(
+              _.copy(operationGroupHash = Some(operationGroupHash), sourceId = Some(operationRowId))
+            )
     }
 
     /* Compose the kleisli functions to get a single "action function"
@@ -366,28 +368,29 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, fees: Seq[(Option[BigDecimal], java.sql.Timestamp)]): AverageFees = {
+    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
       val values = fees.map {
-        case (fee, _) => fee.map(_.toDouble).getOrElse(0.0)
+        case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }
       val m: Int = ceil(mean(values)).toInt
       val s: Int = ceil(stdev(values)).toInt
-      AverageFees(max(m - s, 0), m, m + s, ts, kind)
+
+      AverageFees(max(m - s, 0), m, m + s, ts, kind, cycle, level)
     }
 
     val opQuery =
       Tables.Operations
         .filter(_.kind === kind)
-        .map(o => (o.fee, o.timestamp))
+        .map(o => (o.fee, o.timestamp, o.cycle, o.level))
         .distinct
-        .sortBy { case (_, ts) => ts.desc }
+        .sortBy { case (_, ts, _, _) => ts.desc }
         .take(numberOfFeesAveraged)
         .result
 
     opQuery.map { timestampedFees =>
       timestampedFees.headOption.map {
-        case (_, latest) =>
-          computeAverage(latest, timestampedFees)
+        case (_, latest, cycle, level) =>
+          computeAverage(latest, cycle, level, timestampedFees)
       }
     }
   }
@@ -501,7 +504,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def selectWithPredicates(
       table: String,
-      columns: List[String],
+      columns: List[Field],
       predicates: List[Predicate],
       ordering: List[QueryOrdering],
       aggregation: List[Aggregation],

@@ -215,38 +215,38 @@ class MetadataServiceTest
         result shouldBe Some(List(Entity("entity", "entity-name", 0)))
       }
 
-    "fetch the list of supported entities with updated values" in {
-      // given
-      platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 0))
+      "fetch the list of supported entities with updated values" in {
+        // given
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 0))
 
-      val overwrittenConfiguration = Map(
-        "tezos" ->
-          PlatformConfiguration(
-            None,
-            Some(true),
-            None,
-            Map(
-              "mainnet" ->
-                NetworkConfiguration(
-                  None,
-                  Some(true),
-                  None,
-                  Map(
-                    "entity" ->
-                      EntityConfiguration(None, None, Some(true))
-                  )
+        val overwrittenConfiguration = Map(
+          "tezos" ->
+              PlatformConfiguration(
+                None,
+                Some(true),
+                None,
+                Map(
+                  "mainnet" ->
+                      NetworkConfiguration(
+                        None,
+                        Some(true),
+                        None,
+                        Map(
+                          "entity" ->
+                              EntityConfiguration(None, None, Some(true))
+                        )
+                      )
                 )
-            )
-          )
-      )
+              )
+        )
 
-      // when
-      val result =
-        sut(overwrittenConfiguration).getCurrentEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+        // when
+        val result =
+          sut(overwrittenConfiguration).getCurrentEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
 
-      // then
-      result shouldBe Some(List(Entity("entity", "entity-name", 0)))
-    }
+        // then
+        result shouldBe Some(List(Entity("entity", "entity-name", 0)))
+      }
 
       "override the display name for an entity" in {
         // given
@@ -413,38 +413,38 @@ class MetadataServiceTest
         result shouldBe Some(List.empty)
       }
 
-    "filter out a hidden entity (by default) with updated entities" in {
-      // given
-      platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 0))
+      "filter out a hidden entity (by default) with updated entities" in {
+        // given
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 0))
 
-      val overwrittenConfiguration = Map(
-        "tezos" ->
-          PlatformConfiguration(
-            None,
-            Some(true),
-            None,
-            Map(
-              "mainnet" ->
-                NetworkConfiguration(
-                  None,
-                  Some(true),
-                  None,
-                  Map(
-                    "entity" ->
-                      EntityConfiguration(None, None, None)
-                  )
+        val overwrittenConfiguration = Map(
+          "tezos" ->
+              PlatformConfiguration(
+                None,
+                Some(true),
+                None,
+                Map(
+                  "mainnet" ->
+                      NetworkConfiguration(
+                        None,
+                        Some(true),
+                        None,
+                        Map(
+                          "entity" ->
+                              EntityConfiguration(None, None, None)
+                        )
+                      )
                 )
-            )
-          )
-      )
+              )
+        )
 
-      // when
-      val result =
-        sut(overwrittenConfiguration).getCurrentEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
+        // when
+        val result =
+          sut(overwrittenConfiguration).getCurrentEntities(NetworkPath("mainnet", PlatformPath("tezos"))).futureValue
 
-      // then
-      result shouldBe Some(List.empty)
-    }
+        // then
+        result shouldBe Some(List.empty)
+      }
 
       "return None when fetching entities for a non existing platform" in {
         // when
@@ -539,48 +539,49 @@ class MetadataServiceTest
         result shouldBe Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))
       }
 
-    "fetch the list of supported attributes with updated values" in {
-      // given
-      platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 0))
-      platformDiscoveryOperations.addAttribute(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+      "fetch the list of supported attributes with updated values" in {
+        // given
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 0))
+        platformDiscoveryOperations.addAttribute(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
 
-      val overwrittenConfiguration = Map(
-        "tezos" ->
-          PlatformConfiguration(
-            None,
-            Some(true),
-            None,
-            Map(
-              "mainnet" ->
-                NetworkConfiguration(
-                  None,
-                  Some(true),
-                  None,
-                  Map(
-                    "entity" ->
-                      EntityConfiguration(
-                        None,
+        val overwrittenConfiguration = Map(
+          "tezos" ->
+              PlatformConfiguration(
+                None,
+                Some(true),
+                None,
+                Map(
+                  "mainnet" ->
+                      NetworkConfiguration(
                         None,
                         Some(true),
                         None,
                         Map(
-                          "attribute" ->
-                            AttributeConfiguration(None, Some(true))
+                          "entity" ->
+                              EntityConfiguration(
+                                None,
+                                None,
+                                Some(true),
+                                None,
+                                Map(
+                                  "attribute" ->
+                                      AttributeConfiguration(None, Some(true))
+                                )
+                              )
                         )
                       )
-                  )
                 )
-            )
-          )
-      )
+              )
+        )
 
-      // when
-      val result = sut(overwrittenConfiguration)
-        .getCurrentTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos")))).futureValue
+        // when
+        val result = sut(overwrittenConfiguration)
+          .getCurrentTableAttributes(EntityPath("entity", NetworkPath("mainnet", PlatformPath("tezos"))))
+          .futureValue
 
-      // then
-      result shouldBe Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))
-    }
+        // then
+        result shouldBe Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))
+      }
 
       "override additional fields for an attribute" in {
         // given

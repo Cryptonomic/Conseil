@@ -80,7 +80,8 @@ CREATE TABLE public.balance_updates (
     change numeric NOT NULL,
     level numeric,
     delegate character varying,
-    category character varying
+    category character varying,
+    operation_group_hash character varying
 );
 
 
@@ -196,7 +197,9 @@ CREATE TABLE public.fees (
     medium integer NOT NULL,
     high integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    kind character varying NOT NULL
+    kind character varying NOT NULL,
+    cycle integer,
+    level integer
 );
 
 
@@ -220,6 +223,8 @@ CREATE TABLE public.operation_groups (
 --
 
 CREATE TABLE public.operations (
+    branch character varying,
+    number_of_slots integer,
     cycle integer,
     operation_id integer NOT NULL,
     operation_group_hash character varying NOT NULL,
@@ -255,6 +260,7 @@ CREATE TABLE public.operations (
     block_level integer NOT NULL,
     ballot character varying,
     internal boolean NOT NULL,
+    period integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -456,6 +462,25 @@ CREATE INDEX ix_operations_timestamp ON public.operations USING btree ("timestam
 
 
 --
+-- Name: ix_operations_delegate; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_operations_delegate ON public.operations USING btree ("delegate");
+
+--
+-- Name: ix_rolls_block_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
+
+--
+-- Name: ix_rolls_block_level; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_rolls_block_level ON public.rolls USING btree (block_level);
+
+
+--
 -- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -533,9 +558,14 @@ ALTER TABLE ONLY public.delegates
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
 
+--
+-- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operations
+    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES public.operation_groups(hash, block_id);
 
 --
--- TOC entry 2089 (class 2606 OID 7467601)
 -- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 

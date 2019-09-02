@@ -32,20 +32,15 @@ object DatabaseConversions {
 
   //Note, cycle 0 starts at the level 2 block
   def extractCycle(block: Block): Option[Int] =
-    discardGenesis.lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
+    discardGenesis
+      .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle) //this is Option[Int]
 
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
     override def convert(from: AverageFees) =
-      Tables.FeesRow(
-        low = from.low,
-        medium = from.medium,
-        high = from.high,
-        timestamp = from.timestamp,
-        kind = from.kind
-      )
+      from.into[Tables.FeesRow].transform
   }
 
   implicit val blockAccountsToAccountRows =
@@ -137,6 +132,7 @@ object DatabaseConversions {
           convertOrigination orElse
           convertDelegation orElse
           convertBallot orElse
+          convertProposals orElse
           convertUnhandledOperations)(from)
   }
 
@@ -153,7 +149,9 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
+        numberOfSlots = Some(metadata.slots.length)
       )
   }
 
@@ -311,7 +309,6 @@ object DatabaseConversions {
       )
   }
 
-
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Ballot(ballot, proposal, source)) =>
       Tables.OperationsRow(
@@ -329,12 +326,29 @@ object DatabaseConversions {
       )
   }
 
+  private val convertProposals: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
+    case (block, groupHash, Proposals(source, period, proposals)) =>
+      Tables.OperationsRow(
+        operationId = 0,
+        operationGroupHash = groupHash.value,
+        kind = "proposals",
+        blockHash = block.data.hash.value,
+        blockLevel = block.data.header.level,
+        timestamp = toSql(block.data.header.timestamp),
+        internal = false,
+        proposal = proposals.map(x => concatenateToString(x)),
+        source = source.map(_.id),
+        cycle = extractCycle(block),
+        period = period
+      )
+
+  }
+
   private val convertUnhandledOperations: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, op) =>
       val kind = op match {
         case DoubleEndorsementEvidence => "double_endorsement_evidence"
         case DoubleBakingEvidence => "double_baking_evidence"
-        case Proposals => "proposals"
         case _ => ""
       }
       Tables.OperationsRow(
@@ -599,5 +613,4 @@ object DatabaseConversions {
       }
     }
   }
-
 }

@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.util
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, PositionedParameters, SQLActionBuilder}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
+import tech.cryptonomic.conseil.generic.chain.DataTypes.FormatType.FormatType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 
@@ -103,27 +104,32 @@ object DatabaseUtil {
         * @param columns     parameter containing columns which chich are being used in query
         * @return new SQLActionBuilder containing GROUP BY  statement
         */
-      def addGroupBy(aggregation: List[Aggregation], columns: List[String]): SQLActionBuilder = {
+      def addGroupBy(aggregation: List[Aggregation], columns: List[Field]): SQLActionBuilder = {
         val aggregationFields = aggregation.map(_.field).toSet
-        val columnsWithoutAggregationFields = columns.toSet.diff(aggregationFields).toList
+        val cols = columns.map {
+          case SimpleField(field) => field
+          case FormattedField(field, function, _) =>
+            mapFormatToAlias(function, field)
+        }
+        val columnsWithoutAggregationFields = cols.toSet.diff(aggregationFields).toList
         if (aggregation.isEmpty || columnsWithoutAggregationFields.isEmpty) {
           action
         } else {
           concatenateSqlActions(action, makeGroupBy(columnsWithoutAggregationFields))
         }
       }
+
       /** Method for adding HAVING to existing SQLAction
         *
         * @param aggregation parameter containing info about field which has to be aggregated
         * @return new SQLActionBuilder containing HAVING statement
         */
-      def addHaving(aggregation: List[Aggregation]): SQLActionBuilder = {
-        if(aggregation.flatMap(_.getPredicate.toList).isEmpty) {
+      def addHaving(aggregation: List[Aggregation]): SQLActionBuilder =
+        if (aggregation.flatMap(_.getPredicate.toList).isEmpty) {
           action
         } else {
           concatenateSqlActions(action, makeHaving(aggregation))
         }
-      }
     }
 
     /** Prepares predicates and transforms them into SQLActionBuilders
@@ -145,15 +151,22 @@ object DatabaseUtil {
       *
       * @param table   table on which query will be executed
       * @param columns columns which are selected from teh table
-      * @param aggregation parameter containing info about field which has to be aggregated
+      * @param aggregations parameter containing info about field which has to be aggregated
       * @return SQLAction with basic query
       */
-    def makeQuery(table: String, columns: List[String], aggregation: List[Aggregation]): SQLActionBuilder = {
-      val aggregationFields = aggregation
-        .map { aggr =>
-          mapAggregationToSQL(aggr.function, aggr.field) + " as " + mapAggregationToAlias(aggr.function, aggr.field)
-        }
-      val aggr = aggregationFields ::: columns.toSet.diff(aggregation.map(_.field).toSet).toList
+    def makeQuery(table: String, columns: List[Field], aggregations: List[Aggregation]): SQLActionBuilder = {
+      val aggregationFields = aggregations.map { aggregation =>
+        mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
+          aggregation.function,
+          aggregation.field
+        )
+      }
+      val columnNames = columns.map {
+        case SimpleField(field) => field
+        case FormattedField(field, function, format) =>
+          makeAggregationFormat(field, format) + " as " + mapFormatToAlias(function, field)
+      }
+      val aggr = aggregationFields ::: columnNames.toSet.diff(aggregations.map(_.field).toSet).toList
       val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
       sql"""SELECT #$cols FROM #$table WHERE true """
     }
@@ -189,17 +202,21 @@ object DatabaseUtil {
       * @param aggregation list of aggregations
       * @return SQLAction with HAVING
       */
-    def makeHaving(aggregation: List[Aggregation]): SQLActionBuilder = {
-      concatenateSqlActions(sql""" HAVING true""",
-      aggregation.flatMap { aggregation =>
-        aggregation.getPredicate.toList.map { predicate =>
-          concatenateSqlActions(
-            sql""" AND #${mapAggregationToSQL(aggregation.function, aggregation.field)} """,
-            mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
-          )
-        }
-      }:_*)
-    }
+    def makeHaving(aggregation: List[Aggregation]): SQLActionBuilder =
+      concatenateSqlActions(
+        sql""" HAVING true""",
+        aggregation.flatMap { aggregation =>
+          aggregation.getPredicate.toList.map { predicate =>
+            concatenateSqlActions(
+              sql""" AND #${mapAggregationToSQL(aggregation.function, aggregation.field)} """,
+              mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+            )
+          }
+        }: _*
+      )
+
+    private def makeAggregationFormat(field: String, format: String): String =
+      s"to_char($field, '$format')"
 
     /** maps aggregation operation to the SQL function*/
     private def mapAggregationToSQL(aggregationType: AggregationType, column: String): String =
@@ -219,6 +236,11 @@ object DatabaseUtil {
         case AggregationType.max => s"max_$column"
         case AggregationType.min => s"min_$column"
         case AggregationType.avg => s"avg_$column"
+      }
+
+    private def mapFormatToAlias(formatType: FormatType, column: String): String =
+      formatType match {
+        case FormatType.datePart => s"date_part_$column"
       }
 
     /** maps operation type to SQL operation */

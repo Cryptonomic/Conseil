@@ -59,10 +59,10 @@ object TezosNodeOperator {
   * @param fetchFutureContext thread context for async operations
   */
 class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(
-  implicit val fetchFutureContext: ExecutionContext
+    implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
-  with BlocksDataFetchers
-  with AccountsDataFetchers {
+    with BlocksDataFetchers
+    with AccountsDataFetchers {
   import TezosNodeOperator.isGenesis
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
@@ -88,10 +88,10 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * duplicating any logic.
     */
   def getPaginatedEntitiesForBlock[Key, Entity](
-                                                 entityLoad: (List[Key], BlockHash) => Future[Map[Key, Entity]]
-                                               )(
-                                                 keyIndex: Map[Key, BlockHash]
-                                               ): Iterator[Future[(BlockHash, Map[Key, Entity])]] = {
+      entityLoad: (List[Key], BlockHash) => Future[Map[Key, Entity]]
+  )(
+      keyIndex: Map[Key, BlockHash]
+  ): Iterator[Future[(BlockHash, Map[Key, Entity])]] = {
     //collect by hash and paginate based on that
     val reversedIndex =
       keyIndex.groupBy { case (key, blockHash) => blockHash }
@@ -145,7 +145,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => Iterator[
     Future[(BlockHash, Map[AccountId, Account])]
-    ] =
+  ] =
     getPaginatedEntitiesForBlock(getAccountsForBlock)
 
   /**
@@ -166,11 +166,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
-    def parseMichelsonScripts(account: Account): Account = {
+    def parseMichelsonScripts: Account => Account = {
       val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (scriptAlter compose storageAlter)(account)
+      scriptAlter compose storageAlter
     }
 
     fetchedAccounts.map(
@@ -212,20 +212,20 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //fetch accounts by requested ids and group them together with corresponding blocks
     val pages = getPaginatedAccountsForBlock(accountsBlocksIndex.mapValues(_._1)) map { futureMap =>
-      futureMap.andThen {
-        case Success((hash, accountsMap)) =>
-          val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
-          notifyAnyLostIds(searchedFor -- accountsMap.keySet)
-        case Failure(err) =>
-          val showSomeIds = accountsBlocksIndex.keys
-            .take(30)
-            .map(_.id)
-            .mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
-          logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
-      }.map {
-        case (_, map) => groupByLatestBlock(map)
-      }
-    }
+          futureMap.andThen {
+            case Success((hash, accountsMap)) =>
+              val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
+              notifyAnyLostIds(searchedFor -- accountsMap.keySet)
+            case Failure(err) =>
+              val showSomeIds = accountsBlocksIndex.keys
+                .take(30)
+                .map(_.id)
+                .mkString("", ",", if (accountsBlocksIndex.size > 30) "..." else "")
+              logger.error(s"Could not get accounts' data for ids ${showSomeIds}", err)
+          }.map {
+            case (_, map) => groupByLatestBlock(map)
+          }
+        }
 
     (pages, accountsBlocksIndex.size)
   }
@@ -268,15 +268,15 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
       val fetchCurrentQuorum =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_quorum") flatMap { json =>
-          val nonEmptyJson = if (json.isEmpty) "0" else json
-          decodeLiftingTo[Future, Option[Int]](nonEmptyJson)
-        }
+            val nonEmptyJson = if (json.isEmpty) "0" else json
+            decodeLiftingTo[Future, Option[Int]](nonEmptyJson)
+          }
 
       val fetchCurrentProposal =
         node.runAsyncGetQuery(network, s"blocks/$hashString~$offsetString/votes/current_proposal") flatMap { json =>
-          val nonEmptyJson = if (json.isEmpty) """ "3M" """.trim else json
-          decodeLiftingTo[Future, Option[ProtocolId]](nonEmptyJson)
-        }
+            val nonEmptyJson = if (json.isEmpty) """ "3M" """.trim else json
+            decodeLiftingTo[Future, Option[ProtocolId]](nonEmptyJson)
+          }
 
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
@@ -335,20 +335,20 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
     val pages = getPaginatedDelegatesForBlock(keysBlocksIndex.mapValues(_._1)) map { futureMap =>
-      futureMap.andThen {
-        case Success((hash, delegatesMap)) =>
-          val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
-          notifyAnyLostKeys(searchedFor -- delegatesMap.keySet)
-        case Failure(err) =>
-          val showSomeIds = keysBlocksIndex.keys
-            .take(30)
-            .map(_.value)
-            .mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
-          logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
-      }.map {
-        case (_, map) => groupByLatestBlock(map)
-      }
-    }
+          futureMap.andThen {
+            case Success((hash, delegatesMap)) =>
+              val searchedFor = reverseIndex.getOrElse(hash, Set.empty)
+              notifyAnyLostKeys(searchedFor -- delegatesMap.keySet)
+            case Failure(err) =>
+              val showSomeIds = keysBlocksIndex.keys
+                .take(30)
+                .map(_.value)
+                .mkString("", ",", if (keysBlocksIndex.size > 30) "..." else "")
+              logger.error(s"Could not get delegates' data for key hashes ${showSomeIds}", err)
+          }.map {
+            case (_, map) => groupByLatestBlock(map)
+          }
+        }
 
     (pages, keysBlocksIndex.size)
   }
@@ -361,7 +361,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => Iterator[
     Future[(BlockHash, Map[PublicKeyHash, Delegate])]
-    ] =
+  ] =
     getPaginatedEntitiesForBlock(getDelegatesForBlock)
 
   /**
@@ -372,9 +372,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return           the list of delegates and associated contracts, wrapped in a [[Future]], indexed by key hash
     */
   def getDelegatesForBlock(
-                            pkhs: List[PublicKeyHash],
-                            blockHash: BlockHash = blockHeadHash
-                          ): Future[Map[PublicKeyHash, Delegate]] = {
+      pkhs: List[PublicKeyHash],
+      blockHash: BlockHash = blockHeadHash
+  ): Future[Map[PublicKeyHash, Delegate]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
@@ -406,8 +406,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     //starts immediately
     val fetchBlock =
       node.runAsyncGetQuery(network, s"blocks/${hash.value}~$offsetString") flatMap { json =>
-        decodeLiftingTo[Future, BlockData](JS.sanitize(json))
-      }
+          decodeLiftingTo[Future, BlockData](JS.sanitize(json))
+        }
 
     for {
       block <- fetchBlock
@@ -463,8 +463,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   def partitionElements[E](elements: List[E]): Iterator[List[E]] =
     TezosNodeOperator.partitionRanges(blockPageSize)(Range.inclusive(0, elements.size - 1)) map { range =>
-      elements.take(range.end + 1).drop(range.start)
-    }
+        elements.take(range.end + 1).drop(range.start)
+      }
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
@@ -526,9 +526,9 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     * @return the async list of blocks with relative account ids touched in the operations
     */
   private def getBlocks(
-                         reference: (BlockHash, Int),
-                         levelRange: Range.Inclusive
-                       ): Future[BlockFetchingResults] = {
+      reference: (BlockHash, Int),
+      levelRange: Range.Inclusive
+  ): Future[BlockFetchingResults] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
@@ -545,12 +545,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     val proposalsStateFetch =
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
-    def parseMichelsonScripts(block: Block): Block = {
+    def parseMichelsonScripts: Block => Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (codeAlter compose storageAlter compose parametersAlter)(block)
+      codeAlter compose storageAlter compose parametersAlter
     }
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
@@ -564,7 +564,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         Future,
         List,
         Throwable
-        ].run(blockHashes)
+      ].run(blockHashes)
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
       val operationalDataMap = fetchedOperationsWithAccounts.map {
@@ -604,12 +604,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations
   */
 class TezosNodeSenderOperator(
-                               override val node: TezosRPCInterface,
-                               network: String,
-                               batchConf: BatchFetchConfiguration,
-                               sodiumConf: SodiumConfiguration
-                             )(implicit executionContext: ExecutionContext)
-  extends TezosNodeOperator(node, network, batchConf)
+    override val node: TezosRPCInterface,
+    network: String,
+    batchConf: BatchFetchConfiguration,
+    sodiumConf: SodiumConfiguration
+)(implicit executionContext: ExecutionContext)
+    extends TezosNodeOperator(node, network, batchConf)
     with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
@@ -648,12 +648,12 @@ class TezosNodeSenderOperator(
     * @return           Forged operation bytes (as a hex string)
     */
   def forgeOperations(
-                       blockHead: Block,
-                       account: Account,
-                       operations: List[AnyMap],
-                       keyStore: KeyStore,
-                       fee: Option[Float]
-                     ): Future[String] = {
+      blockHead: Block,
+      account: Account,
+      operations: List[AnyMap],
+      keyStore: KeyStore,
+      fee: Option[Float]
+  ): Future[String] = {
     val payload: AnyMap = fee match {
       case Some(feeAmt) =>
         Map(
@@ -713,11 +713,11 @@ class TezosNodeSenderOperator(
     * @return                     Array of contract handles
     */
   def applyOperation(
-                      blockHead: Block,
-                      operationGroupHash: String,
-                      forgedOperationGroup: String,
-                      signedOpGroup: SignedOperationGroup
-                    ): Future[AppliedOperation] = {
+      blockHead: Block,
+      operationGroupHash: String,
+      forgedOperationGroup: String,
+      signedOpGroup: SignedOperationGroup
+  ): Future[AppliedOperation] = {
     val payload: AnyMap = Map(
       "pred_block" -> blockHead.data.header.predecessor,
       "operation_hash" -> operationGroupHash,
@@ -753,10 +753,10 @@ class TezosNodeSenderOperator(
     * @return           The ID of the created operation group
     */
   def sendOperation(
-                     operations: List[Map[String, Any]],
-                     keyStore: KeyStore,
-                     fee: Option[Float]
-                   ): Future[OperationResult] =
+      operations: List[Map[String, Any]],
+      keyStore: KeyStore,
+      fee: Option[Float]
+  ): Future[OperationResult] =
     for {
       blockHead <- getBlockHead()
       accountId = AccountId(keyStore.publicKeyHash)
@@ -779,11 +779,11 @@ class TezosNodeSenderOperator(
     * @return           The ID of the created operation group
     */
   def sendTransactionOperation(
-                                keyStore: KeyStore,
-                                to: String,
-                                amount: Float,
-                                fee: Float
-                              ): Future[OperationResult] = {
+      keyStore: KeyStore,
+      to: String,
+      amount: Float,
+      fee: Float
+  ): Future[OperationResult] = {
     val transactionMap: Map[String, Any] = Map(
       "kind" -> "transaction",
       "amount" -> amount,
@@ -821,13 +821,13 @@ class TezosNodeSenderOperator(
     * @return
     */
   def sendOriginationOperation(
-                                keyStore: KeyStore,
-                                amount: Float,
-                                delegate: String,
-                                spendable: Boolean,
-                                delegatable: Boolean,
-                                fee: Float
-                              ): Future[OperationResult] = {
+      keyStore: KeyStore,
+      amount: Float,
+      delegate: String,
+      spendable: Boolean,
+      delegatable: Boolean,
+      fee: Float
+  ): Future[OperationResult] = {
     val transactionMap: Map[String, Any] = Map(
       "kind" -> "origination",
       "balance" -> amount,

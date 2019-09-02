@@ -23,28 +23,34 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
 
   // overrides entities
   def overrideEntities(networkPath: NetworkPath, entities: List[Entity], shouldLog: Boolean = true): List[Entity] = {
-    if(shouldLog) logDifferences(entities.map(entity => networkPath.addLevel(entity.name)), overrides.entities(networkPath).keys.toList)
+    if (shouldLog)
+      logDifferences(
+        entities.map(entity => networkPath.addLevel(entity.name)),
+        overrides.entities(networkPath).keys.toList
+      )
     entities.flatMap(entity => overrideEntity(entity, networkPath.addLevel(entity.name)))
   }
 
   // overrides attributes
   def overrideAttributes(path: EntityPath, attributes: List[Attribute], shouldLog: Boolean = true): List[Attribute] = {
-    if(shouldLog) logDifferences(attributes.map(attribute => path.addLevel(attribute.name)), overrides.attributes(path).keys.toList)
+    if (shouldLog)
+      logDifferences(attributes.map(attribute => path.addLevel(attribute.name)), overrides.attributes(path).keys.toList)
     attributes.flatMap(attribute => overrideAttribute(attribute, path.addLevel(attribute.name)))
   }
 
   // overrides platform
-  private def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] = when(overrides.isVisible(path)) {
-    val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
+  private def overridePlatform(platform: Platform, path: PlatformPath): Option[Platform] =
+    when(overrides.isVisible(path)) {
+      val overridePlatform: Option[PlatformConfiguration] = overrides.platform(path)
 
-    platform.copy(
-      displayName = overridePlatform
-        .flatMap(_.displayName)
-        .getOrElse(platform.displayName),
-      description = overridePlatform
-        .flatMap(_.description)
-    )
-  }
+      platform.copy(
+        displayName = overridePlatform
+          .flatMap(_.displayName)
+          .getOrElse(platform.displayName),
+        description = overridePlatform
+          .flatMap(_.description)
+      )
+    }
 
   // overrides network
   private def overrideNetwork(network: Network, path: NetworkPath): Option[Network] = when(overrides.isVisible(path)) {

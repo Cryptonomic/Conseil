@@ -3,12 +3,15 @@ package tech.cryptonomic.conseil.tezos
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataTypes, MetadataOperations}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  Field,
+  FormattedField,
   OperationType,
   OrderDirection,
   Predicate,
   Query,
   QueryOrdering,
-  QueryResponse
+  QueryResponse,
+  SimpleField
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -331,7 +334,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     runQuery(
       TezosDatabaseOperations.selectWithPredicates(
         tableName,
-        query.fields,
+        sanitizeFields(query.fields),
         sanitizePredicates(query.predicates),
         query.orderBy,
         query.aggregation,
@@ -346,10 +349,23 @@ object ApiOperations extends DataOperations with MetadataOperations {
       predicate.copy(set = predicate.set.map(field => sanitizeForSql(field.toString)))
     }
 
+  /** Sanitizes aggregation format so query is safe from SQL injection */
+  def sanitizeFields(fields: List[Field]): List[Field] =
+    fields.map {
+      case SimpleField(field) => SimpleField(sanitizeForSql(field))
+      case FormattedField(field, function, format) =>
+        FormattedField(sanitizeForSql(field), function, sanitizeDatePartAggregation(format))
+    }
+
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
     val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
     str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
   }
 
+  /** Sanitizes datePart aggregate function*/
+  def sanitizeDatePartAggregation(str: String): String = {
+    val supportedCharacters = Set('Y', 'M', 'D', 'A', '-')
+    str.filter(c => !c.isWhitespace || supportedCharacters.contains(c))
+  }
 }

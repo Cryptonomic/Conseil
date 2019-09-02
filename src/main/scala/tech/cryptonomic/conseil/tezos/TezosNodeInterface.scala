@@ -112,7 +112,7 @@ class TezosNodeInterface(
     if (rejectingCalls.get) Source.empty[T] else call
 
   private[this] def translateCommandToUrl(command: String): String =
-    s"${nodeConfig.protocol}://${nodeConfig.hostname}:${nodeConfig.port}/${nodeConfig.pathPrefix}chains/main/$command"
+    s"${nodeConfig.protocol}://${nodeConfig.hostname}:${nodeConfig.port}/${nodeConfig.pathPrefix}chains/${nodeConfig.chainEnv}/$command"
 
   override def runGetQuery(network: String, command: String): Try[String] = withRejectionControl {
     Try {
