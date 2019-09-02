@@ -14,10 +14,9 @@ import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import org.http4s.Uri
-import io.circe.{Json, ParsingFailure, parser}
+import io.circe.{Json, parser}
 import cats.effect.IO
 import cats.syntax.apply._
-import cats.syntax.flatMap._
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
