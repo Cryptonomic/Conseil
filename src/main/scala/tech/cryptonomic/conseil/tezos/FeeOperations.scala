@@ -37,7 +37,9 @@ object FeeOperations extends LazyLogging {
       medium: Int,
       high: Int,
       timestamp: java.sql.Timestamp,
-      kind: String
+      kind: String,
+      cycle: Option[Int],
+      level: Option[Int]
   )
 
   /**
