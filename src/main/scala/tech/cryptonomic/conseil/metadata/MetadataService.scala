@@ -83,6 +83,7 @@ class MetadataService(
           None
       }
     }
+  }
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
