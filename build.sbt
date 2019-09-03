@@ -5,7 +5,6 @@ lazy val conseil = (project in file("."))
   .configs(IntegrationTest)
   .settings(
     Defaults.itSettings
-    // other settings here
   )
 
 val akkaVersion = "2.5.21"
