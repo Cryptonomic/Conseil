@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
+  import TezosTypes.Voting.Vote
 
   /* randomly populate a number of fees */
   def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
@@ -28,7 +29,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
         medium = medium,
         high = high,
         timestamp = new Timestamp(startAt.getTime + current),
-        kind = "kind"
+        kind = "kind",
+        level = None,
+        cycle = None
       )
     }.toList
   }
@@ -723,9 +726,23 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
+    val sampleBallot =
+      Ballot(
+        ballot = Vote("yay"),
+        proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
+        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+      )
+
+    val sampleProposals =
+      Proposals(
+        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+        period = Some(10),
+        proposals = Some(List("Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z)"))
+      )
+
     val sampleOperations =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-          DoubleEndorsementEvidence :: DoubleBakingEvidence :: Proposals :: Ballot :: Nil
+          DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
 
   }
 

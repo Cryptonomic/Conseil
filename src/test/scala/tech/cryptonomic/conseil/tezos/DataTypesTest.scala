@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterEach, Matchers, OneInstancePerTest, WordSpec}
+import org.scalatest._
 import tech.cryptonomic.conseil.config.Platforms
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
@@ -15,6 +15,7 @@ class DataTypesTest
     extends WordSpec
     with Matchers
     with ScalaFutures
+    with EitherValues
     with MockFactory
     with BeforeAndAfterEach
     with OneInstancePerTest {
@@ -59,7 +60,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("valid")),
+          fields = Some(List(SimpleField("valid"))),
           predicates = None,
           orderBy = None,
           limit = None,
@@ -68,14 +69,14 @@ class DataTypesTest
         )
 
         val result = query.validate(testEntityPath, metadataService).futureValue
-        result.right.get shouldBe Query(fields = List("valid"))
+        result.right.get shouldBe Query(fields = List(SimpleField("valid")))
       }
 
       "return error with incorrect query fields" in {
         platformDiscoveryOperations.addEntity(testEntity)
 
         val query = ApiQuery(
-          fields = Some(List("invalid")),
+          fields = Some(List(SimpleField("invalid"))),
           predicates = None,
           orderBy = None,
           limit = None,
@@ -204,7 +205,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("valid")),
+          fields = Some(List(SimpleField("valid"))),
           predicates = None,
           orderBy = None,
           limit = None,
@@ -215,7 +216,7 @@ class DataTypesTest
         val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
-          fields = List("valid"),
+          fields = List(SimpleField("valid")),
           aggregation = List(Aggregation(field = "valid"))
         )
       }
@@ -236,7 +237,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("invalid")),
+          fields = Some(List(SimpleField("invalid"))),
           predicates = None,
           orderBy = None,
           limit = None,
@@ -265,7 +266,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("valid")),
+          fields = Some(List(SimpleField("valid"))),
           predicates = None,
           orderBy = None,
           limit = None,
@@ -326,7 +327,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("valid")),
+          fields = Some(List(SimpleField("valid"))),
           predicates = None,
           orderBy = None,
           limit = None,
@@ -337,7 +338,7 @@ class DataTypesTest
         val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
-          fields = List("valid"),
+          fields = List(SimpleField("valid")),
           aggregation = List(Aggregation(field = "valid", function = AggregationType.count))
         )
       }
@@ -392,7 +393,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("validAttribute")),
+          fields = Some(List(SimpleField("validAttribute"))),
           predicates = None,
           orderBy = Some(List(QueryOrdering("count_validAttribute", direction = OrderDirection.asc))),
           limit = None,
@@ -403,7 +404,7 @@ class DataTypesTest
         val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
-          fields = List("validAttribute"),
+          fields = List(SimpleField("validAttribute")),
           orderBy = List(QueryOrdering("count_validAttribute", OrderDirection.asc)),
           aggregation = List(Aggregation("validAttribute", AggregationType.count))
         )
@@ -425,7 +426,7 @@ class DataTypesTest
         }
 
         val query = ApiQuery(
-          fields = Some(List("validAttribute")),
+          fields = Some(List(SimpleField("validAttribute"))),
           predicates = Some(List(ApiPredicate("count_validAttribute", OperationType.in))),
           orderBy = None,
           limit = None,
@@ -436,9 +437,100 @@ class DataTypesTest
         val result = query.validate(testEntityPath, metadataService)
 
         result.futureValue.right.get shouldBe Query(
-          fields = List("validAttribute"),
+          fields = List(SimpleField("validAttribute")),
           predicates = List(Predicate("count_validAttribute", operation = OperationType.in)),
           aggregation = List(Aggregation("validAttribute", AggregationType.count))
+        )
+      }
+      "correctly aggregate field with currency data type" in {
+        val attribute = Attribute(
+          name = "valid",
+          displayName = "Valid",
+          dataType = DataType.Currency,
+          cardinality = None,
+          keyType = KeyType.UniqueKey,
+          entity = "testEntity"
+        )
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
+
+        val query = ApiQuery(
+          fields = Some(List(SimpleField("valid"))),
+          predicates = None,
+          orderBy = None,
+          limit = None,
+          output = None,
+          aggregation = Some(List(ApiAggregation(field = "valid")))
+        )
+
+        val result = query.validate(testEntityPath, metadataService)
+
+        result.futureValue.right.value shouldBe Query(
+          fields = List(SimpleField("valid")),
+          aggregation = List(Aggregation("valid", AggregationType.sum))
+        )
+      }
+
+      "return validation error when formatting is being done on non-DateTime field" in {
+        val attribute = Attribute(
+          name = "valid",
+          displayName = "Valid",
+          dataType = DataType.String,
+          cardinality = None,
+          keyType = KeyType.UniqueKey,
+          entity = "testEntity"
+        )
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
+
+        val query = ApiQuery(
+          fields = Some(List(FormattedField("valid", FormatType.datePart, "YYYY-MM-DD"))),
+          predicates = None,
+          orderBy = None,
+          limit = None,
+          output = None,
+          aggregation = None
+        )
+
+        val result = query.validate(testEntityPath, metadataService)
+
+        result.futureValue.left.value.head shouldBe a[InvalidQueryFieldFormatting]
+      }
+
+      "correctly validate field with format" in {
+        val attribute = Attribute(
+          name = "valid",
+          displayName = "Valid",
+          dataType = DataType.DateTime,
+          cardinality = None,
+          keyType = KeyType.UniqueKey,
+          entity = "testEntity"
+        )
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
+
+        val query = ApiQuery(
+          fields = Some(List(FormattedField("valid", FormatType.datePart, "YYYY-MM-DD"))),
+          predicates = None,
+          orderBy = None,
+          limit = None,
+          output = None,
+          aggregation = None
+        )
+
+        val result = query.validate(testEntityPath, metadataService)
+
+        result.futureValue.right.value shouldBe Query(
+          fields = List(FormattedField("valid", FormatType.datePart, "YYYY-MM-DD"))
         )
       }
 

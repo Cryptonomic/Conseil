@@ -20,7 +20,9 @@ package tech.cryptonomic.conseil.tezos.michelson.dto
  *   | MichelsonSingleInstruction (with embedded MichelsonInstructionSequence as above)
  *   MichelsonInstructionSequence (with three instructions separated with ";": "DIP { ... }", "SWAP" and empty instruction)
  * */
-sealed trait MichelsonInstruction extends MichelsonElement
+sealed trait MichelsonInstruction extends MichelsonElement {
+  lazy val normalized: MichelsonInstruction = this
+}
 
 /* Class representing a simple Michelson instruction which can contains following expressions */
 case class MichelsonSingleInstruction(
@@ -32,8 +34,17 @@ case class MichelsonSingleInstruction(
 /* Class representing a sequence of Michelson instructions */
 case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction] = List.empty)
     extends MichelsonInstruction {
-  lazy val normalized: MichelsonInstruction = if (instructions.isEmpty) MichelsonEmptyInstruction else this
+  override lazy val normalized: MichelsonInstruction = if (instructions.isEmpty) MichelsonEmptyInstruction else this
 }
+
+/* Class representing an int constant */
+case class MichelsonIntConstant(int: Long) extends MichelsonInstruction
+
+/* Class representing a string constant */
+case class MichelsonStringConstant(string: String) extends MichelsonInstruction
+
+/* Class representing a bytes constant */
+case class MichelsonBytesConstant(bytes: String) extends MichelsonInstruction
 
 /* Class representing an empty Michelson instruction */
 case object MichelsonEmptyInstruction extends MichelsonInstruction

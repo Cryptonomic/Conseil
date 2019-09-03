@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.OperationMetadata.BalanceUpdate
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 trait DBConversionsData {
 
@@ -279,4 +280,17 @@ trait DBConversionsData {
       )
     )
 
+  val sampleBallot =
+    Ballot(
+      ballot = Vote("yay"),
+      proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
+      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+    )
+
+  val sampleProposals =
+    Proposals(
+      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+      period = Some(10),
+      proposals = Some(List("Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z"))
+    )
 }

@@ -4,7 +4,12 @@ import cats.effect.{ContextShift, IO}
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  AttributesValidationError,
+  HighCardinalityAttribute,
+  InvalidAttributeDataType,
+  InvalidAttributeFilterLength
+}
 import tech.cryptonomic.conseil.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
@@ -46,7 +51,8 @@ class TezosPlatformDiscoveryOperations(
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
     networkName: String = "notUsed"
-)(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]) extends PlatformDiscoveryOperations {
+)(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO])
+    extends PlatformDiscoveryOperations {
 
   import MetadataCaching._
   import cats.effect._

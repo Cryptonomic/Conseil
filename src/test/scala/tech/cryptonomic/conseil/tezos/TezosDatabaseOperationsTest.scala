@@ -197,9 +197,9 @@ class TezosDatabaseOperationsTest
                 case "double_baking_evidence" =>
                   operationGroup.contents.find(_ == DoubleBakingEvidence)
                 case "proposals" =>
-                  operationGroup.contents.find(_ == Proposals)
+                  operationGroup.contents.find(_.isInstanceOf[Proposals])
                 case "ballot" =>
-                  operationGroup.contents.find(_ == Ballot)
+                  operationGroup.contents.find(_.isInstanceOf[Ballot])
                 case _ => None
               }
 
@@ -226,7 +226,7 @@ class TezosDatabaseOperationsTest
               val generatedUpdateRows =
                 operation
                   .convertToA[List, Tables.BalanceUpdatesRow]
-                  .map(_.copy(sourceId = Some(opRow.operationId)))
+                  .map(_.copy(sourceId = Some(opRow.operationId), operationGroupHash = Some(opRow.operationGroupHash)))
 
               //reset the generated id for matching
               val dbUpdateRows = dbHandler
@@ -955,7 +955,9 @@ class TezosDatabaseOperationsTest
           medium = mu,
           high = mu + sigma,
           timestamp = latest,
-          kind = ops.head.kind
+          kind = ops.head.kind,
+          cycle = None,
+          level = Some(block.level)
         )
 
         //check
@@ -1024,7 +1026,9 @@ class TezosDatabaseOperationsTest
           medium = mu,
           high = mu,
           timestamp = latest,
-          kind = ops.head.kind
+          kind = ops.head.kind,
+          cycle = None,
+          level = Some(0)
         )
         //check
         val feesCalculation = sut.calculateAverageFees(selection.head.kind, feesToConsider)
@@ -1340,7 +1344,13 @@ class TezosDatabaseOperationsTest
             None
           )
         )
-        val columns = List("level", "proto", "context", "hash", "operations_hash")
+        val columns = List(
+          SimpleField("level"),
+          SimpleField("proto"),
+          SimpleField("context"),
+          SimpleField("hash"),
+          SimpleField("operations_hash")
+        )
         val predicates = List(
           Predicate(
             field = "context",
@@ -1406,7 +1416,13 @@ class TezosDatabaseOperationsTest
             None
           )
         )
-        val columns = List("level", "proto", "context", "hash", "operations_hash")
+        val columns = List(
+          SimpleField("level"),
+          SimpleField("proto"),
+          SimpleField("context"),
+          SimpleField("hash"),
+          SimpleField("operations_hash")
+        )
         val predicates = List(
           Predicate(
             field = "context",
@@ -1443,7 +1459,13 @@ class TezosDatabaseOperationsTest
 
       "get null values from the table as none" in {
 
-        val columns = List("level", "proto", "protocol", "hash", "operations_hash")
+        val columns = List(
+          SimpleField("level"),
+          SimpleField("proto"),
+          SimpleField("protocol"),
+          SimpleField("hash"),
+          SimpleField("operations_hash")
+        )
 
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
@@ -1479,7 +1501,7 @@ class TezosDatabaseOperationsTest
 
       "get map from a block table" in {
 
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
 
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
@@ -1502,7 +1524,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1532,7 +1554,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with inverse predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1562,7 +1584,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with multiple predicates" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1598,7 +1620,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get empty map from empty table" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List.empty
 
         val populateAndTest = for {
@@ -1618,7 +1640,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with eq predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1648,7 +1670,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with eq predicate on numeric type" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "level",
@@ -1678,7 +1700,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with like predicate when starts with pattern" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1708,7 +1730,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with like predicate when ends with pattern" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1738,7 +1760,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with like predicate when pattern is in the middle" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1768,7 +1790,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with less than predicate when one element fulfils it" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "level",
@@ -1798,7 +1820,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get empty map from a block table with less than predicate when no elements fulfil it" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "level",
@@ -1826,7 +1848,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with between predicate when two element fulfill it" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "level",
@@ -1857,7 +1879,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with between predicate when two element fulfill it but limited to 1 element" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "level",
@@ -1887,7 +1909,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table with between predicate when one element fulfill it" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "level",
@@ -1916,7 +1938,13 @@ class TezosDatabaseOperationsTest
         )
       }
       "get map from a block table with datetime field" in {
-        val columns = List("level", "proto", "protocol", "hash", "timestamp")
+        val columns = List(
+          SimpleField("level"),
+          SimpleField("proto"),
+          SimpleField("protocol"),
+          SimpleField("hash"),
+          SimpleField("timestamp")
+        )
         val predicates = List(
           Predicate(
             field = "timestamp",
@@ -1951,7 +1979,7 @@ class TezosDatabaseOperationsTest
         )
       }
       "get map from a block table with startsWith predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -1980,7 +2008,7 @@ class TezosDatabaseOperationsTest
         )
       }
       "get empty map from a block table with startsWith predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -2007,7 +2035,7 @@ class TezosDatabaseOperationsTest
         result shouldBe 'empty
       }
       "get map from a block table with endsWith predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -2036,7 +2064,7 @@ class TezosDatabaseOperationsTest
         )
       }
       "get empty map from a block table with endsWith predicate" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List(
           Predicate(
             field = "hash",
@@ -2076,7 +2104,7 @@ class TezosDatabaseOperationsTest
         balance = BigDecimal(1.45)
       )
       "get one element when correctly rounded value" in {
-        val columns = List("account_id", "balance")
+        val columns = List(SimpleField("account_id"), SimpleField("balance"))
         val predicates = List(
           Predicate(
             field = "balance",
@@ -2105,7 +2133,7 @@ class TezosDatabaseOperationsTest
         result shouldBe List(Map("account_id" -> "Some(1)", "balance" -> "Some(1.45)"))
       }
       "get empty list of elements when correctly rounded value does not match" in {
-        val columns = List("account_id", "balance")
+        val columns = List(SimpleField("account_id"), SimpleField("balance"))
         val predicates = List(
           Predicate(
             field = "balance",
@@ -2138,7 +2166,7 @@ class TezosDatabaseOperationsTest
         type AnyMap = Map[String, Any]
 
         import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val tableName = Tables.Blocks.baseTableRow.tableName
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
@@ -2148,7 +2176,7 @@ class TezosDatabaseOperationsTest
         val generatedQueryResult = dbHandler.run(populateAndTest.transactionally).futureValue
         val expectedQueryResult = dbHandler
           .run(
-            sql"""SELECT #${columns.head}, #${columns(1)}, #${columns(2)}, #${columns(3)} FROM #$tableName WHERE true"""
+            sql"""SELECT #${columns.head.field}, #${columns(1).field}, #${columns(2).field}, #${columns(3).field} FROM #$tableName WHERE true"""
               .as[AnyMap]
           )
           .futureValue
@@ -2156,7 +2184,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table and sort by level in ascending order" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List()
         val sortBy = List(
           QueryOrdering(
@@ -2186,7 +2214,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table and sort by level in descending order" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List()
         val sortBy = List(
           QueryOrdering(
@@ -2216,7 +2244,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table and sort by hash in descending order" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List()
         val sortBy = List(
           QueryOrdering(
@@ -2246,7 +2274,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table and sort by hash in ascending order" in {
-        val columns = List("level", "proto", "protocol", "hash")
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List()
         val sortBy = List(
           QueryOrdering(
@@ -2276,7 +2304,7 @@ class TezosDatabaseOperationsTest
       }
 
       "get map from a block table and sort by proto in descending order and by level in ascending order" in {
-        val columns = List("level", "proto")
+        val columns = List(SimpleField("level"), SimpleField("proto"))
         val predicates = List()
         val sortBy = List(
           QueryOrdering(
@@ -2327,7 +2355,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
@@ -2359,7 +2387,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
@@ -2391,7 +2419,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
@@ -2423,7 +2451,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
@@ -2455,7 +2483,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = List.empty,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
@@ -2483,7 +2511,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium"),
+            columns = List(SimpleField("low"), SimpleField("medium")),
             predicates = List.empty,
             ordering = List(QueryOrdering("high", OrderDirection.desc)),
             aggregation = List.empty,
@@ -2521,7 +2549,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("timestamp"),
+            columns = List(SimpleField("timestamp")),
             predicates = List(predicate),
             ordering = List.empty,
             aggregation = List.empty,
@@ -2555,7 +2583,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("high"),
+            columns = List(SimpleField("high")),
             predicates = List(predicate),
             ordering = List(),
             aggregation = List.empty,
@@ -2603,7 +2631,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = predicates,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
@@ -2633,7 +2661,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("low", "medium", "high"),
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("high")),
             predicates = List.empty,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
@@ -2680,7 +2708,7 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
             table = Tables.Fees.baseTableRow.tableName,
-            columns = List("medium"),
+            columns = List(SimpleField("medium")),
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
@@ -2693,6 +2721,206 @@ class TezosDatabaseOperationsTest
 
         result shouldBe List(
           Map("sum_medium" -> Some(3))
+        )
+      }
+
+      "should aggregate with correct predicate field when aggregation is using predicate" in {
+        val feesTmp = List(
+          FeesRow(0, 2, 4, new Timestamp(0), "kind1"),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind2"),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind1"),
+          FeesRow(0, 2, 4, new Timestamp(3), "kind4")
+        )
+
+        val aggregate = List(
+          Aggregation(
+            field = "medium",
+            function = AggregationType.count,
+            Some(
+              AggregationPredicate(
+                operation = OperationType.gt,
+                set = List(1),
+                inverse = false
+              )
+            )
+          )
+        )
+
+        val predicates = List(
+          Predicate(
+            field = "high",
+            operation = OperationType.lt,
+            set = List(5),
+            inverse = false
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Fees ++= feesTmp
+          found <- sut.selectWithPredicates(
+            table = Tables.Fees.baseTableRow.tableName,
+            columns = List(SimpleField("medium"), SimpleField("kind")),
+            predicates = predicates,
+            ordering = List.empty,
+            aggregation = aggregate,
+            limit = 4,
+            outputType = OutputType.json
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "count_medium" -> Some(2),
+            "kind" -> Some("kind1")
+          )
+        )
+      }
+
+      "should aggregate correctly with multiple aggregation fields with predicate" in {
+        val feesTmp = List(
+          FeesRow(0, 2, 4, new Timestamp(0), "kind1"),
+          FeesRow(0, 4, 8, new Timestamp(1), "kind2"),
+          FeesRow(0, 3, 4, new Timestamp(2), "kind1"),
+          FeesRow(0, 2, 4, new Timestamp(3), "kind2"),
+          FeesRow(1, 2, 4, new Timestamp(4), "kind3")
+        )
+
+        val aggregate = List(
+          Aggregation(
+            field = "medium",
+            function = AggregationType.count,
+            Some(
+              AggregationPredicate(
+                operation = OperationType.gt,
+                set = List(0),
+                inverse = false
+              )
+            )
+          ),
+          Aggregation(
+            field = "low",
+            function = AggregationType.sum,
+            Some(
+              AggregationPredicate(
+                operation = OperationType.eq,
+                set = List(0),
+                inverse = false
+              )
+            )
+          )
+        )
+
+        val predicates = List(
+          Predicate(
+            field = "high",
+            operation = OperationType.lt,
+            set = List(5),
+            inverse = false
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Fees ++= feesTmp
+          found <- sut.selectWithPredicates(
+            table = Tables.Fees.baseTableRow.tableName,
+            columns = List(SimpleField("low"), SimpleField("medium"), SimpleField("kind")),
+            predicates = predicates,
+            ordering = List.empty,
+            aggregation = aggregate,
+            limit = 5,
+            outputType = OutputType.json
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "sum_low" -> Some(0),
+            "count_medium" -> Some(2),
+            "kind" -> Some("kind1")
+          ),
+          Map(
+            "sum_low" -> Some(0),
+            "count_medium" -> Some(1),
+            "kind" -> Some("kind2")
+          )
+        )
+      }
+
+      "should aggregate with datePart aggregation" in {
+        val oneDay = Duration(1, DAYS).toMillis
+        val feesTmp = List(
+          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
+          FeesRow(0, 4, 8, new Timestamp(1 + oneDay), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(3 + oneDay), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(1 + oneDay * 2), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(2 + oneDay * 2), "kind")
+        )
+
+        val aggregate = List(
+          Aggregation("medium", AggregationType.count, None)
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Fees ++= feesTmp
+          found <- sut.selectWithPredicates(
+            table = Tables.Fees.baseTableRow.tableName,
+            columns = List(SimpleField("medium"), FormattedField("timestamp", FormatType.datePart, "YYYY-MM-DD")),
+            predicates = List.empty,
+            ordering = List(QueryOrdering("count_medium", OrderDirection.desc)),
+            aggregation = aggregate,
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map("date_part_timestamp" -> Some("1970-01-02"), "count_medium" -> Some(3)),
+          Map("date_part_timestamp" -> Some("1970-01-03"), "count_medium" -> Some(2)),
+          Map("date_part_timestamp" -> Some("1970-01-01"), "count_medium" -> Some(1))
+        )
+
+      }
+
+      "should map date with datePart aggregation when it is only type of aggregation" in {
+        val oneDay = Duration(1, DAYS).toMillis
+        val feesTmp = List(
+          FeesRow(0, 1, 4, new Timestamp(0), "kind"),
+          FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
+          FeesRow(0, 4, 4, new Timestamp(3 + oneDay), "kind"),
+          FeesRow(0, 5, 4, new Timestamp(1 + oneDay * 2), "kind"),
+          FeesRow(0, 6, 4, new Timestamp(2 + oneDay * 2), "kind")
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Fees ++= feesTmp
+          found <- sut.selectWithPredicates(
+            table = Tables.Fees.baseTableRow.tableName,
+            columns = List(FormattedField("timestamp", FormatType.datePart, "YYYY-MM-DD")),
+            predicates = List.empty,
+            ordering = List(QueryOrdering("date_part_timestamp", OrderDirection.desc)),
+            aggregation = List.empty,
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map("date_part_timestamp" -> Some("1970-01-03")),
+          Map("date_part_timestamp" -> Some("1970-01-03")),
+          Map("date_part_timestamp" -> Some("1970-01-02")),
+          Map("date_part_timestamp" -> Some("1970-01-02")),
+          Map("date_part_timestamp" -> Some("1970-01-02")),
+          Map("date_part_timestamp" -> Some("1970-01-01"))
         )
       }
 
