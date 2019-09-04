@@ -121,7 +121,8 @@ class DatabaseConversionsTest
           'metaCyclePosition (metadata.map(_.level.cycle_position)),
           'metaVotingPeriod (metadata.map(_.level.voting_period)),
           'metaVotingPeriodPosition (metadata.map(_.level.voting_period_position)),
-          'expectedCommitment (metadata.map(_.level.expected_commitment))
+          'expectedCommitment (metadata.map(_.level.expected_commitment)),
+          'priority (block.data.header.priority)
         )
 
         metadata.map(_.consumed_gas) match {
@@ -310,6 +311,7 @@ class DatabaseConversionsTest
         converted.level.value shouldBe sampleEndorsement.level
         converted.delegate.value shouldBe sampleEndorsement.metadata.delegate.value
         converted.slots.value shouldBe "[29,27,20,17]"
+        //branch and numberOfSlots needs test
 
         forAll(
           converted.nonce ::
@@ -333,6 +335,7 @@ class DatabaseConversionsTest
               converted.status ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -376,6 +379,7 @@ class DatabaseConversionsTest
               converted.status ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -419,6 +423,7 @@ class DatabaseConversionsTest
               converted.status ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -477,6 +482,7 @@ class DatabaseConversionsTest
               converted.script ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -544,6 +550,7 @@ class DatabaseConversionsTest
               converted.spendable ::
               converted.delegatable ::
               converted.script ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -601,6 +608,7 @@ class DatabaseConversionsTest
           case Some(Decimal(bignumber)) => converted.paidStorageSizeDiff.value shouldBe bignumber
           case _ => converted.paidStorageSizeDiff shouldBe 'empty
         }
+        converted.originatedContracts.value shouldBe "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4,KT1Hx96yGgGk2q7Jmwm1dnYAMdRoLJNn5gnC"
 
         forAll(
           converted.level ::
@@ -670,6 +678,7 @@ class DatabaseConversionsTest
               converted.script ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -713,6 +722,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -756,6 +766,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -765,7 +776,7 @@ class DatabaseConversionsTest
 
       "convert a Proposals operation to a database row" in {
 
-        val converted = (block, groupHash, Proposals: Operation).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleProposals: Operation).convertTo[Tables.OperationsRow]
 
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
@@ -773,6 +784,9 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "proposals"
+        converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
+        converted.period shouldBe Some(10)
+        converted.proposal shouldBe Some("[Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z]")
 
         forAll(
           converted.level ::
@@ -781,7 +795,6 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
-              converted.source ::
               converted.fee ::
               converted.counter ::
               converted.gasLimit ::
@@ -799,6 +812,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -808,14 +822,17 @@ class DatabaseConversionsTest
 
       "convert a Ballot operation to a database row" in {
 
-        val converted = (block, groupHash, Ballot: Operation).convertTo[Tables.OperationsRow]
+        val converted = (block, groupHash, sampleBallot: Operation).convertTo[Tables.OperationsRow]
 
+        converted.kind shouldBe "ballot"
         converted.operationId shouldBe 0
         converted.operationGroupHash shouldBe groupHash.value
+        converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
         converted.blockHash shouldBe block.data.hash.value
         converted.blockLevel shouldBe block.data.header.level
+        converted.ballot shouldBe Some("yay")
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
-        converted.kind shouldBe "ballot"
+        converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
 
         forAll(
           converted.level ::
@@ -824,7 +841,6 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
-              converted.source ::
               converted.fee ::
               converted.counter ::
               converted.gasLimit ::
@@ -842,6 +858,7 @@ class DatabaseConversionsTest
               converted.consumedGas ::
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
+              converted.originatedContracts ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -852,16 +869,19 @@ class DatabaseConversionsTest
       "convert a Voting Proposal to a database row" in {
         import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Proposal
 
-        val sampleProposal = Proposal(protocols = ProtocolId("proto1") :: ProtocolId("proto2") :: Nil, block = block)
+        val sampleProposal =
+          Proposal(protocols = (ProtocolId("proto1"), 1) :: (ProtocolId("proto2"), 2) :: Nil, block = block)
 
         val expected = List(
           Tables.ProposalsRow(
             protocolHash = "proto1",
+            supporters = Some(1),
             blockId = block.data.hash.value,
             blockLevel = block.data.header.level
           ),
           Tables.ProposalsRow(
             protocolHash = "proto2",
+            supporters = Some(2),
             blockId = block.data.hash.value,
             blockLevel = block.data.header.level
           )

@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
+<configuration debug="false">
+
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook" delay="5 seconds"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <layout class="ch.qos.logback.classic.PatternLayout">
-                <Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</Pattern>
+                <Pattern>%d{HH:mm:ss.SSS} %-53([%thread] %-5level) %-36logger{36} - %msg%n</Pattern>
             </layout>
         </encoder>
+    </appender>
+
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="STDOUT" />
     </appender>
 
     <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
@@ -30,7 +36,7 @@
     <logger name="de.flapdoodle.embed.process" level="OFF"/>
 
     <root level="INFO">
-        <appender-ref ref="STDOUT" />
+        <appender-ref ref="ASYNC" />
     </root>
 
 </configuration>

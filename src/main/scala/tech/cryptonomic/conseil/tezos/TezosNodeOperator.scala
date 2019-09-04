@@ -13,8 +13,7 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -167,11 +166,11 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
-    def parseMichelsonScripts(account: Account): Account = {
+    def parseMichelsonScripts: Account => Account = {
       val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (scriptAlter compose storageAlter)(account)
+      scriptAlter compose storageAlter
     }
 
     fetchedAccounts.map(
@@ -291,7 +290,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
     //adapt the proposal protocols result to include the block
     val fetchProposals =
-      fetch[Block, List[ProtocolId], Future, List, Throwable].map { proposalsList =>
+      fetch[Block, List[(ProtocolId, ProposalSupporters)], Future, List, Throwable].map { proposalsList =>
         proposalsList.map {
           case (block, protocols) => Voting.Proposal(protocols, block)
         }
@@ -534,6 +533,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.{fetch, fetchMerge}
 
+    logger.info("Fetching block data in range: " + levelRange)
+
     val (hashRef, levelRef) = reference
     require(levelRange.start >= 0 && levelRange.end <= levelRef)
     val offsets = levelRange.map(lvl => levelRef - lvl).toList
@@ -544,12 +545,12 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     val proposalsStateFetch =
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
-    def parseMichelsonScripts(block: Block): Block = {
+    def parseMichelsonScripts: Block => Block = {
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (codeAlter compose storageAlter compose parametersAlter)(block)
+      codeAlter compose storageAlter compose parametersAlter
     }
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations

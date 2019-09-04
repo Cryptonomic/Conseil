@@ -6,6 +6,7 @@ import io.circe._
 import io.circe.generic.auto._
 import tech.cryptonomic.conseil.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
+import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.EmbeddedElement.toMichelsonElement
 
 import scala.collection.immutable.{List, Nil}
 
@@ -38,6 +39,17 @@ object JsonParser {
     def toMichelsonExpression: MichelsonExpression
   }
 
+  type EmbeddedElement = Either[Either[JsonExpression, JsonInstruction], List[JsonInstruction]]
+
+  object EmbeddedElement {
+    def toMichelsonElement(embeddedElement: EmbeddedElement): MichelsonElement = embeddedElement match {
+      case Left(Left(jsonExpression)) => jsonExpression.toMichelsonExpression
+      case Left(Right(jsonInstruction)) => jsonInstruction.toMichelsonInstruction.normalized
+      case Right(Nil) => MichelsonEmptyInstruction
+      case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
+    }
+  }
+
   /*
    * Wrapper for type
    *
@@ -58,48 +70,15 @@ object JsonParser {
    * */
   case class JsonType(
       prim: String,
-      args: Option[List[Either[JsonExpression, Nil.type]]],
+      args: Option[List[EmbeddedElement]],
       annots: Option[List[String]] = None
   ) extends JsonExpression {
     override def toMichelsonExpression =
       MichelsonType(
         prim,
-        args.getOrElse(List.empty).map {
-          case Left(jsonExpression) => jsonExpression.toMichelsonExpression
-          case Right(_) => MichelsonEmptyExpression
-        },
+        args.getOrElse(List.empty).map(toMichelsonElement),
         annots.getOrElse(List.empty)
       )
-  }
-
-  /*
-   * Wrapper for int constant
-   *
-   * {"int": "0"}
-   *
-   * */
-  case class JsonIntConstant(int: String) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonIntConstant(int.toLong)
-  }
-
-  /*
-   * Wrapper for string constant
-   *
-   * {"string": "0"}
-   *
-   * */
-  case class JsonStringConstant(string: String) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonStringConstant(string)
-  }
-
-  /*
-   * Wrapper for bytes constant
-   *
-   * {"bytes": "0500"}
-   *
-   * */
-  case class JsonBytesConstant(bytes: String) extends JsonExpression {
-    override def toMichelsonExpression = MichelsonBytesConstant(bytes)
   }
 
   /*
@@ -119,23 +98,49 @@ object JsonParser {
 
   case class JsonSimpleInstruction(
       prim: String,
-      args: Option[List[Either[JsonExpression, List[JsonInstruction]]]] = None,
+      args: Option[List[EmbeddedElement]] = None,
       annots: Option[List[String]] = None
   ) extends JsonInstruction {
     override def toMichelsonInstruction =
       MichelsonSingleInstruction(
         name = prim,
         annotations = annots.getOrElse(List.empty),
-        embeddedElements = args.getOrElse(List.empty).map {
-          case Left(jsonExpression) => jsonExpression.toMichelsonExpression
-          case Right(Nil) => MichelsonEmptyInstruction
-          case Right(jsonInstructions) => MichelsonInstructionSequence(jsonInstructions.map(_.toMichelsonInstruction))
-        }
+        embeddedElements = args.getOrElse(List.empty).map(toMichelsonElement)
       )
   }
 
   case class JsonInstructionSequence(instructions: List[JsonInstruction]) extends JsonInstruction {
     override def toMichelsonInstruction = MichelsonInstructionSequence(instructions.map(_.toMichelsonInstruction))
+  }
+
+  /*
+   * Wrapper for int constant
+   *
+   * {"int": "0"}
+   *
+   * */
+  case class JsonIntConstant(int: String) extends JsonInstruction {
+    override def toMichelsonInstruction = MichelsonIntConstant(int.toLong)
+  }
+
+  /*
+   * Wrapper for string constant
+   *
+   * {"string": "0"}
+   *
+   * */
+  case class JsonStringConstant(string: String) extends JsonInstruction {
+    override def toMichelsonInstruction = MichelsonStringConstant(string)
+  }
+
+  /*
+   * Wrapper for bytes constant
+   *
+   * {"bytes": "0500"}
+   *
+   * */
+  case class JsonBytesConstant(bytes: String) extends JsonInstruction {
+    override def toMichelsonInstruction = MichelsonBytesConstant(bytes)
   }
 
   case class ParserError(message: String) extends Throwable(message)
@@ -169,13 +174,7 @@ object JsonParser {
         Decoder[JsonExpressionSection].widen
       ).reduceLeft(_ or _)
 
-    implicit val decodeExpression: Decoder[JsonExpression] =
-      List[Decoder[JsonExpression]](
-        Decoder[JsonType].widen,
-        Decoder[JsonIntConstant].widen,
-        Decoder[JsonStringConstant].widen,
-        Decoder[JsonBytesConstant].widen
-      ).reduceLeft(_ or _)
+    implicit val decodeExpression: Decoder[JsonExpression] = Decoder[JsonType].widen
 
     val decodeInstructionSequence: Decoder[JsonInstructionSequence] =
       _.as[List[JsonInstruction]].map(JsonInstructionSequence)
@@ -183,7 +182,10 @@ object JsonParser {
     implicit val decodeInstruction: Decoder[JsonInstruction] =
       List[Decoder[JsonInstruction]](
         decodeInstructionSequence.widen,
-        Decoder[JsonSimpleInstruction].widen
+        Decoder[JsonSimpleInstruction].widen,
+        Decoder[JsonIntConstant].widen,
+        Decoder[JsonStringConstant].widen,
+        Decoder[JsonBytesConstant].widen
       ).reduceLeft(_ or _)
 
     implicit def decodeEither[A, B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A, B]] =

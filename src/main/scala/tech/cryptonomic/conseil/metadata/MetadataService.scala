@@ -1,48 +1,92 @@
 package tech.cryptonomic.conseil.metadata
 
+import cats.implicits._
+import cats.syntax.all._
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.generic.chain.DataTypes
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
-import tech.cryptonomic.conseil.util.CollectionOps.{ExtendedFuture, ExtendedOptionalList}
+import tech.cryptonomic.conseil.generic.chain.{DataTypes, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.util.ConfigUtil
-import tech.cryptonomic.conseil.util.OptionUtil.when
 
 import scala.concurrent.Future.successful
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.language.postfixOps
 
 // service class for metadata
 class MetadataService(
     config: PlatformsConfiguration,
     transformation: UnitTransformation,
     cacheConfiguration: AttributeValuesCacheConfiguration,
-    tezosPlatformDiscoveryOperations: TezosPlatformDiscoveryOperations
-) {
+    platformDiscoveryOperations: PlatformDiscoveryOperations
+)(implicit apiExecutionContext: ExecutionContext) {
 
-  // checks if attribute is valid
-  def isAttributeValid(entity: String, attribute: String): Future[Boolean] =
-    tezosPlatformDiscoveryOperations.isAttributeValid(entity, attribute)
+  private val platforms = transformation.overridePlatforms(ConfigUtil.getPlatforms(config))
+
+  private val networks = platforms.map { platform =>
+    platform.path -> transformation.overrideNetworks(platform.path, ConfigUtil.getNetworks(config, platform.name))
+  }.toMap
+
+  private val entities = {
+    val allEntities = Await.result(platformDiscoveryOperations.getEntities, 2 second)
+
+    networks.values.flatten
+      .map(_.path)
+      .map(
+        networkPath => networkPath -> transformation.overrideEntities(networkPath, allEntities)
+      )
+      .toMap
+  }
+
+  private val attributes: Map[EntityPath, List[Attribute]] = {
+    val networkPaths = entities.flatMap {
+      case (networkPath: NetworkPath, entities: List[Entity]) =>
+        entities.map(entity => networkPath.addLevel(entity.name))
+    }.toSet
+
+    val result = networkPaths.map { path =>
+      platformDiscoveryOperations
+        .getTableAttributes(path.entity)
+        .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))
+    }
+
+    Await.result(Future.sequence(result).map(_.toMap), 10 seconds)
+  }
+
+  // fetches platforms
+  def getPlatforms: List[Platform] = platforms
+
+  // fetches networks
+  def getNetworks(path: PlatformPath): Option[List[Network]] = networks.get(path)
 
   // fetches entities
-  def getEntities(path: NetworkPath)(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Entity]]] =
-    if (exists(path))
-      tezosPlatformDiscoveryOperations.getEntities
-        .mapNested(entity => transformation.overrideEntity(entity, path.addLevel(entity.name)))
-        .map(Some(_))
-    else
-      successful(None)
+  def getEntities(path: NetworkPath): Option[List[Entity]] = entities.get(path)
+
+  // gets current entities
+  def getCurrentEntities(path: NetworkPath): Future[Option[List[Entity]]] =
+    platformDiscoveryOperations.getEntities.map { allEntities =>
+      if (exists(path))
+        Some(transformation.overrideEntities(path, allEntities, shouldLog = false))
+      else
+        None
+    }
 
   // fetches table attributes
-  def getTableAttributes(
-      path: EntityPath
-  )(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
-    getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributes)
+  def getTableAttributes(path: EntityPath): Option[List[Attribute]] = attributes.get(path)
+
+  // fetches current attributes
+  def getCurrentTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] =
+    platformDiscoveryOperations.getTableAttributes(path.entity).map { maybeAttributes =>
+      maybeAttributes.flatMap { attributes =>
+        if (exists(path))
+          Some(transformation.overrideAttributes(path, attributes, shouldLog = false))
+        else
+          None
+      }
+    }
 
   // fetches table attributes without updating cache
-  def getTableAttributesWithoutUpdatingCache(
-      path: EntityPath
-  )(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
-    getAttributesHelper(path)(tezosPlatformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
+  def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
+    getAttributesHelper(path)(platformDiscoveryOperations.getTableAttributesWithoutUpdatingCache)
 
   // fetches attribute values
   def getAttributeValues(
@@ -51,51 +95,38 @@ class MetadataService(
       entity: String,
       attribute: String,
       filter: Option[String] = None
-  )(
-      implicit apiExecutionContext: ExecutionContext
   ): Future[Option[Either[List[DataTypes.AttributesValidationError], List[String]]]] = {
 
     val path = NetworkPath(network, PlatformPath(platform))
     if (exists(path)) {
       val attributePath = EntityPath(entity, path).addLevel(attribute)
-      tezosPlatformDiscoveryOperations
+      platformDiscoveryOperations
         .listAttributeValues(entity, attribute, filter, cacheConfiguration.getCacheConfiguration(attributePath))
         .map(Some(_))
     } else
       successful(None)
   }
 
-  private def exists(path: NetworkPath): Boolean =
-    getNetworks(path.up).getOrElse(List.empty).exists(_.network == path.network) && exists(path.up)
-
-  // fetches networks
-  def getNetworks(path: PlatformPath): Option[List[Network]] = when(exists(path)) {
-    ConfigUtil
-      .getNetworks(config, path.platform)
-      .flatMap(network => transformation.overrideNetwork(network, path.addLevel(network.name)))
+  // checks if path exists
+  def exists(path: Path): Boolean = path match {
+    case attributePath: AttributePath =>
+      attributes.getOrElse(attributePath.up, List.empty).exists(_.name == attributePath.attribute)
+    case entityPath: EntityPath =>
+      entities.getOrElse(entityPath.up, List.empty).exists(_.name == entityPath.entity)
+    case networkPath: NetworkPath =>
+      networks.getOrElse(networkPath.up, List.empty).exists(_.network == networkPath.network)
+    case platformPath: PlatformPath =>
+      platforms.exists(_.name == platformPath.platform)
   }
-
-  private def exists(path: PlatformPath): Boolean = getPlatforms.exists(_.name == path.platform)
-
-  // fetches platforms
-  def getPlatforms: List[Platform] =
-    ConfigUtil
-      .getPlatforms(config)
-      .flatMap(platform => transformation.overridePlatform(platform, PlatformPath(platform.name)))
 
   // fetches attributes with given function
   private def getAttributesHelper(path: EntityPath)(
       getAttributes: String => Future[Option[List[Attribute]]]
-  )(implicit apiExecutionContext: ExecutionContext): Future[Option[List[Attribute]]] =
-    exists(path).flatMap {
-      case true =>
-        getAttributes(path.entity).map(
-          _.mapNested(attribute => transformation.overrideAttribute(attribute, path.addLevel(attribute.name)))
-        )
-      case false =>
-        Future.successful(None)
-    }
-
-  private def exists(path: EntityPath)(implicit apiExecutionContext: ExecutionContext): Future[Boolean] =
-    getEntities(path.up).map(_.getOrElse(List.empty).exists(_.name == path.entity) && exists(path.up))
+  ): Future[Option[List[Attribute]]] =
+    if (exists(path))
+      getAttributes(path.entity).map(
+        _.map(attributes => transformation.overrideAttributes(path, attributes))
+      )
+    else
+      Future.successful(None)
 }

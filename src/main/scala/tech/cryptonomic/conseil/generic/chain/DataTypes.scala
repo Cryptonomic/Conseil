@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.generic.chain
 import java.sql.Timestamp
 
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
+import tech.cryptonomic.conseil.generic.chain.DataTypes.FormatType.FormatType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OrderDirection.OrderDirection
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
@@ -10,6 +11,7 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService}
 
+import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -28,8 +30,9 @@ object DataTypes {
     {
       case AggregationType.count => true
       case AggregationType.max | AggregationType.min =>
-        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime)(dataType)
-      case AggregationType.avg | AggregationType.sum => Set(DataType.Decimal, DataType.Int, DataType.LargeInt)(dataType)
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.DateTime, DataType.Currency)(dataType)
+      case AggregationType.avg | AggregationType.sum =>
+        Set(DataType.Decimal, DataType.Int, DataType.LargeInt, DataType.Currency)(dataType)
     }
   }
 
@@ -53,24 +56,23 @@ object DataTypes {
     }.sequence.map(pred => query.copy(predicates = pred.flatten))
 
   /** Helper method for finding fields used in query that don't exist in the database */
-  private def findNonExistingFields(query: Query, path: EntityPath, metadataService: MetadataService)(
-      implicit ec: ExecutionContext
-  ): Future[List[QueryValidationError]] = {
-    val fields = query.fields.map('query -> _) :::
+  private def findNonExistingFields(
+      query: Query,
+      path: EntityPath,
+      metadataService: MetadataService
+  ): List[QueryValidationError] = {
+    val fields = query.fields.map('query -> _.field) :::
           query.predicates.map(predicate => 'predicate -> dropAggregationPrefixes(predicate.field)) :::
           query.orderBy.map(orderBy => 'orderBy -> dropAggregationPrefixes(orderBy.field)) :::
           query.aggregation.map('aggregation -> _.field)
 
-    fields.traverse {
-      case (source, field) =>
-        metadataService.isAttributeValid(path.entity, field).map((_, source, field))
-    }.map {
-      _.collect {
-        case (false, 'query, field) => InvalidQueryField(field)
-        case (false, 'predicate, field) => InvalidPredicateField(field)
-        case (false, 'orderBy, field) => InvalidOrderByField(field)
-        case (false, 'aggregation, field) => InvalidAggregationField(field)
-      }
+    fields.map {
+      case (source, field) => (metadataService.exists(path.addLevel(field)), source, field)
+    }.collect {
+      case (false, 'query, field) => InvalidQueryField(field)
+      case (false, 'predicate, field) => InvalidPredicateField(field)
+      case (false, 'orderBy, field) => InvalidOrderByField(field)
+      case (false, 'aggregation, field) => InvalidAggregationField(field)
     }
   }
 
@@ -101,24 +103,41 @@ object DataTypes {
   /** Helper method for finding if queries does not contain filters on key fields or datetime fields */
   private def findInvalidPredicateFilteringFields(query: Query, path: EntityPath, metadataService: MetadataService)(
       implicit ec: ExecutionContext
-  ): Future[List[InvalidPredicateFiltering]] =
-    metadataService.getEntities(path.up).flatMap { entitiesOpt =>
-      val limitedQueryEntity = entitiesOpt.toList.flatten
-        .find(_.name == path.entity)
-        .flatMap(_.limitedQuery)
-        .getOrElse(false)
-      if (limitedQueryEntity) {
-        query.predicates.traverse { predicate =>
-          metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
-            attributesOpt.flatMap { attributes =>
-              attributes.find(_.name == predicate.field)
-            }.toList
-          }
-        }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
-      } else {
-        Future.successful(List.empty)
-      }
+  ): Future[List[InvalidPredicateFiltering]] = {
+    val limitedQueryEntity = metadataService
+      .getEntities(path.up)
+      .toList
+      .flatten
+      .find(_.name == path.entity)
+      .flatMap(_.limitedQuery)
+      .getOrElse(false)
+    if (limitedQueryEntity) {
+      query.predicates.traverse { predicate =>
+        metadataService.getTableAttributesWithoutUpdatingCache(path).map { attributesOpt =>
+          attributesOpt.flatMap { attributes =>
+            attributes.find(_.name == predicate.field)
+          }.toList
+        }
+      }.map(attributes => attributes.flatten.flatMap(_.doesPredicateContainValidAttribute))
+    } else {
+      successful(List.empty)
     }
+  }
+
+  /** Helper method for query fields validation */
+  private def findInvalidQueryFieldFormats(
+      query: Query,
+      path: EntityPath,
+      metadataService: MetadataService
+  ): List[InvalidQueryFieldFormatting] = {
+    val columns = metadataService.getTableAttributes(path).toList.flatten
+    query.fields.filterNot {
+      case SimpleField(_) => true
+      case FormattedField(field, FormatType.datePart, _) =>
+        columns.exists(column => column.name == field && column.dataType == DataType.DateTime)
+      case _ => false
+    }.map(field => InvalidQueryFieldFormatting(s"Field ${field.field} does not have correct type to be formatted."))
+  }
 
   /** Trait representing attribute validation errors */
   sealed trait AttributesValidationError extends Product with Serializable {
@@ -186,9 +205,23 @@ object DataTypes {
   /** Class representing lack of key/datetime field usage in predicates */
   case class InvalidPredicateFiltering(message: String) extends QueryValidationError
 
+  /** Class representing invalid field formatting */
+  case class InvalidQueryFieldFormatting(message: String) extends QueryValidationError
+
+  /** Query field description */
+  sealed trait Field {
+    val field: String
+  }
+
+  /** Simple field without formatting */
+  case class SimpleField(field: String) extends Field
+
+  /** Formatted field with format description */
+  case class FormattedField(field: String, function: FormatType, format: String) extends Field
+
   /** Class representing query */
   case class Query(
-      fields: List[String] = List.empty,
+      fields: List[Field] = List.empty,
       predicates: List[Predicate] = List.empty,
       orderBy: List[QueryOrdering] = List.empty,
       limit: Int = defaultLimitValue,
@@ -243,7 +276,7 @@ object DataTypes {
 
   /** Class representing query got through the REST API */
   case class ApiQuery(
-      fields: Option[List[String]],
+      fields: Option[List[Field]],
       predicates: Option[List[ApiPredicate]],
       orderBy: Option[List[QueryOrdering]],
       limit: Option[Int],
@@ -268,13 +301,20 @@ object DataTypes {
         .transform
 
       (
-        findNonExistingFields(query, entity, metadataService),
+        successful(findNonExistingFields(query, entity, metadataService)),
         findInvalidAggregationTypeFields(query, entity, metadataService),
         findInvalidPredicateFilteringFields(query, entity, metadataService),
+        successful(findInvalidQueryFieldFormats(query, entity, metadataService)),
         replaceTimestampInPredicates(entity, query, metadataService)
       ).mapN {
-        (invalidNonExistingFields, invalidAggregationFieldForTypes, invalidPredicateFilteringFields, updatedQuery) =>
-          invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields match {
+        (
+            invalidNonExistingFields,
+            invalidAggregationFieldForTypes,
+            invalidPredicateFilteringFields,
+            invalidQueryFieldFormats,
+            updatedQuery
+        ) =>
+          invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields ::: invalidQueryFieldFormats match {
             case Nil => Right(updatedQuery)
             case wrongFields => Left(wrongFields)
           }
@@ -307,6 +347,14 @@ object DataTypes {
     def prefixes: List[String] = values.toList.map(_.toString + "_")
     type AggregationType = Value
     val sum, count, max, min, avg = Value
+  }
+
+  /** Enumeration of aggregation functions */
+  object FormatType extends Enumeration {
+
+    /** Helper method for extracting prefixes needed for SQL */
+    type FormatType = Value
+    val datePart = Value
   }
 
 }

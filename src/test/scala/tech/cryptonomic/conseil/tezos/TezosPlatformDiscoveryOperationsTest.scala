@@ -16,10 +16,11 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
   InvalidAttributeFilterLength
 }
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.util.ConfigUtil
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, BlockTagged, PublicKeyHash}
+import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -30,6 +31,7 @@ class TezosPlatformDiscoveryOperationsTest
     with InMemoryDatabase
     with MockFactory
     with Matchers
+    with TezosDataGeneration
     with ScalaFutures
     with OptionValues
     with IntegrationPatience
@@ -107,7 +109,9 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
               Attribute("high", "High", DataType.Int, None, KeyType.NonKey, "fees"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
-              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees")
+              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
+              Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
             )
           )
       }
@@ -173,7 +177,8 @@ class TezosPlatformDiscoveryOperationsTest
                 KeyType.NonKey,
                 "blocks"
               ),
-              Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks")
+              Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
+              Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
             )
           )
       }
@@ -183,17 +188,10 @@ class TezosPlatformDiscoveryOperationsTest
           Some(
             List(
               Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute(
-                "operation_group_hash",
-                "Operation group hash",
-                DataType.String,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
+              Attribute("operation_group_hash", "Operation group hash", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("delegate", "Delegate", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
               Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
@@ -224,9 +222,24 @@ class TezosPlatformDiscoveryOperationsTest
                 KeyType.NonKey,
                 "operations"
               ),
+              Attribute(
+                "originated_contracts",
+                "Originated contracts",
+                DataType.String,
+                None,
+                KeyType.NonKey,
+                "operations"
+              ),
               Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "operations")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
+              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
+              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
+              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
+              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
             )
           )
       }
@@ -241,7 +254,8 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups")
+              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
             )
           )
       }
@@ -271,7 +285,8 @@ class TezosPlatformDiscoveryOperationsTest
             List(
               Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
+              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
             )
           )
       }
@@ -284,9 +299,9 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
               Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "rolls")
+              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
             )
-          )
+          ) 
       }
 
       "return list of attributes of ballots" in {
@@ -310,14 +325,33 @@ class TezosPlatformDiscoveryOperationsTest
   "listAttributeValues" should {
 
       "return list of values of kind attribute of Fees without filter" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
         sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
       }
 
+      "return list of boolean values" in {
+        // given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
+        val account = Account(PublicKeyHash("a"), 12.34, true, AccountDelegate(true, None), None, 1)
+
+        val accounts = List(
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = true))),
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = false)))
+        )
+
+        metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
+        metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
+
+        // expect
+        sut.listAttributeValues("accounts", "spendable").futureValue.right.get shouldBe List("true", "false")
+      }
+
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
@@ -329,7 +363,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list with one error when the minimum matching length is greater than match length" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
         sut
@@ -340,7 +374,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return empty list when trying to sql inject" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1")
+        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
         // That's how the SLQ-injected string will look like:
@@ -354,8 +388,8 @@ class TezosPlatformDiscoveryOperationsTest
       }
       "correctly apply the filter" in {
         val avgFees = List(
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1"),
-          AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2")
+          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None),
+          AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
         )
 
         sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
@@ -377,15 +411,6 @@ class TezosPlatformDiscoveryOperationsTest
         sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List("example1")
 
       }
-
-      "should validate correctly fields" in {
-        sut.isAttributeValid("fees", "low").futureValue shouldBe true
-      }
-
-      "should return false when there will be field not existing in the DB" in {
-        sut.isAttributeValid("fees", "WRONG").futureValue shouldBe false
-      }
-
     }
 
 }

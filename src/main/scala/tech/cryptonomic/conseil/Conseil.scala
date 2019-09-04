@@ -6,13 +6,14 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import tech.cryptonomic.conseil.config.ConseilAppConfig
+import tech.cryptonomic.conseil.config.{ConseilAppConfig, Security}
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
@@ -32,18 +33,23 @@ object Conseil
     with ConseilOutput {
 
   loadApplicationConfiguration(args) match {
-    case Right((server, platforms, securityApi, verbose, metadataOverrides)) =>
-      val validateApiKey = headerValueByName("apikey").tflatMap[Tuple1[String]] {
-        case Tuple1(apiKey) if securityApi.validateApiKey(apiKey) =>
-          provide(apiKey)
-        case _ =>
-          complete((Unauthorized, "Incorrect API key"))
-      }
-
+    case Right((server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud)) =>
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+      nautilusCloud.foreach { ncc =>
+        system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
+      }
 
+      val validateApiKey: Directive[Tuple1[String]] = headerValueByName("apikey").tflatMap[Tuple1[String]] {
+        case Tuple1(apiKey) =>
+          onComplete(securityApi.validateApiKey(apiKey)).flatMap {
+            case Success(true) => provide(apiKey)
+            case _ => complete((Unauthorized, "Incorrect API key"))
+          }
+        case _ =>
+          complete((Unauthorized, "Missing API key"))
+      }
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
@@ -71,7 +77,8 @@ object Conseil
         case Success(_) => logger.info("Pre-caching attributes successful!")
       }
 
-      lazy val metadataService =
+      // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
+      val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
       lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)

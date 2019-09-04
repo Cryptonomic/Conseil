@@ -33,6 +33,7 @@ libraryDependencies ++= Seq(
   "ch.megard"                    %% "akka-http-cors"                % "0.3.4" exclude ("com.typesafe.akka", "akka-http"),
   "org.scalaj"                   %% "scalaj-http"                   % "2.4.1",
   "com.github.pureconfig"        %% "pureconfig"                    % "0.10.2",
+  "org.apache.commons"           % "commons-text"                   % "1.7",
   "com.fasterxml.jackson.core"   % "jackson-databind"               % "2.9.6" exclude ("com.fasterxml.jackson.core", "jackson-annotations"),
   "com.fasterxml.jackson.module" %% "jackson-module-scala"          % "2.9.6",
   "com.chuusai"                  %% "shapeless"                     % "2.3.3",

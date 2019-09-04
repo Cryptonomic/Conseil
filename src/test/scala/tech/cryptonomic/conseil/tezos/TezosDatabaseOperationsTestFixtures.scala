@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
+  import TezosTypes.Voting.Vote
 
   /* randomly populate a number of fees */
   def generateFees(howMany: Int, startAt: Timestamp)(implicit randomSeed: RandomSeed): List[AverageFees] = {
@@ -28,7 +29,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
         medium = medium,
         high = high,
         timestamp = new Timestamp(startAt.getTime + current),
-        kind = "kind"
+        kind = "kind",
+        level = None,
+        cycle = None
       )
     }.toList
   }
@@ -130,6 +133,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             validation_pass = 0,
             operations_hash = None,
             fitness = Seq.empty,
+            priority = Some(0),
             context = s"context$level",
             signature = Some(s"sig${generateHash(10)}")
           ),
@@ -290,7 +294,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
             hash = generateHash(10),
             branch = generateHash(10),
             signature = Some(s"sig${generateHash(10)}"),
-            blockId = block.hash
+            blockId = block.hash,
+            blockLevel = block.level
           )
       )
       .toList
@@ -310,7 +315,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
         blockHash = block.hash,
         blockLevel = block.level,
         timestamp = block.timestamp,
-        level = Some(block.level)
+        level = Some(block.level),
+        internal = false
       )
     }
 
@@ -326,7 +332,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
           blockHash = block.hash,
           blockLevel = block.level,
           timestamp = new Timestamp(block.timestamp.getTime + index),
-          level = Some(block.level)
+          level = Some(block.level),
+          internal = false
         )
     }
 
@@ -393,7 +400,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       val protocolCounts = Array.fill(howMany)(1 + randomGen.nextInt(4))
 
       List.tabulate(howMany) { current =>
-        val protocols = List.fill(protocolCounts(current))(ProtocolId(generateHash(10)))
+        val protocols = List.fill(protocolCounts(current))((ProtocolId(generateHash(10)), randomGen.nextInt()))
         Proposal(
           protocols = protocols,
           block = forBlock
@@ -719,9 +726,23 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
+    val sampleBallot =
+      Ballot(
+        ballot = Vote("yay"),
+        proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
+        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+      )
+
+    val sampleProposals =
+      Proposals(
+        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+        period = Some(10),
+        proposals = Some(List("Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z)"))
+      )
+
     val sampleOperations =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-          DoubleEndorsementEvidence :: DoubleBakingEvidence :: Proposals :: Ballot :: Nil
+          DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
 
   }
 

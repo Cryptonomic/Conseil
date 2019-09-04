@@ -2,7 +2,7 @@
 
 A blockchain indexer & API for building decentralized applications, currently focused on Tezos.
 
-Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the backbone of Cryptonomic's product offerings. The [Arronax]() block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &ndash; a Typescript wrapper with a Tezos node interface.
+Conseil is a fundamental part of the [Nautilus](https://github.com/Cryptonomic/Nautilus) infrastructure for high-performance chain analytics. It is the backbone of Cryptonomic's product offerings. The [Arronax](https://arronax-beta.cryptonomic.tech) block explorer and reporting tool, and the [Tezori](https://github.com/Cryptonomic/Tezori)/[Galleon](https://galleon-wallet.tech) wallet are both made possible by Conseil. The aforememtion products are additionally using [ConseilJS](https://github.com/Cryptonomic/ConseilJS) &mdash; a Typescript wrapper with a Tezos node interface.
 
 ## Components
 
@@ -59,11 +59,40 @@ Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to det
 
 ### Configuration
 
-`conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Typesafe Config] github page(https://github.com/lightbend/config)
+`conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Lightbend Config](https://github.com/lightbend/config) github page.
 
-### Datasource configuration
+### Metadata overrides
 
-In addition to the metadata derived from the schema, it's possible to extend or override it. In the `/src/main/resources/reference.conf` file under the `metadata-overrides` section there is a structure in the format: platform/network/entity/attribute that allows this. For example, table columns used for internal purposes like foreign key constraints can be hidden from view with `visible: false`. This applies to whole entities as well. It's possible to override the `displayName` property at any level as well. Preferred, or default `dataFormat` can also be added.
+Metadata enables dynamic querying of data sources provided by Conseil and allows for chain-agnostic UIs, like Arronax, to be built while still providing a high level of specialization. Some of the metadata override keys are helpful for query construction, but a large number of them exist for rendering.
+
+In addition to the metadata derived from the schema, it's possible to extend and override it. This information is stored in configuration files inside `/src/main/resources/metadata/` which are referenced from `/src/main/resources/metadata.conf` that is itself included from `src/main/resources/reference.conf`. Metadata hierarchy is platform/network/entity/attribute, different options are available at each level.
+
+Note the naming convention in this file. Hyphenated keys become camel-cased when presented via the metadata service in JSON format. For example `display-name` in the config file appears as `displayName` in the JSON response.
+
+#### Common metadata
+
+These overrides are available at all levels.
+
+- `description`: Item description.
+- `display-name`: Item name.
+- `visible`: Item visibility, default is `false`. This means when a new entity is added to the Conseil database, it must be explicitly enabled.
+
+#### Entity metadata
+
+- `display-name-plural`: Arronax uses this to render entity tab titles here it will show "Blocks" instead of "Block".
+
+#### Attribute metadata
+
+- `currency-symbol`: Associated with Currency type fields, contains currency symbol or code, for example, 'XTZ', or 'ꜩ'
+- `currency-symbol-code`: Same as `currency-symbol`, but stores the Unicode code point of the currency symbol, for 'ꜩ' it would be `42793`
+- `data-format`: Presently used to customize date format. String contents of this item have no impact on how the data is sent or queried, it would be up to the implementing UI to interpret this content.
+- `display-order`: Hints to a UI as to the order in which the fields should appear by default. Lower ordered items would be presented first.
+- `display-priority`: Hints to the UI the relative priority of the data, allowing lower priority information that could be removed due to space constraints while keeping more relevant things in view. In contrast to order, lower priority items would be dropped off the view first.
+- `data-type`: One of: DateTime, String, Int, Decimal, Boolean, Hash, AccountAddress, Currency.
+- `placeholder`: Intended to be used for sample values that might appear as placeholder text in search boxes.
+- `reference`: Associates the field with an attribute of another entity. This is effectively a foreign key reference.
+- `scale`: Used with Decimal and Currency types to scale the value for display. This number is an `int` power of 10.
+
 
 ### Initializing the Data Store
 
@@ -130,7 +159,7 @@ Taking again the `name` property from one of the network results, we can list th
 curl --request GET --header 'apiKey: <API key>' --url '<conseil-host>/v2/metadata/tezos/alphanet/entities'
 ```
 
-WIth the following sample result.
+With the following sample result.
 
 ```json
 [{
@@ -334,13 +363,17 @@ Specifies the maximum number of records to return.
 
 Sort condition, multiple may be supplied for a single query. Inner object(s) will contain `field` and `direction` properties. The former is `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response, the latter is one of 'asc', 'desc'.
 
+It is possible to sort on aggregated results, in this case the `field` value would be "function_fieldname", for example `sum_balance`. See query samples below.
+
 #### `aggregation`
 
-It is possible to apply an aggregation function to a single field of the result set. The aggregation object contains the following properties:
+It is possible to apply an aggregation function to a field of the result set. The aggregation object contains the following properties:
 
 - `field` – `name` from the `/v2/metadata/<platform>/<network>/<entity>/attributes/` metadata response.
 - `function` – one of: sum, count, max, min, avg.
 - `predicate` – same definition as the predicate object described above. This gets translated into a `HAVING` condition in the underlying SQL.
+
+Multiple fields can be aggregated and the same field can be aggregated with different functions in the same request. See examples below.
 
 #### `output`
 
@@ -366,8 +399,8 @@ Send this query to `/v2/data/tezos/<network>/blocks` Note that `orderBy` below e
 {
     "fields": ["baker", "level"],
     "predicates": [{ "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false }],
-    "orderBy": [{ "field": "level", "direction": "desc" }],
-    "aggregation": { "field": "level", "function": "count" },
+    "orderBy": [{ "field": "count_level", "direction": "desc" }],
+    "aggregation": [{ "field": "level", "function": "count" }],
     "limit": 50,
     "output": "csv"
 }
@@ -381,8 +414,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 {
     "fields": ["delegate_value", "balance"],
     "predicates": [{ "field": "delegate_value", "set": [], "operation": "isnull", "inverse": true }],
-    "orderBy": [{ "field": "balance", "direction": "desc" }],
-    "aggregation": { "field": "balance", "function": "sum" },
+    "orderBy": [{ "field": "sum_balance", "direction": "desc" }],
+    "aggregation": [{ "field": "balance", "function": "sum" }],
     "limit": 50,
     "output": "csv"
 }
@@ -396,8 +429,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 {
     "fields": ["delegate_value", "account_id"],
     "predicates": [{ "field": "delegate_value", "set": [], "operation": "isnull", "inverse": true }],
-    "orderBy": [{ "field": "account_id", "direction": "desc" }],
-    "aggregation": { "field": "account_id", "function": "count" },
+    "orderBy": [{ "field": "count_account_id", "direction": "desc" }],
+    "aggregation": [{ "field": "account_id", "function": "count" }],
     "limit": 50,
     "output": "csv"
 }
@@ -405,7 +438,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 
 #### Top 20 Bakers by roll count
 
-Send this query to `/v2/data/tezos/<network>/bakers`
+Send this query to `/v2/data/tezos/<network>/rolls`
 
 ```json
 {
@@ -429,7 +462,7 @@ Send this query to `/v2/data/tezos/<network>/accounts`
     "fields": ["account_id"],
     "predicates": [
         { "field": "account_id", "set": ["KT1"], "operation": "startsWith", "inverse": false },
-        { "field": "script", "set": [], "operation": "isnull", "inverse": true },
+        { "field": "script", "set": [], "operation": "isnull", "inverse": true }
     ],
     "limit": 10000,
     "output": "csv"
@@ -448,8 +481,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "destination", "set": ["KT1"], "operation": "startsWith", "inverse": false },
         { "field": "parameters", "set": [], "operation": "isnull", "inverse": true }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 10,
     "output": "csv"
 }
@@ -466,8 +499,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "kind", "set": ["origination"], "operation": "eq", "inverse": false },
         { "field": "script", "set": [], "operation": "isnull", "inverse": true }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 10,
     "output": "csv"
 }
@@ -479,19 +512,20 @@ Send this query to `/v2/data/tezos/<network>/operations`
 
 ```json
 {
-    "fields": ["source", "amount"],
+    "fields": ["source", "amount", "fee"],
     "predicates": [
         { "field": "kind", "set": ["transaction"], "operation": "eq", "inverse": false },
         { "field": "timestamp", "set": [1546300800000, 1577836799000], "operation": "between", "inverse": false }
     ],
-    "orderBy": [{ "field": "amount", "direction": "desc" }],
-    "aggregation": { "field": "amount", "function": "sum" },
+    "orderBy": [{ "field": "sum_amount", "direction": "desc" }],
+    "aggregation": [{ "field": "amount", "function": "sum" }, { "field": "fee", "function": "avg" }
+    ],
     "limit": 50,
     "output": "csv"
 }
 ```
 
-#### Fees by block level, transaction kind in April 2019
+#### Fees by block level for transaction operations in April 2019
 
 Send this query to `/v2/data/tezos/<network>/operations`
 
@@ -502,8 +536,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
         { "field": "fee", "set": [0], "operation": "gt", "inverse": false }
     ],
-    "orderBy": [{ "field": "fee", "direction": "desc" }],
-    "aggregation": { "field": "fee", "function": "sum" },
+    "orderBy": [{ "field": "sum_fee", "direction": "desc" }],
+    "aggregation": [{ "field": "fee", "function": "sum" }, { "field": "fee", "function": "avg" }],
     "limit": 100000,
     "output": "csv"
 }
@@ -519,8 +553,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
     "predicates": [
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 20,
     "output": "csv"
 }
@@ -537,8 +571,8 @@ Send this query to `/v2/data/tezos/<network>/operations`
         { "field": "timestamp", "set": [1554076800000, 1556668799000], "operation": "between", "inverse": false },
         { "field": "kind", "set": ["transaction", "origination", "delegation", "activation", "reveal"], "operation": "in", "inverse": false }
     ],
-    "orderBy": [{ "field": "operation_group_hash", "direction": "desc" }],
-    "aggregation": { "field": "operation_group_hash", "function": "count" },
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
     "limit": 100,
     "output": "csv"
 }
@@ -555,8 +589,8 @@ Send this query to `/v2/data/tezos/<network>/accounts`
         { "field": "script", "set": [], "operation": "isnull", "inverse": false },
         { "field": "balance", "set": [0], "operation": "gt", "inverse": false }
     ],
-    "orderBy": [{ "field": "account_id", "direction": "desc" }],
-    "aggregation": { "field": "account_id", "function": "count" },
+    "orderBy": [{ "field": "count_account_id", "direction": "desc" }],
+    "aggregation": [{ "field": "account_id", "function": "count" }],
     "limit": 20,
     "output": "csv"
 }
@@ -572,9 +606,22 @@ Send this query to `/v2/data/tezos/<network>/accounts`
     "predicates": [
         { "field": "script", "set": [], "operation": "isnull", "inverse": false }
     ],
-    "orderBy": [{ "field": "balance", "direction": "desc" }],
-    "aggregation": { "field": "balance", "function": "sum" },
+    "orderBy": [{ "field": "sum_balance", "direction": "desc" }],
+    "aggregation": [{ "field": "balance", "function": "sum" }],
     "limit": 20,
     "output": "csv"
+}
+```
+
+### Preprocessed Data
+
+Not all entities are necessarily items from the chain. One such example is `/v2/data/tezos/<network>/fees`. Conseil continuously buckets and averages network fees to give users an idea of what values they should submit when sending operations. Fees are aggregated by operation type.
+
+```json
+{
+    "fields": [],
+    "predicates": [{ "field": "kind", "operation": "eq", "set": [ "transaction" ] }],
+    "orderBy": [{"field": "timestamp", "direction": "desc"}],
+    "limit": 1
 }
 ```

@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos.michelson.renderer
 
+import org.apache.commons.text.StringEscapeUtils.escapeJson
 import tech.cryptonomic.conseil.tezos.michelson.dto._
 
 /* Implicitly adds render() methods for domain object representing Michelson Schema */
@@ -30,7 +31,7 @@ object MichelsonRenderer {
       case MichelsonType(name, Nil, Nil) => name
       case MichelsonType(name, args, annotations) => s"($name ${(annotations ++ args.map(_.render())).mkString(" ")})"
       case MichelsonIntConstant(constant) => constant.toString
-      case MichelsonStringConstant(constant) => "\"%s\"".format(constant)
+      case MichelsonStringConstant(constant) => "\"%s\"".format(escapeJson(constant))
       case MichelsonBytesConstant(constant) => s"0x$constant"
       case MichelsonEmptyExpression => "{}"
 

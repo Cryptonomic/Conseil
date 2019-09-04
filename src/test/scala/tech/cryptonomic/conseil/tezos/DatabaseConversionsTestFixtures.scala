@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.OperationMetadata.BalanceUpdate
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 trait DBConversionsData {
 
@@ -233,7 +234,9 @@ trait DBConversionsData {
               )
             )
           ),
-          originated_contracts = Some(List(ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"))),
+          originated_contracts = Some(
+            ContractId("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4") :: ContractId("KT1Hx96yGgGk2q7Jmwm1dnYAMdRoLJNn5gnC") :: Nil
+          ),
           consumed_gas = Some(Decimal(11262)),
           storage_size = Some(Decimal(46)),
           paid_storage_size_diff = Some(Decimal(46)),
@@ -277,4 +280,17 @@ trait DBConversionsData {
       )
     )
 
+  val sampleBallot =
+    Ballot(
+      ballot = Vote("yay"),
+      proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
+      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+    )
+
+  val sampleProposals =
+    Proposals(
+      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+      period = Some(10),
+      proposals = Some(List("Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z"))
+    )
 }

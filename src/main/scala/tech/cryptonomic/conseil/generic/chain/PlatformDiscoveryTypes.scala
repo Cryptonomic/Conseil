@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.generic.chain
 import tech.cryptonomic.conseil.generic.chain.DataTypes.InvalidPredicateFiltering
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.KeyType
+import tech.cryptonomic.conseil.metadata.{NetworkPath, PlatformPath}
 
 /**
   * Classes used for Platform routes
@@ -10,7 +11,9 @@ import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.Key
 object PlatformDiscoveryTypes {
 
   /** Case class representing network */
-  final case class Platform(name: String, displayName: String, description: Option[String] = None)
+  final case class Platform(name: String, displayName: String, description: Option[String] = None) {
+    val path = PlatformPath(name)
+  }
 
   /** Case class representing network */
   final case class Network(
@@ -19,7 +22,9 @@ object PlatformDiscoveryTypes {
       platform: String,
       network: String,
       description: Option[String] = None
-  )
+  ) {
+    lazy val path = NetworkPath(network, PlatformPath(platform))
+  }
 
   /** Case class representing single entity of a given network */
   final case class Entity(
@@ -47,7 +52,9 @@ object PlatformDiscoveryTypes {
       reference: Option[Map[String, String]] = None,
       displayPriority: Option[Int] = None,
       displayOrder: Option[Int] = None,
-      sufficientForQuery: Option[Boolean] = None
+      sufficientForQuery: Option[Boolean] = None,
+      currencySymbol: Option[String] = None,
+      currencySymbolCode: Option[Int] = None
   ) {
 
     /** Checks if attribute is valid for predicate */
@@ -62,7 +69,8 @@ object PlatformDiscoveryTypes {
   /** Enumeration of data types */
   object DataType extends Enumeration {
     type DataType = Value
-    val Enum, Hex, Binary, Date, DateTime, String, Hash, AccountAddress, Int, LargeInt, Decimal, Boolean = Value
+    val Enum, Hex, Binary, Date, DateTime, String, Hash, AccountAddress, Int, LargeInt, Decimal, Currency, Boolean =
+      Value
   }
 
   /** Enumeration of key types */

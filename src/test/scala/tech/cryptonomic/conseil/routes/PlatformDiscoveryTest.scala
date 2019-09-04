@@ -17,7 +17,12 @@ import tech.cryptonomic.conseil.config.{
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TestPlatformDiscoveryOperations,
+  UnitTransformation
+}
 import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
@@ -27,7 +32,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
   "The platform discovery route" should {
 
-      val tezosPlatformDiscoveryOperations = stub[TezosPlatformDiscoveryOperations]
+      val tezosPlatformDiscoveryOperations = new TestPlatformDiscoveryOperations
       val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
       val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) =>
@@ -123,9 +128,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "expose an endpoint to get the list of supported entities" in {
         // given
-        (tezosPlatformDiscoveryOperations.getEntities _)
-          .when()
-          .returns(successful(List(Entity("entity", "entity-name", 1))))
+        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
 
         val overridesConfiguration = Map(
           "tezos" ->
@@ -163,12 +166,10 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "expose an endpoint to get the list of supported attributes" in {
         // given
-        (tezosPlatformDiscoveryOperations.getEntities _)
-          .when()
-          .returns(successful(List(Entity("entity", "entity-name", 1))))
-        (tezosPlatformDiscoveryOperations.getTableAttributes _)
-          .when("entity")
-          .returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        tezosPlatformDiscoveryOperations.addAttribute(
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overridesConfiguration = Map(
           "tezos" ->
@@ -216,12 +217,10 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "override additional data for attributes" in {
         // given
-        (tezosPlatformDiscoveryOperations.getEntities _)
-          .when()
-          .returns(successful(List(Entity("entity", "entity-name", 1))))
-        (tezosPlatformDiscoveryOperations.getTableAttributes _)
-          .when("entity")
-          .returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        tezosPlatformDiscoveryOperations.addAttribute(
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overridesConfiguration = Map(
           "tezos" ->
@@ -253,7 +252,11 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
                                         dataType = Some("hash"),
                                         dataFormat = Some("dataFormat"),
                                         valueMap = Some(Map("0" -> "value")),
-                                        reference = Some(Map("0" -> "value"))
+                                        reference = Some(Map("0" -> "value")),
+                                        displayPriority = Some(1),
+                                        displayOrder = Some(1),
+                                        currencySymbol = Some("ꜩ"),
+                                        currencySymbolCode = Some(42793)
                                       )
                                 )
                               )
@@ -283,17 +286,19 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
           headResult("valueMap") shouldBe Map("0" -> "value")
           headResult("dataType") shouldBe "Hash"
           headResult("reference") shouldBe Map("0" -> "value")
+          headResult("displayPriority") shouldBe 1
+          headResult("displayOrder") shouldBe 1
+          headResult("currencySymbol") shouldBe "ꜩ"
+          headResult("currencySymbolCode") shouldBe 42793
         }
       }
 
       "return 404 on getting attributes when parent entity is not enabled" in {
         // given
-        (tezosPlatformDiscoveryOperations.getEntities _)
-          .when()
-          .returns(successful(List(Entity("entity", "entity-name", 1))))
-        (tezosPlatformDiscoveryOperations.getTableAttributes _)
-          .when("entity")
-          .returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        tezosPlatformDiscoveryOperations.addAttribute(
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overridesConfiguration = Map(
           "tezos" ->
@@ -320,12 +325,10 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "return 404 on getting attributes when parent network is not enabled" in {
         // given
-        (tezosPlatformDiscoveryOperations.getEntities _)
-          .when()
-          .returns(successful(List(Entity("entity", "entity-name", 1))))
-        (tezosPlatformDiscoveryOperations.getTableAttributes _)
-          .when("entity")
-          .returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        tezosPlatformDiscoveryOperations.addAttribute(
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overridesConfiguration = Map(
           "tezos" ->
@@ -344,12 +347,10 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "return 404 on getting attributes when parent platform is not enabled" in {
         // given
-        (tezosPlatformDiscoveryOperations.getEntities _)
-          .when()
-          .returns(successful(List(Entity("entity", "entity-name", 1))))
-        (tezosPlatformDiscoveryOperations.getTableAttributes _)
-          .when("entity")
-          .returns(successful(Some(List(Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")))))
+        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        tezosPlatformDiscoveryOperations.addAttribute(
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         // when
         Get("/v2/metadata/tezos/mainnet/entity/attributes") ~> addHeader("apiKey", "hooman") ~> sut(Map.empty) ~> check {
