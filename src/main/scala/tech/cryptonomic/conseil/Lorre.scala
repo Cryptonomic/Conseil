@@ -194,7 +194,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val (blocks, accountUpdates) =
         results.map {
           case (block, accountIds) =>
-            block -> accountIds.taggedWithBlock(block.data.hash, block.data.header.level, Some(block.data.header.timestamp.toInstant))
+            block -> accountIds.taggedWithBlock(
+                  block.data.hash,
+                  block.data.header.level,
+                  Some(block.data.header.timestamp.toInstant)
+                )
         }.unzip
 
       for {
@@ -422,7 +426,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
       ): Future[(Int, Option[Int], List[BlockTagged[DelegateKeys]])] =
         db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys))
-          .map { case (accountWrites, accountHistoryWrites, delegateCheckpoints) => (accountWrites, delegateCheckpoints, taggedDelegateKeys) }
+          .map {
+            case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
+              (accountWrites, delegateCheckpoints, taggedDelegateKeys)
+          }
           .andThen(logWriteFailure)
 
       def cleanup[T] = (_: T) => {

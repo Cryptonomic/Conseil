@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-
 import java.time.Instant
 
 import monocle.Traversal
@@ -523,7 +522,8 @@ object TezosTypes {
     implicit class BlockTagger[T](val content: T) extends AnyVal {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
-      def taggedWithBlock(hash: BlockHash, level: Int, timestamp: Option[Instant]): BlockTagged[T] = BlockTagged(hash, level, timestamp, content)
+      def taggedWithBlock(hash: BlockHash, level: Int, timestamp: Option[Instant]): BlockTagged[T] =
+        BlockTagged(hash, level, timestamp, content)
     }
 
   }

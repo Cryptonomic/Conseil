@@ -59,16 +59,16 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeAccountsHistory(
-    accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
+      accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
     logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
-    DBIO
-      .sequence(accountsInfo.flatMap { info =>
-        info.convertToA[List, Tables.AccountsHistoryRow].map(Tables.AccountsHistory += _)
-      })
-      .map(_.sum)
+    DBIO.successful(1)
+//    DBIO
+//      .sequence(accountsInfo.flatMap { info =>
+//        info.convertToA[List, Tables.AccountsHistoryRow].map(Tables.AccountsHistory += _)
+//      })
+//      .map(_.sum)
   }
-
 
   /**
     * Writes blocks and related operations to a database.
@@ -130,7 +130,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountIds will have block information, paired with corresponding account ids to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
-  def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, Option[Instant], List[AccountId])]): DBIO[Option[Int]] = {
+  def writeAccountsCheckpoint(
+      accountIds: List[(BlockHash, Int, Option[Instant], List[AccountId])]
+  ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${accountIds.map(_._4).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
   }
@@ -140,7 +142,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param delegatesKeyHashes will have block information, paired with corresponding hashes to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
-  def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], List[PublicKeyHash])]): DBIO[Option[Int]] = {
+  def writeDelegatesCheckpoint(
+      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], List[PublicKeyHash])]
+  ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${delegatesKeyHashes.map(_._4).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
   }
@@ -236,7 +240,8 @@ object TezosDatabaseOperations extends LazyLogging {
       checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
         val key = AccountId(row.accountId)
         val time = row.asof.toInstant
-        if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time)))
+        if (collected.contains(key)) collected
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time)))
       }
 
     logger.info("Getting the latest accounts from checkpoints in the DB...")
@@ -304,7 +309,11 @@ object TezosDatabaseOperations extends LazyLogging {
 
     //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
     Async[DBIO]
-      .tuple3(writeAccounts(accounts), writeAccountsHistory(accounts), writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple)))
+      .tuple3(
+        writeAccounts(accounts),
+        writeAccountsHistory(accounts),
+        writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
+      )
       .transactionally
   }
 
@@ -389,7 +398,12 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
+    def computeAverage(
+        ts: java.sql.Timestamp,
+        cycle: Option[Int],
+        level: Option[Int],
+        fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]
+    ): AverageFees = {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }

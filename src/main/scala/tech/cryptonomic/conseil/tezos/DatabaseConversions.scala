@@ -80,7 +80,6 @@ object DatabaseConversions {
       }
     }
 
-
   implicit val accountRowsToContractRows = new Conversion[Id, Tables.AccountsRow, Tables.DelegatedContractsRow] {
     override def convert(from: Tables.AccountsRow) = from.into[Tables.DelegatedContractsRow].transform
   }
