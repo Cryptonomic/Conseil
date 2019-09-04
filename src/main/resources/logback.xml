@@ -16,7 +16,7 @@
     </appender>
 
     <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
-        <appender name="ASYNC" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
+        <appender name="ASYNC_LOGSTASH" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
             <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
                 <destination>142.93.74.99:5000</destination>
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -37,6 +37,7 @@
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />
+        <appender-ref ref="ASYNC_LOGSTASH" />
     </root>
 
 </configuration>
