@@ -141,7 +141,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   displayInfo(tezosConf)
-  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
+  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, lorreConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
 
   try {
     checkTezosConnection()
