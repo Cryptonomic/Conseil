@@ -117,6 +117,7 @@ class MetadataService(
       networks.getOrElse(networkPath.up, List.empty).exists(_.network == networkPath.network)
     case platformPath: PlatformPath =>
       platforms.exists(_.name == platformPath.platform)
+    case _: EmptyPath => false
   }
 
   // fetches attributes with given function

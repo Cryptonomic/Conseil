@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Types.{AttributeName, EntityName, NetworkName, PlatformName}
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{AttributeCacheConfiguration, Network}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{AttributeCacheConfiguration}
 import tech.cryptonomic.conseil.metadata._
 
 object Types {
