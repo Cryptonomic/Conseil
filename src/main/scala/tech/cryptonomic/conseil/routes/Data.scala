@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.config.ServerConfiguration
+import tech.cryptonomic.conseil.config.{MetadataConfiguration, ServerConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.metadata
@@ -16,10 +16,20 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, metadataService: MetadataService, server: ServerConfiguration)(
+  def apply(
+      config: PlatformsConfiguration,
+      metadataService: MetadataService,
+      server: ServerConfiguration,
+      metadataConfiguration: MetadataConfiguration
+  )(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(config, DataPlatform(server.maxQueryResultSize), metadataService)
+    new Data(
+      config,
+      DataPlatform(server.maxQueryResultSize),
+      metadataService,
+      metadataConfiguration: MetadataConfiguration
+    )
 }
 
 /**
@@ -28,7 +38,12 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
+class Data(
+    config: PlatformsConfiguration,
+    queryProtocolPlatform: DataPlatform,
+    metadataService: MetadataService,
+    metadataConfiguration: MetadataConfiguration
+)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
@@ -43,7 +58,7 @@ class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, 
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
 
       pathValidation(path) {
-        apiQuery.validate(path, metadataService).flatMap { validationResult =>
+        apiQuery.validate(path, metadataService, metadataConfiguration).flatMap { validationResult =>
           validationResult.map { validQuery =>
             queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
               queryResponseOpt.map { queryResponses =>

@@ -10,7 +10,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
@@ -1247,6 +1247,7 @@ class TezosDatabaseOperationsTest
             List.empty,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1368,6 +1369,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1440,6 +1442,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1475,6 +1478,7 @@ class TezosDatabaseOperationsTest
             List.empty,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1511,6 +1515,7 @@ class TezosDatabaseOperationsTest
             List.empty,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1542,6 +1547,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1572,6 +1578,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1608,6 +1615,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1630,6 +1638,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1658,6 +1667,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1688,6 +1698,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1718,6 +1729,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1748,6 +1760,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1778,6 +1791,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1808,6 +1822,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1838,6 +1853,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1866,6 +1882,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1897,6 +1914,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             1
           )
@@ -1927,6 +1945,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1962,6 +1981,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -1997,6 +2017,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2026,6 +2047,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2053,6 +2075,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2082,6 +2105,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2124,6 +2148,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2153,6 +2178,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2201,6 +2227,7 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2231,6 +2258,7 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2261,6 +2289,7 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2291,6 +2320,7 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2327,6 +2357,7 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
             OutputType.json,
             3
           )
@@ -2359,6 +2390,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2391,6 +2423,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2423,6 +2456,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2455,6 +2489,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2487,6 +2522,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2515,6 +2551,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("high", OrderDirection.desc)),
             aggregation = List.empty,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2553,6 +2590,7 @@ class TezosDatabaseOperationsTest
             predicates = List(predicate),
             ordering = List.empty,
             aggregation = List.empty,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2587,6 +2625,7 @@ class TezosDatabaseOperationsTest
             predicates = List(predicate),
             ordering = List(),
             aggregation = List.empty,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2635,6 +2674,7 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.sql,
             limit = 3
           )
@@ -2665,6 +2705,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2712,6 +2753,7 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             limit = 1,
             outputType = OutputType.json
           )
@@ -2763,6 +2805,7 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             limit = 4,
             outputType = OutputType.json
           )
@@ -2829,6 +2872,7 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
             limit = 5,
             outputType = OutputType.json
           )
@@ -2873,6 +2917,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("count_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 10
           )
@@ -2907,6 +2952,7 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("date_part_timestamp", OrderDirection.desc)),
             aggregation = List.empty,
+            temporalPartition = None,
             outputType = OutputType.json,
             limit = 10
           )
@@ -2922,6 +2968,30 @@ class TezosDatabaseOperationsTest
           Map("date_part_timestamp" -> Some("1970-01-02")),
           Map("date_part_timestamp" -> Some("1970-01-01"))
         )
+      }
+
+      "should correctly use query on temporal table" in {
+
+        val ahr = AccountsHistoryRow("id", "blockid", "manager", true, true, None, 0, None, None, BigDecimal(1.00), BigDecimal(1), new Timestamp(1))
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory += ahr
+          found <- sut.selectWithPredicates(
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_id"),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(Map("account_id" -> Some("id"), "block_id" -> Some("blockid"), "asof" -> Some(new Timestamp(1)), "r" -> Some(1)))
+
       }
 
     }

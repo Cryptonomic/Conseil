@@ -132,6 +132,60 @@ object DatabaseUtil {
         }
     }
 
+    /** Makes SQL query for temporal table
+      *
+      * @param table table name
+      * @param columns list of columns
+      * @param predicates list of predicates
+      * @param aggregations list of aggregations
+      * @param ordering list of orderings
+      * @param partitionBy partitioning table
+      * @param limit max returned rows count
+      * @return SQLActionBuilder
+      * */
+    def makeTemporalQuery(
+        table: String,
+        columns: List[Field],
+        predicates: List[Predicate],
+        aggregations: List[Aggregation],
+        ordering: List[QueryOrdering],
+        partitionBy: String,
+        limit: Int
+    ): SQLActionBuilder = {
+      val aggregationFields = aggregations.map { aggregation =>
+        mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
+          aggregation.function,
+          aggregation.field
+        )
+      }
+      val columnNames = columns.map {
+        case SimpleField(field) => field
+        case FormattedField(field, function, format) =>
+          makeAggregationFormat(field, format) + " as " + mapFormatToAlias(function, field)
+      }
+      val aggr = aggregationFields ::: columnNames.toSet.diff(aggregations.map(_.field).toSet).toList
+      val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
+      val outerSelect = sql"""SELECT s.* FROM ( """
+      val innerSelect = sql"""SELECT #$cols, rank() over ( """
+      val partitionWithOrdering = sql"""partition by #$partitionBy """
+        .addOrdering(ordering)
+      val predicatesAndAggregations = sql""") as r from #$table WHERE true """
+        .addPredicates(predicates)
+        .addGroupBy(aggregations, columns)
+        .addHaving(aggregations)
+      val closingOuterSelect = sql""") s """
+      val rankAndLimit = sql"""WHERE s.r = 1 """.addLimit(limit)
+
+      concatenateSqlActions(
+        outerSelect,
+        innerSelect,
+        partitionWithOrdering,
+        predicatesAndAggregations,
+        closingOuterSelect,
+        rankAndLimit
+      )
+    }
+
     /** Prepares predicates and transforms them into SQLActionBuilders
       *
       * @param  predicates list of predicates to be transformed
@@ -262,6 +316,7 @@ object DatabaseUtil {
         op
       }
     }
+
   }
 
 }

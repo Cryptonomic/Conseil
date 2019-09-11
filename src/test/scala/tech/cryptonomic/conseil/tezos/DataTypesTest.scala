@@ -5,8 +5,8 @@ import java.sql.Timestamp
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest._
-import tech.cryptonomic.conseil.config.Platforms
-import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
+import tech.cryptonomic.conseil.config.{MetadataConfiguration, Platforms}
+import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.metadata._
@@ -23,6 +23,7 @@ class DataTypesTest
 
   val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
   val cacheOverrides = stub[AttributeValuesCacheConfiguration]
+  val metadataConf = MetadataConfiguration(Map.empty)
 
   def createMetadataService(stubbing: => Unit = ()): MetadataService = {
     stubbing
@@ -68,7 +69,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService).futureValue
+        val result = query.validate(testEntityPath, metadataService, metadataConf).futureValue
         result.right.get shouldBe Query(fields = List(SimpleField("valid")))
       }
 
@@ -84,7 +85,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, createMetadataService())
+        val result = query.validate(testEntityPath, createMetadataService(), metadataConf)
 
         result.futureValue.left.get shouldBe List(InvalidQueryField("invalid"))
       }
@@ -113,7 +114,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService).futureValue
+        val result = query.validate(testEntityPath, metadataService, metadataConf).futureValue
 
         result.right.get shouldBe Query(predicates = List(Predicate("valid", OperationType.in)))
       }
@@ -138,7 +139,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, createMetadataService())
+        val result = query.validate(testEntityPath, createMetadataService(), metadataConf)
 
         result.futureValue.left.get shouldBe List(InvalidPredicateField("invalid"))
       }
@@ -167,7 +168,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.get shouldBe Query(orderBy = List(QueryOrdering("valid", OrderDirection.asc)))
       }
@@ -184,7 +185,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, createMetadataService())
+        val result = query.validate(testEntityPath, createMetadataService(), metadataConf)
 
         result.futureValue.left.get shouldBe List(InvalidOrderByField("invalid"))
       }
@@ -213,7 +214,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "valid")))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.get shouldBe Query(
           fields = List(SimpleField("valid")),
@@ -245,7 +246,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "invalid")))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.left.get shouldBe List(InvalidAggregationFieldForType("invalid"))
       }
@@ -274,7 +275,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "invalid")))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.left.get should contain theSameElementsAs List(
           InvalidQueryField("valid"),
@@ -306,7 +307,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.left.get.head shouldBe a[InvalidPredicateFiltering]
       }
@@ -335,7 +336,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "valid", function = AggregationType.count)))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.get shouldBe Query(
           fields = List(SimpleField("valid")),
@@ -368,7 +369,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.get shouldBe Query(
           predicates = List(
@@ -401,7 +402,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.get shouldBe Query(
           fields = List(SimpleField("validAttribute")),
@@ -434,7 +435,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "validAttribute", function = AggregationType.count)))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.get shouldBe Query(
           fields = List(SimpleField("validAttribute")),
@@ -466,7 +467,7 @@ class DataTypesTest
           aggregation = Some(List(ApiAggregation(field = "valid")))
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.value shouldBe Query(
           fields = List(SimpleField("valid")),
@@ -498,7 +499,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.left.value.head shouldBe a[InvalidQueryFieldFormatting]
       }
@@ -527,7 +528,7 @@ class DataTypesTest
           aggregation = None
         )
 
-        val result = query.validate(testEntityPath, metadataService)
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
 
         result.futureValue.right.value shouldBe Query(
           fields = List(FormattedField("valid", FormatType.datePart, "YYYY-MM-DD"))

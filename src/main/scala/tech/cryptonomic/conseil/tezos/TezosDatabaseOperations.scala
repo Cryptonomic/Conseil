@@ -62,12 +62,11 @@ object TezosDatabaseOperations extends LazyLogging {
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
     logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
-    DBIO.successful(1)
-//    DBIO
-//      .sequence(accountsInfo.flatMap { info =>
-//        info.convertToA[List, Tables.AccountsHistoryRow].map(Tables.AccountsHistory += _)
-//      })
-//      .map(_.sum)
+    DBIO
+      .sequence(accountsInfo.flatMap { info =>
+        info.convertToA[List, Tables.AccountsHistoryRow].map(Tables.AccountsHistory += _)
+      })
+      .map(_.sum)
   }
 
   /**
@@ -543,16 +542,22 @@ object TezosDatabaseOperations extends LazyLogging {
       predicates: List[Predicate],
       ordering: List[QueryOrdering],
       aggregation: List[Aggregation],
+      temporalPartition: Option[String],
       outputType: OutputType,
       limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
-
-    val q = makeQuery(table, columns, aggregation)
+    val maybeTemporalQuery = temporalPartition.map { temporalPartition =>
+      makeTemporalQuery(table, columns, predicates, aggregation, ordering, temporalPartition, limit)
+    }
+    val query = makeQuery(table, columns, aggregation)
       .addPredicates(predicates)
       .addGroupBy(aggregation, columns)
       .addHaving(aggregation)
       .addOrdering(ordering)
       .addLimit(limit)
+
+    val q = maybeTemporalQuery.getOrElse(query)
+
     if (outputType == OutputType.sql) {
       DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
     } else {
