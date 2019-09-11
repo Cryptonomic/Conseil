@@ -87,7 +87,7 @@ trait DBConversionsData {
 
   val sampleReveal =
     Reveal(
-      source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+      source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
       fee = PositiveDecimal(10000),
       counter = PositiveDecimal(1),
       gas_limit = PositiveDecimal(10000),
@@ -122,7 +122,7 @@ trait DBConversionsData {
 
   val sampleTransaction =
     Transaction(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1416),
       counter = PositiveDecimal(407940),
       gas_limit = PositiveDecimal(11475),
@@ -166,12 +166,12 @@ trait DBConversionsData {
 
   val sampleOrigination =
     Origination(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1441),
       counter = PositiveDecimal(407941),
       gas_limit = PositiveDecimal(11362),
       storage_limit = PositiveDecimal(323),
-      manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      manager_pubkey = None,
       balance = PositiveDecimal(1000000),
       spendable = Some(false),
       delegatable = Some(false),
@@ -247,7 +247,7 @@ trait DBConversionsData {
 
   val sampleDelegation =
     Delegation(
-      source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+      source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
       fee = PositiveDecimal(1400),
       counter = PositiveDecimal(2),
       gas_limit = PositiveDecimal(10100),

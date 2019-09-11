@@ -441,7 +441,7 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "reveal"
-        converted.source.value shouldBe sampleReveal.source.id
+        converted.source.value shouldBe sampleReveal.source.value
         sampleReveal.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -500,7 +500,7 @@ class DatabaseConversionsTest
         converted.blockLevel shouldBe block.data.header.level
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "transaction"
-        converted.source.value shouldBe sampleTransaction.source.id
+        converted.source.value shouldBe sampleTransaction.source.value
         sampleTransaction.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -569,7 +569,7 @@ class DatabaseConversionsTest
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "origination"
         converted.delegate shouldBe sampleOrigination.delegate.map(_.value)
-        converted.source.value shouldBe sampleOrigination.source.id
+        converted.source.value shouldBe sampleOrigination.source.value
         sampleOrigination.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -590,7 +590,7 @@ class DatabaseConversionsTest
           case PositiveDecimal(bignumber) => converted.balance.value shouldBe bignumber
           case _ => converted.balance shouldBe 'empty
         }
-        converted.managerPubkey.value shouldBe sampleOrigination.manager_pubkey.value
+        converted.managerPubkey shouldBe sampleOrigination.manager_pubkey
         converted.spendable shouldBe sampleOrigination.spendable
         converted.delegatable shouldBe sampleOrigination.delegatable
         converted.script shouldBe sampleOrigination.script.map(_.code.expression)
@@ -638,7 +638,7 @@ class DatabaseConversionsTest
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "delegation"
         converted.delegate shouldBe sampleDelegation.delegate.map(_.value)
-        converted.source.value shouldBe sampleDelegation.source.id
+        converted.source.value shouldBe sampleDelegation.source.value
         sampleDelegation.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
