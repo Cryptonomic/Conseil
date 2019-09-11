@@ -27,11 +27,10 @@ object ApiOperations extends DataOperations with MetadataOperations {
   lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
 
   /**
-   * @see `MetadataOperations#runQuery`
-   */
+    * @see `MetadataOperations#runQuery`
+    */
   override def runQuery[A](action: DBIO[A]): Future[A] =
     dbReadHandle.run(action)
-
 
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
