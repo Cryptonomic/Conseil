@@ -403,7 +403,9 @@ class TezosDatabaseOperationsTest
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
         val time = Instant.ofEpochMilli(0)
         val ids =
-          blocks.map(block => (BlockHash(block.hash), block.level, Some(time), List.fill(idPerBlock)(AccountId(generateHash(5)))))
+          blocks.map(
+            block => (BlockHash(block.hash), block.level, Some(time), List.fill(idPerBlock)(AccountId(generateHash(5))))
+          )
 
         //store and write
         val populateAndFetch = for {
@@ -681,7 +683,13 @@ class TezosDatabaseOperationsTest
         //generate data
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
         val keys = blocks.map(
-          block => (BlockHash(block.hash), block.level, Some(testReferenceTimestamp.toInstant), List.fill(pkPerBlock)(PublicKeyHash(generateHash(5))))
+          block =>
+            (
+              BlockHash(block.hash),
+              block.level,
+              Some(testReferenceTimestamp.toInstant),
+              List.fill(pkPerBlock)(PublicKeyHash(generateHash(5)))
+            )
         )
 
         //store and write
@@ -2972,7 +2980,20 @@ class TezosDatabaseOperationsTest
 
       "should correctly use query on temporal table" in {
 
-        val ahr = AccountsHistoryRow("id", "blockid", "manager", true, true, None, 0, None, None, BigDecimal(1.00), BigDecimal(1), new Timestamp(1))
+        val ahr = AccountsHistoryRow(
+          "id",
+          "blockid",
+          "manager",
+          true,
+          true,
+          None,
+          0,
+          None,
+          None,
+          BigDecimal(1.00),
+          BigDecimal(1),
+          new Timestamp(1)
+        )
 
         val populateAndTest = for {
           _ <- Tables.AccountsHistory += ahr
@@ -2990,7 +3011,14 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
-        result shouldBe List(Map("account_id" -> Some("id"), "block_id" -> Some("blockid"), "asof" -> Some(new Timestamp(1)), "r" -> Some(1)))
+        result shouldBe List(
+          Map(
+            "account_id" -> Some("id"),
+            "block_id" -> Some("blockid"),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          )
+        )
 
       }
 

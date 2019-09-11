@@ -37,7 +37,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int, time: Instant = testReferenceTimestamp.toInstant)(
+  def generateAccounts(
+      howMany: Int,
+      blockHash: BlockHash,
+      blockLevel: Int,
+      time: Instant = testReferenceTimestamp.toInstant
+  )(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
