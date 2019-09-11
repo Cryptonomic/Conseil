@@ -278,19 +278,6 @@ class TezosPlatformDiscoveryOperationsTest
           )
       }
 
-      "return list of attributes of proposals" in {
-
-        sut.getTableAttributes("proposals").futureValue shouldBe
-          Some(
-            List(
-              Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
-              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
-            )
-          )
-      }
-
       "return list of attributes of rolls" in {
 
         sut.getTableAttributes("rolls").futureValue shouldBe
@@ -300,19 +287,6 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
-            )
-          )
-      }
-
-      "return list of attributes of ballots" in {
-
-        sut.getTableAttributes("ballots").futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
             )
           )
       }

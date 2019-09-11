@@ -20,7 +20,6 @@ trait Tables {
     Accounts.schema,
     AccountsCheckpoint.schema,
     BalanceUpdates.schema,
-    Ballots.schema,
     Blocks.schema,
     DelegatedContracts.schema,
     Delegates.schema,
@@ -28,7 +27,6 @@ trait Tables {
     Fees.schema,
     OperationGroups.schema,
     Operations.schema,
-    Proposals.schema,
     Rolls.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
@@ -351,52 +349,6 @@ trait Tables {
 
   /** Collection-like TableQuery object for table BalanceUpdates */
   lazy val BalanceUpdates = new TableQuery(tag => new BalanceUpdates(tag))
-
-  /** Entity class storing rows of table Ballots
-    *  @param pkh Database column pkh SqlType(varchar)
-    *  @param ballot Database column ballot SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4) */
-  case class BallotsRow(pkh: String, ballot: String, blockId: String, blockLevel: Int)
-
-  /** GetResult implicit for fetching BallotsRow objects using plain SQL queries */
-  implicit def GetResultBallotsRow(implicit e0: GR[String], e1: GR[Int]): GR[BallotsRow] = GR { prs =>
-    import prs._
-    BallotsRow.tupled((<<[String], <<[String], <<[String], <<[Int]))
-  }
-
-  /** Table description of table ballots. Objects of this class serve as prototypes for rows in queries. */
-  class Ballots(_tableTag: Tag) extends profile.api.Table[BallotsRow](_tableTag, "ballots") {
-    def * = (pkh, ballot, blockId, blockLevel) <> (BallotsRow.tupled, BallotsRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(pkh), Rep.Some(ballot), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({ r =>
-        import r._; _1.map(_ => BallotsRow.tupled((_1.get, _2.get, _3.get, _4.get)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
-
-    /** Database column pkh SqlType(varchar) */
-    val pkh: Rep[String] = column[String]("pkh")
-
-    /** Database column ballot SqlType(varchar) */
-    val ballot: Rep[String] = column[String]("ballot")
-
-    /** Database column block_id SqlType(varchar) */
-    val blockId: Rep[String] = column[String]("block_id")
-
-    /** Database column block_level SqlType(int4) */
-    val blockLevel: Rep[Int] = column[Int]("block_level")
-
-    /** Foreign key referencing Blocks (database name ballot_block_id_fkey) */
-    lazy val blocksFk = foreignKey("ballot_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
-  }
-
-  /** Collection-like TableQuery object for table Ballots */
-  lazy val Ballots = new TableQuery(tag => new Ballots(tag))
 
   /** Entity class storing rows of table Blocks
     *  @param level Database column level SqlType(int4)
@@ -1342,56 +1294,6 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Operations */
   lazy val Operations = new TableQuery(tag => new Operations(tag))
-
-  /** Entity class storing rows of table Proposals
-    *  @param protocolHash Database column protocol_hash SqlType(varchar)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4)
-    *  @param supporters Database column supporters SqlType(int4), Default(None) */
-  case class ProposalsRow(protocolHash: String, blockId: String, blockLevel: Int, supporters: Option[Int] = None)
-
-  /** GetResult implicit for fetching ProposalsRow objects using plain SQL queries */
-  implicit def GetResultProposalsRow(implicit e0: GR[String], e1: GR[Int], e2: GR[Option[Int]]): GR[ProposalsRow] = GR {
-    prs =>
-      import prs._
-      ProposalsRow.tupled((<<[String], <<[String], <<[Int], <<?[Int]))
-  }
-
-  /** Table description of table proposals. Objects of this class serve as prototypes for rows in queries. */
-  class Proposals(_tableTag: Tag) extends profile.api.Table[ProposalsRow](_tableTag, "proposals") {
-    def * = (protocolHash, blockId, blockLevel, supporters) <> (ProposalsRow.tupled, ProposalsRow.unapply)
-
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(protocolHash), Rep.Some(blockId), Rep.Some(blockLevel), supporters)).shaped.<>({ r =>
-        import r._; _1.map(_ => ProposalsRow.tupled((_1.get, _2.get, _3.get, _4)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
-
-    /** Database column protocol_hash SqlType(varchar) */
-    val protocolHash: Rep[String] = column[String]("protocol_hash")
-
-    /** Database column block_id SqlType(varchar) */
-    val blockId: Rep[String] = column[String]("block_id")
-
-    /** Database column block_level SqlType(int4) */
-    val blockLevel: Rep[Int] = column[Int]("block_level")
-
-    /** Database column supporters SqlType(int4), Default(None) */
-    val supporters: Rep[Option[Int]] = column[Option[Int]]("supporters", O.Default(None))
-
-    /** Foreign key referencing Blocks (database name proposal_block_id_fkey) */
-    lazy val blocksFk = foreignKey("proposal_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
-
-    /** Index over (protocolHash) (database name ix_proposals_protocol) */
-    val index1 = index("ix_proposals_protocol", protocolHash)
-  }
-
-  /** Collection-like TableQuery object for table Proposals */
-  lazy val Proposals = new TableQuery(tag => new Proposals(tag))
 
   /** Entity class storing rows of table Rolls
     *  @param pkh Database column pkh SqlType(varchar)
