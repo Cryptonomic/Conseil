@@ -71,10 +71,9 @@ object DatabaseConversions {
   implicit val blockAccountsToAccountHistoryRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsHistoryRow] {
       override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] = {
-        val BlockTagged(_, _, timestamp, _) = from
         blockAccountsToAccountRows.convert(from).map {
           _.into[Tables.AccountsHistoryRow]
-            .withFieldConst(_.asof, Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0))))
+            .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
             .transform
         }
       }
