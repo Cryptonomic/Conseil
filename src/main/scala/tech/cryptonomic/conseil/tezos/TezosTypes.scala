@@ -241,6 +241,7 @@ object TezosTypes {
 
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
+      slot: Option[Int],
       slots: List[Int],
       delegate: PublicKeyHash,
       balance_updates: List[OperationMetadata.BalanceUpdate]
@@ -278,14 +279,15 @@ object TezosTypes {
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
+    /* some fields are only kept for backward-compatibility, as noted*/
     case class Origination(
         kind: String,
         source: PublicKeyHash,
         nonce: Int,
-        manager_pubkey: Option[PublicKeyHash],
+        manager_pubkey: Option[PublicKeyHash],// retro-compat from protocol 5+
         balance: PositiveBigNumber,
-        spendable: Option[Boolean],
-        delegatable: Option[Boolean],
+        spendable: Option[Boolean],// retro-compat from protocol 5+
+        delegatable: Option[Boolean],// retro-compat from protocol 5+
         delegate: Option[PublicKeyHash],
         script: Option[Scripted.Contracts],
         result: OperationResult.Origination
