@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.process
 import cats.effect.IO
 import cats.syntax.apply._
 import cats.syntax.applicative._
+import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.instances.int._
 import scala.{Stream => _} //hide from default scope
@@ -9,6 +10,7 @@ import fs2._
 import tech.cryptonomic.conseil.tezos.Tables.OperationsRow
 import tech.cryptonomic.conseil.tezos.TezosTypes.PublicKeyHash
 import cats.effect.concurrent.Ref
+import tech.cryptonomic.conseil.util.PureLogging
 
 object AccountsTaggingProcess {
 
@@ -21,7 +23,8 @@ object AccountsTaggingProcess {
   * i.e. Revelation, Activation.
   * It then marks such accounts with the appropriate flag (e.g. revealed, activated).
   */
-class AccountsTaggingProcess(config: AccountsTaggingProcess.Config) {
+class AccountsTaggingProcess(config: AccountsTaggingProcess.Config)
+  extends PureLogging {
   import AccountsTaggingProcess._
 
   /* tracks the highest checked block level when scanning the blocks
@@ -57,17 +60,28 @@ class AccountsTaggingProcess(config: AccountsTaggingProcess.Config) {
 
   }
 
-  private def scan(fromLevel: BlockLevel)(implicit api: ServiceDependencies): Stream[IO, Int] = {
+  /* Actually gets all operations and flags the accounts.
+   * Returns the effectful computation that will count the number of
+   * changes to the accounts
+   */
+  private def scan(fromLevel: BlockLevel)(implicit api: ServiceDependencies): IO[Option[Int]] = {
+    val missingResult = IO(Option.empty[Int])
 
     /* Actually flag an account based on the operation passed, which can be a reveal or activation
      * @return the IO action that will store the flags and return the number of changed rows, or none if
      *         the operation was not valid
      */
-    def flag(accountRef: Option[String], flagOperation: PublicKeyHash => IO[Int]): IO[Option[Int]] =
+    def flag(
+      accountRef: Option[String],
+      flagOperation: PublicKeyHash => IO[Int]
+    )(
+      implicit op: OperationsRow
+    ): IO[Option[Int]] =
       accountRef match {
         case None =>
-          //no actual account reference for the reveal operation, log the error and proceed on next
-          Option.empty[Int].pure[IO]
+          logger.pureLog[IO](
+            _.error("No account reference found in {}", op)
+          ) >> missingResult
         case Some(hash) =>
           flagOperation(PublicKeyHash(hash)).map(_.some)
       }
@@ -85,7 +99,7 @@ class AccountsTaggingProcess(config: AccountsTaggingProcess.Config) {
      */
     api
       .readOperations(fromLevel)
-      .evalMap { operation =>
+      .evalMap { implicit operation =>
         (operation.kind match {
           case "reveal" =>
             flag(operation.source, api.flagAsRevealed)
@@ -93,13 +107,15 @@ class AccountsTaggingProcess(config: AccountsTaggingProcess.Config) {
             flag(operation.pkh, api.flagAsActive)
           case kind =>
             //log unexpected kind
-            Option.empty[Int].pure[IO]
+            logger.pureLog[IO](
+              _.error("I didn't expect to process such operation kind while flagging accounts. {}", operation)
+            ) >> missingResult
         }).map { flagResult =>
           (flagResult, operation.blockLevel)
         }
       }
       .evalTap {
-        //evenutually store the reference level
+        //evenutually store the reference level, if needed
         case (Some(flaggedCount), blockLevel) => highWatermarkRef.flatMap(updateIfHigher(blockLevel))
         case (None, _) => IO.unit
       }
@@ -107,6 +123,10 @@ class AccountsTaggingProcess(config: AccountsTaggingProcess.Config) {
         //extracts and sums all integer values (counting the actual updates)
         case (anyFlag, _) => anyFlag.getOrElse(0)
       }
+      .last
+      .compile
+      .toList
+      .map(_.flatten.headOption)
 
   }
 
@@ -117,7 +137,7 @@ class AccountsTaggingProcess(config: AccountsTaggingProcess.Config) {
       initialMark <- markRef.get
       defaultedMark <- initialMark.fold(api.readHighWatermark)(_.pure[IO])
       _ <- markRef.set(defaultedMark.some)
-      newFlags <- scan(defaultedMark).last.compile.toList
-    } yield newFlags.headOption.flatten
+      rowsFlags <- scan(defaultedMark)
+    } yield rowsFlags
 
 }
