@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.process
 import cats.effect.IO
-import cats.syntax.apply._
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
 import cats.syntax.option._
@@ -14,7 +13,7 @@ import tech.cryptonomic.conseil.util.PureLogging
 
 object AccountsTaggingProcess {
 
-  type Config
+  /** convenience alias */
   type BlockLevel = Int
 
 }
@@ -23,8 +22,7 @@ object AccountsTaggingProcess {
   * i.e. Revelation, Activation.
   * It then marks such accounts with the appropriate flag (e.g. revealed, activated).
   */
-class AccountsTaggingProcess(config: AccountsTaggingProcess.Config)
-  extends PureLogging {
+class AccountsTaggingProcess extends PureLogging {
   import AccountsTaggingProcess._
 
   /* tracks the highest checked block level when scanning the blocks
@@ -72,10 +70,10 @@ class AccountsTaggingProcess(config: AccountsTaggingProcess.Config)
      *         the operation was not valid
      */
     def flag(
-      accountRef: Option[String],
-      flagOperation: PublicKeyHash => IO[Int]
+        accountRef: Option[String],
+        flagOperation: PublicKeyHash => IO[Int]
     )(
-      implicit op: OperationsRow
+        implicit op: OperationsRow
     ): IO[Option[Int]] =
       accountRef match {
         case None =>
