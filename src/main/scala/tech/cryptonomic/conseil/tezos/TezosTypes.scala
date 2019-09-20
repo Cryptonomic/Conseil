@@ -188,7 +188,7 @@ object TezosTypes {
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
       public_key: PublicKey,
-      source: ContractId,
+      source: PublicKeyHash,
       metadata: ResultMetadata[OperationResult.Reveal]
   ) extends Operation
 
@@ -198,7 +198,7 @@ object TezosTypes {
       fee: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
-      source: ContractId,
+      source: PublicKeyHash,
       destination: ContractId,
       parameters: Option[Micheline],
       metadata: ResultMetadata[OperationResult.Transaction]
@@ -207,11 +207,11 @@ object TezosTypes {
   final case class Origination(
       counter: PositiveBigNumber,
       fee: PositiveBigNumber,
-      source: ContractId,
+      source: PublicKeyHash,
       balance: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
-      manager_pubkey: PublicKeyHash,
+      manager_pubkey: Option[PublicKeyHash],
       delegatable: Option[Boolean],
       delegate: Option[PublicKeyHash],
       spendable: Option[Boolean],
@@ -221,7 +221,7 @@ object TezosTypes {
 
   final case class Delegation(
       counter: PositiveBigNumber,
-      source: ContractId,
+      source: PublicKeyHash,
       fee: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
@@ -241,6 +241,7 @@ object TezosTypes {
 
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
+      slot: Option[Int],
       slots: List[Int],
       delegate: PublicKeyHash,
       balance_updates: List[OperationMetadata.BalanceUpdate]
@@ -262,7 +263,7 @@ object TezosTypes {
 
     case class Reveal(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
         public_key: PublicKey,
         result: OperationResult.Reveal
@@ -270,7 +271,7 @@ object TezosTypes {
 
     case class Transaction(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
         amount: PositiveBigNumber,
         destination: ContractId,
@@ -278,14 +279,15 @@ object TezosTypes {
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
+    /* some fields are only kept for backward-compatibility, as noted*/
     case class Origination(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
-        manager_pubkey: PublicKeyHash,
+        manager_pubkey: Option[PublicKeyHash],// retro-compat from protocol 5+
         balance: PositiveBigNumber,
-        spendable: Option[Boolean],
-        delegatable: Option[Boolean],
+        spendable: Option[Boolean],// retro-compat from protocol 5+
+        delegatable: Option[Boolean],// retro-compat from protocol 5+
         delegate: Option[PublicKeyHash],
         script: Option[Scripted.Contracts],
         result: OperationResult.Origination
@@ -293,7 +295,7 @@ object TezosTypes {
 
     case class Delegation(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
         delegate: Option[PublicKeyHash],
         result: OperationResult.Delegation
