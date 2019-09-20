@@ -234,9 +234,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
           .mapAsync(1) { fetchingResults =>
-             processBlocksPage(fetchingResults).map { result =>
-               processBakingAndEndorsingRights(fetchingResults).flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
-               result
+             processBlocksPage(fetchingResults).flatMap { result =>
+               processBakingAndEndorsingRights(fetchingResults)
+                 .flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
+                 .map(_ => result)
              }
           }
           .runFold(0) { (processed, justDone) =>
