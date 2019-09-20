@@ -105,6 +105,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   }
 
+
   /**
     * Writes association of account ids and block data to define accounts that needs update
     * @param accountIds will have block information, paired with corresponding account ids to store
@@ -268,6 +269,35 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
+    * Writes the baking rights to the database
+    * at the same time saving enough information about updated accounts to later fetch those accounts
+    * @param blockHash hash of the block
+    * @param bakingRights baking rights for the given block
+    */
+  def writeBakingRights(
+    blockHash: BlockHash,
+    bakingRights: List[BakingRights]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    logger.info("Writing baking rights to the DB...")
+    Tables.BakingRights ++= bakingRights.map(br => (blockHash, br).convertTo[Tables.BakingRightsRow])
+  }
+
+  /**
+    * Writes the endorsing rights to the database
+    * at the same time saving enough information about updated accounts to later fetch those accounts
+    * @param blockHash hash of the block
+    * @param endorsingRights endorsing rights for the given block
+    */
+  def writeEndorsingRights(
+    blockHash: BlockHash,
+    endorsingRights: List[EndorsingRights]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    logger.info("Writing endorsing rights to the DB...")
+    Tables.EndorsingRights ++= endorsingRights.map(er => (blockHash, er).convertTo[Tables.EndorsingRightsRow])
+  }
+
+
+  /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
     * @param accounts the full accounts' data
     * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block
@@ -368,7 +398,12 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
+    def computeAverage(
+        ts: java.sql.Timestamp,
+        cycle: Option[Int],
+        level: Option[Int],
+        fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]
+    ): AverageFees = {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }
