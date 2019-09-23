@@ -61,6 +61,8 @@ Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to det
 
 `conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Lightbend Config](https://github.com/lightbend/config) github page.
 
+For additional extra fine-grained configuration you can refer to [this appendix](extra-custom-config.md)
+
 ### Metadata overrides
 
 Metadata enables dynamic querying of data sources provided by Conseil and allows for chain-agnostic UIs, like Arronax, to be built while still providing a high level of specialization. Some of the metadata override keys are helpful for query construction, but a large number of them exist for rendering.
@@ -625,3 +627,6 @@ Not all entities are necessarily items from the chain. One such example is `/v2/
     "limit": 1
 }
 ```
+
+## Publishing the artifacts
+If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)
