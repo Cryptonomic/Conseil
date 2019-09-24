@@ -4,7 +4,12 @@ import cats.effect.{ContextShift, IO}
 import com.rklaehn.radixtree.RadixTree
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  AttributesValidationError,
+  HighCardinalityAttribute,
+  InvalidAttributeDataType,
+  InvalidAttributeFilterLength
+}
 import tech.cryptonomic.conseil.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
@@ -214,33 +219,43 @@ class TezosPlatformDiscoveryOperations(
       withFilter: Option[String] = None,
       attributesCacheConfig: Option[AttributeCacheConfiguration] = None
   ): Future[Either[List[AttributesValidationError], List[String]]] =
-    getTableAttributesWithoutUpdatingCache(attributePath.up) map (_.flatMap(_.find(_.name == attributePath.attribute))) flatMap { attrOpt =>
-        val res = (attributesCacheConfig, withFilter) match {
-          case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter))
-              if cached =>
-            Either.cond(
-              test = attributeFilter.length >= minMatchLength,
-              right = getAttributeValuesFromCache(attributePath.up.entity, attributePath.attribute, attributeFilter, maxResultLength),
-              left = Future.successful(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength)))
-            )
+    getTableAttributesWithoutUpdatingCache(attributePath.up) map (_.flatMap(_.find(_.name == attributePath.attribute))) flatMap {
+        attrOpt =>
+          val res = (attributesCacheConfig, withFilter) match {
+            case (Some(AttributeCacheConfiguration(cached, minMatchLength, maxResultLength)), Some(attributeFilter))
+                if cached =>
+              Either.cond(
+                test = attributeFilter.length >= minMatchLength,
+                right = getAttributeValuesFromCache(
+                  attributePath.up.entity,
+                  attributePath.attribute,
+                  attributeFilter,
+                  maxResultLength
+                ),
+                left = Future.successful(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength)))
+              )
 
-          case _ =>
-            val invalidDataTypeValidationResult =
-              if (!attrOpt.exists(attr => canQueryType(attr.dataType))) Some(InvalidAttributeDataType(attributePath.attribute)) else None
-            val highCardinalityValidationResult =
-              if (!isLowCardinality(attrOpt.flatMap(_.cardinality))) Some(HighCardinalityAttribute(attributePath.attribute)) else None
-            val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
-            Either.cond(
-              test = validationErrors.isEmpty,
-              right = attrOpt
-                .map(attr => makeAttributesQuery(attributePath.up.entity, attr.name, withFilter))
-                .toList
-                .sequence
-                .map(_.flatten),
-              left = Future.successful(validationErrors)
-            )
-        }
-        res.bisequence
+            case _ =>
+              val invalidDataTypeValidationResult =
+                if (!attrOpt.exists(attr => canQueryType(attr.dataType)))
+                  Some(InvalidAttributeDataType(attributePath.attribute))
+                else None
+              val highCardinalityValidationResult =
+                if (!isLowCardinality(attrOpt.flatMap(_.cardinality)))
+                  Some(HighCardinalityAttribute(attributePath.attribute))
+                else None
+              val validationErrors = List(invalidDataTypeValidationResult, highCardinalityValidationResult).flatten
+              Either.cond(
+                test = validationErrors.isEmpty,
+                right = attrOpt
+                  .map(attr => makeAttributesQuery(attributePath.up.entity, attr.name, withFilter))
+                  .toList
+                  .sequence
+                  .map(_.flatten),
+                left = Future.successful(validationErrors)
+              )
+          }
+          res.bisequence
       }
 
   /** Gets attribute values from cache and updates them if necessary */
@@ -348,10 +363,9 @@ class TezosPlatformDiscoveryOperations(
       columns.map { column =>
         val attributePath = AttributePath(column.name, entityPath)
         val cardinalityHint = cacheOverrides.getCardinalityHint(attributePath)
-        if(cardinalityHint.exists(_ > highCardinalityLimit)) {
+        if (cardinalityHint.exists(_ > highCardinalityLimit)) {
           DBIOAction.successful(column.copy(cardinality = cardinalityHint))
-        }
-        else if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
+        } else if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
           TezosDatabaseOperations.countDistinct(entityPath.entity, column.name).map { count =>
             column.copy(cardinality = Some(count))
           }

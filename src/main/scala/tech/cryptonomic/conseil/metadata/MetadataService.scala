@@ -74,7 +74,7 @@ class MetadataService(
   def getTableAttributes(path: EntityPath): Option[List[Attribute]] = attributes.get(path)
 
   // fetches current attributes
-  def getCurrentTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] = {
+  def getCurrentTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] =
     platformDiscoveryOperations.getTableAttributes(path).map { maybeAttributes =>
       maybeAttributes.flatMap { attributes =>
         if (exists(path))
@@ -83,7 +83,6 @@ class MetadataService(
           None
       }
     }
-  }
 
   // fetches table attributes without updating cache
   def getTableAttributesWithoutUpdatingCache(path: EntityPath): Future[Option[List[Attribute]]] =
