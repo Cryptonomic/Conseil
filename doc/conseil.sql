@@ -17,9 +17,8 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA IF NOT EXISTS tezos;
-SET search_path TO tezos;
 ALTER ROLE conseiluser SET search_path TO tezos,public;
-ALTER DATABASE conseil-local SET search_path TO tezos,public;
+ALTER DATABASE "conseil-local" SET search_path TO tezos,public;
 
 --
 -- Name: truncate_tables(character varying); Type: FUNCTION; Schema: tezos; Owner: -
@@ -245,7 +244,7 @@ CREATE TABLE tezos.operations (
     counter numeric,
     gas_limit numeric,
     storage_limit numeric,
-    tezos_key character varying,
+    public_key character varying,
     amount numeric,
     destination character varying,
     parameters character varying,

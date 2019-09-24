@@ -1015,7 +1015,7 @@ trait Tables {
     *  @param counter Database column counter SqlType(numeric), Default(None)
     *  @param gasLimit Database column gas_limit SqlType(numeric), Default(None)
     *  @param storageLimit Database column storage_limit SqlType(numeric), Default(None)
-    *  @param tezosKey Database column tezos_key SqlType(varchar), Default(None)
+    *  @param publicKey Database column public_key SqlType(varchar), Default(None)
     *  @param amount Database column amount SqlType(numeric), Default(None)
     *  @param destination Database column destination SqlType(varchar), Default(None)
     *  @param parameters Database column parameters SqlType(varchar), Default(None)
@@ -1055,7 +1055,7 @@ trait Tables {
       counter: Option[scala.math.BigDecimal] = None,
       gasLimit: Option[scala.math.BigDecimal] = None,
       storageLimit: Option[scala.math.BigDecimal] = None,
-      tezosKey: Option[String] = None,
+      publicKey: Option[String] = None,
       amount: Option[scala.math.BigDecimal] = None,
       destination: Option[String] = None,
       parameters: Option[String] = None,
@@ -1137,12 +1137,12 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: tezosKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: timestamp :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: timestamp :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: tezosKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep.Some(
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep.Some(
             blockHash
           ) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: Rep.Some(timestamp) :: HNil).shaped.<>(
         r =>
@@ -1243,8 +1243,8 @@ trait Tables {
     val storageLimit: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("storage_limit", O.Default(None))
 
-    /** Database column tezos_key SqlType(varchar), Default(None) */
-    val tezosKey: Rep[Option[String]] = column[Option[String]]("tezos_key", O.Default(None))
+    /** Database column public_key SqlType(varchar), Default(None) */
+    val publicKey: Rep[Option[String]] = column[Option[String]]("public_key", O.Default(None))
 
     /** Database column amount SqlType(numeric), Default(None) */
     val amount: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("amount", O.Default(None))

@@ -322,6 +322,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -365,6 +366,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -408,6 +410,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -455,6 +458,7 @@ class DatabaseConversionsTest
           case PositiveDecimal(bignumber) => converted.storageLimit.value shouldBe bignumber
           case _ => converted.storageLimit shouldBe 'empty
         }
+        converted.publicKey.value shouldBe sampleReveal.public_key.value
         converted.status.value shouldBe sampleReveal.metadata.operation_result.status
         sampleReveal.metadata.operation_result.consumed_gas match {
           case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
@@ -540,6 +544,7 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
+              converted.publicKey ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -611,6 +616,7 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -661,6 +667,7 @@ class DatabaseConversionsTest
               converted.nonce ::
               converted.pkh ::
               converted.secret ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -702,6 +709,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -745,6 +753,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -790,6 +799,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::
@@ -835,6 +845,7 @@ class DatabaseConversionsTest
               converted.counter ::
               converted.gasLimit ::
               converted.storageLimit ::
+              converted.publicKey ::
               converted.amount ::
               converted.destination ::
               converted.parameters ::

@@ -184,8 +184,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of operations" in {
-        sut.getTableAttributes("operations").futureValue shouldBe
-          Some(
+        sut.getTableAttributes("operations").futureValue.get should contain allElementsOf
             List(
               Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
               Attribute("operation_group_hash", "Operation group hash", DataType.String, None, KeyType.NonKey, "operations"),
@@ -241,7 +240,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
             )
-          )
+
       }
 
       "return list of attributes of operation groups" in {
@@ -254,7 +253,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+              Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
             )
           )

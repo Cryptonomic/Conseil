@@ -198,6 +198,7 @@ object DatabaseConversions {
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
         storageLimit = extractBigDecimal(storage_limit),
+        publicKey = Some(pk.value),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         blockHash = block.data.hash.value,
