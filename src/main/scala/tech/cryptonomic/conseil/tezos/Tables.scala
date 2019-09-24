@@ -87,7 +87,7 @@ trait Tables {
   }
 
   /** Table description of table accounts. Objects of this class serve as prototypes for rows in queries. */
-  class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, "accounts") {
+  class Accounts(_tableTag: Tag) extends profile.api.Table[AccountsRow](_tableTag, Some("tezos"), "accounts") {
     def * =
       (
         accountId,
@@ -195,7 +195,7 @@ trait Tables {
 
   /** Table description of table accounts_checkpoint. Objects of this class serve as prototypes for rows in queries. */
   class AccountsCheckpoint(_tableTag: Tag)
-      extends profile.api.Table[AccountsCheckpointRow](_tableTag, "accounts_checkpoint") {
+      extends profile.api.Table[AccountsCheckpointRow](_tableTag, Some("tezos"), "accounts_checkpoint") {
     def * = (accountId, blockId, blockLevel) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -287,7 +287,8 @@ trait Tables {
   }
 
   /** Table description of table balance_updates. Objects of this class serve as prototypes for rows in queries. */
-  class BalanceUpdates(_tableTag: Tag) extends profile.api.Table[BalanceUpdatesRow](_tableTag, "balance_updates") {
+  class BalanceUpdates(_tableTag: Tag)
+      extends profile.api.Table[BalanceUpdatesRow](_tableTag, Some("tezos"), "balance_updates") {
     def * =
       (id, source, sourceId, sourceHash, kind, contract, change, level, delegate, category, operationGroupHash) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
 
@@ -366,7 +367,7 @@ trait Tables {
   }
 
   /** Table description of table ballots. Objects of this class serve as prototypes for rows in queries. */
-  class Ballots(_tableTag: Tag) extends profile.api.Table[BallotsRow](_tableTag, "ballots") {
+  class Ballots(_tableTag: Tag) extends profile.api.Table[BallotsRow](_tableTag, Some("tezos"), "ballots") {
     def * = (pkh, ballot, blockId, blockLevel) <> (BallotsRow.tupled, BallotsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -496,7 +497,7 @@ trait Tables {
   }
 
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
-  class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, "blocks") {
+  class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, Some("tezos"), "blocks") {
     def * =
       (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: HNil)
         .mapTo[BlocksRow]
@@ -643,7 +644,7 @@ trait Tables {
 
   /** Table description of table delegated_contracts. Objects of this class serve as prototypes for rows in queries. */
   class DelegatedContracts(_tableTag: Tag)
-      extends profile.api.Table[DelegatedContractsRow](_tableTag, "delegated_contracts") {
+      extends profile.api.Table[DelegatedContractsRow](_tableTag, Some("tezos"), "delegated_contracts") {
     def * = (accountId, delegateValue) <> (DelegatedContractsRow.tupled, DelegatedContractsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -722,7 +723,7 @@ trait Tables {
   }
 
   /** Table description of table delegates. Objects of this class serve as prototypes for rows in queries. */
-  class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, "delegates") {
+  class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, Some("tezos"), "delegates") {
     def * =
       (pkh, blockId, balance, frozenBalance, stakingBalance, delegatedBalance, deactivated, gracePeriod, blockLevel) <> (DelegatesRow.tupled, DelegatesRow.unapply)
 
@@ -803,7 +804,7 @@ trait Tables {
 
   /** Table description of table delegates_checkpoint. Objects of this class serve as prototypes for rows in queries. */
   class DelegatesCheckpoint(_tableTag: Tag)
-      extends profile.api.Table[DelegatesCheckpointRow](_tableTag, "delegates_checkpoint") {
+      extends profile.api.Table[DelegatesCheckpointRow](_tableTag, Some("tezos"), "delegates_checkpoint") {
     def * = (delegatePkh, blockId, blockLevel) <> (DelegatesCheckpointRow.tupled, DelegatesCheckpointRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -846,18 +847,39 @@ trait Tables {
     *  @param kind Database column kind SqlType(varchar)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param level Database column level SqlType(int4), Default(None) */
-  case class FeesRow(low: Int, medium: Int, high: Int, timestamp: java.sql.Timestamp, kind: String, cycle: Option[Int] = None, level: Option[Int] = None)
+  case class FeesRow(
+      low: Int,
+      medium: Int,
+      high: Int,
+      timestamp: java.sql.Timestamp,
+      kind: String,
+      cycle: Option[Int] = None,
+      level: Option[Int] = None
+  )
+
   /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
-  implicit def GetResultFeesRow(implicit e0: GR[Int], e1: GR[java.sql.Timestamp], e2: GR[String], e3: GR[Option[Int]]): GR[FeesRow] = GR{
-    prs => import prs._
-      FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String], <<?[Int], <<?[Int]))
+  implicit def GetResultFeesRow(
+      implicit e0: GR[Int],
+      e1: GR[java.sql.Timestamp],
+      e2: GR[String],
+      e3: GR[Option[Int]]
+  ): GR[FeesRow] = GR { prs =>
+    import prs._
+    FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
-  class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, "fees") {
+  class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, Some("tezos"), "fees") {
     def * = (low, medium, high, timestamp, kind, cycle, level) <> (FeesRow.tupled, FeesRow.unapply)
+
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>({r=>import r._; _1.map(_=> FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? =
+      ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column low SqlType(int4) */
     val low: Rep[Int] = column[Int]("low")
@@ -873,8 +895,10 @@ trait Tables {
 
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
+
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
     /** Database column level SqlType(int4), Default(None) */
     val level: Rep[Option[Int]] = column[Option[Int]]("level", O.Default(None))
   }
@@ -885,7 +909,7 @@ trait Tables {
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)
     *  @param chainId Database column chain_id SqlType(varchar), Default(None)
-    *  @param hash Database column hash SqlType(varchar), PrimaryKey
+    *  @param hash Database column hash SqlType(varchar)
     *  @param branch Database column branch SqlType(varchar)
     *  @param signature Database column signature SqlType(varchar), Default(None)
     *  @param blockId Database column block_id SqlType(varchar)
@@ -911,7 +935,8 @@ trait Tables {
   }
 
   /** Table description of table operation_groups. Objects of this class serve as prototypes for rows in queries. */
-  class OperationGroups(_tableTag: Tag) extends profile.api.Table[OperationGroupsRow](_tableTag, "operation_groups") {
+  class OperationGroups(_tableTag: Tag)
+      extends profile.api.Table[OperationGroupsRow](_tableTag, Some("tezos"), "operation_groups") {
     def * =
       (protocol, chainId, hash, branch, signature, blockId, blockLevel) <> (OperationGroupsRow.tupled, OperationGroupsRow.unapply)
 
@@ -940,8 +965,8 @@ trait Tables {
     /** Database column chain_id SqlType(varchar), Default(None) */
     val chainId: Rep[Option[String]] = column[Option[String]]("chain_id", O.Default(None))
 
-    /** Database column hash SqlType(varchar), PrimaryKey */
-    val hash: Rep[String] = column[String]("hash", O.PrimaryKey)
+    /** Database column hash SqlType(varchar) */
+    val hash: Rep[String] = column[String]("hash")
 
     /** Database column branch SqlType(varchar) */
     val branch: Rep[String] = column[String]("branch")
@@ -954,6 +979,9 @@ trait Tables {
 
     /** Database column block_level SqlType(int4) */
     val blockLevel: Rep[Int] = column[Int]("block_level")
+
+    /** Primary key of OperationGroups (database name OperationGroups_pkey) */
+    val pk = primaryKey("OperationGroups_pkey", (blockId, hash))
 
     /** Foreign key referencing Blocks (database name block) */
     lazy val blocksFk = foreignKey("block", blockId, Blocks)(
@@ -970,6 +998,9 @@ trait Tables {
   lazy val OperationGroups = new TableQuery(tag => new OperationGroups(tag))
 
   /** Entity class storing rows of table Operations
+    *  @param branch Database column branch SqlType(varchar), Default(None)
+    *  @param numberOfSlots Database column number_of_slots SqlType(int4), Default(None)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param operationId Database column operation_id SqlType(serial), AutoInc, PrimaryKey
     *  @param operationGroupHash Database column operation_group_hash SqlType(varchar)
     *  @param kind Database column kind SqlType(varchar)
@@ -984,12 +1015,13 @@ trait Tables {
     *  @param counter Database column counter SqlType(numeric), Default(None)
     *  @param gasLimit Database column gas_limit SqlType(numeric), Default(None)
     *  @param storageLimit Database column storage_limit SqlType(numeric), Default(None)
-    *  @param publicKey Database column public_key SqlType(varchar), Default(None)
+    *  @param tezosKey Database column tezos_key SqlType(varchar), Default(None)
     *  @param amount Database column amount SqlType(numeric), Default(None)
     *  @param destination Database column destination SqlType(varchar), Default(None)
     *  @param parameters Database column parameters SqlType(varchar), Default(None)
     *  @param managerPubkey Database column manager_pubkey SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(numeric), Default(None)
+    *  @param proposal Database column proposal SqlType(varchar), Default(None)
     *  @param spendable Database column spendable SqlType(bool), Default(None)
     *  @param delegatable Database column delegatable SqlType(bool), Default(None)
     *  @param script Database column script SqlType(varchar), Default(None)
@@ -1003,13 +1035,12 @@ trait Tables {
     *  @param blockLevel Database column block_level SqlType(int4)
     *  @param ballot Database column ballot SqlType(varchar), Default(None)
     *  @param internal Database column internal SqlType(bool)
-    *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param proposal Database column proposal SqlType(varchar), Default(None)
-    *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param branch Database column branch SqlType(varchar), Default(None)
-    *  @param numberOfSlots Database column number_of_slots SqlType(int4), Default(None)
-    *  @param period Database column period SqlType(int4), Default(None) */
+    *  @param period Database column period SqlType(int4), Default(None)
+    *  @param timestamp Database column timestamp SqlType(timestamp) */
   case class OperationsRow(
+      branch: Option[String] = None,
+      numberOfSlots: Option[Int] = None,
+      cycle: Option[Int] = None,
       operationId: Int,
       operationGroupHash: String,
       kind: String,
@@ -1024,12 +1055,13 @@ trait Tables {
       counter: Option[scala.math.BigDecimal] = None,
       gasLimit: Option[scala.math.BigDecimal] = None,
       storageLimit: Option[scala.math.BigDecimal] = None,
-      publicKey: Option[String] = None,
+      tezosKey: Option[String] = None,
       amount: Option[scala.math.BigDecimal] = None,
       destination: Option[String] = None,
       parameters: Option[String] = None,
       managerPubkey: Option[String] = None,
       balance: Option[scala.math.BigDecimal] = None,
+      proposal: Option[String] = None,
       spendable: Option[Boolean] = None,
       delegatable: Option[Boolean] = None,
       script: Option[String] = None,
@@ -1043,20 +1075,16 @@ trait Tables {
       blockLevel: Int,
       ballot: Option[String] = None,
       internal: Boolean,
-      timestamp: java.sql.Timestamp,
-      proposal: Option[String] = None,
-      cycle: Option[Int] = None,
-      branch: Option[String] = None,
-      numberOfSlots: Option[Int] = None,
-      period: Option[Int] = None
+      period: Option[Int] = None,
+      timestamp: java.sql.Timestamp
   )
 
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
   implicit def GetResultOperationsRow(
-      implicit e0: GR[Int],
-      e1: GR[String],
-      e2: GR[Option[Int]],
-      e3: GR[Option[String]],
+      implicit e0: GR[Option[String]],
+      e1: GR[Option[Int]],
+      e2: GR[Int],
+      e3: GR[String],
       e4: GR[Option[scala.math.BigDecimal]],
       e5: GR[Option[Boolean]],
       e6: GR[Boolean],
@@ -1064,6 +1092,9 @@ trait Tables {
   ): GR[OperationsRow] = GR { prs =>
     import prs._
     OperationsRow(
+      <<?[String],
+      <<?[Int],
+      <<?[Int],
       <<[Int],
       <<[String],
       <<[String],
@@ -1084,6 +1115,7 @@ trait Tables {
       <<?[String],
       <<?[String],
       <<?[scala.math.BigDecimal],
+      <<?[String],
       <<?[Boolean],
       <<?[Boolean],
       <<?[String],
@@ -1097,70 +1129,75 @@ trait Tables {
       <<[Int],
       <<?[String],
       <<[Boolean],
-      <<[java.sql.Timestamp],
-      <<?[String],
       <<?[Int],
-      <<?[String],
-      <<?[Int],
-      <<?[Int]
+      <<[java.sql.Timestamp]
     )
   }
 
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
-  class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, "operations") {
+  class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: timestamp :: proposal :: cycle :: branch :: numberOfSlots :: period :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: tezosKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: timestamp :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
-            .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: Rep.Some(timestamp) :: proposal :: cycle :: branch :: numberOfSlots :: period :: HNil).shaped
-        .<>(
-          r =>
-            OperationsRow(
-              r(0).asInstanceOf[Option[Int]].get,
-              r(1).asInstanceOf[Option[String]].get,
-              r(2).asInstanceOf[Option[String]].get,
-              r(3).asInstanceOf[Option[Int]],
-              r(4).asInstanceOf[Option[String]],
-              r(5).asInstanceOf[Option[String]],
-              r(6).asInstanceOf[Option[String]],
-              r(7).asInstanceOf[Option[String]],
-              r(8).asInstanceOf[Option[String]],
-              r(9).asInstanceOf[Option[String]],
-              r(10).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(11).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(12).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(13).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(14).asInstanceOf[Option[String]],
-              r(15).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(16).asInstanceOf[Option[String]],
-              r(17).asInstanceOf[Option[String]],
-              r(18).asInstanceOf[Option[String]],
-              r(19).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(20).asInstanceOf[Option[Boolean]],
-              r(21).asInstanceOf[Option[Boolean]],
-              r(22).asInstanceOf[Option[String]],
-              r(23).asInstanceOf[Option[String]],
-              r(24).asInstanceOf[Option[String]],
-              r(25).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(26).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(27).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(28).asInstanceOf[Option[String]],
-              r(29).asInstanceOf[Option[String]].get,
-              r(30).asInstanceOf[Option[Int]].get,
-              r(31).asInstanceOf[Option[String]],
-              r(32).asInstanceOf[Option[Boolean]].get,
-              r(33).asInstanceOf[Option[java.sql.Timestamp]].get,
-              r(34).asInstanceOf[Option[String]],
-              r(35).asInstanceOf[Option[Int]],
-              r(36).asInstanceOf[Option[String]],
-              r(37).asInstanceOf[Option[Int]],
-              r(38).asInstanceOf[Option[Int]]
-            ),
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-        )
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: tezosKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep.Some(
+            blockHash
+          ) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: Rep.Some(timestamp) :: HNil).shaped.<>(
+        r =>
+          OperationsRow(
+            r(0).asInstanceOf[Option[String]],
+            r(1).asInstanceOf[Option[Int]],
+            r(2).asInstanceOf[Option[Int]],
+            r(3).asInstanceOf[Option[Int]].get,
+            r(4).asInstanceOf[Option[String]].get,
+            r(5).asInstanceOf[Option[String]].get,
+            r(6).asInstanceOf[Option[Int]],
+            r(7).asInstanceOf[Option[String]],
+            r(8).asInstanceOf[Option[String]],
+            r(9).asInstanceOf[Option[String]],
+            r(10).asInstanceOf[Option[String]],
+            r(11).asInstanceOf[Option[String]],
+            r(12).asInstanceOf[Option[String]],
+            r(13).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(14).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(15).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(16).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(17).asInstanceOf[Option[String]],
+            r(18).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(19).asInstanceOf[Option[String]],
+            r(20).asInstanceOf[Option[String]],
+            r(21).asInstanceOf[Option[String]],
+            r(22).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(23).asInstanceOf[Option[String]],
+            r(24).asInstanceOf[Option[Boolean]],
+            r(25).asInstanceOf[Option[Boolean]],
+            r(26).asInstanceOf[Option[String]],
+            r(27).asInstanceOf[Option[String]],
+            r(28).asInstanceOf[Option[String]],
+            r(29).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(30).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(31).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(32).asInstanceOf[Option[String]],
+            r(33).asInstanceOf[Option[String]].get,
+            r(34).asInstanceOf[Option[Int]].get,
+            r(35).asInstanceOf[Option[String]],
+            r(36).asInstanceOf[Option[Boolean]].get,
+            r(37).asInstanceOf[Option[Int]],
+            r(38).asInstanceOf[Option[java.sql.Timestamp]].get
+          ),
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column branch SqlType(varchar), Default(None) */
+    val branch: Rep[Option[String]] = column[Option[String]]("branch", O.Default(None))
+
+    /** Database column number_of_slots SqlType(int4), Default(None) */
+    val numberOfSlots: Rep[Option[Int]] = column[Option[Int]]("number_of_slots", O.Default(None))
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
 
     /** Database column operation_id SqlType(serial), AutoInc, PrimaryKey */
     val operationId: Rep[Int] = column[Int]("operation_id", O.AutoInc, O.PrimaryKey)
@@ -1206,8 +1243,8 @@ trait Tables {
     val storageLimit: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("storage_limit", O.Default(None))
 
-    /** Database column public_key SqlType(varchar), Default(None) */
-    val publicKey: Rep[Option[String]] = column[Option[String]]("public_key", O.Default(None))
+    /** Database column tezos_key SqlType(varchar), Default(None) */
+    val tezosKey: Rep[Option[String]] = column[Option[String]]("tezos_key", O.Default(None))
 
     /** Database column amount SqlType(numeric), Default(None) */
     val amount: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("amount", O.Default(None))
@@ -1223,6 +1260,9 @@ trait Tables {
 
     /** Database column balance SqlType(numeric), Default(None) */
     val balance: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("balance", O.Default(None))
+
+    /** Database column proposal SqlType(varchar), Default(None) */
+    val proposal: Rep[Option[String]] = column[Option[String]]("proposal", O.Default(None))
 
     /** Database column spendable SqlType(bool), Default(None) */
     val spendable: Rep[Option[Boolean]] = column[Option[Boolean]]("spendable", O.Default(None))
@@ -1266,23 +1306,11 @@ trait Tables {
     /** Database column internal SqlType(bool) */
     val internal: Rep[Boolean] = column[Boolean]("internal")
 
-    /** Database column timestamp SqlType(timestamp) */
-    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
-
-    /** Database column proposal SqlType(varchar), Default(None) */
-    val proposal: Rep[Option[String]] = column[Option[String]]("proposal", O.Default(None))
-
-    /** Database column cycle SqlType(int4), Default(None) */
-    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
-
-    /** Database column branch SqlType(varchar), Default(None) */
-    val branch: Rep[Option[String]] = column[Option[String]]("branch", O.Default(None))
-
-    /** Database column number_of_slots SqlType(int4), Default(None) */
-    val numberOfSlots: Rep[Option[Int]] = column[Option[Int]]("number_of_slots", O.Default(None))
-
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
 
     /** Foreign key referencing Blocks (database name fk_blockhashes) */
     lazy val blocksFk = foreignKey("fk_blockhashes", blockHash :: HNil, Blocks)(
@@ -1292,8 +1320,8 @@ trait Tables {
     )
 
     /** Foreign key referencing OperationGroups (database name fk_opgroups) */
-    lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash :: HNil, OperationGroups)(
-      r => r.hash :: HNil,
+    lazy val operationGroupsFk = foreignKey("fk_opgroups", operationGroupHash :: blockHash :: HNil, OperationGroups)(
+      r => r.hash :: r.blockId :: HNil,
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
@@ -1332,7 +1360,7 @@ trait Tables {
   }
 
   /** Table description of table proposals. Objects of this class serve as prototypes for rows in queries. */
-  class Proposals(_tableTag: Tag) extends profile.api.Table[ProposalsRow](_tableTag, "proposals") {
+  class Proposals(_tableTag: Tag) extends profile.api.Table[ProposalsRow](_tableTag, Some("tezos"), "proposals") {
     def * = (protocolHash, blockId, blockLevel, supporters) <> (ProposalsRow.tupled, ProposalsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -1381,7 +1409,7 @@ trait Tables {
   }
 
   /** Table description of table rolls. Objects of this class serve as prototypes for rows in queries. */
-  class Rolls(_tableTag: Tag) extends profile.api.Table[RollsRow](_tableTag, "rolls") {
+  class Rolls(_tableTag: Tag) extends profile.api.Table[RollsRow](_tableTag, Some("tezos"), "rolls") {
     def * = (pkh, rolls, blockId, blockLevel) <> (RollsRow.tupled, RollsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
