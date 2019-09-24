@@ -14,6 +14,7 @@ import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.tezos.Tables.OperationsRow
 
 /**
   * Functions for writing Tezos data to a database.
@@ -515,5 +516,57 @@ object TezosDatabaseOperations extends LazyLogging {
       q.as[QueryResponse].map(_.toList)
     }
   }
+
+  /** Defines the accepted flags on accounts */
+  object AccountFlags extends Enumeration {
+    type Flags = Value
+    val activated, revealed = Value
+  }
+
+  /** Updates an account by id, marking it with a flag.
+    * @param id the account identifier on database (corresponds to the pkh)
+    * @param flag which flag to set "on"
+    * @return the action to run against the db, which will tell how many rows where touched
+    */
+  def flagAccount(id: String, flag: AccountFlags.Flags): DBIO[Int] =
+    Tables.Accounts
+      .findBy(_.accountId)
+      .extract(id)
+      .map {
+        flag match {
+          case AccountFlags.activated =>
+            _.activated
+          case AccountFlags.revealed =>
+            _.revealed
+        }
+      }
+      .update(true)
+
+  /** Will return the highest block level referencing an account
+    * being flagged with any of the `AccountsFlags` (e.g. activated, revealed).
+    *
+    * @return the latest block level that made operations on the account
+    */
+  def findLatestFlaggedAccountLevel()(implicit ec: ExecutionContext): DBIO[BigDecimal] =
+    Tables.Accounts
+      .filter(row => row.activated || row.revealed)
+      .map(_.blockLevel)
+      .distinct
+      .sortBy(_.desc)
+      .take(1)
+      .result
+      .headOption
+      .map(_.getOrElse(0))
+
+  /** Load all operations referenced from a block level and higher, that are of a specific kind.
+    * @param ofKind a set of kinds to filter operations, if empty there will be no result
+    * @param fromLevel the lowest block-level to start from, zero by default
+    * @return the matching operations, sorted by ascending block-level
+    */
+  def fetchRecentOperationsByKind(ofKind: Set[String], fromLevel: Int = 0) =
+      Tables.Operations.filter(
+        row => (row.kind inSet(ofKind)) && (row.blockLevel >= fromLevel)
+      ).sortBy(_.blockLevel.asc)
+      .result
 
 }

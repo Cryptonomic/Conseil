@@ -51,7 +51,9 @@ CREATE TABLE public.accounts (
     script character varying,
     storage character varying,
     balance numeric NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL
+    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    activated boolean DEFAULT false NOT NULL,
+    revealed boolean DEFAULT false NOT NULL
 );
 
 

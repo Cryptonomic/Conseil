@@ -13,8 +13,11 @@ import tech.cryptonomic.conseil.util.PureLogging
 
 object AccountsTaggingProcess {
 
-  /** convenience alias */
-  type BlockLevel = Int
+  /** Convenience alias */
+  type BlockLevel = BigDecimal
+
+  /** The kinds of relevant operations for tagging */
+  val operationKinds = Set("activate_account", "reveal")
 
 }
 
@@ -89,7 +92,7 @@ class AccountsTaggingProcess extends PureLogging {
       ref update {
           //puts the new level if it's higher than the stored one, or if there was nothing there
           stored =>
-            stored.map(math.max(_, newLevel)).orElse(newLevel.some)
+            stored.map(_ max newLevel).orElse(newLevel.some)
         }
 
     /* find sorted operations and flag the related accounts as they come by, all the while keeping track of the
@@ -106,7 +109,7 @@ class AccountsTaggingProcess extends PureLogging {
           case kind =>
             //log unexpected kind
             logger.pureLog[IO](
-              _.error("I didn't expect to process such operation kind while flagging accounts. {}", operation)
+              _.error("""I didn't expect to process such operation kind: "{}", while flagging accounts. It should be one of {}""", operation, operationKinds.mkString(", "))
             ) >> missingResult
         }).map { flagResult =>
           (flagResult, operation.blockLevel)

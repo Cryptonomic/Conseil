@@ -43,7 +43,9 @@ trait Tables {
     *  @param script Database column script SqlType(varchar), Default(None)
     *  @param storage Database column storage SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(numeric)
-    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1) */
+    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
+    *  @param activated Database column activated SqlType(bool), Default(false)
+    *  @param revealed Database column revealed SqlType(bool), Default(false) */
   case class AccountsRow(
       accountId: String,
       blockId: String,
@@ -55,7 +57,9 @@ trait Tables {
       script: Option[String] = None,
       storage: Option[String] = None,
       balance: scala.math.BigDecimal,
-      blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1")
+      blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"),
+      activated: Boolean = false,
+      revealed: Boolean = false
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -79,7 +83,9 @@ trait Tables {
         <<?[String],
         <<?[String],
         <<[scala.math.BigDecimal],
-        <<[scala.math.BigDecimal]
+        <<[scala.math.BigDecimal],
+        <<[Boolean],
+        <<[Boolean]
       )
     )
   }
@@ -98,7 +104,9 @@ trait Tables {
         script,
         storage,
         balance,
-        blockLevel
+        blockLevel,
+        activated,
+        revealed
       ) <> (AccountsRow.tupled, AccountsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -115,13 +123,18 @@ trait Tables {
           script,
           storage,
           Rep.Some(balance),
-          Rep.Some(blockLevel)
+          Rep.Some(blockLevel),
+          Rep.Some(activated),
+          Rep.Some(revealed)
         )
       ).shaped.<>(
         { r =>
           import r._;
           _1.map(
-            _ => AccountsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9, _10.get, _11.get))
+            _ =>
+              AccountsRow.tupled(
+                (_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8, _9, _10.get, _11.get, _12.get, _13.get)
+              )
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -160,6 +173,12 @@ trait Tables {
     /** Database column block_level SqlType(numeric), Default(-1) */
     val blockLevel: Rep[scala.math.BigDecimal] =
       column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
+
+    /** Database column activated SqlType(bool), Default(false) */
+    val activated: Rep[Boolean] = column[Boolean]("activated", O.Default(false))
+
+    /** Database column revealed SqlType(bool), Default(false) */
+    val revealed: Rep[Boolean] = column[Boolean]("revealed", O.Default(false))
 
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(
