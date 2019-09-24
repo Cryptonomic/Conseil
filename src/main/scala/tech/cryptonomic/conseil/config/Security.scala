@@ -45,7 +45,7 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
 
   /** creates security data from configuration */
   def apply(): Either[pureconfig.error.ConfigReaderFailures, SecurityApi] =
-    pureconfig.loadConfig[SecurityApi](namespace = "security.apiKeys.keys")
+    pureconfig.loadConfig[SecurityApi](namespace = "conseil.security.apiKeys.keys")
 
   final case class SecurityApi(keys: Set[String]) extends AnyVal with Product with Serializable {
 
