@@ -69,7 +69,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown())
 
-  lazy val db = DatabaseUtil.db
+  lazy val db = DatabaseUtil.lorreDb
   val tezosNodeOperator = new TezosNodeOperator(
     new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
     tezosConf.network,

@@ -54,7 +54,7 @@ object MainOutputs {
         |
         """.stripMargin,
         showAvailablePlatforms(platformConfigs),
-        showDatabaseConfiguration
+        showDatabaseConfiguration("conseil")
       )
 
   }
@@ -121,7 +121,7 @@ object MainOutputs {
         lorreConf.headHash.fold("head")(_.value),
         lorreConf.depth,
         ignoreFailures._2.getOrElse("yes"),
-        showDatabaseConfiguration,
+        showDatabaseConfiguration("lorre"),
         ignoreFailures._1
       )
 
@@ -138,7 +138,7 @@ object MainOutputs {
     }.mkString("\n")
 
   /* prepare output to display database access */
-  private val showDatabaseConfiguration: String = {
+  private def showDatabaseConfiguration(applicationScope: String): String = {
     import com.typesafe.config._
     import java.util.Map.{Entry => JMEntry}
     import scala.collection.JavaConverters._
@@ -158,7 +158,7 @@ object MainOutputs {
         key -> value.render
     }
 
-    val dbConf = ConfigFactory.load.getConfig("conseildb").resolve()
+    val dbConf = ConfigFactory.load.getConfig(s"$applicationScope.db").resolve()
 
     //the meat of the method
     dbConf.entrySet.asScala.map { entry =>
