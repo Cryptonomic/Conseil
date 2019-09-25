@@ -563,40 +563,6 @@ object DatabaseConversions {
     }
   }
 
-  implicit val proposalToRow = new Conversion[List, Voting.Proposal, Tables.ProposalsRow] {
-    override def convert(from: Voting.Proposal) = {
-      val Voting.Proposal(protocols, block) = from
-      val blockHash = block.data.hash.value
-      val blockLevel = block.data.header.level
-      protocols.map {
-        case (ProtocolId(id), supporters) =>
-          Tables.ProposalsRow(
-            protocolHash = id,
-            blockId = blockHash,
-            blockLevel = blockLevel,
-            supporters = Some(supporters)
-          )
-      }
-    }
-  }
-
-  implicit val ballotsToRows = new Conversion[List, (Block, List[Voting.Ballot]), Tables.BallotsRow] {
-    override def convert(from: (Block, List[Voting.Ballot])) = {
-      val (block, ballots) = from
-      val blockHash = block.data.hash.value
-      val blockLevel = block.data.header.level
-      ballots.map {
-        case Voting.Ballot(PublicKeyHash(hash), Voting.Vote(vote)) =>
-          Tables.BallotsRow(
-            pkh = hash,
-            ballot = vote,
-            blockId = blockHash,
-            blockLevel = blockLevel
-          )
-      }
-    }
-  }
-
   implicit val rollsToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.RollsRow] {
     override def convert(from: (Block, List[Voting.BakerRolls])) = {
       val (block, bakers) = from
