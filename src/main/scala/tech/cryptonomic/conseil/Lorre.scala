@@ -207,7 +207,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     }
 
-    def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[List[Unit]] = {
+    def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
       fetchingResults.map {
         case (block, _) =>
@@ -217,7 +217,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
               (db.run(TezosDb.writeBakingRights(bh, br)), db.run(TezosDb.writeEndorsingRights(bh, er)))
                 .mapN((_, _) => ())
           }.flatten
-      }.sequence
+      }.sequence.map(_ => ())
     }
 
     blockPagesToSynchronize.flatMap {
