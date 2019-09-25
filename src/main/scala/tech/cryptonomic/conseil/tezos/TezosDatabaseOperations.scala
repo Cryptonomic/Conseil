@@ -105,7 +105,6 @@ object TezosDatabaseOperations extends LazyLogging {
 
   }
 
-
   /**
     * Writes association of account ids and block data to define accounts that needs update
     * @param accountIds will have block information, paired with corresponding account ids to store
@@ -275,8 +274,8 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param bakingRights baking rights for the given block
     */
   def writeBakingRights(
-    blockHash: BlockHash,
-    bakingRights: List[BakingRights]
+      blockHash: BlockHash,
+      bakingRights: List[BakingRights]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     logger.info("Writing baking rights to the DB...")
     Tables.BakingRights ++= bakingRights.map(br => (blockHash, br).convertTo[Tables.BakingRightsRow])
@@ -289,13 +288,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param endorsingRights endorsing rights for the given block
     */
   def writeEndorsingRights(
-    blockHash: BlockHash,
-    endorsingRights: List[EndorsingRights]
+      blockHash: BlockHash,
+      endorsingRights: List[EndorsingRights]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
     logger.info("Writing endorsing rights to the DB...")
-    Tables.EndorsingRights ++= endorsingRights.map(er => (blockHash, er).convertTo[Tables.EndorsingRightsRow])
+    Tables.EndorsingRights ++= endorsingRights.flatMap(
+      er => (blockHash, er).convertToA[List, Tables.EndorsingRightsRow]
+    )
   }
-
 
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block

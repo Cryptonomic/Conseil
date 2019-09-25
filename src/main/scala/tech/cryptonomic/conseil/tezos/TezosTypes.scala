@@ -528,17 +528,17 @@ object TezosTypes {
 
   /** Baking rights model */
   final case class BakingRights(
-    level: Int,
-    delegate: String,
-    priority: Int,
-    estimated_time: java.sql.Timestamp
+      level: Int,
+      delegate: String,
+      priority: Int,
+      estimated_time: java.sql.Timestamp
   )
 
   /** Endorsing rights model*/
   final case class EndorsingRights(
-    level: Int,
-    delegate: String,
-    slots: List[Int],
-    estimated_time: java.sql.Timestamp
+      level: Int,
+      delegate: String,
+      slots: List[Int],
+      estimated_time: java.sql.Timestamp
   )
 }

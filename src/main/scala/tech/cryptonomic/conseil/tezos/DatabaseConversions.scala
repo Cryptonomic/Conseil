@@ -619,23 +619,26 @@ object DatabaseConversions {
   implicit val bakingRightsToRows = new Conversion[Id, (BlockHash, BakingRights), Tables.BakingRightsRow] {
     override def convert(from: (BlockHash, BakingRights)): tezos.Tables.BakingRightsRow = {
       val (blockHash, bakingRights) = from
-      bakingRights.into[Tables.BakingRightsRow]
+      bakingRights
+        .into[Tables.BakingRightsRow]
         .withFieldConst(_.blockHash, blockHash.value)
         .withFieldRenamed(_.estimated_time, _.estimatedTime)
         .transform
     }
   }
 
-  implicit val endorsingRightsToRows = new Conversion[Id, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
-    override def convert(from: (BlockHash, EndorsingRights)): tezos.Tables.EndorsingRightsRow = {
+  implicit val endorsingRightsToRows = new Conversion[List, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
+    override def convert(from: (BlockHash, EndorsingRights)): List[Tables.EndorsingRightsRow] = {
       val (blockHash, endorsingRights) = from
-      endorsingRights.into[Tables.EndorsingRightsRow]
-        .withFieldConst(_.slots, endorsingRights.slots.mkString(","))
-        .withFieldRenamed(_.estimated_time, _.estimatedTime)
-        .withFieldConst(_.blockHash, blockHash.value)
-        .transform
+      endorsingRights.slots.map { slot =>
+        endorsingRights
+          .into[Tables.EndorsingRightsRow]
+          .withFieldRenamed(_.estimated_time, _.estimatedTime)
+          .withFieldConst(_.slot, slot)
+          .withFieldConst(_.blockHash, blockHash.value)
+          .transform
+      }
     }
   }
-
 
 }

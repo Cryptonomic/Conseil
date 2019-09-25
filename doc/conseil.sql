@@ -323,9 +323,9 @@ CREATE TABLE public.endorsing_rights (
     block_hash character varying NOT NULL,
     level integer NOT NULL,
     delegate character varying NOT NULL,
-    slots character varying NOT NULL,
+    slot integer NOT NULL,
     estimated_time timestamp without time zone NOT NULL,
-    PRIMARY KEY(level, delegate, slots)
+    PRIMARY KEY(level, delegate, slot)
 );
 
 

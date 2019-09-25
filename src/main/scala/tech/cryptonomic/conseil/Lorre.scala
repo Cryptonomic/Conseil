@@ -211,12 +211,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[List[Unit]] = {
       import cats.implicits._
-      fetchingResults.map { case (block, _) =>
-        val bh = block.data.hash
-        (tezosNodeOperator.getBakingRightsForBlock(bh),tezosNodeOperator.getEndorsingRightsForBlock(bh)).mapN {
-          case (br, er) =>
-            (db.run(TezosDb.writeBakingRights(bh, br)), db.run(TezosDb.writeEndorsingRights(bh, er))).mapN((_, _) => ())
-        }.flatten
+      fetchingResults.map {
+        case (block, _) =>
+          val bh = block.data.hash
+          (tezosNodeOperator.getBakingRightsForBlock(bh), tezosNodeOperator.getEndorsingRightsForBlock(bh)).mapN {
+            case (br, er) =>
+              (db.run(TezosDb.writeBakingRights(bh, br)), db.run(TezosDb.writeEndorsingRights(bh, er)))
+                .mapN((_, _) => ())
+          }.flatten
       }.sequence
     }
 
@@ -235,11 +237,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
           .mapAsync(1) { fetchingResults =>
-             processBlocksPage(fetchingResults).flatMap { result =>
-               processBakingAndEndorsingRights(fetchingResults)
-                 .flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
-                 .map(_ => result)
-             }
+            processBlocksPage(fetchingResults).flatMap { result =>
+              processBakingAndEndorsingRights(fetchingResults)
+                .flatTap(_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
+                .map(_ => result)
+            }
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress

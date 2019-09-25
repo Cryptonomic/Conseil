@@ -114,7 +114,6 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}")
       .map(fromJson[Account])
 
-
   /**
     * Fetches baking rights for given block
     * @param blockHash  Hash of given block
@@ -122,8 +121,8 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   def getBakingRightsForBlock(blockHash: BlockHash): Future[List[BakingRights]] =
     node
-    .runAsyncGetQuery(network, s"blocks/${blockHash.value}/helpers/baking_rights")
-    .map(fromJson[List[BakingRights]])
+      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/helpers/baking_rights")
+      .map(fromJson[List[BakingRights]])
 
   /**
     * Fetches endorsing rights for given block
