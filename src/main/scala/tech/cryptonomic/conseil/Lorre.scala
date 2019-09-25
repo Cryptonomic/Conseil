@@ -158,8 +158,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processTezosBlocks(): Future[Done] = {
     import cats.instances.future._
     import cats.syntax.flatMap._
-    import cats.syntax.applicative._
-    import cats.instances.map._
     import TezosTypes.Syntax._
 
     logger.info("Processing Tezos Blocks..")
@@ -237,11 +235,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
           .mapAsync(1) { fetchingResults =>
-            processBlocksPage(fetchingResults).flatMap { result =>
-              processBakingAndEndorsingRights(fetchingResults)
-                .flatTap(_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
-                .map(_ => result)
-            }
+            processBlocksPage(fetchingResults)
+              .flatTap(
+                _ =>
+                  processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint >> processBakingAndEndorsingRights(
+                        fetchingResults
+                      )
+              )
+
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress
