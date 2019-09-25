@@ -354,7 +354,12 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
+    def computeAverage(
+        ts: java.sql.Timestamp,
+        cycle: Option[Int],
+        level: Option[Int],
+        fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]
+    ): AverageFees = {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }

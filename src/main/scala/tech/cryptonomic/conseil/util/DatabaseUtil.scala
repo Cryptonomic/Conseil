@@ -11,7 +11,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
   * Utility functions and members for common database operations.
   */
 object DatabaseUtil {
-  lazy val db = Database.forConfig("conseildb")
+  lazy val conseilDb = Database.forConfig("conseil.db")
+  lazy val lorreDb = Database.forConfig("lorre.db")
 
   /**
     * Utility object for generic query composition with SQL interpolation
