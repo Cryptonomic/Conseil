@@ -485,17 +485,38 @@ trait Tables {
     *  @param kind Database column kind SqlType(varchar)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param level Database column level SqlType(int4), Default(None) */
-  case class FeesRow(low: Int, medium: Int, high: Int, timestamp: java.sql.Timestamp, kind: String, cycle: Option[Int] = None, level: Option[Int] = None)
+  case class FeesRow(
+      low: Int,
+      medium: Int,
+      high: Int,
+      timestamp: java.sql.Timestamp,
+      kind: String,
+      cycle: Option[Int] = None,
+      level: Option[Int] = None
+  )
+
   /** GetResult implicit for fetching FeesRow objects using plain SQL queries */
-  implicit def GetResultFeesRow(implicit e0: GR[Int], e1: GR[java.sql.Timestamp], e2: GR[String], e3: GR[Option[Int]]): GR[FeesRow] = GR{
-    prs => import prs._
-      FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String], <<?[Int], <<?[Int]))
+  implicit def GetResultFeesRow(
+      implicit e0: GR[Int],
+      e1: GR[java.sql.Timestamp],
+      e2: GR[String],
+      e3: GR[Option[Int]]
+  ): GR[FeesRow] = GR { prs =>
+    import prs._
+    FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String], <<?[Int], <<?[Int]))
   }
   /** Table description of table fees. Objects of this class serve as prototypes for rows in queries. */
   class Fees(_tableTag: Tag) extends profile.api.Table[FeesRow](_tableTag, "fees") {
     def * = (low, medium, high, timestamp, kind, cycle, level) <> (FeesRow.tupled, FeesRow.unapply)
+
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>({r=>import r._; _1.map(_=> FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? =
+      ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column low SqlType(int4) */
     val low: Rep[Int] = column[Int]("low")
@@ -507,8 +528,10 @@ trait Tables {
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
+
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
     /** Database column level SqlType(int4), Default(None) */
     val level: Rep[Option[Int]] = column[Option[Int]]("level", O.Default(None))
   }
