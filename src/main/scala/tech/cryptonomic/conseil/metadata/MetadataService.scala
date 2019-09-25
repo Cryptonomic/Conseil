@@ -45,7 +45,7 @@ class MetadataService(
 
     val result = networkPaths.map { path =>
       platformDiscoveryOperations
-        .getTableAttributes(path.entity)
+        .getTableAttributes(path)
         .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))
     }
 
@@ -75,7 +75,7 @@ class MetadataService(
 
   // fetches current attributes
   def getCurrentTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] =
-    platformDiscoveryOperations.getTableAttributes(path.entity).map { maybeAttributes =>
+    platformDiscoveryOperations.getTableAttributes(path).map { maybeAttributes =>
       maybeAttributes.flatMap { attributes =>
         if (exists(path))
           Some(transformation.overrideAttributes(path, attributes, shouldLog = false))
@@ -101,7 +101,11 @@ class MetadataService(
     if (exists(path)) {
       val attributePath = EntityPath(entity, path).addLevel(attribute)
       platformDiscoveryOperations
-        .listAttributeValues(entity, attribute, filter, cacheConfiguration.getCacheConfiguration(attributePath))
+        .listAttributeValues(
+          attributePath,
+          filter,
+          cacheConfiguration.getCacheConfiguration(attributePath)
+        )
         .map(Some(_))
     } else
       successful(None)
@@ -121,10 +125,10 @@ class MetadataService(
 
   // fetches attributes with given function
   private def getAttributesHelper(path: EntityPath)(
-      getAttributes: String => Future[Option[List[Attribute]]]
+      getAttributes: EntityPath => Future[Option[List[Attribute]]]
   ): Future[Option[List[Attribute]]] =
     if (exists(path))
-      getAttributes(path.entity).map(
+      getAttributes(path).map(
         _.map(attributes => transformation.overrideAttributes(path, attributes))
       )
     else
