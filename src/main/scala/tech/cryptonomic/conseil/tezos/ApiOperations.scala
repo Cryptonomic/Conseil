@@ -24,7 +24,13 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 object ApiOperations extends DataOperations with MetadataOperations {
 
-  lazy val dbHandle: Database = DatabaseUtil.db
+  lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
+
+  /**
+    * @see `MetadataOperations#runQuery`
+    */
+  override def runQuery[A](action: DBIO[A]): Future[A] =
+    dbReadHandle.run(action)
 
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
@@ -218,7 +224,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @return Max level or -1 if no blocks were found in the database.
     */
   def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = dbHandle.run(Tables.Blocks.map(_.level).max.result)
+    val optionalMax: Future[Option[Int]] = runQuery(Tables.Blocks.map(_.level).max.result)
     optionalMax.map(_.getOrElse(-1))
   }
 
@@ -228,7 +234,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
     * @return Latest block.
     */
   def fetchLatestBlock()(implicit ec: ExecutionContext): Future[Option[Tables.BlocksRow]] =
-    dbHandle.run(latestBlockIO())
+    runQuery(latestBlockIO())
 
   /**
     * Fetches a block by block hash from the db.
@@ -242,7 +248,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
       block <- groups.blocksFk
     } yield (block, groups)
 
-    dbHandle.run(joins.result).map { paired =>
+    runQuery(joins.result).map { paired =>
       val (blocks, groups) = paired.unzip
       blocks.headOption.map { block =>
         BlockResult(
@@ -277,7 +283,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
           )
       }
 
-    dbHandle.run(groupsMapIO)
+    runQuery(groupsMapIO)
   }
 
   /**
@@ -293,7 +299,7 @@ object ApiOperations extends DataOperations with MetadataOperations {
         .take(1)
         .result
 
-    dbHandle.run(fetchOperation).map { accounts =>
+    runQuery(fetchOperation).map { accounts =>
       accounts.headOption.map(AccountResult)
     }
   }
@@ -311,16 +317,6 @@ object ApiOperations extends DataOperations with MetadataOperations {
           .result
           .headOption
     )
-
-  /**
-    * Runs DBIO action
-    * @param  action action to be performed on db
-    * @return result of DBIO action as a Future
-    */
-  def runQuery[A](action: DBIO[A]): Future[A] =
-    dbHandle.run {
-      action
-    }
 
   /** Executes the query with given predicates
     *

@@ -27,7 +27,7 @@ object GenSchema extends App {
   //applies convention to uses CamelCase when reading config fields
   implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
-  val conseilDbConf = loadConfig[PostgresConfig](namespace = "conseildb.properties")
+  val conseilDbConf = loadConfig[PostgresConfig](namespace = "conseil.db.properties")
 
   conseilDbConf.foreach { cfg =>
     println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")

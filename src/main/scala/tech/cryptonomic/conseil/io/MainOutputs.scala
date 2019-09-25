@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.io
 
 import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil.BuildInfo
-import tech.cryptonomic.conseil.config.ServerConfiguration
+import tech.cryptonomic.conseil.config.{LorreConfiguration, ServerConfiguration}
 import tech.cryptonomic.conseil.config.Platforms._
 
 /** Defines main output for Lorre or Conseil, at startup */
@@ -54,7 +54,7 @@ object MainOutputs {
         |
         """.stripMargin,
         showAvailablePlatforms(platformConfigs),
-        showDatabaseConfiguration
+        showDatabaseConfiguration("conseil")
       )
 
   }
@@ -93,6 +93,7 @@ object MainOutputs {
     protected[this] def displayConfiguration[C <: PlatformConfiguration](
         platform: BlockchainPlatform,
         platformConf: C,
+        lorreConf: LorreConfiguration,
         ignoreFailures: (String, Option[String])
     ): Unit =
       logger.info(
@@ -103,21 +104,24 @@ object MainOutputs {
         | Connecting to {} {}
         | on {}
         |
-        | Requested depth of synchronization with the chain: {}
-        | Environment set to skip failed download of blocks or accounts: {} [†]
+        | Reference hash for synchronization with the chain: {}
+        | Requested depth of synchronization: {}
+        | Environment set to skip failed download of chain data: {} [\u2020]
         |
         | {}
         |
-        | [†] To let the process crash on error,
-        |     set the environment variable {} to "off" or "no"
+        | [\u2020] To let the process crash on error,
+        |     set an environment variable named {} to "off" or "no"
         | ==================================***==================================
         |
       """.stripMargin,
         platform.name,
         platformConf.network,
         showPlatformConfiguration(platformConf),
+        lorreConf.headHash.fold("head")(_.value),
+        lorreConf.depth,
         ignoreFailures._2.getOrElse("yes"),
-        showDatabaseConfiguration,
+        showDatabaseConfiguration("lorre"),
         ignoreFailures._1
       )
 
@@ -134,7 +138,7 @@ object MainOutputs {
     }.mkString("\n")
 
   /* prepare output to display database access */
-  private val showDatabaseConfiguration: String = {
+  private def showDatabaseConfiguration(applicationScope: String): String = {
     import com.typesafe.config._
     import java.util.Map.{Entry => JMEntry}
     import scala.collection.JavaConverters._
@@ -154,7 +158,7 @@ object MainOutputs {
         key -> value.render
     }
 
-    val dbConf = ConfigFactory.load.getConfig("conseildb").resolve()
+    val dbConf = ConfigFactory.load.getConfig(s"$applicationScope.db").resolve()
 
     //the meat of the method
     dbConf.entrySet.asScala.map { entry =>

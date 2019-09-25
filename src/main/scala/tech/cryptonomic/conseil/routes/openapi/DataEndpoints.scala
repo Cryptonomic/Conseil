@@ -8,10 +8,9 @@ import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
 /** Trait containing endpoints definition */
 trait DataEndpoints
-    extends algebra.Endpoints
+    extends algebra.JsonSchemaEntities
     with DataJsonSchemas
     with ApiFilterFromQueryString
-    with algebra.JsonSchemaEntities
     with Validation {
 
   /** Common path among endpoints */

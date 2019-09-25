@@ -57,7 +57,13 @@ object Conseil
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
       lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(ApiOperations, metadataCaching, cacheOverrides, server.cacheTTL)(
+        TezosPlatformDiscoveryOperations(
+          ApiOperations,
+          metadataCaching,
+          cacheOverrides,
+          server.cacheTTL,
+          server.highCardinalityLimit
+        )(
           executionContext,
           contextShift
         )
@@ -75,8 +81,8 @@ object Conseil
       // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
       val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
-      lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
-      lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
+      lazy val platformDiscovery = PlatformDiscovery(metadataService)
+      lazy val data = Data(metadataService, server)(tezosDispatcher)
 
       val route = cors() {
           enableCORS {

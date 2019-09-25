@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.config.Types.{AttributeName, EntityName, NetworkName, PlatformName}
-import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{AttributeCacheConfiguration, Network}
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{AttributeCacheConfiguration}
 import tech.cryptonomic.conseil.metadata._
 
 object Types {
@@ -120,5 +120,6 @@ case class AttributeConfiguration(
     displayPriority: Option[Int] = None,
     displayOrder: Option[Int] = None,
     currencySymbol: Option[String] = None,
-    currencySymbolCode: Option[Int] = None
+    currencySymbolCode: Option[Int] = None,
+    cardinalityHint: Option[Int] = None
 )
