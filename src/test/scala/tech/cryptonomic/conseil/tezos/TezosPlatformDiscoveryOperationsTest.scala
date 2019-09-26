@@ -188,6 +188,9 @@ class TezosPlatformDiscoveryOperationsTest
       "return list of attributes of operations" in {
         sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue.get should contain theSameElementsAs
             List(
+              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
               Attribute(
                 "operation_group_hash",
@@ -215,6 +218,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
+              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
@@ -242,12 +246,8 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
               Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
-              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
+              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
+              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
             )
 
       }
@@ -286,19 +286,6 @@ class TezosPlatformDiscoveryOperationsTest
           )
       }
 
-      "return list of attributes of proposals" in {
-
-        sut.getTableAttributes(EntityPath("proposals", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
-              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
-            )
-          )
-      }
-
       "return list of attributes of rolls" in {
 
         sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue shouldBe
@@ -308,19 +295,6 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
-            )
-          )
-      }
-
-      "return list of attributes of ballots" in {
-
-        sut.getTableAttributes(EntityPath("ballots", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
             )
           )
       }

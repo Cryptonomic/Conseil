@@ -3,12 +3,11 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.config.ServerConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.metadata
-import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, Path, PlatformPath}
+import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.tezos.ApiOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 
@@ -16,10 +15,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, metadataService: MetadataService, server: ServerConfiguration)(
+  def apply(metadataService: MetadataService, server: ServerConfiguration)(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(config, DataPlatform(server.maxQueryResultSize), metadataService)
+    new Data(DataPlatform(server.maxQueryResultSize), metadataService)
 }
 
 /**
@@ -28,7 +27,7 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
+class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {

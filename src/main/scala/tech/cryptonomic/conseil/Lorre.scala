@@ -270,8 +270,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processVotesForBlocks(blocks: List[TezosTypes.Block]): Future[Option[Int]] = {
     import cats.syntax.traverse._
     import cats.syntax.foldable._
-    import cats.syntax.semigroup._
-    import cats.syntax.apply._
     import cats.instances.list._
     import cats.instances.option._
     import cats.instances.int._
@@ -280,25 +278,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     tezosNodeOperator.getVotingDetails(blocks).flatMap {
       case (proposals, bakersBlocks, ballotsBlocks) =>
-        //this is a single list
-        val writeProposal = TezosDb.writeVotingProposals(proposals)
         //this is a nested list, each block with many baker rolls
         val writeBakers = bakersBlocks.traverse {
           case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
         }
-        //this is a nested list, each block with many ballot votes
-        val writeBallots = ballotsBlocks.traverse {
-          case (block, ballots) => TezosDb.writeVotingBallots(ballots, block)
-        }
 
-        /* combineAll reduce List[Option[Int]] => Option[Int] by summing all ints present
-         * |+| is shorthand syntax to sum Option[Int] together using Int's sums
-         * Any None in the operands will make the whole operation collapse in a None result
-         */
-        val combinedVoteWrites = (writeProposal, writeBakers, writeBallots).mapN(
-          (storedProposals, storedBakers, storedBallots) =>
-            storedProposals |+| storedBakers.combineAll |+| storedBallots.combineAll
-        )
+        val combinedVoteWrites = writeBakers.map(_.combineAll.map(_ + proposals.size + ballotsBlocks.size))
 
         db.run(combinedVoteWrites.transactionally)
     }

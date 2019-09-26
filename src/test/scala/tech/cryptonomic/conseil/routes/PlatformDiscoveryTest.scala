@@ -6,27 +6,12 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
 import tech.cryptonomic.conseil.config.Types.PlatformName
-import tech.cryptonomic.conseil.config.{
-  AttributeConfiguration,
-  EntityConfiguration,
-  MetadataConfiguration,
-  NetworkConfiguration,
-  PlatformConfiguration,
-  Platforms
-}
+import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{
-  AttributeValuesCacheConfiguration,
-  MetadataService,
-  TestPlatformDiscoveryOperations,
-  UnitTransformation
-}
-import tech.cryptonomic.conseil.tezos.TezosPlatformDiscoveryOperations
+import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, TestPlatformDiscoveryOperations, UnitTransformation}
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
-
-import scala.concurrent.Future.successful
 
 class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTest with MockFactory {
 
@@ -274,7 +259,6 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
           // then
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val result: List[Map[String, Any]] = toListOfMaps[Any](responseAs[String])
 
           val headResult = toListOfMaps[Any](responseAs[String]).head
           headResult("name") shouldBe "attribute"

@@ -22,7 +22,7 @@ trait ConseilAppConfig {
   /** Lazily reads all configuration upstart, will print all errors encountered during loading */
   private val argsParser = new OptionParser[VerboseOutput]("conseil") {
     opt[Unit]('v', "verbose")
-      .action((_, conf) => VerboseOutput(true))
+      .action((_, _) => VerboseOutput(true))
       .text("print additional configuration info when the application is launched")
 
     help('h', "help").text("prints this usage text")

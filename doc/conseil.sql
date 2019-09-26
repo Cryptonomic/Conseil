@@ -103,19 +103,6 @@ CREATE SEQUENCE public.balance_updates_id_seq
 
 ALTER SEQUENCE public.balance_updates_id_seq OWNED BY public.balance_updates.id;
 
-
---
--- Name: ballots; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.ballots (
-    pkh character varying NOT NULL,
-    ballot character varying NOT NULL,
-    block_id character varying NOT NULL,
-    block_level integer NOT NULL
-);
-
-
 --
 -- Name: blocks; Type: TABLE; Schema: public; Owner: -
 --
@@ -282,19 +269,6 @@ CREATE SEQUENCE public.operations_operation_id_seq
 --
 
 ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.operation_id;
-
-
---
--- Name: proposals; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.proposals (
-    protocol_hash character varying NOT NULL,
-    block_id character varying NOT NULL,
-    block_level integer NOT NULL,
-    supporters integer
-);
-
 
 --
 -- Name: rolls; Type: TABLE; Schema: public; Owner: -
@@ -502,29 +476,12 @@ CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
 
 CREATE INDEX ix_rolls_block_level ON public.rolls USING btree (block_level);
 
-
---
--- Name: ix_proposals_protocol; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_proposals_protocol ON public.proposals USING btree (protocol_hash);
-
-
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
-
-
---
--- Name: ballots ballot_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ballots
-    ADD CONSTRAINT ballot_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
-
 
 --
 -- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -587,14 +544,6 @@ ALTER TABLE ONLY public.operations
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES public.operation_groups(hash, block_id);
-
---
--- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.proposals
-    ADD CONSTRAINT proposal_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
-
 
 --
 -- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
