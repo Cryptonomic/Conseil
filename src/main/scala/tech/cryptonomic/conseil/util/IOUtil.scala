@@ -22,6 +22,7 @@ object IOUtil {
   /** Transforms a reactive publisher to a purely functional stream over IO.
     * Useful to convert streaming database results based on reactive publisher.
     */
-  def publishStream[T](publisher: Publisher[T])(implicit shifter: ContextShift[IO]): fs2.Stream[IO, T] = publisher.toStream[IO]()
+  def publishStream[T](publisher: Publisher[T])(implicit shifter: ContextShift[IO]): fs2.Stream[IO, T] =
+    publisher.toStream[IO]()
 
 }

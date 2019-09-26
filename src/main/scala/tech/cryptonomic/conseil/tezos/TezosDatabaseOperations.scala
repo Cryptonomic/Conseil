@@ -556,7 +556,7 @@ object TezosDatabaseOperations extends LazyLogging {
       .take(1)
       .result
       .headOption
-      .map(_.getOrElse(0))
+      .map(_.getOrElse(-1))
 
   /** Load all operations referenced from a block level and higher, that are of a specific kind.
     * @param ofKind a set of kinds to filter operations, if empty there will be no result
@@ -564,9 +564,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return the matching operations, sorted by ascending block-level
     */
   def fetchRecentOperationsByKind(ofKind: Set[String], fromLevel: Int = 0) =
-      Tables.Operations.filter(
-        row => (row.kind inSet(ofKind)) && (row.blockLevel >= fromLevel)
-      ).sortBy(_.blockLevel.asc)
+    Tables.Operations
+      .filter(
+        row => (row.kind inSet (ofKind)) && (row.blockLevel >= fromLevel)
+      )
+      .sortBy(_.blockLevel.asc)
       .result
 
 }

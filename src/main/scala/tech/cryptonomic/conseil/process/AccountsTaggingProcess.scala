@@ -1,7 +1,9 @@
 package tech.cryptonomic.conseil.process
-import cats.effect.IO
+import cats.Applicative
+import cats.effect.Sync
 import cats.syntax.applicative._
 import cats.syntax.flatMap._
+import cats.syntax.functor._
 import cats.syntax.option._
 import cats.instances.int._
 import scala.{Stream => _} //hide from default scope
@@ -12,6 +14,12 @@ import cats.effect.concurrent.Ref
 import tech.cryptonomic.conseil.util.PureLogging
 
 object AccountsTaggingProcess {
+
+  /** Creates an instance of the process, which is an effectful operation */
+  def apply[F[_]: Sync]: F[AccountsTaggingProcess[F]] =
+    Ref[F]
+      .of(Option.empty[BlockLevel])
+      .map(new AccountsTaggingProcess[F](_))
 
   /** Convenience alias */
   type BlockLevel = BigDecimal
@@ -24,14 +32,11 @@ object AccountsTaggingProcess {
 /** Scans the existing blocks stored by conseil for specific account-related operations
   * i.e. Revelation, Activation.
   * It then marks such accounts with the appropriate flag (e.g. revealed, activated).
+  * @param highWatermarkRef a pure reference that tracks the highest verified block level for flagging operations
   */
-class AccountsTaggingProcess extends PureLogging {
+class AccountsTaggingProcess[F[_]: Sync] private (highWatermarkRef: Ref[F, Option[AccountsTaggingProcess.BlockLevel]])
+    extends PureLogging {
   import AccountsTaggingProcess._
-
-  /* tracks the highest checked block level when scanning the blocks
-   * it's empty for a processor which was just created
-   */
-  private val highWatermarkRef = Ref[IO].of(Option.empty[BlockLevel])
 
   /** the process signals how many flags have been added */
   type ProcessorOutput = Option[Int]
@@ -43,30 +48,31 @@ class AccountsTaggingProcess extends PureLogging {
   trait ServiceDependencies {
 
     /** Computes the highest level that previously "tagged" an account.
-      * @return the highest marked account level, or `0`, if none fits the role
+      * @return the highest marked account level, or `-1`, if none fits the role
       */
-    def readHighWatermark: IO[BlockLevel]
+    def readHighWatermark: F[BlockLevel]
 
     /** mark as active an account on the db */
-    def flagAsActive(accountId: PublicKeyHash): IO[Int]
+    def flagAsActive(accountId: PublicKeyHash): F[Int]
 
     /** mark as revealed an account on the db */
-    def flagAsRevealed(accountId: PublicKeyHash): IO[Int]
+    def flagAsRevealed(accountId: PublicKeyHash): F[Int]
 
     /** Loads all stored reveal or activation operations from a block level onward
       * @param fromLevel the [excluded] lowest level to load
       * @return an effectful stream of rows, sorted with ascending block level references
       */
-    def readOperations(fromLevel: BlockLevel): Stream[IO, OperationsRow]
+    def readOperations(fromLevel: BlockLevel): Stream[F, OperationsRow]
 
   }
 
   /* Actually gets all operations and flags the accounts.
    * Returns the effectful computation that will count the number of
-   * changes to the accounts
+   * changes to the accounts.
    */
-  private def scan(fromLevel: BlockLevel)(implicit api: ServiceDependencies): IO[Option[Int]] = {
-    val missingResult = IO(Option.empty[Int])
+  private def scan(fromLevel: BlockLevel)(implicit api: ServiceDependencies): F[Option[Int]] = {
+
+    val missingResult = Applicative[F].pure(Option.empty[Int])
 
     /* Actually flag an account based on the operation passed, which can be a reveal or activation
      * @return the IO action that will store the flags and return the number of changed rows, or none if
@@ -74,13 +80,13 @@ class AccountsTaggingProcess extends PureLogging {
      */
     def flag(
         accountRef: Option[String],
-        flagOperation: PublicKeyHash => IO[Int]
+        flagOperation: PublicKeyHash => F[Int]
     )(
         implicit op: OperationsRow
-    ): IO[Option[Int]] =
+    ): F[Option[Int]] =
       accountRef match {
         case None =>
-          logger.pureLog[IO](
+          logger.pureLog[F](
             _.error("No account reference found in {}", op)
           ) >> missingResult
         case Some(hash) =>
@@ -88,7 +94,7 @@ class AccountsTaggingProcess extends PureLogging {
       }
 
     /* Uppdates the passed-in reference with the new level, if higher */
-    def updateIfHigher(newLevel: BlockLevel)(ref: Ref[IO, Option[BlockLevel]]): IO[Unit] =
+    def updateIfHigher(newLevel: BlockLevel)(ref: Ref[F, Option[BlockLevel]]): F[Unit] =
       ref update {
           //puts the new level if it's higher than the stored one, or if there was nothing there
           stored =>
@@ -108,8 +114,12 @@ class AccountsTaggingProcess extends PureLogging {
             flag(operation.pkh, api.flagAsActive)
           case kind =>
             //log unexpected kind
-            logger.pureLog[IO](
-              _.error("""I didn't expect to process such operation kind: "{}", while flagging accounts. It should be one of {}""", operation, operationKinds.mkString(", "))
+            logger.pureLog[F](
+              _.error(
+                """I didn't expect to process such operation kind: "{}", while flagging accounts. It should be one of {}""",
+                operation,
+                operationKinds.mkString(", ")
+              )
             ) >> missingResult
         }).map { flagResult =>
           (flagResult, operation.blockLevel)
@@ -117,8 +127,8 @@ class AccountsTaggingProcess extends PureLogging {
       }
       .evalTap {
         //evenutually store the reference level, if needed
-        case (Some(flaggedCount), blockLevel) => highWatermarkRef.flatMap(updateIfHigher(blockLevel))
-        case (None, _) => IO.unit
+        case (Some(flaggedCount), blockLevel) => updateIfHigher(blockLevel)(highWatermarkRef)
+        case (None, _) => Applicative[F].unit
       }
       .foldMap {
         //extracts and sums all integer values (counting the actual updates)
@@ -132,13 +142,14 @@ class AccountsTaggingProcess extends PureLogging {
   }
 
   /* will have the method that accepts data and actualy processes it*/
-  def process(implicit api: ServiceDependencies): IO[ProcessorOutput] =
+  def process(implicit api: ServiceDependencies): F[ProcessorOutput] =
     for {
-      markRef <- highWatermarkRef
-      initialMark <- markRef.get
-      defaultedMark <- initialMark.fold(api.readHighWatermark)(_.pure[IO])
-      _ <- markRef.set(defaultedMark.some)
-      rowsFlags <- scan(defaultedMark)
+      initialMark <- highWatermarkRef.get
+      _ <- logger.pureLog(_.info("Initial mark is {}", initialMark))
+      defaultedMark <- initialMark.fold(api.readHighWatermark)(_.pure[F])
+      _ <- logger.pureLog(_.info("Will start scanning operations to flag, from block level {}", defaultedMark + 1))
+      _ <- highWatermarkRef.set(defaultedMark.some)
+      rowsFlags <- scan(defaultedMark + 1)
     } yield rowsFlags
 
 }

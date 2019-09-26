@@ -29,43 +29,45 @@ object Harpoon extends IOApp with PureLogging {
     //we read custom conf, usually provided from the environment
     val conf = HarpoonAppConfig
 
-    implicit  val ctx = scala.concurrent.ExecutionContext.global
+    implicit val ctx = scala.concurrent.ExecutionContext.global
     val timer = IO.timer(scala.concurrent.ExecutionContext.global)
 
     //we create the processor stage, with the custom types needed
-    val mainProcess = new AccountsTaggingProcess()
+    val mainProgram = AccountsTaggingProcess[IO].flatMap { tagging =>
+      /* Implement any dependency needed to run the processing.
+       */
+      implicit val serviceApis = injectServices(tagging)
 
-    /* Implement any dependency needed to run the processing.
-     */
-    implicit val serviceApis = injectServices(mainProcess)
-
-    /* now we can call the processing stage */
-    val processCycle: IO[Unit] =
-      mainProcess.process
-        .redeemWith(
-          err =>
-            logger.pureLog[IO](
-              _.error("Harpoon processing failed to complete", err)
-            ),
-          flags =>
-            logger.pureLog[IO](
-              _.info(
-                "This Harpoon processing cycle marked {} accounts",
-                flags.fold("an unknown number of")(String.valueOf)
+      /* now we can call the processing stage */
+      val processCycle: IO[Unit] =
+        tagging.process
+          .redeemWith(
+            err =>
+              logger.pureLog[IO](
+                _.error("Harpoon processing failed to complete", err)
+              ),
+            flags =>
+              logger.pureLog[IO](
+                _.info(
+                  "This Harpoon processing cycle marked {} accounts",
+                  flags.fold("an unknown number of")(String.valueOf)
+                )
               )
-            )
-        )
+          )
 
-    val program =
-      processCycle *>
-          IO.shift *>
-          logger.pureLog[IO](
-            _.info("Harpoon is now waiting for the next processing cycle")
-          ) *>
-          timer.sleep(conf.cycleSleep)
+      val program =
+        processCycle *>
+            IO.shift *>
+            logger.pureLog[IO](
+              _.info("Harpoon is now waiting for the next processing cycle")
+            ) *>
+            timer.sleep(conf.cycleSleep)
+
+      program.foreverM
+    }
 
     /* we return the exit status into IO. The IOApp will run the actual process */
-    program.foreverM.as(ExitCode.Success)
+    mainProgram.as(ExitCode.Success)
 
   }
 
@@ -77,7 +79,7 @@ object Harpoon extends IOApp with PureLogging {
     IOUtil.publishStream(DatabaseUtil.db.stream(action))
 
   /* builds the service instance based on global operations available in the project */
-  private def injectServices(processor: AccountsTaggingProcess)(implicit ec: ExecutionContext) =
+  private def injectServices(processor: AccountsTaggingProcess[IO])(implicit ec: ExecutionContext) =
     new processor.ServiceDependencies {
 
       override def flagAsActive(accountId: TezosTypes.PublicKeyHash): IO[Int] =
@@ -92,14 +94,17 @@ object Harpoon extends IOApp with PureLogging {
       //additional configurations are needed to make Postgres comply with the streaming protocol
       override def readOperations(fromLevel: AccountsTaggingProcess.BlockLevel): fs2.Stream[IO, Tables.OperationsRow] =
         runDbToStream(
-          TezosDatabaseOperations.fetchRecentOperationsByKind(
-            AccountsTaggingProcess.operationKinds,
-            fromLevel.toIntExact
-          ).withStatementParameters(
-            rsType = ResultSetType.ForwardOnly,
-            rsConcurrency = ResultSetConcurrency.ReadOnly,
-            fetchSize = 50)
-          .transactionally
+          TezosDatabaseOperations
+            .fetchRecentOperationsByKind(
+              AccountsTaggingProcess.operationKinds,
+              fromLevel.toIntExact
+            )
+            .withStatementParameters(
+              rsType = ResultSetType.ForwardOnly,
+              rsConcurrency = ResultSetConcurrency.ReadOnly,
+              fetchSize = 50
+            )
+            .transactionally
         )
     }
 }
