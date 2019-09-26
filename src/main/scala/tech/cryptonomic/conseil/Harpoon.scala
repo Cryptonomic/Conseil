@@ -72,11 +72,11 @@ object Harpoon extends IOApp with PureLogging {
   }
 
   /* Allows running db-operations as cats-effect IO actions */
-  private def runDbToIO[T] = IOUtil.runDbToIO[T](DatabaseUtil.db.run _) _
+  private def runDbToIO[T] = IOUtil.runDbToIO[T](DatabaseUtil.lorreDb.run _) _
 
   /* Allows streaming db-results */
   private def runDbToStream[R, T](action: StreamingDBIO[R, T]) =
-    IOUtil.publishStream(DatabaseUtil.db.stream(action))
+    IOUtil.publishStream(DatabaseUtil.conseilDb.stream(action))
 
   /* builds the service instance based on global operations available in the project */
   private def injectServices(processor: AccountsTaggingProcess[IO])(implicit ec: ExecutionContext) =
