@@ -74,7 +74,7 @@ class TezosPlatformDiscoveryOperations(
   /** Pre-caching attributes without cardinality */
   private def preCacheAttributes: DBIO[AttributesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some(""), Some(""), Some(Seq("TABLE")))
+      tables <- MTable.getTables(Some(""), Some("tezos"), Some(""), Some(Seq("TABLE")))
       columns <- getColumns(tables)
       indexes <- getIndexes(tables)
       primaryKeys <- getPrimaryKeys(tables)
@@ -182,7 +182,7 @@ class TezosPlatformDiscoveryOperations(
   /** Method querying slick metadata tables for entities */
   private def preCacheEntities: DBIO[EntitiesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some(""), Some(""), Some(Seq("TABLE")))
+      tables <- MTable.getTables(Some(""), Some("tezos"), Some(""), Some(Seq("TABLE")))
       counts <- getTablesCount(tables)
     } yield
       now -> (tables.map(_.name.name) zip counts).map {
