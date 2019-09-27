@@ -188,7 +188,10 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of operations" in {
-        sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue.value should contain theSameElementsAs List(
+        sut
+          .getTableAttributes(EntityPath("operations", networkPath))
+          .futureValue
+          .value should contain theSameElementsAs List(
           Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
           Attribute(
             "operation_group_hash",
@@ -312,7 +315,11 @@ class TezosPlatformDiscoveryOperationsTest
           AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None).futureValue.right.get shouldBe List("example1")
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)
+          .futureValue
+          .right
+          .get shouldBe List("example1")
       }
 
       "return list of boolean values" in {
@@ -331,7 +338,11 @@ class TezosPlatformDiscoveryOperationsTest
         metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
 
         // expect
-        sut.listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath))).futureValue.right.get shouldBe List("true", "false")
+        sut
+          .listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath)))
+          .futureValue
+          .right
+          .get shouldBe List("true", "false")
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
@@ -340,7 +351,11 @@ class TezosPlatformDiscoveryOperationsTest
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues(AttributePath("medium", EntityPath("fees", networkPath)), None).futureValue.left.get shouldBe List(
+        sut
+          .listAttributeValues(AttributePath("medium", EntityPath("fees", networkPath)), None)
+          .futureValue
+          .left
+          .get shouldBe List(
           InvalidAttributeDataType("medium"),
           HighCardinalityAttribute("medium")
         )
@@ -353,7 +368,11 @@ class TezosPlatformDiscoveryOperationsTest
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
         sut
-          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5)))
+          .listAttributeValues(
+            AttributePath("kind", EntityPath("fees", networkPath)),
+            Some("exa"),
+            Some(AttributeCacheConfiguration(true, 4, 5))
+          )
           .futureValue
           .left
           .get shouldBe List(InvalidAttributeFilterLength("kind", 4))
@@ -368,7 +387,11 @@ class TezosPlatformDiscoveryOperationsTest
         // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
         val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), maliciousFilter).futureValue.right.get shouldBe List.empty
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), maliciousFilter)
+          .futureValue
+          .right
+          .get shouldBe List.empty
 
         dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
 
@@ -379,14 +402,26 @@ class TezosPlatformDiscoveryOperationsTest
           AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
         )
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1")).futureValue.right.get shouldBe List.empty
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1"))
+          .futureValue
+          .right
+          .get shouldBe List.empty
         dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None).futureValue.right.get should contain theSameElementsAs List(
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)
+          .futureValue
+          .right
+          .get should contain theSameElementsAs List(
           "example1",
           "example2"
         )
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("ex")).futureValue.right.get should contain theSameElementsAs List(
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("ex"))
+          .futureValue
+          .right
+          .get should contain theSameElementsAs List(
           "example1",
           "example2"
         )
@@ -395,7 +430,11 @@ class TezosPlatformDiscoveryOperationsTest
           .futureValue
           .right
           .get should contain theSameElementsAs List("example1", "example2")
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1")).futureValue.right.get shouldBe List("example1")
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1"))
+          .futureValue
+          .right
+          .get shouldBe List("example1")
 
       }
     }

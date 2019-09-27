@@ -6,20 +6,18 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.option._
 import cats.instances.int._
+import cats.mtl.MonadState
 import scala.{Stream => _} //hide from default scope
 import fs2._
 import tech.cryptonomic.conseil.tezos.Tables.OperationsRow
 import tech.cryptonomic.conseil.tezos.TezosTypes.PublicKeyHash
-import cats.effect.concurrent.Ref
 import tech.cryptonomic.conseil.util.PureLogging
 
 object AccountsTaggingProcess {
 
   /** Creates an instance of the process, which is an effectful operation */
-  def apply[F[_]: Sync]: F[AccountsTaggingProcess[F]] =
-    Ref[F]
-      .of(Option.empty[BlockLevel])
-      .map(new AccountsTaggingProcess[F](_))
+  def apply[F[_]: Sync: MonadState[?[_], Option[BlockLevel]]]: AccountsTaggingProcess[F] =
+    new AccountsTaggingProcess[F]
 
   /** Convenience alias */
   type BlockLevel = BigDecimal
@@ -34,12 +32,16 @@ object AccountsTaggingProcess {
   * It then marks such accounts with the appropriate flag (e.g. revealed, activated).
   * @param highWatermarkRef a pure reference that tracks the highest verified block level for flagging operations
   */
-class AccountsTaggingProcess[F[_]: Sync] private (highWatermarkRef: Ref[F, Option[AccountsTaggingProcess.BlockLevel]])
-    extends PureLogging {
+class AccountsTaggingProcess[F[_]: Sync] private ( //highWatermarkRef: Ref[F, Option[AccountsTaggingProcess.BlockLevel]])(
+    implicit highWatermark: MonadState[F, Option[AccountsTaggingProcess.BlockLevel]]
+) extends PureLogging {
   import AccountsTaggingProcess._
 
   /** the process signals how many flags have been added */
   type ProcessorOutput = Option[Int]
+
+  /** the process needs to have an initial reference to tag from */
+  type ProcessorInput = Option[BlockLevel]
 
   /* an optional input (might be implicit?) that contain references to
    * other conseil internal services/apis needed to perform the processing
@@ -94,12 +96,12 @@ class AccountsTaggingProcess[F[_]: Sync] private (highWatermarkRef: Ref[F, Optio
       }
 
     /* Uppdates the passed-in reference with the new level, if higher */
-    def updateIfHigher(newLevel: BlockLevel)(ref: Ref[F, Option[BlockLevel]]): F[Unit] =
-      ref update {
-          //puts the new level if it's higher than the stored one, or if there was nothing there
-          stored =>
-            stored.map(_ max newLevel).orElse(newLevel.some)
-        }
+    def updateIfHigher(newLevel: BlockLevel): F[Unit] =
+      highWatermark.modify {
+        //puts the new level if it's higher than the stored one, or if there was nothing there
+        stored =>
+          stored.map(_ max newLevel).orElse(newLevel.some)
+      }
 
     /* find sorted operations and flag the related accounts as they come by, all the while keeping track of the
      * new block level, as read from the operations
@@ -127,7 +129,7 @@ class AccountsTaggingProcess[F[_]: Sync] private (highWatermarkRef: Ref[F, Optio
       }
       .evalTap {
         //evenutually store the reference level, if needed
-        case (Some(flaggedCount), blockLevel) => updateIfHigher(blockLevel)(highWatermarkRef)
+        case (Some(flaggedCount), blockLevel) => updateIfHigher(blockLevel)
         case (None, _) => Applicative[F].unit
       }
       .foldMap {
@@ -144,11 +146,11 @@ class AccountsTaggingProcess[F[_]: Sync] private (highWatermarkRef: Ref[F, Optio
   /* will have the method that accepts data and actualy processes it*/
   def process(implicit api: ServiceDependencies): F[ProcessorOutput] =
     for {
-      initialMark <- highWatermarkRef.get
+      initialMark <- highWatermark.get
       _ <- logger.pureLog(_.info("Initial mark is {}", initialMark))
       defaultedMark <- initialMark.fold(api.readHighWatermark)(_.pure[F])
       _ <- logger.pureLog(_.info("Will start scanning operations to flag, from block level {}", defaultedMark + 1))
-      _ <- highWatermarkRef.set(defaultedMark.some)
+      _ <- highWatermark.set(defaultedMark.some)
       rowsFlags <- scan(defaultedMark + 1)
     } yield rowsFlags
 

@@ -26,6 +26,8 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots")
 )
 
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3")
+
 libraryDependencies ++= Seq(
   "ch.qos.logback"               % "logback-classic"                % "1.2.3",
   "com.typesafe"                 % "config"                         % "1.3.3",
@@ -45,8 +47,9 @@ libraryDependencies ++= Seq(
   "com.chuusai"                  %% "shapeless"                     % "2.3.3",
   "org.typelevel"                %% "cats-core"                     % catsVersion,
   "org.typelevel"                %% "cats-effect"                   % "1.3.1",
+  "org.typelevel"                %% "cats-mtl-core"                 % "0.7.0",
   "org.typelevel"                %% "mouse"                         % "0.20",
-  "co.fs2"                       %% "fs2-core"                      % "1.0.4",
+  "co.fs2"                       %% "fs2-core"                      % "2.0.1",
   "co.fs2"                       %% "fs2-reactive-streams"          % "2.0.1",
   "com.github.julien-truffaut"   %% "monocle-core"                  % monocleVersion exclude ("org.typelevel.cats", "cats-core"),
   "com.github.julien-truffaut"   %% "monocle-macro"                 % monocleVersion exclude ("org.typelevel.cats", "cats-core") exclude ("org.typelevel.cats", "cats-macros"),
