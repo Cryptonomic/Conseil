@@ -1,28 +1,15 @@
 package tech.cryptonomic.conseil
 
+import slick.jdbc.PostgresProfile.api._
+
 import akka.actor.ActorSystem
 import akka.Done
 import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{
-  TezosTypes,
-  FeeOperations,
-  ShutdownComplete,
-  TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
-  TezosDatabaseOperations => TezosDb
-}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  Account,
-  AccountId,
-  BlockReference,
-  BlockTagged,
-  Delegate,
-  PublicKeyHash
-}
+import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -268,6 +255,56 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         db.run(combinedVoteWrites.transactionally)
     }
   }
+
+
+  /**
+    * Collect data from Blocks Table, Operations Table, and the Tezos RPC,
+    * return the appropriate list of VoteAggregates, and write them to the Votes table.
+    * @param ex the needed ExecutionContext to combine multiple database operations
+    * @return a future result of the number of rows stored to db, if supported by the driver
+    */
+  private[this] def processTezosVotes()(implicit ex: ExecutionContext): Future[Option[Int]] = {
+    import cats.instances.list._
+    import cats.instances.future._
+    import cats.syntax.traverse._
+    import cats.implicits._
+    import slick.jdbc.PostgresProfile.api._
+
+
+    logger.info("Processing latest Tezos votes data...")
+
+    def listOfBalances(blockHashesAndAddresses: Seq[(String, Option[String])]):
+      DBIO[PositiveBigNumber] =
+      DBIO.from{
+        Future.traverse(
+          blockHashesAndAddresses
+            .map{ case (hash, address) => (BlockHash(hash), AccountId(address.get)) }
+        ){ x => tezosNodeOperator.getAccountBalanceForBlock( x._1, x._2)}.map(sum)
+      }
+
+    //get fields from db in Tezos Database Operations, use the block levels as input
+    val computeAndStore = for {
+      blockLevels <- TezosDb.fetchVotingBlockLevels
+      listOfListOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
+      listOfListOfVotingFields.map(x => x)
+      val yayCount = yays.length
+      val nayCount = nays.length
+      val passCount = passes.length
+      //function which calculates the stakes
+      //function which writes the votes
+      //dbWrites <- TezosDb.writeVotes(votes.collect { case Some(vote) => vote })
+    } yield votes// dbWrites
+
+    db.run(computeAndStore).andThen {
+      case Success(Some(written)) => logger.info("Wrote {} vote aggregates to the database.", written)
+      case Success(None) => logger.info("Wrote vote aggregates to the database.")
+      case Failure(e) => logger.error("Could not write vote aggregates to the database because", e)
+    }
+
+      ???
+
+  }
+
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)

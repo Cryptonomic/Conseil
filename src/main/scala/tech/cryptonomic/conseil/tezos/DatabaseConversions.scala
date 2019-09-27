@@ -38,6 +38,12 @@ object DatabaseConversions {
 
   //implicit conversions to database row types
 
+
+  implicit val votesToVotesRow = new Conversion[Id, VoteAggregates, Tables.VotesRow] {
+    override def convert(from: VoteAggregates) =
+      from.into[Tables.VotesRow].transform
+  }
+
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
     override def convert(from: AverageFees) =
       from.into[Tables.FeesRow].transform

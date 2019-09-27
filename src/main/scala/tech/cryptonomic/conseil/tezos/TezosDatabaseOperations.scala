@@ -23,6 +23,18 @@ object TezosDatabaseOperations extends LazyLogging {
   import DatabaseConversions._
 
   /**
+    *  Writes computed vote aggregates to a database.
+    *
+    *  @param votes List of vote aggregates for some range of block levels with ballots.
+    *  @return      Database action possibly containing the number of rows written
+    */
+
+  def writeVotes(votes: List[VoteAggregates]): DBIO[Option[Int]] = {
+    logger.info("Writing votes to DB...")
+    Tables.Votes ++= votes.map(_.convertTo[Tables.VotesRow])
+  }
+
+  /**
     * Writes computed fees averages to a database.
     *
     * @param fees List of average fees for different operation kinds.
@@ -434,6 +446,53 @@ object TezosDatabaseOperations extends LazyLogging {
       .max
       .getOrElse(defaultBlockLevel.toInt)
       .result
+
+  /** Get next batch of voting levels */
+  def fetchVotingBlockLevels: DBIO[List[Int]] = {
+
+    def fetchVotesMaxLevel: DBIO[Int] =
+      Tables.Votes
+        .map(_.level)
+        .max
+        .getOrElse(defaultBlockLevel.toInt)
+        .result
+
+    for {
+      headBlockLevel <- fetchMaxBlockLevel
+      voteMaxLevel <- fetchVotesMaxLevel
+    } yield (voteMaxLevel + 1 to headBlockLevel).toList
+  }
+
+    type VotingFields = (Option[String], Int, String, Option[Int], java.sql.Timestamp, Option[String], Option[String])
+
+    /** Get necessary fields to populate votes table from ballot operations */
+  def fetchVotingFields(levels: Set[Int])(
+    implicit ec: ExecutionContext): DBIO[Seq[Seq[VotingFields]]] = {
+      Tables.Operations
+      .filter(_.kind == "ballot")
+      .filter(_.blockLevel inSet levels)
+      .map(
+        o =>
+          (
+            o.proposal,
+            o.blockLevel,
+            o.blockHash,
+            o.cycle,
+            o.timestamp,
+            o.ballot,
+            o.source
+        )
+      )
+      .groupBy(_._2)
+      .map{ case (level, fields) => fields}
+        .result
+
+      }
+
+
+
+
+
 
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =

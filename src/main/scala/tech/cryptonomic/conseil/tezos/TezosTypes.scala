@@ -161,6 +161,38 @@ object TezosTypes {
     )
   }
 
+  /**
+    * Representation of aggregation of votes (yay/nay/pass) for proposals
+    * in a given block, along with stake totals for the accounts that voted
+    * yay/nay/pass.
+    *
+    * @param timestamp     The timestamp when the calculation took place
+    * @param cycle         Cycle during which aggregation took place
+    * @param level         Block during which aggregation took place
+    * @param proposalHash  Hash of proposal voted on this block
+    * @param yayCount      Total count of yays for proposal
+    * @param nayCount      Total count of nays for proposal
+    * @param passCount     Total count of passes for proposal
+    * @param yayStake      Total stake of accounts who voted yay this block
+    * @param nayStake      Total stake of accounts who voted nay this block
+    * @param passStake     Total stake of accounts who voted pass this block
+    * @param totalStake    Total stake of accounts who voted
+    *
+    */
+  final case class VoteAggregates(
+                                   timestamp: java.sql.Timestamp,
+                                   cycle: Int,
+                                   level: Int,
+                                   proposalHash: Option[String],
+                                   yayCount: Int,
+                                   nayCount: Int,
+                                   passCount: Int,
+                                   yayStake: Int,
+                                   nayStake: Int,
+                                   passStake: Int,
+                                   totalStake: Int,
+                                 )
+
   /** root of the operation hiearchy */
   sealed trait Operation extends Product with Serializable
   //operations definition

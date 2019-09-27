@@ -34,7 +34,29 @@ BEGIN
 END;
 $$;
 
+
+SET default_tablespace = '';
+
 SET default_with_oids = false;
+
+--
+-- Name: Votes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."Votes" (
+    "timestamp" timestamp without time zone NOT NULL,
+    cycle integer,
+    level integer,
+    proposal_hash character varying NOT NULL,
+    yay_count integer,
+    nay_count integer,
+    pass_count integer,
+    yay_stake numeric,
+    nay_stake numeric,
+    pass_stake numeric,
+    total_stake numeric
+);
+
 
 --
 -- Name: accounts; Type: TABLE; Schema: public; Owner: -
@@ -102,6 +124,7 @@ CREATE SEQUENCE public.balance_updates_id_seq
 --
 
 ALTER SEQUENCE public.balance_updates_id_seq OWNED BY public.balance_updates.id;
+
 
 --
 -- Name: blocks; Type: TABLE; Schema: public; Owner: -
@@ -270,6 +293,7 @@ CREATE SEQUENCE public.operations_operation_id_seq
 
 ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.operation_id;
 
+
 --
 -- Name: rolls; Type: TABLE; Schema: public; Owner: -
 --
@@ -300,8 +324,16 @@ ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval
 -- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE public.operation_groups
+ALTER TABLE ONLY public.operation_groups
     ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (block_id, hash);
+
+
+--
+-- Name: Votes Votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Votes"
+    ADD CONSTRAINT "Votes_pkey" PRIMARY KEY (proposal_hash);
 
 
 --
@@ -415,6 +447,13 @@ CREATE INDEX ix_operations_block_level ON public.operations USING btree (block_l
 
 
 --
+-- Name: ix_operations_delegate; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_operations_delegate ON public.operations USING btree (delegate);
+
+
+--
 -- Name: ix_operations_destination; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -436,16 +475,11 @@ CREATE INDEX ix_operations_timestamp ON public.operations USING btree ("timestam
 
 
 --
--- Name: ix_operations_delegate; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_delegate ON public.operations USING btree ("delegate");
-
---
 -- Name: ix_rolls_block_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
+
 
 --
 -- Name: ix_rolls_block_level; Type: INDEX; Schema: public; Owner: -
@@ -453,12 +487,14 @@ CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
 
 CREATE INDEX ix_rolls_block_level ON public.rolls USING btree (block_level);
 
+
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+
 
 --
 -- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -515,12 +551,14 @@ ALTER TABLE ONLY public.delegates
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
 
+
 --
 -- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES public.operation_groups(hash, block_id);
+
 
 --
 -- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -533,3 +571,4 @@ ALTER TABLE ONLY public.rolls
 --
 -- PostgreSQL database dump complete
 --
+
