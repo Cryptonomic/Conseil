@@ -186,8 +186,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of operations" in {
-        sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue shouldBe
-          Some(
+        sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue.get should contain theSameElementsAs
             List(
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
@@ -250,7 +249,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
             )
-          )
+
       }
 
       "return list of attributes of operation groups" in {
