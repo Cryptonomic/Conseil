@@ -284,6 +284,29 @@ CREATE TABLE public.rolls (
 );
 
 
+CREATE TABLE public.baking_rights (
+    block_hash character varying NOT NULL,
+    level integer NOT NULL,
+    delegate character varying NOT NULL,
+    priority integer NOT NULL,
+    estimated_time timestamp without time zone NOT NULL,
+    PRIMARY KEY(level, delegate)
+);
+
+CREATE INDEX baking_rights_level_idx ON public.baking_rights (level);
+
+CREATE TABLE public.endorsing_rights (
+    block_hash character varying NOT NULL,
+    level integer NOT NULL,
+    delegate character varying NOT NULL,
+    slot integer NOT NULL,
+    estimated_time timestamp without time zone NOT NULL,
+    PRIMARY KEY(level, delegate, slot)
+);
+
+
+CREATE INDEX endorsing_rights_level_idx ON public.endorsing_rights (level);
+
 --
 -- Name: balance_updates id; Type: DEFAULT; Schema: public; Owner: -
 --

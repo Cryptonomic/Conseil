@@ -207,6 +207,19 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     }
 
+    def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
+      import cats.implicits._
+      fetchingResults.map {
+        case (block, _) =>
+          val bh = block.data.hash
+          (tezosNodeOperator.getBakingRightsForBlock(bh), tezosNodeOperator.getEndorsingRightsForBlock(bh)).mapN {
+            case (br, er) =>
+              (db.run(TezosDb.writeBakingRights(bh, br)), db.run(TezosDb.writeEndorsingRights(bh, er)))
+                .mapN((_, _) => ())
+          }.flatten
+      }.sequence.map(_ => ())
+    }
+
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
       case (pages, total) => {
@@ -221,8 +234,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         Source
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
-          .mapAsync(1) {
-            processBlocksPage(_) flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
+          .mapAsync(1) { fetchingResults =>
+            processBlocksPage(fetchingResults)
+              .flatTap(
+                _ =>
+                  processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint >> processBakingAndEndorsingRights(
+                        fetchingResults
+                      )
+              )
+
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress
