@@ -288,8 +288,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             .map{ case (_, _, hash, _, _, _, address) =>
               (BlockHash(hash), AccountId(address.get)) }
         ){ x => tezosNodeOperator.getAccountBalanceForBlock(x._1, x._2)}
-          .map(balances => ???) //scala syntax for reducing some of numbers to a number
-
+          .map(balances => balances.reduce(_ + _))
 
     def processVoteAggregate(votingFields: Seq[VotingFields]):
       Future[TezosTypes.VoteAggregates] = {
@@ -328,8 +327,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       listOfListOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
       //listOfListOfVotingFields.map(x => x)
       votes <- DBIO.from{Future.traverse(listOfListOfVotingFields){x => processVoteAggregate(x)}}
-      votesToWrite = votes.toList
-      dbWrites <- TezosDb.writeVotes(votesToWrite.collect { case Some(vote) => vote })
+      dbWrites <- TezosDb.writeVotes(votes.toList)
     } yield dbWrites
 
     db.run(computeAndStore).andThen {
