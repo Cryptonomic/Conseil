@@ -112,13 +112,13 @@ java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.crypt
 From the project root and having started a database instance [see the 'Database set-up' section]
 
 ```bash
-env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "runConseil"
+env SBT_OPTS="-Dconfig.file={path to custom conseil config file}" && sbt "runConseil"
 ```
 
 And..
 
 ```bash
-env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "runLorre <network>"
+env SBT_OPTS="-Dconfig.file={path to custom lorre config file}" && sbt "runLorre <network>"
 ```
 
 Here `network` refers to a valid configuration key, defined in the `application.conf` file (or a custom one), and describing a blockchain node connection info.
@@ -204,9 +204,11 @@ apt install libpq5
 
 ## Custom Configurations
 
-Conseil uses [Typesafe Config](https://github.com/lightbend/config) for managing its configurations (including database access via [Slick](http://slick.lightbend.com/doc/3.2.0/database.html)). Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which "inherits" from the default `src/main/resources/reference.conf` for production or `src/main/resources/developer.conf` for local development.
+Conseil uses [Typesafe Config](https://github.com/lightbend/config) for managing its configurations (including database access via [Slick](http://slick.lightbend.com/doc/3.2.0/database.html)). Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which will automatically "inherit" defaults from the `src/main/resources/reference.conf` for production or manually include `src/main/resources/developer.conf` for local development.
 
 In the latter case, parent configuration can be defined in the custom file using the `include` directive.
+
+You might usually want to override definitions for the subsystem you're actually running (i.e. `lorre` or `conseil`), and the `platforms` you're connecting to.
 
 ### In Production
 You can store the custom configuration anywhere and pass it to the runtime with the ` -Dconfig.file={path to custom config file}` command line option, as shown in the previous sections.
@@ -227,24 +229,27 @@ Here is an example showing a default local development configuration defining th
 include "developer"
 
 #database connection
-conseildb = {
-  dataSourceClass = "org.postgresql.ds.PGSimpleDataSource" #jdbc source
-  properties = {
-    databaseName = "conseil"
-    user = "redacted"
-    password = "redacted"
+conseil.db: {
+  dataSourceClass: "org.postgresql.ds.PGSimpleDataSource" #jdbc source
+  properties: {
+    databaseName: "conseil"
+    user: "redacted"
+    password: "redacted"
   }
   #please make sure you know what you're doing before changing these values
-  numThreads = 10
-  maxConnections = 10
+  numThreads: 10
+  maxConnections: 10
 }
 
+#you might want to simply re-use the same database for local development
+lorre.db: ${conseil.db}
+
 #available blockchain platforms
-platforms: {
-  tezos: {
+platforms {
+  tezos {
     #networks available on 'tezos'
-    alphanet : {
-      node: {
+    alphanet {
+      node {
         hostname: "localhost",
         port: 8732
         pathPrefix: ""
@@ -256,7 +261,7 @@ platforms: {
 
 The imported `developer.conf` resource will in turn provide a list of api-keys in the form
 ```coffee
-security.apiKeys.keys: [key1, key2, ...]
+conseil.security.apiKeys.keys: [key1, key2, ...]
 ```
 
 Such keys will be checked by the server when connecting via Http endpoints to Conseil, matching a required http-header with key `apiKey`.

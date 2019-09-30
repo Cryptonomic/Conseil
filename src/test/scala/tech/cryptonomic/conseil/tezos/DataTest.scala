@@ -20,8 +20,7 @@ import tech.cryptonomic.conseil.metadata.{
   AttributeValuesCacheConfiguration,
   MetadataService,
   TestPlatformDiscoveryOperations,
-  TransparentUnitTransformation,
-  UnitTransformation
+  TransparentUnitTransformation
 }
 import tech.cryptonomic.conseil.routes.Data
 
@@ -164,9 +163,9 @@ class DataTest
       platformDiscoveryOperations
     )
 
-  val postRoute: Route = new Data(cfg, fakeQPP, metadataService).postRoute
+  val postRoute: Route = new Data(fakeQPP, metadataService).postRoute
 
-  val getRoute: Route = new Data(cfg, fakeQPP, metadataService).getRoute
+  val getRoute: Route = new Data(fakeQPP, metadataService).getRoute
 
   "Query protocol" should {
 

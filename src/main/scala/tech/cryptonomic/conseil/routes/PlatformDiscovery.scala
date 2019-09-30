@@ -10,11 +10,9 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.AttributesValidationErro
 import tech.cryptonomic.conseil.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
 import tech.cryptonomic.conseil.routes.openapi.PlatformDiscoveryEndpoints
 
-import scala.concurrent.ExecutionContext
-
 /** Companion object providing apply implementation */
 object PlatformDiscovery {
-  def apply(metadataService: MetadataService)(implicit apiExecutionContext: ExecutionContext): PlatformDiscovery =
+  def apply(metadataService: MetadataService): PlatformDiscovery =
     new PlatformDiscovery(metadataService)
 }
 
@@ -22,9 +20,8 @@ object PlatformDiscovery {
   * Platform discovery routes.
   *
   * @param metadataService     metadata Service
-  * @param apiExecutionContext is used to call the async operations exposed by the api service
   */
-class PlatformDiscovery(metadataService: MetadataService)(implicit apiExecutionContext: ExecutionContext)
+class PlatformDiscovery(metadataService: MetadataService)
     extends LazyLogging
     with PlatformDiscoveryEndpoints
     with akkahttp.server.Endpoints

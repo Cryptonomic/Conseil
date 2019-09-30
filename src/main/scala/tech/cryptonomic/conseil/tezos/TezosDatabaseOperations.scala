@@ -339,24 +339,10 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield updated).transactionally
   }
 
-  /** Writes proposals to the database */
-  def writeVotingProposals(proposals: List[Voting.Proposal]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${proposals.length} voting proposals to the DB...""")
-    Tables.Proposals ++= proposals.flatMap(_.convertToA[List, Tables.ProposalsRow])
-  }
-
   /** Writes bakers to the database */
   def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
     Tables.Rolls ++= (block, bakers).convertToA[List, Tables.RollsRow]
-  }
-
-  /** Writes ballots to the database */
-  def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
-    logger.info(
-      s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..."""
-    )
-    Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
   }
 
   /**
@@ -368,7 +354,12 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
+    def computeAverage(
+        ts: java.sql.Timestamp,
+        cycle: Option[Int],
+        level: Option[Int],
+        fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]
+    ): AverageFees = {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }

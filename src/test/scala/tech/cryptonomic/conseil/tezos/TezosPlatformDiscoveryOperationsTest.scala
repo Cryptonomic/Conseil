@@ -18,8 +18,10 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
 import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
+import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
+import tech.cryptonomic.conseil.metadata._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, BlockTagged, PublicKeyHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 
 import scala.concurrent.ExecutionContext
@@ -50,7 +52,7 @@ class TezosPlatformDiscoveryOperationsTest
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds)
+  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds, 100)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -99,10 +101,10 @@ class TezosPlatformDiscoveryOperationsTest
     }
 
   "getEntities" should {
-
+      val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
       "return list of attributes of Fees" in {
 
-        sut.getTableAttributes("fees").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("fees", networkPath)).futureValue shouldBe
           Some(
             List(
               Attribute("low", "Low", DataType.Int, None, KeyType.NonKey, "fees"),
@@ -117,7 +119,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of accounts" in {
-        sut.getTableAttributes("accounts").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("accounts", networkPath)).futureValue shouldBe
           Some(
             List(
               Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
@@ -136,7 +138,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of blocks" in {
-        sut.getTableAttributes("blocks").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("blocks", networkPath)).futureValue shouldBe
           Some(
             List(
               Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
@@ -184,11 +186,21 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of operations" in {
-        sut.getTableAttributes("operations").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue shouldBe
           Some(
             List(
+              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
+              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute("operation_group_hash", "Operation group hash", DataType.String, None, KeyType.NonKey, "operations"),
+              Attribute(
+                "operation_group_hash",
+                "Operation group hash",
+                DataType.String,
+                None,
+                KeyType.NonKey,
+                "operations"
+              ),
               Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
               Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
@@ -207,6 +219,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
+              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
               Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
@@ -234,19 +247,15 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
               Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
               Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
-              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
+              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
+              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
             )
           )
       }
 
       "return list of attributes of operation groups" in {
 
-        sut.getTableAttributes("operation_groups").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("operation_groups", networkPath)).futureValue shouldBe
           Some(
             List(
               Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "operation_groups"),
@@ -254,7 +263,7 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
               Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+              Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
             )
           )
@@ -262,7 +271,7 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of delegates" in {
 
-        sut.getTableAttributes("delegates").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("delegates", networkPath)).futureValue shouldBe
           Some(
             List(
               Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
@@ -278,22 +287,9 @@ class TezosPlatformDiscoveryOperationsTest
           )
       }
 
-      "return list of attributes of proposals" in {
-
-        sut.getTableAttributes("proposals").futureValue shouldBe
-          Some(
-            List(
-              Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
-              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
-            )
-          )
-      }
-
       "return list of attributes of rolls" in {
 
-        sut.getTableAttributes("rolls").futureValue shouldBe
+        sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue shouldBe
           Some(
             List(
               Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
@@ -301,34 +297,23 @@ class TezosPlatformDiscoveryOperationsTest
               Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
               Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
             )
-          ) 
-      }
-
-      "return list of attributes of ballots" in {
-
-        sut.getTableAttributes("ballots").futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
-            )
           )
       }
 
       "return empty list for non existing table" in {
-        sut.getTableAttributes("nonExisting").futureValue shouldBe None
+        sut.getTableAttributes(EntityPath("nonExisting", networkPath)).futureValue shouldBe None
       }
     }
 
   "listAttributeValues" should {
+      val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
 
       "return list of values of kind attribute of Fees without filter" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        val avgFee =
+          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues("fees", "kind", None).futureValue.right.get shouldBe List("example1")
+        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None).futureValue.right.get shouldBe List("example1")
       }
 
       "return list of boolean values" in {
@@ -347,15 +332,16 @@ class TezosPlatformDiscoveryOperationsTest
         metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
 
         // expect
-        sut.listAttributeValues("accounts", "spendable").futureValue.right.get shouldBe List("true", "false")
+        sut.listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath))).futureValue.right.get shouldBe List("true", "false")
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        val avgFee =
+          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues("fees", "medium", None).futureValue.left.get shouldBe List(
+        sut.listAttributeValues(AttributePath("medium", EntityPath("fees", networkPath)), None).futureValue.left.get shouldBe List(
           InvalidAttributeDataType("medium"),
           HighCardinalityAttribute("medium")
         )
@@ -363,25 +349,27 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list with one error when the minimum matching length is greater than match length" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        val avgFee =
+          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
         sut
-          .listAttributeValues("fees", "kind", Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5)))
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5)))
           .futureValue
           .left
           .get shouldBe List(InvalidAttributeFilterLength("kind", 4))
       }
 
       "return empty list when trying to sql inject" in {
-        val avgFee = AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        val avgFee =
+          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
         // That's how the SLQ-injected string will look like:
         // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
         val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
-        sut.listAttributeValues("fees", "kind", maliciousFilter).futureValue.right.get shouldBe List.empty
+        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), maliciousFilter).futureValue.right.get shouldBe List.empty
 
         dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
 
@@ -392,23 +380,23 @@ class TezosPlatformDiscoveryOperationsTest
           AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
         )
 
-        sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List.empty
+        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1")).futureValue.right.get shouldBe List.empty
         dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues("fees", "kind", None).futureValue.right.get should contain theSameElementsAs List(
+        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None).futureValue.right.get should contain theSameElementsAs List(
           "example1",
           "example2"
         )
-        sut.listAttributeValues("fees", "kind", Some("ex")).futureValue.right.get should contain theSameElementsAs List(
+        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("ex")).futureValue.right.get should contain theSameElementsAs List(
           "example1",
           "example2"
         )
         sut
-          .listAttributeValues("fees", "kind", Some("ample"))
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("ample"))
           .futureValue
           .right
           .get should contain theSameElementsAs List("example1", "example2")
-        sut.listAttributeValues("fees", "kind", Some("1")).futureValue.right.get shouldBe List("example1")
+        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1")).futureValue.right.get shouldBe List("example1")
 
       }
     }
