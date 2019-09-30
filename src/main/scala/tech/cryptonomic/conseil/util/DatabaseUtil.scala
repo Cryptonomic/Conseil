@@ -138,15 +138,32 @@ object DatabaseUtil {
       * @param  predicates list of predicates to be transformed
       * @return list of transformed predicates
       */
-    def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
-      predicates.map { predicate =>
-        concatenateSqlActions(
-          predicate.precision
-            .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
-            .getOrElse(sql""" AND #${predicate.field} """),
-          mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+    def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] = {
+      val predicateGroups = predicates.groupBy(_.group)
+        .values
+        .toList
+        .map(
+          group =>
+            group.map { predicate =>
+              concatenateSqlActions(
+                predicate.precision
+                  .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
+                  .getOrElse(sql""" AND #${predicate.field} """),
+                mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+              )
+            }
         )
+      predicateGroups match {
+        case Nil => Nil
+        case group :: Nil => group
+        case multiGroups =>
+          //first intersperse with internal ORs then add the opening and closing parens
+          val orGroups = multiGroups.reduce(
+            (group1, group2) => group1 ::: sql") OR (True " :: group2
+          )
+          sql" AND (True " :: (orGroups :+ sql") ")
       }
+    }
 
     /** Prepares query
       *
