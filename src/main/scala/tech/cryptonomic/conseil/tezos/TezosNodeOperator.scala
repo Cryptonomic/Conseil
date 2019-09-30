@@ -122,7 +122,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
   def getAccountBalanceForBlock(blockHash: BlockHash, accountId: AccountId): Future[PositiveBigNumber] = {
     node
       .runAsyncGetQuery(network, s"blocks/${blockHash.value}/context/contracts/${accountId.id}/balance")
-      .map(fromJson[PositiveBigNumber])
+      .map(fromJson[BigDecimal])
 
   /**
     * Fetches the manager of a specific account for a given block.

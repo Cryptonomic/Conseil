@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil
 
 import slick.jdbc.PostgresProfile.api._
-
 import akka.actor.ActorSystem
 import akka.Done
 import akka.stream.scaladsl.Source
@@ -14,10 +13,11 @@ import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
 import tech.cryptonomic.conseil.config.Platforms
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.VotingFields
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
@@ -273,36 +273,70 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     logger.info("Processing latest Tezos votes data...")
 
-    def listOfBalances(blockHashesAndAddresses: Seq[(String, Option[String])]):
-      DBIO[PositiveBigNumber] =
-      DBIO.from{
+    def partitionByVote(fields: Seq[VotingFields]):
+    (Seq[VotingFields], Seq[VotingFields], Seq[VotingFields]) = {
+      val (yays, notYays) = fields.partition(x => x._6 == Some("yay"))
+      val (nays, notYaysOrNays) = notYays.partition(x => x._6 == Some("nay"))
+      val (passes, _) = notYaysOrNays.partition(x => x._6 == Some("pass"))
+      (yays, nays, passes)
+    }
+
+    def calculateStake(fields: Seq[VotingFields]):
+      Future[BigDecimal] =
         Future.traverse(
-          blockHashesAndAddresses
-            .map{ case (hash, address) => (BlockHash(hash), AccountId(address.get)) }
-        ){ x => tezosNodeOperator.getAccountBalanceForBlock( x._1, x._2)}.map(sum)
-      }
+          fields
+            .map{ case (_, _, hash, _, _, _, address) =>
+              (BlockHash(hash), AccountId(address.get)) }
+        ){ x => tezosNodeOperator.getAccountBalanceForBlock(x._1, x._2)}
+          .map(balances => ???) //scala syntax for reducing some of numbers to a number
+
+
+    def processVoteAggregate(votingFields: Seq[VotingFields]):
+      Future[TezosTypes.VoteAggregates] = {
+        val sampleVotingField = votingFields.head
+        val timestamp = sampleVotingField._5
+        val cycle = sampleVotingField._4
+        val level = sampleVotingField._2
+        val proposalHash = sampleVotingField._1
+        val (yays, nays, passes) = partitionByVote(votingFields)
+        val yayCount = yays.length
+        val nayCount = nays.length
+        val passCount = passes.length
+        for {
+          yayStake <- calculateStake(yays)
+          nayStake <- calculateStake(nays)
+          passStake <- calculateStake(passes)
+          totalStake = yayStake + nayStake + passStake
+        } yield VoteAggregates(
+          timestamp,
+          cycle,
+          level,
+          proposalHash,
+          yayCount,
+          nayCount,
+          passCount,
+          yayStake,
+          nayStake,
+          passStake,
+          totalStake
+        )
+    }
 
     //get fields from db in Tezos Database Operations, use the block levels as input
     val computeAndStore = for {
       blockLevels <- TezosDb.fetchVotingBlockLevels
       listOfListOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
-      listOfListOfVotingFields.map(x => x)
-      val yayCount = yays.length
-      val nayCount = nays.length
-      val passCount = passes.length
-      //function which calculates the stakes
-      //function which writes the votes
-      //dbWrites <- TezosDb.writeVotes(votes.collect { case Some(vote) => vote })
-    } yield votes// dbWrites
+      //listOfListOfVotingFields.map(x => x)
+      votes <- DBIO.from{Future.traverse(listOfListOfVotingFields){x => processVoteAggregate(x)}}
+      votesToWrite = votes.toList
+      dbWrites <- TezosDb.writeVotes(votesToWrite.collect { case Some(vote) => vote })
+    } yield dbWrites
 
     db.run(computeAndStore).andThen {
       case Success(Some(written)) => logger.info("Wrote {} vote aggregates to the database.", written)
       case Success(None) => logger.info("Wrote vote aggregates to the database.")
       case Failure(e) => logger.error("Could not write vote aggregates to the database because", e)
     }
-
-      ???
-
   }
 
 

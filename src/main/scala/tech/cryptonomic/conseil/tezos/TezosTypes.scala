@@ -181,16 +181,16 @@ object TezosTypes {
     */
   final case class VoteAggregates(
                                    timestamp: java.sql.Timestamp,
-                                   cycle: Int,
+                                   cycle: Option[Int],
                                    level: Int,
                                    proposalHash: Option[String],
                                    yayCount: Int,
                                    nayCount: Int,
                                    passCount: Int,
-                                   yayStake: Int,
-                                   nayStake: Int,
-                                   passStake: Int,
-                                   totalStake: Int,
+                                   yayStake: BigDecimal,
+                                   nayStake: BigDecimal,
+                                   passStake: BigDecimal,
+                                   totalStake: BigDecimal,
                                  )
 
   /** root of the operation hiearchy */

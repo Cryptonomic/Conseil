@@ -448,7 +448,7 @@ object TezosDatabaseOperations extends LazyLogging {
       .result
 
   /** Get next batch of voting levels */
-  def fetchVotingBlockLevels: DBIO[List[Int]] = {
+  def fetchVotingBlockLevels: DBIO[Set[Int]] = {
 
     def fetchVotesMaxLevel: DBIO[Int] =
       Tables.Votes
@@ -460,7 +460,7 @@ object TezosDatabaseOperations extends LazyLogging {
     for {
       headBlockLevel <- fetchMaxBlockLevel
       voteMaxLevel <- fetchVotesMaxLevel
-    } yield (voteMaxLevel + 1 to headBlockLevel).toList
+    } yield (voteMaxLevel + 1 to headBlockLevel).toSet
   }
 
     type VotingFields = (Option[String], Int, String, Option[Int], java.sql.Timestamp, Option[String], Option[String])
@@ -486,7 +486,6 @@ object TezosDatabaseOperations extends LazyLogging {
       .groupBy(_._2)
       .map{ case (level, fields) => fields}
         .result
-
       }
 
 
