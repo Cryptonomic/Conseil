@@ -139,7 +139,8 @@ object DatabaseUtil {
       * @return list of transformed predicates
       */
     def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] = {
-      val predicateGroups = predicates.groupBy(_.group)
+      val predicateGroups = predicates
+        .groupBy(_.group)
         .values
         .toList
         .map(
