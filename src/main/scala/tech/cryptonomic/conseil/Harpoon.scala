@@ -24,13 +24,14 @@ import cats.~>
 object Harpoon extends IOApp with PureLogging {
 
   /** A type alias to provide state management on top of IO.
-   * The state threaded through corresponds to the actual
-   * process input value (AccountsTaggingProcess.ProcessorInput i.e. Option[BlockLevel]),
-   * which allows to start processing from that point onward
-   */
+    * The state threaded through corresponds to the actual
+    * process input value (AccountsTaggingProcess.ProcessorInput i.e. Option[BlockLevel]),
+    * which allows to start processing from that point onward
+    */
   type IOState[T] = StateT[IO, Option[BlockLevel], T]
 
-  //there might be additional setup/shutdown methods to prepare any needed resource, we can detail that later on
+  /* reference to the database to use, we need write access to update accounts */
+  private lazy val dbHandle: Database = DatabaseUtil.lorreDb
 
   /* This is the main entrypoint, the return type is wrapped in IO and provides an ExitCode for the process
    * Described in cats-effect apis: https://typelevel.org/cats-effect/api/cats/effect/IOApp.html
@@ -87,16 +88,20 @@ object Harpoon extends IOApp with PureLogging {
       } yield ()
 
     /* we return the exit status into IO. The IOApp will run the actual process */
-    program(Option.empty).as(ExitCode.Success)
+    program(Option.empty)
+      .guarantee(
+        IO(dbHandle.close())
+      )
+      .as(ExitCode.Success)
 
   }
 
   /* Allows running db-operations as cats-effect IO actions */
-  private def runDbToIO[T] = IOUtil.runDbToIO[T](DatabaseUtil.lorreDb.run _) _
+  private def runDbToIO[T] = IOUtil.runDbToIO[T](dbHandle.run _) _
 
   /* Allows streaming db-results */
   private def runDbToStream[R, T](action: StreamingDBIO[R, T]) =
-    IOUtil.publishStream(DatabaseUtil.lorreDb.stream(action))
+    IOUtil.publishStream(dbHandle.stream(action))
 
   /* builds the service instance based on global operations available in the project */
   private def injectServices(processor: AccountsTaggingProcess[IOState])(implicit ec: ExecutionContext) =
