@@ -55,10 +55,12 @@ object Conseil
 
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
+      lazy val apiOperations = new ApiOperations
+
 
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(
-          ApiOperations,
+          apiOperations,
           metadataCaching,
           cacheOverrides,
           server.cacheTTL,
@@ -82,7 +84,7 @@ object Conseil
       val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
-      lazy val data = Data(platforms, metadataService, server)(tezosDispatcher)
+      lazy val data = Data(platforms, metadataService, server, apiOperations)(tezosDispatcher)
 
       val route = cors() {
           enableCORS {

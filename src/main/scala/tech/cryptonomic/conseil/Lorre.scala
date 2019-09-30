@@ -6,23 +6,8 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{
-  TezosTypes,
-  FeeOperations,
-  ShutdownComplete,
-  TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
-  TezosDatabaseOperations => TezosDb
-}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  Account,
-  AccountId,
-  BlockReference,
-  BlockTagged,
-  Delegate,
-  PublicKeyHash
-}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -70,10 +55,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   sys.addShutdownHook(shutdown())
 
   lazy val db = DatabaseUtil.lorreDb
+  lazy val apiOperations = new ApiOperations
+
   val tezosNodeOperator = new TezosNodeOperator(
     new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
     tezosConf.network,
-    batchingConf
+    batchingConf,
+    apiOperations
   )
 
   /** close resources for application stop */
