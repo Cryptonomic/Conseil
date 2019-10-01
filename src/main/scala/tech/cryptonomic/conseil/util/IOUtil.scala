@@ -17,7 +17,7 @@ object IOUtil {
     * @tparam T the result of the operation
     */
   def runDbToIO[T](runner: DBIO[T] => Future[T])(action: DBIO[T])(implicit shifter: ContextShift[IO]): IO[T] =
-    IO.fromFuture(IO(runner(action))).guarantee(IO.shift)
+    IO.fromFuture(IO(runner(action)))
 
   /** Transforms a reactive publisher to a purely functional stream over IO.
     * Useful to convert streaming database results based on reactive publisher.

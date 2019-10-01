@@ -32,7 +32,7 @@ object AccountsTaggingProcess {
   * It then marks such accounts with the appropriate flag (e.g. revealed, activated).
   * @param highWatermarkRef a pure reference that tracks the highest verified block level for flagging operations
   */
-class AccountsTaggingProcess[F[_]: Sync] private ( //highWatermarkRef: Ref[F, Option[AccountsTaggingProcess.BlockLevel]])(
+class AccountsTaggingProcess[F[_]: Sync](
     implicit highWatermark: MonadState[F, Option[AccountsTaggingProcess.BlockLevel]]
 ) extends PureLogging {
   import AccountsTaggingProcess._
@@ -109,7 +109,7 @@ class AccountsTaggingProcess[F[_]: Sync] private ( //highWatermarkRef: Ref[F, Op
     api
       .readOperations(fromLevel)
       .evalMap { implicit operation =>
-        (operation.kind match {
+        val effect = operation.kind match {
           case "reveal" =>
             flag(operation.source, api.flagAsRevealed)
           case "activate_account" =>
@@ -123,7 +123,8 @@ class AccountsTaggingProcess[F[_]: Sync] private ( //highWatermarkRef: Ref[F, Op
                 operationKinds.mkString(", ")
               )
             ) >> missingResult
-        }).map { flagResult =>
+        }
+        effect.map { flagResult =>
           (flagResult, operation.blockLevel)
         }
       }
@@ -136,10 +137,8 @@ class AccountsTaggingProcess[F[_]: Sync] private ( //highWatermarkRef: Ref[F, Op
         //extracts and sums all integer values (counting the actual updates)
         case (anyFlag, _) => anyFlag.getOrElse(0)
       }
-      .last
       .compile
-      .toList
-      .map(_.flatten.headOption)
+      .last
 
   }
 
