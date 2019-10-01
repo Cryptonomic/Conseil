@@ -11,7 +11,8 @@ val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
 val slickVersion = "3.3.0"
-val catsVersion = "1.6.0"
+val catsVersion = "2.0.0"
+val fs2Version = "2.0.1"
 val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
 val circeVersion = "0.11.1"
@@ -46,11 +47,11 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala"          % "2.9.6",
   "com.chuusai"                  %% "shapeless"                     % "2.3.3",
   "org.typelevel"                %% "cats-core"                     % catsVersion,
-  "org.typelevel"                %% "cats-effect"                   % "1.3.1",
+  "org.typelevel"                %% "cats-effect"                   % catsVersion,
   "org.typelevel"                %% "cats-mtl-core"                 % "0.7.0",
-  "org.typelevel"                %% "mouse"                         % "0.20",
-  "co.fs2"                       %% "fs2-core"                      % "2.0.1",
-  "co.fs2"                       %% "fs2-reactive-streams"          % "2.0.1",
+  "org.typelevel"                %% "mouse"                         % "0.23",
+  "co.fs2"                       %% "fs2-core"                      % fs2Version,
+  "co.fs2"                       %% "fs2-reactive-streams"          % fs2Version,
   "com.github.julien-truffaut"   %% "monocle-core"                  % monocleVersion exclude ("org.typelevel.cats", "cats-core"),
   "com.github.julien-truffaut"   %% "monocle-macro"                 % monocleVersion exclude ("org.typelevel.cats", "cats-core") exclude ("org.typelevel.cats", "cats-macros"),
   "org.julienrf"                 %% "endpoints-algebra"             % endpointsVersion,
