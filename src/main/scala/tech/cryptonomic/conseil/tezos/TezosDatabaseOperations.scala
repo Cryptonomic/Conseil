@@ -593,7 +593,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param fromLevel the lowest block-level to start from, zero by default
     * @return the matching operations, sorted by ascending block-level
     */
-  def fetchRecentOperationsByKind(ofKind: Set[String], fromLevel: Int = 0) =
+  def fetchRecentOperationsByKind(
+      ofKind: Set[String],
+      fromLevel: Int = 0
+  ): DBIOAction[Seq[OperationsRow], Streaming[OperationsRow], Effect.Read] =
     Tables.Operations
       .filter(
         row => (row.kind inSet (ofKind)) && (row.blockLevel >= fromLevel)

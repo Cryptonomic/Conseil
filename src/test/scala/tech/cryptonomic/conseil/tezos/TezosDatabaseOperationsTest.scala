@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.util.RandomSeed
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Random
+import tech.cryptonomic.conseil.tezos.Tables.OperationsRow
 
 class TezosDatabaseOperationsTest
     extends WordSpec
@@ -2848,6 +2849,491 @@ class TezosDatabaseOperationsTest
           Map("date_part_timestamp" -> Some("1970-01-02")),
           Map("date_part_timestamp" -> Some("1970-01-01"))
         )
+      }
+
+      "correctly flag accounts by id" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val blockRow = generateBlockRows(1, testReferenceTimestamp).apply(1)
+
+        val accountRows = List(
+          AccountsRow(
+            "hash1",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            0,
+            activated = false,
+            revealed = false
+          ),
+          AccountsRow(
+            "hash2",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            0,
+            activated = false,
+            revealed = false
+          ),
+          AccountsRow(
+            "hash3",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            0,
+            activated = false,
+            revealed = false
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks += blockRow
+          _ <- Tables.Accounts ++= accountRows
+          _ <- sut.flagAccount("hash1", sut.AccountFlags.activated)
+          _ <- sut.flagAccount("hash2", sut.AccountFlags.revealed)
+          check <- Tables.Accounts.result
+        } yield check
+
+        //when
+        val updates = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        import org.scalatest.Inspectors._
+
+        //then
+        forAll(updates) {
+          case updated if updated.accountId == "hash1" =>
+            updated.activated shouldBe true
+            updated.revealed shouldBe false
+          case updated if updated.accountId == "hash2" =>
+            updated.activated shouldBe false
+            updated.revealed shouldBe true
+          case updated =>
+            updated.activated shouldBe false
+            updated.revealed shouldBe false
+        }
+
+      }
+
+      "find the highest level for a flagged account, for revealed" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val blockRow = generateBlockRows(1, testReferenceTimestamp).apply(1)
+
+        val accountRows = List(
+          AccountsRow(
+            "hash1",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 1,
+            activated = true,
+            revealed = true
+          ),
+          AccountsRow(
+            "hash2",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 2,
+            activated = false,
+            revealed = true
+          ),
+          AccountsRow(
+            "hash3",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 3,
+            activated = false,
+            revealed = false
+          )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += blockRow
+          _ <- Tables.Accounts ++= accountRows
+        } yield ()
+
+        dbHandler.run((populate.transactionally)).isReadyWithin(5 seconds) shouldBe true
+
+        //when
+        val level = dbHandler.run(sut.findLatestFlaggedAccountLevel()).futureValue
+
+        //then
+        level shouldBe BigDecimal(2)
+
+      }
+
+      "find the highest level for a flagged account, for activated" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val blockRow = generateBlockRows(1, testReferenceTimestamp).apply(1)
+
+        val accountRows = List(
+          AccountsRow(
+            "hash1",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 1,
+            activated = true,
+            revealed = true
+          ),
+          AccountsRow(
+            "hash2",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 2,
+            activated = true,
+            revealed = false
+          ),
+          AccountsRow(
+            "hash3",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 3,
+            activated = false,
+            revealed = false
+          )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += blockRow
+          _ <- Tables.Accounts ++= accountRows
+        } yield ()
+
+        dbHandler.run((populate.transactionally)).isReadyWithin(5 seconds) shouldBe true
+
+        //when
+        val level = dbHandler.run(sut.findLatestFlaggedAccountLevel()).futureValue
+
+        //then
+        level shouldBe BigDecimal(2)
+
+      }
+
+      "return -1 when looking for flagged accounts level and there's none" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val blockRow = generateBlockRows(1, testReferenceTimestamp).apply(1)
+
+        val accountRows = List(
+          AccountsRow(
+            "hash1",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 1,
+            activated = false,
+            revealed = false
+          ),
+          AccountsRow(
+            "hash2",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 2,
+            activated = false,
+            revealed = false
+          ),
+          AccountsRow(
+            "hash3",
+            blockRow.hash,
+            "",
+            false,
+            false,
+            None,
+            0,
+            None,
+            None,
+            0,
+            blockLevel = 3,
+            activated = false,
+            revealed = false
+          )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += blockRow
+          _ <- Tables.Accounts ++= accountRows
+        } yield ()
+
+        dbHandler.run((populate.transactionally)).isReadyWithin(5 seconds) shouldBe true
+
+        //when
+        val level = dbHandler.run(sut.findLatestFlaggedAccountLevel()).futureValue
+
+        //then
+        level shouldBe BigDecimal(-1)
+
+      }
+
+      "fetch latest operations of selected kinds" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val group = generateOperationGroupRows(block).head
+
+        val ops = List(
+          OperationsRow(
+            operationId = 1,
+            operationGroupHash = group.hash,
+            kind = "activate_account",
+            blockHash = block.hash,
+            blockLevel = 1,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 2,
+            operationGroupHash = group.hash,
+            kind = "reveal",
+            blockHash = block.hash,
+            blockLevel = 2,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 3,
+            operationGroupHash = group.hash,
+            kind = "seed_nonce_revelation",
+            blockHash = block.hash,
+            blockLevel = 3,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 4,
+            operationGroupHash = group.hash,
+            kind = "activate_account",
+            blockHash = block.hash,
+            blockLevel = 4,
+            timestamp = testReferenceTimestamp,
+            internal = true
+          )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += block
+          _ <- Tables.OperationGroups += group
+          _ <- Tables.Operations ++= ops
+        } yield ()
+
+        dbHandler.run(populate.transactionally).isReadyWithin(5 seconds) shouldBe true
+
+        //when
+        val selection = Set("activate_account", "reveal")
+        val fetched = dbHandler.run(sut.fetchRecentOperationsByKind(ofKind = selection)).futureValue
+
+        //then
+        import org.scalatest.Inspectors._
+
+        fetched should have size 3
+
+        fetched.map(_.blockLevel) should contain inOrderOnly (1, 2, 4)
+
+        forAll(fetched) { operationRow =>
+          selection should contain(operationRow.kind)
+        }
+      }
+
+      "fetch latest operations of selected kinds, starting at a given block level" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val group = generateOperationGroupRows(block).head
+
+        val ops = List(
+          OperationsRow(
+            operationId = 1,
+            operationGroupHash = group.hash,
+            kind = "activate_account",
+            blockHash = block.hash,
+            blockLevel = 1,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 2,
+            operationGroupHash = group.hash,
+            kind = "reveal",
+            blockHash = block.hash,
+            blockLevel = 2,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 3,
+            operationGroupHash = group.hash,
+            kind = "seed_nonce_revelation",
+            blockHash = block.hash,
+            blockLevel = 3,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 4,
+            operationGroupHash = group.hash,
+            kind = "activate_account",
+            blockHash = block.hash,
+            blockLevel = 4,
+            timestamp = testReferenceTimestamp,
+            internal = true
+          )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += block
+          _ <- Tables.OperationGroups += group
+          _ <- Tables.Operations ++= ops
+        } yield ()
+
+        dbHandler.run(populate.transactionally).isReadyWithin(5 seconds) shouldBe true
+
+        //when
+        val fetched = dbHandler
+          .run(sut.fetchRecentOperationsByKind(ofKind = Set("activate_account", "reveal"), fromLevel = 3))
+          .futureValue
+
+        //then
+        fetched should have size 1
+
+        fetched.head.blockLevel shouldBe 4
+      }
+
+      "fetch no latest operations of selected kinds, when the selection is empty" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val group = generateOperationGroupRows(block).head
+
+        val ops = List(
+          OperationsRow(
+            operationId = 1,
+            operationGroupHash = group.hash,
+            kind = "activate_account",
+            blockHash = block.hash,
+            blockLevel = 1,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 2,
+            operationGroupHash = group.hash,
+            kind = "reveal",
+            blockHash = block.hash,
+            blockLevel = 2,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 3,
+            operationGroupHash = group.hash,
+            kind = "seed_nonce_revelation",
+            blockHash = block.hash,
+            blockLevel = 3,
+            timestamp = testReferenceTimestamp,
+            internal = false
+          ),
+          OperationsRow(
+            operationId = 4,
+            operationGroupHash = group.hash,
+            kind = "activate_account",
+            blockHash = block.hash,
+            blockLevel = 4,
+            timestamp = testReferenceTimestamp,
+            internal = true
+          )
+        )
+
+        val populate = for {
+          _ <- Tables.Blocks += block
+          _ <- Tables.OperationGroups += group
+          _ <- Tables.Operations ++= ops
+        } yield ()
+
+        dbHandler.run(populate.transactionally).isReadyWithin(5 seconds) shouldBe true
+
+        //when
+        val fetched = dbHandler.run(sut.fetchRecentOperationsByKind(ofKind = Set.empty)).futureValue
+
+        //then
+        fetched shouldBe empty
       }
 
     }
