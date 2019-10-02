@@ -107,19 +107,6 @@ CREATE SEQUENCE tezos.balance_updates_id_seq
 
 ALTER SEQUENCE tezos.balance_updates_id_seq OWNED BY tezos.balance_updates.id;
 
-
---
--- Name: ballots; Type: TABLE; Schema: tezos; Owner: -
---
-
-CREATE TABLE tezos.ballots (
-    pkh character varying NOT NULL,
-    ballot character varying NOT NULL,
-    block_id character varying NOT NULL,
-    block_level integer NOT NULL
-);
-
-
 --
 -- Name: blocks; Type: TABLE; Schema: tezos; Owner: -
 --
@@ -287,19 +274,6 @@ CREATE SEQUENCE tezos.operations_operation_id_seq
 
 ALTER SEQUENCE tezos.operations_operation_id_seq OWNED BY tezos.operations.operation_id;
 
-
---
--- Name: proposals; Type: TABLE; Schema: tezos; Owner: -
---
-
-CREATE TABLE tezos.proposals (
-    protocol_hash character varying NOT NULL,
-    block_id character varying NOT NULL,
-    block_level integer NOT NULL,
-    supporters integer
-);
-
-
 --
 -- Name: rolls; Type: TABLE; Schema: tezos; Owner: -
 --
@@ -311,6 +285,29 @@ CREATE TABLE tezos.rolls (
     block_level integer NOT NULL
 );
 
+
+CREATE TABLE public.baking_rights (
+    block_hash character varying NOT NULL,
+    level integer NOT NULL,
+    delegate character varying NOT NULL,
+    priority integer NOT NULL,
+    estimated_time timestamp without time zone NOT NULL,
+    PRIMARY KEY(level, delegate)
+);
+
+CREATE INDEX baking_rights_level_idx ON public.baking_rights (level);
+
+CREATE TABLE public.endorsing_rights (
+    block_hash character varying NOT NULL,
+    level integer NOT NULL,
+    delegate character varying NOT NULL,
+    slot integer NOT NULL,
+    estimated_time timestamp without time zone NOT NULL,
+    PRIMARY KEY(level, delegate, slot)
+);
+
+
+CREATE INDEX endorsing_rights_level_idx ON public.endorsing_rights (level);
 
 --
 -- Name: balance_updates id; Type: DEFAULT; Schema: tezos; Owner: -
@@ -483,29 +480,12 @@ CREATE INDEX ix_rolls_block_id ON tezos.rolls USING btree (block_id);
 
 CREATE INDEX ix_rolls_block_level ON tezos.rolls USING btree (block_level);
 
-
---
--- Name: ix_proposals_protocol; Type: INDEX; Schema: tezos; Owner: -
---
-
-CREATE INDEX ix_proposals_protocol ON tezos.proposals USING btree (protocol_hash);
-
-
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
 --
 
 ALTER TABLE ONLY tezos.accounts
     ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
-
-
---
--- Name: ballots ballot_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
---
-
-ALTER TABLE ONLY tezos.ballots
-    ADD CONSTRAINT ballot_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
-
 
 --
 -- Name: operation_groups block; Type: FK CONSTRAINT; Schema: tezos; Owner: -
@@ -568,14 +548,6 @@ ALTER TABLE ONLY tezos.operations
 
 ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES tezos.operation_groups(hash, block_id);
-
---
--- Name: proposals proposal_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
---
-
-ALTER TABLE ONLY tezos.proposals
-    ADD CONSTRAINT proposal_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
-
 
 --
 -- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -

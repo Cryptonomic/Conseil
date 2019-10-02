@@ -268,6 +268,36 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
+    * Writes the baking rights to the database
+    * at the same time saving enough information about updated accounts to later fetch those accounts
+    * @param blockHash hash of the block
+    * @param bakingRights baking rights for the given block
+    */
+  def writeBakingRights(
+      blockHash: BlockHash,
+      bakingRights: List[BakingRights]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    logger.info("Writing baking rights to the DB...")
+    Tables.BakingRights ++= bakingRights.map(br => (blockHash, br).convertTo[Tables.BakingRightsRow])
+  }
+
+  /**
+    * Writes the endorsing rights to the database
+    * at the same time saving enough information about updated accounts to later fetch those accounts
+    * @param blockHash hash of the block
+    * @param endorsingRights endorsing rights for the given block
+    */
+  def writeEndorsingRights(
+      blockHash: BlockHash,
+      endorsingRights: List[EndorsingRights]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    logger.info("Writing endorsing rights to the DB...")
+    Tables.EndorsingRights ++= endorsingRights.flatMap(
+      er => (blockHash, er).convertToA[List, Tables.EndorsingRightsRow]
+    )
+  }
+
+  /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
     * @param accounts the full accounts' data
     * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block
@@ -339,24 +369,10 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield updated).transactionally
   }
 
-  /** Writes proposals to the database */
-  def writeVotingProposals(proposals: List[Voting.Proposal]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${proposals.length} voting proposals to the DB...""")
-    Tables.Proposals ++= proposals.flatMap(_.convertToA[List, Tables.ProposalsRow])
-  }
-
   /** Writes bakers to the database */
   def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
     Tables.Rolls ++= (block, bakers).convertToA[List, Tables.RollsRow]
-  }
-
-  /** Writes ballots to the database */
-  def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
-    logger.info(
-      s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..."""
-    )
-    Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
   }
 
   /**
