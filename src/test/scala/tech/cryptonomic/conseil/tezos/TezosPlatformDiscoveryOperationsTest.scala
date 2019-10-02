@@ -104,7 +104,7 @@ class TezosPlatformDiscoveryOperationsTest
       val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
       "return list of attributes of Fees" in {
 
-        sut.getTableAttributes("fees").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("fees", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("low", "Low", DataType.Int, None, KeyType.NonKey, "fees"),
             Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
@@ -117,7 +117,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of accounts" in {
-        sut.getTableAttributes("accounts").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("accounts", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
             Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
@@ -134,7 +134,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of blocks" in {
-        sut.getTableAttributes("blocks").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("blocks", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
             Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
@@ -180,7 +180,7 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list of attributes of operations" in {
-        sut.getTableAttributes("operations").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
             Attribute(
@@ -248,7 +248,7 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of operation groups" in {
 
-        sut.getTableAttributes("operation_groups").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("operation_groups", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "operation_groups"),
             Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "operation_groups"),
@@ -262,7 +262,7 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of delegates" in {
 
-        sut.getTableAttributes("delegates").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("delegates", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
             Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "delegates"),
@@ -276,20 +276,9 @@ class TezosPlatformDiscoveryOperationsTest
           )
       }
 
-      "return list of attributes of proposals" in {
-
-        sut.getTableAttributes("proposals").futureValue.get should contain theSameElementsAs
-          List(
-            Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
-            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
-            Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
-          )
-      }
-
       "return list of attributes of rolls" in {
 
-        sut.getTableAttributes("rolls").futureValue.get should contain theSameElementsAs
+        sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue.get should contain theSameElementsAs
           List(
             Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
             Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
