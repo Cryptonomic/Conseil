@@ -284,10 +284,10 @@ object TezosTypes {
         kind: String,
         source: PublicKeyHash,
         nonce: Int,
-        manager_pubkey: Option[PublicKeyHash],// retro-compat from protocol 5+
+        manager_pubkey: Option[PublicKeyHash], // retro-compat from protocol 5+
         balance: PositiveBigNumber,
-        spendable: Option[Boolean],// retro-compat from protocol 5+
-        delegatable: Option[Boolean],// retro-compat from protocol 5+
+        spendable: Option[Boolean], // retro-compat from protocol 5+
+        delegatable: Option[Boolean], // retro-compat from protocol 5+
         delegate: Option[PublicKeyHash],
         script: Option[Scripted.Contracts],
         result: OperationResult.Origination
@@ -400,7 +400,7 @@ object TezosTypes {
   )
 
   final case class Account(
-      manager: PublicKeyHash,
+      manager: Option[PublicKeyHash], // retro-compat from protocol 5+
       balance: scala.math.BigDecimal,
       spendable: Boolean,
       delegate: AccountDelegate,

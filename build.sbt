@@ -67,7 +67,8 @@ libraryDependencies ++= Seq(
   "org.scalatest"                %% "scalatest"                     % "3.0.5" % Test,
   "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
   "org.scalamock"                %% "scalamock"                     % "4.1.0" % Test,
-  "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % Test
+  "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % Test,
+  "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % Test
 )
 
 excludeDependencies ++= Seq(

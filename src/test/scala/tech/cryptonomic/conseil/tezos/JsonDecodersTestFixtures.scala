@@ -202,13 +202,12 @@ trait AccountsJsonData {
     |      "setable": false,
     |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |  },
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
     |  "spendable": true
     |}""".stripMargin
 
   val expectedAccount =
     Account(
-      manager = PublicKeyHash("tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY"),
+      manager = None,
       balance = 2921522468L,
       spendable = true,
       delegate = AccountDelegate(

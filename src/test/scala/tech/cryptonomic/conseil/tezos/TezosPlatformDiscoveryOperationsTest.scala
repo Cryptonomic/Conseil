@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 
 import cats.effect.{ContextShift, IO}
 import com.typesafe.scalalogging.LazyLogging
+import com.softwaremill.diffx.scalatest.DiffMatcher
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
@@ -19,7 +20,7 @@ import tech.cryptonomic.conseil.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, BlockTagged, PublicKeyHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, BlockTagged}
 import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 
 import scala.concurrent.ExecutionContext
@@ -34,6 +35,7 @@ class TezosPlatformDiscoveryOperationsTest
     with TezosDataGeneration
     with ScalaFutures
     with OptionValues
+    with DiffMatcher
     with IntegrationPatience
     with LazyLogging {
 
@@ -102,226 +104,217 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of Fees" in {
 
-        sut.getTableAttributes("fees").futureValue shouldBe
-          Some(
-            List(
-              Attribute("low", "Low", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("high", "High", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
-              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
-            )
+        sut.getTableAttributes("fees").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("low", "Low", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("high", "High", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
+            Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
           )
+        )
       }
 
       "return list of attributes of accounts" in {
-        sut.getTableAttributes("accounts").futureValue shouldBe
-          Some(
-            List(
-              Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
-              Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-              Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-              Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
-              Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
-              Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
-            )
+        sut.getTableAttributes("accounts").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
+            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
+            Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
+            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
           )
+        )
       }
 
       "return list of attributes of blocks" in {
-        sut.getTableAttributes("blocks").futureValue shouldBe
-          Some(
-            List(
-              Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-              Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("predecessor", "Predecessor", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-              Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("fitness", "Fitness", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("context", "Context", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "blocks"),
-              Attribute("operations_hash", "Operations hash", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("period_kind", "Period kind", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute(
-                "current_expected_quorum",
-                "Current expected quorum",
-                DataType.Int,
-                None,
-                KeyType.NonKey,
-                "blocks"
-              ),
-              Attribute("active_proposal", "Active proposal", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("baker", "Baker", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("nonce_hash", "Nonce hash", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_cycle", "Meta cycle", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_voting_period", "Meta voting period", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute(
-                "meta_voting_period_position",
-                "Meta voting period position",
-                DataType.Int,
-                None,
-                KeyType.NonKey,
-                "blocks"
-              ),
-              Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
-              Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
-            )
+        sut.getTableAttributes("blocks").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+            Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("predecessor", "Predecessor", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
+            Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("fitness", "Fitness", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("context", "Context", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "blocks"),
+            Attribute("operations_hash", "Operations hash", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("period_kind", "Period kind", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute(
+              "current_expected_quorum",
+              "Current expected quorum",
+              DataType.Int,
+              None,
+              KeyType.NonKey,
+              "blocks"
+            ),
+            Attribute("active_proposal", "Active proposal", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("baker", "Baker", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("nonce_hash", "Nonce hash", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_cycle", "Meta cycle", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_voting_period", "Meta voting period", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute(
+              "meta_voting_period_position",
+              "Meta voting period position",
+              DataType.Int,
+              None,
+              KeyType.NonKey,
+              "blocks"
+            ),
+            Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
+            Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
           )
+        )
       }
 
       "return list of attributes of operations" in {
-        sut.getTableAttributes("operations").futureValue shouldBe
-          Some(
-            List(
-              Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute(
-                "operation_group_hash",
-                "Operation group hash",
-                DataType.String,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
-              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
-              Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("secret", "Secret", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("source", "Source", DataType.String, None, KeyType.UniqueKey, "operations"),
-              Attribute("fee", "Fee", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("counter", "Counter", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("gas_limit", "Gas limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("storage_limit", "Storage limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("public_key", "Public key", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
-              Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("status", "Status", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute(
-                "paid_storage_size_diff",
-                "Paid storage size diff",
-                DataType.Decimal,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
-              Attribute(
-                "originated_contracts",
-                "Originated contracts",
-                DataType.String,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
-              Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
-              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
-            )
+        sut.getTableAttributes("operations").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
+            Attribute(
+              "operation_group_hash",
+              "Operation group hash",
+              DataType.String,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
+            Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("secret", "Secret", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("source", "Source", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("fee", "Fee", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("counter", "Counter", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("gas_limit", "Gas limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("storage_limit", "Storage limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("public_key", "Public key", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
+            Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
+            Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("status", "Status", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute(
+              "paid_storage_size_diff",
+              "Paid storage size diff",
+              DataType.Decimal,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
+            Attribute(
+              "originated_contracts",
+              "Originated contracts",
+              DataType.String,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
+            Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+            Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
+            Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
           )
+        )
       }
 
       "return list of attributes of operation groups" in {
 
-        sut.getTableAttributes("operation_groups").futureValue shouldBe
-          Some(
-            List(
-              Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
-            )
+        sut.getTableAttributes("operation_groups").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
+            Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
           )
+        )
       }
 
       "return list of attributes of delegates" in {
 
-        sut.getTableAttributes("delegates").futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "delegates"),
-              Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
-              Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
-            )
+        sut.getTableAttributes("delegates").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "delegates"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
+            Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
           )
+        )
       }
 
       "return list of attributes of proposals" in {
 
-        sut.getTableAttributes("proposals").futureValue shouldBe
-          Some(
-            List(
-              Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
-              Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
-            )
+        sut.getTableAttributes("proposals").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("protocol_hash", "Protocol hash", DataType.String, None, KeyType.UniqueKey, "proposals"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "proposals"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "proposals"),
+            Attribute("supporters", "Supporters", DataType.Int, None, KeyType.NonKey, "proposals")
           )
+        )
       }
 
       "return list of attributes of rolls" in {
 
-        sut.getTableAttributes("rolls").futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
-              Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
-            )
+        sut.getTableAttributes("rolls").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
           )
+        )
       }
 
       "return list of attributes of ballots" in {
 
-        sut.getTableAttributes("ballots").futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "ballots"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
-            )
+        sut.getTableAttributes("ballots").futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "ballots"),
+            Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "ballots"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "ballots"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "ballots")
           )
+        )
       }
 
       "return empty list for non existing table" in {
@@ -344,7 +337,7 @@ class TezosPlatformDiscoveryOperationsTest
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
-        val account = Account(PublicKeyHash("a"), 12.34, true, AccountDelegate(true, None), None, 1)
+        val account = Account(None, 12.34, true, AccountDelegate(true, None), None, 1)
 
         val accounts = List(
           BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = true))),

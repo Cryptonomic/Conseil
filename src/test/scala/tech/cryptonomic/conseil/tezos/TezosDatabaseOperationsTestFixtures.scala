@@ -47,7 +47,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val accounts = (1 to howMany).map { currentId =>
       AccountId(String valueOf currentId) ->
         Account(
-          manager = PublicKeyHash("manager"),
+          manager = Some(PublicKeyHash("manager")),
           balance = rnd.nextInt,
           spendable = true,
           delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
@@ -345,7 +345,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       AccountsRow(
         accountId = String valueOf currentId,
         blockId = block.hash,
-        manager = "manager",
+        manager = None,
         spendable = true,
         delegateSetable = false,
         delegateValue = None,

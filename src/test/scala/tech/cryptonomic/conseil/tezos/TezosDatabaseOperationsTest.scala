@@ -306,7 +306,7 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual block.hash
-            row.manager shouldEqual account.manager.value
+            row.manager shouldEqual account.manager.map(_.value)
             row.spendable shouldEqual account.spendable
             row.delegateSetable shouldEqual account.delegate.setable
             row.delegateValue shouldEqual account.delegate.value.map(_.value)
@@ -376,7 +376,7 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual hashUpdate
-            row.manager shouldEqual account.manager.value
+            row.manager shouldEqual account.manager.map(_.value)
             row.spendable shouldEqual account.spendable
             row.delegateSetable shouldEqual account.delegate.setable
             row.delegateValue shouldEqual account.delegate.value.map(_.value)
@@ -2093,7 +2093,7 @@ class TezosDatabaseOperationsTest
         accountId = 1.toString,
         blockId = "R0NpYZuUeF",
         blockLevel = 0,
-        manager = "manager",
+        manager = None,
         spendable = true,
         delegateSetable = false,
         delegateValue = None,

@@ -43,7 +43,7 @@ SET default_with_oids = false;
 CREATE TABLE public.accounts (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    manager character varying NOT NULL,
+    manager character varying,
     spendable boolean NOT NULL,
     delegate_setable boolean NOT NULL,
     delegate_value character varying,

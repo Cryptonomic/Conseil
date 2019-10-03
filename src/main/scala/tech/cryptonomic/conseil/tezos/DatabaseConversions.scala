@@ -52,7 +52,7 @@ object DatabaseConversions {
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              manager = manager.value,
+              manager = manager.map(_.value),
               spendable = spendable,
               delegateSetable = delegate.setable,
               delegateValue = delegate.value.map(_.value),

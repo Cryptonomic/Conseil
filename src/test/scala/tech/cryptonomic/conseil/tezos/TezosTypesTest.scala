@@ -194,7 +194,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "allow to read existing code within an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = PublicKeyHash("_"),
+          manager = None,
           balance = 0L,
           spendable = false,
           delegate = AccountDelegate(
@@ -211,7 +211,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "read None if there's no script in an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = PublicKeyHash("_"),
+          manager = None,
           balance = 0L,
           spendable = false,
           delegate = AccountDelegate(
@@ -228,7 +228,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "allow to update an existing script within an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = PublicKeyHash("_"),
+          manager = None,
           balance = 0L,
           spendable = false,
           delegate = AccountDelegate(
