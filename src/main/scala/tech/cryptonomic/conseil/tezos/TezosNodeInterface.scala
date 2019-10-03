@@ -227,7 +227,6 @@ class TezosNodeInterface(
     *         used to match with the corresponding request
     */
   private[this] def streamedGetQuery[CID](
-      network: String,
       ids: List[CID],
       mapToCommand: CID => String,
       concurrencyLevel: Int
@@ -267,7 +266,7 @@ class TezosNodeInterface(
     val batchId = java.util.UUID.randomUUID()
     logger.debug("{} - New batched GET call for {} requests", batchId, ids.size)
 
-    streamedGetQuery(network, ids, mapToCommand, concurrencyLevel)
+    streamedGetQuery(ids, mapToCommand, concurrencyLevel)
       .runFold(List.empty[(CID, String)])(_ :+ _)
       .andThen {
         case _ => logger.debug("{} - Batch completed", batchId)

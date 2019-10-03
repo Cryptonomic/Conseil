@@ -1035,44 +1035,6 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "write voting proposal" in {
-        import DatabaseConversions._
-        import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-        val proposals = Voting.generateProposals(howMany = 3, forBlock = block)
-
-        //write
-        val writeAndGetRows = for {
-          _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-          written <- sut.writeVotingProposals(proposals)
-          rows <- Tables.Proposals.result
-        } yield (written, rows)
-
-        val (stored, dbProposals) = dbHandler.run(writeAndGetRows.transactionally).futureValue
-
-        //expectations
-        val expectedWrites = proposals.map(_.protocols.size).sum
-        stored.value shouldEqual expectedWrites
-        dbProposals should have size expectedWrites
-
-        import org.scalatest.Inspectors._
-
-        val allProtocols = proposals.flatMap(_.protocols).toMap
-
-        forAll(dbProposals) { proposalRow =>
-          val rowProtocol = ProtocolId(proposalRow.protocolHash)
-          allProtocols.keySet should contain(rowProtocol)
-          allProtocols(rowProtocol) shouldBe proposalRow.supporters.value
-          proposalRow.blockId shouldBe block.data.hash.value
-          proposalRow.blockLevel shouldBe block.data.header.level
-        }
-
-      }
-
       "write voting bakers rolls" in {
         import DatabaseConversions._
         import tech.cryptonomic.conseil.util.Conversion.Syntax._
@@ -1103,40 +1065,6 @@ class TezosDatabaseOperationsTest
           rollsRow.rolls shouldEqual generated.rolls
           rollsRow.blockId shouldBe block.data.hash.value
           rollsRow.blockLevel shouldBe block.data.header.level
-        }
-
-      }
-
-      "write voting ballots" in {
-        import DatabaseConversions._
-        import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-        val ballots = Voting.generateBallots(howMany = 3)
-
-        //write
-        val writeAndGetRows = for {
-          _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-          written <- sut.writeVotingBallots(ballots, block)
-          rows <- Tables.Ballots.result
-        } yield (written, rows)
-
-        val (stored, dbBallots) = dbHandler.run(writeAndGetRows.transactionally).futureValue
-
-        //expectations
-        stored.value shouldEqual ballots.size
-        dbBallots should have size ballots.size
-
-        import org.scalatest.Inspectors._
-
-        forAll(dbBallots) { ballotRow =>
-          val generated = ballots.find(_.pkh.value == ballotRow.pkh).value
-          ballotRow.ballot shouldEqual generated.ballot.value
-          ballotRow.blockId shouldBe block.data.hash.value
-          ballotRow.blockLevel shouldBe block.data.header.level
         }
 
       }
