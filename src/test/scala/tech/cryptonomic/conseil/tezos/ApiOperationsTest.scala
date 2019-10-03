@@ -15,7 +15,7 @@ class ApiOperationsTest extends WordSpec
   with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global
-  "ApiOperations2Test" should {
+  "ApiOperationsTest" should {
     val sut = new ApiOperations {
       override lazy val dbReadHandle = dbHandler
     }
@@ -28,9 +28,31 @@ class ApiOperationsTest extends WordSpec
       result shouldBe None
     }
 
-    "sanitizeForSql" in {
+    "sanitizeForSql alphanumeric string" in {
       // given
-      val input = "xyz"
+      val input = "xyz123"
+
+      // when
+      val result = ApiOperations.sanitizeForSql(input)
+
+      // then
+      result shouldBe "xyz123"
+    }
+
+    "sanitizeForSql alphanumeric string with supported characters" in {
+      // given
+      val input = "xyz+123_abc: pqr"
+
+      // when
+      val result = ApiOperations.sanitizeForSql(input)
+
+      // then
+      result shouldBe "xyz+123_abc: pqr"
+    }
+
+    "sanitizeForSql alphanumeric string with unsupported characters" in {
+      // given
+      val input = ";xyz$%*)("
 
       // when
       val result = ApiOperations.sanitizeForSql(input)
@@ -41,7 +63,7 @@ class ApiOperationsTest extends WordSpec
 
     "fetchOperationGroup" in {
       // given
-      val input = ""
+      val input = "xyz"
 
       // when
       val result = sut.fetchOperationGroup(input).failed.futureValue
@@ -122,7 +144,6 @@ class ApiOperationsTest extends WordSpec
       result shouldBe -1
     }
 
-
     "fetchLatestBlock" in {
       // when
       val result = sut.fetchLatestBlock().futureValue
@@ -131,7 +152,18 @@ class ApiOperationsTest extends WordSpec
       result shouldBe None
     }
 
-    "sanitizeDatePartAggregation" in {
+    "sanitizeDatePartAggregation and leave all valid characters" in {
+      // given
+      val input = "DD-MM-YYYY"
+
+      // when
+      val result = ApiOperations.sanitizeDatePartAggregation(input)
+
+      // then
+      result shouldBe "DD-MM-YYYY"
+    }
+
+    "sanitizeDatePartAggregation and remove ivnalid characters" in {
       // given
       val input = "xyz "
 
