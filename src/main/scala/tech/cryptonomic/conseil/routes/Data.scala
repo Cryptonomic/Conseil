@@ -15,10 +15,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(config: PlatformsConfiguration, metadataService: MetadataService, server: ServerConfiguration, apiOperations: ApiOperations)(
+  def apply(metadataService: MetadataService, server: ServerConfiguration, apiOperations: ApiOperations)(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(config, DataPlatform(apiOperations, server.maxQueryResultSize), metadataService, apiOperations)
+    new Data(DataPlatform(apiOperations, server.maxQueryResultSize), metadataService, apiOperations)
 }
 
 /**
@@ -27,7 +27,7 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(config: PlatformsConfiguration, queryProtocolPlatform: DataPlatform, metadataService: MetadataService, apiOperations: ApiOperations)(
+class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService, apiOperations: ApiOperations)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
