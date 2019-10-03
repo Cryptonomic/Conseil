@@ -20,8 +20,7 @@ import tech.cryptonomic.conseil.metadata.{
   AttributeValuesCacheConfiguration,
   MetadataService,
   TestPlatformDiscoveryOperations,
-  TransparentUnitTransformation,
-  UnitTransformation
+  TransparentUnitTransformation
 }
 import tech.cryptonomic.conseil.routes.Data
 

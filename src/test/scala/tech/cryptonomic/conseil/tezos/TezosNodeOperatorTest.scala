@@ -7,8 +7,9 @@ import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.postfixOps
 
 class TezosNodeOperatorTest
     extends FlatSpec

@@ -195,6 +195,19 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     }
 
+    def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
+      import cats.implicits._
+      fetchingResults.map {
+        case (block, _) =>
+          val bh = block.data.hash
+          (tezosNodeOperator.getBakingRightsForBlock(bh), tezosNodeOperator.getEndorsingRightsForBlock(bh)).mapN {
+            case (br, er) =>
+              (db.run(TezosDb.writeBakingRights(bh, br)), db.run(TezosDb.writeEndorsingRights(bh, er)))
+                .mapN((_, _) => ())
+          }.flatten
+      }.sequence.map(_ => ())
+    }
+
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
       case (pages, total) => {
@@ -209,8 +222,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         Source
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
-          .mapAsync(1) {
-            processBlocksPage(_) flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
+          .mapAsync(1) { fetchingResults =>
+            processBlocksPage(fetchingResults)
+              .flatTap(
+                _ =>
+                  processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint >> processBakingAndEndorsingRights(
+                        fetchingResults
+                      )
+              )
+
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress
@@ -238,8 +258,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processVotesForBlocks(blocks: List[TezosTypes.Block]): Future[Option[Int]] = {
     import cats.syntax.traverse._
     import cats.syntax.foldable._
-    import cats.syntax.semigroup._
-    import cats.syntax.apply._
     import cats.instances.list._
     import cats.instances.option._
     import cats.instances.int._
@@ -248,25 +266,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     tezosNodeOperator.getVotingDetails(blocks).flatMap {
       case (proposals, bakersBlocks, ballotsBlocks) =>
-        //this is a single list
-        val writeProposal = TezosDb.writeVotingProposals(proposals)
         //this is a nested list, each block with many baker rolls
         val writeBakers = bakersBlocks.traverse {
           case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
         }
-        //this is a nested list, each block with many ballot votes
-        val writeBallots = ballotsBlocks.traverse {
-          case (block, ballots) => TezosDb.writeVotingBallots(ballots, block)
-        }
 
-        /* combineAll reduce List[Option[Int]] => Option[Int] by summing all ints present
-         * |+| is shorthand syntax to sum Option[Int] together using Int's sums
-         * Any None in the operands will make the whole operation collapse in a None result
-         */
-        val combinedVoteWrites = (writeProposal, writeBakers, writeBallots).mapN(
-          (storedProposals, storedBakers, storedBallots) =>
-            storedProposals |+| storedBakers.combineAll |+| storedBallots.combineAll
-        )
+        val combinedVoteWrites = writeBakers.map(_.combineAll.map(_ + proposals.size + ballotsBlocks.size))
 
         db.run(combinedVoteWrites.transactionally)
     }
