@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
+import cats.implicits._
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
@@ -38,15 +39,22 @@ object Conseil
         system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
       }
 
-      val validateApiKey: Directive[Tuple1[String]] = headerValueByName("apikey").tflatMap[Tuple1[String]] {
-        case Tuple1(apiKey) =>
-          onComplete(securityApi.validateApiKey(apiKey)).flatMap {
-            case Success(true) => provide(apiKey)
-            case _ => complete((Unauthorized, "Incorrect API key"))
+      val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
+        apiKeyTuple =>
+          val apiKey = apiKeyTuple match {
+            case Tuple1(apiKey) => apiKey
+            case _ => None
           }
-        case _ =>
-          complete((Unauthorized, "Missing API key"))
+
+          onComplete(securityApi.validateApiKey(apiKey)).flatMap {
+            case Success(true) => provide(apiKey.getOrElse(""))
+            case _ =>
+              complete((Unauthorized, apiKey.fold("Missing API key") { _ =>
+                "Incorrect API key"
+              }))
+          }
       }
+
       val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
       // This part is a temporary middle ground between current implementation and moving code to use IO
@@ -84,34 +92,40 @@ object Conseil
       lazy val platformDiscovery = PlatformDiscovery(metadataService)
       lazy val data = Data(metadataService, server)(tezosDispatcher)
 
-      val route = cors() {
+      val route = concat(
+        pathPrefix("docs") {
+          pathEndOrSingleSlash {
+            getFromResource("web/index.html")
+          }
+        },
+        pathPrefix("swagger-ui") {
+          getFromResourceDirectory("web/swagger-ui/")
+        },
+        Docs.route,
+        cors() {
           enableCORS {
-            validateApiKey { _ =>
-              logRequest("Conseil", Logging.DebugLevel) {
-                AppInfo.route
-              } ~
-                logRequest("Metadata Route", Logging.DebugLevel) {
-                  platformDiscovery.route
-                } ~
-                logRequest("Data Route", Logging.DebugLevel) {
-                  data.getRoute ~ data.postRoute
-                }
-            } ~
+            concat(
+              validateApiKey { _ =>
+                concat(
+                  logRequest("Conseil", Logging.DebugLevel) {
+                    AppInfo.route
+                  },
+                  logRequest("Metadata Route", Logging.DebugLevel) {
+                    platformDiscovery.route
+                  },
+                  logRequest("Data Route", Logging.DebugLevel) {
+                    data.getRoute ~ data.postRoute
+                  }
+                )
+              },
               options {
                 // Support for CORS pre-flight checks.
                 complete("Supported methods : GET and POST.")
               }
+            )
           }
-        } ~
-            pathPrefix("docs") {
-              pathEndOrSingleSlash {
-                getFromResource("web/index.html")
-              }
-            } ~
-            pathPrefix("swagger-ui") {
-              getFromResourceDirectory("web/swagger-ui/")
-            } ~
-            Docs.route
+        }
+      )
 
       val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
       displayInfo(server)

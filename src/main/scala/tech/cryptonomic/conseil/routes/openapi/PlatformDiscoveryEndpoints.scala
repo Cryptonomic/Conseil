@@ -15,9 +15,9 @@ trait PlatformDiscoveryEndpoints
   private val commonPath = path / "v2" / "metadata"
 
   /** Metadata platforms endpoint */
-  def platformsEndpoint: Endpoint[String, List[PlatformDiscoveryTypes.Platform]] =
+  def platformsEndpoint: Endpoint[Option[String], List[PlatformDiscoveryTypes.Platform]] =
     endpoint(
-      request = get(url = commonPath / "platforms", headers = header("apiKey")),
+      request = get(url = commonPath / "platforms", headers = optHeader("apiKey")),
       response = jsonResponse[List[PlatformDiscoveryTypes.Platform]](
         docs = Some("Metadata endpoint for listing available platforms")
       ),
@@ -25,9 +25,9 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata networks endpoint */
-  def networksEndpoint: Endpoint[(String, String), Option[List[PlatformDiscoveryTypes.Network]]] =
+  def networksEndpoint: Endpoint[(String, Option[String]), Option[List[PlatformDiscoveryTypes.Network]]] =
     endpoint(
-      request = get(url = commonPath / segment[String](name = "platform") / "networks", headers = header("apiKey")),
+      request = get(url = commonPath / segment[String](name = "platform") / "networks", headers = optHeader("apiKey")),
       response = jsonResponse[List[PlatformDiscoveryTypes.Network]](
         docs = Some("Metadata endpoint for listing available networks")
       ).orNotFound(Some("Not found")),
@@ -35,11 +35,11 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata entities endpoint */
-  def entitiesEndpoint: Endpoint[(String, String, String), Option[List[PlatformDiscoveryTypes.Entity]]] =
+  def entitiesEndpoint: Endpoint[(String, String, Option[String]), Option[List[PlatformDiscoveryTypes.Entity]]] =
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / "entities",
-        headers = header("apiKey")
+        headers = optHeader("apiKey")
       ),
       response = jsonResponse[List[PlatformDiscoveryTypes.Entity]](
         docs = Some("Metadata endpoint for listing available entities")
@@ -48,13 +48,13 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata attributes endpoint */
-  def attributesEndpoint: Endpoint[((String, String, String), String), Option[List[PlatformDiscoveryTypes.Attribute]]] =
+  def attributesEndpoint: Endpoint[((String, String, String), Option[String]), Option[List[PlatformDiscoveryTypes.Attribute]]] =
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
                 name = "entity"
               ) / "attributes",
-        headers = header("apiKey")
+        headers = optHeader("apiKey")
       ),
       response = jsonResponse[List[PlatformDiscoveryTypes.Attribute]](
         docs = Some("Metadata endpoint for listing available attributes")
@@ -63,7 +63,7 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata attributes values endpoint */
-  def attributesValuesEndpoint: Endpoint[((String, String, String), String, String), Option[
+  def attributesValuesEndpoint: Endpoint[((String, String, String), String, Option[String]), Option[
     Either[List[AttributesValidationError], List[String]]
   ]] =
     endpoint(
@@ -71,7 +71,7 @@ trait PlatformDiscoveryEndpoints
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
                 name = "entity"
               ) / segment[String](name = "attribute"),
-        headers = header("apiKey")
+        headers = optHeader("apiKey")
       ),
       response = validatedAttributes[List[String]](
         response = jsonResponse[List[String]](
@@ -83,7 +83,7 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata attributes values with filter endpoint */
-  def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), String), Option[
+  def attributesValuesWithFilterEndpoint: Endpoint[(((String, String, String), String, String), Option[String]), Option[
     Either[List[AttributesValidationError], List[String]]
   ]] =
     endpoint(
@@ -91,7 +91,7 @@ trait PlatformDiscoveryEndpoints
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
                 name = "entity"
               ) / segment[String](name = "attribute") / segment[String](name = "filter"),
-        headers = header("apiKey")
+        headers = optHeader("apiKey")
       ),
       response = validatedAttributes[List[String]](
         response = jsonResponse[List[String]](
