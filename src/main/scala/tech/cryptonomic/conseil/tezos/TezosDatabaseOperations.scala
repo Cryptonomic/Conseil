@@ -28,7 +28,6 @@ object TezosDatabaseOperations extends LazyLogging {
     *  @param votes List of vote aggregates for some range of block levels with ballots.
     *  @return      Database action possibly containing the number of rows written
     */
-
   def writeVotes(votes: List[VoteAggregates]): DBIO[Option[Int]] = {
     logger.info("Writing votes to DB...")
     Tables.Votes ++= votes.map(_.convertTo[Tables.VotesRow])
@@ -448,7 +447,7 @@ object TezosDatabaseOperations extends LazyLogging {
       .result
 
   /** Get next batch of voting levels */
-  def fetchVotingBlockLevels: DBIO[Set[Int]] = {
+  def fetchVotingBlockLevels(implicit ec: ExecutionContext): DBIO[Set[Int]] = {
 
     def fetchVotesMaxLevel: DBIO[Int] =
       Tables.Votes
@@ -463,13 +462,12 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield (voteMaxLevel + 1 to headBlockLevel).toSet
   }
 
-    type VotingFields = (Option[String], Int, String, Option[Int], java.sql.Timestamp, Option[String], Option[String])
+  type VotingFields = (Option[String], Int, String, Option[Int], java.sql.Timestamp, Option[String], Option[String])
 
-    /** Get necessary fields to populate votes table from ballot operations */
-  def fetchVotingFields(levels: Set[Int])(
-    implicit ec: ExecutionContext): DBIO[Seq[Seq[VotingFields]]] = {
-      Tables.Operations
-      .filter(_.kind == "ballot")
+  /** Get necessary fields to populate votes table from ballot operations */
+  def fetchVotingFields(levels: Set[Int])(implicit ec: ExecutionContext): DBIO[Seq[VotingFields]] =
+    Tables.Operations
+      .filter(_.kind inSet Set("ballot"))
       .filter(_.blockLevel inSet levels)
       .map(
         o =>
@@ -481,17 +479,9 @@ object TezosDatabaseOperations extends LazyLogging {
             o.timestamp,
             o.ballot,
             o.source
-        )
+          )
       )
-      .groupBy(_._2)
-      .map{ case (level, fields) => fields}
-        .result
-      }
-
-
-
-
-
+      .result
 
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =

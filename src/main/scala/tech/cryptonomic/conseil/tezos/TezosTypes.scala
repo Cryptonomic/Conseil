@@ -180,18 +180,18 @@ object TezosTypes {
     *
     */
   final case class VoteAggregates(
-                                   timestamp: java.sql.Timestamp,
-                                   cycle: Option[Int],
-                                   level: Int,
-                                   proposalHash: Option[String],
-                                   yayCount: Int,
-                                   nayCount: Int,
-                                   passCount: Int,
-                                   yayStake: BigDecimal,
-                                   nayStake: BigDecimal,
-                                   passStake: BigDecimal,
-                                   totalStake: BigDecimal,
-                                 )
+      timestamp: java.sql.Timestamp,
+      cycle: Option[Int],
+      level: Int,
+      proposalHash: Option[String],
+      yayCount: Int,
+      nayCount: Int,
+      passCount: Int,
+      yayStake: BigDecimal,
+      nayStake: BigDecimal,
+      passStake: BigDecimal,
+      totalStake: BigDecimal
+  )
 
   /** root of the operation hiearchy */
   sealed trait Operation extends Product with Serializable

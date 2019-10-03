@@ -7,7 +7,15 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{
+  FeeOperations,
+  ShutdownComplete,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -96,6 +104,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     val noOp = Future.successful(())
     val processing = for {
       _ <- processTezosBlocks()
+      _ <- processTezosVotes()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
@@ -256,7 +265,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
   }
 
-
   /**
     * Collect data from Blocks Table, Operations Table, and the Tezos RPC,
     * return the appropriate list of VoteAggregates, and write them to the Votes table.
@@ -270,43 +278,44 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     import cats.implicits._
     import slick.jdbc.PostgresProfile.api._
 
-
     logger.info("Processing latest Tezos votes data...")
 
-    def partitionByVote(fields: Seq[VotingFields]):
-    (Seq[VotingFields], Seq[VotingFields], Seq[VotingFields]) = {
+    def partitionByVote(fields: Seq[VotingFields]): (Seq[VotingFields], Seq[VotingFields], Seq[VotingFields]) = {
       val (yays, notYays) = fields.partition(x => x._6 == Some("yay"))
       val (nays, notYaysOrNays) = notYays.partition(x => x._6 == Some("nay"))
       val (passes, _) = notYaysOrNays.partition(x => x._6 == Some("pass"))
       (yays, nays, passes)
     }
 
-    def calculateStake(fields: Seq[VotingFields]):
-      Future[BigDecimal] =
-        Future.traverse(
-          fields
-            .map{ case (_, _, hash, _, _, _, address) =>
-              (BlockHash(hash), AccountId(address.get)) }
-        ){ x => tezosNodeOperator.getAccountBalanceForBlock(x._1, x._2)}
-          .map(balances => balances.reduce(_ + _))
+    def calculateStake(fields: Seq[VotingFields]): Future[BigDecimal] =
+      Future
+        .traverse(
+          fields.map {
+            case (_, _, hash, _, _, _, address) =>
+              (BlockHash(hash), AccountId(address.get))
+          }
+        ) { x =>
+          tezosNodeOperator.getAccountBalanceForBlock(x._1, x._2)
+        }
+        .map(balances => balances.reduceOption(_ + _).getOrElse(0))
 
-    def processVoteAggregate(votingFields: Seq[VotingFields]):
-      Future[TezosTypes.VoteAggregates] = {
-        val sampleVotingField = votingFields.head
-        val timestamp = sampleVotingField._5
-        val cycle = sampleVotingField._4
-        val level = sampleVotingField._2
-        val proposalHash = sampleVotingField._1
-        val (yays, nays, passes) = partitionByVote(votingFields)
-        val yayCount = yays.length
-        val nayCount = nays.length
-        val passCount = passes.length
-        for {
-          yayStake <- calculateStake(yays)
-          nayStake <- calculateStake(nays)
-          passStake <- calculateStake(passes)
-          totalStake = yayStake + nayStake + passStake
-        } yield VoteAggregates(
+    def processVoteAggregate(votingFields: Seq[VotingFields]): Future[TezosTypes.VoteAggregates] = {
+      val sampleVotingField = votingFields.head
+      val timestamp = sampleVotingField._5
+      val cycle = sampleVotingField._4
+      val level = sampleVotingField._2
+      val proposalHash = sampleVotingField._1
+      val (yays, nays, passes) = partitionByVote(votingFields)
+      val yayCount = yays.length
+      val nayCount = nays.length
+      val passCount = passes.length
+      for {
+        yayStake <- calculateStake(yays)
+        nayStake <- calculateStake(nays)
+        passStake <- calculateStake(passes)
+        totalStake = yayStake + nayStake + passStake
+      } yield
+        VoteAggregates(
           timestamp,
           cycle,
           level,
@@ -324,9 +333,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     //get fields from db in Tezos Database Operations, use the block levels as input
     val computeAndStore = for {
       blockLevels <- TezosDb.fetchVotingBlockLevels
-      listOfListOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
-      //listOfListOfVotingFields.map(x => x)
-      votes <- DBIO.from{Future.traverse(listOfListOfVotingFields){x => processVoteAggregate(x)}}
+      listOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
+      listOfListOfVotingFields = listOfVotingFields.groupBy(_._2).values
+      votes <- DBIO.from {
+        Future.traverse(listOfListOfVotingFields.toSeq) { x =>
+          processVoteAggregate(x)
+        }
+      }
       dbWrites <- TezosDb.writeVotes(votes.toList)
     } yield dbWrites
 
@@ -336,7 +349,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case Failure(e) => logger.error("Could not write vote aggregates to the database because", e)
     }
   }
-
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)

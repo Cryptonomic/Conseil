@@ -43,7 +43,7 @@ SET default_with_oids = false;
 -- Name: Votes; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public."Votes" (
+CREATE TABLE public."votes" (
     "timestamp" timestamp without time zone NOT NULL,
     cycle integer,
     level integer,
