@@ -163,7 +163,7 @@ class ApiOperationsTest extends WordSpec
       result shouldBe "DD-MM-YYYY"
     }
 
-    "sanitizeDatePartAggregation and remove ivnalid characters" in {
+    "sanitizeDatePartAggregation and remove invalid characters" in {
       // given
       val input = "xyz "
 
