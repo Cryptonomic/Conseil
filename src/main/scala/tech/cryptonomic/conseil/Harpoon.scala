@@ -77,11 +77,9 @@ object Harpoon extends IOApp with PureLogging {
 
       //a wait period before running the process once more
       val waitRound =
-        IO.shift *>
-            logger.pureLog[IO](
-              _.info("Harpoon is now waiting for the next processing cycle")
-            ) *>
-            timer.sleep(conf.cycleSleep)
+        logger.pureLog[IO](
+          _.info("Harpoon is now waiting for the next processing cycle")
+        ) *> timer.sleep(conf.cycleSleep)
 
       //combine the two parts, recursively calling itself, with an updated state
       def program(level: tagging.ProcessorInput): IO[Unit] =

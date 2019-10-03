@@ -11,7 +11,6 @@ val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
 val slickVersion = "3.3.0"
-val catsVersion = "2.0.0"
 val fs2Version = "2.0.1"
 val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
@@ -46,8 +45,8 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core"   % "jackson-databind"               % "2.9.6" exclude ("com.fasterxml.jackson.core", "jackson-annotations"),
   "com.fasterxml.jackson.module" %% "jackson-module-scala"          % "2.9.6",
   "com.chuusai"                  %% "shapeless"                     % "2.3.3",
-  "org.typelevel"                %% "cats-core"                     % catsVersion,
-  "org.typelevel"                %% "cats-effect"                   % catsVersion,
+  "org.typelevel"                %% "cats-core"                     % "2.0.0",
+  "org.typelevel"                %% "cats-effect"                   % "2.0.0",
   "org.typelevel"                %% "cats-mtl-core"                 % "0.7.0",
   "org.typelevel"                %% "mouse"                         % "0.23",
   "co.fs2"                       %% "fs2-core"                      % fs2Version,

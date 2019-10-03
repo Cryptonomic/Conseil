@@ -124,9 +124,7 @@ class AccountsTaggingProcess[F[_]: Sync](
               )
             ) >> missingResult
         }
-        effect.map { flagResult =>
-          (flagResult, operation.blockLevel)
-        }
+        effect.tupleRight(operation.blockLevel)
       }
       .evalTap {
         //evenutually store the reference level, if needed
@@ -142,7 +140,13 @@ class AccountsTaggingProcess[F[_]: Sync](
 
   }
 
-  /* will have the method that accepts data and actualy processes it*/
+  /* Will have the method that accepts data and actualy processes it.
+   *
+   * Watch out: we're doing sequential updates of the state (i.e. highWatermark)
+   * only because we don't expect other concurrent processes to try and write on it.
+   * If this constraint is relaxed for any reason, we might want to switch to
+   * some sort of atomic update that handles concurrency.
+   */
   def process(implicit api: ServiceDependencies): F[ProcessorOutput] =
     for {
       initialMark <- highWatermark.get
