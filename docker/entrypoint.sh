@@ -13,6 +13,7 @@ XTZPREFIX=${XTZ_Prefix:=}
 XTZPORT=${XTZ_Port:=8732}
 XTZNET=${XTZ_Network:=mainnet}
 APIPORT=${API_PORT:=80}
+APIKEY=${API_KEY:=conseil}
 
 CONFIG=${CONFIG:-none}
 
@@ -34,6 +35,7 @@ if [ $CONFIG = "none" ]; then
     sed -i "s/{{XTZPORT}}/$XTZPORT/g" conseil.conf
     sed -i "s/{{XTZNET}}/$XTZNET/g" conseil.conf
     sed -i "s/{{APIPORT}}/$APIPORT/g" conseil.conf
+    sed -i "s/{{APIKEY}}/$APIKEY/g" conseil.conf
 
 else
     echo "Using config file: $CONFIG"
