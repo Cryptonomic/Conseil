@@ -250,6 +250,13 @@ object JsonDecoders {
       implicit val accountDecoder: Decoder[Account] = deriveDecoder
     }
 
+    object Rights {
+      implicit private val conf = Derivation.tezosDerivationConfig
+
+      implicit val endorsingRightsDecoder: Decoder[EndorsingRights] = deriveDecoder
+      implicit val bakingRightsDecoder: Decoder[BakingRights] = deriveDecoder
+    }
+
   }
 
 }
