@@ -198,10 +198,12 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           counter = 0,
           manager = None,
           spendable = Some(false),
-          delegate = Some(AccountDelegate(
-            setable = false,
-            value = None
-          )),
+          delegate = Some(
+            AccountDelegate(
+              setable = false,
+              value = None
+            )
+          ),
           script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
         )
 
@@ -215,10 +217,12 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           balance = 0L,
           counter = 0,
           spendable = Some(false),
-          delegate = Some(AccountDelegate(
-            setable = false,
-            value = None
-          )),
+          delegate = Some(
+            AccountDelegate(
+              setable = false,
+              value = None
+            )
+          ),
           script = None
         )
 
@@ -232,10 +236,12 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           balance = 0L,
           counter = 0,
           spendable = Some(false),
-          delegate = Some(AccountDelegate(
-            setable = false,
-            value = None
-          )),
+          delegate = Some(
+            AccountDelegate(
+              setable = false,
+              value = None
+            )
+          ),
           script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
         )
 

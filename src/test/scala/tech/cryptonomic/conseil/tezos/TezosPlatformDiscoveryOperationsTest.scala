@@ -320,7 +320,8 @@ class TezosPlatformDiscoveryOperationsTest
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
-        val account = Account(balance = 12.34, counter = 1, manager = None, spendable = Some(true), delegate = None, script = None)
+        val account =
+          Account(balance = 12.34, counter = 1, manager = None, spendable = Some(true), delegate = None, script = None)
 
         val accounts = List(
           BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = Some(true)))),

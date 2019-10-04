@@ -210,10 +210,12 @@ trait AccountsJsonData {
       manager = None,
       balance = 2921522468L,
       spendable = Some(true),
-      delegate = Some(AccountDelegate(
-        setable = false,
-        value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
-      )),
+      delegate = Some(
+        AccountDelegate(
+          setable = false,
+          value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+        )
+      ),
       script = None,
       counter = 0
     )
