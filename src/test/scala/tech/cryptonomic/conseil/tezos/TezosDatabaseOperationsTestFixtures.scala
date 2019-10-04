@@ -47,12 +47,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val accounts = (1 to howMany).map { currentId =>
       AccountId(String valueOf currentId) ->
         Account(
-          manager = Some(PublicKeyHash("manager")),
           balance = rnd.nextInt,
-          spendable = true,
-          delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
-          script = Some(Contracts(Micheline("storage"), Micheline("script"))),
-          counter = currentId
+          counter = currentId,
+          manager = Some(PublicKeyHash("manager")),
+          spendable = Some(true),
+          delegate = Some(AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value")))),
+          script = Some(Contracts(Micheline("storage"), Micheline("script")))
         )
     }.toMap
 
@@ -345,13 +345,13 @@ trait TezosDataGeneration extends RandomGenerationKit {
       AccountsRow(
         accountId = String valueOf currentId,
         blockId = block.hash,
-        manager = None,
-        spendable = true,
-        delegateSetable = false,
-        delegateValue = None,
+        balance = 0,
         counter = 0,
-        script = None,
-        balance = 0
+        manager = None,
+        spendable = Some(true),
+        delegateSetable = None,
+        delegateValue = None,
+        script = None
       )
     }.toList
 

@@ -1,7 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import java.time.Instant
-
 import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
@@ -402,12 +400,12 @@ object TezosTypes {
   )
 
   final case class Account(
-      manager: Option[PublicKeyHash], // retro-compat from protocol 5+
       balance: scala.math.BigDecimal,
-      spendable: Boolean,
-      delegate: AccountDelegate,
-      script: Option[Scripted.Contracts],
-      counter: Int
+      counter: Int,
+      manager: Option[PublicKeyHash], // retro-compat from protocol 5+
+      spendable: Option[Boolean], // retro-compat from protocol 5+
+      delegate: Option[AccountDelegate], // retro-compat from protocol 5+
+      script: Option[Scripted.Contracts]
   )
 
   /** Keeps track of association between some domain type and a block reference

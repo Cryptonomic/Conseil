@@ -194,15 +194,15 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "allow to read existing code within an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = None,
           balance = 0L,
-          spendable = false,
-          delegate = AccountDelegate(
+          counter = 0,
+          manager = None,
+          spendable = Some(false),
+          delegate = Some(AccountDelegate(
             setable = false,
             value = None
-          ),
-          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
-          counter = 0
+          )),
+          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
         )
 
         sut.scriptLens.getOption(account).value shouldBe "Some code here"
@@ -213,13 +213,13 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val account = Account(
           manager = None,
           balance = 0L,
-          spendable = false,
-          delegate = AccountDelegate(
+          counter = 0,
+          spendable = Some(false),
+          delegate = Some(AccountDelegate(
             setable = false,
             value = None
-          ),
-          script = None,
-          counter = 0
+          )),
+          script = None
         )
 
         sut.scriptLens.getOption(account) shouldBe 'empty
@@ -230,13 +230,13 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val account = Account(
           manager = None,
           balance = 0L,
-          spendable = false,
-          delegate = AccountDelegate(
+          counter = 0,
+          spendable = Some(false),
+          delegate = Some(AccountDelegate(
             setable = false,
             value = None
-          ),
-          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
-          counter = 0
+          )),
+          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
         )
 
         val updated = sut.scriptLens.modify(old => old + "; new code")(account)

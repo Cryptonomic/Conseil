@@ -308,8 +308,8 @@ class TezosDatabaseOperationsTest
             row.blockId shouldEqual block.hash
             row.manager shouldEqual account.manager.map(_.value)
             row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.setable
-            row.delegateValue shouldEqual account.delegate.value.map(_.value)
+            row.delegateSetable shouldEqual account.delegate.map(_.setable)
+            row.delegateValue shouldEqual account.delegate.flatMap(_.value.map(_.value))
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -378,8 +378,8 @@ class TezosDatabaseOperationsTest
             row.blockId shouldEqual hashUpdate
             row.manager shouldEqual account.manager.map(_.value)
             row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.setable
-            row.delegateValue shouldEqual account.delegate.value.map(_.value)
+            row.delegateSetable shouldEqual account.delegate.map(_.setable)
+            row.delegateValue shouldEqual account.delegate.flatMap(_.value.map(_.value))
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -2022,8 +2022,8 @@ class TezosDatabaseOperationsTest
         blockId = "R0NpYZuUeF",
         blockLevel = 0,
         manager = None,
-        spendable = true,
-        delegateSetable = false,
+        spendable = None,
+        delegateSetable = None,
         delegateValue = None,
         counter = 0,
         script = None,

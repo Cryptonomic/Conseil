@@ -22,7 +22,7 @@ import tech.cryptonomic.conseil.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.metadata._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountDelegate, AccountId, BlockTagged}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{Account, AccountId, BlockTagged}
 import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 
 import scala.concurrent.ExecutionContext
@@ -320,11 +320,11 @@ class TezosPlatformDiscoveryOperationsTest
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
-        val account = Account(None, 12.34, true, AccountDelegate(true, None), None, 1)
+        val account = Account(balance = 12.34, counter = 1, manager = None, spendable = Some(true), delegate = None, script = None)
 
         val accounts = List(
-          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = true))),
-          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = false)))
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = Some(true)))),
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = Some(false))))
         )
 
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
