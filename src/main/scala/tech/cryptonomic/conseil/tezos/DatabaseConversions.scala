@@ -9,6 +9,7 @@ import java.sql.Timestamp
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
 
@@ -588,7 +589,7 @@ object DatabaseConversions {
       bakingRights
         .into[Tables.BakingRightsRow]
         .withFieldConst(_.blockHash, blockHash.value)
-        .withFieldRenamed(_.estimated_time, _.estimatedTime)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
         .transform
     }
   }
@@ -599,7 +600,7 @@ object DatabaseConversions {
       endorsingRights.slots.map { slot =>
         endorsingRights
           .into[Tables.EndorsingRightsRow]
-          .withFieldRenamed(_.estimated_time, _.estimatedTime)
+          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
           .withFieldConst(_.slot, slot)
           .withFieldConst(_.blockHash, blockHash.value)
           .transform

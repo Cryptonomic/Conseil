@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.time.ZonedDateTime
+
 import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
@@ -531,14 +533,15 @@ object TezosTypes {
       level: Int,
       delegate: String,
       priority: Int,
-      estimated_time: java.sql.Timestamp
+      estimated_time: ZonedDateTime
   )
 
-  /** Endorsing rights model*/
+  /** Endorsing rights model */
   final case class EndorsingRights(
       level: Int,
       delegate: String,
       slots: List[Int],
-      estimated_time: java.sql.Timestamp
+      estimated_time: ZonedDateTime
   )
+
 }

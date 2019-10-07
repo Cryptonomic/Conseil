@@ -269,32 +269,30 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /**
     * Writes the baking rights to the database
-    * at the same time saving enough information about updated accounts to later fetch those accounts
-    * @param blockHash hash of the block
-    * @param bakingRights baking rights for the given block
+    * @param bakingRightsMap mapping of hash to bakingRights list
     */
-  def writeBakingRights(
-      blockHash: BlockHash,
-      bakingRights: List[BakingRights]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+  def writeBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
     logger.info("Writing baking rights to the DB...")
-    Tables.BakingRights ++= bakingRights.map(br => (blockHash, br).convertTo[Tables.BakingRightsRow])
+    val conversionResult = for {
+      (blockHash, bakingRightsList) <- bakingRightsMap
+      bakingRights <- bakingRightsList
+    } yield (blockHash, bakingRights).convertTo[Tables.BakingRightsRow]
+
+    Tables.BakingRights ++= conversionResult
   }
 
   /**
     * Writes the endorsing rights to the database
-    * at the same time saving enough information about updated accounts to later fetch those accounts
-    * @param blockHash hash of the block
-    * @param endorsingRights endorsing rights for the given block
+    * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
-  def writeEndorsingRights(
-      blockHash: BlockHash,
-      endorsingRights: List[EndorsingRights]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+  def writeEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
     logger.info("Writing endorsing rights to the DB...")
-    Tables.EndorsingRights ++= endorsingRights.flatMap(
-      er => (blockHash, er).convertToA[List, Tables.EndorsingRightsRow]
-    )
+    val transformationResult = for {
+      (blockHash, endorsingRightsList) <- endorsingRightsMap
+      endorsingRights <- endorsingRightsList
+    } yield (blockHash, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+
+    Tables.EndorsingRights ++= transformationResult.flatten
   }
 
   /**
