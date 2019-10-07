@@ -19,8 +19,9 @@ import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, Met
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
 
-import scala.concurrent.ExecutionContextExecutor
-import scala.util.{Failure, Success}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success, Try}
 
 object Conseil
     extends App
@@ -31,115 +32,155 @@ object Conseil
     with ConseilOutput {
 
   loadApplicationConfiguration(args) match {
-    case Right((server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud)) =>
+    case Left(errors) =>
+    //nothing to do
+    case Right(loadedConfiguration) =>
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-      nautilusCloud.foreach { ncc =>
-        system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
-      }
 
-      val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
-        apiKeyTuple =>
-          val apiKey = apiKeyTuple match {
-            case Tuple1(apiKey) => apiKey
-            case _ => None
-          }
-
-          onComplete(securityApi.validateApiKey(apiKey)).flatMap {
-            case Success(true) => provide(apiKey.getOrElse(""))
-            case _ =>
-              complete((Unauthorized, apiKey.fold("Missing API key") { _ =>
-                "Incorrect API key"
-              }))
-          }
-      }
-
-      val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
-
-      // This part is a temporary middle ground between current implementation and moving code to use IO
-      implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
-      val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
-
-      lazy val transformation = new UnitTransformation(metadataOverrides)
-      lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
-
-      lazy val tezosPlatformDiscoveryOperations =
-        TezosPlatformDiscoveryOperations(
-          ApiOperations,
-          metadataCaching,
-          cacheOverrides,
-          server.cacheTTL,
-          server.highCardinalityLimit
-        )(
-          executionContext,
-          contextShift
+      val serverBinding = Future
+        .fromTry(
+          initServices(loadedConfiguration).product(Success(loadedConfiguration))
         )
-
-      tezosPlatformDiscoveryOperations.init().onComplete {
-        case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
-        case Success(_) => logger.info("Pre-caching successful!")
-      }
-
-      tezosPlatformDiscoveryOperations.initAttributesCache.onComplete {
-        case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
-        case Success(_) => logger.info("Pre-caching attributes successful!")
-      }
-
-      // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
-      val metadataService =
-        new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
-      lazy val platformDiscovery = PlatformDiscovery(metadataService)
-      lazy val data = Data(metadataService, server)(tezosDispatcher)
-
-      val route = concat(
-        pathPrefix("docs") {
-          pathEndOrSingleSlash {
-            getFromResource("web/index.html")
-          }
-        },
-        pathPrefix("swagger-ui") {
-          getFromResourceDirectory("web/swagger-ui/")
-        },
-        Docs.route,
-        cors() {
-          enableCORS {
-            concat(
-              validateApiKey { _ =>
-                concat(
-                  logRequest("Conseil", Logging.DebugLevel) {
-                    AppInfo.route
-                  },
-                  logRequest("Metadata Route", Logging.DebugLevel) {
-                    platformDiscovery.route
-                  },
-                  logRequest("Data Route", Logging.DebugLevel) {
-                    data.getRoute ~ data.postRoute
-                  }
-                )
-              },
-              options {
-                // Support for CORS pre-flight checks.
-                complete("Supported methods : GET and POST.")
-              }
+        .andThen {
+          case Failure(error) =>
+            logger.error(
+              "The server was not started correctly, I failed to create the required Metadata service",
+              error
             )
-          }
+            Await.ready(system.terminate(), 10.seconds)
         }
-      )
-
-      val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
-      displayInfo(server)
-      if (verbose.on) displayConfiguration(platforms)
+        .flatMap((runServer _).tupled)
 
       sys.addShutdownHook {
-        bindingFuture
+        serverBinding
           .flatMap(_.unbind().andThen { case _ => logger.info("Server stopped...") })
-          .flatMap(_ => system.terminate())
+          .andThen {
+            case _ => system.terminate()
+          }
           .onComplete(_ => logger.info("We're done here, nothing else to see"))
       }
 
-    case Left(errors) =>
-    //nothing to do
+  }
+
+  /** Reads configuration to setup the fundamental application services
+    * @param appConfig static configuration as read from files
+    * @return a metadata services object, if all went fine
+    */
+  def initServices(
+      appConfig: Configurations
+  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer): Try[MetadataService] = {
+    val (server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud) = appConfig
+
+    nautilusCloud.foreach { ncc =>
+      system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
+    }
+
+    // This part is a temporary middle ground between current implementation and moving code to use IO
+    implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
+    val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
+
+    lazy val transformation = new UnitTransformation(metadataOverrides)
+    lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
+
+    lazy val tezosPlatformDiscoveryOperations =
+      TezosPlatformDiscoveryOperations(
+        ApiOperations,
+        metadataCaching,
+        cacheOverrides,
+        server.cacheTTL,
+        server.highCardinalityLimit
+      )(
+        executionContext,
+        contextShift
+      )
+
+    tezosPlatformDiscoveryOperations.init().onComplete {
+      case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
+      case Success(_) => logger.info("Pre-caching successful!")
+    }
+
+    tezosPlatformDiscoveryOperations.initAttributesCache.onComplete {
+      case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
+      case Success(_) => logger.info("Pre-caching attributes successful!")
+    }
+
+    // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
+    Try(new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations))
+  }
+
+  /** Starts the web server
+    * @param metadataService the metadata information to build the querying functionality
+    * @param appConfig static configuration as read from files
+    */
+  def runServer(
+      metadataService: MetadataService,
+      appConfig: Configurations
+  )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
+    val (server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud) = appConfig
+
+    val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
+
+    lazy val platformDiscovery = PlatformDiscovery(metadataService)
+    lazy val data = Data(metadataService, server)(tezosDispatcher)
+
+    val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
+      apiKeyTuple =>
+        val apiKey = apiKeyTuple match {
+          case Tuple1(apiKey) => apiKey
+          case _ => None
+        }
+
+        onComplete(securityApi.validateApiKey(apiKey)).flatMap {
+          case Success(true) => provide(apiKey.getOrElse(""))
+          case _ =>
+            complete((Unauthorized, apiKey.fold("Missing API key") { _ =>
+              "Incorrect API key"
+            }))
+        }
+    }
+
+    val route = concat(
+      pathPrefix("docs") {
+        pathEndOrSingleSlash {
+          getFromResource("web/index.html")
+        }
+      },
+      pathPrefix("swagger-ui") {
+        getFromResourceDirectory("web/swagger-ui/")
+      },
+      Docs.route,
+      cors() {
+        enableCORS {
+          concat(
+            validateApiKey { _ =>
+              concat(
+                logRequest("Conseil", Logging.DebugLevel) {
+                  AppInfo.route
+                },
+                logRequest("Metadata Route", Logging.DebugLevel) {
+                  platformDiscovery.route
+                },
+                logRequest("Data Route", Logging.DebugLevel) {
+                  data.getRoute ~ data.postRoute
+                }
+              )
+            },
+            options {
+              // Support for CORS pre-flight checks.
+              complete("Supported methods : GET and POST.")
+            }
+          )
+        }
+      }
+    )
+
+    val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
+    displayInfo(server)
+    if (verbose.on) displayConfiguration(platforms)
+
+    bindingFuture
   }
 
 }

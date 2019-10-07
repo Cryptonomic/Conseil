@@ -43,13 +43,13 @@ class MetadataService(
         entities.map(entity => networkPath.addLevel(entity.name))
     }.toSet
 
-    val result = networkPaths.map { path =>
+    val result = Future.traverse(networkPaths){ path =>
       platformDiscoveryOperations
         .getTableAttributes(path)
         .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))
     }
 
-    Await.result(Future.sequence(result).map(_.toMap), 10 seconds)
+    Await.result(result.map(_.toMap), 10 seconds)
   }
 
   // fetches platforms
