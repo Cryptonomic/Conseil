@@ -391,28 +391,27 @@ class TezosPlatformDiscoveryOperations(
 
   /** Starts initialization of attributes count cache */
   def initAttributesCache: Future[Unit] = {
-    val result = for {
+    for {
       _ <- caching.updateCachingStatus(InProgress)
       entCache <- caching.getEntities(networkName)
       attributes <- caching.getAllAttributes
       _ <- contextShift.shift
-      updatedAttributes <- entCache.fold(IO(Map.empty[String, List[Attribute]]))(
-        entC => getAllUpdatedAttributes(entC.value, attributes)
+      updatedAttributes <- entCache.foldMapM(
+        (entC: CacheEntry[List[Entity]]) => getAllUpdatedAttributes(entC.value, attributes)
       )
-    } yield
-      updatedAttributes.map {
-        case (tableName, attr) =>
-          caching.putAttributes(tableName, attr)
+      _ <- updatedAttributes.traverse {
+        case (tableName, attr) => caching.putAttributes(tableName, attr)
       }
+      _ <- caching.updateCachingStatus(Finished)
+    } yield ()
 
-    result.flatMap(_.toList.sequence) >> caching.updateCachingStatus(Finished)
   }.unsafeToFuture()
 
   /** Helper method for updating */
   private def getAllUpdatedAttributes(
       entities: List[Entity],
       attributes: Cache[List[Attribute]]
-  ): IO[Map[String, List[Attribute]]] = {
+  ): IO[List[(String, List[Attribute])]] = {
     val queries = attributes.filterKeys {
       case CacheKey(key) => entities.map(_.name).toSet(key)
     }.mapValues {
@@ -423,8 +422,8 @@ class TezosPlatformDiscoveryOperations(
         val entityPath = EntityPath(entityName.key, NetworkPath(networkName, PlatformPath("tezos")))
         getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
-    val action = DBIO.sequence(queries)
-    IO.fromFuture(IO(metadataOperations.runQuery(action))).map(_.toMap)
+    val action = DBIO.sequence(queries).map(_.toList)
+    IO.fromFuture(IO(metadataOperations.runQuery(action)))
   }
 
 }

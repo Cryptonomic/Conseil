@@ -91,9 +91,6 @@ object Conseil
         cacheOverrides,
         server.cacheTTL,
         server.highCardinalityLimit
-      )(
-        executionContext,
-        contextShift
       )
 
     tezosPlatformDiscoveryOperations.init().onComplete {
