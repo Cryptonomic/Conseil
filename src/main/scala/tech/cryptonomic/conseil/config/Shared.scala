@@ -53,6 +53,7 @@ object Natural {
 }
 
 final case class VerboseOutput(on: Boolean) extends AnyVal
+final case class FailFast(on: Boolean) extends AnyVal
 
 /** configuration for fetching keys from nautilus cloud instance */
 final case class NautilusCloudConfiguration(

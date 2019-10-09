@@ -12,7 +12,16 @@ import cats.implicits._
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import tech.cryptonomic.conseil.config.{ConseilAppConfig, Security}
+import tech.cryptonomic.conseil.config.{
+  ConseilAppConfig,
+  MetadataConfiguration,
+  NautilusCloudConfiguration,
+  Security,
+  ServerConfiguration,
+  VerboseOutput
+}
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.config.Security.SecurityApi
 import tech.cryptonomic.conseil.directives.EnableCORSDirectives
 import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
@@ -20,8 +29,9 @@ import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.util.{Failure, Success, Try}
+import tech.cryptonomic.conseil.util.Retry.retry
 
 object Conseil
     extends App
@@ -34,24 +44,26 @@ object Conseil
   loadApplicationConfiguration(args) match {
     case Left(errors) =>
     //nothing to do
-    case Right(loadedConfiguration) =>
+    case Right((server, platforms, securityApi, failFast, verbose, metadataOverrides, nautilusCloud)) =>
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-      val serverBinding = Future
-        .fromTry(
-          initServices(loadedConfiguration).product(Success(loadedConfiguration))
-        )
-        .andThen {
+      val retries = if (failFast.on) Some(0) else None
+
+      val serverBinding =
+        retry(maxRetry = retries, deadline = Some(1 minute fromNow))(
+          initServices(server, platforms, metadataOverrides, nautilusCloud).get
+        ).andThen {
           case Failure(error) =>
             logger.error(
               "The server was not started correctly, I failed to create the required Metadata service",
               error
             )
             Await.ready(system.terminate(), 10.seconds)
-        }
-        .flatMap((runServer _).tupled)
+        }.flatMap(
+          runServer(_, server, platforms, securityApi, verbose)
+        )
 
       sys.addShutdownHook {
         serverBinding
@@ -69,9 +81,11 @@ object Conseil
     * @return a metadata services object, if all went fine
     */
   def initServices(
-      appConfig: Configurations
+      server: ServerConfiguration,
+      platforms: PlatformsConfiguration,
+      metadataOverrides: MetadataConfiguration,
+      nautilusCloud: Option[NautilusCloudConfiguration]
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer): Try[MetadataService] = {
-    val (server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud) = appConfig
 
     nautilusCloud.foreach { ncc =>
       system.scheduler.schedule(ncc.delay, ncc.interval)(Security.updateKeys(ncc))
@@ -113,10 +127,11 @@ object Conseil
     */
   def runServer(
       metadataService: MetadataService,
-      appConfig: Configurations
+      server: ServerConfiguration,
+      platforms: PlatformsConfiguration,
+      securityApi: SecurityApi,
+      verbose: VerboseOutput
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
-    val (server, platforms, securityApi, verbose, metadataOverrides, nautilusCloud) = appConfig
-
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
