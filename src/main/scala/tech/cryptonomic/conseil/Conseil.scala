@@ -52,7 +52,7 @@ object Conseil
       val retries = if (failFast.on) Some(0) else None
 
       val serverBinding =
-        retry(maxRetry = retries, deadline = Some(1 minute fromNow))(
+        retry(maxRetry = retries, deadline = Some(server.startupDeadline fromNow))(
           initServices(server, platforms, metadataOverrides, nautilusCloud).get
         ).andThen {
           case Failure(error) =>

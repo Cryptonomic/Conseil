@@ -9,7 +9,8 @@ final case class ServerConfiguration(
     port: Int,
     cacheTTL: FiniteDuration,
     maxQueryResultSize: Int,
-    highCardinalityLimit: Int
+    highCardinalityLimit: Int,
+    startupDeadline: FiniteDuration
 )
 
 final case class LorreConfiguration(
