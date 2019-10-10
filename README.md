@@ -41,6 +41,7 @@ Conseil Config:
 
 
 * API_PORT - Conseil API port, default: 80
+* API_KEY - Conseil API key, default: conseil
 
 Or, you can use your own config file, in which case specify the environment variable `CONFIG` with the path to your file
 
