@@ -187,68 +187,68 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of operations" in {
         sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue.get should contain theSameElementsAs
-            List(
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute(
-                "operation_group_hash",
-                "Operation group hash",
-                DataType.String,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
-              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
-              Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("secret", "Secret", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("source", "Source", DataType.String, None, KeyType.UniqueKey, "operations"),
-              Attribute("fee", "Fee", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("counter", "Counter", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("gas_limit", "Gas limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("storage_limit", "Storage limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("public_key", "Public key", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
-              Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("status", "Status", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
-              Attribute(
-                "paid_storage_size_diff",
-                "Paid storage size diff",
-                DataType.Decimal,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
-              Attribute(
-                "originated_contracts",
-                "Originated contracts",
-                DataType.String,
-                None,
-                KeyType.NonKey,
-                "operations"
-              ),
-              Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
-              Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
-              Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
-              Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
-            )
+          List(
+            Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
+            Attribute(
+              "operation_group_hash",
+              "Operation group hash",
+              DataType.String,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
+            Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("secret", "Secret", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("source", "Source", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("fee", "Fee", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("counter", "Counter", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("gas_limit", "Gas limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("storage_limit", "Storage limit", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("public_key", "Public key", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
+            Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
+            Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
+            Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("status", "Status", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute("storage_size", "Storage size", DataType.Decimal, None, KeyType.NonKey, "operations"),
+            Attribute(
+              "paid_storage_size_diff",
+              "Paid storage size diff",
+              DataType.Decimal,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
+            Attribute(
+              "originated_contracts",
+              "Originated contracts",
+              DataType.String,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
+            Attribute("block_hash", "Block hash", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
+            Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
+          )
 
       }
 
@@ -312,7 +312,11 @@ class TezosPlatformDiscoveryOperationsTest
           AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
         metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None).futureValue.right.get shouldBe List("example1")
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)
+          .futureValue
+          .right
+          .get shouldBe List("example1")
       }
 
       "return list of boolean values" in {
@@ -331,7 +335,11 @@ class TezosPlatformDiscoveryOperationsTest
         metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
 
         // expect
-        sut.listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath))).futureValue.right.get shouldBe List("true", "false")
+        sut
+          .listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath)))
+          .futureValue
+          .right
+          .get shouldBe List("true", "false")
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
@@ -340,7 +348,11 @@ class TezosPlatformDiscoveryOperationsTest
 
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues(AttributePath("medium", EntityPath("fees", networkPath)), None).futureValue.left.get shouldBe List(
+        sut
+          .listAttributeValues(AttributePath("medium", EntityPath("fees", networkPath)), None)
+          .futureValue
+          .left
+          .get shouldBe List(
           InvalidAttributeDataType("medium"),
           HighCardinalityAttribute("medium")
         )
@@ -353,7 +365,11 @@ class TezosPlatformDiscoveryOperationsTest
         dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
 
         sut
-          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("exa"), Some(AttributeCacheConfiguration(true, 4, 5)))
+          .listAttributeValues(
+            AttributePath("kind", EntityPath("fees", networkPath)),
+            Some("exa"),
+            Some(AttributeCacheConfiguration(true, 4, 5))
+          )
           .futureValue
           .left
           .get shouldBe List(InvalidAttributeFilterLength("kind", 4))
@@ -368,7 +384,11 @@ class TezosPlatformDiscoveryOperationsTest
         // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
         val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), maliciousFilter).futureValue.right.get shouldBe List.empty
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), maliciousFilter)
+          .futureValue
+          .right
+          .get shouldBe List.empty
 
         dbHandler.run(Tables.Fees.length.result).futureValue shouldBe 1
 
@@ -379,14 +399,26 @@ class TezosPlatformDiscoveryOperationsTest
           AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
         )
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1")).futureValue.right.get shouldBe List.empty
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1"))
+          .futureValue
+          .right
+          .get shouldBe List.empty
         dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
 
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None).futureValue.right.get should contain theSameElementsAs List(
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)
+          .futureValue
+          .right
+          .get should contain theSameElementsAs List(
           "example1",
           "example2"
         )
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("ex")).futureValue.right.get should contain theSameElementsAs List(
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("ex"))
+          .futureValue
+          .right
+          .get should contain theSameElementsAs List(
           "example1",
           "example2"
         )
@@ -395,7 +427,11 @@ class TezosPlatformDiscoveryOperationsTest
           .futureValue
           .right
           .get should contain theSameElementsAs List("example1", "example2")
-        sut.listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1")).futureValue.right.get shouldBe List("example1")
+        sut
+          .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), Some("1"))
+          .futureValue
+          .right
+          .get shouldBe List("example1")
 
       }
     }

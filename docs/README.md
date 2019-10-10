@@ -354,6 +354,7 @@ It is possible to narrow down the fields returned in the result set by listing j
 - `set` – an array of values to compare against. 'in' requires two or more elements, 'between' must have exactly two, the rest of the operations require a single element. Dates are expressed as epoch milliseconds.
 - `inverse` – boolean, setting it to `true` applied a `NOT` to the operator
 - `precision` – for numeric field matches this specifies the number of decimal places to round to.
+- `group` - an optional naming to collect predicates in groups that will be eventually OR-ed amongst each other
 
 #### `limit`
 
@@ -612,6 +613,33 @@ Send this query to `/v2/data/tezos/<network>/accounts`
     "output": "csv"
 }
 ```
+
+#### Blocks by end-user-transactions outside April 2019
+
+Send this query to `/v2/data/tezos/<network>/operations`
+
+```json
+{
+    "fields": ["block_level", "operation_group_hash"],
+    "predicates": [
+        { "field": "timestamp", "set": [1554076800000], "operation": "before", "inverse": false, "group": "before" },
+        { "field": "kind", "set": ["transaction"], "operation": "in", "inverse": false, "group": "before" },
+        { "field": "timestamp", "set": [1556668799000], "operation": "after", "inverse": false, "group": "after" },
+        { "field": "kind", "set": ["transaction"], "operation": "in", "inverse": false, "group": "after" }
+    ],
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
+    "limit": 100,
+    "output": "csv"
+}
+```
+
+A note on predicate conjunction/disjunction
+
+- By default all predicates with no specified group-name belong to the same un-named group
+- predicates within the same group are joined via the "AND" operator
+- predicates between separate groups are joing via the "OR" operator
+
 
 ### Preprocessed Data
 
