@@ -48,7 +48,9 @@ trait PlatformDiscoveryEndpoints
     )
 
   /** Metadata attributes endpoint */
-  def attributesEndpoint: Endpoint[((String, String, String), Option[String]), Option[List[PlatformDiscoveryTypes.Attribute]]] =
+  def attributesEndpoint: Endpoint[((String, String, String), Option[String]), Option[
+    List[PlatformDiscoveryTypes.Attribute]
+  ]] =
     endpoint(
       request = get(
         url = commonPath / segment[String](name = "platform") / segment[String](name = "network") / segment[String](
