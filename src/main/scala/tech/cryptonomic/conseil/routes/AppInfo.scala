@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.routes.openapi.AppInfoEndpoint
 object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** data type collecting relevant information to expose */
-  case class Info(application: String, version: String, gitInfo: GitInfo)
+  case class Info(application: String, version: String, git: GitInfo)
 
   case class GitInfo(commitHash: Option[String], tags: List[String])
 
@@ -19,7 +19,7 @@ object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkah
       Info(
         application = BuildInfo.name,
         version = BuildInfo.version,
-        gitInfo = GitInfo(commitHash = BuildInfo.gitHeadCommit, tags = BuildInfo.gitCurrentTags.toList)
+        git = GitInfo(commitHash = BuildInfo.gitHeadCommit, tags = BuildInfo.gitCurrentTags.toList)
       )
   )
 }
