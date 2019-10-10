@@ -43,7 +43,7 @@ class MetadataService(
         entities.map(entity => networkPath.addLevel(entity.name))
     }.toSet
 
-    val result = Future.traverse(networkPaths){ path =>
+    val result = Future.traverse(networkPaths) { path =>
       platformDiscoveryOperations
         .getTableAttributes(path)
         .map(attributes => path -> transformation.overrideAttributes(path, attributes.getOrElse(List.empty)))

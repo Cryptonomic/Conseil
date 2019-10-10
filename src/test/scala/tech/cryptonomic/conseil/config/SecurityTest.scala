@@ -6,11 +6,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.config.Security.SecurityApi
 
-class SecurityTest
-    extends WordSpec
-    with Matchers
-    with ScalatestRouteTest
-    with ScalaFutures {
+class SecurityTest extends WordSpec with Matchers with ScalatestRouteTest with ScalaFutures {
 
   implicit override val patienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
 
