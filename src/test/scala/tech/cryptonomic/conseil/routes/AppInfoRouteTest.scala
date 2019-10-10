@@ -24,9 +24,6 @@ class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
           info("application") shouldBe "Conseil"
           info("version").toString should fullyMatch regex """^0\.\d{4}\.\d{4}(-SNAPSHOT)?"""
           info("git").asInstanceOf[Map[String, String]]("commitHash") should fullyMatch regex """^[0-9a-f]+$"""
-          info("git")
-            .asInstanceOf[Map[String, List[String]]]("tags")
-            .head should not be empty
         }
       }
 
