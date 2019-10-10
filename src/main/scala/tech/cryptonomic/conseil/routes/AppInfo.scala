@@ -9,8 +9,17 @@ import tech.cryptonomic.conseil.routes.openapi.AppInfoEndpoint
 object AppInfo extends AppInfoEndpoint with akkahttp.server.Endpoints with akkahttp.server.JsonSchemaEntities {
 
   /** data type collecting relevant information to expose */
-  case class Info(application: String, version: String)
+  case class Info(application: String, version: String, gitInfo: GitInfo)
+
+  case class GitInfo(commitHash: Option[String], tags: List[String])
 
   /** the endpoints to expose application information through http */
-  val route: Route = appInfoEndpoint.implementedBy(_ => Info(application = BuildInfo.name, version = BuildInfo.version))
+  val route: Route = appInfoEndpoint.implementedBy(
+    _ =>
+      Info(
+        application = BuildInfo.name,
+        version = BuildInfo.version,
+        gitInfo = GitInfo(commitHash = BuildInfo.gitHeadCommit, tags = BuildInfo.gitCurrentTags.toList)
+      )
+  )
 }
