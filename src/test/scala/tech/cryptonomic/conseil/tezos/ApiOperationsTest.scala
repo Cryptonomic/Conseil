@@ -5,6 +5,10 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{OperationType, Predicate, Query}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
+import tech.cryptonomic.conseil.util.RandomSeed
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class ApiOperationsTest extends WordSpec
   with Matchers
@@ -12,7 +16,8 @@ class ApiOperationsTest extends WordSpec
   with ScalaFutures
   with OptionValues
   with LazyLogging
-  with IntegrationPatience {
+  with IntegrationPatience
+  with TezosDataGeneration {
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "ApiOperationsTest" should {
@@ -20,12 +25,32 @@ class ApiOperationsTest extends WordSpec
       override lazy val dbReadHandle = dbHandler
     }
 
-    "latestBlockIO" in {
+    "latestBlockIO for empty DB" in {
       // when
       val result = dbHandler.run(sut.latestBlockIO()).futureValue
 
       // then
       result shouldBe None
+    }
+
+    "latestBlockIO" in {
+      // given
+      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val basicBlocks = generateBlocks(5, testReferenceDateTime)
+      val generatedBlocks = basicBlocks.zipWithIndex map {
+        case (block, idx) =>
+          //need to use different seeds to generate unique hashes for groups
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
+          block.copy(operationGroups = List(group))
+      }
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+
+      // when
+      val result = dbHandler.run(sut.latestBlockIO()).futureValue.get
+
+      // then
+      result.level shouldBe 5
     }
 
     "sanitizeForSql alphanumeric string" in {
@@ -61,7 +86,7 @@ class ApiOperationsTest extends WordSpec
       result shouldBe "xyz"
     }
 
-    "fetchOperationGroup" in {
+    "fetchOperationGroup when DB is empty" in {
       // given
       val input = "xyz"
 
@@ -71,6 +96,28 @@ class ApiOperationsTest extends WordSpec
       // then
       result shouldBe a[NoSuchElementException]
     }
+
+    "fetchOperationGroup" in {
+      // given
+      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val basicBlocks = generateBlocks(7, testReferenceDateTime)
+      val generatedBlocks = basicBlocks.zipWithIndex map {
+        case (block, idx) =>
+          //need to use different seeds to generate unique hashes for groups
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
+          block.copy(operationGroups = List(group))
+      }
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+      val input = generatedBlocks.head.operationGroups.head.hash
+
+      // when
+      val result = sut.fetchOperationGroup(input.value).futureValue.get
+
+      // then
+      result.operation_group.hash shouldBe input.value
+    }
+
 
     "sanitizeFields" in {
       // given
@@ -83,7 +130,7 @@ class ApiOperationsTest extends WordSpec
       result shouldBe List.empty
     }
 
-    "fetchBlock" in {
+    "fetchBlock when DB is empty" in {
       // given
       val input = BlockHash("xyz")
 
@@ -94,7 +141,28 @@ class ApiOperationsTest extends WordSpec
       result shouldBe None
     }
 
-    "fetchAccount" in {
+    "fetchBlock" in {
+      // given
+      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val basicBlocks = generateBlocks(5, testReferenceDateTime)
+      val generatedBlocks = basicBlocks.zipWithIndex map {
+        case (block, idx) =>
+          //need to use different seeds to generate unique hashes for groups
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
+          block.copy(operationGroups = List(group))
+      }
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+      val input = basicBlocks.head.data.hash
+
+      // when
+      val result = sut.fetchBlock(input).futureValue.get
+
+      // then
+      result.block.level shouldBe basicBlocks.head.data.header.level
+    }
+
+    "fetchAccount is empty" in {
       // given
       val input = AccountId("xyz")
 
@@ -103,6 +171,26 @@ class ApiOperationsTest extends WordSpec
 
       // then
       result shouldBe None
+    }
+
+    "fetchAccount" in {
+      // given
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val expectedCount = 3
+
+      val block = generateBlocks(1, testReferenceDateTime).head
+      val accountsInfo = generateAccounts(expectedCount, block.data.hash, 1)
+
+      val input = accountsInfo.content.head._1
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(List(block))), 5.seconds)
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeAccounts(List(accountsInfo))), 5.seconds)
+
+      // when
+      val result = sut.fetchAccount(input).futureValue.get
+
+      // then
+      result.account.accountId shouldBe input.id
     }
 
     "sanitizePredicates" in {
@@ -136,7 +224,8 @@ class ApiOperationsTest extends WordSpec
 
     }
 
-    "fetchMaxLevel" in {
+
+    "fetchMaxLevel when DB is empty" in {
       // when
       val result = sut.fetchMaxLevel().futureValue
 
@@ -144,12 +233,53 @@ class ApiOperationsTest extends WordSpec
       result shouldBe -1
     }
 
-    "fetchLatestBlock" in {
+    "fetchMaxLevel" in {
+      // given
+      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val basicBlocks = generateBlocks(3, testReferenceDateTime)
+      val generatedBlocks = basicBlocks.zipWithIndex map {
+        case (block, idx) =>
+          //need to use different seeds to generate unique hashes for groups
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
+          block.copy(operationGroups = List(group))
+      }
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+
+      // when
+      val result = sut.fetchMaxLevel().futureValue
+
+      // then
+      result shouldBe 3
+    }
+
+    "fetchLatestBlock when DB is empty" in {
       // when
       val result = sut.fetchLatestBlock().futureValue
 
       // then
       result shouldBe None
+    }
+
+
+    "fetchLatestBlock" in {
+      // given
+      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val basicBlocks = generateBlocks(7, testReferenceDateTime)
+      val generatedBlocks = basicBlocks.zipWithIndex map {
+        case (block, idx) =>
+          //need to use different seeds to generate unique hashes for groups
+          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
+          block.copy(operationGroups = List(group))
+      }
+      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+
+      // when
+      val result = sut.fetchLatestBlock().futureValue.get
+
+      // then
+      result.level shouldBe 7
     }
 
     "sanitizeDatePartAggregation and leave all valid characters" in {
