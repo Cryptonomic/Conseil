@@ -91,6 +91,11 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
       pgInitParams.asJava,
       pgConfigs.asJava
     )
+    Await.result(dbHandler.run(sql"CREATE SCHEMA IF NOT EXISTS tezos".as[Int]), 1.second)
+    Await.result(
+      dbHandler.run(sql"""ALTER DATABASE "#$databaseName" SET search_path TO tezos,public""".as[Int]),
+      1.second
+    )
     Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
 
