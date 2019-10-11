@@ -12,6 +12,8 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, Michelson
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
+import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -116,23 +118,25 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   /**
     * Fetches baking rights for given block
-    * @param blockHash  Hash of given block
-    * @return           Baking rights
+    * @param blockHashes  Hash of given block
+    * @return             Baking rights
     */
-  def getBakingRightsForBlock(blockHash: BlockHash): Future[List[BakingRights]] =
-    node
-      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/helpers/baking_rights")
-      .map(fromJson[List[BakingRights]])
+  def getBatchBakingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[BakingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[BlockHash, List[BakingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+  }
 
   /**
     * Fetches endorsing rights for given block
-    * @param blockHash  Hash of given block
-    * @return           Endorsing rights
+    * @param blockHashes  Hash of given block
+    * @return             Endorsing rights
     */
-  def getEndorsingRightsForBlock(blockHash: BlockHash): Future[List[EndorsingRights]] =
-    node
-      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/helpers/endorsing_rights")
-      .map(fromJson[List[EndorsingRights]])
+  def getBatchEndorsingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[EndorsingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[BlockHash, List[EndorsingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+  }
 
   /**
     * Fetches the manager of a specific account for a given block.

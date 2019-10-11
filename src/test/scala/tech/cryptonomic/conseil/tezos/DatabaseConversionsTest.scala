@@ -833,6 +833,7 @@ class DatabaseConversionsTest
         converted.ballot shouldBe Some("yay")
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
+        converted.period shouldBe Some(0)
 
         forAll(
           converted.level ::

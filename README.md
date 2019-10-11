@@ -41,6 +41,7 @@ Conseil Config:
 
 
 * API_PORT - Conseil API port, default: 80
+* API_KEY - Conseil API key, default: conseil
 
 Or, you can use your own config file, in which case specify the environment variable `CONFIG` with the path to your file
 
@@ -271,3 +272,6 @@ For additional extra fine-grained configuration you can refer to [this appendix]
 
 ## Publishing the artifacts
 If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)
+
+## Contribution
+If you want to contribute please read [practices we follow](CONTRIBUTION.md) in terms of organizing workflow with git. 

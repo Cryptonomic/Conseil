@@ -10,7 +10,12 @@ import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.DataType.Int
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.KeyType.NonKey
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
-import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, TestPlatformDiscoveryOperations, UnitTransformation}
+import tech.cryptonomic.conseil.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TestPlatformDiscoveryOperations,
+  UnitTransformation
+}
 import tech.cryptonomic.conseil.util.JsonUtil.toListOfMaps
 
 class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTest with MockFactory {

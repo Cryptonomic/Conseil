@@ -6,8 +6,23 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.tezos.{
+  FeeOperations,
+  ShutdownComplete,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{
+  Account,
+  AccountId,
+  BlockReference,
+  BlockTagged,
+  Delegate,
+  PublicKeyHash
+}
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -197,15 +212,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
-      fetchingResults.map {
-        case (block, _) =>
-          val bh = block.data.hash
-          (tezosNodeOperator.getBakingRightsForBlock(bh), tezosNodeOperator.getEndorsingRightsForBlock(bh)).mapN {
-            case (br, er) =>
-              (db.run(TezosDb.writeBakingRights(bh, br)), db.run(TezosDb.writeEndorsingRights(bh, er)))
-                .mapN((_, _) => ())
-          }.flatten
-      }.sequence.map(_ => ())
+      val bh = fetchingResults.map(_._1.data.hash)
+      (tezosNodeOperator.getBatchBakingRights(bh), tezosNodeOperator.getBatchEndorsingRights(bh)).mapN {
+        case (br, er) =>
+          (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
+            .mapN((_, _) => ())
+      }.flatten
     }
 
     blockPagesToSynchronize.flatMap {
@@ -230,7 +242,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
                         fetchingResults
                       )
               )
-
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress

@@ -9,6 +9,7 @@ import java.sql.Timestamp
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
 
@@ -312,7 +313,7 @@ object DatabaseConversions {
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, period)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -324,7 +325,8 @@ object DatabaseConversions {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = period
       )
   }
 
@@ -588,7 +590,7 @@ object DatabaseConversions {
       bakingRights
         .into[Tables.BakingRightsRow]
         .withFieldConst(_.blockHash, blockHash.value)
-        .withFieldRenamed(_.estimated_time, _.estimatedTime)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
         .transform
     }
   }
@@ -599,7 +601,7 @@ object DatabaseConversions {
       endorsingRights.slots.map { slot =>
         endorsingRights
           .into[Tables.EndorsingRightsRow]
-          .withFieldRenamed(_.estimated_time, _.estimatedTime)
+          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
           .withFieldConst(_.slot, slot)
           .withFieldConst(_.blockHash, blockHash.value)
           .transform
