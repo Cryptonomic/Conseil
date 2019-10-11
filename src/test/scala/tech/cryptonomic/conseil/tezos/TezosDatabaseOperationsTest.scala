@@ -302,20 +302,17 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        /*forAll(dbAccounts zip accountsInfo.content) {
+        forAll(dbAccounts zip accountsInfo.content) {
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual block.hash
-            row.manager shouldEqual account.manager.map(_.value)
-            row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.map(_.setable)
-            row.delegateValue shouldEqual account.delegate.flatMap(_.value.map(_.value))
+            row.delegate shouldEqual account.delegate
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
             row.balance shouldEqual account.balance
             row.blockLevel shouldEqual block.level
-        }*/
+        }
 
       }
 
@@ -372,20 +369,17 @@ class TezosDatabaseOperationsTest
         import org.scalatest.Inspectors._
 
         //both rows on db should refer to updated data
-        /*forAll(dbAccounts zip accountsInfo.content) {
+        forAll(dbAccounts zip accountsInfo.content) {
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual hashUpdate
-            row.manager shouldEqual account.manager.map(_.value)
-            row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.map(_.setable)
-            row.delegateValue shouldEqual account.delegate.flatMap(_.value.map(_.value))
+            row.delegate shouldEqual account.delegate
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
             row.balance shouldEqual account.balance
             row.blockLevel shouldEqual levelUpdate
-        }*/
+        }
 
       }
 

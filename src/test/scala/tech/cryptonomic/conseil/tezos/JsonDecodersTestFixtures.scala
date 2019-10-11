@@ -198,11 +198,7 @@ trait AccountsJsonData {
     """{
     |  "balance": "2921522468",
     |  "counter": "0",
-    |  "delegate": {
-    |      "setable": false,
-    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
-    |  },
-    |  "spendable": true
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |}""".stripMargin
 
   val expectedAccount =
@@ -239,13 +235,8 @@ trait AccountsJsonData {
     s"""{
     |  "balance": "2921522468",
     |  "counter": "0",
-    |  "delegate": {
-    |      "setable": false,
-    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
-    |  },
-    |  "script": $scriptJson,
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
-    |  "spendable": true
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23",
+    |  "script": $scriptJson
     |}""".stripMargin
 
 }
