@@ -13,7 +13,8 @@ import tech.cryptonomic.conseil.tezos.{
   TezosNodeInterface,
   TezosNodeOperator,
   TezosTypes,
-  TezosDatabaseOperations => TezosDb
+  TezosDatabaseOperations => TezosDb,
+  ApiOperations
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Account,
