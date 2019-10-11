@@ -554,12 +554,6 @@ class TezosDatabaseOperationsTest
             row.blockLevel shouldEqual block.level
         }
 
-        /*forAll(dbContracts zip delegatedAccounts) {
-          case (contract, account) =>
-            contract.accountId shouldEqual account.accountId
-            contract.delegateValue shouldEqual account.delegateValue
-        }*/
-
       }
 
       "fail to write delegates if the reference block is not stored" in {
