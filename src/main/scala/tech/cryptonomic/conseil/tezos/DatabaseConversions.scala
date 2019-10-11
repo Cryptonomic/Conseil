@@ -51,16 +51,13 @@ object DatabaseConversions {
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
         val BlockTagged(hash, level, accounts) = from
         accounts.map {
-          case (id, Account(balance, counter, manager, spendable, delegate, script)) =>
+          case (id, Account(balance, delegate, script, counter)) =>
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
               balance = balance,
               counter = counter,
-              manager = manager.map(_.value),
-              spendable = spendable,
-              delegateSetable = delegate.map(_.setable),
-              delegateValue = delegate.flatMap(_.value.map(_.value)),
+              delegate = delegate.flatMap(_.value.map(_.value)),
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),
               blockLevel = level

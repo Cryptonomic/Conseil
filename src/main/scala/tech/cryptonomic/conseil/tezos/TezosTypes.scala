@@ -403,11 +403,9 @@ object TezosTypes {
 
   final case class Account(
       balance: scala.math.BigDecimal,
-      counter: Int,
-      manager: Option[PublicKeyHash], // retro-compat from protocol 5+
-      spendable: Option[Boolean], // retro-compat from protocol 5+
-      delegate: Option[AccountDelegate], // retro-compat from protocol 5+
-      script: Option[Scripted.Contracts]
+      delegate: Option[AccountDelegate],
+      script: Option[Scripted.Contracts],
+      counter: Option[Int]
   )
 
   /** Keeps track of association between some domain type and a block reference
