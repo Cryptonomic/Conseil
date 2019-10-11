@@ -833,6 +833,7 @@ class DatabaseConversionsTest
         converted.ballot shouldBe Some("yay")
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
+        converted.period shouldBe Some(0)
 
         forAll(
           converted.level ::
@@ -864,52 +865,6 @@ class DatabaseConversionsTest
           _ shouldBe 'empty
         }
 
-      }
-
-      "convert a Voting Proposal to a database row" in {
-        import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Proposal
-
-        val sampleProposal =
-          Proposal(protocols = (ProtocolId("proto1"), 1) :: (ProtocolId("proto2"), 2) :: Nil, block = block)
-
-        val expected = List(
-          Tables.ProposalsRow(
-            protocolHash = "proto1",
-            supporters = Some(1),
-            blockId = block.data.hash.value,
-            blockLevel = block.data.header.level
-          ),
-          Tables.ProposalsRow(
-            protocolHash = "proto2",
-            supporters = Some(2),
-            blockId = block.data.hash.value,
-            blockLevel = block.data.header.level
-          )
-        )
-
-        val converted = sampleProposal.convertToA[List, Tables.ProposalsRow]
-        converted should have size (sampleProposal.protocols.size)
-
-        converted should contain theSameElementsAs expected
-
-      }
-
-      "convert a Voting Ballot to a database row" in {
-        import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.{Ballot, Vote}
-
-        val sampleBallot = Ballot(pkh = PublicKeyHash("key"), ballot = Vote("yay"))
-
-        val converted = (block, List(sampleBallot)).convertToA[List, Tables.BallotsRow]
-        converted should have size 1
-
-        converted should contain only (
-          Tables.BallotsRow(
-            pkh = sampleBallot.pkh.value,
-            ballot = sampleBallot.ballot.value,
-            blockId = block.data.hash.value,
-            blockLevel = block.data.header.level
-          )
-        )
       }
 
       "convert a Voting Baker to a database row" in {

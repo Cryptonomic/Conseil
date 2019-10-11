@@ -120,14 +120,6 @@ class DataTypesTest
       }
 
       "return error with incorrect predicate fields" in {
-        val attribute = Attribute(
-          name = "invalid",
-          displayName = "invalid",
-          dataType = DataType.Int,
-          cardinality = None,
-          keyType = KeyType.UniqueKey,
-          entity = "test"
-        )
         platformDiscoveryOperations.addEntity(testEntity)
 
         val query = ApiQuery(

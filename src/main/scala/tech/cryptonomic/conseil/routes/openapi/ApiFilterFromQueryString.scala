@@ -6,7 +6,7 @@ import endpoints.algebra
 import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
-trait ApiFilterFromQueryString { self: algebra.JsonSchemaEntities =>
+trait ApiFilterFromQueryString { self: algebra.JsonEntities =>
   import tech.cryptonomic.conseil.routes.openapi.TupleFlattenHelper._
   import FlattenHigh._
 

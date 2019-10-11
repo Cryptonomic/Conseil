@@ -5,10 +5,13 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
+
 import java.time.Instant
 
 import monocle.Getter
 import io.scalaland.chimney.dsl._
+import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
 
@@ -323,7 +326,7 @@ object DatabaseConversions {
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, period)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -335,7 +338,8 @@ object DatabaseConversions {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = period
       )
   }
 
@@ -577,40 +581,6 @@ object DatabaseConversions {
     }
   }
 
-  implicit val proposalToRow = new Conversion[List, Voting.Proposal, Tables.ProposalsRow] {
-    override def convert(from: Voting.Proposal) = {
-      val Voting.Proposal(protocols, block) = from
-      val blockHash = block.data.hash.value
-      val blockLevel = block.data.header.level
-      protocols.map {
-        case (ProtocolId(id), supporters) =>
-          Tables.ProposalsRow(
-            protocolHash = id,
-            blockId = blockHash,
-            blockLevel = blockLevel,
-            supporters = Some(supporters)
-          )
-      }
-    }
-  }
-
-  implicit val ballotsToRows = new Conversion[List, (Block, List[Voting.Ballot]), Tables.BallotsRow] {
-    override def convert(from: (Block, List[Voting.Ballot])) = {
-      val (block, ballots) = from
-      val blockHash = block.data.hash.value
-      val blockLevel = block.data.header.level
-      ballots.map {
-        case Voting.Ballot(PublicKeyHash(hash), Voting.Vote(vote)) =>
-          Tables.BallotsRow(
-            pkh = hash,
-            ballot = vote,
-            blockId = blockHash,
-            blockLevel = blockLevel
-          )
-      }
-    }
-  }
-
   implicit val rollsToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.RollsRow] {
     override def convert(from: (Block, List[Voting.BakerRolls])) = {
       val (block, bakers) = from
@@ -627,4 +597,30 @@ object DatabaseConversions {
       }
     }
   }
+
+  implicit val bakingRightsToRows = new Conversion[Id, (BlockHash, BakingRights), Tables.BakingRightsRow] {
+    override def convert(from: (BlockHash, BakingRights)): tezos.Tables.BakingRightsRow = {
+      val (blockHash, bakingRights) = from
+      bakingRights
+        .into[Tables.BakingRightsRow]
+        .withFieldConst(_.blockHash, blockHash.value)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .transform
+    }
+  }
+
+  implicit val endorsingRightsToRows = new Conversion[List, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
+    override def convert(from: (BlockHash, EndorsingRights)): List[Tables.EndorsingRightsRow] = {
+      val (blockHash, endorsingRights) = from
+      endorsingRights.slots.map { slot =>
+        endorsingRights
+          .into[Tables.EndorsingRightsRow]
+          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+          .withFieldConst(_.slot, slot)
+          .withFieldConst(_.blockHash, blockHash.value)
+          .transform
+      }
+    }
+  }
+
 }

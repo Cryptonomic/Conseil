@@ -7,12 +7,12 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{
-  TezosTypes,
   FeeOperations,
   ShutdownComplete,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
+  TezosTypes,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
@@ -69,7 +69,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   //whatever happens we try to clean up
   sys.addShutdownHook(shutdown())
 
-  lazy val db = DatabaseUtil.db
+  lazy val db = DatabaseUtil.lorreDb
   val tezosNodeOperator = new TezosNodeOperator(
     new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
     tezosConf.network,
@@ -141,7 +141,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   displayInfo(tezosConf)
-  if (verbose.on) displayConfiguration(Platforms.Tezos, tezosConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
+  if (verbose.on)
+    displayConfiguration(Platforms.Tezos, tezosConf, lorreConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
 
   try {
     checkTezosConnection()
@@ -210,6 +211,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     }
 
+    def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
+      import cats.implicits._
+      val bh = fetchingResults.map(_._1.data.hash)
+      (tezosNodeOperator.getBatchBakingRights(bh), tezosNodeOperator.getBatchEndorsingRights(bh)).mapN {
+        case (br, er) =>
+          (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
+            .mapN((_, _) => ())
+      }.flatten
+    }
+
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
       case (pages, total) => {
@@ -224,8 +235,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         Source
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
-          .mapAsync(1) {
-            processBlocksPage(_) flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
+          .mapAsync(1) { fetchingResults =>
+            processBlocksPage(fetchingResults)
+              .flatTap(
+                _ =>
+                  processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint >> processBakingAndEndorsingRights(
+                        fetchingResults
+                      )
+              )
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress
@@ -253,8 +270,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processVotesForBlocks(blocks: List[TezosTypes.Block]): Future[Option[Int]] = {
     import cats.syntax.traverse._
     import cats.syntax.foldable._
-    import cats.syntax.semigroup._
-    import cats.syntax.apply._
     import cats.instances.list._
     import cats.instances.option._
     import cats.instances.int._
@@ -263,25 +278,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     tezosNodeOperator.getVotingDetails(blocks).flatMap {
       case (proposals, bakersBlocks, ballotsBlocks) =>
-        //this is a single list
-        val writeProposal = TezosDb.writeVotingProposals(proposals)
         //this is a nested list, each block with many baker rolls
         val writeBakers = bakersBlocks.traverse {
           case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
         }
-        //this is a nested list, each block with many ballot votes
-        val writeBallots = ballotsBlocks.traverse {
-          case (block, ballots) => TezosDb.writeVotingBallots(ballots, block)
-        }
 
-        /* combineAll reduce List[Option[Int]] => Option[Int] by summing all ints present
-         * |+| is shorthand syntax to sum Option[Int] together using Int's sums
-         * Any None in the operands will make the whole operation collapse in a None result
-         */
-        val combinedVoteWrites = (writeProposal, writeBakers, writeBallots).mapN(
-          (storedProposals, storedBakers, storedBallots) =>
-            storedProposals |+| storedBakers.combineAll |+| storedBallots.combineAll
-        )
+        val combinedVoteWrites = writeBakers.map(_.combineAll.map(_ + proposals.size + ballotsBlocks.size))
 
         db.run(combinedVoteWrites.transactionally)
     }

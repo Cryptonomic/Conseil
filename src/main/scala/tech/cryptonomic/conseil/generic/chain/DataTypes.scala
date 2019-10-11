@@ -168,7 +168,8 @@ object DataTypes {
       operation: OperationType,
       set: List[Any] = List.empty,
       inverse: Boolean = false,
-      precision: Option[Int] = None
+      precision: Option[Int] = None,
+      group: Option[String] = None
   )
 
   /** Predicate which is received by the API */

@@ -1045,44 +1045,6 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "write voting proposal" in {
-        import DatabaseConversions._
-        import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-        val proposals = Voting.generateProposals(howMany = 3, forBlock = block)
-
-        //write
-        val writeAndGetRows = for {
-          _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-          written <- sut.writeVotingProposals(proposals)
-          rows <- Tables.Proposals.result
-        } yield (written, rows)
-
-        val (stored, dbProposals) = dbHandler.run(writeAndGetRows.transactionally).futureValue
-
-        //expectations
-        val expectedWrites = proposals.map(_.protocols.size).sum
-        stored.value shouldEqual expectedWrites
-        dbProposals should have size expectedWrites
-
-        import org.scalatest.Inspectors._
-
-        val allProtocols = proposals.flatMap(_.protocols).toMap
-
-        forAll(dbProposals) { proposalRow =>
-          val rowProtocol = ProtocolId(proposalRow.protocolHash)
-          allProtocols.keySet should contain(rowProtocol)
-          allProtocols(rowProtocol) shouldBe proposalRow.supporters.value
-          proposalRow.blockId shouldBe block.data.hash.value
-          proposalRow.blockLevel shouldBe block.data.header.level
-        }
-
-      }
-
       "write voting bakers rolls" in {
         import DatabaseConversions._
         import tech.cryptonomic.conseil.util.Conversion.Syntax._
@@ -1113,40 +1075,6 @@ class TezosDatabaseOperationsTest
           rollsRow.rolls shouldEqual generated.rolls
           rollsRow.blockId shouldBe block.data.hash.value
           rollsRow.blockLevel shouldBe block.data.header.level
-        }
-
-      }
-
-      "write voting ballots" in {
-        import DatabaseConversions._
-        import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-        val ballots = Voting.generateBallots(howMany = 3)
-
-        //write
-        val writeAndGetRows = for {
-          _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-          written <- sut.writeVotingBallots(ballots, block)
-          rows <- Tables.Ballots.result
-        } yield (written, rows)
-
-        val (stored, dbBallots) = dbHandler.run(writeAndGetRows.transactionally).futureValue
-
-        //expectations
-        stored.value shouldEqual ballots.size
-        dbBallots should have size ballots.size
-
-        import org.scalatest.Inspectors._
-
-        forAll(dbBallots) { ballotRow =>
-          val generated = ballots.find(_.pkh.value == ballotRow.pkh).value
-          ballotRow.ballot shouldEqual generated.ballot.value
-          ballotRow.blockId shouldBe block.data.hash.value
-          ballotRow.blockLevel shouldBe block.data.header.level
         }
 
       }
@@ -1632,6 +1560,113 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
           Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        )
+      }
+
+      "get map from a block table with multiple predicate groups" in {
+
+        val blocksTmp = List(
+          BlocksRow(
+            0,
+            1,
+            "genesis",
+            new Timestamp(0),
+            0,
+            "fitness",
+            Some("context0"),
+            Some("sigqs6AXPny9K"),
+            "protocol",
+            Some("chainId"),
+            "blockHash1",
+            None
+          ),
+          BlocksRow(
+            1,
+            1,
+            "blockHash1",
+            new Timestamp(1),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash2",
+            None
+          ),
+          BlocksRow(
+            2,
+            1,
+            "blockHash2",
+            new Timestamp(2),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash3",
+            None
+          ),
+          BlocksRow(
+            3,
+            1,
+            "blockHash3",
+            new Timestamp(3),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash4",
+            None
+          )
+        )
+
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+        val predicates = List(
+          Predicate(
+            field = "hash",
+            operation = OperationType.in,
+            set = List("blockHash1"),
+            inverse = true,
+            group = Some("A")
+          ),
+          Predicate(
+            field = "hash",
+            operation = OperationType.in,
+            set = List("blockHash2"),
+            inverse = false,
+            group = Some("A")
+          ),
+          Predicate(
+            field = "signature",
+            operation = OperationType.in,
+            set = List("sigTZ2IB879wD"),
+            inverse = false,
+            group = Some("B")
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks ++= blocksTmp
+          found <- sut.selectWithPredicates(
+            Tables.Blocks.baseTableRow.tableName,
+            columns,
+            predicates,
+            List.empty,
+            List.empty,
+            OutputType.json,
+            3
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+        result should contain theSameElementsAs List(
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash2")),
+          Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash3")),
+          Map("level" -> Some(3), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash4"))
         )
       }
 
