@@ -412,7 +412,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           case BlockTagged(blockHash, blockLevel, accountsMap) =>
             import TezosTypes.Syntax._
             val delegateKeys = accountsMap.values.toList
-              .mapFilter(_.delegate.flatMap(_.value))
+              .mapFilter(_.delegate)
 
             delegateKeys.taggedWithBlock(blockHash, blockLevel)
         }
@@ -480,7 +480,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       def logWriteFailure: PartialFunction[Try[_], Unit] = {
         case Failure(e) =>
-          logger.error("Could not write delegates to the database")
+          logger.error(s"Could not write delegates to the database because: ${e}")
       }
 
       def logOutcome: PartialFunction[Try[Int], Unit] = {

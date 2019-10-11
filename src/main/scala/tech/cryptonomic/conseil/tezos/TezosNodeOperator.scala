@@ -662,7 +662,7 @@ class TezosNodeSenderOperator(
         revealMap :: operations
     }
 
-  /**
+  /*/**
     * Forge an operation group using the Tezos RPC client.
     * @param blockHead  The block head
     * @param account    The sender's account
@@ -699,7 +699,7 @@ class TezosNodeSenderOperator(
     node
       .runAsyncPostQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .map(json => fromJson[ForgedOperation](json).operation)
-  }
+  }*/
 
   /**
     * Signs a forged operation
@@ -769,7 +769,7 @@ class TezosNodeSenderOperator(
       .map(result => fromJson[InjectedOperation](result).injectedOperation)
   }
 
-  /**
+  /*/**
     * Master function for creating and sending all supported types of operations.
     * @param operations The operations to create and send
     * @param keyStore   Key pair along with public key hash
@@ -792,9 +792,9 @@ class TezosNodeSenderOperator(
       operationGroupHash <- Future.fromTry(computeOperationHash(signedOpGroup))
       appliedOp <- applyOperation(blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
       operation <- injectOperation(signedOpGroup)
-    } yield OperationResult(appliedOp, operation)
+    } yield OperationResult(appliedOp, operation)*/
 
-  /**
+  /*/**
     * Creates and sends a transaction operation.
     * @param keyStore   Key pair along with public key hash
     * @param to         Destination public key hash
@@ -816,9 +816,9 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
-  /**
+  /*/**
     * Creates and sends a delegation operation.
     * @param keyStore Key pair along with public key hash
     * @param delegate Account ID to delegate to
@@ -832,9 +832,9 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
-  /**
+  /*/**
     * Creates and sends an origination operation.
     * @param keyStore     Key pair along with public key hash
     * @param amount       Initial funding amount of new account
@@ -862,7 +862,7 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
   /**
     * Creates a new Tezos identity.

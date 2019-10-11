@@ -198,26 +198,15 @@ trait AccountsJsonData {
     """{
     |  "balance": "2921522468",
     |  "counter": "0",
-    |  "delegate": {
-    |      "setable": false,
-    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
-    |  },
-    |  "spendable": true
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |}""".stripMargin
 
   val expectedAccount =
     Account(
-      manager = None,
       balance = 2921522468L,
-      spendable = Some(true),
-      delegate = Some(
-        AccountDelegate(
-          setable = false,
-          value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
-        )
-      ),
+      delegate = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23")),
       script = None,
-      counter = 0
+      counter = Some(0)
     )
 
   val scriptJson =
@@ -246,13 +235,8 @@ trait AccountsJsonData {
     s"""{
     |  "balance": "2921522468",
     |  "counter": "0",
-    |  "delegate": {
-    |      "setable": false,
-    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
-    |  },
-    |  "script": $scriptJson,
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
-    |  "spendable": true
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23",
+    |  "script": $scriptJson
     |}""".stripMargin
 
 }

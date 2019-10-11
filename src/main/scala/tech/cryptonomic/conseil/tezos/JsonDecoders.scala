@@ -246,7 +246,6 @@ object JsonDecoders {
       import Scripts._
       implicit private val conf = Derivation.tezosDerivationConfig
 
-      implicit val delegateDecoder: Decoder[AccountDelegate] = deriveDecoder
       implicit val accountDecoder: Decoder[Account] = deriveDecoder
     }
 

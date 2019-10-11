@@ -306,10 +306,7 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual block.hash
-            row.manager shouldEqual account.manager.map(_.value)
-            row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.map(_.setable)
-            row.delegateValue shouldEqual account.delegate.flatMap(_.value.map(_.value))
+            row.delegate shouldEqual account.delegate.map(_.value)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -376,10 +373,7 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual hashUpdate
-            row.manager shouldEqual account.manager.map(_.value)
-            row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.map(_.setable)
-            row.delegateValue shouldEqual account.delegate.flatMap(_.value.map(_.value))
+            row.delegate shouldEqual account.delegate.map(_.value)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -525,15 +519,13 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Accounts ++= delegatedAccounts
           written <- sut.writeDelegatesAndCopyContracts(List(delegatesInfo))
           delegatesRows <- Tables.Delegates.result
-          contractsRows <- Tables.DelegatedContracts.result
-        } yield (written, delegatesRows, contractsRows)
+        } yield (written, delegatesRows)
 
-        val (stored, dbDelegates, dbContracts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+        val (stored, dbDelegates) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
         stored shouldBe expectedCount
 
         dbDelegates should have size expectedCount
-        dbContracts should have size expectedCount
 
         import org.scalatest.Inspectors._
 
@@ -560,12 +552,6 @@ class TezosDatabaseOperationsTest
             row.deactivated shouldBe delegate.deactivated
             row.blockId shouldEqual block.hash
             row.blockLevel shouldEqual block.level
-        }
-
-        forAll(dbContracts zip delegatedAccounts) {
-          case (contract, account) =>
-            contract.accountId shouldEqual account.accountId
-            contract.delegateValue shouldEqual account.delegateValue
         }
 
       }
@@ -2021,11 +2007,8 @@ class TezosDatabaseOperationsTest
         accountId = 1.toString,
         blockId = "R0NpYZuUeF",
         blockLevel = 0,
-        manager = None,
-        spendable = None,
-        delegateSetable = None,
-        delegateValue = None,
-        counter = 0,
+        delegate = None,
+        counter = None,
         script = None,
         balance = BigDecimal(1.45)
       )
