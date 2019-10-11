@@ -89,7 +89,7 @@ object Conseil
       // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
       val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
-      lazy val platformDiscovery = PlatformDiscovery(metadataService)(tezosDispatcher)
+      lazy val platformDiscovery = PlatformDiscovery(metadataService)
       lazy val data = Data(platforms, metadataService, server, metadataOverrides)(tezosDispatcher)
 
       val route = concat(

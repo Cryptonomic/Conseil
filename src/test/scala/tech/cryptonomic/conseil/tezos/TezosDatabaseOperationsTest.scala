@@ -1657,6 +1657,7 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
             OutputType.json,
             3
           )
