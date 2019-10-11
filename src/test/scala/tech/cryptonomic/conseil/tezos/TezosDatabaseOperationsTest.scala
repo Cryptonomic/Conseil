@@ -306,7 +306,7 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual block.hash
-            row.delegate shouldEqual account.delegate
+            row.delegate shouldEqual account.delegate.map(_.value)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -373,7 +373,7 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual hashUpdate
-            row.delegate shouldEqual account.delegate
+            row.delegate shouldEqual account.delegate.map(_.value)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)

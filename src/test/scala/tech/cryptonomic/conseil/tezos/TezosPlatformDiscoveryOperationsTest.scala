@@ -124,10 +124,7 @@ class TezosPlatformDiscoveryOperationsTest
           Set(
             Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
             Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
-            Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
-            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-            Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate", "Delegate", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
@@ -331,12 +328,14 @@ class TezosPlatformDiscoveryOperationsTest
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
         metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
 
+        /* This test is commented out as no adequate substitute could be found.
         // expect
         sut
           .listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath)))
           .futureValue
           .right
           .get shouldBe List("true", "false")
+         */
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
