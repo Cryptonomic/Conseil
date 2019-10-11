@@ -207,17 +207,10 @@ trait AccountsJsonData {
 
   val expectedAccount =
     Account(
-      manager = None,
       balance = 2921522468L,
-      spendable = Some(true),
-      delegate = Some(
-        AccountDelegate(
-          setable = false,
-          value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
-        )
-      ),
+      delegate = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23")),
       script = None,
-      counter = 0
+      counter = Some(0)
     )
 
   val scriptJson =

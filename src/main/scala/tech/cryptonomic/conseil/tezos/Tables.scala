@@ -16,7 +16,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, BakingRights.schema, BalanceUpdates.schema, Blocks.schema, DelegatedContracts.schema, Delegates.schema, DelegatesCheckpoint.schema, EndorsingRights.schema, Fees.schema, OperationGroups.schema, Operations.schema, Rolls.schema).reduceLeft(_ ++ _)
+  lazy val schema: profile.SchemaDescription = Array(Accounts.schema, AccountsCheckpoint.schema, BakingRights.schema, BalanceUpdates.schema, Blocks.schema, Delegates.schema, DelegatesCheckpoint.schema, EndorsingRights.schema, Fees.schema, OperationGroups.schema, Operations.schema, Rolls.schema).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -132,6 +132,9 @@ trait Tables {
 
     /** Primary key of BakingRights (database name baking_rights_pkey) */
     val pk = primaryKey("baking_rights_pkey", (level, delegate))
+
+    /** Foreign key referencing Blocks (database name fk_block_hash) */
+    lazy val blocksFk = foreignKey("fk_block_hash", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
 
     /** Index over (level) (database name baking_rights_level_idx) */
     val index1 = index("baking_rights_level_idx", level)
@@ -289,34 +292,6 @@ trait Tables {
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
 
-  /** Entity class storing rows of table DelegatedContracts
-    *  @param accountId Database column account_id SqlType(varchar)
-    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None) */
-  case class DelegatedContractsRow(accountId: String, delegateValue: Option[String] = None)
-  /** GetResult implicit for fetching DelegatedContractsRow objects using plain SQL queries */
-  implicit def GetResultDelegatedContractsRow(implicit e0: GR[String], e1: GR[Option[String]]): GR[DelegatedContractsRow] = GR{
-    prs => import prs._
-      DelegatedContractsRow.tupled((<<[String], <<?[String]))
-  }
-  /** Table description of table delegated_contracts. Objects of this class serve as prototypes for rows in queries. */
-  class DelegatedContracts(_tableTag: Tag) extends profile.api.Table[DelegatedContractsRow](_tableTag, "delegated_contracts") {
-    def * = (accountId, delegateValue) <> (DelegatedContractsRow.tupled, DelegatedContractsRow.unapply)
-    /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(accountId), delegateValue)).shaped.<>({r=>import r._; _1.map(_=> DelegatedContractsRow.tupled((_1.get, _2)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
-
-    /** Database column account_id SqlType(varchar) */
-    val accountId: Rep[String] = column[String]("account_id")
-    /** Database column delegate_value SqlType(varchar), Default(None) */
-    val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
-
-    /** Foreign key referencing Accounts (database name contracts_account_id_fkey) */
-    lazy val accountsFk = foreignKey("contracts_account_id_fkey", accountId, Accounts)(r => r.accountId, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
-    /** Foreign key referencing Delegates (database name contracts_delegate_pkh_fkey) */
-    lazy val delegatesFk = foreignKey("contracts_delegate_pkh_fkey", delegateValue, Delegates)(r => Rep.Some(r.pkh), onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
-  }
-  /** Collection-like TableQuery object for table DelegatedContracts */
-  lazy val DelegatedContracts = new TableQuery(tag => new DelegatedContracts(tag))
-
   /** Entity class storing rows of table Delegates
     *  @param pkh Database column pkh SqlType(varchar), PrimaryKey
     *  @param blockId Database column block_id SqlType(varchar)
@@ -427,6 +402,9 @@ trait Tables {
 
     /** Primary key of EndorsingRights (database name endorsing_rights_pkey) */
     val pk = primaryKey("endorsing_rights_pkey", (level, delegate, slot))
+
+    /** Foreign key referencing Blocks (database name fk_block_hash) */
+    lazy val blocksFk = foreignKey("fk_block_hash", blockHash, Blocks)(r => r.hash, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
 
     /** Index over (level) (database name endorsing_rights_level_idx) */
     val index1 = index("endorsing_rights_level_idx", level)

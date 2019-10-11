@@ -55,20 +55,16 @@ object DatabaseConversions {
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              balance = balance,
+              delegate = delegate.flatMap(a => Some(a.toString)),
               counter = counter,
-              delegate = delegate.flatMap(_.value.map(_.value)),
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),
+              balance = balance,
               blockLevel = level
             )
         }.toList
       }
     }
-
-  implicit val accountRowsToContractRows = new Conversion[Id, Tables.AccountsRow, Tables.DelegatedContractsRow] {
-    override def convert(from: Tables.AccountsRow) = from.into[Tables.DelegatedContractsRow].transform
-  }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {

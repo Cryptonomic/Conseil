@@ -396,14 +396,9 @@ object TezosTypes {
       storageSizeDiff: Option[Int]
   )
 
-  final case class AccountDelegate(
-      setable: Boolean,
-      value: Option[PublicKeyHash]
-  )
-
   final case class Account(
       balance: scala.math.BigDecimal,
-      delegate: Option[AccountDelegate],
+      delegate: Option[PublicKeyHash],
       script: Option[Scripted.Contracts],
       counter: Option[Int]
   )

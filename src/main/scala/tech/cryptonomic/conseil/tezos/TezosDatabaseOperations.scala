@@ -334,37 +334,11 @@ object TezosDatabaseOperations extends LazyLogging {
           }
       }
     )
-    val contractsUpdateAction =
-      copyAccountsToDelegateContracts(
-        delegates.flatMap(_.content.values.flatMap(_.delegated_contracts)).toSet
-      )
 
     (for {
       updated <- delegatesUpdateAction.map(_.sum)
-      _ <- contractsUpdateAction
     } yield updated).transactionally
 
-  }
-
-  /* Selects accounts corresponding to the given ids and copy the rows
-   * into the delegated contracts tables, whose schema should match exactly
-   */
-  private def copyAccountsToDelegateContracts(
-      contractIds: Set[ContractId]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    logger.info("Copying select accounts to delegates contracts table in DB...")
-    val ids = contractIds.map(_.id)
-    val inputAccounts = Tables.Accounts
-      .filter(_.accountId inSet ids)
-      .result
-      .map(_.map(_.convertTo[Tables.DelegatedContractsRow]))
-
-    //we read the accounts data, then remove matching ids from contracts and re-insert the updated rows
-    (for {
-      accounts <- inputAccounts
-      _ <- Tables.DelegatedContracts.filter(_.accountId inSet ids).delete
-      updated <- Tables.DelegatedContracts.forceInsertAll(accounts)
-    } yield updated).transactionally
   }
 
   /** Writes bakers to the database */

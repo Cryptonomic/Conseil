@@ -195,15 +195,8 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val sut = TezosOptics.Accounts
         val account = Account(
           balance = 0L,
-          counter = 0,
-          manager = None,
-          spendable = Some(false),
-          delegate = Some(
-            AccountDelegate(
-              setable = false,
-              value = None
-            )
-          ),
+          counter = Some(0),
+          delegate = None,
           script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
         )
 
@@ -213,16 +206,9 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "read None if there's no script in an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = None,
           balance = 0L,
-          counter = 0,
-          spendable = Some(false),
-          delegate = Some(
-            AccountDelegate(
-              setable = false,
-              value = None
-            )
-          ),
+          counter = Some(0),
+          delegate = None,
           script = None
         )
 
@@ -232,16 +218,9 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "allow to update an existing script within an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = None,
           balance = 0L,
-          counter = 0,
-          spendable = Some(false),
-          delegate = Some(
-            AccountDelegate(
-              setable = false,
-              value = None
-            )
-          ),
+          counter = Some(0),
+          delegate = None,
           script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
         )
 

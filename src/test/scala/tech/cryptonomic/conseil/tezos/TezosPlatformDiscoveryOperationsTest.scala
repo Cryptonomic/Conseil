@@ -321,11 +321,11 @@ class TezosPlatformDiscoveryOperationsTest
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
         val account =
-          Account(balance = 12.34, counter = 1, manager = None, spendable = Some(true), delegate = None, script = None)
+          Account(balance = 12.34, counter = Some(1), delegate = None, script = None)
 
         val accounts = List(
-          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy(spendable = Some(true)))),
-          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy(spendable = Some(false))))
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy())),
+          BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-2") -> account.copy()))
         )
 
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
