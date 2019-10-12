@@ -55,7 +55,7 @@ object DatabaseConversions {
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              delegate = delegate.flatMap(a => Some(a.value.toString)),
+              delegate = delegate.map(_.value),
               counter = counter,
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),
