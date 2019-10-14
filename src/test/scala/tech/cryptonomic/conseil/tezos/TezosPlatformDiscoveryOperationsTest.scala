@@ -104,93 +104,84 @@ class TezosPlatformDiscoveryOperationsTest
       val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
       "return list of attributes of Fees" in {
 
-        sut.getTableAttributes(EntityPath("fees", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("low", "Low", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("high", "High", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
-              Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
-              Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
-              Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
-            )
+        sut.getTableAttributes(EntityPath("fees", networkPath)).futureValue.get should contain theSameElementsAs
+          List(
+            Attribute("low", "Low", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("medium", "Medium", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("high", "High", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "fees"),
+            Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "fees"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "fees"),
+            Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "fees")
           )
       }
 
       "return list of attributes of accounts" in {
-        sut.getTableAttributes(EntityPath("accounts", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
-              Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-              Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-              Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
-              Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
-              Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
-              Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
-            )
+        sut.getTableAttributes(EntityPath("accounts", networkPath)).futureValue.get should contain theSameElementsAs
+          List(
+            Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
+            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
+            Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
+            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
           )
       }
 
       "return list of attributes of blocks" in {
-        sut.getTableAttributes(EntityPath("blocks", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
-              Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("predecessor", "Predecessor", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-              Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("fitness", "Fitness", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("context", "Context", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "blocks"),
-              Attribute("operations_hash", "Operations hash", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("period_kind", "Period kind", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute(
-                "current_expected_quorum",
-                "Current expected quorum",
-                DataType.Int,
-                None,
-                KeyType.NonKey,
-                "blocks"
-              ),
-              Attribute("active_proposal", "Active proposal", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("baker", "Baker", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("nonce_hash", "Nonce hash", DataType.String, None, KeyType.NonKey, "blocks"),
-              Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_cycle", "Meta cycle", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute("meta_voting_period", "Meta voting period", DataType.Int, None, KeyType.NonKey, "blocks"),
-              Attribute(
-                "meta_voting_period_position",
-                "Meta voting period position",
-                DataType.Int,
-                None,
-                KeyType.NonKey,
-                "blocks"
-              ),
-              Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
-              Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
-            )
+        sut.getTableAttributes(EntityPath("blocks", networkPath)).futureValue.get should contain theSameElementsAs
+          List(
+            Attribute("level", "Level", DataType.Int, None, KeyType.UniqueKey, "blocks"),
+            Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("predecessor", "Predecessor", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
+            Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("fitness", "Fitness", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("context", "Context", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "blocks"),
+            Attribute("operations_hash", "Operations hash", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("period_kind", "Period kind", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute(
+              "current_expected_quorum",
+              "Current expected quorum",
+              DataType.Int,
+              None,
+              KeyType.NonKey,
+              "blocks"
+            ),
+            Attribute("active_proposal", "Active proposal", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("baker", "Baker", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("nonce_hash", "Nonce hash", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_cycle", "Meta cycle", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_cycle_position", "Meta cycle position", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("meta_voting_period", "Meta voting period", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute(
+              "meta_voting_period_position",
+              "Meta voting period position",
+              DataType.Int,
+              None,
+              KeyType.NonKey,
+              "blocks"
+            ),
+            Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
+            Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
           )
       }
 
       "return list of attributes of operations" in {
         sut.getTableAttributes(EntityPath("operations", networkPath)).futureValue.get should contain theSameElementsAs
           List(
-            Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
-            Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("operation_id", "Operation id", DataType.Int, None, KeyType.UniqueKey, "operations"),
             Attribute(
               "operation_group_hash",
@@ -218,7 +209,6 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("manager_pubkey", "Manager pubkey", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "operations"),
-            Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("delegatable", "Delegatable", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "operations"),
@@ -246,56 +236,54 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operations"),
             Attribute("ballot", "Ballot", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
-            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations")
+            Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
+            Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
           )
 
       }
 
       "return list of attributes of operation groups" in {
 
-        sut.getTableAttributes(EntityPath("operation_groups", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
-              Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
-            )
+        sut.getTableAttributes(EntityPath("operation_groups", networkPath)).futureValue.get should contain theSameElementsAs
+          List(
+            Attribute("protocol", "Protocol", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("chain_id", "Chain id", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
+            Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "operation_groups"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.UniqueKey, "operation_groups"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "operation_groups")
           )
       }
 
       "return list of attributes of delegates" in {
 
-        sut.getTableAttributes(EntityPath("delegates", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "delegates"),
-              Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-              Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
-              Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
-            )
+        sut.getTableAttributes(EntityPath("delegates", networkPath)).futureValue.get should contain theSameElementsAs
+          List(
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "delegates"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
+            Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
           )
       }
 
       "return list of attributes of rolls" in {
 
-        sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue shouldBe
-          Some(
-            List(
-              Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
-              Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
-              Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
-              Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
-            )
+        sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue.get should contain theSameElementsAs
+          List(
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
           )
       }
 
