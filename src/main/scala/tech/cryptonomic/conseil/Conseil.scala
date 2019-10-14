@@ -77,7 +77,10 @@ object Conseil
   }
 
   /** Reads configuration to setup the fundamental application services
-    * @param appConfig static configuration as read from files
+    * @param server configuration needed for the http server
+    * @param platforms configuration regarding the exposed blockchains available
+    * @param metadataOverrides rules for customizing metadata presentation to the client
+    * @param nautilusCloud defines the rules to update nautilus configuration (e.g. api key updates)
     * @return a metadata services object, if all went fine
     */
   def initServices(
@@ -123,7 +126,10 @@ object Conseil
 
   /** Starts the web server
     * @param metadataService the metadata information to build the querying functionality
-    * @param appConfig static configuration as read from files
+    * @param server configuration needed for the http server
+    * @param platforms configuration regarding the exposed blockchains available
+    * @param securityApi configuration to set cryptographic libraries usage
+    * @param verbose flag to state if the server should log a more detailed configuration setup upon startup
     */
   def runServer(
       metadataService: MetadataService,

@@ -17,6 +17,12 @@ import scala.concurrent.duration.{Deadline, Duration, DurationLong}
 import scala.language.postfixOps
 import scala.util.{Failure, Random, Success, Try}
 
+/** Provides self-contained functionality to define a retry policy for
+  * any operation, embedding that in a Future, that will be retried if
+  * any exception is thrown.
+  *
+  * Different time-scheduling policies can be used to define the retry logic.
+  */
 object Retry {
 
   class TooManyRetriesException extends RuntimeException
