@@ -27,7 +27,7 @@ object Data {
   ): Data =
     new Data(
       config,
-      DataPlatform(server.maxQueryResultSize),
+      DataPlatform(apiOperations, server.maxQueryResultSize),
       metadataService,
       metadataConfiguration: MetadataConfiguration,
       apiOperations: ApiOperations
