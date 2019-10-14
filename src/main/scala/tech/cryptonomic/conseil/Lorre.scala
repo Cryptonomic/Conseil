@@ -480,7 +480,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       def logWriteFailure: PartialFunction[Try[_], Unit] = {
         case Failure(e) =>
-          logger.error(s"Could not write delegates to the database because: ${e}")
+          logger.error(s"Could not write delegates to the database", e)
       }
 
       def logOutcome: PartialFunction[Try[Int], Unit] = {

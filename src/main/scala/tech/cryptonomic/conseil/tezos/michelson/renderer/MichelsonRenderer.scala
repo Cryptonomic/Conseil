@@ -53,7 +53,7 @@ object MichelsonRenderer {
       self
         .map(_.render())
         .mkString(" ;\n")
-        .lines
-        .mkString(s"\n${indent}")
+        .linesIterator
+        .mkString("\n" + indent)
   }
 }
