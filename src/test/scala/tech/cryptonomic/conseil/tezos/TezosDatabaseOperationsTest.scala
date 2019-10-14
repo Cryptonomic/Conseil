@@ -1545,6 +1545,113 @@ class TezosDatabaseOperationsTest
         )
       }
 
+      "get map from a block table with multiple predicate groups" in {
+
+        val blocksTmp = List(
+          BlocksRow(
+            0,
+            1,
+            "genesis",
+            new Timestamp(0),
+            0,
+            "fitness",
+            Some("context0"),
+            Some("sigqs6AXPny9K"),
+            "protocol",
+            Some("chainId"),
+            "blockHash1",
+            None
+          ),
+          BlocksRow(
+            1,
+            1,
+            "blockHash1",
+            new Timestamp(1),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash2",
+            None
+          ),
+          BlocksRow(
+            2,
+            1,
+            "blockHash2",
+            new Timestamp(2),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash3",
+            None
+          ),
+          BlocksRow(
+            3,
+            1,
+            "blockHash3",
+            new Timestamp(3),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash4",
+            None
+          )
+        )
+
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+        val predicates = List(
+          Predicate(
+            field = "hash",
+            operation = OperationType.in,
+            set = List("blockHash1"),
+            inverse = true,
+            group = Some("A")
+          ),
+          Predicate(
+            field = "hash",
+            operation = OperationType.in,
+            set = List("blockHash2"),
+            inverse = false,
+            group = Some("A")
+          ),
+          Predicate(
+            field = "signature",
+            operation = OperationType.in,
+            set = List("sigTZ2IB879wD"),
+            inverse = false,
+            group = Some("B")
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks ++= blocksTmp
+          found <- sut.selectWithPredicates(
+            Tables.Blocks.baseTableRow.tableName,
+            columns,
+            predicates,
+            List.empty,
+            List.empty,
+            OutputType.json,
+            3
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+        result should contain theSameElementsAs List(
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash2")),
+          Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash3")),
+          Map("level" -> Some(3), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash4"))
+        )
+      }
+
       "get empty map from empty table" in {
         val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
         val predicates = List.empty

@@ -268,6 +268,34 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
+    * Writes the baking rights to the database
+    * @param bakingRightsMap mapping of hash to bakingRights list
+    */
+  def writeBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
+    logger.info("Writing baking rights to the DB...")
+    val conversionResult = for {
+      (blockHash, bakingRightsList) <- bakingRightsMap
+      bakingRights <- bakingRightsList
+    } yield (blockHash, bakingRights).convertTo[Tables.BakingRightsRow]
+
+    Tables.BakingRights ++= conversionResult
+  }
+
+  /**
+    * Writes the endorsing rights to the database
+    * @param endorsingRightsMap mapping of hash to endorsingRights list
+    */
+  def writeEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
+    logger.info("Writing endorsing rights to the DB...")
+    val transformationResult = for {
+      (blockHash, endorsingRightsList) <- endorsingRightsMap
+      endorsingRights <- endorsingRightsList
+    } yield (blockHash, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+
+    Tables.EndorsingRights ++= transformationResult.flatten
+  }
+
+  /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
     * @param accounts the full accounts' data
     * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block

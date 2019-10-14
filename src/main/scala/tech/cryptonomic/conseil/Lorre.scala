@@ -7,12 +7,12 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{
-  TezosTypes,
   FeeOperations,
   ShutdownComplete,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
+  TezosTypes,
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
@@ -207,6 +207,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     }
 
+    def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
+      import cats.implicits._
+      val bh = fetchingResults.map(_._1.data.hash)
+      (tezosNodeOperator.getBatchBakingRights(bh), tezosNodeOperator.getBatchEndorsingRights(bh)).mapN {
+        case (br, er) =>
+          (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
+            .mapN((_, _) => ())
+      }.flatten
+    }
+
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
       case (pages, total) => {
@@ -221,8 +231,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         Source
           .fromIterator(() => pages)
           .mapAsync[tezosNodeOperator.BlockFetchingResults](1)(identity)
-          .mapAsync(1) {
-            processBlocksPage(_) flatTap (_ => processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint)
+          .mapAsync(1) { fetchingResults =>
+            processBlocksPage(fetchingResults)
+              .flatTap(
+                _ =>
+                  processTezosAccountsCheckpoint >> processTezosDelegatesCheckpoint >> processBakingAndEndorsingRights(
+                        fetchingResults
+                      )
+              )
           }
           .runFold(0) { (processed, justDone) =>
             processed + justDone <| logProgress

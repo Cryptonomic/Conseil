@@ -5,8 +5,11 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
+
 import monocle.Getter
 import io.scalaland.chimney.dsl._
+import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
 
@@ -310,7 +313,7 @@ object DatabaseConversions {
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, period)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -322,7 +325,8 @@ object DatabaseConversions {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = period
       )
   }
 
@@ -579,4 +583,30 @@ object DatabaseConversions {
       }
     }
   }
+
+  implicit val bakingRightsToRows = new Conversion[Id, (BlockHash, BakingRights), Tables.BakingRightsRow] {
+    override def convert(from: (BlockHash, BakingRights)): tezos.Tables.BakingRightsRow = {
+      val (blockHash, bakingRights) = from
+      bakingRights
+        .into[Tables.BakingRightsRow]
+        .withFieldConst(_.blockHash, blockHash.value)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .transform
+    }
+  }
+
+  implicit val endorsingRightsToRows = new Conversion[List, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
+    override def convert(from: (BlockHash, EndorsingRights)): List[Tables.EndorsingRightsRow] = {
+      val (blockHash, endorsingRights) = from
+      endorsingRights.slots.map { slot =>
+        endorsingRights
+          .into[Tables.EndorsingRightsRow]
+          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+          .withFieldConst(_.slot, slot)
+          .withFieldConst(_.blockHash, blockHash.value)
+          .transform
+      }
+    }
+  }
+
 }

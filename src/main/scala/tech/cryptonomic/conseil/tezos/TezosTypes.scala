@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.time.ZonedDateTime
+
 import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
@@ -236,7 +238,8 @@ object TezosTypes {
   final case class Ballot(
       ballot: Voting.Vote,
       proposal: Option[String],
-      source: Option[ContractId]
+      source: Option[ContractId],
+      period: Option[Int]
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
@@ -523,5 +526,21 @@ object TezosTypes {
     }
 
   }
+
+  /** Baking rights model */
+  final case class BakingRights(
+      level: Int,
+      delegate: String,
+      priority: Int,
+      estimated_time: ZonedDateTime
+  )
+
+  /** Endorsing rights model */
+  final case class EndorsingRights(
+      level: Int,
+      delegate: String,
+      slots: List[Int],
+      estimated_time: ZonedDateTime
+  )
 
 }
