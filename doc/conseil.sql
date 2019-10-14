@@ -16,17 +16,21 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+CREATE SCHEMA IF NOT EXISTS tezos;
+ALTER ROLE conseiluser SET search_path TO tezos,public;
+ALTER DATABASE "conseil-local" SET search_path TO tezos,public;
+
 --
--- Name: truncate_tables(character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: truncate_tables(character varying); Type: FUNCTION; Schema: tezos; Owner: -
 --
 
-CREATE FUNCTION public.truncate_tables(username character varying) RETURNS void
+CREATE FUNCTION tezos.truncate_tables(username character varying) RETURNS void
     LANGUAGE plpgsql
     AS $$
 DECLARE
     statements CURSOR FOR
         SELECT tablename FROM pg_tables
-        WHERE tableowner = username AND schemaname = 'public';
+        WHERE tableowner = username AND schemaname = 'tezos';
 BEGIN
     FOR stmt IN statements LOOP
         EXECUTE 'TRUNCATE TABLE ' || quote_ident(stmt.tablename) || ' CASCADE;';
@@ -37,10 +41,10 @@ $$;
 SET default_with_oids = false;
 
 --
--- Name: accounts; Type: TABLE; Schema: public; Owner: -
+-- Name: accounts; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.accounts (
+CREATE TABLE tezos.accounts (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
     manager character varying NOT NULL,
@@ -71,10 +75,10 @@ CREATE TABLE public.accounts_history (
 );
 
 --
--- Name: accounts_checkpoint; Type: TABLE; Schema: public; Owner: -
+-- Name: accounts_checkpoint; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.accounts_checkpoint (
+CREATE TABLE tezos.accounts_checkpoint (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL,
@@ -83,10 +87,10 @@ CREATE TABLE public.accounts_checkpoint (
 
 
 --
--- Name: balance_updates; Type: TABLE; Schema: public; Owner: -
+-- Name: balance_updates; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.balance_updates (
+CREATE TABLE tezos.balance_updates (
     id integer NOT NULL,
     source character varying NOT NULL,
     source_id integer,
@@ -102,10 +106,10 @@ CREATE TABLE public.balance_updates (
 
 
 --
--- Name: balance_updates_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: balance_updates_id_seq; Type: SEQUENCE; Schema: tezos; Owner: -
 --
 
-CREATE SEQUENCE public.balance_updates_id_seq
+CREATE SEQUENCE tezos.balance_updates_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -114,16 +118,16 @@ CREATE SEQUENCE public.balance_updates_id_seq
 
 
 --
--- Name: balance_updates_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: balance_updates_id_seq; Type: SEQUENCE OWNED BY; Schema: tezos; Owner: -
 --
 
-ALTER SEQUENCE public.balance_updates_id_seq OWNED BY public.balance_updates.id;
+ALTER SEQUENCE tezos.balance_updates_id_seq OWNED BY tezos.balance_updates.id;
 
 --
--- Name: blocks; Type: TABLE; Schema: public; Owner: -
+-- Name: blocks; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.blocks (
+CREATE TABLE tezos.blocks (
     level integer NOT NULL,
     proto integer NOT NULL,
     predecessor character varying NOT NULL,
@@ -154,20 +158,20 @@ CREATE TABLE public.blocks (
 
 
 --
--- Name: delegated_contracts; Type: TABLE; Schema: public; Owner: -
+-- Name: delegated_contracts; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.delegated_contracts (
+CREATE TABLE tezos.delegated_contracts (
     account_id character varying NOT NULL,
     delegate_value character varying
 );
 
 
 --
--- Name: delegates; Type: TABLE; Schema: public; Owner: -
+-- Name: delegates; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.delegates (
+CREATE TABLE tezos.delegates (
     pkh character varying NOT NULL,
     block_id character varying NOT NULL,
     balance numeric,
@@ -181,10 +185,10 @@ CREATE TABLE public.delegates (
 
 
 --
--- Name: delegates_checkpoint; Type: TABLE; Schema: public; Owner: -
+-- Name: delegates_checkpoint; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.delegates_checkpoint (
+CREATE TABLE tezos.delegates_checkpoint (
     delegate_pkh character varying NOT NULL,
     block_id character varying NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL
@@ -192,10 +196,10 @@ CREATE TABLE public.delegates_checkpoint (
 
 
 --
--- Name: fees; Type: TABLE; Schema: public; Owner: -
+-- Name: fees; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.fees (
+CREATE TABLE tezos.fees (
     low integer NOT NULL,
     medium integer NOT NULL,
     high integer NOT NULL,
@@ -207,10 +211,10 @@ CREATE TABLE public.fees (
 
 
 --
--- Name: operation_groups; Type: TABLE; Schema: public; Owner: -
+-- Name: operation_groups; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.operation_groups (
+CREATE TABLE tezos.operation_groups (
     protocol character varying NOT NULL,
     chain_id character varying,
     hash character varying NOT NULL,
@@ -222,10 +226,10 @@ CREATE TABLE public.operation_groups (
 
 
 --
--- Name: operations; Type: TABLE; Schema: public; Owner: -
+-- Name: operations; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.operations (
+CREATE TABLE tezos.operations (
     branch character varying,
     number_of_slots integer,
     cycle integer,
@@ -269,10 +273,10 @@ CREATE TABLE public.operations (
 
 
 --
--- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: tezos; Owner: -
 --
 
-CREATE SEQUENCE public.operations_operation_id_seq
+CREATE SEQUENCE tezos.operations_operation_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -281,16 +285,16 @@ CREATE SEQUENCE public.operations_operation_id_seq
 
 
 --
--- Name: operations_operation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: operations_operation_id_seq; Type: SEQUENCE OWNED BY; Schema: tezos; Owner: -
 --
 
-ALTER SEQUENCE public.operations_operation_id_seq OWNED BY public.operations.operation_id;
+ALTER SEQUENCE tezos.operations_operation_id_seq OWNED BY tezos.operations.operation_id;
 
 --
--- Name: rolls; Type: TABLE; Schema: public; Owner: -
+-- Name: rolls; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE public.rolls (
+CREATE TABLE tezos.rolls (
     pkh character varying NOT NULL,
     rolls integer NOT NULL,
     block_id character varying NOT NULL,
@@ -322,251 +326,251 @@ CREATE TABLE public.endorsing_rights (
 CREATE INDEX endorsing_rights_level_idx ON public.endorsing_rights (level);
 
 --
--- Name: balance_updates id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: balance_updates id; Type: DEFAULT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.balance_updates ALTER COLUMN id SET DEFAULT nextval('public.balance_updates_id_seq'::regclass);
-
-
---
--- Name: operations operation_id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval('public.operations_operation_id_seq'::regclass);
+ALTER TABLE ONLY tezos.balance_updates ALTER COLUMN id SET DEFAULT nextval('tezos.balance_updates_id_seq'::regclass);
 
 
 --
--- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operations operation_id; Type: DEFAULT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE public.operation_groups
+ALTER TABLE ONLY tezos.operations ALTER COLUMN operation_id SET DEFAULT nextval('tezos.operations_operation_id_seq'::regclass);
+
+
+--
+-- Name: operation_groups OperationGroups_pkey; Type: CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE tezos.operation_groups
     ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (block_id, hash);
 
 
 --
--- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.accounts
+ALTER TABLE ONLY tezos.accounts
     ADD CONSTRAINT accounts_pkey PRIMARY KEY (account_id);
 
 
 --
--- Name: balance_updates balance_updates_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: balance_updates balance_updates_key; Type: CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.balance_updates
+ALTER TABLE ONLY tezos.balance_updates
     ADD CONSTRAINT balance_updates_key PRIMARY KEY (id);
 
 
 --
--- Name: blocks blocks_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks blocks_hash_key; Type: CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.blocks
+ALTER TABLE ONLY tezos.blocks
     ADD CONSTRAINT blocks_hash_key UNIQUE (hash);
 
 
 --
--- Name: delegates delegates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: delegates delegates_pkey; Type: CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.delegates
+ALTER TABLE ONLY tezos.delegates
     ADD CONSTRAINT delegates_pkey PRIMARY KEY (pkh);
 
 
 --
--- Name: operations operationId; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: operations operationId; Type: CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.operations
+ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT "operationId" PRIMARY KEY (operation_id);
 
 
 --
--- Name: fki_block; Type: INDEX; Schema: public; Owner: -
+-- Name: fki_block; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX fki_block ON public.operation_groups USING btree (block_id);
-
-
---
--- Name: fki_fk_blockhashes; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX fki_fk_blockhashes ON public.operations USING btree (block_hash);
+CREATE INDEX fki_block ON tezos.operation_groups USING btree (block_id);
 
 
 --
--- Name: ix_accounts_block_level; Type: INDEX; Schema: public; Owner: -
+-- Name: fki_fk_blockhashes; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_accounts_block_level ON public.accounts USING btree (block_level);
-
-
---
--- Name: ix_accounts_checkpoint_account_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_accounts_checkpoint_account_id ON public.accounts_checkpoint USING btree (account_id);
+CREATE INDEX fki_fk_blockhashes ON tezos.operations USING btree (block_hash);
 
 
 --
--- Name: ix_accounts_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_accounts_block_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_accounts_checkpoint_block_level ON public.accounts_checkpoint USING btree (block_level);
-
-
---
--- Name: ix_accounts_manager; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_accounts_manager ON public.accounts USING btree (manager);
+CREATE INDEX ix_accounts_block_level ON tezos.accounts USING btree (block_level);
 
 
 --
--- Name: ix_blocks_level; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_accounts_checkpoint_account_id; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_blocks_level ON public.blocks USING btree (level);
-
-
---
--- Name: ix_delegates_checkpoint_block_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_delegates_checkpoint_block_level ON public.delegates_checkpoint USING btree (block_level);
+CREATE INDEX ix_accounts_checkpoint_account_id ON tezos.accounts_checkpoint USING btree (account_id);
 
 
 --
--- Name: ix_operation_groups_block_level; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_accounts_checkpoint_block_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_operation_groups_block_level ON public.operation_groups USING btree (block_level);
-
-
---
--- Name: ix_operations_block_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_block_level ON public.operations USING btree (block_level);
+CREATE INDEX ix_accounts_checkpoint_block_level ON tezos.accounts_checkpoint USING btree (block_level);
 
 
 --
--- Name: ix_operations_destination; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_accounts_manager; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_operations_destination ON public.operations USING btree (destination);
-
-
---
--- Name: ix_operations_source; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_source ON public.operations USING btree (source);
+CREATE INDEX ix_accounts_manager ON tezos.accounts USING btree (manager);
 
 
 --
--- Name: ix_operations_timestamp; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_blocks_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_operations_timestamp ON public.operations USING btree ("timestamp");
-
-
---
--- Name: ix_operations_delegate; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_operations_delegate ON public.operations USING btree ("delegate");
-
---
--- Name: ix_rolls_block_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
-
---
--- Name: ix_rolls_block_level; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_rolls_block_level ON public.rolls USING btree (block_level);
-
---
--- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.accounts
-    ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
-
---
--- Name: operation_groups block; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.operation_groups
-    ADD CONSTRAINT block FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+CREATE INDEX ix_blocks_level ON tezos.blocks USING btree (level);
 
 
 --
--- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_delegates_checkpoint_block_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.accounts_checkpoint
-    ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
-
-
---
--- Name: delegated_contracts contracts_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.delegated_contracts
-    ADD CONSTRAINT contracts_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(account_id);
+CREATE INDEX ix_delegates_checkpoint_block_level ON tezos.delegates_checkpoint USING btree (block_level);
 
 
 --
--- Name: delegated_contracts contracts_delegate_pkh_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_operation_groups_block_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.delegated_contracts
-    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES public.delegates(pkh);
-
-
---
--- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.delegates_checkpoint
-    ADD CONSTRAINT delegate_checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+CREATE INDEX ix_operation_groups_block_level ON tezos.operation_groups USING btree (block_level);
 
 
 --
--- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_operations_block_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.delegates
-    ADD CONSTRAINT delegates_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+CREATE INDEX ix_operations_block_level ON tezos.operations USING btree (block_level);
 
 
 --
--- Name: operations fk_blockhashes; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_operations_destination; Type: INDEX; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.operations
-    ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
+CREATE INDEX ix_operations_destination ON tezos.operations USING btree (destination);
+
 
 --
--- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_operations_source; Type: INDEX; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.operations
-    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES public.operation_groups(hash, block_id);
+CREATE INDEX ix_operations_source ON tezos.operations USING btree (source);
+
 
 --
--- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ix_operations_timestamp; Type: INDEX; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY public.rolls
-    ADD CONSTRAINT rolls_block_id_fkey FOREIGN KEY (block_id) REFERENCES public.blocks(hash);
+CREATE INDEX ix_operations_timestamp ON tezos.operations USING btree ("timestamp");
+
+
+--
+-- Name: ix_operations_delegate; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX ix_operations_delegate ON tezos.operations USING btree ("delegate");
+
+--
+-- Name: ix_rolls_block_id; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX ix_rolls_block_id ON tezos.rolls USING btree (block_id);
+
+--
+-- Name: ix_rolls_block_level; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX ix_rolls_block_level ON tezos.rolls USING btree (block_level);
+
+--
+-- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.accounts
+    ADD CONSTRAINT accounts_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+
+--
+-- Name: operation_groups block; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.operation_groups
+    ADD CONSTRAINT block FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+
+
+--
+-- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.accounts_checkpoint
+    ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+
+
+--
+-- Name: delegated_contracts contracts_account_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.delegated_contracts
+    ADD CONSTRAINT contracts_account_id_fkey FOREIGN KEY (account_id) REFERENCES tezos.accounts(account_id);
+
+
+--
+-- Name: delegated_contracts contracts_delegate_pkh_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.delegated_contracts
+    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES tezos.delegates(pkh);
+
+
+--
+-- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.delegates_checkpoint
+    ADD CONSTRAINT delegate_checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+
+
+--
+-- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.delegates
+    ADD CONSTRAINT delegates_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+
+
+--
+-- Name: operations fk_blockhashes; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.operations
+    ADD CONSTRAINT fk_blockhashes FOREIGN KEY (block_hash) REFERENCES tezos.blocks(hash);
+
+--
+-- Name: operations fk_opgroups; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.operations
+    ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES tezos.operation_groups(hash, block_id);
+
+--
+-- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
+--
+
+ALTER TABLE ONLY tezos.rolls
+    ADD CONSTRAINT rolls_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
 
 
 --
