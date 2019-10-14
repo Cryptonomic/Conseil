@@ -20,7 +20,8 @@ object Data {
       config: PlatformsConfiguration,
       metadataService: MetadataService,
       server: ServerConfiguration,
-      metadataConfiguration: MetadataConfiguration
+      metadataConfiguration: MetadataConfiguration,
+      apiOperations: ApiOperations
   )(
       implicit ec: ExecutionContext
   ): Data =
@@ -28,7 +29,8 @@ object Data {
       config,
       DataPlatform(server.maxQueryResultSize),
       metadataService,
-      metadataConfiguration: MetadataConfiguration
+      metadataConfiguration: MetadataConfiguration,
+      apiOperations: ApiOperations
     )
 }
 
@@ -42,7 +44,8 @@ class Data(
     config: PlatformsConfiguration,
     queryProtocolPlatform: DataPlatform,
     metadataService: MetadataService,
-    metadataConfiguration: MetadataConfiguration
+    metadataConfiguration: MetadataConfiguration,
+    apiOperations: ApiOperations
 )(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
@@ -85,7 +88,7 @@ class Data(
   val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchLatestBlock()
+        apiOperations.fetchLatestBlock()
       }
   }
 
@@ -93,7 +96,7 @@ class Data(
   val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchBlock(BlockHash(hash))
+        apiOperations.fetchBlock(BlockHash(hash))
       }
   }
 
@@ -109,7 +112,7 @@ class Data(
   val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
     case ((platform, network, accountId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchAccount(AccountId(accountId))
+        apiOperations.fetchAccount(AccountId(accountId))
       }
   }
 
@@ -125,7 +128,7 @@ class Data(
   val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
     case ((platform, network, operationGroupId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchOperationGroup(operationGroupId)
+        apiOperations.fetchOperationGroup(operationGroupId)
       }
   }
 

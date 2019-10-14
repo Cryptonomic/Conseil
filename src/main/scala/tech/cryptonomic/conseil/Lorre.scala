@@ -13,7 +13,8 @@ import tech.cryptonomic.conseil.tezos.{
   TezosNodeInterface,
   TezosNodeOperator,
   TezosTypes,
-  TezosDatabaseOperations => TezosDb
+  TezosDatabaseOperations => TezosDb,
+  ApiOperations
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Account,
@@ -70,10 +71,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   sys.addShutdownHook(shutdown())
 
   lazy val db = DatabaseUtil.lorreDb
+  lazy val apiOperations = new ApiOperations
+
   val tezosNodeOperator = new TezosNodeOperator(
     new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
     tezosConf.network,
-    batchingConf
+    batchingConf,
+    apiOperations
   )
 
   /** close resources for application stop */
