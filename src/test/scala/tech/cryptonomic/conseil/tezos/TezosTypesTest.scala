@@ -197,7 +197,9 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           balance = 0L,
           counter = Some(0),
           delegate = None,
-          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
+          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
+          manager = None,
+          spendable = None
         )
 
         sut.scriptLens.getOption(account).value shouldBe "Some code here"
@@ -209,7 +211,9 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           balance = 0L,
           counter = Some(0),
           delegate = None,
-          script = None
+          script = None,
+          manager = None,
+          spendable = None
         )
 
         sut.scriptLens.getOption(account) shouldBe 'empty
@@ -221,7 +225,9 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           balance = 0L,
           counter = Some(0),
           delegate = None,
-          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here")))
+          script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
+          manager = None,
+          spendable = None
         )
 
         val updated = sut.scriptLens.modify(old => old + "; new code")(account)

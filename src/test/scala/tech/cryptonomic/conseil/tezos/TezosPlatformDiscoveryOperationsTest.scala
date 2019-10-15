@@ -129,7 +129,11 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
-            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
+            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts"),
+            Attribute("manager", "Manager", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts")
           )
         )
       }
@@ -318,7 +322,7 @@ class TezosPlatformDiscoveryOperationsTest
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
         val account =
-          Account(balance = 12.34, counter = Some(1), delegate = None, script = None)
+          Account(balance = 12.34, counter = Some(1), delegate = None, script = None, manager = None, spendable = None)
 
         val accounts = List(
           BlockTagged(basicBlocks.data.hash, 1, Map(AccountId("id-1") -> account.copy())),
@@ -335,7 +339,7 @@ class TezosPlatformDiscoveryOperationsTest
           .futureValue
           .right
           .get shouldBe List("true", "false")
-         */
+       */
       }
 
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {

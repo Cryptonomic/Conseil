@@ -21,6 +21,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   BlockReference,
   BlockTagged,
   Delegate,
+  Protocol4Delegate,
   PublicKeyHash
 }
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
@@ -408,11 +409,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           taggedAccounts: Seq[BlockTagged[AccountsIndex]]
       ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
         val taggedList = taggedAccounts.toList
+        def extractDelegateKey(account: Account): Option[PublicKeyHash] =
+          PartialFunction.condOpt(account.delegate) {
+            case Some(Right(pkh)) => pkh
+            case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
+          }
         val taggedDelegatesKeys = taggedList.map {
           case BlockTagged(blockHash, blockLevel, accountsMap) =>
             import TezosTypes.Syntax._
             val delegateKeys = accountsMap.values.toList
-              .mapFilter(_.delegate)
+              .mapFilter(extractDelegateKey)
 
             delegateKeys.taggedWithBlock(blockHash, blockLevel)
         }

@@ -49,8 +49,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
         Account(
           balance = rnd.nextInt,
           counter = Some(currentId),
-          delegate = Some(PublicKeyHash("delegate-value")),
-          script = Some(Contracts(Micheline("storage"), Micheline("script")))
+          delegate = Some(Right(PublicKeyHash("delegate-value"))),
+          script = Some(Contracts(Micheline("storage"), Micheline("script"))),
+          manager = None,
+          spendable = None
         )
     }.toMap
 

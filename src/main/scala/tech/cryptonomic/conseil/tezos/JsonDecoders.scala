@@ -15,6 +15,7 @@ object JsonDecoders {
     import io.circe.Decoder
     import io.circe.generic.extras.Configuration
     import io.circe.generic.extras.semiauto._
+    import tech.cryptonomic.conseil.util.JsonUtil.CirceCommonDecoders
 
     type JsonDecoded[T] = Either[Error, T]
 
@@ -244,8 +245,10 @@ object JsonDecoders {
     /* Collects definitions to decode accounts and their components */
     object Accounts {
       import Scripts._
+      import CirceCommonDecoders._
       implicit private val conf = Derivation.tezosDerivationConfig
 
+      implicit val delegateProtocol4Decoder: Decoder[Protocol4Delegate] = deriveDecoder
       implicit val accountDecoder: Decoder[Account] = deriveDecoder
     }
 

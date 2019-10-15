@@ -194,6 +194,32 @@ trait DelegatesJsonData {
 
 /* defines example tezos json definitions of accounts and typed counterparts used in the tests */
 trait AccountsJsonData {
+  val legacyAccountJson =
+    """{
+    |  "balance": "2921522468",
+    |  "counter": "0",
+    |  "delegate": {
+    |      "setable": false,
+    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
+    |  },
+    |  "spendable": true
+    |}""".stripMargin
+
+  val expectedLegacyAccount =
+    Account(
+      balance = 2921522468L,
+      script = None,
+      counter = Some(0),
+      manager = None,
+      spendable = Some(true),
+      delegate = Some(Left(
+        Protocol4Delegate(
+          setable = false,
+          value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+        )
+      ))
+    )
+
   val accountJson =
     """{
     |  "balance": "2921522468",
@@ -204,9 +230,11 @@ trait AccountsJsonData {
   val expectedAccount =
     Account(
       balance = 2921522468L,
-      delegate = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23")),
+      delegate = Some(Right(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))),
       script = None,
-      counter = Some(0)
+      counter = Some(0),
+      manager = None,
+      spendable = None
     )
 
   val scriptJson =

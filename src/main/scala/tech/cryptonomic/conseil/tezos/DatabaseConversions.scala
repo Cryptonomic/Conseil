@@ -48,19 +48,39 @@ object DatabaseConversions {
 
   implicit val blockAccountsToAccountRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
+      val toDelegateKeyHash: Option[AccountDelegate] => Option[String] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Right(pkh)) => pkh.value
+        }
+
+      val toDelegateSetable: Option[AccountDelegate] => Option[Boolean] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(setable, _))) => setable
+        }
+
+      val toDelegateValue: Option[AccountDelegate] => Option[String] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh.value
+          case Some(Right(pkh)) => pkh.value
+        }
+
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
         val BlockTagged(hash, level, accounts) = from
         accounts.map {
-          case (id, Account(balance, delegate, script, counter)) =>
+          case (id, Account(balance, delegate, script, counter, manager, spendable)) =>
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              delegate = delegate.map(_.value),
+              delegate = toDelegateKeyHash(delegate),
               counter = counter,
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),
               balance = balance,
-              blockLevel = level
+              blockLevel = level,
+              manager = manager.map(_.value),
+              spendable = spendable,
+              delegateSetable = toDelegateSetable(delegate),
+              delegateValue = toDelegateValue(delegate)
             )
         }.toList
       }
