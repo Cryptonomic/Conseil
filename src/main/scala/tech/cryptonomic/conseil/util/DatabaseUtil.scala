@@ -133,6 +133,34 @@ object DatabaseUtil {
         }
     }
 
+    /* Example json query looks like that:
+     {
+      "predicates": [
+        {"field": "asof", "operation":"gt", "set":["2018-07-01"]},
+        {"field": "balance", "operation":"gt", "set":[0]}
+      ],
+      "aggregation": [
+      ],
+      "fields": [
+        "asof", "balance", "account_id"
+      ],
+      "orderBy": [
+        {"field":"asof", "direction":"desc"}
+      ],
+      "output": "json",
+      "limit": 10
+      }
+
+      and produces query like that:
+      SELECT s.* FROM (
+        SELECT asof, balance, account_id, rank() over (
+          partition by account_id ORDER BY asof desc
+        ) as r from accounts_history
+        WHERE true  AND asof > '2018-07-01' AND balance > '0') s
+      WHERE s.r = 1 LIMIT 10
+
+      In this case account_id is being set in the metadata config as the field by which the table is being partitioned.
+     */
     /** Makes SQL query for temporal table
       *
       * @param table table name

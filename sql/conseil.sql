@@ -59,7 +59,7 @@ CREATE TABLE tezos.accounts (
 );
 
 
-CREATE TABLE public.accounts_history (
+CREATE TABLE tezos.accounts_history (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
     manager character varying NOT NULL,
