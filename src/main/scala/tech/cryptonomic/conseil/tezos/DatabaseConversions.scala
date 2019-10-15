@@ -77,6 +77,7 @@ object DatabaseConversions {
               balance = balance,
               blockLevel = level,
               manager = manager.map(_.value),
+              spendable = spendable,
               delegateSetable = toDelegateSetable(delegate),
               delegateValue = toDelegateValue(delegate)
             )

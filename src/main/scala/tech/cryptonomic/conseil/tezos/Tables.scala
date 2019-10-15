@@ -43,6 +43,7 @@ trait Tables {
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
     *  @param manager Database column manager SqlType(varchar), Default(None)
+    *  @param spendable Database column spendable SqlType(bool), Default(None)
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None) */
   case class AccountsRow(
@@ -55,6 +56,7 @@ trait Tables {
       balance: scala.math.BigDecimal,
       blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"),
       manager: Option[String] = None,
+      spendable: Option[Boolean] = None,
       delegateSetable: Option[Boolean] = None,
       delegateValue: Option[String] = None
   )
@@ -80,6 +82,7 @@ trait Tables {
         <<[scala.math.BigDecimal],
         <<?[String],
         <<?[Boolean],
+        <<?[Boolean],
         <<?[String]
       )
     )
@@ -98,6 +101,7 @@ trait Tables {
         balance,
         blockLevel,
         manager,
+        spendable,
         delegateSetable,
         delegateValue
       ) <> (AccountsRow.tupled, AccountsRow.unapply)
@@ -115,12 +119,14 @@ trait Tables {
           Rep.Some(balance),
           Rep.Some(blockLevel),
           manager,
+          spendable,
           delegateSetable,
           delegateValue
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11)))
+          import r._;
+          _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9, _10, _11, _12)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -152,6 +158,9 @@ trait Tables {
 
     /** Database column manager SqlType(varchar), Default(None) */
     val manager: Rep[Option[String]] = column[Option[String]]("manager", O.Default(None))
+
+    /** Database column spendable SqlType(bool), Default(None) */
+    val spendable: Rep[Option[Boolean]] = column[Option[Boolean]]("spendable", O.Default(None))
 
     /** Database column delegate_setable SqlType(bool), Default(None) */
     val delegateSetable: Rep[Option[Boolean]] = column[Option[Boolean]]("delegate_setable", O.Default(None))

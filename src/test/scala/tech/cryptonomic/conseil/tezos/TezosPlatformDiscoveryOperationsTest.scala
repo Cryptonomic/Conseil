@@ -129,7 +129,11 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "accounts"),
-            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts")
+            Attribute("block_level", "Block level", DataType.Decimal, None, KeyType.UniqueKey, "accounts"),
+            Attribute("manager", "Manager", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts")
           )
         )
       }

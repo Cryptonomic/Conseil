@@ -37,6 +37,7 @@ CREATE TABLE public.accounts (
     balance numeric NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL,
     manager character varying, -- retro-compat from protocol 5+
+    spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
     delegate_value char varying -- retro-compat from protocol 5+
 );
