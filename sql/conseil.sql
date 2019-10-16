@@ -358,7 +358,6 @@ ALTER TABLE ONLY tezos.operations ALTER COLUMN operation_id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY tezos.operation_groups
-ALTER TABLE tezos.operation_groups
     ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (block_id, hash);
 
 
@@ -567,13 +566,6 @@ CREATE INDEX ix_operations_source ON tezos.operations USING btree (source);
 --
 
 CREATE INDEX ix_operations_timestamp ON tezos.operations USING btree ("timestamp");
-
-
---
--- Name: ix_operations_delegate; Type: INDEX; Schema: tezos; Owner: -
---
-
-CREATE INDEX ix_operations_delegate ON tezos.operations USING btree ("delegate");
 
 --
 -- TOC entry 2106 (class 1259 OID 99714)
