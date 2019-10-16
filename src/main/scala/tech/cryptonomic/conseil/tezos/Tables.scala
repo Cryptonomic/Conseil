@@ -22,6 +22,7 @@ trait Tables {
     BakingRights.schema,
     BalanceUpdates.schema,
     Blocks.schema,
+    DelegatedContracts.schema,
     Delegates.schema,
     DelegatesCheckpoint.schema,
     EndorsingRights.schema,
@@ -177,6 +178,9 @@ trait Tables {
 
     /** Index over (blockLevel) (database name ix_accounts_block_level) */
     val index1 = index("ix_accounts_block_level", blockLevel)
+
+    /** Index over (manager) (database name ix_accounts_manager) */
+    val index2 = index("ix_accounts_manager", manager)
   }
 
   /** Collection-like TableQuery object for table Accounts */
@@ -260,7 +264,8 @@ trait Tables {
   }
 
   /** Table description of table baking_rights. Objects of this class serve as prototypes for rows in queries. */
-  class BakingRights(_tableTag: Tag) extends profile.api.Table[BakingRightsRow](_tableTag, "baking_rights") {
+  class BakingRights(_tableTag: Tag)
+      extends profile.api.Table[BakingRightsRow](_tableTag, Some("tezos"), "baking_rights") {
     def * = (blockHash, level, delegate, priority, estimatedTime) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -890,7 +895,8 @@ trait Tables {
   }
 
   /** Table description of table endorsing_rights. Objects of this class serve as prototypes for rows in queries. */
-  class EndorsingRights(_tableTag: Tag) extends profile.api.Table[EndorsingRightsRow](_tableTag, "endorsing_rights") {
+  class EndorsingRights(_tableTag: Tag)
+      extends profile.api.Table[EndorsingRightsRow](_tableTag, Some("tezos"), "endorsing_rights") {
     def * = (blockHash, level, delegate, slot, estimatedTime) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */

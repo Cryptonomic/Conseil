@@ -24,21 +24,21 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
   * @param order                  Sort items ascending or descending
   */
 final case class Filter(
-  limit: Option[Int] = Some(defaultLimit),
-  blockIDs: Set[String] = Set.empty,
-  levels: Set[Int] = Set.empty,
-  chainIDs: Set[String] = Set.empty,
-  protocols: Set[String] = Set.empty,
-  operationGroupIDs: Set[String] = Set.empty,
-  operationSources: Set[String] = Set.empty,
-  operationDestinations: Set[String] = Set.empty,
-  operationParticipants: Set[String] = Set.empty,
-  operationKinds: Set[String] = Set.empty,
-  accountIDs: Set[String] = Set.empty,
-  accountManagers: Set[String] = Set.empty,
-  accountDelegates: Set[String] = Set.empty,
-  sortBy: Option[String] = None,
-  order: Option[Sorting] = Some(DescendingSort)
+    limit: Option[Int] = Some(defaultLimit),
+    blockIDs: Set[String] = Set.empty,
+    levels: Set[Int] = Set.empty,
+    chainIDs: Set[String] = Set.empty,
+    protocols: Set[String] = Set.empty,
+    operationGroupIDs: Set[String] = Set.empty,
+    operationSources: Set[String] = Set.empty,
+    operationDestinations: Set[String] = Set.empty,
+    operationParticipants: Set[String] = Set.empty,
+    operationKinds: Set[String] = Set.empty,
+    accountIDs: Set[String] = Set.empty,
+    accountManagers: Set[String] = Set.empty,
+    accountDelegates: Set[String] = Set.empty,
+    sortBy: Option[String] = None,
+    order: Option[Sorting] = Some(DescendingSort)
 ) {
 
   /** transforms Filter into a Query with a set of predicates */
@@ -124,6 +124,7 @@ final case class Filter(
 }
 
 object Filter {
+
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
   case object AscendingSort extends Sorting
@@ -139,23 +140,24 @@ object Filter {
       case _ => None
     }
   }
+
   /** builds a filter from incoming string-based parameters */
   def readParams(
-    limit: Option[Int],
-    blockIDs: Iterable[String],
-    levels: Iterable[Int],
-    chainIDs: Iterable[String],
-    protocols: Iterable[String],
-    operationGroupIDs: Iterable[String],
-    operationSources: Iterable[String],
-    operationDestinations: Iterable[String],
-    operationParticipants: Iterable[String],
-    operationKinds: Iterable[String],
-    accountIDs: Iterable[String],
-    accountManagers: Iterable[String],
-    accountDelegates: Iterable[String],
-    sortBy: Option[String],
-    order: Option[String]
+      limit: Option[Int],
+      blockIDs: Iterable[String],
+      levels: Iterable[Int],
+      chainIDs: Iterable[String],
+      protocols: Iterable[String],
+      operationGroupIDs: Iterable[String],
+      operationSources: Iterable[String],
+      operationDestinations: Iterable[String],
+      operationParticipants: Iterable[String],
+      operationKinds: Iterable[String],
+      accountIDs: Iterable[String],
+      accountManagers: Iterable[String],
+      accountDelegates: Iterable[String],
+      sortBy: Option[String],
+      order: Option[String]
   ): Filter =
     Filter(
       limit,

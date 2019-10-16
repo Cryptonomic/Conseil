@@ -2,7 +2,14 @@ package tech.cryptonomic.conseil.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, MetadataOperations}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Field, FormattedField, Predicate, Query, QueryResponse, SimpleField}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  Field,
+  FormattedField,
+  Predicate,
+  Query,
+  QueryResponse,
+  SimpleField
+}
 import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -10,12 +17,10 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
 object ApiOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
   case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
   case class AccountResult(account: Tables.AccountsRow)
-
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
@@ -177,6 +182,5 @@ class ApiOperations extends DataOperations with MetadataOperations {
       case FormattedField(field, function, format) =>
         FormattedField(sanitizeForSql(field), function, sanitizeDatePartAggregation(format))
     }
-
 
 }
