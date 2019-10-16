@@ -41,6 +41,7 @@ Conseil Config:
 
 
 * API_PORT - Conseil API port, default: 80
+* API_KEY - Conseil API key, default: conseil
 
 Or, you can use your own config file, in which case specify the environment variable `CONFIG` with the path to your file
 
@@ -163,7 +164,9 @@ See 'Custom Configurations' section for information about custom config files.
 
 ## How to use Conseil
 
-For a detailed description of the offered features look at the [Usage Page](doc/use-conseil.md)
+After launching both Lorre and Conseil process you will be able to query the system for information on the blockchain and to execute operations.
+
+An intro tutorial is available [here](https://github.com/Cryptonomic/Conseil/wiki/Tutorial:-Querying-for-Tezos-alphanet-data-using-the-v2-API)
 
 ## Local testing and development
 The application expects to access a postgres database instance to run: you can run one locally, as already described, or you can use a [Docker](https://docs.docker.com/get-started/) image to run it within a container.
@@ -267,7 +270,10 @@ Such keys will be checked by the server when connecting via Http endpoints to Co
 The production configuration can override the default without resorting to inclusion of the dev conf.
 
 ---
-For additional extra fine-grained configuration you can refer to [this appendix](doc/extra-custom-config.md)
+For additional extra fine-grained configuration you can refer to [this appendix](docs/extra-custom-config.md)
 
 ## Publishing the artifacts
-If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)
+If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](docs/publishing.md)
+
+## Contribution
+If you want to contribute please read [practices we follow](CONTRIBUTION.md) in terms of organizing workflow with git. 

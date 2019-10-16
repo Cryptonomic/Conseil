@@ -183,6 +183,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
           )
         )
+
       }
 
       "return list of attributes of operations" in {

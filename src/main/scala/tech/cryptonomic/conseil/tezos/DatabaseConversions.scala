@@ -326,7 +326,7 @@ object DatabaseConversions {
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, period)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -338,7 +338,8 @@ object DatabaseConversions {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = period
       )
   }
 

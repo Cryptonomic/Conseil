@@ -15,10 +15,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(metadataService: MetadataService, server: ServerConfiguration)(
+  def apply(metadataService: MetadataService, server: ServerConfiguration, apiOperations: ApiOperations)(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(DataPlatform(server.maxQueryResultSize), metadataService)
+    new Data(DataPlatform(apiOperations, server.maxQueryResultSize), metadataService, apiOperations)
 }
 
 /**
@@ -27,7 +27,7 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
+class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService, apiOperations: ApiOperations)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
@@ -69,7 +69,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchLatestBlock()
+        apiOperations.fetchLatestBlock()
       }
   }
 
@@ -77,7 +77,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchBlock(BlockHash(hash))
+        apiOperations.fetchBlock(BlockHash(hash))
       }
   }
 
@@ -93,7 +93,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
     case ((platform, network, accountId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchAccount(AccountId(accountId))
+        apiOperations.fetchAccount(AccountId(accountId))
       }
   }
 
@@ -109,7 +109,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
     case ((platform, network, operationGroupId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchOperationGroup(operationGroupId)
+        apiOperations.fetchOperationGroup(operationGroupId)
       }
   }
 
