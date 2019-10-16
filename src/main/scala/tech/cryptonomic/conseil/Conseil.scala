@@ -48,12 +48,13 @@ object Conseil
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+      lazy val api = new ApiOperations
 
       val retries = if (failFast.on) Some(0) else None
 
       val serverBinding =
         retry(maxRetry = retries, deadline = Some(server.startupDeadline fromNow))(
-          initServices(server, platforms, metadataOverrides, nautilusCloud).get
+          initServices(api, server, platforms, metadataOverrides, nautilusCloud).get
         ).andThen {
           case Failure(error) =>
             logger.error(
@@ -62,7 +63,7 @@ object Conseil
             )
             Await.ready(system.terminate(), 10.seconds)
         }.flatMap(
-          runServer(_, server, platforms, securityApi, verbose)
+          runServer(_, api, server, platforms, securityApi, verbose)
         )
 
       sys.addShutdownHook {
@@ -81,9 +82,10 @@ object Conseil
     * @param platforms configuration regarding the exposed blockchains available
     * @param metadataOverrides rules for customizing metadata presentation to the client
     * @param nautilusCloud defines the rules to update nautilus configuration (e.g. api key updates)
-    * @return a metadata services object, if all went fine
+    * @return a metadata services object or a failed result
     */
   def initServices(
+      apiOperations: ApiOperations,
       server: ServerConfiguration,
       platforms: PlatformsConfiguration,
       metadataOverrides: MetadataConfiguration,
@@ -103,7 +105,7 @@ object Conseil
 
     lazy val tezosPlatformDiscoveryOperations =
       TezosPlatformDiscoveryOperations(
-        ApiOperations,
+        apiOperations,
         metadataCaching,
         cacheOverrides,
         server.cacheTTL,
@@ -133,6 +135,7 @@ object Conseil
     */
   def runServer(
       metadataService: MetadataService,
+      apiOperations: ApiOperations,
       server: ServerConfiguration,
       platforms: PlatformsConfiguration,
       securityApi: SecurityApi,
@@ -141,7 +144,8 @@ object Conseil
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
-    lazy val data = Data(metadataService, server)(tezosDispatcher)
+    lazy val data = Data(metadataService, server, apiOperations)(tezosDispatcher)
+
 
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
       apiKeyTuple =>

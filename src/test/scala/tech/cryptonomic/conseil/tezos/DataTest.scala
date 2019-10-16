@@ -162,10 +162,11 @@ class DataTest
       cacheOverrides,
       platformDiscoveryOperations
     )
+  val apiOps: ApiOperations = new ApiOperations
 
-  val postRoute: Route = new Data(fakeQPP, metadataService).postRoute
+  val postRoute: Route = new Data(fakeQPP, metadataService, apiOps).postRoute
 
-  val getRoute: Route = new Data(fakeQPP, metadataService).getRoute
+  val getRoute: Route = new Data(fakeQPP, metadataService, apiOps).getRoute
 
   "Query protocol" should {
 
