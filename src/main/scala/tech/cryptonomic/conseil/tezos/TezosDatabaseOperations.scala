@@ -53,7 +53,7 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
-    * Writes accounts with block data to a database.
+    * Writes accounts history with block data to a database.
     *
     * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
@@ -61,7 +61,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeAccountsHistory(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
-    logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
+    logger.info(s"""Writing ${accountsInfo.length} accounts_history to DB...""")
     DBIO
       .sequence(accountsInfo.flatMap { info =>
         info.convertToA[List, Tables.AccountsHistoryRow].map(Tables.AccountsHistory += _)
