@@ -49,6 +49,10 @@ class ApiOperations extends DataOperations with MetadataOperations {
   override def runQuery[A](action: DBIO[A]): Future[A] =
     dbReadHandle.run(action)
 
+  /** Should be called upon disposal of the object, to clean up system resources */
+  def release(): Unit =
+    dbReadHandle.close()
+
   /**
     * Fetches the level of the most recent block stored in the database.
     *

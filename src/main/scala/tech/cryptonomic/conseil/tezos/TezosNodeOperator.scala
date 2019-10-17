@@ -58,6 +58,7 @@ object TezosNodeOperator {
   * @param node               Tezos node connection object
   * @param network            Which Tezos network to go against
   * @param batchConf          configuration for batched download of node data
+  * @param apiOperations      access to higher level operations on conseil's stored data
   * @param fetchFutureContext thread context for async operations
   */
 class TezosNodeOperator(
