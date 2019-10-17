@@ -534,17 +534,18 @@ object TezosDatabaseOperations extends LazyLogging {
       outputType: OutputType,
       limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
-    val maybeTemporalQuery = temporalPartition.map { temporalPartition =>
-      makeTemporalQuery(table, columns, predicates, aggregation, ordering, temporalPartition, limit)
-    }
-    val query = makeQuery(table, columns, aggregation)
-      .addPredicates(predicates)
-      .addGroupBy(aggregation, columns)
-      .addHaving(aggregation)
-      .addOrdering(ordering)
-      .addLimit(limit)
 
-    val q = maybeTemporalQuery.getOrElse(query)
+    val q = temporalPartition match {
+      case Some(tempPartition) =>
+        makeTemporalQuery(table, columns, predicates, aggregation, ordering, tempPartition, limit)
+      case None =>
+        makeQuery(table, columns, aggregation)
+          .addPredicates(predicates)
+          .addGroupBy(aggregation, columns)
+          .addHaving(aggregation)
+          .addOrdering(ordering)
+          .addLimit(limit)
+    }
 
     if (outputType == OutputType.sql) {
       DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
