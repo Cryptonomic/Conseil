@@ -47,12 +47,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val accounts = (1 to howMany).map { currentId =>
       AccountId(String valueOf currentId) ->
         Account(
-          manager = PublicKeyHash("manager"),
           balance = rnd.nextInt,
-          spendable = true,
-          delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
+          counter = Some(currentId),
+          delegate = Some(Right(PublicKeyHash("delegate-value"))),
           script = Some(Contracts(Micheline("storage"), Micheline("script"))),
-          counter = currentId
+          manager = None,
+          spendable = None
         )
     }.toMap
 
@@ -345,13 +345,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
       AccountsRow(
         accountId = String valueOf currentId,
         blockId = block.hash,
-        manager = "manager",
-        spendable = true,
-        delegateSetable = false,
-        delegateValue = None,
-        counter = 0,
-        script = None,
-        balance = 0
+        balance = 0,
+        counter = Some(0),
+        delegate = None,
+        script = None
       )
     }.toList
 
@@ -466,6 +463,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       Endorsement(
         level = 182308,
         metadata = EndorsementMetadata(
+          slot = None,
           slots = List(29, 27, 20, 17),
           delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
           balance_updates = List(
@@ -535,7 +533,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleReveal =
       Reveal(
-        source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+        source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
         fee = PositiveDecimal(10000),
         counter = PositiveDecimal(1),
         gas_limit = PositiveDecimal(10000),
@@ -570,7 +568,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleTransaction =
       Transaction(
-        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
         fee = PositiveDecimal(1416),
         counter = PositiveDecimal(407940),
         gas_limit = PositiveDecimal(11475),
@@ -614,12 +612,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleOrigination =
       Origination(
-        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
         fee = PositiveDecimal(1441),
         counter = PositiveDecimal(407941),
         gas_limit = PositiveDecimal(11362),
         storage_limit = PositiveDecimal(323),
-        manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        manager_pubkey = None,
         balance = PositiveDecimal(1000000),
         spendable = Some(false),
         delegatable = Some(false),
@@ -693,7 +691,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleDelegation =
       Delegation(
-        source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+        source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
         fee = PositiveDecimal(1400),
         counter = PositiveDecimal(2),
         gas_limit = PositiveDecimal(10100),

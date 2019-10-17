@@ -5,6 +5,7 @@ import tech.cryptonomic.conseil.tezos.{Filter, Tables}
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
+
 /** Trait containing endpoints definition */
 trait DataEndpoints
     extends algebra.JsonSchemaEntities

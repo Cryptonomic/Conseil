@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.client
 
 import java.util.concurrent.Executors
-import scala.language.postfixOps
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.sys.process._

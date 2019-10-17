@@ -65,7 +65,6 @@ object Conseil
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
       lazy val apiOperations = new ApiOperations
 
-
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(
           apiOperations,
