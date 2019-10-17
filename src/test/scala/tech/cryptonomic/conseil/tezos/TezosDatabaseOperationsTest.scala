@@ -3002,15 +3002,16 @@ class TezosDatabaseOperationsTest
         val ahr = AccountsHistoryRow(
           "id",
           "blockid",
-          "manager",
-          true,
-          true,
-          None,
-          0,
           None,
           None,
-          BigDecimal(1.00),
+          None,
+          None,
+          BigDecimal(1.0),
           BigDecimal(1),
+          None,
+          None,
+          None,
+          None,
           new Timestamp(1)
         )
 

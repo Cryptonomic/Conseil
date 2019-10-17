@@ -326,18 +326,8 @@ class TezosPlatformDiscoveryOperationsTest
           Account(balance = 12.34, counter = Some(1), delegate = None, script = None, manager = None, spendable = None)
 
         val accounts = List(
-          BlockTagged(
-            basicBlocks.data.hash,
-            1,
-            Some(testReferenceDateTime.toInstant),
-            Map(AccountId("id-1") -> account.copy(spendable = true))
-          ),
-          BlockTagged(
-            basicBlocks.data.hash,
-            1,
-            Some(testReferenceDateTime.toInstant),
-            Map(AccountId("id-2") -> account.copy(spendable = false))
-          )
+          BlockTagged(basicBlocks.data.hash, 1, None, Map(AccountId("id-1") -> account.copy())),
+          BlockTagged(basicBlocks.data.hash, 1, None, Map(AccountId("id-2") -> account.copy()))
         )
 
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)

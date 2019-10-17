@@ -90,18 +90,14 @@ object DatabaseConversions {
 
   implicit val blockAccountsToAccountHistoryRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsHistoryRow] {
-      override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] = {
+      override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] =
         blockAccountsToAccountRows.convert(from).map {
           _.into[Tables.AccountsHistoryRow]
             .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
             .transform
         }
-      }
     }
 
-  implicit val accountRowsToContractRows = new Conversion[Id, Tables.AccountsRow, Tables.DelegatedContractsRow] {
-    override def convert(from: Tables.AccountsRow) = from.into[Tables.DelegatedContractsRow].transform
-  }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
