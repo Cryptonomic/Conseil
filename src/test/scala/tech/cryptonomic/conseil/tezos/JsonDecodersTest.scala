@@ -441,6 +441,14 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
         account shouldEqual expectedAccount
       }
 
+      "decode legacy protocol4 accounts" in new AccountsJsonData {
+        val decoded = decode[Account](legacyAccountJson)
+        decoded shouldBe 'right
+
+        val account = decoded.right.value
+        account shouldEqual expectedLegacyAccount
+      }
+
       "decode account scripts as wrapped and unparsed text, instead of a json object" in new AccountsJsonData {
         val decoded = decode[Account](accountScriptedJson)
         decoded shouldBe 'right
