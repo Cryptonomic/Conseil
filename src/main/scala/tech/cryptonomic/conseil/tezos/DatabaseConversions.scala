@@ -98,7 +98,6 @@ object DatabaseConversions {
         }
     }
 
-
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
       val header = from.data.header
