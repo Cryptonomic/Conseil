@@ -12,4 +12,4 @@ services:
       POSTGRES_INITDB_ARGS: "--nosync --lc-collate=C"
     volumes:
     - "./pgdata:/var/lib/postgresql/data"
-    - "./doc/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
+    - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"

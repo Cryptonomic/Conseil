@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes.openapi
 import cats.Functor
 import cats.syntax.functor._
 import endpoints.algebra
-import tech.cryptonomic.conseil.tezos.ApiOperations.Filter
+import tech.cryptonomic.conseil.tezos.Filter
 
 /** Trait containing helper functions which are necessary for parsing query parameter strings as Filter  */
 trait ApiFilterFromQueryString { self: algebra.JsonEntities =>

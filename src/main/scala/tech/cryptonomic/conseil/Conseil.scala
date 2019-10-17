@@ -63,10 +63,11 @@ object Conseil
 
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
+      lazy val apiOperations = new ApiOperations
 
       lazy val tezosPlatformDiscoveryOperations =
         TezosPlatformDiscoveryOperations(
-          ApiOperations,
+          apiOperations,
           metadataCaching,
           cacheOverrides,
           server.cacheTTL,
@@ -90,7 +91,7 @@ object Conseil
       val metadataService =
         new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations)
       lazy val platformDiscovery = PlatformDiscovery(metadataService)
-      lazy val data = Data(metadataService, server)(tezosDispatcher)
+      lazy val data = Data(metadataService, server, apiOperations)(tezosDispatcher)
 
       val route = concat(
         pathPrefix("docs") {

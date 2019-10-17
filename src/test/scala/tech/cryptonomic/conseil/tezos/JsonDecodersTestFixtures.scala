@@ -212,12 +212,14 @@ trait AccountsJsonData {
       counter = Some(0),
       manager = None,
       spendable = Some(true),
-      delegate = Some(Left(
-        Protocol4Delegate(
-          setable = false,
-          value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+      delegate = Some(
+        Left(
+          Protocol4Delegate(
+            setable = false,
+            value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+          )
         )
-      ))
+      )
     )
 
   val accountJson =
