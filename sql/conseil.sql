@@ -168,17 +168,6 @@ CREATE TABLE tezos.blocks (
 
 
 --
--- TOC entry 186 (class 1259 OID 99628)
--- Name: delegated_contracts; Type: TABLE; Schema: tezos; Owner: -
---
-
-CREATE TABLE tezos.delegated_contracts (
-    account_id character varying NOT NULL,
-    delegate_value character varying
-);
-
-
---
 -- Name: delegates; Type: TABLE; Schema: tezos; Owner: -
 --
 
@@ -608,22 +597,6 @@ ALTER TABLE ONLY tezos.operation_groups
 
 ALTER TABLE ONLY tezos.accounts_checkpoint
     ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
-
-
---
--- Name: delegated_contracts contracts_account_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
---
-
-ALTER TABLE ONLY tezos.delegated_contracts
-    ADD CONSTRAINT contracts_account_id_fkey FOREIGN KEY (account_id) REFERENCES tezos.accounts(account_id);
-
-
---
--- Name: delegated_contracts contracts_delegate_pkh_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
---
-
-ALTER TABLE ONLY tezos.delegated_contracts
-    ADD CONSTRAINT contracts_delegate_pkh_fkey FOREIGN KEY (delegate_value) REFERENCES tezos.delegates(pkh);
 
 
 --
