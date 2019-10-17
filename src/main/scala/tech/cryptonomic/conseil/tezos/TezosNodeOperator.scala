@@ -60,7 +60,12 @@ object TezosNodeOperator {
   * @param batchConf          configuration for batched download of node data
   * @param fetchFutureContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration, apiOperations: ApiOperations)(
+class TezosNodeOperator(
+    val node: TezosRPCInterface,
+    val network: String,
+    batchConf: BatchFetchConfiguration,
+    apiOperations: ApiOperations
+)(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
     with BlocksDataFetchers
@@ -632,7 +637,7 @@ class TezosNodeSenderOperator(
     network: String,
     batchConf: BatchFetchConfiguration,
     sodiumConf: SodiumConfiguration,
-  apiOperations: ApiOperations
+    apiOperations: ApiOperations
 )(implicit executionContext: ExecutionContext)
     extends TezosNodeOperator(node, network, batchConf, apiOperations)
     with LazyLogging {
@@ -663,15 +668,15 @@ class TezosNodeSenderOperator(
         revealMap :: operations
     }
 
-  /**
-    * Forge an operation group using the Tezos RPC client.
-    * @param blockHead  The block head
-    * @param account    The sender's account
-    * @param operations The operations being forged as part of this operation group
-    * @param keyStore   Key pair along with public key hash
-    * @param fee        Fee to be paid
-    * @return           Forged operation bytes (as a hex string)
-    */
+  /*/**
+   * Forge an operation group using the Tezos RPC client.
+   * @param blockHead  The block head
+   * @param account    The sender's account
+   * @param operations The operations being forged as part of this operation group
+   * @param keyStore   Key pair along with public key hash
+   * @param fee        Fee to be paid
+   * @return           Forged operation bytes (as a hex string)
+   */
   def forgeOperations(
       blockHead: Block,
       account: Account,
@@ -700,7 +705,7 @@ class TezosNodeSenderOperator(
     node
       .runAsyncPostQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .map(json => fromJson[ForgedOperation](json).operation)
-  }
+  }*/
 
   /**
     * Signs a forged operation
@@ -770,13 +775,13 @@ class TezosNodeSenderOperator(
       .map(result => fromJson[InjectedOperation](result).injectedOperation)
   }
 
-  /**
-    * Master function for creating and sending all supported types of operations.
-    * @param operations The operations to create and send
-    * @param keyStore   Key pair along with public key hash
-    * @param fee        The fee to use
-    * @return           The ID of the created operation group
-    */
+  /*/**
+   * Master function for creating and sending all supported types of operations.
+   * @param operations The operations to create and send
+   * @param keyStore   Key pair along with public key hash
+   * @param fee        The fee to use
+   * @return           The ID of the created operation group
+   */
   def sendOperation(
       operations: List[Map[String, Any]],
       keyStore: KeyStore,
@@ -793,16 +798,16 @@ class TezosNodeSenderOperator(
       operationGroupHash <- Future.fromTry(computeOperationHash(signedOpGroup))
       appliedOp <- applyOperation(blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
       operation <- injectOperation(signedOpGroup)
-    } yield OperationResult(appliedOp, operation)
+    } yield OperationResult(appliedOp, operation)*/
 
-  /**
-    * Creates and sends a transaction operation.
-    * @param keyStore   Key pair along with public key hash
-    * @param to         Destination public key hash
-    * @param amount     Amount to send
-    * @param fee        Fee to use
-    * @return           The ID of the created operation group
-    */
+  /*/**
+   * Creates and sends a transaction operation.
+   * @param keyStore   Key pair along with public key hash
+   * @param to         Destination public key hash
+   * @param amount     Amount to send
+   * @param fee        Fee to use
+   * @return           The ID of the created operation group
+   */
   def sendTransactionOperation(
       keyStore: KeyStore,
       to: String,
@@ -817,15 +822,15 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
-  /**
-    * Creates and sends a delegation operation.
-    * @param keyStore Key pair along with public key hash
-    * @param delegate Account ID to delegate to
-    * @param fee      Operation fee
-    * @return
-    */
+  /*/**
+   * Creates and sends a delegation operation.
+   * @param keyStore Key pair along with public key hash
+   * @param delegate Account ID to delegate to
+   * @param fee      Operation fee
+   * @return
+   */
   def sendDelegationOperation(keyStore: KeyStore, delegate: String, fee: Float): Future[OperationResult] = {
     val transactionMap: Map[String, Any] = Map(
       "kind" -> "delegation",
@@ -833,18 +838,18 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
-  /**
-    * Creates and sends an origination operation.
-    * @param keyStore     Key pair along with public key hash
-    * @param amount       Initial funding amount of new account
-    * @param delegate     Account ID to delegate to, blank if none
-    * @param spendable    Is account spendable?
-    * @param delegatable  Is account delegatable?
-    * @param fee          Operation fee
-    * @return
-    */
+  /*/**
+   * Creates and sends an origination operation.
+   * @param keyStore     Key pair along with public key hash
+   * @param amount       Initial funding amount of new account
+   * @param delegate     Account ID to delegate to, blank if none
+   * @param spendable    Is account spendable?
+   * @param delegatable  Is account delegatable?
+   * @param fee          Operation fee
+   * @return
+   */
   def sendOriginationOperation(
       keyStore: KeyStore,
       amount: Float,
@@ -863,7 +868,7 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
   /**
     * Creates a new Tezos identity.

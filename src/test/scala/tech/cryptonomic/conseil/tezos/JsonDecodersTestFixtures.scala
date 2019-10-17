@@ -194,7 +194,7 @@ trait DelegatesJsonData {
 
 /* defines example tezos json definitions of accounts and typed counterparts used in the tests */
 trait AccountsJsonData {
-  val accountJson =
+  val legacyAccountJson =
     """{
     |  "balance": "2921522468",
     |  "counter": "0",
@@ -202,21 +202,41 @@ trait AccountsJsonData {
     |      "setable": false,
     |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |  },
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
     |  "spendable": true
+    |}""".stripMargin
+
+  val expectedLegacyAccount =
+    Account(
+      balance = 2921522468L,
+      script = None,
+      counter = Some(0),
+      manager = None,
+      spendable = Some(true),
+      delegate = Some(
+        Left(
+          Protocol4Delegate(
+            setable = false,
+            value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+          )
+        )
+      )
+    )
+
+  val accountJson =
+    """{
+    |  "balance": "2921522468",
+    |  "counter": "0",
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |}""".stripMargin
 
   val expectedAccount =
     Account(
-      manager = PublicKeyHash("tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY"),
       balance = 2921522468L,
-      spendable = true,
-      delegate = AccountDelegate(
-        setable = false,
-        value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
-      ),
+      delegate = Some(Right(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))),
       script = None,
-      counter = 0
+      counter = Some(0),
+      manager = None,
+      spendable = None
     )
 
   val scriptJson =
@@ -245,13 +265,8 @@ trait AccountsJsonData {
     s"""{
     |  "balance": "2921522468",
     |  "counter": "0",
-    |  "delegate": {
-    |      "setable": false,
-    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
-    |  },
-    |  "script": $scriptJson,
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
-    |  "spendable": true
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23",
+    |  "script": $scriptJson
     |}""".stripMargin
 
 }
@@ -401,6 +416,7 @@ trait OperationsJsonData {
     Endorsement(
       level = 182308,
       metadata = EndorsementMetadata(
+        slot = None,
         slots = List(29, 27, 20, 17),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
         balance_updates = List(
@@ -547,7 +563,7 @@ trait OperationsJsonData {
 
   val expectedReveal =
     Reveal(
-      source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+      source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
       fee = PositiveDecimal(10000),
       counter = PositiveDecimal(1),
       gas_limit = PositiveDecimal(10000),
@@ -583,7 +599,7 @@ trait OperationsJsonData {
               result = OperationResult.Reveal("applied", Some(Decimal(10000)), None),
               public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
               nonce = 1234,
-              source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+              source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
               kind = "reveal"
             )
           )
@@ -597,7 +613,7 @@ trait OperationsJsonData {
     fee = PositiveDecimal(0),
     gas_limit = PositiveDecimal(2215),
     storage_limit = PositiveDecimal(0),
-    source = ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
+    source = PublicKeyHash("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
     destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
     parameters = Some(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")),
     metadata = ResultMetadata(
@@ -618,7 +634,7 @@ trait OperationsJsonData {
         List(
           InternalOperationResults.Transaction(
             "transaction",
-            ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
+            PublicKeyHash("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
             0,
             PositiveDecimal(1000),
             ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
@@ -755,7 +771,7 @@ trait OperationsJsonData {
 
   val expectedFailedReveal =
     Reveal(
-      source = ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf"),
+      source = PublicKeyHash("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf"),
       fee = PositiveDecimal(1300),
       counter = PositiveDecimal(454133),
       gas_limit = PositiveDecimal(100),
@@ -829,7 +845,7 @@ trait OperationsJsonData {
 
   val expectedTransaction =
     Transaction(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1416),
       counter = PositiveDecimal(407940),
       gas_limit = PositiveDecimal(11475),
@@ -935,12 +951,12 @@ trait OperationsJsonData {
 
   val expectedOrigination =
     Origination(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1441),
       counter = PositiveDecimal(407941),
       gas_limit = PositiveDecimal(11362),
       storage_limit = PositiveDecimal(323),
-      manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      manager_pubkey = Some(PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
       balance = PositiveDecimal(1000000),
       spendable = Some(false),
       delegatable = Some(false),
@@ -1108,7 +1124,7 @@ trait OperationsJsonData {
 
   val expectedDelegation =
     Delegation(
-      source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+      source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
       fee = PositiveDecimal(1400),
       counter = PositiveDecimal(2),
       gas_limit = PositiveDecimal(10100),

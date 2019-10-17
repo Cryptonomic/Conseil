@@ -222,7 +222,7 @@ trait BlocksDataFetchers {
     override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
       Kleisli(
         hashes => {
-          logger.info("Fetching enbdorsing rights")
+          logger.info("Fetching endorsing rights")
           node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
             case err =>
               logger

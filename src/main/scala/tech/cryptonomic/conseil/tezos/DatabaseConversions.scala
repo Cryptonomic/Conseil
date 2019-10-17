@@ -50,22 +50,39 @@ object DatabaseConversions {
 
   implicit val blockAccountsToAccountRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
+      val toDelegateKeyHash: Option[AccountDelegate] => Option[String] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Right(pkh)) => pkh.value
+        }
+
+      val toDelegateSetable: Option[AccountDelegate] => Option[Boolean] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(setable, _))) => setable
+        }
+
+      val toDelegateValue: Option[AccountDelegate] => Option[String] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh.value
+          case Some(Right(pkh)) => pkh.value
+        }
+
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
         val BlockTagged(hash, level, timestamp, accounts) = from
         accounts.map {
-          case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
+          case (id, Account(balance, delegate, script, counter, manager, spendable)) =>
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              manager = manager.value,
-              spendable = spendable,
-              delegateSetable = delegate.setable,
-              delegateValue = delegate.value.map(_.value),
+              delegate = toDelegateKeyHash(delegate),
               counter = counter,
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),
               balance = balance,
-              blockLevel = level
+              blockLevel = level,
+              manager = manager.map(_.value),
+              spendable = spendable,
+              delegateSetable = toDelegateSetable(delegate),
+              delegateValue = toDelegateValue(delegate)
             )
         }.toList
       }
@@ -209,7 +226,7 @@ object DatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "reveal",
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
@@ -235,7 +252,7 @@ object DatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "transaction",
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
@@ -279,12 +296,12 @@ object DatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = "origination",
         delegate = delegate.map(_.value),
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
         storageLimit = extractBigDecimal(storage_limit),
-        managerPubkey = Some(mpk.value),
+        managerPubkey = mpk.map(_.value),
         balance = extractBigDecimal(balance),
         spendable = spendable,
         delegatable = delegatable,
@@ -310,7 +327,7 @@ object DatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = "delegation",
         delegate = delegate.map(_.value),
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
