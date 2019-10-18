@@ -307,7 +307,6 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual block.hash
-            row.delegate shouldEqual account.delegate.flatMap(_.right.map(_.value).toOption)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -374,7 +373,6 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual hashUpdate
-            row.delegate shouldEqual account.delegate.flatMap(_.right.map(_.value).toOption)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -2149,7 +2147,6 @@ class TezosDatabaseOperationsTest
         accountId = 1.toString,
         blockId = "R0NpYZuUeF",
         blockLevel = 0,
-        delegate = None,
         counter = None,
         script = None,
         balance = BigDecimal(1.45)
@@ -3002,7 +2999,6 @@ class TezosDatabaseOperationsTest
         val ahr = AccountsHistoryRow(
           "id",
           "blockid",
-          None,
           None,
           None,
           None,
