@@ -9,7 +9,8 @@ final case class ServerConfiguration(
     port: Int,
     cacheTTL: FiniteDuration,
     maxQueryResultSize: Int,
-    highCardinalityLimit: Int
+    highCardinalityLimit: Int,
+    startupDeadline: FiniteDuration
 )
 
 final case class LorreConfiguration(
@@ -53,6 +54,7 @@ object Natural {
 }
 
 final case class VerboseOutput(on: Boolean) extends AnyVal
+final case class FailFast(on: Boolean) extends AnyVal
 
 /** configuration for fetching keys from nautilus cloud instance */
 final case class NautilusCloudConfiguration(

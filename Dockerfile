@@ -16,6 +16,7 @@ WORKDIR /root/
 COPY --from=0 /tmp/conseil.jar conseil.jar
 ADD ./src/main/resources/metadata/tezos.alphanet.conf /root/tezos.alphanet.conf
 ADD ./src/main/resources/metadata/tezos.mainnet.conf /root/tezos.mainnet.conf
+ADD ./src/main/resources/metadata/tezos.babylonnet.conf /root/tezos.babylonnet.conf
 ADD ./src/main/resources/metadata.conf /root/metadata.conf
 ADD ./docker/template.conf /root/template.conf
 ADD ./docker/entrypoint.sh /root/entrypoint.sh
