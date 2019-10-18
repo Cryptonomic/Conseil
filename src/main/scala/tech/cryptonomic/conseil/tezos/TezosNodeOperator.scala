@@ -105,7 +105,7 @@ class TezosNodeOperator(
         .mapValues(_.keySet.toList)
 
     reversedIndex.keysIterator.map { blockHash =>
-      val keys = reversedIndex.get(blockHash).getOrElse(List.empty)
+      val keys = reversedIndex.getOrElse(blockHash, List.empty)
       entityLoad(keys, blockHash).map(blockHash -> _)
     }
   }
@@ -219,7 +219,7 @@ class TezosNodeOperator(
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      accountsBlocksIndex.groupBy { case (id, (blockHash, level)) => blockHash }
+      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -236,7 +236,7 @@ class TezosNodeOperator(
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level), accounts) => accounts.taggedWithBlock(hash, level)
+        case ((hash, level, timestamp), accounts) => accounts.taggedWithBlock(hash, level, timestamp)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -342,7 +342,7 @@ class TezosNodeOperator(
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      keysBlocksIndex.groupBy { case (pkh, (blockHash, level)) => blockHash }
+      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -359,7 +359,7 @@ class TezosNodeOperator(
       data.groupBy {
         case (pkh, _) => keysBlocksIndex(pkh)
       }.map {
-        case ((hash, level), delegates) => delegates.taggedWithBlock(hash, level)
+        case ((hash, level, timestamp), delegates) => delegates.taggedWithBlock(hash, level, timestamp)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks

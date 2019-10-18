@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.generic.chain
 
 import java.sql.Timestamp
 
+import tech.cryptonomic.conseil.config.MetadataConfiguration
 import tech.cryptonomic.conseil.generic.chain.DataTypes.AggregationType.AggregationType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.FormatType.FormatType
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OperationType.OperationType
@@ -227,7 +228,8 @@ object DataTypes {
       orderBy: List[QueryOrdering] = List.empty,
       limit: Int = defaultLimitValue,
       output: OutputType = OutputType.json,
-      aggregation: List[Aggregation] = List.empty
+      aggregation: List[Aggregation] = List.empty,
+      temporalPartition: Option[String] = None
   )
 
   /** Class representing predicate used in aggregation */
@@ -286,7 +288,7 @@ object DataTypes {
   ) {
 
     /** Method which validates query fields */
-    def validate(entity: EntityPath, metadataService: MetadataService)(
+    def validate(entity: EntityPath, metadataService: MetadataService, metadataConfiguration: MetadataConfiguration)(
         implicit ec: ExecutionContext
     ): Future[Either[List[QueryValidationError], Query]] = {
 
@@ -299,6 +301,7 @@ object DataTypes {
         .withFieldConst(_.limit, limit.getOrElse(defaultLimitValue))
         .withFieldConst(_.output, output.getOrElse(OutputType.json))
         .withFieldConst(_.aggregation, aggregation.toList.flatten.map(_.toAggregation))
+        .withFieldConst(_.temporalPartition, metadataConfiguration.entity(entity).flatMap(_.temporalPartition))
         .transform
 
       (

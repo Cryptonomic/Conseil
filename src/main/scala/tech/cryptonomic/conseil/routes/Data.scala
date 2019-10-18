@@ -3,7 +3,8 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.config.ServerConfiguration
+import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
+import tech.cryptonomic.conseil.config.{MetadataConfiguration, ServerConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.metadata
@@ -15,10 +16,22 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(metadataService: MetadataService, server: ServerConfiguration, apiOperations: ApiOperations)(
+  def apply(
+      config: PlatformsConfiguration,
+      metadataService: MetadataService,
+      server: ServerConfiguration,
+      metadataConfiguration: MetadataConfiguration,
+      apiOperations: ApiOperations
+  )(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(DataPlatform(apiOperations, server.maxQueryResultSize), metadataService, apiOperations)
+    new Data(
+      config,
+      DataPlatform(apiOperations, server.maxQueryResultSize),
+      metadataService,
+      metadataConfiguration: MetadataConfiguration,
+      apiOperations: ApiOperations
+    )
 }
 
 /**
@@ -27,7 +40,13 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService, apiOperations: ApiOperations)(
+class Data(
+    config: PlatformsConfiguration,
+    queryProtocolPlatform: DataPlatform,
+    metadataService: MetadataService,
+    metadataConfiguration: MetadataConfiguration,
+    apiOperations: ApiOperations
+)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
@@ -42,7 +61,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
 
       pathValidation(path) {
-        apiQuery.validate(path, metadataService).flatMap { validationResult =>
+        apiQuery.validate(path, metadataService, metadataConfiguration).flatMap { validationResult =>
           validationResult.map { validQuery =>
             queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
               queryResponseOpt.map { queryResponses =>

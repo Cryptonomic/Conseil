@@ -6,6 +6,8 @@ import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
 
+import java.time.Instant
+
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
@@ -65,7 +67,7 @@ object DatabaseConversions {
         }
 
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, accounts) = from
+        val BlockTagged(hash, level, timestamp, accounts) = from
         accounts.map {
           case (id, Account(balance, delegate, script, counter, manager, spendable)) =>
             Tables.AccountsRow(
@@ -84,6 +86,16 @@ object DatabaseConversions {
             )
         }.toList
       }
+    }
+
+  implicit val blockAccountsToAccountHistoryRows =
+    new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsHistoryRow] {
+      override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] =
+        blockAccountsToAccountRows.convert(from).map {
+          _.into[Tables.AccountsHistoryRow]
+            .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
+            .transform
+        }
     }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
@@ -532,15 +544,16 @@ object DatabaseConversions {
   }
 
   implicit val blockAccountsAssociationToCheckpointRow =
-    new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
-      override def convert(from: (BlockHash, Int, List[AccountId])) = {
-        val (blockHash, blockLevel, ids) = from
+    new Conversion[List, (BlockHash, Int, Option[Instant], List[AccountId]), Tables.AccountsCheckpointRow] {
+      override def convert(from: (BlockHash, Int, Option[Instant], List[AccountId])) = {
+        val (blockHash, blockLevel, timestamp, ids) = from
         ids.map(
           accountId =>
             Tables.AccountsCheckpointRow(
               accountId = accountId.id,
               blockId = blockHash.value,
-              blockLevel = blockLevel
+              blockLevel = blockLevel,
+              asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0)))
             )
         )
       }
@@ -548,9 +561,9 @@ object DatabaseConversions {
     }
 
   implicit val blockDelegatesAssociationToCheckpointRow =
-    new Conversion[List, (BlockHash, Int, List[PublicKeyHash]), Tables.DelegatesCheckpointRow] {
-      override def convert(from: (BlockHash, Int, List[PublicKeyHash])) = {
-        val (blockHash, blockLevel, pkhs) = from
+    new Conversion[List, (BlockHash, Int, Option[Instant], List[PublicKeyHash]), Tables.DelegatesCheckpointRow] {
+      override def convert(from: (BlockHash, Int, Option[Instant], List[PublicKeyHash])) = {
+        val (blockHash, blockLevel, _, pkhs) = from
         pkhs.map(
           keyHash =>
             Tables.DelegatesCheckpointRow(

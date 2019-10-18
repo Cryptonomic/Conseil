@@ -63,7 +63,7 @@ object Conseil
             )
             Await.ready(system.terminate(), 10.seconds)
         }.flatMap(
-          runServer(_, api, server, platforms, securityApi, verbose)
+          runServer(_, api, server, platforms, metadataOverrides, securityApi, verbose)
         )
 
       sys.addShutdownHook {
@@ -138,13 +138,14 @@ object Conseil
       apiOperations: ApiOperations,
       server: ServerConfiguration,
       platforms: PlatformsConfiguration,
+      metadataOverrides: MetadataConfiguration,
       securityApi: SecurityApi,
       verbose: VerboseOutput
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
-    lazy val data = Data(metadataService, server, apiOperations)(tezosDispatcher)
+    lazy val data = Data(platforms, metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
 
 
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {

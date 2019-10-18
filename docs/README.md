@@ -643,6 +643,33 @@ A note on predicate conjunction/disjunction
 - predicates between separate groups are joing via the "OR" operator
 
 
+### Query on the temporal table
+
+Send this query to `/v2/data/tezos/<network>/accounts_history`
+
+```json
+{
+  "predicates": [
+    {"field": "asof", "operation":"gt", "set":["2018-07-01"]},
+    {"field": "balance", "operation":"gt", "set":[0]}
+  ],
+  "aggregation": [],
+  "fields": [
+    "asof", "balance", "account_id"
+  ],
+  "orderBy": [
+    {"field":"asof", "direction":"desc"}
+  ],
+  "output": "sql",
+  "limit": 10
+}
+```
+
+Note on temporal tables:
+
+- Temporal tables contain `asof` column which is contains information about the timestamp
+- besides that they contain the same columns as regular tables
+
 ### Preprocessed Data
 
 Not all entities are necessarily items from the chain. One such example is `/v2/data/tezos/<network>/fees`. Conseil continuously buckets and averages network fees to give users an idea of what values they should submit when sending operations. Fees are aggregated by operation type.

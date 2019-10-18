@@ -164,6 +164,7 @@ class ApiOperations extends DataOperations with MetadataOperations {
         sanitizePredicates(query.predicates),
         query.orderBy,
         query.aggregation,
+        query.temporalPartition,
         query.output,
         query.limit
       )

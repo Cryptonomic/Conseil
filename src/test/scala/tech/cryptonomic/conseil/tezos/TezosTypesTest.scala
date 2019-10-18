@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
 
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
@@ -51,20 +51,21 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
   "The Syntax import" should {
       "allow building Block-tagged generic data" in {
         import TezosTypes.Syntax._
-
+        val someTime = Some(Instant.ofEpochMilli(0))
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        content.taggedWithBlock(hash, level) shouldEqual BlockTagged(hash, level, content)
+        content.taggedWithBlock(hash, level, someTime) shouldEqual BlockTagged(hash, level, someTime, content)
       }
     }
 
   "The BlockTagged wrapper" should {
       "convert to a tuple" in {
+        val someTime = Some(Instant.ofEpochMilli(0))
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        BlockTagged(hash, level, content).asTuple shouldEqual (hash, level, content)
+        BlockTagged(hash, level, someTime, content).asTuple shouldEqual (hash, level, someTime, content)
       }
     }
 

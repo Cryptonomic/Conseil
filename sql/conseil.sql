@@ -64,6 +64,22 @@ CREATE TABLE tezos.accounts (
 );
 
 
+CREATE TABLE tezos.accounts_history (
+    account_id character varying NOT NULL,
+    block_id character varying NOT NULL,
+    delegate character varying,
+    counter integer,
+    script character varying,
+    storage character varying,
+    balance numeric NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    manager character varying, -- retro-compat from protocol 5+
+    spendable boolean, -- retro-compat from protocol 5+
+    delegate_setable boolean, -- retro-compat from protocol 5+
+    delegate_value char varying, -- retro-compat from protocol 5+
+    asof timestamp with time zone NOT NULL
+);
+
 --
 -- TOC entry 182 (class 1259 OID 99601)
 -- Name: accounts_checkpoint; Type: TABLE; Schema: tezos; Owner: -
@@ -72,7 +88,8 @@ CREATE TABLE tezos.accounts (
 CREATE TABLE tezos.accounts_checkpoint (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL
+    block_level integer DEFAULT '-1'::integer NOT NULL,
+    asof timestamp with time zone NOT NULL
 );
 
 
