@@ -57,6 +57,7 @@ object DatabaseConversions {
 
       val toDelegateValue: Option[AccountDelegate] => Option[String] = delegate =>
         PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh.value
           case Some(Right(pkh)) => pkh.value
         }
 
