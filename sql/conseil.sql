@@ -51,7 +51,6 @@ SET default_with_oids = false;
 CREATE TABLE tezos.accounts (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    delegate character varying,
     counter integer,
     script character varying,
     storage character varying,
@@ -67,7 +66,6 @@ CREATE TABLE tezos.accounts (
 CREATE TABLE tezos.accounts_history (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
-    delegate character varying,
     counter integer,
     script character varying,
     storage character varying,

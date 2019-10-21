@@ -147,7 +147,6 @@ object Conseil
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
     lazy val data = Data(platforms, metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
 
-
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
       apiKeyTuple =>
         val apiKey = apiKeyTuple match {

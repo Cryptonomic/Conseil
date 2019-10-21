@@ -124,7 +124,6 @@ class TezosPlatformDiscoveryOperationsTest
           Set(
             Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "accounts"),
             Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "accounts"),
-            Attribute("delegate", "Delegate", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("counter", "Counter", DataType.Int, None, KeyType.NonKey, "accounts"),
             Attribute("script", "Script", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("storage", "Storage", DataType.String, None, KeyType.NonKey, "accounts"),

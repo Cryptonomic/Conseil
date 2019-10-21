@@ -50,11 +50,6 @@ object DatabaseConversions {
 
   implicit val blockAccountsToAccountRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
-      val toDelegateKeyHash: Option[AccountDelegate] => Option[String] = delegate =>
-        PartialFunction.condOpt(delegate) {
-          case Some(Right(pkh)) => pkh.value
-        }
-
       val toDelegateSetable: Option[AccountDelegate] => Option[Boolean] = delegate =>
         PartialFunction.condOpt(delegate) {
           case Some(Left(Protocol4Delegate(setable, _))) => setable
@@ -73,7 +68,6 @@ object DatabaseConversions {
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              delegate = toDelegateKeyHash(delegate),
               counter = counter,
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),

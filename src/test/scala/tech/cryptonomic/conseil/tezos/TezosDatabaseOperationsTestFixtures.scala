@@ -352,7 +352,6 @@ trait TezosDataGeneration extends RandomGenerationKit {
         blockId = block.hash,
         balance = 0,
         counter = Some(0),
-        delegate = None,
         script = None
       )
     }.toList
