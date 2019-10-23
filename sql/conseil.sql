@@ -20,8 +20,6 @@ SET row_security = off;
 
 SET default_tablespace = '';
 CREATE SCHEMA IF NOT EXISTS tezos;
-ALTER ROLE conseiluser SET search_path TO tezos,public;
-ALTER DATABASE "conseil-local" SET search_path TO tezos,public;
 
 --
 -- Name: truncate_tables(character varying); Type: FUNCTION; Schema: tezos; Owner: -
