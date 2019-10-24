@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.config.{MetadataConfiguration, ServerConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
@@ -17,7 +16,6 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Companion object providing apply implementation */
 object Data {
   def apply(
-      config: PlatformsConfiguration,
       metadataService: MetadataService,
       server: ServerConfiguration,
       metadataConfiguration: MetadataConfiguration,
@@ -26,7 +24,6 @@ object Data {
       implicit ec: ExecutionContext
   ): Data =
     new Data(
-      config,
       DataPlatform(apiOperations, server.maxQueryResultSize),
       metadataService,
       metadataConfiguration: MetadataConfiguration,
@@ -41,7 +38,6 @@ object Data {
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
 class Data(
-    config: PlatformsConfiguration,
     queryProtocolPlatform: DataPlatform,
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,

@@ -16,6 +16,7 @@ val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
 val circeVersion = "0.11.1"
 val http4sVersion = "0.20.10"
+val silencerVersion = "1.4.4"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -27,6 +28,8 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+  "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full,
   "ch.qos.logback"               % "logback-classic"                % "1.2.3",
   "com.typesafe"                 % "config"                         % "1.3.3",
   "com.typesafe.scala-logging"   %% "scala-logging"                 % "3.7.2",

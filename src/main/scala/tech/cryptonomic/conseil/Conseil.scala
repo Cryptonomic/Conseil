@@ -32,6 +32,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.util.{Failure, Success, Try}
 import tech.cryptonomic.conseil.util.Retry.retry
+import scala.language.postfixOps
 
 object Conseil
     extends App
@@ -145,12 +146,12 @@ object Conseil
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
-    lazy val data = Data(platforms, metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
+    lazy val data = Data(metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
 
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
       apiKeyTuple =>
         val apiKey = apiKeyTuple match {
-          case Tuple1(apiKey) => apiKey
+          case Tuple1(key) => key
           case _ => None
         }
 

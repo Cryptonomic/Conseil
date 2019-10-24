@@ -68,8 +68,8 @@ trait LorreAppConfig {
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
     //applies convention to uses CamelCase when reading config fields
-    implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
-    implicit val seasonHint = new EnumCoproductHint[Depth]
+    implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+    implicit val seasonHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
