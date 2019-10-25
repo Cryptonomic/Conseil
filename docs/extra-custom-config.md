@@ -76,3 +76,25 @@ akka {
   }
 }
 ```
+
+In addition to that, both `lorre.db` and `conseil.db` allows finer configuration details for the database access, where the `properties` can be any of those described in the [java postgres driver documentation](https://jdbc.postgresql.org/documentation/publicapi/org/postgresql/ds/common/BaseDataSource.html)
+
+An example of an SSL remote connection might look like
+
+```coffee
+lorre.db {
+  dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+  properties {
+    serverName: "my-remote-host"
+    ssl: true
+    sslMode: "require"
+    databaseName: "conseil-dbname"
+    user: "username"
+    password: "password"
+    portNumber: 26000
+    reWriteBatchedInserts: true
+  }
+  numThreads: 10
+  maxConnections: 10
+}
+```
