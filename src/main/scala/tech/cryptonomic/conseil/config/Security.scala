@@ -77,7 +77,7 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
       * @param candidateApiKey The given API key
       * @return True is valid, false otherwise.
       */
-    def validateApiKey(candidateApiKey: Option[String])(implicit executionContext: ExecutionContext): Future[Boolean] =
+    def validateApiKey(candidateApiKey: Option[String]): Future[Boolean] =
       nautilusCloudKeys.get
         .map(_ ++ keys)
         .map(allApiKeys => candidateApiKey.fold(allowBlank.contains(true))(allApiKeys.contains))

@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
 import scala.util.Try
@@ -7,6 +8,7 @@ import scala.util.Try
 /** This expose decoders for json conversions */
 object JsonDecoders {
 
+  @silent("private val conf in object ")
   /** Circe-specific definitions as implicits */
   object Circe {
 

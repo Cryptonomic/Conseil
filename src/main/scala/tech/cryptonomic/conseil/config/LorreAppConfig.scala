@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.config
 
+import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
 import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
@@ -68,8 +69,10 @@ trait LorreAppConfig {
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
     //applies convention to uses CamelCase when reading config fields
-    implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
-    implicit val seasonHint = new EnumCoproductHint[Depth]
+    @silent("local method hint in method loadApplicationConfiguration is never used")
+    implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+    @silent("local val seasonHint in method loadApplicationConfiguration is never used")
+    implicit val seasonHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)

@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, MetadataOperations}
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{
@@ -101,6 +102,7 @@ class ApiOperations extends DataOperations with MetadataOperations {
   def fetchOperationGroup(
       operationGroupHash: String
   )(implicit ec: ExecutionContext): Future[Option[OperationGroupResult]] = {
+    @silent("parameter value latest in value")
     val groupsMapIO = for {
       latest <- latestBlockIO if latest.nonEmpty
       operations <- TezosDatabaseOperations.operationsForGroup(operationGroupHash)

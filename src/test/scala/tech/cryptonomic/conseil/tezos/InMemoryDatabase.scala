@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.github.ghik.silencer.silent
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
 
@@ -49,6 +50,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
    */
   protected val pgConfigs = List("-c", "full_page_writes=off")
 
+  @silent("deprecated")
   lazy val dbInstance = new EmbeddedPostgres(Version.V9_5_15)
   lazy val dbHandler: Database = Database.forConfig("testdb", config = ConfigFactory.parseString(confString))
 
