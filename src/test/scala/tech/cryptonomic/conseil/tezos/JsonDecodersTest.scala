@@ -1,9 +1,11 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.github.ghik.silencer.silent
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
+@silent("local val derivationConf")
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
   import JsonDecoders.Circe.Accounts._
@@ -13,7 +15,6 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
   import JsonDecoders.Circe.Votes._
   import JsonDecoders.Circe._
   import io.circe.parser.decode
-
   "the json decoders" should {
 
       val validB58Hash =

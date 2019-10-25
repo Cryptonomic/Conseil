@@ -28,8 +28,6 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
-  "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full,
   "ch.qos.logback"               % "logback-classic"                % "1.2.3",
   "com.typesafe"                 % "config"                         % "1.3.3",
   "com.typesafe.scala-logging"   %% "scala-logging"                 % "3.7.2",
@@ -81,7 +79,9 @@ libraryDependencies ++= Seq(
   "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % "it, test",
   "org.http4s"                   %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
   "org.http4s"                   %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
-  "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest
+  "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest,
+  compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+  "com.github.ghik"              % "silencer-lib"                   % silencerVersion % Provided cross CrossVersion.full,
 )
 
 excludeDependencies ++= Seq(
@@ -91,7 +91,7 @@ excludeDependencies ++= Seq(
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
 scalacOptions ++= ScalacOptions.common
-
+scalacOptions += "-P:silencer:pathFilters=src/main/scala/tech/cryptonomic/conseil/tezos/Tables.scala"
 import complete.DefaultParsers._
 
 lazy val runConseil = inputKey[Unit]("A conseil run task.")
