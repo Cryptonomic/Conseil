@@ -40,25 +40,6 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: Votes; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."votes" (
-    "timestamp" timestamp without time zone NOT NULL,
-    cycle integer,
-    level integer,
-    proposal_hash character varying NOT NULL,
-    yay_count integer,
-    nay_count integer,
-    pass_count integer,
-    yay_stake numeric,
-    nay_stake numeric,
-    pass_stake numeric,
-    total_stake numeric
-);
-
-
---
 -- Name: accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -214,6 +195,27 @@ CREATE TABLE public.fees (
 
 
 --
+-- Name: governance; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.governance (
+    "timestamp" timestamp without time zone NOT NULL,
+    cycle integer,
+    level integer,
+    proposal_hash character varying NOT NULL,
+    yay_count integer,
+    nay_count integer,
+    pass_count integer,
+    yay_stake numeric,
+    nay_stake numeric,
+    pass_stake numeric,
+    total_stake numeric,
+    period_kind character varying NOT NULL,
+    period_index integer NOT NULL
+);
+
+
+--
 -- Name: operation_groups; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -307,6 +309,25 @@ CREATE TABLE public.rolls (
 
 
 --
+-- Name: votes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.votes (
+    "timestamp" timestamp without time zone NOT NULL,
+    cycle integer,
+    level integer,
+    proposal_hash character varying NOT NULL,
+    yay_count integer,
+    nay_count integer,
+    pass_count integer,
+    yay_stake numeric,
+    nay_stake numeric,
+    pass_stake numeric,
+    total_stake numeric
+);
+
+
+--
 -- Name: balance_updates id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -326,14 +347,6 @@ ALTER TABLE ONLY public.operations ALTER COLUMN operation_id SET DEFAULT nextval
 
 ALTER TABLE ONLY public.operation_groups
     ADD CONSTRAINT "OperationGroups_pkey" PRIMARY KEY (block_id, hash);
-
-
---
--- Name: Votes Votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Votes"
-    ADD CONSTRAINT "Votes_pkey" PRIMARY KEY (proposal_hash);
 
 
 --
@@ -486,6 +499,13 @@ CREATE INDEX ix_rolls_block_id ON public.rolls USING btree (block_id);
 --
 
 CREATE INDEX ix_rolls_block_level ON public.rolls USING btree (block_level);
+
+
+--
+-- Name: proposal_hash_ix; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX proposal_hash_ix ON public.governance USING btree (proposal_hash);
 
 
 --

@@ -272,14 +272,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
   private[this] def processTezosVotes()(implicit ex: ExecutionContext): Future[Option[Int]] = {
-    import cats.instances.list._
-    import cats.instances.future._
-    import cats.syntax.traverse._
-    import cats.implicits._
     import slick.jdbc.PostgresProfile.api._
 
     logger.info("Processing latest Tezos votes data...")
 
+    /**
+    * * Helper function, takes a sequence of GovernanceData, separates them by ballot types.
+      * @param fields
+      * @return
+      */
     def partitionByVote(fields: Seq[VotingFields]): (Seq[VotingFields], Seq[VotingFields], Seq[VotingFields]) = {
       val (yays, notYays) = fields.partition(x => x._6 == Some("yay"))
       val (nays, notYaysOrNays) = notYays.partition(x => x._6 == Some("nay"))
