@@ -28,12 +28,10 @@ object JsonDecoders {
     def decodeLiftingTo[Eff[_], A: io.circe.Decoder](
         json: String
     )(implicit app: ApplicativeError[Eff, Throwable]): Eff[A] = {
-      import cats.instances.either._
-      import cats.syntax.bifunctor._
       import cats.syntax.either._
       import io.circe.parser.decode
 
-      decode[A](json).leftWiden[Throwable].raiseOrPure[Eff]
+      decode[A](json).liftTo[Eff]
     }
 
     /* use this to decode starting from string, adding format validation on the string to build another object based on valid results */

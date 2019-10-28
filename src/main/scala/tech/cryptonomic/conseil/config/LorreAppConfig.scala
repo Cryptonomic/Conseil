@@ -9,6 +9,8 @@ import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import pureconfig.error.ThrowableFailure
+import cats.effect.IO
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -61,12 +63,17 @@ trait LorreAppConfig {
 
   /** Reads all configuration upstart, will print all errors encountered during loading */
   protected def loadApplicationConfiguration(
-      commandLineArgs: Array[String]
-  ): ConfigReader.Result[CombinedConfiguration] = {
+      commandLineArgs: List[String]
+  ): IO[CombinedConfiguration] = {
+
+    import cats.syntax.all._
+    import cats.instances.either._
 
     /** Use the pureconfig convention to handle configuration from the command line */
-    def readArgs(args: Array[String]): ConfigReader.Result[ArgumentsConfig] =
-      argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
+    def readArgs(args: List[String]): ConfigReader.Result[ArgumentsConfig] =
+      argsParser
+        .parse(args, ArgumentsConfig())
+        .toRight[ConfigReaderFailures](ConfigReaderFailures(new ThrowableFailure(new IllegalArgumentException, None)))
 
     //applies convention to uses CamelCase when reading config fields
     @silent("local method hint in method loadApplicationConfiguration is never used")
@@ -92,16 +99,19 @@ trait LorreAppConfig {
         VerboseOutput(verbose)
       )
 
-    //something went wrong
-    loadedConf.left.foreach { failures =>
-      printConfigurationError(context = "Lorre application", failures.toList.mkString("\n\n"))
-    }
-    loadedConf
+    //if something went wrong, we log and wrap a message into a custom IO error
+    loadedConf.leftTraverse { failures =>
+      delayedLogConfigurationError(context = "Lorre application", failures.toList.mkString("\n\n")) >>
+        LorreConfigurationError("Wrong configuration file or command line options").pure[IO]
+    }.flatMap(_.liftTo[IO])
+
   }
 
 }
 
 object LorreAppConfig {
+
+  final case class LorreConfigurationError(message: String) extends RuntimeException(message)
 
   /** Collects all different aspects involved for Lorre */
   final case class CombinedConfiguration(

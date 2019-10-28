@@ -115,12 +115,14 @@ object TezosDatabaseOperations extends LazyLogging {
       saveOperationGetNewId.first andThen saveBalanceUpdatesForOperationId
 
     //Sequence the save actions, the third being applied to a whole collection of operations and balances
-    DBIO.seq(
-      saveBlocksAction,
-      saveBlocksBalanceUpdatesAction,
-      saveGroupsAction,
-      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData]))
-    )
+    DBIO
+      .seq(
+        saveBlocksAction,
+        saveBlocksBalanceUpdatesAction,
+        saveGroupsAction,
+        saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData]))
+      )
+      .transactionally
 
   }
 

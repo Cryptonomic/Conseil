@@ -532,6 +532,10 @@ object TezosTypes {
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
       def taggedWithBlock(hash: BlockHash, level: Int, timestamp: Option[Instant] = None): BlockTagged[T] =
         BlockTagged(hash, level, timestamp, content)
+
+      /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference and timestamp */
+      def taggedWithBlock(block: BlockData): BlockTagged[T] =
+        taggedWithBlock(block.hash, block.header.level, Some(block.header.timestamp.toInstant))
     }
 
   }

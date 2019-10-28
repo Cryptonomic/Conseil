@@ -86,7 +86,8 @@ class TezosNodeOperatorTest
       val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
 
       //when
-      val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks()
+      val headBlock = nodeOp.getBareBlockHead().futureValue
+      val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(head = Left(headBlock))
 
       //then
       val (pages, total) = blockPages.futureValue
@@ -148,7 +149,9 @@ class TezosNodeOperatorTest
       val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
 
       //when
-      val blockPages: Future[nodeOp.PaginatedBlocksResults] = nodeOp.getLatestBlocks(Some(1))
+      val headBlock = nodeOp.getBareBlockHead().futureValue
+      val blockPages: Future[nodeOp.PaginatedBlocksResults] =
+        nodeOp.getLatestBlocks(depth = Some(1), head = Left(headBlock))
 
       //then
       val (pages, total) = blockPages.futureValue
@@ -210,7 +213,10 @@ class TezosNodeOperatorTest
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] =
-        nodeOp.getLatestBlocks(Some(1), Some(BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c")))
+        nodeOp.getLatestBlocks(
+          depth = Some(1),
+          head = Right(BlockHash("BLJKK4VRwZk7qzw64NfErGv69X4iWngdzfBABULks3Nd33grU6c"))
+        )
 
       //then
       val (pages, total) = blockPages.futureValue

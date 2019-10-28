@@ -94,7 +94,7 @@ object MainOutputs {
         platform: BlockchainPlatform,
         platformConf: C,
         lorreConf: LorreConfiguration,
-        ignoreFailures: (String, Option[String])
+        ignoreFailures: (String, Boolean)
     ): Unit =
       logger.info(
         """
@@ -110,8 +110,8 @@ object MainOutputs {
         |
         | {}
         |
-        | [\u2020] To let the process crash on error,
-        |     set an environment variable named {} to "off" or "no"
+        | [\u2020] To let the process retry on downlaod errors,
+        |     set an environment variable named {} to "yes" or "true"
         | ==================================***==================================
         |
       """.stripMargin,
@@ -120,7 +120,7 @@ object MainOutputs {
         showPlatformConfiguration(platformConf),
         lorreConf.headHash.fold("head")(_.value),
         lorreConf.depth,
-        ignoreFailures._2.getOrElse("yes"),
+        ignoreFailures._2,
         showDatabaseConfiguration("lorre"),
         ignoreFailures._1
       )

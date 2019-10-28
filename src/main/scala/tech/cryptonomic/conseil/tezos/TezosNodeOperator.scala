@@ -498,56 +498,51 @@ class TezosNodeOperator(
 
   /**
     * Gets all blocks from the head down to the oldest block not already in the database.
+    * @param currentHead contains the data for the latest available block on the remote node
+    * @param maxStoredLevel the current highest block level already stored in conseil
     * @return Blocks and Account hashes involved
     */
-  def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
-    for {
-      maxLevel <- apiOperations.fetchMaxLevel
-      blockHead <- getBlockHead()
-      headLevel = blockHead.data.header.level
-      headHash = blockHead.data.hash
-    } yield {
-      val bootstrapping = maxLevel == -1
-      if (maxLevel < headLevel) {
-        //got something to load
-        if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-        else
-          logger.info(
-            "I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.",
-            headLevel,
-            maxLevel,
-            headLevel - maxLevel
-          )
-        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
-          page => getBlocks((headHash, headLevel), page)
+  def getBlocksNotInDatabase(currentHead: BlockData, maxStoredLevel: Int): PaginatedBlocksResults = {
+    val headLevel = currentHead.header.level
+    val headHash = currentHead.hash
+    val bootstrapping = maxStoredLevel == -1
+    if (maxStoredLevel < headLevel) {
+      //got something to load
+      if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+      else
+        logger.info(
+          "I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.",
+          headLevel,
+          maxStoredLevel,
+          headLevel - maxStoredLevel
         )
-        val minLevel = if (bootstrapping) 1 else maxLevel
-        (pagedResults, headLevel - minLevel)
-      } else {
-        logger.info("No new blocks to fetch from the network")
-        (Iterator.empty, 0)
-      }
+      val pagedResults = partitionBlocksRanges((maxStoredLevel + 1) to headLevel).map(
+        page => getBlocks((headHash, headLevel), page)
+      )
+      val minLevel = if (bootstrapping) 1 else maxStoredLevel
+      (pagedResults, headLevel - minLevel)
+    } else {
+      logger.info("No new blocks to fetch from the network")
+      (Iterator.empty, 0)
     }
+  }
 
   /**
     * Gets last `depth` blocks.
-    * @param depth      Number of latest block to fetch, `None` to get all
-    * @param headHash   Hash of a block from which to start, None to start from a real head
-    * @return           Blocks and Account hashes involved
+    * @param depth Number of latest block to fetch, `None` to get all
+    * @param head  Hash of a block from which to start, or the current head data to start from a real head
+    * @return      Blocks and Account hashes involved
     */
-  def getLatestBlocks(depth: Option[Int] = None, headHash: Option[BlockHash] = None): Future[PaginatedBlocksResults] =
-    headHash
-      .map(getBlock(_))
-      .getOrElse(getBlockHead())
-      .map { maxHead =>
-        val headLevel = maxHead.data.header.level
-        val headHash = maxHead.data.hash
-        val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
-        val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
-          page => getBlocks((headHash, headLevel), page)
-        )
-        (pagedResults, headLevel - minLevel + 1)
-      }
+  def getLatestBlocks(depth: Option[Int] = None, head: Either[BlockData, BlockHash]): Future[PaginatedBlocksResults] =
+    head.fold(Future.successful, getBareBlock(_)).map { maxHead =>
+      val headLevel = maxHead.header.level
+      val headHash = maxHead.hash
+      val minLevel = depth.fold(1)(d => max(1, headLevel - d + 1))
+      val pagedResults = partitionBlocksRanges(minLevel to headLevel).map(
+        page => getBlocks((headHash, headLevel), page)
+      )
+      (pagedResults, headLevel - minLevel + 1)
+    }
 
   /**
     * Gets block from Tezos Blockchains, as well as their associated operation, from minLevel to maxLevel.

@@ -6,6 +6,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import java.time.ZoneId
 
 class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
@@ -56,6 +57,33 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val (hash, level) = (BlockHash("hash"), 1)
 
         content.taggedWithBlock(hash, level, someTime) shouldEqual BlockTagged(hash, level, someTime, content)
+      }
+      "extract the timestamp when built from block data directly" in {
+        import TezosTypes.Syntax._
+        val someTime = Some(Instant.ofEpochMilli(0))
+        val content = "A content string"
+        val (hash, level) = (BlockHash("hash"), 1)
+
+        val blockData = BlockData(
+          protocol = "",
+          chain_id = None,
+          hash = hash,
+          header = BlockHeader(
+            level = level,
+            proto = 0,
+            predecessor = BlockHash(""),
+            timestamp = someTime.get.atZone(ZoneId.systemDefault),
+            validation_pass = 0,
+            operations_hash = None,
+            fitness = Seq.empty,
+            priority = None,
+            context = "",
+            signature = None
+          ),
+          metadata = GenesisMetadata //quick choice
+        )
+
+        content.taggedWithBlock(blockData) shouldEqual BlockTagged(hash, level, someTime, content)
       }
     }
 
