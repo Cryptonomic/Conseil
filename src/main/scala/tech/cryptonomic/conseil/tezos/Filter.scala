@@ -119,7 +119,8 @@ final case class Filter(
           case _ => OrderDirection.desc
         }
         QueryOrdering(o, direction)
-      }.toList
+      }.toList,
+      snapshot = None
     )
 }
 

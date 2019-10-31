@@ -75,7 +75,7 @@ CREATE TABLE tezos.accounts_history (
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
     delegate_value char varying, -- retro-compat from protocol 5+
-    asof timestamp with time zone NOT NULL
+    asof timestamp without time zone NOT NULL
 );
 
 --
