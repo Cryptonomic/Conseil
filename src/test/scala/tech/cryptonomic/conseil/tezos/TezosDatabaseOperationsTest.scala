@@ -3043,7 +3043,7 @@ class TezosDatabaseOperationsTest
 
       "should correctly use query on temporal table" in {
 
-        val ahr = AccountsHistoryRow(
+        val accountsHistoryRow = AccountsHistoryRow(
           accountId = "id",
           blockId = "blockid",
           balance = BigDecimal(1.0),
@@ -3052,7 +3052,7 @@ class TezosDatabaseOperationsTest
         )
 
         val populateAndTest = for {
-          _ <- Tables.AccountsHistory += ahr
+          _ <- Tables.AccountsHistory += accountsHistoryRow
           found <- sut.selectWithPredicates(
             table = Tables.AccountsHistory.baseTableRow.tableName,
             columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),
@@ -3079,9 +3079,9 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "should get the balance of an account at a specific timestamp where there are multiple entiries for given account_id" in {
+      "should get the balance of an account at a specific timestamp where there are multiple entities for given account_id" in {
 
-        val ahrs = List(
+        val accountsHistoryRows = List(
           AccountsHistoryRow(
             accountId = "id1",
             blockId = "blockid1",
@@ -3106,7 +3106,7 @@ class TezosDatabaseOperationsTest
         )
 
         val populateAndTest = for {
-          _ <- Tables.AccountsHistory ++= ahrs
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
           found <- sut.selectWithPredicates(
             table = Tables.AccountsHistory.baseTableRow.tableName,
             columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),
@@ -3134,7 +3134,7 @@ class TezosDatabaseOperationsTest
 
       "should get the balance of an account at a specific timestamp" in {
 
-        val ahrs = List(
+        val accountsHistoryRows = List(
           AccountsHistoryRow(
             accountId = "id1",
             blockId = "blockid1",
@@ -3159,7 +3159,7 @@ class TezosDatabaseOperationsTest
         )
 
         val populateAndTest = for {
-          _ <- Tables.AccountsHistory ++= ahrs
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
           found <- sut.selectWithPredicates(
             table = Tables.AccountsHistory.baseTableRow.tableName,
             columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),

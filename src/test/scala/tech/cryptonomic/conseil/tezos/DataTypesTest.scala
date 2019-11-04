@@ -527,5 +527,35 @@ class DataTypesTest
         )
       }
 
+      "return invalid snapshot field" in {
+        val attribute = Attribute(
+          name = "valid",
+          displayName = "Valid",
+          dataType = DataType.DateTime,
+          cardinality = None,
+          keyType = KeyType.UniqueKey,
+          entity = "testEntity"
+        )
+
+        val metadataService = createMetadataService {
+          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testEntity)
+        }
+
+        val query = ApiQuery(
+          fields = Some(List(SimpleField("valid"))),
+          predicates = None,
+          orderBy = None,
+          limit = None,
+          output = None,
+          aggregation = None,
+          snapshot = Some(Snapshot("invalid", 1234))
+        )
+
+        val result = query.validate(testEntityPath, metadataService, metadataConf)
+
+        result.futureValue.left.value.head shouldBe a[InvalidSnapshotField]
+      }
+
     }
 }

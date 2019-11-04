@@ -45,7 +45,7 @@ object DataTypes {
       implicit executionContext: ExecutionContext
   ): Future[Query] = {
     val fetchedAttributes = metadataService.getTableAttributesWithoutUpdatingCache(path)
-    val newSnapshot =
+    val newSnapshot: Future[Option[Snapshot]] =
       fetchedAttributes.map { maybeAttributes =>
         query.snapshot.flatMap { snapshot =>
           maybeAttributes.flatMap { attributes =>
@@ -58,9 +58,9 @@ object DataTypes {
         }
       }
 
-    val newPredicates =
+    val newPredicates: Future[List[Predicate]] =
       fetchedAttributes.map { maybeAttributes =>
-        query.predicates.map { predicate =>
+        query.predicates.flatMap { predicate =>
           maybeAttributes.flatMap { attributes =>
             attributes.find(_.name == dropAggregationPrefixes(predicate.field)).map {
               case attribute if attribute.dataType == DataType.DateTime =>
@@ -72,7 +72,7 @@ object DataTypes {
       }
     (newPredicates, newSnapshot).mapN {
       case (pred, snap) =>
-        query.copy(predicates = pred.flatten, snapshot = snap)
+        query.copy(predicates = pred, snapshot = snap)
     }
   }
 
@@ -326,23 +326,22 @@ object DataTypes {
       query: Query,
       entity: EntityPath,
       metadataConfiguration: MetadataConfiguration
-  ): List[InvalidSnapshotField] =
-    query.snapshot match {
-      case Some(snapshot) =>
-        metadataConfiguration.entity(entity).flatMap { entityCfg =>
-          entityCfg.attributes.filter {
-            case (_, v) =>
-              v.temporalColumn.getOrElse(false)
-          }.find {
-            case (k, _) =>
-              snapshot.field == k
-          }
-        } match {
-          case Some(_) => List.empty
-          case None => List(InvalidSnapshotField(snapshot.field))
+  ): List[InvalidSnapshotField] = {
+    import cats.instances.option._
+    import cats.instances.list._
+
+    query.snapshot.foldMap { snapshot =>
+      metadataConfiguration.entity(entity).flatMap { entityCfg =>
+        entityCfg.attributes.find {
+          case (k, v) if k == snapshot.field =>
+            v.temporalColumn.getOrElse(false)
         }
-      case None => List.empty
+      } match {
+        case Some(_) => List.empty
+        case None => List(InvalidSnapshotField(snapshot.field))
+      }
     }
+  }
 
   /** Class representing query got through the REST API */
   case class ApiQuery(
@@ -389,10 +388,10 @@ object DataTypes {
             updatedQuery
         ) =>
           invalidNonExistingFields :::
-            invalidAggregationFieldForTypes :::
-            invalidPredicateFilteringFields :::
-            invalidQueryFieldFormats :::
-            invalidSnapshotField match {
+              invalidAggregationFieldForTypes :::
+              invalidPredicateFilteringFields :::
+              invalidQueryFieldFormats :::
+              invalidSnapshotField match {
             case Nil => Right(updatedQuery)
             case wrongFields => Left(wrongFields)
           }
