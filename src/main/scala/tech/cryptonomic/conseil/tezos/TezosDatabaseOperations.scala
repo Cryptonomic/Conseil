@@ -470,6 +470,9 @@ object TezosDatabaseOperations extends LazyLogging {
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
+  /** Prefix for the table queries */
+  private val tablePrefix = "tezos"
+
   /**
     * Counts number of rows in the given table
     * @param table  slick table
@@ -486,7 +489,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return       amount of distinct elements in given column
     */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
-    sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #$table) AS temp""".as[Int].map(_.head)
+    sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #${tablePrefix + "." + table}) AS temp"""
+      .as[Int]
+      .map(_.head)
 
   /**
     * Selects distinct elements by given table and column
@@ -496,7 +501,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return       distinct elements in given column as a list
     */
   def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] =
-    sql"""SELECT DISTINCT #$column::VARCHAR FROM #$table WHERE #$column IS NOT NULL""".as[String].map(_.toList)
+    sql"""SELECT DISTINCT #$column::VARCHAR FROM #${tablePrefix + "." + table} WHERE #$column IS NOT NULL"""
+      .as[String]
+      .map(_.toList)
 
   /**
     * Selects distinct elements by given table and column with filter
@@ -509,7 +516,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def selectDistinctLike(table: String, column: String, matchingString: String)(
       implicit ec: ExecutionContext
   ): DBIO[List[String]] =
-    sql"""SELECT DISTINCT #$column::VARCHAR FROM #$table WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
+    sql"""SELECT DISTINCT #$column::VARCHAR FROM #${tablePrefix + "." + table} WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
       .as[String]
       .map(_.toList)
 
@@ -534,12 +541,12 @@ object TezosDatabaseOperations extends LazyLogging {
       outputType: OutputType,
       limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
-
+    val tableWithPrefix = tablePrefix + "." + table
     val q = temporalPartition match {
       case Some(tempPartition) =>
-        makeTemporalQuery(table, columns, predicates, aggregation, ordering, tempPartition, limit)
+        makeTemporalQuery(tableWithPrefix, columns, predicates, aggregation, ordering, tempPartition, limit)
       case None =>
-        makeQuery(table, columns, aggregation)
+        makeQuery(tableWithPrefix, columns, aggregation)
           .addPredicates(predicates)
           .addGroupBy(aggregation, columns)
           .addHaving(aggregation)
