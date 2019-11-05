@@ -466,6 +466,9 @@ object TezosDatabaseOperations extends LazyLogging {
       .getOrElse(defaultBlockLevel.toInt)
       .result
 
+  def queryMaxBlockLevel(predicate: Int => Boolean): DBIO[Boolean] =
+    fetchMaxBlockLevel.map(level => predicate(level))
+
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result

@@ -6,25 +6,8 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{
-  FeeOperations,
-  ShutdownComplete,
-  TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
-  TezosTypes,
-  TezosDatabaseOperations => TezosDb,
-  ApiOperations
-}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  Account,
-  AccountId,
-  BlockReference,
-  BlockTagged,
-  Delegate,
-  Protocol4Delegate,
-  PublicKeyHash
-}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, ProtocolUpgrades, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -118,6 +101,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
+      protocol005 <- (db.run(ProtocolUpgrades.isProtocol005Active))
+      _ <- if (protocol005)
+        ProtocolUpgrades.updateAccountBalancesForProtocol005
     } yield ()
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
