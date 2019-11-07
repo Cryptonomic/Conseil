@@ -2729,7 +2729,7 @@ class TezosDatabaseOperationsTest
         )
 
         val expectedQuery =
-          "SELECT SUM(medium) as sum_medium,low,high FROM fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
+          "SELECT SUM(medium) as sum_medium,low,high FROM tezos.fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
         val populateAndTest = for {
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
