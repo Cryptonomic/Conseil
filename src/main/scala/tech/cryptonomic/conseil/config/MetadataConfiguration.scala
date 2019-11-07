@@ -122,5 +122,6 @@ case class AttributeConfiguration(
     displayOrder: Option[Int] = None,
     currencySymbol: Option[String] = None,
     currencySymbolCode: Option[Int] = None,
-    cardinalityHint: Option[Int] = None
+    cardinalityHint: Option[Int] = None,
+    temporalColumn: Option[Boolean] = None
 )

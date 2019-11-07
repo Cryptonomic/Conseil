@@ -169,6 +169,7 @@ object DatabaseUtil {
       * @param aggregations list of aggregations
       * @param ordering list of orderings
       * @param partitionBy partitioning table
+      * @param snapshot snapshot values for temporal query
       * @param limit max returned rows count
       * @return SQLActionBuilder
       * */
@@ -179,6 +180,7 @@ object DatabaseUtil {
         aggregations: List[Aggregation],
         ordering: List[QueryOrdering],
         partitionBy: String,
+        snapshot: Snapshot,
         limit: Int
     ): SQLActionBuilder = {
       val aggregationFields = aggregations.map { aggregation =>
@@ -197,9 +199,9 @@ object DatabaseUtil {
       val outerSelect = sql"""SELECT s.* FROM ( """
       val innerSelect = sql"""SELECT #$cols, rank() over ( """
       val partitionWithOrdering = sql"""partition by #$partitionBy """
-        .addOrdering(ordering)
+        .addOrdering(snapshot.toOrdering :: ordering)
       val predicatesAndAggregations = sql""") as r from #$table WHERE true """
-        .addPredicates(predicates)
+        .addPredicates(snapshot.toPredicate :: predicates)
         .addGroupBy(aggregations, columns)
         .addHaving(aggregations)
       val closingOuterSelect = sql""") s """
