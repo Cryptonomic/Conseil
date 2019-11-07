@@ -155,7 +155,7 @@ trait BlocksDataFetchers {
     import JsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = BlockHash
+    override type In = (Option[Int], Option[Int], BlockHash)
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[BakingRights]
@@ -163,16 +163,17 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/baking_rights"
+    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) => s"blocks/${blockData._3.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[((Option[Int], Option[Int], BlockHash), String)]] =
       Kleisli(
-        hashes => {
+        hashesWithCycleAndGovernancePeriod => {
+          val hashes = hashesWithCycleAndGovernancePeriod.map(_._3)
           logger.info("Fetching baking rights")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
@@ -206,7 +207,7 @@ trait BlocksDataFetchers {
     import JsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = BlockHash
+    override type In = (Option[Int], Option[Int], BlockHash)
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[EndorsingRights]
@@ -214,16 +215,17 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/endorsing_rights"
+    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) => s"blocks/${blockData._3.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[((Option[Int], Option[Int], BlockHash), String)]] =
       Kleisli(
-        hashes => {
+        hashesWithCycleAndGovernancePeriod => {
+          val hashes = hashesWithCycleAndGovernancePeriod.map(_._3)
           logger.info("Fetching endorsing rights")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(

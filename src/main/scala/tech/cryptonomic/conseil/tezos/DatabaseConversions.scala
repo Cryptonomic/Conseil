@@ -604,26 +604,30 @@ object DatabaseConversions {
     }
   }
 
-  implicit val bakingRightsToRows = new Conversion[Id, (BlockHash, BakingRights), Tables.BakingRightsRow] {
-    override def convert(from: (BlockHash, BakingRights)): tezos.Tables.BakingRightsRow = {
-      val (blockHash, bakingRights) = from
+  implicit val bakingRightsToRows = new Conversion[Id, ((Option[Int], Option[Int], BlockHash), BakingRights), Tables.BakingRightsRow] {
+    override def convert(from: ((Option[Int], Option[Int], BlockHash), BakingRights)): tezos.Tables.BakingRightsRow = {
+      val (blockHashWithCycleAndGovernancePeriod, bakingRights) = from
       bakingRights
         .into[Tables.BakingRightsRow]
-        .withFieldConst(_.blockHash, blockHash.value)
+        .withFieldConst(_.blockHash, blockHashWithCycleAndGovernancePeriod._3.value)
         .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .withFieldConst(_.cycle, blockHashWithCycleAndGovernancePeriod._1)
+        .withFieldConst(_.governancePeriod, blockHashWithCycleAndGovernancePeriod._2)
         .transform
     }
   }
 
-  implicit val endorsingRightsToRows = new Conversion[List, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
-    override def convert(from: (BlockHash, EndorsingRights)): List[Tables.EndorsingRightsRow] = {
-      val (blockHash, endorsingRights) = from
+  implicit val endorsingRightsToRows = new Conversion[List, ((Option[Int], Option[Int], BlockHash), EndorsingRights), Tables.EndorsingRightsRow] {
+    override def convert(from: ((Option[Int], Option[Int], BlockHash), EndorsingRights)): List[Tables.EndorsingRightsRow] = {
+      val (blockHashWithCycleAndGovernancePeriod, endorsingRights) = from
       endorsingRights.slots.map { slot =>
         endorsingRights
           .into[Tables.EndorsingRightsRow]
           .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
           .withFieldConst(_.slot, slot)
-          .withFieldConst(_.blockHash, blockHash.value)
+          .withFieldConst(_.blockHash, blockHashWithCycleAndGovernancePeriod._3.value)
+          .withFieldConst(_.cycle, blockHashWithCycleAndGovernancePeriod._1)
+          .withFieldConst(_.governancePeriod, blockHashWithCycleAndGovernancePeriod._2)
           .transform
       }
     }

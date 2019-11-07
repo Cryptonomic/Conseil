@@ -203,7 +203,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       import cats.implicits._
       val bh = fetchingResults.map(_._1.data.hash)
 
-
       def safeHead[A](list : List[A]): Option[A] = {
         list match {
           case Nil => None
@@ -225,7 +224,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }
       }
 
-      (tezosNodeOperator.getBatchBakingRights(bh), tezosNodeOperator.getBatchEndorsingRights(bh)).mapN {
+      val blockHashesWithCycleAndGovernancePeriod = bh.map(hash => (cycle, governancePeriod, hash))
+
+      (tezosNodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),
+        tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)).mapN {
         case (br, er) =>
           (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
             .mapN((_, _) => ())

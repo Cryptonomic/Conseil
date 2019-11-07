@@ -126,10 +126,14 @@ class TezosNodeOperator(
     * @param blockHashes  Hash of given block
     * @return             Baking rights
     */
-  def getBatchBakingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[BakingRights]]] = {
+  def getBatchBakingRights(
+                            blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
+                          ): Future[Map[(Option[Int], Option[Int], BlockHash), List[BakingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
-    fetch[BlockHash, List[BakingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+    fetch[(Option[Int], Option[Int], BlockHash), List[BakingRights], Future, List, Throwable]
+      .run(blockHashesWithCycleAndGovernancePeriod)
+      .map(_.toMap)
   }
 
   /**
@@ -137,10 +141,14 @@ class TezosNodeOperator(
     * @param blockHashes  Hash of given block
     * @return             Endorsing rights
     */
-  def getBatchEndorsingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[EndorsingRights]]] = {
+  def getBatchEndorsingRights(
+                               blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
+                             ): Future[Map[(Option[Int], Option[Int], BlockHash), List[EndorsingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
-    fetch[BlockHash, List[EndorsingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+    fetch[(Option[Int], Option[Int], BlockHash), List[EndorsingRights], Future, List, Throwable]
+      .run(blockHashesWithCycleAndGovernancePeriod)
+      .map(_.toMap)
   }
 
   /**
