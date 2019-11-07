@@ -41,20 +41,40 @@ object DataTypes {
   val defaultLimitValue: Int = 10000
 
   /** Replaces timestamp represented as Long in predicates with one understood by the SQL */
-  private def replaceTimestampInPredicates(path: EntityPath, query: Query, metadataService: MetadataService)(
+  private def replaceTimestampInPredicatesAndSnapshot(path: EntityPath, query: Query, metadataService: MetadataService)(
       implicit executionContext: ExecutionContext
-  ): Future[Query] =
-    query.predicates.map { predicate =>
-      metadataService.getTableAttributesWithoutUpdatingCache(path).map { maybeAttributes =>
-        maybeAttributes.flatMap { attributes =>
-          attributes.find(_.name == dropAggregationPrefixes(predicate.field)).map {
-            case attribute if attribute.dataType == DataType.DateTime =>
-              predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toString))
-            case _ => predicate
+  ): Future[Query] = {
+    val fetchedAttributes = metadataService.getTableAttributesWithoutUpdatingCache(path)
+    val newSnapshot: Future[Option[Snapshot]] =
+      fetchedAttributes.map { maybeAttributes =>
+        query.snapshot.flatMap { snapshot =>
+          maybeAttributes.flatMap { attributes =>
+            attributes.find(_.name == snapshot.field).map {
+              case attribute if attribute.dataType == DataType.DateTime =>
+                snapshot.copy(value = new Timestamp(snapshot.value.toString.toLong).toString)
+              case _ => snapshot
+            }
           }
-        }.toList
+        }
       }
-    }.sequence.map(pred => query.copy(predicates = pred.flatten))
+
+    val newPredicates: Future[List[Predicate]] =
+      fetchedAttributes.map { maybeAttributes =>
+        query.predicates.flatMap { predicate =>
+          maybeAttributes.flatMap { attributes =>
+            attributes.find(_.name == dropAggregationPrefixes(predicate.field)).map {
+              case attribute if attribute.dataType == DataType.DateTime =>
+                predicate.copy(set = predicate.set.map(x => new Timestamp(x.toString.toLong).toString))
+              case _ => predicate
+            }
+          }.toList
+        }
+      }
+    (newPredicates, newSnapshot).mapN {
+      case (pred, snap) =>
+        query.copy(predicates = pred, snapshot = snap)
+    }
+  }
 
   /** Helper method for finding fields used in query that don't exist in the database */
   private def findNonExistingFields(
@@ -210,6 +230,9 @@ object DataTypes {
   /** Class representing invalid field formatting */
   case class InvalidQueryFieldFormatting(message: String) extends QueryValidationError
 
+  /** Class representing invalid field in snapshot */
+  case class InvalidSnapshotField(message: String) extends QueryValidationError
+
   /** Query field description */
   sealed trait Field {
     val field: String
@@ -229,7 +252,8 @@ object DataTypes {
       limit: Int = defaultLimitValue,
       output: OutputType = OutputType.json,
       aggregation: List[Aggregation] = List.empty,
-      temporalPartition: Option[String] = None
+      temporalPartition: Option[String] = None,
+      snapshot: Option[Snapshot] = None
   )
 
   /** Class representing predicate used in aggregation */
@@ -277,6 +301,48 @@ object DataTypes {
       predicate.map(_.into[Predicate].withFieldConst(_.field, field).transform)
   }
 
+  /** Class representing snapshot */
+  case class Snapshot(field: String, value: Any) {
+
+    /** Transforms snapshot to predicate */
+    def toPredicate: Predicate =
+      Predicate(
+        field = field,
+        operation = OperationType.after,
+        set = List(value),
+        inverse = true
+      )
+
+    /** Transforms snapshot to ordering */
+    def toOrdering: QueryOrdering =
+      QueryOrdering(
+        field = field,
+        direction = OrderDirection.desc
+      )
+  }
+
+  /** Finds invalid snapshot fields*/
+  def findInvalidSnapshotFields(
+      query: Query,
+      entity: EntityPath,
+      metadataConfiguration: MetadataConfiguration
+  ): List[InvalidSnapshotField] = {
+    import cats.instances.option._
+    import cats.instances.list._
+
+    query.snapshot.foldMap { snapshot =>
+      metadataConfiguration.entity(entity).flatMap { entityCfg =>
+        entityCfg.attributes.find {
+          case (k, v) if k == snapshot.field =>
+            v.temporalColumn.getOrElse(false)
+        }
+      } match {
+        case Some(_) => List.empty
+        case None => List(InvalidSnapshotField(snapshot.field))
+      }
+    }
+  }
+
   /** Class representing query got through the REST API */
   case class ApiQuery(
       fields: Option[List[Field]],
@@ -284,7 +350,8 @@ object DataTypes {
       orderBy: Option[List[QueryOrdering]],
       limit: Option[Int],
       output: Option[OutputType],
-      aggregation: Option[List[ApiAggregation]]
+      aggregation: Option[List[ApiAggregation]],
+      snapshot: Option[Snapshot] = None
   ) {
 
     /** Method which validates query fields */
@@ -309,16 +376,22 @@ object DataTypes {
         findInvalidAggregationTypeFields(query, entity, metadataService),
         findInvalidPredicateFilteringFields(query, entity, metadataService),
         successful(findInvalidQueryFieldFormats(query, entity, metadataService)),
-        replaceTimestampInPredicates(entity, query, metadataService)
+        successful(findInvalidSnapshotFields(query, entity, metadataConfiguration)),
+        replaceTimestampInPredicatesAndSnapshot(entity, query, metadataService)
       ).mapN {
         (
             invalidNonExistingFields,
             invalidAggregationFieldForTypes,
             invalidPredicateFilteringFields,
             invalidQueryFieldFormats,
+            invalidSnapshotField,
             updatedQuery
         ) =>
-          invalidNonExistingFields ::: invalidAggregationFieldForTypes ::: invalidPredicateFilteringFields ::: invalidQueryFieldFormats match {
+          invalidNonExistingFields :::
+              invalidAggregationFieldForTypes :::
+              invalidPredicateFilteringFields :::
+              invalidQueryFieldFormats :::
+              invalidSnapshotField match {
             case Nil => Right(updatedQuery)
             case wrongFields => Left(wrongFields)
           }

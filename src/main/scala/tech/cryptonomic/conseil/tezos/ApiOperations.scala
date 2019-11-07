@@ -167,6 +167,7 @@ class ApiOperations extends DataOperations with MetadataOperations {
         query.orderBy,
         query.aggregation,
         query.temporalPartition,
+        query.snapshot,
         query.output,
         query.limit
       )
