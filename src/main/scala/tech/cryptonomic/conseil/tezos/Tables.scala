@@ -127,7 +127,7 @@ trait Tables {
     *  @param spendable Database column spendable SqlType(bool), Default(None)
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param asof Database column asof SqlType(timestamptz) */
+    *  @param asof Database column asof SqlType(timestamp) */
   case class AccountsHistoryRow(accountId: String, blockId: String, counter: Option[Int] = None, script: Option[String] = None, storage: Option[String] = None, balance: scala.math.BigDecimal, blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"), manager: Option[String] = None, spendable: Option[Boolean] = None, delegateSetable: Option[Boolean] = None, delegateValue: Option[String] = None, asof: java.sql.Timestamp)
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
   implicit def GetResultAccountsHistoryRow(implicit e0: GR[String], e1: GR[Option[Int]], e2: GR[Option[String]], e3: GR[scala.math.BigDecimal], e4: GR[Option[Boolean]], e5: GR[java.sql.Timestamp]): GR[AccountsHistoryRow] = GR{
@@ -162,7 +162,7 @@ trait Tables {
     val delegateSetable: Rep[Option[Boolean]] = column[Option[Boolean]]("delegate_setable", O.Default(None))
     /** Database column delegate_value SqlType(varchar), Default(None) */
     val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
-    /** Database column asof SqlType(timestamptz) */
+    /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
   }
   /** Collection-like TableQuery object for table AccountsHistory */
