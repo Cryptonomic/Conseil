@@ -116,4 +116,8 @@ trait DataJsonSchemas extends generic.JsonSchemas {
   implicit lazy val accountResultSchema: JsonSchema[AccountResult] =
     genericJsonSchema[AccountResult]
 
+  /** Snapshot schema */
+  implicit lazy val snapshotSchema: JsonSchema[Snapshot] =
+    genericJsonSchema[Snapshot]
+
 }

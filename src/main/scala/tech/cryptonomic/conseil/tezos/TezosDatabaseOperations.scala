@@ -538,14 +538,15 @@ object TezosDatabaseOperations extends LazyLogging {
       ordering: List[QueryOrdering],
       aggregation: List[Aggregation],
       temporalPartition: Option[String],
+      snapshot: Option[Snapshot],
       outputType: OutputType,
       limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
     val tableWithPrefix = tablePrefix + "." + table
-    val q = temporalPartition match {
-      case Some(tempPartition) =>
-        makeTemporalQuery(tableWithPrefix, columns, predicates, aggregation, ordering, tempPartition, limit)
-      case None =>
+    val q = (temporalPartition, snapshot) match {
+      case (Some(tempPartition), Some(snap)) =>
+        makeTemporalQuery(tableWithPrefix, columns, predicates, aggregation, ordering, tempPartition, snap, limit)
+      case _ =>
         makeQuery(tableWithPrefix, columns, aggregation)
           .addPredicates(predicates)
           .addGroupBy(aggregation, columns)

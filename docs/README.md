@@ -647,28 +647,90 @@ A note on predicate conjunction/disjunction
 
 Send this query to `/v2/data/tezos/<network>/accounts_history`
 
+Example temporal table queries:
+
+Get the balance of an account at a specific timestamp.
+
 ```json
 {
   "predicates": [
-    {"field": "asof", "operation":"gt", "set":["2018-07-01"]},
-    {"field": "balance", "operation":"gt", "set":[0]}
+    {
+      "field": "account_id",
+      "operation": "eq",
+      "set": ["KT18x4B5BkyGMR5DCr7esP8pC5biQc1M6CGr"]
+    }
+  ],
+  "snapshot": {
+    "field": "asof",
+    "value": 11530382887000
+  },
+  "aggregation": [],
+  "fields": [
+    "account_id", "balance", "block_level", "asof"
+  ],
+  "orderBy": [
+  ],
+  "output": "json",
+  "limit": 100
+}
+```
+
+Get the balance of an account at a specific block level
+
+```json
+{
+  "predicates": [
+    {
+      "field": "account_id",
+      "operation": "eq",
+      "set": ["KT18x4B5BkyGMR5DCr7esP8pC5biQc1M6CGr"]
+    }
+  ],
+  "snapshot": {
+    "field": "block_level",
+    "value": 2700
+  },
+  "aggregation": [],
+  "fields": [
+    "account_id", "balance", "block_level", "asof"
+  ],
+  "orderBy": [
+  ],
+  "output": "json",
+  "limit": 100
+}
+```
+
+Get all records for an account over a range of blocks
+```json
+{
+  "predicates": [
+    {
+      "field": "account_id",
+      "operation": "eq",
+      "set": ["KT18x4B5BkyGMR5DCr7esP8pC5biQc1M6CGr"]
+    },
+    {
+      "field": "block_level",
+      "operation": "between",
+      "set": [1500, 3000]
+    }
   ],
   "aggregation": [],
   "fields": [
-    "asof", "balance", "account_id"
+    "account_id", "balance", "block_level", "asof"
   ],
   "orderBy": [
-    {"field":"asof", "direction":"desc"}
   ],
-  "output": "sql",
-  "limit": 10
+  "output": "json",
+  "limit": 100
 }
 ```
 
 Note on temporal tables:
 
-- Temporal tables contain `asof` column which is contains information about the timestamp
-- besides that they contain the same columns as regular tables
+- Temporal tables contains `asof` column which has information about the timestamp
+- besides that they contain the same columns as regular tables and can be queried as them
 
 ### Preprocessed Data
 
