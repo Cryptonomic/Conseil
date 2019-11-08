@@ -6,7 +6,16 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
+  FeeOperations,
+  ShutdownComplete,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -203,31 +212,32 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       import cats.implicits._
       val bh = fetchingResults.map(_._1.data.hash)
 
-      def safeHead[A](list : List[A]): Option[A] = {
+      def safeHead[A](list: List[A]): Option[A] =
         list match {
           case Nil => None
           case x :: _ => Some(x)
         }
-      }
 
-      val cycle = safeHead(fetchingResults).flatMap{
+      val cycle = safeHead(fetchingResults).flatMap {
         _._1.data.metadata match {
           case GenesisMetadata => None
-          case BlockHeaderMetadata(_,_,_,_,_,level) => Some(level.cycle)
+          case BlockHeaderMetadata(_, _, _, _, _, level) => Some(level.cycle)
         }
       }
 
-      val governancePeriod = safeHead(fetchingResults).flatMap{
+      val governancePeriod = safeHead(fetchingResults).flatMap {
         _._1.data.metadata match {
           case GenesisMetadata => None
-          case BlockHeaderMetadata(_,_,_,_,_,level) => Some(level.voting_period)
+          case BlockHeaderMetadata(_, _, _, _, _, level) => Some(level.voting_period)
         }
       }
 
       val blockHashesWithCycleAndGovernancePeriod = bh.map(hash => (cycle, governancePeriod, hash))
 
-      (tezosNodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),
-        tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)).mapN {
+      (
+        tezosNodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),
+        tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)
+      ).mapN {
         case (br, er) =>
           (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
             .mapN((_, _) => ())

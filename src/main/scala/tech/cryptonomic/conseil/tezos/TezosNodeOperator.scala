@@ -127,8 +127,8 @@ class TezosNodeOperator(
     * @return             Baking rights
     */
   def getBatchBakingRights(
-                            blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
-                          ): Future[Map[(Option[Int], Option[Int], BlockHash), List[BakingRights]]] = {
+      blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
+  ): Future[Map[(Option[Int], Option[Int], BlockHash), List[BakingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
     fetch[(Option[Int], Option[Int], BlockHash), List[BakingRights], Future, List, Throwable]
@@ -142,8 +142,8 @@ class TezosNodeOperator(
     * @return             Endorsing rights
     */
   def getBatchEndorsingRights(
-                               blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
-                             ): Future[Map[(Option[Int], Option[Int], BlockHash), List[EndorsingRights]]] = {
+      blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
+  ): Future[Map[(Option[Int], Option[Int], BlockHash), List[EndorsingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
     fetch[(Option[Int], Option[Int], BlockHash), List[EndorsingRights], Future, List, Throwable]
@@ -525,10 +525,10 @@ class TezosNodeOperator(
             maxLevel,
             headLevel - maxLevel
           )
-        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
+        val pagedResults = partitionBlocksRanges((684000 + 1) to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
-        val minLevel = if (bootstrapping) 1 else maxLevel
+        val minLevel = if (bootstrapping) 1 else 684000
         (pagedResults, headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")

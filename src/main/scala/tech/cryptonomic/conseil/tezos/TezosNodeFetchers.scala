@@ -163,12 +163,15 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) => s"blocks/${blockData._3.value}/helpers/baking_rights"
+    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) =>
+      s"blocks/${blockData._3.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[((Option[Int], Option[Int], BlockHash), String)]] =
+    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[
+      ((Option[Int], Option[Int], BlockHash), String)
+    ]] =
       Kleisli(
         hashesWithCycleAndGovernancePeriod => {
           val hashes = hashesWithCycleAndGovernancePeriod.map(_._3)
@@ -215,12 +218,15 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) => s"blocks/${blockData._3.value}/helpers/endorsing_rights"
+    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) =>
+      s"blocks/${blockData._3.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[((Option[Int], Option[Int], BlockHash), String)]] =
+    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[
+      ((Option[Int], Option[Int], BlockHash), String)
+    ]] =
       Kleisli(
         hashesWithCycleAndGovernancePeriod => {
           val hashes = hashesWithCycleAndGovernancePeriod.map(_._3)
