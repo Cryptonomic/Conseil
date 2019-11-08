@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIOAction
-import tech.cryptonomic.conseil.Lorre.db
+import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -48,7 +48,7 @@ object FeeOperations extends LazyLogging {
     * @param ex the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
-  def processTezosAverageFees(numberOfFeesAveraged: Int)(implicit ex: ExecutionContext): Future[Option[Int]] = {
+  def processTezosAverageFees(numberOfFeesAveraged: Int, db: Database)(implicit ex: ExecutionContext): Future[Option[Int]] = {
     logger.info("Processing latest Tezos fee data...")
     val computeAndStore = for {
       fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFees(_, numberOfFeesAveraged)))

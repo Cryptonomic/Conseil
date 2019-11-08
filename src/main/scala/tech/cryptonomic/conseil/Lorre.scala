@@ -38,7 +38,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorrev2 extends IOApp with LazyLogging with LorreAppConfig with LorreOutput with ProcessingUtils {
+object Lorre extends IOApp with LazyLogging with LorreAppConfig with LorreOutput with ProcessingUtils {
 
   //reads all configuration upstart, will only proceed if all values are found
   override def run(args: List[String]): IO[ExitCode] =
@@ -138,7 +138,7 @@ object Lorrev2 extends IOApp with LazyLogging with LorreAppConfig with LorreOutp
         val repeatStep = (iteration: Int) =>
           for {
             _ <- mainLoop
-            _ <- lift(FeeOperations.processTezosAverageFees(numberOfFeesAveraged))(contextShift)
+            _ <- lift(FeeOperations.processTezosAverageFees(numberOfFeesAveraged, db))(contextShift)
               .whenA(iteration % feeUpdateInterval == 0)
             _ <- liftLog(_.info("Taking a nap."))
             _ <- IO.sleep(conf.lorre.sleepInterval)
