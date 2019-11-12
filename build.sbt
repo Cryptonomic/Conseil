@@ -75,7 +75,7 @@ libraryDependencies ++= Seq(
   "org.scalatest"                 %% "scalatest"                     % "3.0.5" % "it, test",
   "com.stephenn"                  %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
   "org.scalamock"                 %% "scalamock"                     % "4.1.0" % "it, test",
-  "ru.yandex.qatools.embed"       % "postgresql-embedded"            % "2.10" % "it, test",
+  "org.testcontainers"             % "postgresql"                    % "1.12.3" % "it, test",
   "com.softwaremill.diffx"        %% "diffx-scalatest"               % "0.3.3" % "it, test",
   "org.http4s"                    %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
   "org.http4s"                    %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
