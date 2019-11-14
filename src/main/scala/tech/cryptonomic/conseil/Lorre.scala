@@ -212,8 +212,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       import cats.implicits._
       val bh = fetchingResults.map(_._1.data.hash)
 
-      val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map{
-        results => {
+      val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map { results =>
+        {
           val data = results._1.data
           val hash = data.hash
           data.metadata match {

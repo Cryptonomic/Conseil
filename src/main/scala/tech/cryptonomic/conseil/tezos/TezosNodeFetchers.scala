@@ -163,8 +163,7 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: In) =>
-      s"blocks/${blockData._3.value}/helpers/baking_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData._3.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
@@ -218,8 +217,7 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: In) =>
-      s"blocks/${blockData._3.value}/helpers/endorsing_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData._3.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
