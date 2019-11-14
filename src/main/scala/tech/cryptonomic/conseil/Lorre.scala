@@ -212,27 +212,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       import cats.implicits._
       val bh = fetchingResults.map(_._1.data.hash)
 
-      def safeHead[A](list: List[A]): Option[A] =
-        list match {
-          case Nil => None
-          case x :: _ => Some(x)
-        }
-
-      val cycle = safeHead(fetchingResults).flatMap {
-        _._1.data.metadata match {
-          case GenesisMetadata => None
-          case BlockHeaderMetadata(_, _, _, _, _, level) => Some(level.cycle)
-        }
-      }
-
-      val governancePeriod = safeHead(fetchingResults).flatMap {
-        _._1.data.metadata match {
-          case GenesisMetadata => None
-          case BlockHeaderMetadata(_, _, _, _, _, level) => Some(level.voting_period)
+      val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map{
+        results => {
+          val data = results._1.data
+          val hash = data.hash
+          data.metadata match {
+            case GenesisMetadata => (None, None, hash)
+            case BlockHeaderMetadata(_, _, _, _, _, level) =>
+              (Some(level.cycle), Some(level.voting_period), hash)
+          }
         }
       }
-
-      val blockHashesWithCycleAndGovernancePeriod = bh.map(hash => (cycle, governancePeriod, hash))
 
       (
         tezosNodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),

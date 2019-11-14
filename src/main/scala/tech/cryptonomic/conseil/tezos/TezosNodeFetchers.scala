@@ -163,13 +163,13 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) =>
+    private val makeUrl = (blockData: In) =>
       s"blocks/${blockData._3.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[
+    override val fetchData: Kleisli[Future, List[In], List[
       ((Option[Int], Option[Int], BlockHash), String)
     ]] =
       Kleisli(
@@ -218,13 +218,13 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: (Option[Int], Option[Int], BlockHash)) =>
+    private val makeUrl = (blockData: In) =>
       s"blocks/${blockData._3.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[(Option[Int], Option[Int], BlockHash)], List[
+    override val fetchData: Kleisli[Future, List[In], List[
       ((Option[Int], Option[Int], BlockHash), String)
     ]] =
       Kleisli(

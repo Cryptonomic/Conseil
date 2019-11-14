@@ -609,13 +609,13 @@ object DatabaseConversions {
       override def convert(
           from: ((Option[Int], Option[Int], BlockHash), BakingRights)
       ): tezos.Tables.BakingRightsRow = {
-        val (blockHashWithCycleAndGovernancePeriod, bakingRights) = from
+        val ((cycle, governancePeriod, blockHash), bakingRights) = from
         bakingRights
           .into[Tables.BakingRightsRow]
-          .withFieldConst(_.blockHash, blockHashWithCycleAndGovernancePeriod._3.value)
+          .withFieldConst(_.blockHash, blockHash.value)
           .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
-          .withFieldConst(_.cycle, blockHashWithCycleAndGovernancePeriod._1)
-          .withFieldConst(_.governancePeriod, blockHashWithCycleAndGovernancePeriod._2)
+          .withFieldConst(_.cycle, cycle)
+          .withFieldConst(_.governancePeriod, governancePeriod)
           .transform
       }
     }
@@ -625,15 +625,15 @@ object DatabaseConversions {
       override def convert(
           from: ((Option[Int], Option[Int], BlockHash), EndorsingRights)
       ): List[Tables.EndorsingRightsRow] = {
-        val (blockHashWithCycleAndGovernancePeriod, endorsingRights) = from
+        val ((cycle, governancePeriod, blockHash), endorsingRights) = from
         endorsingRights.slots.map { slot =>
           endorsingRights
             .into[Tables.EndorsingRightsRow]
             .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
             .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, blockHashWithCycleAndGovernancePeriod._3.value)
-            .withFieldConst(_.cycle, blockHashWithCycleAndGovernancePeriod._1)
-            .withFieldConst(_.governancePeriod, blockHashWithCycleAndGovernancePeriod._2)
+            .withFieldConst(_.blockHash, blockHash.value)
+            .withFieldConst(_.cycle, cycle)
+            .withFieldConst(_.governancePeriod, governancePeriod)
             .transform
         }
       }

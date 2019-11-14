@@ -525,10 +525,10 @@ class TezosNodeOperator(
             maxLevel,
             headLevel - maxLevel
           )
-        val pagedResults = partitionBlocksRanges((684000 + 1) to headLevel).map(
+        val pagedResults = partitionBlocksRanges(maxLevel to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
-        val minLevel = if (bootstrapping) 1 else 684000
+        val minLevel = if (bootstrapping) 1 else maxLevel
         (pagedResults, headLevel - minLevel)
       } else {
         logger.info("No new blocks to fetch from the network")
