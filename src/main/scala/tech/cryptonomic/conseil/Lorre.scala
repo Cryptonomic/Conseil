@@ -209,9 +209,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
-        _ <- processVotesForBlocks(results.map { case (block, _) => block }) andThen logVotingOutcome
         delegateCheckpoints <- processAccountsForBlocks(accountUpdates) // should this fail, we still recover data from the checkpoint
         _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
+        _ <- processVotesForBlocks(results.map { case (block, _) => block }) andThen logVotingOutcome
       } yield results.size
 
     }
@@ -285,10 +285,19 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case (proposals, bakersBlocks, ballotsBlocks) =>
         //this is a nested list, each block with many baker rolls
         val writeBakers = bakersBlocks.traverse {
-          case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
+          case (block, bakersRolls) =>
+            TezosDb.writeVotingRolls(bakersRolls, block)
         }
 
-        val combinedVoteWrites = writeBakers.map(_.combineAll.map(_ + proposals.size + ballotsBlocks.size))
+        val updateAccountsHistory = bakersBlocks.traverse {
+          case (block, bakersRolls) =>
+            TezosDb.updateAccountsHistoryWithBakers(bakersRolls, block)
+        }
+
+        val combinedVoteWrites = for {
+          bakersWritten <- writeBakers
+          accountsUpdated <- updateAccountsHistory
+        } yield bakersWritten.combineAll.map(_ + proposals.size + ballotsBlocks.size + accountsUpdated.size)
 
         db.run(combinedVoteWrites.transactionally)
     }
