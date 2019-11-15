@@ -151,11 +151,44 @@ object TezosTypes {
   final case class InvalidDecimal(jsonString: String) extends BigNumber
 
   object Contract {
-    final case class BigMapDiff(
+
+    /** retro-compat adapter from protocol 5+ */
+    type CompatBigMapDiff = Either[BigMapDiff, Protocol4BigMapDiff]
+
+    final case class Protocol4BigMapDiff(
         key_hash: ScriptId,
         key: Micheline,
         value: Option[Micheline]
     )
+
+    sealed trait BigMapDiff extends Product with Serializable
+
+    final case class BigMapDiffUpdate(
+        action: String,
+        key: Micheline,
+        key_hash: ScriptId,
+        big_map: BigNumber,
+        value: Option[Micheline]
+    ) extends BigMapDiff
+
+    final case class BigMapDiffCopy(
+        action: String,
+        source_big_map: BigNumber,
+        destination_big_map: BigNumber
+    ) extends BigMapDiff
+
+    final case class BigMapDiffAlloc(
+        action: String,
+        big_map: BigNumber,
+        key_type: Micheline,
+        value_type: Micheline
+    ) extends BigMapDiff
+
+    final case class BigMapDiffRemove(
+        action: String,
+        big_map: BigNumber
+    ) extends BigMapDiff
+
   }
 
   object Scripted {
@@ -330,7 +363,7 @@ object TezosTypes {
         status: String,
         allocated_destination_contract: Option[Boolean],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
-        big_map_diff: Option[List[Contract.BigMapDiff]],
+        big_map_diff: Option[List[Contract.CompatBigMapDiff]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
