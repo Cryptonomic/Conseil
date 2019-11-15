@@ -41,6 +41,10 @@ $$;
 
 SET default_with_oids = false;
 
+CREATE TABLE tezos.chain_epochs (
+    epoch_level numeric PRIMARY KEY
+);
+
 --
 -- TOC entry 181 (class 1259 OID 99594)
 -- Name: accounts; Type: TABLE; Schema: tezos; Owner: -

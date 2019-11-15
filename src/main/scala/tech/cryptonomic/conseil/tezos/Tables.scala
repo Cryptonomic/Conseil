@@ -23,6 +23,7 @@ trait Tables {
     BakingRights.schema,
     BalanceUpdates.schema,
     Blocks.schema,
+    ChainEpochs.schema,
     Delegates.schema,
     DelegatesCheckpoint.schema,
     EndorsingRights.schema,
@@ -249,7 +250,7 @@ trait Tables {
     *  @param spendable Database column spendable SqlType(bool), Default(None)
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param asof Database column asof SqlType(timestamptz) */
+    *  @param asof Database column asof SqlType(timestamp) */
   case class AccountsHistoryRow(
       accountId: String,
       blockId: String,
@@ -373,7 +374,7 @@ trait Tables {
     /** Database column delegate_value SqlType(varchar), Default(None) */
     val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
 
-    /** Database column asof SqlType(timestamptz) */
+    /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
   }
 
@@ -799,6 +800,38 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Blocks */
   lazy val Blocks = new TableQuery(tag => new Blocks(tag))
+
+  /** Entity class storing rows of table ChainEpochs
+    *  @param epochLevel Database column epoch_level SqlType(numeric), PrimaryKey */
+  case class ChainEpochsRow(epochLevel: scala.math.BigDecimal)
+
+  /** GetResult implicit for fetching ChainEpochsRow objects using plain SQL queries */
+  implicit def GetResultChainEpochsRow(implicit e0: GR[scala.math.BigDecimal]): GR[ChainEpochsRow] = GR { prs =>
+    import prs._
+    ChainEpochsRow(<<[scala.math.BigDecimal])
+  }
+
+  /** Table description of table chain_epochs. Objects of this class serve as prototypes for rows in queries. */
+  class ChainEpochs(_tableTag: Tag)
+      extends profile.api.Table[ChainEpochsRow](_tableTag, Some("tezos"), "chain_epochs") {
+    def * = epochLevel <> (ChainEpochsRow, ChainEpochsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (Rep
+        .Some(epochLevel))
+        .shaped
+        .<>(
+          r => r.map(_ => ChainEpochsRow(r.get)),
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
+
+    /** Database column epoch_level SqlType(numeric), PrimaryKey */
+    val epochLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("epoch_level", O.PrimaryKey)
+  }
+
+  /** Collection-like TableQuery object for table ChainEpochs */
+  lazy val ChainEpochs = new TableQuery(tag => new ChainEpochs(tag))
 
   /** Entity class storing rows of table Delegates
     *  @param pkh Database column pkh SqlType(varchar), PrimaryKey
