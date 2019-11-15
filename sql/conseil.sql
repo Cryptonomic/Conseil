@@ -58,10 +58,10 @@ CREATE TABLE tezos.accounts (
     storage character varying,
     balance numeric NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL,
-    manager character varying,
-    spendable boolean,
-    delegate_setable boolean,
-    delegate_value character varying
+    manager character varying, -- retro-compat from protocol 5+
+    spendable boolean, -- retro-compat from protocol 5+
+    delegate_setable boolean, -- retro-compat from protocol 5+
+    delegate_value character varying -- retro-compat from protocol 5+
 );
 
 

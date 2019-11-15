@@ -322,12 +322,12 @@ trait OperationsJsonData {
     |}""".stripMargin
 
   val expectedBigmapdiffAlloc =
-      Contract.BigMapDiffAlloc(
-        action = "alloc",
-        big_map = Decimal(BigDecimal(428)),
-        key_type = Micheline("""{"prim":"int"}"""),
-        value_type = Micheline("""{"prim":"int"}""")
-      )
+    Contract.BigMapDiffAlloc(
+      action = "alloc",
+      big_map = Decimal(BigDecimal(428)),
+      key_type = Micheline("""{"prim":"int"}"""),
+      value_type = Micheline("""{"prim":"int"}""")
+    )
 
   val bigmapdiffUpdateJson =
     s"""{

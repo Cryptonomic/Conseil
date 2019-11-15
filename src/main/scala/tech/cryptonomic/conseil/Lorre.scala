@@ -210,7 +210,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
-      val bh = fetchingResults.map(_._1.data.hash)
 
       val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map { results =>
         {
