@@ -57,7 +57,8 @@ CREATE TABLE tezos.accounts (
     manager character varying, -- retro-compat from protocol 5+
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
-    delegate_value char varying -- retro-compat from protocol 5+
+    delegate_value char varying, -- retro-compat from protocol 5+
+    is_baker boolean NOT NULL DEFAULT false
 );
 
 

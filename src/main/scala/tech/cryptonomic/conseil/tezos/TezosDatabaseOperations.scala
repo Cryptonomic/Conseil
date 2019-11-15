@@ -388,6 +388,18 @@ object TezosDatabaseOperations extends LazyLogging {
       .update(true)
   }
 
+  /** Updates accounts with bakers */
+  def updateAccountsWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
+    logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
+    Tables.Accounts
+      .filter(
+        account =>
+          account.isBaker === false && account.blockId === block.data.hash.value && account.accountId.inSet(bakers.map(_.pkh.value))
+      )
+      .map(_.isBaker)
+      .update(true)
+  }
+
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind                 Operation kind

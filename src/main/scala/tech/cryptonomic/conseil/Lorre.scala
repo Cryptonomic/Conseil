@@ -294,10 +294,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             TezosDb.updateAccountsHistoryWithBakers(bakersRolls, block)
         }
 
+        val updateAccounts = bakersBlocks.traverse {
+          case (block, bakersRolls) =>
+            TezosDb.updateAccountsWithBakers(bakersRolls, block)
+        }
+
         val combinedVoteWrites = for {
           bakersWritten <- writeBakers
-          accountsUpdated <- updateAccountsHistory
-        } yield bakersWritten.combineAll.map(_ + proposals.size + ballotsBlocks.size + accountsUpdated.size)
+          accountsHistoryUpdated <- updateAccountsHistory
+          accountsUpdated <- updateAccounts
+        } yield bakersWritten.combineAll.map(_ + proposals.size + ballotsBlocks.size + accountsHistoryUpdated.size + accountsUpdated.size)
 
         db.run(combinedVoteWrites.transactionally)
     }
