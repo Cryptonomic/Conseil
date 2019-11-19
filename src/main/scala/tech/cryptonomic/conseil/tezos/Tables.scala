@@ -230,13 +230,6 @@ trait Tables {
     /** Database column asof SqlType(timestamptz) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
 
-    /** Foreign key referencing Blocks (database name checkpoint_block_id_fkey) */
-    lazy val blocksFk = foreignKey("checkpoint_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
-
     /** Index over (accountId) (database name ix_accounts_checkpoint_account_id) */
     val index1 = index("ix_accounts_checkpoint_account_id", accountId)
 

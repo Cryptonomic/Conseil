@@ -606,15 +606,6 @@ ALTER TABLE ONLY tezos.operation_groups
 
 
 --
--- TOC entry 2117 (class 2606 OID 99726)
--- Name: accounts_checkpoint checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
---
-
-ALTER TABLE ONLY tezos.accounts_checkpoint
-    ADD CONSTRAINT checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
-
-
---
 -- TOC entry 2119 (class 2606 OID 99741)
 -- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
 --

@@ -272,15 +272,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * Fetches voting data for the blocks and stores any relevant
     * result into the appropriate database table
     */
-  private[this] def processVotesForBlocks(blocks: List[TezosTypes.Block]): Future[Option[Int]] = {
-    import cats.syntax.traverse._
-    import cats.syntax.foldable._
-    import cats.instances.list._
-    import cats.instances.option._
-    import cats.instances.int._
-    import slickeffect.implicits._
-    import slick.jdbc.PostgresProfile.api._
-
+  private[this] def processVotesForBlocks(blocks: List[TezosTypes.Block]): Future[Option[Int]] =
     tezosNodeOperator.getVotingDetails(blocks).flatMap {
       case (proposals, bakersBlocks, ballotsBlocks) =>
         //this is a nested list, each block with many baker rolls
@@ -298,6 +290,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           case (block, bakersRolls) =>
             TezosDb.updateAccountsWithBakers(bakersRolls, block)
         }
+        val writeBakers = TezosDb.writeVotingRolls(bakersBlocks)
 
         val combinedVoteWrites = for {
           bakersWritten <- writeBakers
@@ -305,9 +298,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           accountsUpdated <- updateAccounts
         } yield bakersWritten.combineAll.map(_ + proposals.size + ballotsBlocks.size + accountsHistoryUpdated.size + accountsUpdated.size)
 
-        db.run(combinedVoteWrites.transactionally)
+        db.run(combinedVoteWrites)
     }
-  }
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)

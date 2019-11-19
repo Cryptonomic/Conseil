@@ -371,9 +371,9 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /** Writes bakers to the database */
-  def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
-    Tables.Rolls ++= (block, bakers).convertToA[List, Tables.RollsRow]
+  def writeVotingRolls(bakers: List[(Block, List[Voting.BakerRolls])]): DBIO[Option[Int]] = {
+    logger.info(s"""Writing ${bakers.size} bakers to the DB...""")
+    Tables.Rolls ++= bakers.flatMap(_.convertToA[List, Tables.RollsRow])
   }
 
   /** Updates accounts history with bakers */
