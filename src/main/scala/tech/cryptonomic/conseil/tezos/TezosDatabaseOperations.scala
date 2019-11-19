@@ -130,9 +130,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(
-      accountIds: List[(BlockHash, Int, Option[Instant], List[AccountId])]
+      accountIds: List[(BlockHash, Int, Option[Instant], Option[Int], List[AccountId])]
   ): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${accountIds.map(_._4).map(_.length).sum} account checkpoints to DB...""")
+    logger.info(s"""Writing ${accountIds.map(_._5).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
   }
 
@@ -142,9 +142,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeDelegatesCheckpoint(
-      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], List[PublicKeyHash])]
+      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])]
   ): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${delegatesKeyHashes.map(_._4).map(_.length).sum} delegate checkpoints to DB...""")
+    logger.info(s"""Writing ${delegatesKeyHashes.map(_._5).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
   }
 
@@ -240,7 +240,7 @@ object TezosDatabaseOperations extends LazyLogging {
         val key = AccountId(row.accountId)
         val time = row.asof.toInstant
         if (collected.contains(key)) collected
-        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time)))
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time), row.cycle))
       }
 
     logger.info("Getting the latest accounts from checkpoints in the DB...")
@@ -267,7 +267,8 @@ object TezosDatabaseOperations extends LazyLogging {
     ): Map[PublicKeyHash, BlockReference] =
       checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
         val key = PublicKeyHash(row.delegatePkh)
-        if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel, None))
+        if (collected.contains(key)) collected
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, None, None))
       }
 
     logger.info("Getting the latest delegates from checkpoints in the DB...")
@@ -356,7 +357,7 @@ object TezosDatabaseOperations extends LazyLogging {
     logger.info("Writing delegates to DB and copying contracts to delegates contracts table...")
     val delegatesUpdateAction = DBIO.sequence(
       delegates.flatMap {
-        case BlockTagged(blockHash, blockLevel, timestamp, delegateMap) =>
+        case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
           delegateMap.map {
             case (pkh, delegate) =>
               Tables.Delegates insertOrUpdate (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]

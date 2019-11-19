@@ -54,7 +54,7 @@ object TezosTypes {
   }
 
   /** convenience alias to simplify declarations of block hash+level tuples */
-  type BlockReference = (BlockHash, Int, Option[Instant])
+  type BlockReference = (BlockHash, Int, Option[Instant], Option[Int])
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -456,9 +456,10 @@ object TezosTypes {
       blockHash: BlockHash,
       blockLevel: Int,
       timestamp: Option[Instant],
+      cycle: Option[Int],
       content: T
   ) {
-    val asTuple = (blockHash, blockLevel, timestamp, content)
+    val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
   }
 
   final case class Delegate(
@@ -563,8 +564,13 @@ object TezosTypes {
     implicit class BlockTagger[T](val content: T) extends AnyVal {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
-      def taggedWithBlock(hash: BlockHash, level: Int, timestamp: Option[Instant] = None): BlockTagged[T] =
-        BlockTagged(hash, level, timestamp, content)
+      def taggedWithBlock(
+          hash: BlockHash,
+          level: Int,
+          timestamp: Option[Instant] = None,
+          cycle: Option[Int]
+      ): BlockTagged[T] =
+        BlockTagged(hash, level, timestamp, cycle, content)
     }
 
   }

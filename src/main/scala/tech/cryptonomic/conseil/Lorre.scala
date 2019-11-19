@@ -7,24 +7,17 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
+  DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
   TezosTypes,
-  TezosDatabaseOperations => TezosDb,
-  ApiOperations
+  TezosDatabaseOperations => TezosDb
 }
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  Account,
-  AccountId,
-  BlockReference,
-  BlockTagged,
-  Delegate,
-  Protocol4Delegate,
-  PublicKeyHash
-}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
@@ -203,7 +196,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             block -> accountIds.taggedWithBlock(
                   block.data.hash,
                   block.data.header.level,
-                  Some(block.data.header.timestamp.toInstant)
+                  Some(block.data.header.timestamp.toInstant),
+                  DatabaseConversions.extractCycle(block)
                 )
         }.unzip
 
@@ -310,10 +304,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val sorted = updates.flatMap {
-      case BlockTagged(hash, level, timestamp, ids) =>
-        ids.map(_ -> (hash, level, timestamp))
+      case BlockTagged(hash, level, timestamp, cycle, ids) =>
+        ids.map(_ -> (hash, level, timestamp, cycle))
     }.sortBy {
-      case (id, (hash, level, timestamp)) => level
+      case (id, (hash, level, timestamp, cycle)) => level
     }(Ordering[Int].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
@@ -350,10 +344,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     val sorted = updates.flatMap {
-      case BlockTagged(hash, level, timestamp, ids) =>
-        ids.map(_ -> (hash, level, timestamp))
+      case BlockTagged(hash, level, timestamp, cycle, ids) =>
+        ids.map(_ -> (hash, level, timestamp, cycle))
     }.sortBy {
-      case (id, (hash, level, timestamp)) => level
+      case (id, (hash, level, timestamp, cycle)) => level
     }(Ordering[Int].reverse)
 
     val toBeFetched = keepMostRecent(sorted)
@@ -423,12 +417,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
           }
         val taggedDelegatesKeys = taggedList.map {
-          case BlockTagged(blockHash, blockLevel, timestamp, accountsMap) =>
+          case BlockTagged(blockHash, blockLevel, timestamp, cycle, accountsMap) =>
             import TezosTypes.Syntax._
             val delegateKeys = accountsMap.values.toList
               .mapFilter(extractDelegateKey)
 
-            delegateKeys.taggedWithBlock(blockHash, blockLevel, timestamp)
+            delegateKeys.taggedWithBlock(blockHash, blockLevel, timestamp, cycle)
         }
         (taggedList, taggedDelegatesKeys)
       }

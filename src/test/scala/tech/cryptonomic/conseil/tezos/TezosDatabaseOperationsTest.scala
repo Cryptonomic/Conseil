@@ -396,7 +396,8 @@ class TezosDatabaseOperationsTest
         val time = Instant.ofEpochMilli(0)
         val ids =
           blocks.map(
-            block => (BlockHash(block.hash), block.level, Some(time), List.fill(idPerBlock)(AccountId(generateHash(5))))
+            block =>
+              (BlockHash(block.hash), block.level, Some(time), None, List.fill(idPerBlock)(AccountId(generateHash(5))))
           )
 
         //store and write
@@ -414,7 +415,9 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedIdsData = ids.flatMap { case (hash, level, time, accounts) => accounts.map((hash, level, _)) }
+        val flattenedIdsData = ids.flatMap {
+          case (hash, level, time, cycle, accounts) => accounts.map((hash, level, _))
+        }
 
         forAll(checkpointRows.zip(flattenedIdsData)) {
           case (row, (hash, level, accountId)) =>
@@ -672,6 +675,7 @@ class TezosDatabaseOperationsTest
               BlockHash(block.hash),
               block.level,
               Some(testReferenceTimestamp.toInstant),
+              None,
               List.fill(pkPerBlock)(PublicKeyHash(generateHash(5)))
             )
         )
@@ -691,7 +695,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedKeysData = keys.flatMap { case (hash, level, time, keys) => keys.map((hash, level, _)) }
+        val flattenedKeysData = keys.flatMap { case (hash, level, time, cycle, keys) => keys.map((hash, level, _)) }
 
         forAll(checkpointRows.zip(flattenedKeysData)) {
           case (row, (hash, level, keyHash)) =>
@@ -808,7 +812,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant))
+          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None)
 
         //expecting only the following to remain
         val expected =
@@ -858,7 +862,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None)
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None, None)
 
         //expecting only the following to remain
         val expected =

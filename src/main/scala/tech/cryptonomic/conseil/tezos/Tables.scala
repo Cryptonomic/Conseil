@@ -181,29 +181,38 @@ trait Tables {
     *  @param accountId Database column account_id SqlType(varchar)
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int4), Default(-1)
-    *  @param asof Database column asof SqlType(timestamptz) */
-  case class AccountsCheckpointRow(accountId: String, blockId: String, blockLevel: Int = -1, asof: java.sql.Timestamp)
+    *  @param asof Database column asof SqlType(timestamptz)
+    *  @param cycle Database column cycle SqlType(int4), Default(None) */
+  case class AccountsCheckpointRow(
+      accountId: String,
+      blockId: String,
+      blockLevel: Int = -1,
+      asof: java.sql.Timestamp,
+      cycle: Option[Int] = None
+  )
 
   /** GetResult implicit for fetching AccountsCheckpointRow objects using plain SQL queries */
   implicit def GetResultAccountsCheckpointRow(
       implicit e0: GR[String],
       e1: GR[Int],
-      e2: GR[java.sql.Timestamp]
+      e2: GR[java.sql.Timestamp],
+      e3: GR[Option[Int]]
   ): GR[AccountsCheckpointRow] = GR { prs =>
     import prs._
-    AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<[java.sql.Timestamp]))
+    AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int]))
   }
 
   /** Table description of table accounts_checkpoint. Objects of this class serve as prototypes for rows in queries. */
   class AccountsCheckpoint(_tableTag: Tag)
       extends profile.api.Table[AccountsCheckpointRow](_tableTag, Some("tezos"), "accounts_checkpoint") {
-    def * = (accountId, blockId, blockLevel, asof) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
+    def * =
+      (accountId, blockId, blockLevel, asof, cycle) <> (AccountsCheckpointRow.tupled, AccountsCheckpointRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel), Rep.Some(asof))).shaped.<>(
+      ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel), Rep.Some(asof), cycle)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get)))
+          import r._; _1.map(_ => AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get, _5)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -219,6 +228,9 @@ trait Tables {
 
     /** Database column asof SqlType(timestamptz) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
 
     /** Foreign key referencing Blocks (database name checkpoint_block_id_fkey) */
     lazy val blocksFk = foreignKey("checkpoint_block_id_fkey", blockId, Blocks)(
@@ -241,28 +253,22 @@ trait Tables {
     *  @param accountId Database column account_id SqlType(varchar)
     *  @param blockId Database column block_id SqlType(varchar)
     *  @param counter Database column counter SqlType(int4), Default(None)
-    *  @param script Database column script SqlType(varchar), Default(None)
     *  @param storage Database column storage SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
-    *  @param manager Database column manager SqlType(varchar), Default(None)
-    *  @param spendable Database column spendable SqlType(bool), Default(None)
-    *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param asof Database column asof SqlType(timestamptz) */
+    *  @param asof Database column asof SqlType(timestamp)
+    *  @param cycle Database column cycle SqlType(int4), Default(None) */
   case class AccountsHistoryRow(
       accountId: String,
       blockId: String,
       counter: Option[Int] = None,
-      script: Option[String] = None,
       storage: Option[String] = None,
       balance: scala.math.BigDecimal,
       blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"),
-      manager: Option[String] = None,
-      spendable: Option[Boolean] = None,
-      delegateSetable: Option[Boolean] = None,
       delegateValue: Option[String] = None,
-      asof: java.sql.Timestamp
+      asof: java.sql.Timestamp,
+      cycle: Option[Int] = None
   )
 
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
@@ -271,8 +277,7 @@ trait Tables {
       e1: GR[Option[Int]],
       e2: GR[Option[String]],
       e3: GR[scala.math.BigDecimal],
-      e4: GR[Option[Boolean]],
-      e5: GR[java.sql.Timestamp]
+      e4: GR[java.sql.Timestamp]
   ): GR[AccountsHistoryRow] = GR { prs =>
     import prs._
     AccountsHistoryRow.tupled(
@@ -281,14 +286,11 @@ trait Tables {
         <<[String],
         <<?[Int],
         <<?[String],
-        <<?[String],
         <<[scala.math.BigDecimal],
         <<[scala.math.BigDecimal],
         <<?[String],
-        <<?[Boolean],
-        <<?[Boolean],
-        <<?[String],
-        <<[java.sql.Timestamp]
+        <<[java.sql.Timestamp],
+        <<?[Int]
       )
     )
   }
@@ -297,20 +299,7 @@ trait Tables {
   class AccountsHistory(_tableTag: Tag)
       extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("tezos"), "accounts_history") {
     def * =
-      (
-        accountId,
-        blockId,
-        counter,
-        script,
-        storage,
-        balance,
-        blockLevel,
-        manager,
-        spendable,
-        delegateSetable,
-        delegateValue,
-        asof
-      ) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
+      (accountId, blockId, counter, storage, balance, blockLevel, delegateValue, asof, cycle) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -319,22 +308,16 @@ trait Tables {
           Rep.Some(accountId),
           Rep.Some(blockId),
           counter,
-          script,
           storage,
           Rep.Some(balance),
           Rep.Some(blockLevel),
-          manager,
-          spendable,
-          delegateSetable,
           delegateValue,
-          Rep.Some(asof)
+          Rep.Some(asof),
+          cycle
         )
       ).shaped.<>(
         { r =>
-          import r._;
-          _1.map(
-            _ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get))
-          )
+          import r._; _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -348,9 +331,6 @@ trait Tables {
     /** Database column counter SqlType(int4), Default(None) */
     val counter: Rep[Option[Int]] = column[Option[Int]]("counter", O.Default(None))
 
-    /** Database column script SqlType(varchar), Default(None) */
-    val script: Rep[Option[String]] = column[Option[String]]("script", O.Default(None))
-
     /** Database column storage SqlType(varchar), Default(None) */
     val storage: Rep[Option[String]] = column[Option[String]]("storage", O.Default(None))
 
@@ -361,20 +341,14 @@ trait Tables {
     val blockLevel: Rep[scala.math.BigDecimal] =
       column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
 
-    /** Database column manager SqlType(varchar), Default(None) */
-    val manager: Rep[Option[String]] = column[Option[String]]("manager", O.Default(None))
-
-    /** Database column spendable SqlType(bool), Default(None) */
-    val spendable: Rep[Option[Boolean]] = column[Option[Boolean]]("spendable", O.Default(None))
-
-    /** Database column delegate_setable SqlType(bool), Default(None) */
-    val delegateSetable: Rep[Option[Boolean]] = column[Option[Boolean]]("delegate_setable", O.Default(None))
-
     /** Database column delegate_value SqlType(varchar), Default(None) */
     val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
 
-    /** Database column asof SqlType(timestamptz) */
+    /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */
