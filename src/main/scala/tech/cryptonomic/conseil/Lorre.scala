@@ -187,10 +187,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           )
           apiOperations.fetchBlockAtLevel(past.max).flatMap {
             case Some(referenceBlockForRefresh) =>
-              val (hashRef, levelRef) = (BlockHash(referenceBlockForRefresh.hash), referenceBlockForRefresh.level)
+              val (hashRef, levelRef, timestamp) =
+                (BlockHash(referenceBlockForRefresh.hash), referenceBlockForRefresh.level, referenceBlockForRefresh.timestamp.toInstant())
               db.run(
                   //put all accounts in checkpoint, log the past epochs to the db, keep the rest for future cycles
-                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef) >>
+                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp) >>
                       TezosDb.writeCustomUpdatesEpochs(past.map(BigDecimal(_)).toList)
                 ) //keep the yet unreached levels and pass them on
                 .map(_ => toCome)

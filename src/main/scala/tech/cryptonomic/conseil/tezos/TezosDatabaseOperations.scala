@@ -222,9 +222,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * Takes all existing account ids and puts them in the
     * checkpoint to be later reloaded, based on the passed block reference
     */
-  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int)(
+  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant)(
       implicit ec: ExecutionContext
-  ): DBIO[Option[Int]] =
+  ): DBIO[Option[Int]] = {
+    logger.info("Relaoding all ids for existing accounts and checkpointing with block hash {}, level {} and time {}",
+      hash.value,
+      level,
+      timestamp
+    )
     Tables.Accounts
       .map(_.accountId)
       .distinct
@@ -233,10 +238,11 @@ object TezosDatabaseOperations extends LazyLogging {
         ids =>
           writeAccountsCheckpoint(
             List(
-              (hash, level, None, ids.map(AccountId(_)).toList)
+              (hash, level, Some(timestamp), ids.map(AccountId(_)).toList)
             )
           )
       )
+    }
 
   /**
     * @return the number of distinct accounts present in the checkpoint table
@@ -499,14 +505,8 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.ChainEpochs.map(_.epochLevel).result
 
   /** Adds a new level for which a custom epoch processing has been executed */
-  def writeCustomUpdatesEpochs(levels: List[BigDecimal])(implicit ec: ExecutionContext): DBIO[Int] =
-    DBIO
-      .sequence(
-        levels.map(
-          level => Tables.ChainEpochs insertOrUpdate Tables.ChainEpochsRow(level)
-        )
-      )
-      .map(_.sum)
+  def writeCustomUpdatesEpochs(levels: List[BigDecimal]): DBIO[Option[Int]] =
+    Tables.ChainEpochs ++= levels.map(Tables.ChainEpochsRow(_))
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"
