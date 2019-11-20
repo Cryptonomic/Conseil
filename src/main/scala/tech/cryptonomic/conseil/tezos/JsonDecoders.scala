@@ -204,13 +204,21 @@ object JsonDecoders {
     /* decodes the big-map-diffs, both for pre-babylon and later */
     object BigMapDiff {
       import Numbers._
-      import Contract.{CompatBigMapDiff, BigMapDiff, Protocol4BigMapDiff, BigMapDiffAlloc, BigMapDiffCopy, BigMapDiffRemove, BigMapDiffUpdate}
+      import Contract.{
+        BigMapDiff,
+        BigMapDiffAlloc,
+        BigMapDiffCopy,
+        BigMapDiffRemove,
+        BigMapDiffUpdate,
+        CompatBigMapDiff,
+        Protocol4BigMapDiff
+      }
       //use the action field to distinguish subtypes of the protocol-5+ ADT
       implicit private val conf = Derivation.tezosDerivationConfig.withDiscriminator("action")
       import CirceCommonDecoders._
 
       implicit private val protocol4Decoder: Decoder[Protocol4BigMapDiff] = deriveDecoder
-      implicit private val bigmapdiffDecoder: Decoder[BigMapDiff] = List[Decoder[BigMapDiff]] (
+      implicit private val bigmapdiffDecoder: Decoder[BigMapDiff] = List[Decoder[BigMapDiff]](
         deriveDecoder[BigMapDiffUpdate].widen,
         deriveDecoder[BigMapDiffCopy].widen,
         deriveDecoder[BigMapDiffAlloc].widen,
