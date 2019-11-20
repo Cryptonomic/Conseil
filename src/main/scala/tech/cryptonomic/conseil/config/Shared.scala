@@ -13,8 +13,8 @@ final case class ServerConfiguration(
     startupDeadline: FiniteDuration
 )
 
-final case class ChainEpochUpdates(
-    accountsRefreshEpochs: List[Int]
+final case class ChainEvents(
+    accountsRefreshLevels: List[Int]
 )
 
 final case class LorreConfiguration(
@@ -25,7 +25,7 @@ final case class LorreConfiguration(
     numberOfFeesAveraged: Int,
     depth: Depth,
     headHash: Option[BlockHash],
-    chainEpochUpdates: ChainEpochUpdates
+    chainEvents: ChainEvents
 )
 
 final case class BatchFetchConfiguration(

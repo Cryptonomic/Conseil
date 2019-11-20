@@ -41,8 +41,8 @@ $$;
 
 SET default_with_oids = false;
 
-CREATE TABLE tezos.chain_epochs (
-    epoch_level numeric PRIMARY KEY
+CREATE TABLE tezos.processed_chain_events (
+    event_level numeric PRIMARY KEY
 );
 
 --

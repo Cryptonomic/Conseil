@@ -225,7 +225,8 @@ object TezosDatabaseOperations extends LazyLogging {
   def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant)(
       implicit ec: ExecutionContext
   ): DBIO[Option[Int]] = {
-    logger.info("Relaoding all ids for existing accounts and checkpointing with block hash {}, level {} and time {}",
+    logger.info(
+      "Fetching all ids for existing accounts and checkpointing them with block hash {}, level {} and time {}",
       hash.value,
       level,
       timestamp
@@ -242,7 +243,7 @@ object TezosDatabaseOperations extends LazyLogging {
             )
           )
       )
-    }
+  }
 
   /**
     * @return the number of distinct accounts present in the checkpoint table
@@ -496,17 +497,21 @@ object TezosDatabaseOperations extends LazyLogging {
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
-  /** Returns all levels that have seen a custom epoch processing, e.g.
+  /** Returns all levels that have seen a custom event processing, e.g.
     * - auto-refresh of all accounts after the babylon protocol amendment
     *
     * @return a list of values marking specific levels that needs not be processed anymore
     */
-  def fetchCustomUpdatesEpochs(): DBIO[Seq[BigDecimal]] =
-    Tables.ChainEpochs.map(_.epochLevel).result
+  def fetchProcessedEventsLevels(): DBIO[Seq[BigDecimal]] =
+    Tables.ProcessedChainEvents.map(_.eventLevel).result
 
-  /** Adds a new level for which a custom epoch processing has been executed */
-  def writeCustomUpdatesEpochs(levels: List[BigDecimal]): DBIO[Option[Int]] =
-    Tables.ChainEpochs ++= levels.map(Tables.ChainEpochsRow(_))
+  /** Adds any new level for which a custom event processing has been executed
+    *
+    * @param levels the levels to write to db, currently there must be no collision with existing entries
+    * @return the number of entries saved to the checkpoint
+    */
+  def writeProcessedEventsLevels(levels: List[BigDecimal]): DBIO[Option[Int]] =
+    Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_))
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

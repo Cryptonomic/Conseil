@@ -10,7 +10,13 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, ChainEpochsRow, FeesRow}
+import tech.cryptonomic.conseil.tezos.Tables.{
+  AccountsHistoryRow,
+  AccountsRow,
+  BlocksRow,
+  FeesRow,
+  ProcessedChainEventsRow
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
@@ -3192,37 +3198,38 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "read the custom update epochs processed from the db" in {
+      "read the custom update events processed from the db" in {
         //given
-        val epochs = (1 to 3).map(ChainEpochsRow(_)).toList
+        val events = (1 to 3).map(ProcessedChainEventsRow(_)).toList
 
-        val populate = dbHandler.run(Tables.ChainEpochs ++= epochs)
+        val populate = dbHandler.run(Tables.ProcessedChainEvents ++= events)
         populate.isReadyWithin(5.seconds) shouldBe true
 
         //when
-        val results = dbHandler.run(sut.fetchCustomUpdatesEpochs()).futureValue
+        val results = dbHandler.run(sut.fetchProcessedEventsLevels()).futureValue
 
         results should contain theSameElementsAs (1 to 3)
       }
 
-      "write new custom update epochs to the processed table on db" in {
+      "write new custom update events to the processed table on db" in {
         //given
         val values = (1 to 3).map(BigDecimal(_)).toList
 
         //when
-        val populate = dbHandler.run(sut.writeCustomUpdatesEpochs(values))
+        val populate = dbHandler.run(sut.writeProcessedEventsLevels(values))
 
         //then
         populate.isReadyWithin(5.seconds) shouldBe true
 
         populate.futureValue.value shouldBe 3
 
-        val stored = dbHandler.run(Tables.ChainEpochs.map(identity).result).futureValue
+        val stored = dbHandler.run(Tables.ProcessedChainEvents.result).futureValue
 
-        stored should contain theSameElementsAs (1 to 3).map(ChainEpochsRow(_))
+        stored should contain theSameElementsAs (1 to 3).map(ProcessedChainEventsRow(_))
+
       }
 
-      "read all disting account ids and add entries for each in the checkpoint" in {
+      "read all distinct account ids and add entries for each in the checkpoint" in {
         //given
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -3233,20 +3240,21 @@ class TezosDatabaseOperationsTest
 
         val populate =
           (Tables.Blocks += block) >>
-          sut.writeAccounts(List(accountsInfo))
+              sut.writeAccounts(List(accountsInfo))
 
         val write = dbHandler.run(populate.transactionally)
 
         write.isReadyWithin(5.seconds) shouldBe true
 
         //when
-        val dbAction = sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant)
+        val dbAction =
+          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant)
 
         val results = dbHandler.run(dbAction).futureValue
         results.value shouldBe 3
 
         //then
-        val checkpoint =  dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
 
         checkpoint.keys should contain theSameElementsAs accountsInfo.content.keys
 
