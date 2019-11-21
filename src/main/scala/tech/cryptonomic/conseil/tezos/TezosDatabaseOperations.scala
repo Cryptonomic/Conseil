@@ -500,18 +500,20 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Returns all levels that have seen a custom event processing, e.g.
     * - auto-refresh of all accounts after the babylon protocol amendment
     *
+    * @param eventType the type of event levels to fetch
     * @return a list of values marking specific levels that needs not be processed anymore
     */
-  def fetchProcessedEventsLevels(): DBIO[Seq[BigDecimal]] =
-    Tables.ProcessedChainEvents.map(_.eventLevel).result
+  def fetchProcessedEventsLevels(eventType: String): DBIO[Seq[BigDecimal]] =
+    Tables.ProcessedChainEvents.filter(_.eventType === eventType).map(_.eventLevel).result
 
   /** Adds any new level for which a custom event processing has been executed
     *
+    * @param eventType the type of event to record
     * @param levels the levels to write to db, currently there must be no collision with existing entries
     * @return the number of entries saved to the checkpoint
     */
-  def writeProcessedEventsLevels(levels: List[BigDecimal]): DBIO[Option[Int]] =
-    Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_))
+  def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
+    Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

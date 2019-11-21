@@ -1535,33 +1535,38 @@ trait Tables {
   lazy val Operations = new TableQuery(tag => new Operations(tag))
 
   /** Entity class storing rows of table ProcessedChainEvents
-    *  @param eventLevel Database column event_level SqlType(numeric), PrimaryKey */
-  case class ProcessedChainEventsRow(eventLevel: scala.math.BigDecimal)
+    *  @param eventLevel Database column event_level SqlType(numeric)
+    *  @param eventType Database column event_type SqlType(varchar) */
+  case class ProcessedChainEventsRow(eventLevel: scala.math.BigDecimal, eventType: String)
 
   /** GetResult implicit for fetching ProcessedChainEventsRow objects using plain SQL queries */
-  implicit def GetResultProcessedChainEventsRow(implicit e0: GR[scala.math.BigDecimal]): GR[ProcessedChainEventsRow] =
-    GR { prs =>
-      import prs._
-      ProcessedChainEventsRow(<<[scala.math.BigDecimal])
-    }
+  implicit def GetResultProcessedChainEventsRow(
+      implicit e0: GR[scala.math.BigDecimal],
+      e1: GR[String]
+  ): GR[ProcessedChainEventsRow] = GR { prs =>
+    import prs._
+    ProcessedChainEventsRow.tupled((<<[scala.math.BigDecimal], <<[String]))
+  }
 
   /** Table description of table processed_chain_events. Objects of this class serve as prototypes for rows in queries. */
   class ProcessedChainEvents(_tableTag: Tag)
       extends profile.api.Table[ProcessedChainEventsRow](_tableTag, Some("tezos"), "processed_chain_events") {
-    def * = eventLevel <> (ProcessedChainEventsRow, ProcessedChainEventsRow.unapply)
+    def * = (eventLevel, eventType) <> (ProcessedChainEventsRow.tupled, ProcessedChainEventsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (Rep
-        .Some(eventLevel))
-        .shaped
-        .<>(
-          r => r.map(_ => ProcessedChainEventsRow(r.get)),
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-        )
+      ((Rep.Some(eventLevel), Rep.Some(eventType))).shaped.<>({ r =>
+        import r._; _1.map(_ => ProcessedChainEventsRow.tupled((_1.get, _2.get)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column event_level SqlType(numeric), PrimaryKey */
-    val eventLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("event_level", O.PrimaryKey)
+    /** Database column event_level SqlType(numeric) */
+    val eventLevel: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("event_level")
+
+    /** Database column event_type SqlType(varchar) */
+    val eventType: Rep[String] = column[String]("event_type")
+
+    /** Primary key of ProcessedChainEvents (database name processed_chain_events_pkey) */
+    val pk = primaryKey("processed_chain_events_pkey", (eventLevel, eventType))
   }
 
   /** Collection-like TableQuery object for table ProcessedChainEvents */

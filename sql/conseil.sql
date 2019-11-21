@@ -42,7 +42,9 @@ $$;
 SET default_with_oids = false;
 
 CREATE TABLE tezos.processed_chain_events (
-    event_level numeric PRIMARY KEY
+    event_level numeric,
+    event_type char varying,
+    PRIMARY KEY (event_level, event_type)
 );
 
 --

@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
-
 import scala.concurrent.duration.FiniteDuration
 
 final case class ServerConfiguration(
@@ -13,9 +12,20 @@ final case class ServerConfiguration(
     startupDeadline: FiniteDuration
 )
 
-final case class ChainEvents(
-    accountsRefreshLevels: List[Int]
-)
+sealed trait ChainEvent extends Product with Serializable
+
+object ChainEvent {
+
+  //used to store strings as typed enumerated values with no runtime overhead, and custom rendering
+  case class ChainEventType private (render: String) extends AnyVal with Product with Serializable
+
+  //these will be used as keys in the configuration and db, keep them consistent
+  val accountsRefresh = ChainEventType("accountsRefresh")
+
+  //these will be used as values
+  final case class AccountsRefresh(levels: List[Int]) extends ChainEvent
+
+}
 
 final case class LorreConfiguration(
     sleepInterval: FiniteDuration,
@@ -25,7 +35,7 @@ final case class LorreConfiguration(
     numberOfFeesAveraged: Int,
     depth: Depth,
     headHash: Option[BlockHash],
-    chainEvents: ChainEvents
+    chainEvents: List[ChainEvent]
 )
 
 final case class BatchFetchConfiguration(

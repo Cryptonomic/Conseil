@@ -3200,13 +3200,13 @@ class TezosDatabaseOperationsTest
 
       "read the custom update events processed from the db" in {
         //given
-        val events = (1 to 3).map(ProcessedChainEventsRow(_)).toList
+        val events = (1 to 3).map(ProcessedChainEventsRow(_, "event")).toList
 
         val populate = dbHandler.run(Tables.ProcessedChainEvents ++= events)
         populate.isReadyWithin(5.seconds) shouldBe true
 
         //when
-        val results = dbHandler.run(sut.fetchProcessedEventsLevels()).futureValue
+        val results = dbHandler.run(sut.fetchProcessedEventsLevels("event")).futureValue
 
         results should contain theSameElementsAs (1 to 3)
       }
@@ -3216,7 +3216,7 @@ class TezosDatabaseOperationsTest
         val values = (1 to 3).map(BigDecimal(_)).toList
 
         //when
-        val populate = dbHandler.run(sut.writeProcessedEventsLevels(values))
+        val populate = dbHandler.run(sut.writeProcessedEventsLevels("event", values))
 
         //then
         populate.isReadyWithin(5.seconds) shouldBe true
@@ -3225,7 +3225,7 @@ class TezosDatabaseOperationsTest
 
         val stored = dbHandler.run(Tables.ProcessedChainEvents.result).futureValue
 
-        stored should contain theSameElementsAs (1 to 3).map(ProcessedChainEventsRow(_))
+        stored should contain theSameElementsAs (1 to 3).map(ProcessedChainEventsRow(_, "event"))
 
       }
 

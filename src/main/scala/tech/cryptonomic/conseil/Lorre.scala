@@ -27,8 +27,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 }
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
-import tech.cryptonomic.conseil.config.Platforms
+import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -112,14 +111,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   // Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain)
   private def unprocessedLevelsForRefreshingAccounts() =
-    lorreConf.chainEvents.accountsRefreshLevels match {
-      case Nil => Future.successful(Nil)
-      case needRefresh =>
-        db.run(TezosDb.fetchProcessedEventsLevels()).map { levels =>
+    lorreConf.chainEvents.collectFirst {
+      case ChainEvent.AccountsRefresh(levelsNeedingRefresh) if levelsNeedingRefresh.nonEmpty =>
+        db.run(TezosDb.fetchProcessedEventsLevels(ChainEvent.accountsRefresh.render)).map { levels =>
           val processed = levels.map(_.intValue).toSet
-          needRefresh.filterNot(processed).sorted
+          levelsNeedingRefresh.filterNot(processed).sorted
         }
-    }
+    }.getOrElse(Future.successful(List.empty))
 
   /** The regular loop, once connection with the node is established */
   @tailrec
@@ -196,7 +194,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
               db.run(
                   //put all accounts in checkpoint, log the past levels to the db, keep the rest for future cycles
                   TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp) >>
-                      TezosDb.writeProcessedEventsLevels(past.map(BigDecimal(_)).toList)
+                      TezosDb.writeProcessedEventsLevels(
+                        ChainEvent.accountsRefresh.render,
+                        past.map(BigDecimal(_)).toList
+                      )
                 )
                 .andThen {
                   case Success(accountsCount) =>
