@@ -45,7 +45,8 @@ trait Tables {
     *  @param manager Database column manager SqlType(varchar), Default(None)
     *  @param spendable Database column spendable SqlType(bool), Default(None)
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
-    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None) */
+    *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
+    *  @param isBaker Database column is_baker SqlType(bool), Default(false) */
   case class AccountsRow(
       accountId: String,
       blockId: String,
@@ -57,7 +58,8 @@ trait Tables {
       manager: Option[String] = None,
       spendable: Option[Boolean] = None,
       delegateSetable: Option[Boolean] = None,
-      delegateValue: Option[String] = None
+      delegateValue: Option[String] = None,
+      isBaker: Boolean = false
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -66,7 +68,8 @@ trait Tables {
       e1: GR[Option[Int]],
       e2: GR[Option[String]],
       e3: GR[scala.math.BigDecimal],
-      e4: GR[Option[Boolean]]
+      e4: GR[Option[Boolean]],
+      e5: GR[Boolean]
   ): GR[AccountsRow] = GR { prs =>
     import prs._
     AccountsRow.tupled(
@@ -81,7 +84,8 @@ trait Tables {
         <<?[String],
         <<?[Boolean],
         <<?[Boolean],
-        <<?[String]
+        <<?[String],
+        <<[Boolean]
       )
     )
   }
@@ -100,7 +104,8 @@ trait Tables {
         manager,
         spendable,
         delegateSetable,
-        delegateValue
+        delegateValue,
+        isBaker
       ) <> (AccountsRow.tupled, AccountsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -117,11 +122,13 @@ trait Tables {
           manager,
           spendable,
           delegateSetable,
-          delegateValue
+          delegateValue,
+          Rep.Some(isBaker)
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11)))
+          import r._;
+          _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -159,6 +166,9 @@ trait Tables {
 
     /** Database column delegate_value SqlType(varchar), Default(None) */
     val delegateValue: Rep[Option[String]] = column[Option[String]]("delegate_value", O.Default(None))
+
+    /** Database column is_baker SqlType(bool), Default(false) */
+    val isBaker: Rep[Boolean] = column[Boolean]("is_baker", O.Default(false))
 
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(
@@ -251,6 +261,7 @@ trait Tables {
     *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param asof Database column asof SqlType(timestamp)
+    *  @param isBaker Database column is_baker SqlType(bool), Default(false)
     *  @param cycle Database column cycle SqlType(int4), Default(None) */
   case class AccountsHistoryRow(
       accountId: String,
@@ -261,6 +272,7 @@ trait Tables {
       blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"),
       delegateValue: Option[String] = None,
       asof: java.sql.Timestamp,
+      isBaker: Boolean = false,
       cycle: Option[Int] = None
   )
 
@@ -270,7 +282,8 @@ trait Tables {
       e1: GR[Option[Int]],
       e2: GR[Option[String]],
       e3: GR[scala.math.BigDecimal],
-      e4: GR[java.sql.Timestamp]
+      e4: GR[java.sql.Timestamp],
+      e5: GR[Boolean]
   ): GR[AccountsHistoryRow] = GR { prs =>
     import prs._
     AccountsHistoryRow.tupled(
@@ -283,6 +296,7 @@ trait Tables {
         <<[scala.math.BigDecimal],
         <<?[String],
         <<[java.sql.Timestamp],
+        <<[Boolean],
         <<?[Int]
       )
     )
@@ -292,7 +306,7 @@ trait Tables {
   class AccountsHistory(_tableTag: Tag)
       extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("tezos"), "accounts_history") {
     def * =
-      (accountId, blockId, counter, storage, balance, blockLevel, delegateValue, asof, cycle) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
+      (accountId, blockId, counter, storage, balance, blockLevel, delegateValue, asof, isBaker, cycle) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -306,11 +320,13 @@ trait Tables {
           Rep.Some(blockLevel),
           delegateValue,
           Rep.Some(asof),
+          Rep.Some(isBaker),
           cycle
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9)))
+          import r._;
+          _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -339,6 +355,9 @@ trait Tables {
 
     /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Database column is_baker SqlType(bool), Default(false) */
+    val isBaker: Rep[Boolean] = column[Boolean]("is_baker", O.Default(false))
 
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
