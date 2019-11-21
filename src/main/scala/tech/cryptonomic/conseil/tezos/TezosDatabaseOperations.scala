@@ -219,6 +219,33 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.AccountsCheckpoint.distinctOn(_.accountId).length.result
 
   /**
+    * Takes all existing account ids and puts them in the
+    * checkpoint to be later reloaded, based on the passed block reference
+    */
+  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant)(
+      implicit ec: ExecutionContext
+  ): DBIO[Option[Int]] = {
+    logger.info(
+      "Fetching all ids for existing accounts and checkpointing them with block hash {}, level {} and time {}",
+      hash.value,
+      level,
+      timestamp
+    )
+    Tables.Accounts
+      .map(_.accountId)
+      .distinct
+      .result
+      .flatMap(
+        ids =>
+          writeAccountsCheckpoint(
+            List(
+              (hash, level, Some(timestamp), ids.map(AccountId(_)).toList)
+            )
+          )
+      )
+  }
+
+  /**
     * @return the number of distinct accounts present in the checkpoint table
     */
   def getDelegatesCheckpointSize(): DBIO[Int] =
@@ -494,6 +521,24 @@ object TezosDatabaseOperations extends LazyLogging {
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
+
+  /** Returns all levels that have seen a custom event processing, e.g.
+    * - auto-refresh of all accounts after the babylon protocol amendment
+    *
+    * @param eventType the type of event levels to fetch
+    * @return a list of values marking specific levels that needs not be processed anymore
+    */
+  def fetchProcessedEventsLevels(eventType: String): DBIO[Seq[BigDecimal]] =
+    Tables.ProcessedChainEvents.filter(_.eventType === eventType).map(_.eventLevel).result
+
+  /** Adds any new level for which a custom event processing has been executed
+    *
+    * @param eventType the type of event to record
+    * @param levels the levels to write to db, currently there must be no collision with existing entries
+    * @return the number of entries saved to the checkpoint
+    */
+  def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
+    Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

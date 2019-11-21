@@ -41,6 +41,12 @@ $$;
 
 SET default_with_oids = false;
 
+CREATE TABLE tezos.processed_chain_events (
+    event_level numeric,
+    event_type char varying,
+    PRIMARY KEY (event_level, event_type)
+);
+
 --
 -- TOC entry 181 (class 1259 OID 99594)
 -- Name: accounts; Type: TABLE; Schema: tezos; Owner: -

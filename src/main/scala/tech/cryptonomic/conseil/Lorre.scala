@@ -27,14 +27,15 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 }
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
-import tech.cryptonomic.conseil.config.Platforms
+import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
+import scala.collection.SortedSet
+import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -108,17 +109,28 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         logger.info("Successfully made initial connection to Tezos")
     }
 
+  // Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain)
+  private def unprocessedLevelsForRefreshingAccounts() =
+    lorreConf.chainEvents.collectFirst {
+      case ChainEvent.AccountsRefresh(levelsNeedingRefresh) if levelsNeedingRefresh.nonEmpty =>
+        db.run(TezosDb.fetchProcessedEventsLevels(ChainEvent.accountsRefresh.render)).map { levels =>
+          val processed = levels.map(_.intValue).toSet
+          levelsNeedingRefresh.filterNot(processed).sorted
+        }
+    }.getOrElse(Future.successful(List.empty))
+
   /** The regular loop, once connection with the node is established */
   @tailrec
-  private[this] def mainLoop(iteration: Int): Unit = {
+  private[this] def mainLoop(iteration: Int, accountsRefreshLevels: SortedSet[Int]): Unit = {
     val noOp = Future.successful(())
     val processing = for {
+      nextRefreshes <- processAccountRefreshes(accountsRefreshLevels)
       _ <- processTezosBlocks()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
-    } yield ()
+    } yield Some(nextRefreshes)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
      * Can be used to investigate issues on consistently failing block or account processing.
@@ -130,16 +142,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           //swallow the error and proceed with the default behaviour
           case f @ (AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | DelegatesProcessingFailed(_, _)) =>
             logger.error("Failed processing but will keep on going next cycle", f)
-        } else
-        processing
+            None //we have no meaningful response to provide
+        } else processing
 
-    Await.result(attemptedProcessing, atMost = Duration.Inf)
+    //if something went wrong and wasn't recovered, this will actually blow the app
+    val updatedLevels = Await.result(attemptedProcessing, atMost = Duration.Inf)
 
     lorreConf.depth match {
       case Newest =>
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
-        mainLoop(iteration + 1)
+        mainLoop(iteration + 1, updatedLevels.getOrElse(accountsRefreshLevels))
       case _ =>
         logger.info("Synchronization is done")
     }
@@ -151,10 +164,64 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   try {
     checkTezosConnection()
-    mainLoop(0)
+    val accountRefreshesToRun = Await.result(unprocessedLevelsForRefreshingAccounts(), atMost = 5.seconds)
+    mainLoop(0, SortedSet(accountRefreshesToRun: _*))
   } finally {
     shutdown()
   }
+
+  /* Possibly updates all accounts if the current block level is past any of the given ones
+   * @param levels the relevant levels that calls for a refresh
+   */
+  private def processAccountRefreshes(levels: SortedSet[Int]): Future[SortedSet[Int]] =
+    if (levels.nonEmpty) {
+      for {
+        storedHead <- apiOperations.fetchMaxLevel
+        updated <- if (levels.exists(_ <= storedHead)) {
+          val (past, toCome) = levels.partition(_ <= storedHead)
+          logger.info(
+            "A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block levels: {}",
+            past.mkString(", ")
+          )
+          apiOperations.fetchBlockAtLevel(past.max).flatMap {
+            case Some(referenceBlockForRefresh) =>
+              val (hashRef, levelRef, timestamp) =
+                (
+                  BlockHash(referenceBlockForRefresh.hash),
+                  referenceBlockForRefresh.level,
+                  referenceBlockForRefresh.timestamp.toInstant()
+                )
+              db.run(
+                  //put all accounts in checkpoint, log the past levels to the db, keep the rest for future cycles
+                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp) >>
+                      TezosDb.writeProcessedEventsLevels(
+                        ChainEvent.accountsRefresh.render,
+                        past.map(BigDecimal(_)).toList
+                      )
+                )
+                .andThen {
+                  case Success(accountsCount) =>
+                    logger.info(
+                      "Checkpoint stored for{} account updates in view of the full refresh.",
+                      accountsCount.fold("")(" " + _)
+                    )
+                  case Failure(err) =>
+                    logger.error(
+                      "I failed to store the accounts refresh updates in the checkpoint",
+                      err
+                    )
+                }
+                .map(_ => toCome) //keep the yet unreached levels and pass them on
+            case None =>
+              logger.warn(
+                "I couldn't find in Conseil the block data at level {}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle.",
+                past.max
+              )
+              Future.successful(levels)
+          }
+        } else Future.successful(levels)
+      } yield updated
+    } else Future.successful(levels)
 
   /**
     * Fetches all blocks not in the database from the Tezos network and adds them to the database.

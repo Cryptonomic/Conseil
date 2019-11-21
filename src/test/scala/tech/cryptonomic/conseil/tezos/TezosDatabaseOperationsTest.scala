@@ -10,7 +10,13 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow}
+import tech.cryptonomic.conseil.tezos.Tables.{
+  AccountsHistoryRow,
+  AccountsRow,
+  BlocksRow,
+  FeesRow,
+  ProcessedChainEventsRow
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
@@ -3191,6 +3197,76 @@ class TezosDatabaseOperationsTest
         )
 
       }
+
+      "read the custom update events processed from the db" in {
+        //given
+        val events = (1 to 3).map(ProcessedChainEventsRow(_, "event")).toList
+
+        val populate = dbHandler.run(Tables.ProcessedChainEvents ++= events)
+        populate.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val results = dbHandler.run(sut.fetchProcessedEventsLevels("event")).futureValue
+
+        results should contain theSameElementsAs (1 to 3)
+      }
+
+      "write new custom update events to the processed table on db" in {
+        //given
+        val values = (1 to 3).map(BigDecimal(_)).toList
+
+        //when
+        val populate = dbHandler.run(sut.writeProcessedEventsLevels("event", values))
+
+        //then
+        populate.isReadyWithin(5.seconds) shouldBe true
+
+        populate.futureValue.value shouldBe 3
+
+        val stored = dbHandler.run(Tables.ProcessedChainEvents.result).futureValue
+
+        stored should contain theSameElementsAs (1 to 3).map(ProcessedChainEventsRow(_, "event"))
+
+      }
+
+      "read all distinct account ids and add entries for each in the checkpoint" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedCount = 3
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val accountsInfo = generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+
+        val populate =
+          (Tables.Blocks += block) >>
+              sut.writeAccounts(List(accountsInfo))
+
+        val write = dbHandler.run(populate.transactionally)
+
+        write.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val dbAction =
+          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant)
+
+        val results = dbHandler.run(dbAction).futureValue
+        results.value shouldBe 3
+
+        //then
+        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+
+        checkpoint.keys should contain theSameElementsAs accountsInfo.content.keys
+
+        import org.scalatest.Inspectors._
+        forAll(checkpoint.values) {
+          case (hash, level, instantOpt) =>
+            hash.value shouldEqual block.hash
+            level shouldEqual block.level
+            instantOpt.value shouldEqual block.timestamp.toInstant
+        }
+      }
+
     }
 
 }
