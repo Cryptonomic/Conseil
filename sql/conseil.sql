@@ -57,7 +57,8 @@ CREATE TABLE tezos.accounts (
     manager character varying, -- retro-compat from protocol 5+
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
-    delegate_value char varying -- retro-compat from protocol 5+
+    delegate_value char varying, -- retro-compat from protocol 5+
+    is_baker boolean NOT NULL DEFAULT false
 );
 
 
@@ -70,6 +71,7 @@ CREATE TABLE tezos.accounts_history (
     block_level numeric DEFAULT '-1'::integer NOT NULL,
     delegate_value char varying, -- retro-compat from protocol 5+
     asof timestamp without time zone NOT NULL,
+    is_baker boolean NOT NULL DEFAULT false
     cycle integer
 );
 
