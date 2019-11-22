@@ -132,7 +132,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("manager", "Manager", DataType.String, None, KeyType.UniqueKey, "accounts"),
             Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts")
+            Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
+            Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts")
           )
         )
       }
@@ -325,8 +326,8 @@ class TezosPlatformDiscoveryOperationsTest
           Account(balance = 12.34, counter = Some(1), delegate = None, script = None, manager = None, spendable = None)
 
         val accounts = List(
-          BlockTagged(basicBlocks.data.hash, 1, None, Map(AccountId("id-1") -> account.copy())),
-          BlockTagged(basicBlocks.data.hash, 1, None, Map(AccountId("id-2") -> account.copy()))
+          BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-1") -> account.copy())),
+          BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-2") -> account.copy()))
         )
 
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
