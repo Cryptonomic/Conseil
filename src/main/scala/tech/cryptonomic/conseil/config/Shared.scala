@@ -16,6 +16,8 @@ sealed trait ChainEvent extends Product with Serializable
 
 object ChainEvent {
 
+  type AccountIdPattern = String
+
   //used to store strings as typed enumerated values with no runtime overhead, and custom rendering
   case class ChainEventType private (render: String) extends AnyVal with Product with Serializable
 
@@ -23,7 +25,7 @@ object ChainEvent {
   val accountsRefresh = ChainEventType("accountsRefresh")
 
   //these will be used as values
-  final case class AccountsRefresh(levels: List[Int]) extends ChainEvent
+  final case class AccountsRefresh(levels: Map[String, List[Int]]) extends ChainEvent
 
 }
 
