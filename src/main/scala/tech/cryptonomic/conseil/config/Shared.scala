@@ -35,7 +35,7 @@ final case class LorreConfiguration(
     numberOfFeesAveraged: Int,
     depth: Depth,
     headHash: Option[BlockHash],
-    chainEvents: List[ChainEvent]
+    chainEvents: List[ChainEvent],
     rights: Rights
 )
 
