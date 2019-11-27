@@ -4,6 +4,7 @@ import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
@@ -223,19 +224,51 @@ object TezosDatabaseOperations extends LazyLogging {
     * Takes all existing account ids and puts them in the
     * checkpoint to be later reloaded, based on the passed block reference
     */
-  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant, cycle: Option[Int])(
+  def refillAccountsCheckpointFromExisting(
+      hash: BlockHash,
+      level: Int,
+      timestamp: Instant,
+      cycle: Option[Int],
+      selectors: Set[AccountIdPattern] = Set(".*")
+  )(
       implicit ec: ExecutionContext
   ): DBIO[Option[Int]] = {
+
+    /* as taken almost literally from this S.O. suggestion
+     * https://stackoverflow.com/questions/46218122/slick-is-there-a-way-to-create-a-where-clause-with-a-regex
+     * will add the postgres '~' operator to slick filters, to do regular expression matching
+     */
+    implicit class postgresPosixRegexMatch(value: Rep[String]) {
+      def ~(pattern: Rep[String]): Rep[Boolean] = {
+        val expr = SimpleExpression.binary[String, String, Boolean] { (v, pat, builder) =>
+          builder.expr(v)
+          builder.sqlBuilder += " ~ "
+          builder.expr(pat)
+        }
+        expr(value, pattern)
+      }
+    }
+
     logger.info(
-      "Fetching all ids for existing accounts and checkpointing them with block hash {}, level {} and time {}",
+      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {} and time {}",
+      selectors.mkString(", "),
       hash.value,
       level,
       timestamp
     )
-    Tables.Accounts
-      .map(_.accountId)
-      .distinct
-      .result
+
+    //for each pattern, create a query and then union them all
+    val regexQueries = selectors
+      .map(
+        sel =>
+          Tables.Accounts
+            .filter(_.accountId ~ sel)
+            .map(_.accountId)
+            .distinct
+      )
+      .reduce(_ union _)
+
+    regexQueries.distinct.result
       .flatMap(
         ids =>
           writeAccountsCheckpoint(

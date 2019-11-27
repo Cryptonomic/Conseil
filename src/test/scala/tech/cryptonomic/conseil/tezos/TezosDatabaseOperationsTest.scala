@@ -3271,6 +3271,58 @@ class TezosDatabaseOperationsTest
         }
       }
 
+      "read selected distinct account ids via regex and add entries for each in the checkpoint" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedCount = 3
+        val matchingId = AccountId("tz19alkdjf83aadkcl")
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val BlockTagged(hash, level, ts, accountsContent) =
+          generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+        val updatedContent = accountsContent.map {
+          case (AccountId(id), account) if id == "1" => (matchingId, account)
+          case any => any
+        }
+
+        val accountsInfo = BlockTagged(hash, level, ts, updatedContent)
+
+        val populate =
+          (Tables.Blocks += block) >>
+              sut.writeAccounts(List(accountsInfo))
+
+        val write = dbHandler.run(populate.transactionally)
+
+        write.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val dbAction =
+          sut.refillAccountsCheckpointFromExisting(
+            BlockHash(block.hash),
+            block.level,
+            block.timestamp.toInstant,
+            Set("tz1.+")
+          )
+
+        val results = dbHandler.run(dbAction).futureValue
+        results.value shouldBe 1
+
+        //then
+        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+
+        checkpoint.keys.size shouldBe 1
+        checkpoint.keySet should contain only matchingId
+
+        import org.scalatest.Inspectors._
+        forAll(checkpoint.values) {
+          case (hash, level, instantOpt) =>
+            hash.value shouldEqual block.hash
+            level shouldEqual block.level
+            instantOpt.value shouldEqual block.timestamp.toInstant
+        }
+      }
+
     }
 
 }
