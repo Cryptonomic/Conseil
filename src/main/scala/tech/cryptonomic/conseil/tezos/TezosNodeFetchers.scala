@@ -8,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
-import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
+import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights

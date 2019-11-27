@@ -37,7 +37,13 @@ object TezosNodeOperator {
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
 
-  final case class FetchRights(cycle:Option[Int], governancePeriod:Option[Int], blockHash:BlockHash)
+  /**
+    * Information for fetching baking/endorsing rights
+    * @param cycle            block cycle
+    * @param governancePeriod governance period
+    * @param blockHash        hash of a block
+    */
+  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: BlockHash)
 
   /**
     * Given a contiguous valus range, creates sub-ranges of max the given size

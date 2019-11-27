@@ -3252,7 +3252,7 @@ class TezosDatabaseOperationsTest
 
         //when
         val dbAction =
-          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant)
+          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant, block.metaCycle)
 
         val results = dbHandler.run(dbAction).futureValue
         results.value shouldBe 3
@@ -3264,10 +3264,11 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt) =>
+          case (hash, level, instantOpt, cycle) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant
+            cycle shouldEqual block.metaCycle
         }
       }
 
@@ -3279,14 +3280,14 @@ class TezosDatabaseOperationsTest
         val matchingId = AccountId("tz19alkdjf83aadkcl")
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
-        val BlockTagged(hash, level, ts, accountsContent) =
+        val BlockTagged(hash, level, ts, cycle, accountsContent) =
           generateAccounts(expectedCount, BlockHash(block.hash), block.level)
         val updatedContent = accountsContent.map {
           case (AccountId(id), account) if id == "1" => (matchingId, account)
           case any => any
         }
 
-        val accountsInfo = BlockTagged(hash, level, ts, updatedContent)
+        val accountsInfo = BlockTagged(hash, level, ts, block.metaCycle, updatedContent)
 
         val populate =
           (Tables.Blocks += block) >>
@@ -3302,6 +3303,7 @@ class TezosDatabaseOperationsTest
             BlockHash(block.hash),
             block.level,
             block.timestamp.toInstant,
+            block.metaCycle,
             Set("tz1.+")
           )
 
@@ -3316,10 +3318,11 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt) =>
+          case (hash, level, instantOpt, cycle) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant
+            cycle shouldEqual block.metaCycle
         }
       }
 

@@ -6,7 +6,17 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
+  DatabaseConversions,
+  FeeOperations,
+  ShutdownComplete,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
