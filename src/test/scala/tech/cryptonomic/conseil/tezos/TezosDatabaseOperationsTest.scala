@@ -3252,7 +3252,7 @@ class TezosDatabaseOperationsTest
 
         //when
         val dbAction =
-          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant)
+          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant, block.metaCycle)
 
         val results = dbHandler.run(dbAction).futureValue
         results.value shouldBe 3
@@ -3264,10 +3264,11 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt) =>
+          case (hash, level, instantOpt, cycle) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant
+            cycle shouldEqual block.metaCycle
         }
       }
 

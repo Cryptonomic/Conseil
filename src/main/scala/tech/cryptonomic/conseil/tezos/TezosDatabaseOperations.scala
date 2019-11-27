@@ -225,7 +225,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Takes all existing account ids and puts them in the
     * checkpoint to be later reloaded, based on the passed block reference
     */
-  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant)(
+  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant, cycle: Option[Int])(
       implicit ec: ExecutionContext
   ): DBIO[Option[Int]] = {
     logger.info(
@@ -242,7 +242,7 @@ object TezosDatabaseOperations extends LazyLogging {
         ids =>
           writeAccountsCheckpoint(
             List(
-              (hash, level, Some(timestamp), ids.map(AccountId(_)).toList)
+              (hash, level, Some(timestamp), cycle, ids.map(AccountId(_)).toList)
             )
           )
       )
