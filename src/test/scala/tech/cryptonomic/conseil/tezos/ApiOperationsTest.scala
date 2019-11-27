@@ -54,6 +54,29 @@ class ApiOperationsTest
         result.level shouldBe 5
       }
 
+      "fetchBlockAtLevel for missing entry" in {
+        //when
+        val result = sut.fetchBlockAtLevel(1).futureValue
+
+        //then
+        result shouldBe None
+      }
+
+      "fetchBlockAtLevel for a matching entry" in {
+        // given
+        implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val generatedBlocks = generateBlocks(3, testReferenceDateTime)
+
+        Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+
+        // when
+        val result = sut.fetchBlockAtLevel(1).futureValue.value
+
+        // then
+        result.level shouldBe 1
+      }
+
       "sanitizeForSql alphanumeric string" in {
         // given
         val input = "xyz123"
