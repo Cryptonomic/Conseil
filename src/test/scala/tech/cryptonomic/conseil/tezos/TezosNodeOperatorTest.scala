@@ -30,8 +30,7 @@ class TezosNodeOperatorTest
         .when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe~")
         .returns(blockResponse)
 
-      val apiOps: ApiOperations = new ApiOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
       //when
       val block: Future[TezosTypes.Block] =
@@ -82,8 +81,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: ApiOperations = new ApiOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
       //when
       val headBlock = nodeOp.getBareBlockHead().futureValue
@@ -145,8 +143,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: ApiOperations = new ApiOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
       //when
       val headBlock = nodeOp.getBareBlockHead().futureValue
@@ -208,8 +205,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: ApiOperations = new ApiOperations
-      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
+      val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config)
 
       //when
       val blockPages: Future[nodeOp.PaginatedBlocksResults] =

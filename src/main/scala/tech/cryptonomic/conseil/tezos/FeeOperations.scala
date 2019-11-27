@@ -4,14 +4,15 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIOAction
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import tech.cryptonomic.conseil.util.IOUtils.{lift, IOLogging}
+import scala.concurrent.ExecutionContext
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 
 /**
   * Helper classes and functions used for average fee calculations.
   */
-object FeeOperations extends LazyLogging {
+object FeeOperations {
 
   private val operationKinds = List(
     "seed_nonce_revelation",
@@ -41,6 +42,10 @@ object FeeOperations extends LazyLogging {
       cycle: Option[Int],
       level: Option[Int]
   )
+}
+
+class FeeOperations(db: Database)(implicit cs: ContextShift[IO]) extends LazyLogging with IOLogging {
+  import FeeOperations._
 
   /**
     * Calculates average fees for each operation kind and stores them into a fees table.
@@ -48,20 +53,24 @@ object FeeOperations extends LazyLogging {
     * @param ex the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
-  def processTezosAverageFees(numberOfFeesAveraged: Int, db: Database)(
+  def processTezosAverageFees(numberOfFeesAveraged: Int)(
       implicit ex: ExecutionContext
-  ): Future[Option[Int]] = {
-    logger.info("Processing latest Tezos fee data...")
+  ): IO[Option[Int]] = {
     val computeAndStore = for {
       fees <- DBIOAction.sequence(operationKinds.map(TezosDb.calculateAverageFees(_, numberOfFeesAveraged)))
       dbWrites <- TezosDb.writeFees(fees.collect { case Some(fee) => fee })
     } yield dbWrites
 
-    db.run(computeAndStore).andThen {
-      case Success(Some(written)) => logger.info("Wrote {} average fees to the database.", written)
-      case Success(None) => logger.info("Wrote average fees to the database.")
-      case Failure(e) => logger.error("Could not write average fees to the database because", e)
-    }
+    for {
+      _ <- liftLog(_.info("Processing latest Tezos fee data..."))
+      written <- lift(db.run(computeAndStore)).onError {
+        case e => liftLog(_.error("Could not write average fees to the database because", e))
+      }
+      _ <- written match {
+        case Some(rows) => liftLog(_.info("Wrote {} average fees to the database.", rows))
+        case None => liftLog(_.info("Wrote average fees to the database."))
+      }
+    } yield written
 
   }
 

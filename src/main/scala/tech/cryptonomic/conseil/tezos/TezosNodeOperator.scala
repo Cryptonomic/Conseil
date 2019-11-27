@@ -58,14 +58,12 @@ object TezosNodeOperator {
   * @param node               Tezos node connection object
   * @param network            Which Tezos network to go against
   * @param batchConf          configuration for batched download of node data
-  * @param apiOperations      access to higher level operations on conseil's stored data
   * @param fetchFutureContext thread context for async operations
   */
 class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
-    batchConf: BatchFetchConfiguration,
-    apiOperations: ApiOperations
+    batchConf: BatchFetchConfiguration
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
@@ -627,15 +625,19 @@ class TezosNodeOperator(
 
 /**
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations
+  * @param node               Tezos node connection object
+  * @param network            Which Tezos network to go against
+  * @param batchConf          configuration for batched download of node data
+  * @param fetchFutureContext thread context for async operations
+  * @param apiOperations      access to higher level operations on conseil's stored data
   */
 class TezosNodeSenderOperator(
     override val node: TezosRPCInterface,
     network: String,
     batchConf: BatchFetchConfiguration,
-    sodiumConf: SodiumConfiguration,
-    apiOperations: ApiOperations
+    sodiumConf: SodiumConfiguration
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf, apiOperations)
+    extends TezosNodeOperator(node, network, batchConf)
     with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
