@@ -17,6 +17,7 @@ import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
+import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
 object ApiOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
@@ -93,6 +94,15 @@ class ApiOperations extends DataOperations with MetadataOperations {
       }
     }
   }
+
+  /**
+    * Fetches a block by level from the db
+    *
+    * @param level the requested level for the block
+    * @return the block if that level is already stored
+    */
+  def fetchBlockAtLevel(level: Int): Future[Option[BlocksRow]] =
+    runQuery(Tables.Blocks.filter(_.level === level).result.headOption)
 
   /**
     * Fetch a given operation group

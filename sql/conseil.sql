@@ -41,6 +41,12 @@ $$;
 
 SET default_with_oids = false;
 
+CREATE TABLE tezos.processed_chain_events (
+    event_level numeric,
+    event_type char varying,
+    PRIMARY KEY (event_level, event_type)
+);
+
 --
 -- TOC entry 181 (class 1259 OID 99594)
 -- Name: accounts; Type: TABLE; Schema: tezos; Owner: -
@@ -57,7 +63,8 @@ CREATE TABLE tezos.accounts (
     manager character varying, -- retro-compat from protocol 5+
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
-    delegate_value char varying -- retro-compat from protocol 5+
+    delegate_value char varying, -- retro-compat from protocol 5+
+    is_baker boolean NOT NULL DEFAULT false
 );
 
 
@@ -65,15 +72,13 @@ CREATE TABLE tezos.accounts_history (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
     counter integer,
-    script character varying,
     storage character varying,
     balance numeric NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL,
-    manager character varying, -- retro-compat from protocol 5+
-    spendable boolean, -- retro-compat from protocol 5+
-    delegate_setable boolean, -- retro-compat from protocol 5+
     delegate_value char varying, -- retro-compat from protocol 5+
-    asof timestamp without time zone NOT NULL
+    asof timestamp without time zone NOT NULL,
+    is_baker boolean NOT NULL DEFAULT false,
+    cycle integer
 );
 
 --
@@ -85,7 +90,8 @@ CREATE TABLE tezos.accounts_checkpoint (
     account_id character varying NOT NULL,
     block_id character varying NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL,
-    asof timestamp with time zone NOT NULL
+    asof timestamp with time zone NOT NULL,
+    cycle integer
 );
 
 

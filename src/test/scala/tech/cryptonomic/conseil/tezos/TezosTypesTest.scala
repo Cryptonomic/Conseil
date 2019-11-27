@@ -56,8 +56,15 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        content.taggedWithBlock(hash, level, someTime) shouldEqual BlockTagged(hash, level, someTime, content)
+        content.taggedWithBlock(hash, level, someTime, None) shouldEqual BlockTagged(
+          hash,
+          level,
+          someTime,
+          None,
+          content
+        )
       }
+
       "extract the timestamp when built from block data directly" in {
         import TezosTypes.Syntax._
         val someTime = Some(Instant.ofEpochMilli(0))
@@ -83,7 +90,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
           metadata = GenesisMetadata //quick choice
         )
 
-        content.taggedWithBlock(blockData) shouldEqual BlockTagged(hash, level, someTime, content)
+        content.taggedWithBlock(blockData) shouldEqual BlockTagged(hash, level, someTime, None, content)
       }
     }
 
@@ -93,7 +100,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        BlockTagged(hash, level, someTime, content).asTuple shouldEqual (hash, level, someTime, content)
+        BlockTagged(hash, level, someTime, None, content).asTuple shouldEqual (hash, level, someTime, None, content)
       }
     }
 

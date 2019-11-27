@@ -309,14 +309,77 @@ trait OperationsJsonData {
     """{"prim":"code","args":[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]}"""
   )
 
-  val bigmapdiffJson =
+  val bigmapdiffAllocJson =
+    s"""{
+    |  "action": "alloc",
+    |  "big_map": "428",
+    |  "key_type": {
+    |      "prim": "int"
+    |  },
+    |  "value_type": {
+    |      "prim": "int"
+    |  }
+    |}""".stripMargin
+
+  val expectedBigmapdiffAlloc =
+    Contract.BigMapDiffAlloc(
+      action = "alloc",
+      big_map = Decimal(BigDecimal(428)),
+      key_type = Micheline("""{"prim":"int"}"""),
+      value_type = Micheline("""{"prim":"int"}""")
+    )
+
+  val bigmapdiffUpdateJson =
+    s"""{
+    |  "action": "update",
+    |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+    |  "key": $michelineJson,
+    |  "big_map": "428"
+    |}""".stripMargin
+
+  val expectedBigmapdiffUpdate =
+    Contract.BigMapDiffUpdate(
+      action = "update",
+      key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
+      key = expectedMicheline,
+      big_map = Decimal(BigDecimal(428)),
+      value = None
+    )
+
+  val bigmapdiffCopyJson =
+    s"""{
+    |  "action": "copy",
+    |  "source_big_map": "428",
+    |  "destination_big_map": "748"
+    |}""".stripMargin
+
+  val expectedBigmapdiffCopy =
+    Contract.BigMapDiffCopy(
+      action = "copy",
+      source_big_map = Decimal(BigDecimal(428)),
+      destination_big_map = Decimal(BigDecimal(748))
+    )
+
+  val bigmapdiffRemoveJson =
+    s"""{
+    |  "action": "remove",
+    |  "big_map": "428"
+    |}""".stripMargin
+
+  val expectedBigmapdiffRemove =
+    Contract.BigMapDiffRemove(
+      action = "remove",
+      big_map = Decimal(BigDecimal(428))
+    )
+
+  val p4BigmapdiffJson =
     s"""{
     |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
     |  "key": $michelineJson
     |}""".stripMargin
 
-  val expectedBigMapDiff =
-    Contract.BigMapDiff(
+  val expectedP4BigMapDiff =
+    Contract.Protocol4BigMapDiff(
       key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
       key = expectedMicheline,
       value = None

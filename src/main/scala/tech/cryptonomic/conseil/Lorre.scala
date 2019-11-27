@@ -12,7 +12,16 @@ import cats.syntax.all._
 import cats.effect.{ContextShift, ExitCode, IO, IOApp, Resource}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.config.{Custom, Depth, Everything, LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.config.{
+  ChainEvent,
+  Custom,
+  Depth,
+  Everything,
+  LorreAppConfig,
+  LorreConfiguration,
+  Newest,
+  Platforms
+}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
@@ -34,6 +43,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Protocol4Delegate,
   PublicKeyHash
 }
+import scala.collection.SortedSet
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -68,7 +78,13 @@ object Lorre extends IOApp with LazyLogging with LorreAppConfig with LorreOutput
     val delegatesProcessor =
       new DelegatesProcessor(conf.batching.blockPageSize)(node, db, system.dispatcher, contextShift)
     val accountsProcessor =
-      new AccountsProcessor(delegatesProcessor, conf.batching.blockPageSize)(node, db, system.dispatcher, contextShift)
+      new AccountsProcessor(delegatesProcessor, conf.batching.blockPageSize)(
+        node,
+        db,
+        api,
+        system.dispatcher,
+        contextShift
+      )
     import BlocksProcessor.BlocksProcessingFailed
     import AccountsProcessor.AccountsProcessingFailed
     import DelegatesProcessor.DelegatesProcessingFailed
@@ -80,7 +96,7 @@ object Lorre extends IOApp with LazyLogging with LorreAppConfig with LorreOutput
       forEachBlockPage,
       storeBlocks
     }
-    import accountsProcessor.{processAccountsAndGetDelegateKeys, storeAccountsCheckpoint}
+    import accountsProcessor.{processAccountRefreshes, processAccountsAndGetDelegateKeys, storeAccountsCheckpoint}
     import delegatesProcessor.processDelegates
     import conf.lorre.{
       bootupConnectionCheckTimeout,
@@ -103,52 +119,60 @@ object Lorre extends IOApp with LazyLogging with LorreAppConfig with LorreOutput
           ).whenA(conf.verbose.on)
 
     //the main program sequence, it's just a description that is yet to be run
-    val mainLoop = for {
-      head <- checkTezosConnection(node, bootupConnectionCheckTimeout, bootupRetryInterval)
-      conseilLevel <- fetchMaxLevelOnConseil(api)
-      _ <- liftLog(_.info("Processing Tezos Blocks..."))
-      start <- timer.clock.monotonic(NANOSECONDS)
-      toSync <- fetchBlockPagesToSync(node, configuredDepth, configuredHead)(head, conseilLevel)
-      (blockPages, total) = toSync
-      blocksWritten <- forEachBlockPage(blockPages, logProcessingProgress(total, start)) { blockPage =>
-        val blocks = blockPage.map { case (block, _) => block }
-        val touchedAccountIds = extractAccountRefs(blockPage)
+    def mainLoop(conseilLevel: Int) =
+      for {
+        head <- checkTezosConnection(node, bootupConnectionCheckTimeout, bootupRetryInterval)
+        _ <- liftLog(_.info("Processing Tezos Blocks..."))
+        start <- timer.clock.monotonic(NANOSECONDS)
+        toSync <- fetchBlockPagesToSync(node, configuredDepth, configuredHead)(head, conseilLevel)
+        (blockPages, total) = toSync
+        blocksWritten <- forEachBlockPage(blockPages, logProcessingProgress(total, start)) { blockPage =>
+          val blocks = blockPage.map { case (block, _) => block }
+          val touchedAccountIds = extractAccountRefs(blockPage)
 
-        for {
-          _ <- storeAccountsCheckpoint(touchedAccountIds)
-          storedBlocks <- storeBlocks(blockPage)
-          _ <- fetchAndStoreVotesForBlocks(blocks)
-          _ <- fetchAndStoreBakingAndEndorsingRights(blocks.map(_.data.hash))
-          _ <- liftLog(_.info("Processing latest Tezos data for updated accounts..."))
-          delegateKeys <- processAccountsAndGetDelegateKeys(discardOldestDuplicates(touchedAccountIds))
-          _ <- liftLog(_.info("Processing latest Tezos data for account delegates..."))
-          _ <- processDelegates(discardOldestDuplicates(delegateKeys))
-          //retry processing leftovers in the checkpoints
-          _ <- processCheckpoints(accountsProcessor, delegatesProcessor)
-        } yield storedBlocks
+          for {
+            _ <- storeAccountsCheckpoint(touchedAccountIds)
+            storedBlocks <- storeBlocks(blockPage)
+            _ <- fetchAndStoreVotesForBlocks(blocks)
+            _ <- fetchAndStoreBakingAndEndorsingRights(blocks.map(_.data.hash))
+            _ <- liftLog(_.info("Processing latest Tezos data for updated accounts..."))
+            delegateKeys <- processAccountsAndGetDelegateKeys(discardOldestDuplicates(touchedAccountIds))
+            _ <- liftLog(_.info("Processing latest Tezos data for account delegates..."))
+            _ <- processDelegates(discardOldestDuplicates(delegateKeys))
+            //retry processing leftovers in the checkpoints
+            _ <- processCheckpoints(accountsProcessor, delegatesProcessor)
+          } yield storedBlocks
 
-      }
+        }
 
-    } yield blocksWritten
+      } yield blocksWritten
 
     //the possibly repeated process
     val processing = configuredDepth match {
       case Newest =>
         //in this case we do the same thing over and over, after short breaks
-        val repeatStep = (iteration: Int) =>
+        val repeatStep = (iteration: Int, accountsRefreshLevels: SortedSet[Int]) =>
           for {
-            _ <- mainLoop
+            conseilLevel <- fetchMaxLevelOnConseil(api)
+            nextRefreshes <- processAccountRefreshes(conseilLevel, accountsRefreshLevels)
+            _ <- mainLoop(conseilLevel)
             _ <- lift(FeeOperations.processTezosAverageFees(numberOfFeesAveraged, db))(contextShift)
               .whenA(iteration % feeUpdateInterval == 0)
             _ <- liftLog(_.info("Taking a nap."))
             _ <- IO.sleep(conf.lorre.sleepInterval)
-          } yield (iteration + 1) % Int.MaxValue
+          } yield ((iteration + 1) % Int.MaxValue, nextRefreshes)
 
-        //builds a stream over the iterated step, and then runs it ignoring the result value
-        fs2.Stream.iterateEval(0)(repeatStep).compile.drain
+        unprocessedLevelsForRefreshingAccounts(db, conf.lorre).flatMap { refreshLevels =>
+          val accountRefreshesToRun = SortedSet(refreshLevels: _*)
+          //builds a stream over the iterated step, and then runs it ignoring the result value
+          fs2.Stream
+            .iterateEval((0, accountRefreshesToRun))(repeatStep.tupled)
+            .compile
+            .drain
+        }
       case _ =>
         //this will run once and be done
-        mainLoop <* liftLog(_.info("Synchronization is done."))
+        fetchMaxLevelOnConseil(api).flatMap(mainLoop) <* liftLog(_.info("Synchronization is done."))
     }
 
     //combine the pieces, adding custom error handling if required
@@ -211,6 +235,16 @@ object Lorre extends IOApp with LazyLogging with LorreAppConfig with LorreOutput
       _ <- processDelegates(delegatesCheckpoint).unlessA(delegatesCheckpoint.isEmpty)
     } yield ()
   }
+
+  // Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain)
+  private def unprocessedLevelsForRefreshingAccounts(db: Database, lorreConf: LorreConfiguration) =
+    lorreConf.chainEvents.collectFirst {
+      case ChainEvent.AccountsRefresh(levelsNeedingRefresh) if levelsNeedingRefresh.nonEmpty =>
+        lift(db.run(TezosDb.fetchProcessedEventsLevels(ChainEvent.accountsRefresh.render))).map { levels =>
+          val processed = levels.map(_.intValue).toSet
+          levelsNeedingRefresh.filterNot(processed).sorted
+        }
+    }.getOrElse(IO.pure(List.empty))
 
   /* Starts from a valid configuration, to build external resources access
    * e.g. Database, rpc node, actor system
@@ -372,10 +406,10 @@ private[conseil] trait ProcessingUtils {
       }
 
     val sorted = taggedLists.flatMap {
-      case BlockTagged(hash, level, timestamp, elements) =>
-        elements.map(_ -> (hash, level, timestamp))
+      case BlockTagged(hash, level, timestamp, cycle, elements) =>
+        elements.map(_ -> (hash, level, timestamp, cycle))
     }.sortBy {
-      case (element, (hash, level, timestamp)) => level
+      case (element, (hash, level, timestamp, cycle)) => level
     }(Ordering[Int].reverse)
 
     collectMostRecent(sorted)
@@ -447,6 +481,27 @@ private[conseil] trait ProcessingUtils {
     val failedToStoreAccounts: PartialFunction[Throwable, IO[Unit]] = {
       case t =>
         liftLog(_.error("Could not write accounts to the database", t))
+    }
+
+    val accountsRefreshStored = (count: Option[Int]) =>
+      liftLog(
+        _.info(
+          "Checkpoint stored for{} account updates in view of the full refresh.",
+          count.fold("")(" " + _)
+        )
+      )
+
+    val failedToRefreshAccounts: PartialFunction[Throwable, IO[Unit]] = {
+      case t =>
+        liftLog(_.error("I failed to store the accounts refresh updates in the checkpoint", t))
+    }
+
+    val accountEventsProcessed = (_: Option[Int]) =>
+      liftLog(_.info("Stored processed levels for chain events relative to accounts needing refresh"))
+
+    val failedAccountEventsProcessed: PartialFunction[Throwable, IO[Unit]] = {
+      case t =>
+        liftLog(_.warn("I failed to store processed levels for chain events relative to accounts needing refresh", t))
     }
 
     val delegatesCheckpointRead = (checkpoints: Map[PublicKeyHash, BlockReference]) =>
@@ -538,18 +593,30 @@ private[conseil] class BlocksProcessor(
    */
   def fetchAndStoreVotesForBlocks(blocks: List[Block]): IO[Option[Int]] = {
     import cats.instances.list._
-    import cats.instances.option._
-    import cats.instances.int._
     import slickeffect.implicits._
 
     lift(nodeOperator.getVotingDetails(blocks)).flatMap {
       case (_, bakersBlock, ballotsBlock) =>
         //this is a nested list, each block with many baker rolls
-        val writeBakers = bakersBlock.traverse {
-          case (block, bakersRolls) => TezosDb.writeVotingRolls(bakersRolls, block)
+        val writeBakers = TezosDb.writeVotingRolls(bakersBlock)
+
+        val updateAccountsHistory = bakersBlock.traverse {
+          case (block, bakersRolls) =>
+            TezosDb.updateAccountsHistoryWithBakers(bakersRolls, block)
         }
 
-        val combinedVoteWrites = writeBakers.map(_.combineAll.map(_ + ballotsBlock.size))
+        val updateAccounts = bakersBlock.traverse {
+          case (block, bakersRolls) =>
+            TezosDb.updateAccountsWithBakers(bakersRolls, block)
+        }
+
+        val combinedVoteWrites = for {
+          bakersWritten <- writeBakers
+          accountsHistoryUpdated <- updateAccountsHistory
+          accountsUpdated <- updateAccounts
+        } yield
+          bakersWritten
+            .map(_ + ballotsBlock.size + accountsHistoryUpdated.size + accountsUpdated.size)
 
         lift(db.run(combinedVoteWrites.transactionally))
     }.flatTap(ProcessLogging.votesStored)
@@ -608,6 +675,7 @@ private[this] object AccountsProcessor {
 private[conseil] class AccountsProcessor(delegateProcessor: DelegatesProcessor, batching: Int)(
     implicit nodeOperator: TezosNodeOperator,
     db: Database,
+    api: ApiOperations,
     ec: ExecutionContext,
     cs: ContextShift[IO]
 ) extends LazyLogging
@@ -663,6 +731,21 @@ private[conseil] class AccountsProcessor(delegateProcessor: DelegatesProcessor, 
       .flatTap(ProcessLogging.accountsCheckpointCleanup)
       .onError(ProcessLogging.failedCheckpointAccountsCleanup)
 
+  /* Fills the checkpoint with all existing account ids stored, based on the passed block reference */
+  def refreshAllAccountsInCheckpoint(ref: BlockReference): IO[Option[Int]] = {
+    val (hashRef, levelRef, Some(timestamp), cycle) = ref
+
+    lift(db.run(TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle)))
+      .flatTap(ProcessLogging.accountsRefreshStored)
+      .onError(ProcessLogging.failedToRefreshAccounts)
+  }
+
+  /* Records the fact that the passed-in levels are already processed w.r.t. refreshing accounts' data */
+  def storeProcessedAccountEvents(pastLevels: List[Int]): IO[Option[Int]] =
+    lift(db.run(TezosDb.writeProcessedEventsLevels(ChainEvent.accountsRefresh.render, pastLevels.map(BigDecimal(_)))))
+      .flatTap(ProcessLogging.accountEventsProcessed)
+      .onError(ProcessLogging.failedAccountEventsProcessed)
+
   /** Reads delegation keys within the accounts information
     * @param indices the account data indexed by id and block
     * @return the delegate pkhs, paired with the relevant block
@@ -677,12 +760,50 @@ private[conseil] class AccountsProcessor(delegateProcessor: DelegatesProcessor, 
       }
 
     indices.map {
-      case BlockTagged(blockHash, blockLevel, timestamp, accountsMap) =>
+      case BlockTagged(blockHash, blockLevel, timestamp, cycle, accountsMap) =>
         import TezosTypes.Syntax._
         val keys = accountsMap.values.toList.mapFilter(extractKey)
-        keys.taggedWithBlock(blockHash, blockLevel, timestamp)
+        keys.taggedWithBlock(blockHash, blockLevel, timestamp, cycle)
     }
   }
+
+  /* Possibly updates all accounts if the current block level is past any of the given ones
+   * @param storedLevel the currently stored head level in conseil
+   * @param eventLevels the relevant levels that calls for a refresh
+   * @return the event levels to process left after the process
+   */
+  def processAccountRefreshes(storedLevel: Int, eventLevels: SortedSet[Int]): IO[SortedSet[Int]] =
+    if (eventLevels.nonEmpty && eventLevels.exists(_ <= storedLevel)) {
+      val (past, toCome) = eventLevels.partition(_ <= storedLevel)
+      for {
+        _ <- liftLog(
+          _.info(
+            "A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block eventLevels: {}",
+            past.mkString(", ")
+          )
+        )
+        refreshBlock <- lift(api.fetchBlockAtLevel(past.max))
+        _ <- refreshBlock match {
+          case Some(referenceBlockForRefresh) =>
+            val blockRef =
+              (
+                BlockHash(referenceBlockForRefresh.hash),
+                referenceBlockForRefresh.level,
+                Some(referenceBlockForRefresh.timestamp.toInstant),
+                referenceBlockForRefresh.metaCycle
+              )
+            refreshAllAccountsInCheckpoint(blockRef) >>
+              storeProcessedAccountEvents(past.toList)
+          case None =>
+            liftLog(
+              _.warn(
+                "I couldn't find in Conseil the block data at level {}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle.",
+                past.max
+              )
+            )
+        }
+      } yield toCome
+    } else IO.pure(eventLevels)
 
   /* adapts the page processing to fetched accounts, returning the included delegate keys */
   private def forEachAccountPage(

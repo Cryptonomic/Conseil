@@ -54,7 +54,7 @@ object TezosTypes {
   }
 
   /** convenience alias to simplify declarations of block hash+level tuples */
-  type BlockReference = (BlockHash, Int, Option[Instant])
+  type BlockReference = (BlockHash, Int, Option[Instant], Option[Int])
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -151,11 +151,44 @@ object TezosTypes {
   final case class InvalidDecimal(jsonString: String) extends BigNumber
 
   object Contract {
-    final case class BigMapDiff(
+
+    /** retro-compat adapter from protocol 5+ */
+    type CompatBigMapDiff = Either[BigMapDiff, Protocol4BigMapDiff]
+
+    final case class Protocol4BigMapDiff(
         key_hash: ScriptId,
         key: Micheline,
         value: Option[Micheline]
     )
+
+    sealed trait BigMapDiff extends Product with Serializable
+
+    final case class BigMapDiffUpdate(
+        action: String,
+        key: Micheline,
+        key_hash: ScriptId,
+        big_map: BigNumber,
+        value: Option[Micheline]
+    ) extends BigMapDiff
+
+    final case class BigMapDiffCopy(
+        action: String,
+        source_big_map: BigNumber,
+        destination_big_map: BigNumber
+    ) extends BigMapDiff
+
+    final case class BigMapDiffAlloc(
+        action: String,
+        big_map: BigNumber,
+        key_type: Micheline,
+        value_type: Micheline
+    ) extends BigMapDiff
+
+    final case class BigMapDiffRemove(
+        action: String,
+        big_map: BigNumber
+    ) extends BigMapDiff
+
   }
 
   object Scripted {
@@ -330,7 +363,7 @@ object TezosTypes {
         status: String,
         allocated_destination_contract: Option[Boolean],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
-        big_map_diff: Option[List[Contract.BigMapDiff]],
+        big_map_diff: Option[List[Contract.CompatBigMapDiff]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
@@ -423,9 +456,10 @@ object TezosTypes {
       blockHash: BlockHash,
       blockLevel: Int,
       timestamp: Option[Instant],
+      cycle: Option[Int],
       content: T
   ) {
-    val asTuple = (blockHash, blockLevel, timestamp, content)
+    val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
   }
 
   final case class Delegate(
@@ -525,17 +559,33 @@ object TezosTypes {
   }
 
   object Syntax {
+    //Note, cycle 0 starts at the level 2 block
+    def extractCycle(block: BlockData): Option[Int] =
+      discardGenesis
+        .lift(block.metadata) //this returns an Option[BlockHeaderMetadata]
+        .map(_.level.cycle) //this is Option[Int]
 
     /** provides a factory to tag any content with a reference block */
     implicit class BlockTagger[T](val content: T) extends AnyVal {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
-      def taggedWithBlock(hash: BlockHash, level: Int, timestamp: Option[Instant] = None): BlockTagged[T] =
-        BlockTagged(hash, level, timestamp, content)
+      def taggedWithBlock(
+          hash: BlockHash,
+          level: Int,
+          timestamp: Option[Instant] = None,
+          cycle: Option[Int]
+      ): BlockTagged[T] =
+        BlockTagged(hash, level, timestamp, cycle, content)
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference and timestamp */
       def taggedWithBlock(block: BlockData): BlockTagged[T] =
-        taggedWithBlock(block.hash, block.header.level, Some(block.header.timestamp.toInstant))
+        taggedWithBlock(
+          block.hash,
+          block.header.level,
+          Some(block.header.timestamp.toInstant),
+          extractCycle(block)
+        )
+
     }
 
   }
