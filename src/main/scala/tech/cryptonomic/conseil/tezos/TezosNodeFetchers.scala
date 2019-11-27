@@ -151,6 +151,108 @@ trait BlocksDataFetchers {
 
   }
 
+  implicit val futureBakingRightsFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Rights._
+
+    /** the input type, e.g. ids of data */
+    override type In = Int
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = List[BakingRights]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (level: Int) => s"blocks/head/helpers/baking_rights?level=$level"
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
+      Kleisli(
+        levels => {
+          logger.info("BER Fetching future baking rights")
+          node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
+            case err =>
+              logger
+                .error(
+                  "BER I encountered problems while fetching future baking rights from {}, for levels {}. The error says {}",
+                  network,
+                  levels.mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out` */
+    override val decodeData: Kleisli[Future, String, List[BakingRights]] = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"BER I fetched future baking rights json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
+  implicit val futureEndorsingRightsFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Rights._
+
+    /** the input type, e.g. ids of data */
+    override type In = Int
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = List[EndorsingRights]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (level: Int) => s"blocks/head/helpers/endorsing_rights?level=$level"
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
+      Kleisli(
+        levels => {
+          logger.info("Fetching future endorsing rights")
+          node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
+            case err =>
+              logger
+                .error(
+                  "BER I encountered problems while fetching future endorsing rights from {}, for levels {}. The error says {}",
+                  network,
+                  levels.mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out` */
+    override val decodeData: Kleisli[Future, String, List[EndorsingRights]] = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"BER I fetched future endorsing rights json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
   implicit val bakingRightsFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Rights._
 

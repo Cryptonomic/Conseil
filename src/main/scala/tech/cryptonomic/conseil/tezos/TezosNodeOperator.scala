@@ -133,6 +133,28 @@ class TezosNodeOperator(
   }
 
   /**
+    * Fetches baking rights for given block level
+    * @param blockLevels  Block levels
+    * @return             Baking rights
+    */
+  def getBatchBakingRightsByLevels(blockLevels: List[Int]): Future[Map[Int, List[BakingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[Int, List[BakingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
+  }
+
+  /**
+    * Fetches endorsing rights for given block level
+    * @param blockLevels  Block levels
+    * @return             Endorsing rights
+    */
+  def getBatchEndorsingRightsByLevel(blockLevels: List[Int]): Future[Map[Int, List[EndorsingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[Int, List[EndorsingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
+  }
+
+  /**
     * Fetches endorsing rights for given block
     * @param blockHashes  Hash of given block
     * @return             Endorsing rights

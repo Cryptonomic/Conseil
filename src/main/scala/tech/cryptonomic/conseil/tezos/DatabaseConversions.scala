@@ -41,6 +41,12 @@ object DatabaseConversions {
       .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle) //this is Option[Int]
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractCyclePosition(block: Block): Option[Int] =
+    discardGenesis
+      .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
+      .map(_.level.cycle_position) //this is Option[Int]
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -609,7 +615,7 @@ object DatabaseConversions {
       val (blockHash, bakingRights) = from
       bakingRights
         .into[Tables.BakingRightsRow]
-        .withFieldConst(_.blockHash, blockHash.value)
+        .withFieldConst(_.blockHash, Some(blockHash.value))
         .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
         .transform
     }
@@ -623,7 +629,32 @@ object DatabaseConversions {
           .into[Tables.EndorsingRightsRow]
           .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
           .withFieldConst(_.slot, slot)
-          .withFieldConst(_.blockHash, blockHash.value)
+          .withFieldConst(_.blockHash, Some(blockHash.value))
+          .transform
+      }
+    }
+  }
+
+  implicit val bakingRightsToRows2 = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
+    override def convert(from: BakingRights): tezos.Tables.BakingRightsRow = {
+      val bakingRights = from
+      bakingRights
+        .into[Tables.BakingRightsRow]
+        .withFieldConst(_.blockHash, None)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .transform
+    }
+  }
+
+  implicit val endorsingRightsToRows2 = new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+    override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
+      val endorsingRights = from
+      endorsingRights.slots.map { slot =>
+        endorsingRights
+          .into[Tables.EndorsingRightsRow]
+          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+          .withFieldConst(_.slot, slot)
+          .withFieldConst(_.blockHash, None)
           .transform
       }
     }

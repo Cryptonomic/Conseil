@@ -15,7 +15,10 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
+import com.github.tminglei.slickpg.ExPostgresProfile
+import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import slick.jdbc.JdbcCapabilities
 
 /**
   * Functions for writing Tezos data to a database.
@@ -292,32 +295,61 @@ object TezosDatabaseOperations extends LazyLogging {
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
   }
 
+  /** Custom postgres profile for enabling `insertOrUpdateAll` */
+  trait CustomPostgresProfile extends ExPostgresProfile {
+    // Add back `capabilities.insertOrUpdate` to enable native `upsert` support; for postgres 9.5+
+    override protected def computeCapabilities: Set[Capability] =
+      super.computeCapabilities + JdbcCapabilities.insertOrUpdate
+  }
+
+  object CustomPostgresProfile extends CustomPostgresProfile
+
   /**
-    * Writes the baking rights to the database
+    * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
-  def writeBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
-    logger.info("Writing baking rights to the DB...")
+  def upsertBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+    logger.info("Upserting baking rights to the DB...")
     val conversionResult = for {
       (blockHash, bakingRightsList) <- bakingRightsMap
       bakingRights <- bakingRightsList
     } yield (blockHash, bakingRights).convertTo[Tables.BakingRightsRow]
 
-    Tables.BakingRights ++= conversionResult
+    Tables.BakingRights.insertOrUpdateAll(conversionResult)
   }
 
   /**
-    * Writes the endorsing rights to the database
+    * Upserts endorsing rights to the database
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
-  def writeEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
-    logger.info("Writing endorsing rights to the DB...")
+  def upsertEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+    logger.info("Upserting endorsing rights to the DB...")
     val transformationResult = for {
       (blockHash, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
     } yield (blockHash, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
-    Tables.EndorsingRights ++= transformationResult.flatten
+    Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
+  }
+
+  /**
+    * Writes baking rights to the database
+    * @param bakingRights mapping of hash to endorsingRights list
+    */
+  def insertBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
+    logger.info("BER Inserting baking rights to the DB...")
+    Tables.BakingRights ++= bakingRights.map(_.convertTo[Tables.BakingRightsRow])
+  }
+
+  /**
+    * Writes endorsing rights to the database
+    * @param endorsingRights mapping of hash to endorsingRights list
+    */
+  def insertEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
+    logger.info("BER Inserting endorsing rights to the DB...")
+    Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 
   /**

@@ -20,7 +20,8 @@ final case class LorreConfiguration(
     feeUpdateInterval: Int,
     numberOfFeesAveraged: Int,
     depth: Depth,
-    headHash: Option[BlockHash]
+    headHash: Option[BlockHash],
+    rights: Rights
 )
 
 final case class BatchFetchConfiguration(
@@ -47,6 +48,15 @@ final case class SodiumConfiguration(libraryPath: String) extends AnyVal with Pr
 
 /** holds configuration for the akka-http-caching used in metadata endpoint */
 final case class HttpCacheConfiguration(cacheConfig: com.typesafe.config.Config)
+
+/** configuration for fetching baking and endorsing rights */
+final case class Rights(
+    initDelay: FiniteDuration,
+    interval: FiniteDuration,
+    cyclesFetch: Int,
+    cycleSize: Int,
+    fetchSize: Int
+)
 
 /** used to pattern match on natural numbers */
 object Natural {
