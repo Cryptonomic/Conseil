@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,6 +36,8 @@ object TezosNodeOperator {
     * @param operationGroupID Operation group ID
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
+
+  final case class FetchRights(cycle:Option[Int], governancePeriod:Option[Int], blockHash:BlockHash)
 
   /**
     * Given a contiguous valus range, creates sub-ranges of max the given size
@@ -127,11 +130,11 @@ class TezosNodeOperator(
     * @return             Baking rights
     */
   def getBatchBakingRights(
-      blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
-  ): Future[Map[(Option[Int], Option[Int], BlockHash), List[BakingRights]]] = {
+      blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
+  ): Future[Map[FetchRights, List[BakingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
-    fetch[(Option[Int], Option[Int], BlockHash), List[BakingRights], Future, List, Throwable]
+    fetch[FetchRights, List[BakingRights], Future, List, Throwable]
       .run(blockHashesWithCycleAndGovernancePeriod)
       .map(_.toMap)
   }
@@ -142,11 +145,11 @@ class TezosNodeOperator(
     * @return             Endorsing rights
     */
   def getBatchEndorsingRights(
-      blockHashesWithCycleAndGovernancePeriod: List[(Option[Int], Option[Int], BlockHash)]
-  ): Future[Map[(Option[Int], Option[Int], BlockHash), List[EndorsingRights]]] = {
+      blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
+  ): Future[Map[FetchRights, List[EndorsingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
-    fetch[(Option[Int], Option[Int], BlockHash), List[EndorsingRights], Future, List, Throwable]
+    fetch[FetchRights, List[EndorsingRights], Future, List, Throwable]
       .run(blockHashesWithCycleAndGovernancePeriod)
       .map(_.toMap)
   }

@@ -5,12 +5,12 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
-
 import java.time.Instant
 
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
@@ -611,35 +611,35 @@ object DatabaseConversions {
   }
 
   implicit val bakingRightsToRows =
-    new Conversion[Id, ((Option[Int], Option[Int], BlockHash), BakingRights), Tables.BakingRightsRow] {
+    new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {
       override def convert(
-          from: ((Option[Int], Option[Int], BlockHash), BakingRights)
+          from: (FetchRights, BakingRights)
       ): tezos.Tables.BakingRightsRow = {
-        val ((cycle, governancePeriod, blockHash), bakingRights) = from
+        val (fetchRights, bakingRights) = from
         bakingRights
           .into[Tables.BakingRightsRow]
-          .withFieldConst(_.blockHash, blockHash.value)
+          .withFieldConst(_.blockHash, fetchRights.blockHash.value)
           .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
-          .withFieldConst(_.cycle, cycle)
-          .withFieldConst(_.governancePeriod, governancePeriod)
+          .withFieldConst(_.cycle, fetchRights.cycle)
+          .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
           .transform
       }
     }
 
   implicit val endorsingRightsToRows =
-    new Conversion[List, ((Option[Int], Option[Int], BlockHash), EndorsingRights), Tables.EndorsingRightsRow] {
+    new Conversion[List, (FetchRights, EndorsingRights), Tables.EndorsingRightsRow] {
       override def convert(
-          from: ((Option[Int], Option[Int], BlockHash), EndorsingRights)
+          from: (FetchRights, EndorsingRights)
       ): List[Tables.EndorsingRightsRow] = {
-        val ((cycle, governancePeriod, blockHash), endorsingRights) = from
+        val (fetchRights, endorsingRights) = from
         endorsingRights.slots.map { slot =>
           endorsingRights
             .into[Tables.EndorsingRightsRow]
             .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
             .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, blockHash.value)
-            .withFieldConst(_.cycle, cycle)
-            .withFieldConst(_.governancePeriod, governancePeriod)
+            .withFieldConst(_.blockHash, fetchRights.blockHash.value)
+            .withFieldConst(_.cycle, fetchRights.cycle)
+            .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
             .transform
         }
       }

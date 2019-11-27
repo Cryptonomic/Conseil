@@ -16,6 +16,7 @@ import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 /**
   * Functions for writing Tezos data to a database.
@@ -222,7 +223,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Takes all existing account ids and puts them in the
     * checkpoint to be later reloaded, based on the passed block reference
     */
-  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant)(
+  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant, cycle: Option[Int])(
       implicit ec: ExecutionContext
   ): DBIO[Option[Int]] = {
     logger.info(
@@ -239,7 +240,7 @@ object TezosDatabaseOperations extends LazyLogging {
         ids =>
           writeAccountsCheckpoint(
             List(
-              (hash, level, Some(timestamp), ids.map(AccountId(_)).toList)
+              (hash, level, Some(timestamp), cycle, ids.map(AccountId(_)).toList)
             )
           )
       )
@@ -325,7 +326,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
   def writeBakingRights(
-      bakingRightsMap: Map[(Option[Int], Option[Int], BlockHash), List[BakingRights]]
+      bakingRightsMap: Map[FetchRights, List[BakingRights]]
   ): DBIO[Option[Int]] = {
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
@@ -341,7 +342,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
   def writeEndorsingRights(
-      endorsingRightsMap: Map[(Option[Int], Option[Int], BlockHash), List[EndorsingRights]]
+      endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
   ): DBIO[Option[Int]] = {
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {

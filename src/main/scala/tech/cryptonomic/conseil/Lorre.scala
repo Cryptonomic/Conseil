@@ -6,21 +6,12 @@ import akka.stream.scaladsl.Source
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{
-  ApiOperations,
-  DatabaseConversions,
-  FeeOperations,
-  ShutdownComplete,
-  TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
-  TezosTypes,
-  TezosDatabaseOperations => TezosDb
-}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -178,15 +169,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           )
           apiOperations.fetchBlockAtLevel(past.max).flatMap {
             case Some(referenceBlockForRefresh) =>
-              val (hashRef, levelRef, timestamp) =
+              val (hashRef, levelRef, timestamp, cycle) =
                 (
                   BlockHash(referenceBlockForRefresh.hash),
                   referenceBlockForRefresh.level,
-                  referenceBlockForRefresh.timestamp.toInstant()
+                  referenceBlockForRefresh.timestamp.toInstant(),
+                  referenceBlockForRefresh.metaCycle
                 )
               db.run(
                   //put all accounts in checkpoint, log the past levels to the db, keep the rest for future cycles
-                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp) >>
+                  TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle) >>
                       TezosDb.writeProcessedEventsLevels(
                         ChainEvent.accountsRefresh.render,
                         past.map(BigDecimal(_)).toList
@@ -285,9 +277,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           val data = results._1.data
           val hash = data.hash
           data.metadata match {
-            case GenesisMetadata => (None, None, hash)
+            case GenesisMetadata => FetchRights(None, None, hash)
             case BlockHeaderMetadata(_, _, _, _, _, level) =>
-              (Some(level.cycle), Some(level.voting_period), hash)
+              FetchRights(Some(level.cycle), Some(level.voting_period), hash)
+
           }
         }
       }

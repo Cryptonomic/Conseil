@@ -99,26 +99,6 @@ CREATE TABLE tezos.accounts_checkpoint (
 
 
 --
--- Name: accounts_history; Type: TABLE; Schema: tezos; Owner: -
---
-
-CREATE TABLE tezos.accounts_history (
-    account_id character varying NOT NULL,
-    block_id character varying NOT NULL,
-    counter integer,
-    script character varying,
-    storage character varying,
-    balance numeric NOT NULL,
-    block_level numeric DEFAULT '-1'::integer NOT NULL,
-    manager character varying,
-    spendable boolean,
-    delegate_setable boolean,
-    delegate_value character varying,
-    asof timestamp without time zone NOT NULL
-);
-
-
---
 -- Name: baking_rights; Type: TABLE; Schema: tezos; Owner: -
 --
 
