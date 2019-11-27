@@ -641,7 +641,7 @@ object DatabaseConversions {
     }
   }
 
-  implicit val bakingRightsToRows2 = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
+  implicit val bakingRightsToRowsWithoutBlockHash = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
     override def convert(from: BakingRights): tezos.Tables.BakingRightsRow = {
       val bakingRights = from
       bakingRights
@@ -652,7 +652,7 @@ object DatabaseConversions {
     }
   }
 
-  implicit val endorsingRightsToRows2 = new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+  implicit val endorsingRightsToRowsWithoutBlockHash = new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
     override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
       val endorsingRights = from
       endorsingRights.slots.map { slot =>
