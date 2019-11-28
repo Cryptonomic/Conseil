@@ -13,7 +13,6 @@ import scala.concurrent.duration._
 trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
   import java.nio.file._
-  import scala.collection.JavaConverters._
   import slick.jdbc.PostgresProfile.api._
 
   val dbInstance = new PostgreSQLContainer()
@@ -38,15 +37,6 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
        |    }
        |  }
     """.stripMargin
-
-  /* turns off anti-corruption guarantees settings that will improve performance on testing
-   * override to change or add test-specific settings
-   */
-  protected val pgInitParams = List("--nosync", "--lc-collate=C")
-  /* turns off anti-corruption guarantees settings that will improve performance on testing
-   * override to change or add test-specific settings
-   */
-  protected val pgConfigs = List("-c", "full_page_writes=off")
 
   lazy val dbHandler: Database = Database.forConfig("testdb", config = ConfigFactory.parseString(confString))
 
