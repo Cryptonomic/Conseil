@@ -20,6 +20,8 @@ import slick.jdbc.PostgresProfile.api._
 trait LorreOperations {
   self: IOLogging =>
 
+  type Dependencies = (BlocksOperations, AccountsOperations, DelegatesOperations, FeeOperations, ContextShift[IO])
+
   /** "Unpacks" lists of block-referenced elements and removes any duplicate by
     * keeping those at the highest level
     */
@@ -69,7 +71,7 @@ trait LorreOperations {
       system: ActorSystem,
       node: TezosNodeOperator,
       api: ApiOperations
-  ): (BlocksOperations, AccountsOperations, DelegatesOperations, FeeOperations, ContextShift[IO]) = {
+  ): Dependencies = {
     //brings the execution context in scope
     import system.dispatcher
 

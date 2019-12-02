@@ -22,6 +22,8 @@ import slick.jdbc.PostgresProfile.api.Database
 
 object LorreAppConfig {
 
+  type ConfiguredResourses = (CombinedConfiguration, Database, ActorSystem, TezosNodeOperator, ApiOperations)
+
   final private[LorreAppConfig] val LORRE_FAILURE_IGNORE_VAR = "LORRE_FAILURE_IGNORE"
 
   final case class ProcessingFailuresPolicy(varName: String, ignore: Boolean)
@@ -151,7 +153,7 @@ trait LorreAppConfig {
     * @param contextShift an implict concurrent context needed to setup the needed dependencies to run the application
     */
   protected def useConfiguredResources[R](lorreArgs: List[String])(
-      program: (CombinedConfiguration, Database, ActorSystem, TezosNodeOperator, ApiOperations) => IO[R]
+      program: ConfiguredResourses => IO[R]
   )(implicit contextShift: ContextShift[IO]): IO[R] =
     loadApplicationConfiguration
       .flatMapF(conf => setupResources.run(conf).use { case (db, as, tno, api) => program(conf, db, as, tno, api) })
