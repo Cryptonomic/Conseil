@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.util
 
+import com.github.ghik.silencer.silent
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
@@ -87,6 +88,7 @@ object ConfigUtil {
     implicit val tezosConfigurationsReader: ConfigReader[List[TezosConfiguration]] =
       ConfigReader[ConfigObject].emap { obj =>
         //applies convention to uses CamelCase when reading config fields
+        @silent("local method hint in value")
         implicit def hint = ProductHint[TezosNodeConfiguration](ConfigFieldMapping(CamelCase, CamelCase))
 
         val availableNetworks = obj.keySet.asScala

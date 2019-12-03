@@ -2,6 +2,8 @@ package tech.cryptonomic.conseil.tezos
 
 import java.time.Instant
 
+import java.time.ZonedDateTime
+
 import monocle.Traversal
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
@@ -52,7 +54,7 @@ object TezosTypes {
   }
 
   /** convenience alias to simplify declarations of block hash+level tuples */
-  type BlockReference = (BlockHash, Int)
+  type BlockReference = (BlockHash, Int, Option[Instant], Option[Int])
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -149,11 +151,44 @@ object TezosTypes {
   final case class InvalidDecimal(jsonString: String) extends BigNumber
 
   object Contract {
-    final case class BigMapDiff(
+
+    /** retro-compat adapter from protocol 5+ */
+    type CompatBigMapDiff = Either[BigMapDiff, Protocol4BigMapDiff]
+
+    final case class Protocol4BigMapDiff(
         key_hash: ScriptId,
         key: Micheline,
         value: Option[Micheline]
     )
+
+    sealed trait BigMapDiff extends Product with Serializable
+
+    final case class BigMapDiffUpdate(
+        action: String,
+        key: Micheline,
+        key_hash: ScriptId,
+        big_map: BigNumber,
+        value: Option[Micheline]
+    ) extends BigMapDiff
+
+    final case class BigMapDiffCopy(
+        action: String,
+        source_big_map: BigNumber,
+        destination_big_map: BigNumber
+    ) extends BigMapDiff
+
+    final case class BigMapDiffAlloc(
+        action: String,
+        big_map: BigNumber,
+        key_type: Micheline,
+        value_type: Micheline
+    ) extends BigMapDiff
+
+    final case class BigMapDiffRemove(
+        action: String,
+        big_map: BigNumber
+    ) extends BigMapDiff
+
   }
 
   object Scripted {
@@ -222,7 +257,7 @@ object TezosTypes {
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
       public_key: PublicKey,
-      source: ContractId,
+      source: PublicKeyHash,
       metadata: ResultMetadata[OperationResult.Reveal]
   ) extends Operation
 
@@ -232,7 +267,7 @@ object TezosTypes {
       fee: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
-      source: ContractId,
+      source: PublicKeyHash,
       destination: ContractId,
       parameters: Option[Micheline],
       metadata: ResultMetadata[OperationResult.Transaction]
@@ -241,11 +276,11 @@ object TezosTypes {
   final case class Origination(
       counter: PositiveBigNumber,
       fee: PositiveBigNumber,
-      source: ContractId,
+      source: PublicKeyHash,
       balance: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
-      manager_pubkey: PublicKeyHash,
+      manager_pubkey: Option[PublicKeyHash],
       delegatable: Option[Boolean],
       delegate: Option[PublicKeyHash],
       spendable: Option[Boolean],
@@ -255,7 +290,7 @@ object TezosTypes {
 
   final case class Delegation(
       counter: PositiveBigNumber,
-      source: ContractId,
+      source: PublicKeyHash,
       fee: PositiveBigNumber,
       gas_limit: PositiveBigNumber,
       storage_limit: PositiveBigNumber,
@@ -270,11 +305,13 @@ object TezosTypes {
   final case class Ballot(
       ballot: Voting.Vote,
       proposal: Option[String],
-      source: Option[ContractId]
+      source: Option[ContractId],
+      period: Option[Int]
   ) extends Operation
 
   //metadata definitions, both shared or specific to operation kind
   final case class EndorsementMetadata(
+      slot: Option[Int],
       slots: List[Int],
       delegate: PublicKeyHash,
       balance_updates: List[OperationMetadata.BalanceUpdate]
@@ -296,7 +333,7 @@ object TezosTypes {
 
     case class Reveal(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
         public_key: PublicKey,
         result: OperationResult.Reveal
@@ -304,7 +341,7 @@ object TezosTypes {
 
     case class Transaction(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
         amount: PositiveBigNumber,
         destination: ContractId,
@@ -312,14 +349,15 @@ object TezosTypes {
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
+    /* some fields are only kept for backward-compatibility, as noted*/
     case class Origination(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
-        manager_pubkey: PublicKeyHash,
+        manager_pubkey: Option[PublicKeyHash], // retro-compat from protocol 5+
         balance: PositiveBigNumber,
-        spendable: Option[Boolean],
-        delegatable: Option[Boolean],
+        spendable: Option[Boolean], // retro-compat from protocol 5+
+        delegatable: Option[Boolean], // retro-compat from protocol 5+
         delegate: Option[PublicKeyHash],
         script: Option[Scripted.Contracts],
         result: OperationResult.Origination
@@ -327,7 +365,7 @@ object TezosTypes {
 
     case class Delegation(
         kind: String,
-        source: ContractId,
+        source: PublicKeyHash,
         nonce: Int,
         delegate: Option[PublicKeyHash],
         result: OperationResult.Delegation
@@ -357,7 +395,7 @@ object TezosTypes {
         status: String,
         allocated_destination_contract: Option[Boolean],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
-        big_map_diff: Option[List[Contract.BigMapDiff]],
+        big_map_diff: Option[List[Contract.CompatBigMapDiff]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
         paid_storage_size_diff: Option[BigNumber],
@@ -426,18 +464,21 @@ object TezosTypes {
       storageSizeDiff: Option[Int]
   )
 
-  final case class AccountDelegate(
+  /** retro-compat adapter from protocol 5+ */
+  type AccountDelegate = Either[Protocol4Delegate, PublicKeyHash]
+
+  final case class Protocol4Delegate(
       setable: Boolean,
       value: Option[PublicKeyHash]
   )
 
   final case class Account(
-      manager: PublicKeyHash,
       balance: scala.math.BigDecimal,
-      spendable: Boolean,
-      delegate: AccountDelegate,
+      delegate: Option[AccountDelegate],
       script: Option[Scripted.Contracts],
-      counter: Int
+      counter: Option[Int],
+      manager: Option[PublicKeyHash], // retro-compat from protocol 5+
+      spendable: Option[Boolean] // retro-compat from protocol 5+
   )
 
   /** Keeps track of association between some domain type and a block reference
@@ -446,9 +487,11 @@ object TezosTypes {
   final case class BlockTagged[T](
       blockHash: BlockHash,
       blockLevel: Int,
+      timestamp: Option[Instant],
+      cycle: Option[Int],
       content: T
   ) {
-    val asTuple = (blockHash, blockLevel, content)
+    val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
   }
 
   final case class Delegate(
@@ -553,7 +596,13 @@ object TezosTypes {
     implicit class BlockTagger[T](val content: T) extends AnyVal {
 
       /** creates a BlockTagged[T] instance based on any `T` value, adding the block reference */
-      def taggedWithBlock(hash: BlockHash, level: Int): BlockTagged[T] = BlockTagged(hash, level, content)
+      def taggedWithBlock(
+          hash: BlockHash,
+          level: Int,
+          timestamp: Option[Instant] = None,
+          cycle: Option[Int]
+      ): BlockTagged[T] =
+        BlockTagged(hash, level, timestamp, cycle, content)
     }
 
   }
@@ -563,14 +612,15 @@ object TezosTypes {
       level: Int,
       delegate: String,
       priority: Int,
-      estimated_time: java.sql.Timestamp
+      estimated_time: ZonedDateTime
   )
 
-  /** Endorsing rights model*/
+  /** Endorsing rights model */
   final case class EndorsingRights(
       level: Int,
       delegate: String,
       slots: List[Int],
-      estimated_time: java.sql.Timestamp
+      estimated_time: ZonedDateTime
   )
+
 }

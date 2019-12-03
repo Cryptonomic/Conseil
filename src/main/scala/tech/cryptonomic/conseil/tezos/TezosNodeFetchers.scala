@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import cats._
 import cats.data.Kleisli
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
@@ -148,6 +149,108 @@ trait BlocksDataFetchers {
           )
     )
 
+  }
+
+  implicit val bakingRightsFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Rights._
+
+    /** the input type, e.g. ids of data */
+    override type In = BlockHash
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = List[BakingRights]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/baking_rights"
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+      Kleisli(
+        hashes => {
+          logger.info("Fetching baking rights")
+          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+            case err =>
+              logger
+                .error(
+                  "I encountered problems while fetching baking rights from {}, for blocks {}. The error says {}",
+                  network,
+                  hashes.map(_.value).mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out` */
+    override val decodeData: Kleisli[Future, String, List[BakingRights]] = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched baking rights json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
+  implicit val endorsingRightsFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Rights._
+
+    /** the input type, e.g. ids of data */
+    override type In = BlockHash
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = List[EndorsingRights]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/endorsing_rights"
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+      Kleisli(
+        hashes => {
+          logger.info("Fetching endorsing rights")
+          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+            case err =>
+              logger
+                .error(
+                  "I encountered problems while fetching endorsing rights from {}, for blocks {}. The error says {}",
+                  network,
+                  hashes.map(_.value).mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out` */
+    override val decodeData: Kleisli[Future, String, List[EndorsingRights]] = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched endorsing rights json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
   }
 
   // the account decoder has no effect, so we need to "lift" it to a `Future` effect to make it compatible with the original fetcher

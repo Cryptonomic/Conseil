@@ -61,6 +61,8 @@ Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to det
 
 `conseil` and `lorre` use [HOCON](https://github.com/lightbend/config/blob/master/HOCON.md) format to store configuration. Read more at [Lightbend Config](https://github.com/lightbend/config) github page.
 
+For additional extra fine-grained configuration you can refer to [this appendix](extra-custom-config.md)
+
 ### Metadata overrides
 
 Metadata enables dynamic querying of data sources provided by Conseil and allows for chain-agnostic UIs, like Arronax, to be built while still providing a high level of specialization. Some of the metadata override keys are helpful for query construction, but a large number of them exist for rendering.
@@ -354,6 +356,7 @@ It is possible to narrow down the fields returned in the result set by listing j
 - `set` – an array of values to compare against. 'in' requires two or more elements, 'between' must have exactly two, the rest of the operations require a single element. Dates are expressed as epoch milliseconds.
 - `inverse` – boolean, setting it to `true` applied a `NOT` to the operator
 - `precision` – for numeric field matches this specifies the number of decimal places to round to.
+- `group` - an optional naming to collect predicates in groups that will be eventually OR-ed amongst each other
 
 #### `limit`
 
@@ -613,6 +616,122 @@ Send this query to `/v2/data/tezos/<network>/accounts`
 }
 ```
 
+#### Blocks by end-user-transactions outside April 2019
+
+Send this query to `/v2/data/tezos/<network>/operations`
+
+```json
+{
+    "fields": ["block_level", "operation_group_hash"],
+    "predicates": [
+        { "field": "timestamp", "set": [1554076800000], "operation": "before", "inverse": false, "group": "before" },
+        { "field": "kind", "set": ["transaction"], "operation": "in", "inverse": false, "group": "before" },
+        { "field": "timestamp", "set": [1556668799000], "operation": "after", "inverse": false, "group": "after" },
+        { "field": "kind", "set": ["transaction"], "operation": "in", "inverse": false, "group": "after" }
+    ],
+    "orderBy": [{ "field": "count_operation_group_hash", "direction": "desc" }],
+    "aggregation": [{ "field": "operation_group_hash", "function": "count" }],
+    "limit": 100,
+    "output": "csv"
+}
+```
+
+A note on predicate conjunction/disjunction
+
+- By default all predicates with no specified group-name belong to the same un-named group
+- predicates within the same group are joined via the "AND" operator
+- predicates between separate groups are joing via the "OR" operator
+
+
+### Query on the temporal table
+
+Send this query to `/v2/data/tezos/<network>/accounts_history`
+
+Example temporal table queries:
+
+Get the balance of an account at a specific timestamp.
+
+```json
+{
+  "predicates": [
+    {
+      "field": "account_id",
+      "operation": "eq",
+      "set": ["KT18x4B5BkyGMR5DCr7esP8pC5biQc1M6CGr"]
+    }
+  ],
+  "snapshot": {
+    "field": "asof",
+    "value": 11530382887000
+  },
+  "aggregation": [],
+  "fields": [
+    "account_id", "balance", "block_level", "asof"
+  ],
+  "orderBy": [
+  ],
+  "output": "json",
+  "limit": 100
+}
+```
+
+Get the balance of an account at a specific block level
+
+```json
+{
+  "predicates": [
+    {
+      "field": "account_id",
+      "operation": "eq",
+      "set": ["KT18x4B5BkyGMR5DCr7esP8pC5biQc1M6CGr"]
+    }
+  ],
+  "snapshot": {
+    "field": "block_level",
+    "value": 2700
+  },
+  "aggregation": [],
+  "fields": [
+    "account_id", "balance", "block_level", "asof"
+  ],
+  "orderBy": [
+  ],
+  "output": "json",
+  "limit": 100
+}
+```
+
+Get all records for an account over a range of blocks
+```json
+{
+  "predicates": [
+    {
+      "field": "account_id",
+      "operation": "eq",
+      "set": ["KT18x4B5BkyGMR5DCr7esP8pC5biQc1M6CGr"]
+    },
+    {
+      "field": "block_level",
+      "operation": "between",
+      "set": [1500, 3000]
+    }
+  ],
+  "aggregation": [],
+  "fields": [
+    "account_id", "balance", "block_level", "asof"
+  ],
+  "orderBy": [
+  ],
+  "output": "json",
+  "limit": 100
+}
+```
+
+Note on temporal tables:
+
+- Temporal tables contains `asof` column which has information about the timestamp
+- besides that they contain the same columns as regular tables and can be queried as them
+
 ### Preprocessed Data
 
 Not all entities are necessarily items from the chain. One such example is `/v2/data/tezos/<network>/fees`. Conseil continuously buckets and averages network fees to give users an idea of what values they should submit when sending operations. Fees are aggregated by operation type.
@@ -625,3 +744,6 @@ Not all entities are necessarily items from the chain. One such example is `/v2/
     "limit": 1
 }
 ```
+
+## Publishing the artifacts
+If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)

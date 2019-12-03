@@ -4,7 +4,7 @@ import io.circe.parser.decode
 import cats.syntax.functor._
 import io.circe._
 import io.circe.generic.auto._
-import tech.cryptonomic.conseil.util.JsonUtil.JsonString
+import tech.cryptonomic.conseil.util.JsonUtil.{CirceCommonDecoders, JsonString}
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.EmbeddedElement.toMichelsonElement
 
@@ -189,7 +189,7 @@ object JsonParser {
       ).reduceLeft(_ or _)
 
     implicit def decodeEither[A, B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A, B]] =
-      leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
+      CirceCommonDecoders.decodeUntaggedEither
   }
 
   trait Parser[T <: MichelsonElement] {

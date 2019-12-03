@@ -6,9 +6,12 @@ import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
 
+import java.time.Instant
+
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
 
@@ -64,30 +67,48 @@ object DatabaseConversions {
 
   implicit val blockAccountsToAccountRows =
     new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsRow] {
+      val toDelegateSetable: Option[AccountDelegate] => Option[Boolean] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(setable, _))) => setable
+        }
+
+      val toDelegateValue: Option[AccountDelegate] => Option[String] = delegate =>
+        PartialFunction.condOpt(delegate) {
+          case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh.value
+          case Some(Right(pkh)) => pkh.value
+        }
+
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, accounts) = from
+        val BlockTagged(hash, level, timestamp, cycle, accounts) = from
         accounts.map {
-          case (id, Account(manager, balance, spendable, delegate, script, counter)) =>
+          case (id, Account(balance, delegate, script, counter, manager, spendable)) =>
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
-              manager = manager.value,
-              spendable = spendable,
-              delegateSetable = delegate.setable,
-              delegateValue = delegate.value.map(_.value),
               counter = counter,
               script = script.map(_.code.expression),
               storage = script.map(_.storage.expression),
               balance = balance,
-              blockLevel = level
+              blockLevel = level,
+              manager = manager.map(_.value),
+              spendable = spendable,
+              delegateSetable = toDelegateSetable(delegate),
+              delegateValue = toDelegateValue(delegate)
             )
         }.toList
       }
     }
 
-  implicit val accountRowsToContractRows = new Conversion[Id, Tables.AccountsRow, Tables.DelegatedContractsRow] {
-    override def convert(from: Tables.AccountsRow) = from.into[Tables.DelegatedContractsRow].transform
-  }
+  implicit val blockAccountsToAccountHistoryRows =
+    new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsHistoryRow] {
+      override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] =
+        blockAccountsToAccountRows.convert(from).map {
+          _.into[Tables.AccountsHistoryRow]
+            .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
+            .withFieldConst(_.cycle, from.cycle)
+            .transform
+        }
+    }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
@@ -212,7 +233,7 @@ object DatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "reveal",
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
@@ -238,7 +259,7 @@ object DatabaseConversions {
         operationId = 0,
         operationGroupHash = groupHash.value,
         kind = "transaction",
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
@@ -282,12 +303,12 @@ object DatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = "origination",
         delegate = delegate.map(_.value),
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
         storageLimit = extractBigDecimal(storage_limit),
-        managerPubkey = Some(mpk.value),
+        managerPubkey = mpk.map(_.value),
         balance = extractBigDecimal(balance),
         spendable = spendable,
         delegatable = delegatable,
@@ -313,7 +334,7 @@ object DatabaseConversions {
         operationGroupHash = groupHash.value,
         kind = "delegation",
         delegate = delegate.map(_.value),
-        source = Some(source.id),
+        source = Some(source.value),
         fee = extractBigDecimal(fee),
         counter = extractBigDecimal(counter),
         gasLimit = extractBigDecimal(gas_limit),
@@ -329,7 +350,7 @@ object DatabaseConversions {
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, period)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -341,7 +362,8 @@ object DatabaseConversions {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = period
       )
   }
 
@@ -534,15 +556,17 @@ object DatabaseConversions {
   }
 
   implicit val blockAccountsAssociationToCheckpointRow =
-    new Conversion[List, (BlockHash, Int, List[AccountId]), Tables.AccountsCheckpointRow] {
-      override def convert(from: (BlockHash, Int, List[AccountId])) = {
-        val (blockHash, blockLevel, ids) = from
+    new Conversion[List, (BlockHash, Int, Option[Instant], Option[Int], List[AccountId]), Tables.AccountsCheckpointRow] {
+      override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[AccountId])) = {
+        val (blockHash, blockLevel, timestamp, cycle, ids) = from
         ids.map(
           accountId =>
             Tables.AccountsCheckpointRow(
               accountId = accountId.id,
               blockId = blockHash.value,
-              blockLevel = blockLevel
+              blockLevel = blockLevel,
+              asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0))),
+              cycle = cycle
             )
         )
       }
@@ -550,9 +574,13 @@ object DatabaseConversions {
     }
 
   implicit val blockDelegatesAssociationToCheckpointRow =
-    new Conversion[List, (BlockHash, Int, List[PublicKeyHash]), Tables.DelegatesCheckpointRow] {
-      override def convert(from: (BlockHash, Int, List[PublicKeyHash])) = {
-        val (blockHash, blockLevel, pkhs) = from
+    new Conversion[
+      List,
+      (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash]),
+      Tables.DelegatesCheckpointRow
+    ] {
+      override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])) = {
+        val (blockHash, blockLevel, _, _, pkhs) = from
         pkhs.map(
           keyHash =>
             Tables.DelegatesCheckpointRow(
@@ -605,7 +633,7 @@ object DatabaseConversions {
       bakingRights
         .into[Tables.BakingRightsRow]
         .withFieldConst(_.blockHash, blockHash.value)
-        .withFieldRenamed(_.estimated_time, _.estimatedTime)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
         .transform
     }
   }
@@ -616,7 +644,7 @@ object DatabaseConversions {
       endorsingRights.slots.map { slot =>
         endorsingRights
           .into[Tables.EndorsingRightsRow]
-          .withFieldRenamed(_.estimated_time, _.estimatedTime)
+          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
           .withFieldConst(_.slot, slot)
           .withFieldConst(_.blockHash, blockHash.value)
           .transform

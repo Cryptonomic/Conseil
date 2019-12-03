@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
@@ -9,7 +10,13 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, FeesRow}
+import tech.cryptonomic.conseil.tezos.Tables.{
+  AccountsHistoryRow,
+  AccountsRow,
+  BlocksRow,
+  FeesRow,
+  ProcessedChainEventsRow
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.RandomSeed
 
@@ -306,10 +313,6 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual block.hash
-            row.manager shouldEqual account.manager.value
-            row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.setable
-            row.delegateValue shouldEqual account.delegate.value.map(_.value)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -376,10 +379,6 @@ class TezosDatabaseOperationsTest
           case (row, (id, account)) =>
             row.accountId shouldEqual id.id
             row.blockId shouldEqual hashUpdate
-            row.manager shouldEqual account.manager.value
-            row.spendable shouldEqual account.spendable
-            row.delegateSetable shouldEqual account.delegate.setable
-            row.delegateValue shouldEqual account.delegate.value.map(_.value)
             row.counter shouldEqual account.counter
             row.script shouldEqual account.script.map(_.code.expression)
             row.storage shouldEqual account.script.map(_.storage.expression)
@@ -400,8 +399,12 @@ class TezosDatabaseOperationsTest
 
         //generate data
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
+        val time = Instant.ofEpochMilli(0)
         val ids =
-          blocks.map(block => (BlockHash(block.hash), block.level, List.fill(idPerBlock)(AccountId(generateHash(5)))))
+          blocks.map(
+            block =>
+              (BlockHash(block.hash), block.level, Some(time), None, List.fill(idPerBlock)(AccountId(generateHash(5))))
+          )
 
         //store and write
         val populateAndFetch = for {
@@ -418,7 +421,9 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedIdsData = ids.flatMap { case (hash, level, accounts) => accounts.map((hash, level, _)) }
+        val flattenedIdsData = ids.flatMap {
+          case (hash, level, time, cycle, accounts) => accounts.map((hash, level, _))
+        }
 
         forAll(checkpointRows.zip(flattenedIdsData)) {
           case (row, (hash, level, accountId)) =>
@@ -443,15 +448,15 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
         )
 
         val populateAndTest = for {
@@ -480,15 +485,15 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
         )
 
         val inSelection = Set(accountIds(1), accountIds(2), accountIds(3), accountIds(4))
@@ -525,15 +530,13 @@ class TezosDatabaseOperationsTest
           _ <- Tables.Accounts ++= delegatedAccounts
           written <- sut.writeDelegatesAndCopyContracts(List(delegatesInfo))
           delegatesRows <- Tables.Delegates.result
-          contractsRows <- Tables.DelegatedContracts.result
-        } yield (written, delegatesRows, contractsRows)
+        } yield (written, delegatesRows)
 
-        val (stored, dbDelegates, dbContracts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+        val (stored, dbDelegates) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
         stored shouldBe expectedCount
 
         dbDelegates should have size expectedCount
-        dbContracts should have size expectedCount
 
         import org.scalatest.Inspectors._
 
@@ -560,12 +563,6 @@ class TezosDatabaseOperationsTest
             row.deactivated shouldBe delegate.deactivated
             row.blockId shouldEqual block.hash
             row.blockLevel shouldEqual block.level
-        }
-
-        forAll(dbContracts zip delegatedAccounts) {
-          case (contract, account) =>
-            contract.accountId shouldEqual account.accountId
-            contract.delegateValue shouldEqual account.delegateValue
         }
 
       }
@@ -679,7 +676,14 @@ class TezosDatabaseOperationsTest
         //generate data
         val blocks = generateBlockRows(toLevel = maxLevel, testReferenceTimestamp)
         val keys = blocks.map(
-          block => (BlockHash(block.hash), block.level, List.fill(pkPerBlock)(PublicKeyHash(generateHash(5))))
+          block =>
+            (
+              BlockHash(block.hash),
+              block.level,
+              Some(testReferenceTimestamp.toInstant),
+              None,
+              List.fill(pkPerBlock)(PublicKeyHash(generateHash(5)))
+            )
         )
 
         //store and write
@@ -697,7 +701,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedKeysData = keys.flatMap { case (hash, level, keys) => keys.map((hash, level, _)) }
+        val flattenedKeysData = keys.flatMap { case (hash, level, time, cycle, keys) => keys.map((hash, level, _)) }
 
         forAll(checkpointRows.zip(flattenedKeysData)) {
           case (row, (hash, level, keyHash)) =>
@@ -802,29 +806,29 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1),
-          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2),
-          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3),
-          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4),
-          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5)
+          Tables.AccountsCheckpointRow(accountIds(1), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(1), blockLevel = 1, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(4), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(2), blockLevel = 2, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(2), blockIds(3), blockLevel = 3, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(3), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(5), blockIds(4), blockLevel = 4, testReferenceTimestamp),
+          Tables.AccountsCheckpointRow(accountIds(6), blockIds(5), blockLevel = 5, testReferenceTimestamp)
         )
 
-        def entry(accountAtIndex: Int, atLevel: Int) =
-          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+        def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
+          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None)
 
         //expecting only the following to remain
         val expected =
           Map(
-            entry(accountAtIndex = 1, atLevel = 1),
-            entry(accountAtIndex = 2, atLevel = 3),
-            entry(accountAtIndex = 3, atLevel = 4),
-            entry(accountAtIndex = 4, atLevel = 2),
-            entry(accountAtIndex = 5, atLevel = 4),
-            entry(accountAtIndex = 6, atLevel = 5)
+            entry(accountAtIndex = 1, atLevel = 1, time = testReferenceTimestamp),
+            entry(accountAtIndex = 2, atLevel = 3, time = testReferenceTimestamp),
+            entry(accountAtIndex = 3, atLevel = 4, time = testReferenceTimestamp),
+            entry(accountAtIndex = 4, atLevel = 2, time = testReferenceTimestamp),
+            entry(accountAtIndex = 5, atLevel = 4, time = testReferenceTimestamp),
+            entry(accountAtIndex = 6, atLevel = 5, time = testReferenceTimestamp)
           )
 
         val populateAndFetch = for {
@@ -864,7 +868,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel)
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None, None)
 
         //expecting only the following to remain
         val expected =
@@ -1048,7 +1052,7 @@ class TezosDatabaseOperationsTest
         //write
         val writeAndGetRows = for {
           _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-          written <- sut.writeVotingRolls(rolls, block)
+          written <- sut.writeVotingRolls(List(block -> rolls))
           rows <- Tables.Rolls.result
         } yield (written, rows)
 
@@ -1173,6 +1177,8 @@ class TezosDatabaseOperationsTest
             List.empty,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1294,6 +1300,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1366,6 +1374,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1401,6 +1411,8 @@ class TezosDatabaseOperationsTest
             List.empty,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1437,6 +1449,8 @@ class TezosDatabaseOperationsTest
             List.empty,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1468,6 +1482,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1498,6 +1514,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1534,6 +1552,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1542,6 +1562,115 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
           Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        )
+      }
+
+      "get map from a block table with multiple predicate groups" in {
+
+        val blocksTmp = List(
+          BlocksRow(
+            0,
+            1,
+            "genesis",
+            new Timestamp(0),
+            0,
+            "fitness",
+            Some("context0"),
+            Some("sigqs6AXPny9K"),
+            "protocol",
+            Some("chainId"),
+            "blockHash1",
+            None
+          ),
+          BlocksRow(
+            1,
+            1,
+            "blockHash1",
+            new Timestamp(1),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash2",
+            None
+          ),
+          BlocksRow(
+            2,
+            1,
+            "blockHash2",
+            new Timestamp(2),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash3",
+            None
+          ),
+          BlocksRow(
+            3,
+            1,
+            "blockHash3",
+            new Timestamp(3),
+            0,
+            "fitness",
+            Some("context1"),
+            Some("sigTZ2IB879wD"),
+            "protocol",
+            Some("chainId"),
+            "blockHash4",
+            None
+          )
+        )
+
+        val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
+        val predicates = List(
+          Predicate(
+            field = "hash",
+            operation = OperationType.in,
+            set = List("blockHash1"),
+            inverse = true,
+            group = Some("A")
+          ),
+          Predicate(
+            field = "hash",
+            operation = OperationType.in,
+            set = List("blockHash2"),
+            inverse = false,
+            group = Some("A")
+          ),
+          Predicate(
+            field = "signature",
+            operation = OperationType.in,
+            set = List("sigTZ2IB879wD"),
+            inverse = false,
+            group = Some("B")
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.Blocks ++= blocksTmp
+          found <- sut.selectWithPredicates(
+            Tables.Blocks.baseTableRow.tableName,
+            columns,
+            predicates,
+            List.empty,
+            List.empty,
+            None,
+            None,
+            OutputType.json,
+            3
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+        result should contain theSameElementsAs List(
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash2")),
+          Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash3")),
+          Map("level" -> Some(3), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("blockHash4"))
         )
       }
 
@@ -1556,6 +1685,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1584,6 +1715,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1614,6 +1747,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1644,6 +1779,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1674,6 +1811,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1704,6 +1843,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1734,6 +1875,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1764,6 +1907,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1792,6 +1937,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1823,6 +1970,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             1
           )
@@ -1853,6 +2002,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1888,6 +2039,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1923,6 +2076,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1952,6 +2107,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -1979,6 +2136,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2008,6 +2167,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2021,11 +2182,7 @@ class TezosDatabaseOperationsTest
         accountId = 1.toString,
         blockId = "R0NpYZuUeF",
         blockLevel = 0,
-        manager = "manager",
-        spendable = true,
-        delegateSetable = false,
-        delegateValue = None,
-        counter = 0,
+        counter = None,
         script = None,
         balance = BigDecimal(1.45)
       )
@@ -2050,6 +2207,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2079,6 +2238,8 @@ class TezosDatabaseOperationsTest
             predicates,
             List.empty,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2127,6 +2288,8 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2157,6 +2320,8 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2187,6 +2352,8 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2217,6 +2384,8 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2253,6 +2422,8 @@ class TezosDatabaseOperationsTest
             predicates,
             sortBy,
             List.empty,
+            None,
+            None,
             OutputType.json,
             3
           )
@@ -2285,6 +2456,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2317,6 +2490,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2349,6 +2524,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2381,6 +2558,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2413,6 +2592,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2441,6 +2622,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("high", OrderDirection.desc)),
             aggregation = List.empty,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2479,6 +2662,8 @@ class TezosDatabaseOperationsTest
             predicates = List(predicate),
             ordering = List.empty,
             aggregation = List.empty,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2513,6 +2698,8 @@ class TezosDatabaseOperationsTest
             predicates = List(predicate),
             ordering = List(),
             aggregation = List.empty,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2552,7 +2739,7 @@ class TezosDatabaseOperationsTest
         )
 
         val expectedQuery =
-          "SELECT SUM(medium) as sum_medium,low,high FROM fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
+          "SELECT SUM(medium) as sum_medium,low,high FROM tezos.fees WHERE true  AND medium = '4' IS false AND low BETWEEN '0' AND '1' GROUP BY low,high ORDER BY sum_medium desc LIMIT 3"
         val populateAndTest = for {
           _ <- Tables.Fees ++= feesTmp
           found <- sut.selectWithPredicates(
@@ -2561,6 +2748,8 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.sql,
             limit = 3
           )
@@ -2591,6 +2780,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("sum_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 3
           )
@@ -2638,6 +2829,8 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             limit = 1,
             outputType = OutputType.json
           )
@@ -2689,6 +2882,8 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             limit = 4,
             outputType = OutputType.json
           )
@@ -2755,6 +2950,8 @@ class TezosDatabaseOperationsTest
             predicates = predicates,
             ordering = List.empty,
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             limit = 5,
             outputType = OutputType.json
           )
@@ -2799,6 +2996,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("count_medium", OrderDirection.desc)),
             aggregation = aggregate,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 10
           )
@@ -2833,6 +3032,8 @@ class TezosDatabaseOperationsTest
             predicates = List.empty,
             ordering = List(QueryOrdering("date_part_timestamp", OrderDirection.desc)),
             aggregation = List.empty,
+            temporalPartition = None,
+            snapshot = None,
             outputType = OutputType.json,
             limit = 10
           )
@@ -2848,6 +3049,278 @@ class TezosDatabaseOperationsTest
           Map("date_part_timestamp" -> Some("1970-01-02")),
           Map("date_part_timestamp" -> Some("1970-01-01"))
         )
+      }
+
+      "should correctly use query on temporal table" in {
+
+        val accountsHistoryRow = AccountsHistoryRow(
+          accountId = "id",
+          blockId = "blockid",
+          balance = BigDecimal(1.0),
+          blockLevel = BigDecimal(1),
+          asof = new Timestamp(1)
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory += accountsHistoryRow
+          found <- sut.selectWithPredicates(
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_id"),
+            snapshot = Some(Snapshot("asof", new Timestamp(1))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_id" -> Some("id"),
+            "block_id" -> Some("blockid"),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          )
+        )
+
+      }
+
+      "should get the balance of an account at a specific timestamp where there are multiple entities for given account_id" in {
+
+        val accountsHistoryRows = List(
+          AccountsHistoryRow(
+            accountId = "id1",
+            blockId = "blockid1",
+            balance = BigDecimal(1.0),
+            blockLevel = BigDecimal(1),
+            asof = new Timestamp(1)
+          ),
+          AccountsHistoryRow(
+            accountId = "id1",
+            blockId = "blockid2",
+            balance = BigDecimal(2.0),
+            blockLevel = BigDecimal(2),
+            asof = new Timestamp(2)
+          ),
+          AccountsHistoryRow(
+            accountId = "id1",
+            blockId = "blockid3",
+            balance = BigDecimal(3.0),
+            blockLevel = BigDecimal(3),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
+          found <- sut.selectWithPredicates(
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_id"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_id" -> Some("id1"),
+            "block_id" -> Some("blockid2"),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+      }
+
+      "should get the balance of an account at a specific timestamp" in {
+
+        val accountsHistoryRows = List(
+          AccountsHistoryRow(
+            accountId = "id1",
+            blockId = "blockid1",
+            balance = BigDecimal(1.0),
+            blockLevel = BigDecimal(1),
+            asof = new Timestamp(1)
+          ),
+          AccountsHistoryRow(
+            accountId = "id2",
+            blockId = "blockid2",
+            balance = BigDecimal(2.0),
+            blockLevel = BigDecimal(2),
+            asof = new Timestamp(2)
+          ),
+          AccountsHistoryRow(
+            accountId = "id3",
+            blockId = "blockid3",
+            balance = BigDecimal(3.0),
+            blockLevel = BigDecimal(3),
+            asof = new Timestamp(3)
+          )
+        )
+
+        val populateAndTest = for {
+          _ <- Tables.AccountsHistory ++= accountsHistoryRows
+          found <- sut.selectWithPredicates(
+            table = Tables.AccountsHistory.baseTableRow.tableName,
+            columns = List(SimpleField("account_id"), SimpleField("block_id"), SimpleField("asof")),
+            predicates = List.empty,
+            ordering = List(),
+            aggregation = List.empty,
+            temporalPartition = Some("account_id"),
+            snapshot = Some(Snapshot("asof", new Timestamp(2))),
+            outputType = OutputType.json,
+            limit = 10
+          )
+        } yield found
+
+        val result = dbHandler.run(populateAndTest.transactionally).futureValue
+
+        result shouldBe List(
+          Map(
+            "account_id" -> Some("id1"),
+            "block_id" -> Some("blockid1"),
+            "asof" -> Some(new Timestamp(1)),
+            "r" -> Some(1)
+          ),
+          Map(
+            "account_id" -> Some("id2"),
+            "block_id" -> Some("blockid2"),
+            "asof" -> Some(new Timestamp(2)),
+            "r" -> Some(1)
+          )
+        )
+
+      }
+
+      "read the custom update events processed from the db" in {
+        //given
+        val events = (1 to 3).map(ProcessedChainEventsRow(_, "event")).toList
+
+        val populate = dbHandler.run(Tables.ProcessedChainEvents ++= events)
+        populate.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val results = dbHandler.run(sut.fetchProcessedEventsLevels("event")).futureValue
+
+        results should contain theSameElementsAs (1 to 3)
+      }
+
+      "write new custom update events to the processed table on db" in {
+        //given
+        val values = (1 to 3).map(BigDecimal(_)).toList
+
+        //when
+        val populate = dbHandler.run(sut.writeProcessedEventsLevels("event", values))
+
+        //then
+        populate.isReadyWithin(5.seconds) shouldBe true
+
+        populate.futureValue.value shouldBe 3
+
+        val stored = dbHandler.run(Tables.ProcessedChainEvents.result).futureValue
+
+        stored should contain theSameElementsAs (1 to 3).map(ProcessedChainEventsRow(_, "event"))
+
+      }
+
+      "read all distinct account ids and add entries for each in the checkpoint" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedCount = 3
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val accountsInfo = generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+
+        val populate =
+          (Tables.Blocks += block) >>
+              sut.writeAccounts(List(accountsInfo))
+
+        val write = dbHandler.run(populate.transactionally)
+
+        write.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val dbAction =
+          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant)
+
+        val results = dbHandler.run(dbAction).futureValue
+        results.value shouldBe 3
+
+        //then
+        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+
+        checkpoint.keys should contain theSameElementsAs accountsInfo.content.keys
+
+        import org.scalatest.Inspectors._
+        forAll(checkpoint.values) {
+          case (hash, level, instantOpt) =>
+            hash.value shouldEqual block.hash
+            level shouldEqual block.level
+            instantOpt.value shouldEqual block.timestamp.toInstant
+        }
+      }
+
+      "read selected distinct account ids via regex and add entries for each in the checkpoint" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedCount = 3
+        val matchingId = AccountId("tz19alkdjf83aadkcl")
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val BlockTagged(hash, level, ts, accountsContent) =
+          generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+        val updatedContent = accountsContent.map {
+          case (AccountId(id), account) if id == "1" => (matchingId, account)
+          case any => any
+        }
+
+        val accountsInfo = BlockTagged(hash, level, ts, updatedContent)
+
+        val populate =
+          (Tables.Blocks += block) >>
+              sut.writeAccounts(List(accountsInfo))
+
+        val write = dbHandler.run(populate.transactionally)
+
+        write.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val dbAction =
+          sut.refillAccountsCheckpointFromExisting(
+            BlockHash(block.hash),
+            block.level,
+            block.timestamp.toInstant,
+            Set("tz1.+")
+          )
+
+        val results = dbHandler.run(dbAction).futureValue
+        results.value shouldBe 1
+
+        //then
+        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+
+        checkpoint.keys.size shouldBe 1
+        checkpoint.keySet should contain only matchingId
+
+        import org.scalatest.Inspectors._
+        forAll(checkpoint.values) {
+          case (hash, level, instantOpt) =>
+            hash.value shouldEqual block.hash
+            level shouldEqual block.level
+            instantOpt.value shouldEqual block.timestamp.toInstant
+        }
       }
 
     }

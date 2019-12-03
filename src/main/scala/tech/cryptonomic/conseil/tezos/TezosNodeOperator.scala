@@ -12,6 +12,8 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, Michelson
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
+import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -58,7 +60,12 @@ object TezosNodeOperator {
   * @param batchConf          configuration for batched download of node data
   * @param fetchFutureContext thread context for async operations
   */
-class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchConf: BatchFetchConfiguration)(
+class TezosNodeOperator(
+    val node: TezosRPCInterface,
+    val network: String,
+    batchConf: BatchFetchConfiguration,
+    apiOperations: ApiOperations
+)(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
     with BlocksDataFetchers
@@ -98,7 +105,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
         .mapValues(_.keySet.toList)
 
     reversedIndex.keysIterator.map { blockHash =>
-      val keys = reversedIndex.get(blockHash).getOrElse(List.empty)
+      val keys = reversedIndex.getOrElse(blockHash, List.empty)
       entityLoad(keys, blockHash).map(blockHash -> _)
     }
   }
@@ -126,23 +133,25 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
 
   /**
     * Fetches baking rights for given block
-    * @param blockHash  Hash of given block
-    * @return           Baking rights
+    * @param blockHashes  Hash of given block
+    * @return             Baking rights
     */
-  def getBakingRightsForBlock(blockHash: BlockHash): Future[List[BakingRights]] =
-    node
-      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/helpers/baking_rights")
-      .map(fromJson[List[BakingRights]])
+  def getBatchBakingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[BakingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[BlockHash, List[BakingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+  }
 
   /**
     * Fetches endorsing rights for given block
-    * @param blockHash  Hash of given block
-    * @return           Endorsing rights
+    * @param blockHashes  Hash of given block
+    * @return             Endorsing rights
     */
-  def getEndorsingRightsForBlock(blockHash: BlockHash): Future[List[EndorsingRights]] =
-    node
-      .runAsyncGetQuery(network, s"blocks/${blockHash.value}/helpers/endorsing_rights")
-      .map(fromJson[List[EndorsingRights]])
+  def getBatchEndorsingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[EndorsingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[BlockHash, List[EndorsingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+  }
 
   /**
     * Fetches the manager of a specific account for a given block.
@@ -220,7 +229,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      accountsBlocksIndex.groupBy { case (id, (blockHash, level)) => blockHash }
+      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -237,7 +246,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level), accounts) => accounts.taggedWithBlock(hash, level)
+        case ((hash, level, timestamp, cycle), accounts) => accounts.taggedWithBlock(hash, level, timestamp, cycle)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -343,7 +352,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      keysBlocksIndex.groupBy { case (pkh, (blockHash, level)) => blockHash }
+      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -360,7 +369,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
       data.groupBy {
         case (pkh, _) => keysBlocksIndex(pkh)
       }.map {
-        case ((hash, level), delegates) => delegates.taggedWithBlock(hash, level)
+        case ((hash, level, timestamp, cycle), delegates) => delegates.taggedWithBlock(hash, level, timestamp, cycle)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
@@ -502,7 +511,7 @@ class TezosNodeOperator(val node: TezosRPCInterface, val network: String, batchC
     */
   def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- ApiOperations.fetchMaxLevel
+      maxLevel <- apiOperations.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -637,9 +646,10 @@ class TezosNodeSenderOperator(
     override val node: TezosRPCInterface,
     network: String,
     batchConf: BatchFetchConfiguration,
-    sodiumConf: SodiumConfiguration
+    sodiumConf: SodiumConfiguration,
+    apiOperations: ApiOperations
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf)
+    extends TezosNodeOperator(node, network, batchConf, apiOperations)
     with LazyLogging {
   import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
@@ -668,15 +678,15 @@ class TezosNodeSenderOperator(
         revealMap :: operations
     }
 
-  /**
-    * Forge an operation group using the Tezos RPC client.
-    * @param blockHead  The block head
-    * @param account    The sender's account
-    * @param operations The operations being forged as part of this operation group
-    * @param keyStore   Key pair along with public key hash
-    * @param fee        Fee to be paid
-    * @return           Forged operation bytes (as a hex string)
-    */
+  /*/**
+   * Forge an operation group using the Tezos RPC client.
+   * @param blockHead  The block head
+   * @param account    The sender's account
+   * @param operations The operations being forged as part of this operation group
+   * @param keyStore   Key pair along with public key hash
+   * @param fee        Fee to be paid
+   * @return           Forged operation bytes (as a hex string)
+   */
   def forgeOperations(
       blockHead: Block,
       account: Account,
@@ -705,7 +715,7 @@ class TezosNodeSenderOperator(
     node
       .runAsyncPostQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
       .map(json => fromJson[ForgedOperation](json).operation)
-  }
+  }*/
 
   /**
     * Signs a forged operation
@@ -775,13 +785,13 @@ class TezosNodeSenderOperator(
       .map(result => fromJson[InjectedOperation](result).injectedOperation)
   }
 
-  /**
-    * Master function for creating and sending all supported types of operations.
-    * @param operations The operations to create and send
-    * @param keyStore   Key pair along with public key hash
-    * @param fee        The fee to use
-    * @return           The ID of the created operation group
-    */
+  /*/**
+   * Master function for creating and sending all supported types of operations.
+   * @param operations The operations to create and send
+   * @param keyStore   Key pair along with public key hash
+   * @param fee        The fee to use
+   * @return           The ID of the created operation group
+   */
   def sendOperation(
       operations: List[Map[String, Any]],
       keyStore: KeyStore,
@@ -798,16 +808,16 @@ class TezosNodeSenderOperator(
       operationGroupHash <- Future.fromTry(computeOperationHash(signedOpGroup))
       appliedOp <- applyOperation(blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
       operation <- injectOperation(signedOpGroup)
-    } yield OperationResult(appliedOp, operation)
+    } yield OperationResult(appliedOp, operation)*/
 
-  /**
-    * Creates and sends a transaction operation.
-    * @param keyStore   Key pair along with public key hash
-    * @param to         Destination public key hash
-    * @param amount     Amount to send
-    * @param fee        Fee to use
-    * @return           The ID of the created operation group
-    */
+  /*/**
+   * Creates and sends a transaction operation.
+   * @param keyStore   Key pair along with public key hash
+   * @param to         Destination public key hash
+   * @param amount     Amount to send
+   * @param fee        Fee to use
+   * @return           The ID of the created operation group
+   */
   def sendTransactionOperation(
       keyStore: KeyStore,
       to: String,
@@ -822,15 +832,15 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
-  /**
-    * Creates and sends a delegation operation.
-    * @param keyStore Key pair along with public key hash
-    * @param delegate Account ID to delegate to
-    * @param fee      Operation fee
-    * @return
-    */
+  /*/**
+   * Creates and sends a delegation operation.
+   * @param keyStore Key pair along with public key hash
+   * @param delegate Account ID to delegate to
+   * @param fee      Operation fee
+   * @return
+   */
   def sendDelegationOperation(keyStore: KeyStore, delegate: String, fee: Float): Future[OperationResult] = {
     val transactionMap: Map[String, Any] = Map(
       "kind" -> "delegation",
@@ -838,18 +848,18 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
-  /**
-    * Creates and sends an origination operation.
-    * @param keyStore     Key pair along with public key hash
-    * @param amount       Initial funding amount of new account
-    * @param delegate     Account ID to delegate to, blank if none
-    * @param spendable    Is account spendable?
-    * @param delegatable  Is account delegatable?
-    * @param fee          Operation fee
-    * @return
-    */
+  /*/**
+   * Creates and sends an origination operation.
+   * @param keyStore     Key pair along with public key hash
+   * @param amount       Initial funding amount of new account
+   * @param delegate     Account ID to delegate to, blank if none
+   * @param spendable    Is account spendable?
+   * @param delegatable  Is account delegatable?
+   * @param fee          Operation fee
+   * @return
+   */
   def sendOriginationOperation(
       keyStore: KeyStore,
       amount: Float,
@@ -868,7 +878,7 @@ class TezosNodeSenderOperator(
     )
     val operations = transactionMap :: Nil
     sendOperation(operations, keyStore, Some(fee))
-  }
+  }*/
 
   /**
     * Creates a new Tezos identity.

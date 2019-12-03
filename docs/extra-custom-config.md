@@ -1,4 +1,4 @@
-#### Additional fine-grained configuration
+### Additional fine-grained configuration
 
 You might want to override, _only after careful testing_, part of the following configuration entries
 
@@ -76,3 +76,51 @@ akka {
   }
 }
 ```
+
+In addition to that, both `lorre.db` and `conseil.db` allows finer configuration details for the database access, where the `properties` can be any of those described in the [java postgres driver documentation](https://jdbc.postgresql.org/documentation/publicapi/org/postgresql/ds/common/BaseDataSource.html)
+
+An example of an SSL remote connection might look like
+
+```coffee
+lorre.db {
+  dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
+  properties {
+    serverName: "my-remote-host"
+    ssl: true
+    sslMode: "require"
+    databaseName: "conseil-dbname"
+    user: "username"
+    password: "password"
+    portNumber: 26000
+    reWriteBatchedInserts: true
+  }
+  numThreads: 10
+  maxConnections: 10
+}
+```
+
+### Chain's "one-off" events handling
+
+To support out-of-the ordinary processing on the data collected and exposed by Conseil, the Lorre configuration supports special handling for generally-named "Chain Events".
+
+Such events might be identified by the Block Level when they need to be handled.
+Currently we only support one type of event, namely
+
+ * `AccountsRefresh`: upon reaching certain levels, Lorre plans a full or partial reload of accounts data
+   from the rpc node. This is instrumental, for example, to take into account the Tezos airdrop after Babylon protocol switch, that impacted many delegated contracts.
+
+The configuration entry specifies, for the running Lorre instance, after which levels such "refresh" is needed, and allows to define a regular expression pattern to select only part of the accounts' hashes.
+
+It will look like the following excerpt
+```
+lorre.chainEvents: [
+  {
+    type: accountsRefresh,
+    levels: {
+      "tz1.*": [655000],
+      ".*"   : [655361]
+    }
+  }
+]
+```
+Here there's a request for `tz1` accounts after level `655000`, and a global one at level `655361`.

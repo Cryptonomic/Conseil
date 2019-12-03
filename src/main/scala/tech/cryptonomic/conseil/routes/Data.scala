@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.config.ServerConfiguration
+import tech.cryptonomic.conseil.config.{MetadataConfiguration, ServerConfiguration}
 import tech.cryptonomic.conseil.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.metadata
@@ -15,10 +15,20 @@ import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply implementation */
 object Data {
-  def apply(metadataService: MetadataService, server: ServerConfiguration)(
+  def apply(
+      metadataService: MetadataService,
+      server: ServerConfiguration,
+      metadataConfiguration: MetadataConfiguration,
+      apiOperations: ApiOperations
+  )(
       implicit ec: ExecutionContext
   ): Data =
-    new Data(DataPlatform(server.maxQueryResultSize), metadataService)
+    new Data(
+      DataPlatform(apiOperations, server.maxQueryResultSize),
+      metadataService,
+      metadataConfiguration: MetadataConfiguration,
+      apiOperations: ApiOperations
+    )
 }
 
 /**
@@ -27,7 +37,12 @@ object Data {
   * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService)(
+class Data(
+    queryProtocolPlatform: DataPlatform,
+    metadataService: MetadataService,
+    metadataConfiguration: MetadataConfiguration,
+    apiOperations: ApiOperations
+)(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
     with DataHelpers {
@@ -42,7 +57,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
 
       pathValidation(path) {
-        apiQuery.validate(path, metadataService).flatMap { validationResult =>
+        apiQuery.validate(path, metadataService, metadataConfiguration).flatMap { validationResult =>
           validationResult.map { validQuery =>
             queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
               queryResponseOpt.map { queryResponses =>
@@ -69,7 +84,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchLatestBlock()
+        apiOperations.fetchLatestBlock()
       }
   }
 
@@ -77,7 +92,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchBlock(BlockHash(hash))
+        apiOperations.fetchBlock(BlockHash(hash))
       }
   }
 
@@ -93,7 +108,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
     case ((platform, network, accountId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchAccount(AccountId(accountId))
+        apiOperations.fetchAccount(AccountId(accountId))
       }
   }
 
@@ -109,7 +124,7 @@ class Data(queryProtocolPlatform: DataPlatform, metadataService: MetadataService
   val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
     case ((platform, network, operationGroupId), _) =>
       platformNetworkValidation(platform, network) {
-        ApiOperations.fetchOperationGroup(operationGroupId)
+        apiOperations.fetchOperationGroup(operationGroupId)
       }
   }
 

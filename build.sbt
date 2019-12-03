@@ -16,6 +16,7 @@ val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
 val circeVersion = "0.11.1"
 val http4sVersion = "0.20.10"
+val silencerVersion = "1.4.4"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -75,9 +76,12 @@ libraryDependencies ++= Seq(
   "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
   "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
   "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % "it, test",
+  "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % "it, test",
   "org.http4s"                   %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
   "org.http4s"                   %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
-  "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest
+  "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest,
+  compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+  "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
 )
 
 excludeDependencies ++= Seq(
@@ -87,7 +91,7 @@ excludeDependencies ++= Seq(
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
 scalacOptions ++= ScalacOptions.common
-
+scalacOptions += "-P:silencer:pathFilters=src/main/scala/tech/cryptonomic/conseil/tezos/Tables.scala"
 import complete.DefaultParsers._
 
 lazy val runConseil = inputKey[Unit]("A conseil run task.")

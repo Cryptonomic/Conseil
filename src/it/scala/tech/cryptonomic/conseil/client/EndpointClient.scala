@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.client
 
 import java.util.concurrent.Executors
-import scala.language.postfixOps
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.sys.process._
@@ -14,7 +13,7 @@ import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import org.http4s.Uri
-import io.circe.{Json, parser}
+import io.circe.{parser, Json}
 import cats.effect.IO
 import cats.syntax.apply._
 
@@ -71,7 +70,7 @@ object DataEndpointsClientProbe {
     Setup
       .usingConseil(syncToNetwork) {
         infoEndpoint *>
-        blockHeadEndpoint
+          blockHeadEndpoint
       }
       .flatMap {
         case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
@@ -113,8 +112,9 @@ object DataEndpointsClientProbe {
   /** block head */
   def blockHeadEndpoint: IO[Either[Throwable, Json]] = {
 
-    val expected: Json = parser.parse(
-     """{
+    val expected: Json = parser
+      .parse(
+        """{
     |  "baker": "tz3RDC3Jdn4j15J7bBHZd29EUee9gVB1CxD9",
     |  "chainId": "NetXdQprcVkpaWU",
     |  "consumedGas": 0,
@@ -139,9 +139,10 @@ object DataEndpointsClientProbe {
     |  "timestamp": 1530983187000,
     |  "validationPass": 4
     |}""".stripMargin
-  ).ensuring(_.isRight)
-    .right
-    .get
+      )
+      .ensuring(_.isRight)
+      .right
+      .get
 
     val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/blocks/head")
 

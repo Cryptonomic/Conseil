@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.github.ghik.silencer.silent
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
 
@@ -49,6 +50,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
    */
   protected val pgConfigs = List("-c", "full_page_writes=off")
 
+  @silent("deprecated")
   lazy val dbInstance = new EmbeddedPostgres(Version.V9_5_15)
   lazy val dbHandler: Database = Database.forConfig("testdb", config = ConfigFactory.parseString(confString))
 
@@ -60,15 +62,16 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
     Tables.BalanceUpdates,
     Tables.Accounts,
     Tables.Delegates,
-    Tables.DelegatedContracts,
     Tables.Fees,
     Tables.AccountsCheckpoint,
     Tables.DelegatesCheckpoint,
-    Tables.Rolls
+    Tables.Rolls,
+    Tables.AccountsHistory,
+    Tables.ProcessedChainEvents
   )
 
-  protected val dbSchema =
-    allTables.map(_.schema).reduce(_ ++ _)
+  protected val dbSchema = Tables.schema
+  allTables.map(_.schema).reduce(_ ++ _)
 
   /**
     * calling deletes manually is needed to obviate the fact
@@ -90,6 +93,11 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
       EmbeddedPostgres.DEFAULT_PASSWORD,
       pgInitParams.asJava,
       pgConfigs.asJava
+    )
+    Await.result(dbHandler.run(sql"CREATE SCHEMA IF NOT EXISTS tezos".as[Int]), 1.second)
+    Await.result(
+      dbHandler.run(sql"""ALTER DATABASE "#$databaseName" SET search_path TO tezos,public""".as[Int]),
+      1.second
     )
     Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
