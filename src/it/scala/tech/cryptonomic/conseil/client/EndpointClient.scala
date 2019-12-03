@@ -71,7 +71,8 @@ object DataEndpointsClientProbe {
     Setup
       .usingConseil(syncToNetwork) {
         infoEndpoint *>
-          blockHeadEndpoint
+          blockHeadEndpoint *>
+          groupingPredicatesQueryEndpoint
       }
       .flatMap {
         case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
@@ -170,13 +171,13 @@ object DataEndpointsClientProbe {
 
   def groupingPredicatesQueryEndpoint = {
     val callBody = parser
-      .parse(Source.fromResource("groupingPredicatesQuery.body").mkString)
+      .parse(Source.fromResource("groupingPredicatesQuery.body.json").mkString)
       .ensuring(_.isRight)
       .right
       .get
 
     val expected = parser
-      .parse(Source.fromResource("groupingPredicatesQuery.response").mkString)
+      .parse(Source.fromResource("groupingPredicatesQuery.response.json").mkString)
       .ensuring(_.isRight)
       .right
       .get
