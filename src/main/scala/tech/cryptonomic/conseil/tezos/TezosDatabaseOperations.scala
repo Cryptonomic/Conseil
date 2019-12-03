@@ -238,6 +238,7 @@ object TezosDatabaseOperations extends LazyLogging {
       hash: BlockHash,
       level: Int,
       timestamp: Instant,
+      cycle: Option[Int],
       selectors: Set[AccountIdPattern] = Set(".*")
   )(
       implicit ec: ExecutionContext
@@ -259,10 +260,11 @@ object TezosDatabaseOperations extends LazyLogging {
     }
 
     logger.info(
-      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {} and time {}",
+      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {}, cycle {} and time {}",
       selectors.mkString(", "),
       hash.value,
       level,
+      cycle,
       timestamp
     )
 
@@ -282,7 +284,7 @@ object TezosDatabaseOperations extends LazyLogging {
         ids =>
           writeAccountsCheckpoint(
             List(
-              (hash, level, Some(timestamp), ids.map(AccountId(_)).toList)
+              (hash, level, Some(timestamp), cycle, ids.map(AccountId(_)).toList)
             )
           )
       )
