@@ -15,7 +15,7 @@ import org.http4s.client.dsl.io._
 import org.http4s.Uri
 import io.circe.{parser, Json}
 import cats.effect.IO
-import cats.syntax.apply._
+import cats.syntax.all._
 import scala.io.Source
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
