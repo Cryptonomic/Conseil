@@ -71,6 +71,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     batchingConf
   )
 
+  // init
+
+
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {
     logger.info("Doing clean-up")
