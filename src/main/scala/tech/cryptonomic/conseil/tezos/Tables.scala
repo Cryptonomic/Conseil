@@ -30,7 +30,7 @@ trait Tables {
     OperationGroups.schema,
     Operations.schema,
     Rolls.schema,
-    Votes.schema
+    Votes.schema,
     ProcessedChainEvents.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
@@ -623,9 +623,7 @@ trait Tables {
       DelegatesRow.tupled((<<[String], <<[String], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<?[scala.math.BigDecimal], <<[Boolean], <<[Int], <<[Int]))
   }
   /** Table description of table delegates. Objects of this class serve as prototypes for rows in queries. */
-  class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, "delegates") {
-    def * = (pkh, blockId, balance, frozenBalance, stakingBalance, delegatedBalance, deactivated, gracePeriod, blockLevel) <> (DelegatesRow.tupled, DelegatesRow.unapply)
-  class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, Some("tezos"), "delegates") {
+   class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, Some("tezos"), "delegates") {
     def * =
       (pkh, blockId, balance, frozenBalance, stakingBalance, delegatedBalance, deactivated, gracePeriod, blockLevel) <> (DelegatesRow.tupled, DelegatesRow.unapply)
 
