@@ -244,9 +244,9 @@ object DatabaseUtil {
         case multiGroups =>
           //first intersperse with internal ORs then add the opening and closing parens
           val orGroups = multiGroups.reduce(
-            (group1, group2) => group1 ::: sql") OR (True " :: group2
+            (group1, group2) => group1 ::: sql") OR (True" :: group2
           )
-          sql" AND (True " :: (orGroups :+ sql") ")
+          sql"AND (True" :: (orGroups :+ sql") ")
       }
     }
 
