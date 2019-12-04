@@ -86,11 +86,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     (blockHead, brLevelFut, erLevelFut).mapN { (head, brLevel, erLevel) =>
       val headLevel = head.header.level
       val rightsStartLevel = math.max(brLevel, erLevel) + 1
-      berLogger.info(s"Current levels block: $headLevel baking rights: $brLevel endorsing rights: $erLevel")
+      berLogger.info(s"Current Tezos block head level: $headLevel DB stored baking rights level: $brLevel DB stored endorsing rights level: $erLevel")
 
       val length = DatabaseConversions
         .extractCyclePosition(head.metadata)
         .map { cyclePosition =>
+          // calculates amount of future rights levels to be fetched based on cycle_position, cycle_size and amount cycles to fetch
           (lorreConf.blockRightsFetching.cycleSize - cyclePosition) + lorreConf.blockRightsFetching.cycleSize * lorreConf.blockRightsFetching.cyclesToFetch
         }
         .getOrElse(0)
