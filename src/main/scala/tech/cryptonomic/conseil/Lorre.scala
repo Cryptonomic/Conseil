@@ -81,8 +81,29 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  // init
-
+//  -Fetch range of block levels to be queried for operations, from head level in Votes Table to head Level in Blocks Table
+//    -For each block level
+//    -fetch voting fields from database, based on period_kind group by block level
+//  -PERIOD -> OPERATION KIND
+//    proposal -> proposal
+//  testing vote -> ballot
+//    testing -> N / A
+//  promotion vote -> ballot
+//    -if ballot, calculate count/stake yays, nays, passes using length function/rpc call
+//  -if proposal, create database row directly
+//    -create database rows, and write
+  def sth = {
+  for {
+      finish <- apiOperations.fetchMaxLevel()
+      start <-  apiOperations.fetchVotesMaxLevel()
+    } yield {
+      List.range(start, finish).map { xxx =>
+        apiOperations.fetchVotesAtLevel(xxx).map {
+          ???
+        }
+      }
+    }
+  }
 
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {

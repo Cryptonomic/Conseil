@@ -187,6 +187,46 @@ CREATE TABLE tezos.blocks (
 
 
 --
+-- Name: votes; Type: TABLE; Schema: tezos; Owner: -
+--
+
+CREATE TABLE tezos.votes (
+    "timestamp" timestamp without time zone NOT NULL,
+    cycle integer,
+    level integer,
+    proposal_hash character varying NOT NULL,
+    yay_count integer,
+    nay_count integer,
+    pass_count integer,
+    yay_stake numeric,
+    nay_stake numeric,
+    pass_stake numeric,
+    total_stake numeric
+);
+
+
+--
+-- Name: governance; Type: TABLE; Schema: tezos; Owner: -
+--
+
+CREATE TABLE tezos.governance (
+    "timestamp" timestamp without time zone NOT NULL,
+    cycle integer,
+    level integer,
+    proposal_hash character varying NOT NULL,
+    yay_count integer,
+    nay_count integer,
+    pass_count integer,
+    yay_stake numeric,
+    nay_stake numeric,
+    pass_stake numeric,
+    total_stake numeric,
+    period_kind character varying NOT NULL,
+    period_index integer NOT NULL
+);
+
+
+--
 -- Name: delegates; Type: TABLE; Schema: tezos; Owner: -
 --
 

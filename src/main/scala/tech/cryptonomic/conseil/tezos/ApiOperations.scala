@@ -3,21 +3,15 @@ package tech.cryptonomic.conseil.tezos
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, MetadataOperations}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{
-  Field,
-  FormattedField,
-  Predicate,
-  Query,
-  QueryResponse,
-  SimpleField
-}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Field, FormattedField, Predicate, Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
-import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
+import tech.cryptonomic.conseil.tezos.Tables.{BlocksRow, VotesRow}
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 object ApiOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
@@ -59,6 +53,21 @@ class ApiOperations extends DataOperations with MetadataOperations {
     val optionalMax: Future[Option[Int]] = runQuery(Tables.Blocks.map(_.level).max.result)
     optionalMax.map(_.getOrElse(-1))
   }
+
+  /**
+    * Fetches the level of the most recent votes stored in the database.
+    *
+    * @return Max level or -1 if no votes were found in the database.
+    */
+  def fetchVotesMaxLevel()(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = runQuery(Tables.Votes.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
+  }
+
+  def fetchVotesAtLevel(level: Int)(implicit ec: ExecutionContext): Future[List[VotesRow]] = {
+    runQuery(Tables.Votes.filter(_.level === level).result).map(_.toList)
+  }
+
 
   /**
     * Fetches the most recent block stored in the database.
