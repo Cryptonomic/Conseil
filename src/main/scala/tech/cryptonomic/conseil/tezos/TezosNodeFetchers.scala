@@ -8,9 +8,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
-import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
+import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
+import org.slf4j.LoggerFactory
 
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
@@ -151,6 +152,8 @@ trait BlocksDataFetchers {
 
   }
 
+  val berLogger = LoggerFactory.getLogger("BAKING-ENDORSING-RIGHTS")
+
   implicit val futureBakingRightsFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Rights._
 
@@ -171,12 +174,12 @@ trait BlocksDataFetchers {
     override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
       Kleisli(
         levels => {
-          logger.info("BER Fetching future baking rights")
+          berLogger.info("Fetching future baking rights")
           node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
             case err =>
-              logger
+              berLogger
                 .error(
-                  "BER I encountered problems while fetching future baking rights from {}, for levels {}. The error says {}",
+                  "I encountered problems while fetching future baking rights from {}, for levels {}. The error says {}",
                   network,
                   levels.mkString(", "),
                   err.getMessage
@@ -191,7 +194,7 @@ trait BlocksDataFetchers {
       decodeLiftingTo[Future, Out](json)
         .onError(
           logWarnOnJsonDecoding(
-            s"BER I fetched future baking rights json from tezos node that I'm unable to decode: $json",
+            s"I fetched future baking rights json from tezos node that I'm unable to decode: $json",
             ignore = Option(json).forall(_.trim.isEmpty)
           )
         )
@@ -222,12 +225,12 @@ trait BlocksDataFetchers {
     override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
       Kleisli(
         levels => {
-          logger.info("Fetching future endorsing rights")
+          berLogger.info("Fetching future endorsing rights")
           node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
             case err =>
-              logger
+              berLogger
                 .error(
-                  "BER I encountered problems while fetching future endorsing rights from {}, for levels {}. The error says {}",
+                  "I encountered problems while fetching future endorsing rights from {}, for levels {}. The error says {}",
                   network,
                   levels.mkString(", "),
                   err.getMessage
@@ -242,7 +245,7 @@ trait BlocksDataFetchers {
       decodeLiftingTo[Future, Out](json)
         .onError(
           logWarnOnJsonDecoding(
-            s"BER I fetched future endorsing rights json from tezos node that I'm unable to decode: $json",
+            s"I fetched future endorsing rights json from tezos node that I'm unable to decode: $json",
             ignore = Option(json).forall(_.trim.isEmpty)
           )
         )

@@ -6,17 +6,8 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.tezos.{
-  ApiOperations,
-  DatabaseConversions,
-  FeeOperations,
-  ShutdownComplete,
-  TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
-  TezosTypes,
-  TezosDatabaseOperations => TezosDb
-}
+import org.slf4j.LoggerFactory
+import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -76,44 +67,46 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   /** Schedules method for fetching baking rights */
-  system.scheduler.schedule(lorreConf.rights.initDelay, lorreConf.rights.interval)(writeFutureRights())
+  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(writeFutureRights())
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   def writeFutureRights(): Unit = {
+    val berLogger = LoggerFactory.getLogger("BAKING-ENDORSING-RIGHTS")
+
     import cats.implicits._
 
     implicit val mat = ActorMaterializer()
-    logger.info("BER Fetching future baking and endorsing rights")
-    val blockHead = tezosNodeOperator.getBlockHead()
+    berLogger.info("Fetching future baking and endorsing rights")
+    val blockHead = tezosNodeOperator.getBareBlockHead()
     val brLevelFut = apiOperations.fetchMaxBakingRightsLevel()
     val erLevelFut = apiOperations.fetchMaxEndorsingRightsLevel()
 
     (blockHead, brLevelFut, erLevelFut).mapN { (head, brLevel, erLevel) =>
-      val headLevel = head.data.header.level
+      val headLevel = head.header.level
       val rightsStartLevel = math.max(brLevel, erLevel) + 1
-      logger.info(s"BER Current levels block: $headLevel baking rights: $brLevel endorsing rights: $erLevel")
+      berLogger.info(s"Current levels block: $headLevel baking rights: $brLevel endorsing rights: $erLevel")
 
       val length = DatabaseConversions
-        .extractCyclePosition(head)
+        .extractCyclePosition(head.metadata)
         .map { cyclePosition =>
-          (lorreConf.rights.cycleSize - cyclePosition) + lorreConf.rights.cycleSize * lorreConf.rights.cyclesFetch
+          (lorreConf.blockRightsFetching.cycleSize - cyclePosition) + lorreConf.blockRightsFetching.cycleSize * lorreConf.blockRightsFetching.cyclesToFetch
         }
         .getOrElse(0)
 
-      logger.info(s"BER Level and position to fetch ($headLevel, $length)")
+      berLogger.info(s"Level and position to fetch ($headLevel, $length)")
       val range = List.range(Math.max(headLevel + 1, rightsStartLevel), headLevel + length)
       Source
         .fromIterator(() => range.toIterator)
-        .grouped(lorreConf.rights.fetchSize)
+        .grouped(lorreConf.blockRightsFetching.fetchSize)
         .mapAsync(1) { partition =>
           tezosNodeOperator.getBatchBakingRightsByLevels(partition.toList).flatMap { bakingRightsResult =>
             val brResults = bakingRightsResult.values.flatten
-            logger.info(s"BER Got ${brResults.size} baking rights")
+            berLogger.info(s"Got ${brResults.size} baking rights")
             db.run(TezosDb.insertBakingRights(brResults.toList))
           }
           tezosNodeOperator.getBatchEndorsingRightsByLevel(partition.toList).flatMap { endorsingRightsResult =>
             val erResults = endorsingRightsResult.values.flatten
-            logger.info(s"BER Got ${erResults.size} endorsing rights")
+            berLogger.info(s"Got ${erResults.size} endorsing rights")
             db.run(TezosDb.insertEndorsingRights(erResults.toList))
           }
         }

@@ -16,6 +16,7 @@ import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
 import com.github.tminglei.slickpg.ExPostgresProfile
+import org.slf4j.LoggerFactory
 import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import slick.jdbc.JdbcCapabilities
@@ -361,13 +362,13 @@ object TezosDatabaseOperations extends LazyLogging {
 
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }
-
+  val berLogger = LoggerFactory.getLogger("BAKING-ENDORSING-RIGHTS")
   /**
     * Writes baking rights to the database
     * @param bakingRights mapping of hash to endorsingRights list
     */
   def insertBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
-    logger.info("BER Inserting baking rights to the DB...")
+    berLogger.info("Inserting baking rights to the DB...")
     Tables.BakingRights ++= bakingRights.map(_.convertTo[Tables.BakingRightsRow])
   }
 
@@ -376,7 +377,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param endorsingRights mapping of hash to endorsingRights list
     */
   def insertEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
-    logger.info("BER Inserting endorsing rights to the DB...")
+    berLogger.info("Inserting endorsing rights to the DB...")
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 

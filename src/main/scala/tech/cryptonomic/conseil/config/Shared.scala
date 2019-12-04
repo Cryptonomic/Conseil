@@ -36,7 +36,7 @@ final case class LorreConfiguration(
     depth: Depth,
     headHash: Option[BlockHash],
     chainEvents: List[ChainEvent],
-    rights: Rights
+    blockRightsFetching: BakingAndEndorsingRights
 )
 
 final case class BatchFetchConfiguration(
@@ -65,10 +65,10 @@ final case class SodiumConfiguration(libraryPath: String) extends AnyVal with Pr
 final case class HttpCacheConfiguration(cacheConfig: com.typesafe.config.Config)
 
 /** configuration for fetching baking and endorsing rights */
-final case class Rights(
+final case class BakingAndEndorsingRights(
     initDelay: FiniteDuration,
     interval: FiniteDuration,
-    cyclesFetch: Int,
+    cyclesToFetch: Int,
     cycleSize: Int,
     fetchSize: Int
 )
