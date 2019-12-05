@@ -7,7 +7,17 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
+  DatabaseConversions,
+  FeeOperations,
+  ShutdownComplete,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -69,11 +79,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   /** Schedules method for fetching baking rights */
-  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(writeFutureRights())
+  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
+    writeFutureRights()
+  )
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   def writeFutureRights(): Unit = {
-    val berLogger = LoggerFactory.getLogger("BAKING-ENDORSING-RIGHTS")
+    val berLogger = LoggerFactory.getLogger("BER")
 
     import cats.implicits._
 
@@ -86,7 +98,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     (blockHead, brLevelFut, erLevelFut).mapN { (head, brLevel, erLevel) =>
       val headLevel = head.header.level
       val rightsStartLevel = math.max(brLevel, erLevel) + 1
-      berLogger.info(s"Current Tezos block head level: $headLevel DB stored baking rights level: $brLevel DB stored endorsing rights level: $erLevel")
+      berLogger.info(
+        s"Current Tezos block head level: $headLevel DB stored baking rights level: $brLevel DB stored endorsing rights level: $erLevel"
+      )
 
       val length = DatabaseConversions
         .extractCyclePosition(head.metadata)

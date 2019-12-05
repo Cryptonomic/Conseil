@@ -652,18 +652,19 @@ object DatabaseConversions {
     }
   }
 
-  implicit val endorsingRightsToRowsWithoutBlockHash = new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
-    override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
-      val endorsingRights = from
-      endorsingRights.slots.map { slot =>
-        endorsingRights
-          .into[Tables.EndorsingRightsRow]
-          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
-          .withFieldConst(_.slot, slot)
-          .withFieldConst(_.blockHash, None)
-          .transform
+  implicit val endorsingRightsToRowsWithoutBlockHash =
+    new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
+        val endorsingRights = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, None)
+            .transform
+        }
       }
     }
-  }
 
 }
