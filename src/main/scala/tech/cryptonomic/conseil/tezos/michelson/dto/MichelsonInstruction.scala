@@ -38,7 +38,7 @@ case class MichelsonInstructionSequence(instructions: List[MichelsonInstruction]
 }
 
 /* Class representing an int constant */
-case class MichelsonIntConstant(int: Long) extends MichelsonInstruction
+case class MichelsonIntConstant(int: String) extends MichelsonInstruction
 
 /* Class representing a string constant */
 case class MichelsonStringConstant(string: String) extends MichelsonInstruction

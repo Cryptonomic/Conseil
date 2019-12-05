@@ -19,7 +19,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
     }
 
   it should "render MichelsonType with int constant" in {
-      MichelsonType("some", List(MichelsonIntConstant(12))).render() shouldBe "(some 12)"
+      MichelsonType("some", List(MichelsonIntConstant("12"))).render() shouldBe "(some 12)"
     }
 
   it should "render MichelsonType with string constant" in {
@@ -75,7 +75,7 @@ class MichelsonRendererSpec extends FlatSpec with Matchers {
 
   it should "render MichelsonCode with typed instruction with constant" in {
       val michelsonCode =
-        MichelsonCode(List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant(0)))))
+        MichelsonCode(List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant("0")))))
 
       michelsonCode.render() shouldBe "PUSH mutez 0"
     }
