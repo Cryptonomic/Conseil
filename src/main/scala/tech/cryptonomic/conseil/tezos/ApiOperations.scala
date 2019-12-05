@@ -3,7 +3,14 @@ package tech.cryptonomic.conseil.tezos
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, MetadataOperations}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{Field, FormattedField, Predicate, Query, QueryResponse, SimpleField}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{
+  Field,
+  FormattedField,
+  Predicate,
+  Query,
+  QueryResponse,
+  SimpleField
+}
 import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -64,10 +71,8 @@ class ApiOperations extends DataOperations with MetadataOperations {
     optionalMax.map(_.getOrElse(-1))
   }
 
-  def fetchVotesAtLevel(level: Int)(implicit ec: ExecutionContext): Future[List[VotesRow]] = {
+  def fetchVotesAtLevel(level: Int)(implicit ec: ExecutionContext): Future[List[VotesRow]] =
     runQuery(Tables.Votes.filter(_.level === level).result).map(_.toList)
-  }
-
 
   /**
     * Fetches the most recent block stored in the database.

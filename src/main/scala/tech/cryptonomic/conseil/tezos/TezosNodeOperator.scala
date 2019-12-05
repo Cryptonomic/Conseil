@@ -502,7 +502,7 @@ class TezosNodeOperator(
     */
   def partitionElements[E](elements: List[E]): Iterator[List[E]] =
     TezosNodeOperator.partitionRanges(blockPageSize)(Range.inclusive(0, elements.size - 1)) map { range =>
-        elements.take(range.end + 1).drop(range.start)
+        elements.slice(range.start, range.end + 1)
       }
 
   /**

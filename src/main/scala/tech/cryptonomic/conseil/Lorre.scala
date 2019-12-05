@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
+  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -24,7 +25,7 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
 import tech.cryptonomic.conseil.config.Platforms
 import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.VotingFields
-import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.config._
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -92,18 +93,20 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 //    -if ballot, calculate count/stake yays, nays, passes using length function/rpc call
 //  -if proposal, create database row directly
 //    -create database rows, and write
-  def sth = {
-  for {
-      finish <- apiOperations.fetchMaxLevel()
-      start <-  apiOperations.fetchVotesMaxLevel()
-    } yield {
-      List.range(start, finish).map { xxx =>
-        apiOperations.fetchVotesAtLevel(xxx).map {
-          ???
-        }
-      }
-    }
-  }
+//  def sth = {
+//  for {
+//      finish <- apiOperations.fetchMaxLevel()
+//      start <-  apiOperations.fetchVotesMaxLevel()
+//    } yield {
+//      List.range(start, finish).map { xxx =>
+//        apiOperations.fetchVotesAtLevel(xxx).map { yyy =>
+//          yyy.map {
+//            case zzz@Tables.VotesRow =>
+//          }
+//        }
+//      }
+//    }
+//  }
 
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {
@@ -419,14 +422,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     logger.info("Processing latest Tezos votes data...")
 
     /**
-    * * Helper function, takes a sequence of GovernanceData, separates them by ballot types.
+      * * Helper function, takes a sequence of GovernanceData, separates them by ballot types.
       * @param fields
       * @return
       */
     def partitionByVote(fields: Seq[VotingFields]): (Seq[VotingFields], Seq[VotingFields], Seq[VotingFields]) = {
-      val (yays, notYays) = fields.partition(x => x._6 == Some("yay"))
-      val (nays, notYaysOrNays) = notYays.partition(x => x._6 == Some("nay"))
-      val (passes, _) = notYaysOrNays.partition(x => x._6 == Some("pass"))
+      val (yays, notYays) = fields.partition(x => x.ballot.contains("yay"))
+      val (nays, notYaysOrNays) = notYays.partition(x => x.ballot.contains("nay"))
+      val (passes, _) = notYaysOrNays.partition(x => x.ballot.contains("pass"))
       (yays, nays, passes)
     }
 
@@ -434,7 +437,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       Future
         .traverse(
           fields.map {
-            case (_, _, hash, _, _, _, address) =>
+            case VotingFields(_, _, hash, _, _, _, address) =>
               (BlockHash(hash), AccountId(address.get))
           }
         ) { x =>
@@ -444,10 +447,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     def processVoteAggregate(votingFields: Seq[VotingFields]): Future[TezosTypes.VoteAggregates] = {
       val sampleVotingField = votingFields.head
-      val timestamp = sampleVotingField._5
-      val cycle = sampleVotingField._4
-      val level = sampleVotingField._2
-      val proposalHash = sampleVotingField._1
+      val timestamp = sampleVotingField.timestamp
+      val cycle = sampleVotingField.cycle
+      val level = sampleVotingField.level
+      val proposalHash = sampleVotingField.proposalHash
       val (yays, nays, passes) = partitionByVote(votingFields)
       val yayCount = yays.length
       val nayCount = nays.length
@@ -477,7 +480,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     val computeAndStore = for {
       blockLevels <- TezosDb.fetchVotingBlockLevels
       listOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
-      listOfListOfVotingFields = listOfVotingFields.groupBy(_._2).values
+      listOfListOfVotingFields = listOfVotingFields.groupBy(_.level).values
       votes <- DBIO.from {
         Future.traverse(listOfListOfVotingFields.toSeq) { x =>
           processVoteAggregate(x)

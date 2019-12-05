@@ -580,26 +580,37 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield (voteMaxLevel + 1 to headBlockLevel).toSet
   }
 
-  type VotingFields = (Option[String], Int, String, Option[Int], java.sql.Timestamp, Option[String], Option[String])
+  /** Voting fields representation */
+  case class VotingFields(
+      proposalHash: Option[String],
+      level: Int,
+      hash: String,
+      cycle: Option[Int],
+      timestamp: java.sql.Timestamp,
+      ballot: Option[String],
+      address: Option[String]
+  )
 
   /** Get necessary fields to populate votes table from ballot operations */
   def fetchVotingFields(levels: Set[Int])(implicit ec: ExecutionContext): DBIO[Seq[VotingFields]] =
     Tables.Operations
       .filter(_.kind inSet Set("ballot"))
       .filter(_.blockLevel inSet levels)
-      .map(
-        o =>
-          (
-            o.proposal,
-            o.blockLevel,
-            o.blockHash,
-            o.cycle,
-            o.timestamp,
-            o.ballot,
-            o.source
-          )
-      )
       .result
+      .map(
+        results =>
+          results.map { o =>
+            VotingFields(
+              o.proposal,
+              o.blockLevel,
+              o.blockHash,
+              o.cycle,
+              o.timestamp,
+              o.ballot,
+              o.source
+            )
+          }
+      )
 
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =
