@@ -21,6 +21,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -291,8 +292,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
-      val bh = fetchingResults.map(_._1.data.hash)
-      (tezosNodeOperator.getBatchBakingRights(bh), tezosNodeOperator.getBatchEndorsingRights(bh)).mapN {
+
+      val blockHashesWithCycleAndGovernancePeriod = fetchingResults.map { results =>
+        {
+          val data = results._1.data
+          val hash = data.hash
+          data.metadata match {
+            case GenesisMetadata => FetchRights(None, None, hash)
+            case BlockHeaderMetadata(_, _, _, _, _, level) =>
+              FetchRights(Some(level.cycle), Some(level.voting_period), hash)
+
+          }
+        }
+      }
+
+      (
+        tezosNodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),
+        tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)
+      ).mapN {
         case (br, er) =>
           (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
             .mapN((_, _) => ())
