@@ -3327,7 +3327,7 @@ class TezosDatabaseOperationsTest
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant
-            cycle shouldEqual block.metaCycle
+            cycleOpt shouldEqual block.metaCycle
         }
       }
 
