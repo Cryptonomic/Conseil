@@ -353,9 +353,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           val data = results._1.data
           val hash = data.hash
           data.metadata match {
-            case GenesisMetadata => FetchRights(None, None, hash)
+            case GenesisMetadata => FetchRights(None, None, Some(hash))
             case BlockHeaderMetadata(_, _, _, _, _, level) =>
-              FetchRights(Some(level.cycle), Some(level.voting_period), hash)
+              FetchRights(Some(level.cycle), Some(level.voting_period), Some(hash))
 
           }
         }

@@ -269,7 +269,7 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.value}/helpers/baking_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.get.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
@@ -287,7 +287,7 @@ trait BlocksDataFetchers {
                 .error(
                   "I encountered problems while fetching baking rights from {}, for blocks {}. The error says {}",
                   network,
-                  hashes.map(_.value).mkString(", "),
+                  hashes.map(_.get.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]
@@ -323,7 +323,7 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.value}/helpers/endorsing_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.get.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
@@ -341,7 +341,7 @@ trait BlocksDataFetchers {
                 .error(
                   "I encountered problems while fetching endorsing rights from {}, for blocks {}. The error says {}",
                   network,
-                  hashes.map(_.value).mkString(", "),
+                  hashes.map(_.get.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]

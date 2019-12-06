@@ -624,7 +624,7 @@ object DatabaseConversions {
         val (fetchRights, bakingRights) = from
         bakingRights
           .into[Tables.BakingRightsRow]
-          .withFieldConst(_.blockHash, fetchRights.blockHash.value)
+          .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
           .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
           .withFieldConst(_.cycle, fetchRights.cycle)
           .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
@@ -643,7 +643,7 @@ object DatabaseConversions {
             .into[Tables.EndorsingRightsRow]
             .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
             .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, fetchRights.blockHash.value)
+            .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
             .withFieldConst(_.cycle, fetchRights.cycle)
             .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
             .transform

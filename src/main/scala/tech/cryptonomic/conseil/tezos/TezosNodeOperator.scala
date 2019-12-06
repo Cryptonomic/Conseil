@@ -43,7 +43,7 @@ object TezosNodeOperator {
     * @param governancePeriod governance period
     * @param blockHash        hash of a block
     */
-  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: BlockHash)
+  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[BlockHash])
 
   /**
     * Given a contiguous valus range, creates sub-ranges of max the given size

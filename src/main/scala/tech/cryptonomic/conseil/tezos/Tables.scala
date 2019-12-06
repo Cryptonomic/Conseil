@@ -393,7 +393,7 @@ trait Tables {
       e3: GR[Option[Int]]
   ): GR[BakingRightsRow] = GR { prs =>
     import prs._
-    BakingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
+    BakingRightsRow.tupled((<<?[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table baking_rights. Objects of this class serve as prototypes for rows in queries. */
@@ -996,7 +996,7 @@ trait Tables {
       e3: GR[Option[Int]]
   ): GR[EndorsingRightsRow] = GR { prs =>
     import prs._
-    EndorsingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
+    EndorsingRightsRow.tupled((<<?[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table endorsing_rights. Objects of this class serve as prototypes for rows in queries. */

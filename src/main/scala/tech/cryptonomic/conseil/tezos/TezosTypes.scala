@@ -313,9 +313,7 @@ object TezosTypes {
         result: OperationResult.Reveal
     ) extends InternalOperationResult
 
-    case class Parameters(
-        entrypoint: String,
-        value: Micheline)
+    case class Parameters(entrypoint: String, value: Micheline)
 
     case class Transaction(
         kind: String,
@@ -590,7 +588,9 @@ object TezosTypes {
       level: Int,
       delegate: String,
       priority: Int,
-      estimated_time: ZonedDateTime
+      estimated_time: ZonedDateTime,
+      cycle: Option[Int],
+      governancePeriod: Option[Int]
   )
 
   /** Endorsing rights model */
@@ -598,7 +598,9 @@ object TezosTypes {
       level: Int,
       delegate: String,
       slots: List[Int],
-      estimated_time: ZonedDateTime
+      estimated_time: ZonedDateTime,
+      cycle: Option[Int],
+      governancePeriod: Option[Int]
   )
 
 }

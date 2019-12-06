@@ -372,9 +372,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
-  def writeBakingRights(
+  def upsertBakingRights(
       bakingRightsMap: Map[FetchRights, List[BakingRights]]
   ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
       (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
@@ -388,9 +389,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * Upserts endorsing rights to the database
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
-  def writeEndorsingRights(
+  def upsertEndorsingRights(
       endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
   ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
       (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
