@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.time.Instant
-
 import java.time.ZonedDateTime
 
 import monocle.Traversal
@@ -25,6 +24,8 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
+    private val parametersExpresssion = GenLens[Parameters](_.value)
+
     private val storage = GenLens[Scripted.Contracts](_.storage)
     private val code = GenLens[Scripted.Contracts](_.code)
 
@@ -44,7 +45,7 @@ object TezosTypes {
           operations composeTraversal each composePrism
           transaction composeLens
           parameters composePrism some composeLens
-          expression
+          parametersExpresssion composeLens expression
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
@@ -269,9 +270,14 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       source: PublicKeyHash,
       destination: ContractId,
-      parameters: Option[Micheline],
+      parameters: Option[Parameters],
       metadata: ResultMetadata[OperationResult.Transaction]
   ) extends Operation
+
+  final case class Parameters(
+      entrypoint: String,
+      value: Micheline
+  )
 
   final case class Origination(
       counter: PositiveBigNumber,
@@ -339,13 +345,17 @@ object TezosTypes {
         result: OperationResult.Reveal
     ) extends InternalOperationResult
 
+    case class Parameters(
+        entrypoint: String,
+        value: Micheline)
+
     case class Transaction(
         kind: String,
         source: PublicKeyHash,
         nonce: Int,
         amount: PositiveBigNumber,
         destination: ContractId,
-        parameters: Option[Micheline],
+        parameters: Option[Parameters],
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 

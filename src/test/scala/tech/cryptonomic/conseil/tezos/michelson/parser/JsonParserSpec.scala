@@ -143,7 +143,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
       parse[MichelsonInstruction](json) should equal(
         Right(
           MichelsonInstructionSequence(
-            List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant(0))))
+            List(MichelsonSingleInstruction("PUSH", List(MichelsonType("mutez"), MichelsonIntConstant("0"))))
           )
         )
       )
@@ -310,7 +310,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
         |}""".stripMargin
 
       parse[MichelsonExpression](json) should equal(
-        Right(MichelsonType("Pair", List(MichelsonIntConstant(0), MichelsonEmptyInstruction)))
+        Right(MichelsonType("Pair", List(MichelsonIntConstant("0"), MichelsonEmptyInstruction)))
       )
     }
 
@@ -379,7 +379,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
           MichelsonType(
             "Pair",
             List(
-              MichelsonInstructionSequence(List(MichelsonSingleInstruction("Elt", List(MichelsonIntConstant(0))))),
+              MichelsonInstructionSequence(List(MichelsonSingleInstruction("Elt", List(MichelsonIntConstant("0"))))),
               MichelsonStringConstant("Author: Teckhua Chiang, Company: Cryptonomic")
             ),
             List()

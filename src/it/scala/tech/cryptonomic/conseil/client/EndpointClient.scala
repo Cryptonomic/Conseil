@@ -15,7 +15,8 @@ import org.http4s.client.dsl.io._
 import org.http4s.Uri
 import io.circe.{parser, Json}
 import cats.effect.IO
-import cats.syntax.apply._
+import cats.syntax.all._
+import scala.io.Source
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
@@ -70,7 +71,8 @@ object DataEndpointsClientProbe {
     Setup
       .usingConseil(syncToNetwork) {
         infoEndpoint *>
-          blockHeadEndpoint
+          blockHeadEndpoint *>
+          groupingPredicatesQueryEndpoint
       }
       .flatMap {
         case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
@@ -165,6 +167,44 @@ object DataEndpointsClientProbe {
         case left => left
       }
     }
+  }
+
+  def groupingPredicatesQueryEndpoint = {
+    val callBody = parser
+      .parse(Source.fromResource("groupingPredicatesQuery.body.json").mkString)
+      .ensuring(_.isRight)
+      .right
+      .get
+
+    val expected = parser
+      .parse(Source.fromResource("groupingPredicatesQuery.response.json").mkString)
+      .ensuring(_.isRight)
+      .right
+      .get
+
+    val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/operations")
+
+    clientBuild.resource.use { client =>
+      val req = POST(
+        body = callBody,
+        uri = endpoint,
+        `Content-Type`(MediaType.application.json),
+        Accept(MediaType.application.json),
+        Header("apiKey", "hooman")
+      )
+      client.expect[Json](req).attempt.map {
+        case Right(json) =>
+          Either.cond(
+            json == expected,
+            right = json,
+            left = new Exception(
+              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+            )
+          )
+        case left => left
+      }
+    }
+
   }
 
 }

@@ -374,39 +374,54 @@ trait Tables {
     *  @param level Database column level SqlType(int4)
     *  @param delegate Database column delegate SqlType(varchar)
     *  @param priority Database column priority SqlType(int4)
-    *  @param estimatedTime Database column estimated_time SqlType(timestamp) */
+    *  @param estimatedTime Database column estimated_time SqlType(timestamp)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param governancePeriod Database column governance_period SqlType(int4), Default(None) */
   case class BakingRightsRow(
       blockHash: String,
       level: Int,
       delegate: String,
       priority: Int,
-      estimatedTime: java.sql.Timestamp
+      estimatedTime: java.sql.Timestamp,
+      cycle: Option[Int] = None,
+      governancePeriod: Option[Int] = None
   )
 
   /** GetResult implicit for fetching BakingRightsRow objects using plain SQL queries */
   implicit def GetResultBakingRightsRow(
       implicit e0: GR[String],
       e1: GR[Int],
-      e2: GR[java.sql.Timestamp]
+      e2: GR[java.sql.Timestamp],
+      e3: GR[Option[Int]]
   ): GR[BakingRightsRow] = GR { prs =>
     import prs._
-    BakingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp]))
+    BakingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table baking_rights. Objects of this class serve as prototypes for rows in queries. */
   class BakingRights(_tableTag: Tag)
       extends profile.api.Table[BakingRightsRow](_tableTag, Some("tezos"), "baking_rights") {
-    def * = (blockHash, level, delegate, priority, estimatedTime) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
+    def * =
+      (blockHash, level, delegate, priority, estimatedTime, cycle, governancePeriod) <> (BakingRightsRow.tupled, BakingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(blockHash), Rep.Some(level), Rep.Some(delegate), Rep.Some(priority), Rep.Some(estimatedTime))).shaped
-        .<>(
-          { r =>
-            import r._; _1.map(_ => BakingRightsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
-          },
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      (
+        (
+          Rep.Some(blockHash),
+          Rep.Some(level),
+          Rep.Some(delegate),
+          Rep.Some(priority),
+          Rep.Some(estimatedTime),
+          cycle,
+          governancePeriod
         )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => BakingRightsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column block_hash SqlType(varchar) */
     val blockHash: Rep[String] = column[String]("block_hash")
@@ -422,6 +437,12 @@ trait Tables {
 
     /** Database column estimated_time SqlType(timestamp) */
     val estimatedTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("estimated_time")
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column governance_period SqlType(int4), Default(None) */
+    val governancePeriod: Rep[Option[Int]] = column[Option[Int]]("governance_period", O.Default(None))
 
     /** Primary key of BakingRights (database name baking_rights_pkey) */
     val pk = primaryKey("baking_rights_pkey", (level, delegate))
@@ -956,35 +977,51 @@ trait Tables {
     *  @param level Database column level SqlType(int4)
     *  @param delegate Database column delegate SqlType(varchar)
     *  @param slot Database column slot SqlType(int4)
-    *  @param estimatedTime Database column estimated_time SqlType(timestamp) */
+    *  @param estimatedTime Database column estimated_time SqlType(timestamp)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param governancePeriod Database column governance_period SqlType(int4), Default(None) */
   case class EndorsingRightsRow(
       blockHash: String,
       level: Int,
       delegate: String,
       slot: Int,
-      estimatedTime: java.sql.Timestamp
+      estimatedTime: java.sql.Timestamp,
+      cycle: Option[Int] = None,
+      governancePeriod: Option[Int] = None
   )
 
   /** GetResult implicit for fetching EndorsingRightsRow objects using plain SQL queries */
   implicit def GetResultEndorsingRightsRow(
       implicit e0: GR[String],
       e1: GR[Int],
-      e2: GR[java.sql.Timestamp]
+      e2: GR[java.sql.Timestamp],
+      e3: GR[Option[Int]]
   ): GR[EndorsingRightsRow] = GR { prs =>
     import prs._
-    EndorsingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp]))
+    EndorsingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table endorsing_rights. Objects of this class serve as prototypes for rows in queries. */
   class EndorsingRights(_tableTag: Tag)
       extends profile.api.Table[EndorsingRightsRow](_tableTag, Some("tezos"), "endorsing_rights") {
-    def * = (blockHash, level, delegate, slot, estimatedTime) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
+    def * =
+      (blockHash, level, delegate, slot, estimatedTime, cycle, governancePeriod) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(blockHash), Rep.Some(level), Rep.Some(delegate), Rep.Some(slot), Rep.Some(estimatedTime))).shaped.<>(
+      (
+        (
+          Rep.Some(blockHash),
+          Rep.Some(level),
+          Rep.Some(delegate),
+          Rep.Some(slot),
+          Rep.Some(estimatedTime),
+          cycle,
+          governancePeriod
+        )
+      ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => EndorsingRightsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
+          import r._; _1.map(_ => EndorsingRightsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1003,6 +1040,12 @@ trait Tables {
 
     /** Database column estimated_time SqlType(timestamp) */
     val estimatedTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("estimated_time")
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column governance_period SqlType(int4), Default(None) */
+    val governancePeriod: Rep[Option[Int]] = column[Option[Int]]("governance_period", O.Default(None))
 
     /** Primary key of EndorsingRights (database name endorsing_rights_pkey) */
     val pk = primaryKey("endorsing_rights_pkey", (level, delegate, slot))

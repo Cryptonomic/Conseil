@@ -17,6 +17,7 @@ import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 /**
   * Functions for writing Tezos data to a database.
@@ -369,12 +370,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * Writes the baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
-  def writeBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
+  def writeBakingRights(
+      bakingRightsMap: Map[FetchRights, List[BakingRights]]
+  ): DBIO[Option[Int]] = {
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
-      (blockHash, bakingRightsList) <- bakingRightsMap
+      (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
       bakingRights <- bakingRightsList
-    } yield (blockHash, bakingRights).convertTo[Tables.BakingRightsRow]
+    } yield (blockHashWithCycleAndGovernancePeriod, bakingRights).convertTo[Tables.BakingRightsRow]
 
     Tables.BakingRights ++= conversionResult
   }
@@ -383,12 +386,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * Writes the endorsing rights to the database
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
-  def writeEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
+  def writeEndorsingRights(
+      endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
+  ): DBIO[Option[Int]] = {
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
-      (blockHash, endorsingRightsList) <- endorsingRightsMap
+      (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
-    } yield (blockHash, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+    } yield (blockHashWithCycleAndGovernancePeriod, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
     Tables.EndorsingRights ++= transformationResult.flatten
   }
