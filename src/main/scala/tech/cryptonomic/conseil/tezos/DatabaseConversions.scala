@@ -41,6 +41,12 @@ object DatabaseConversions {
       .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle) //this is Option[Int]
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractCyclePosition(block: BlockMetadata): Option[Int] =
+    discardGenesis
+      .lift(block) //this returns an Option[BlockHeaderMetadata]
+      .map(_.level.cycle_position) //this is Option[Int]
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -618,7 +624,7 @@ object DatabaseConversions {
         val (fetchRights, bakingRights) = from
         bakingRights
           .into[Tables.BakingRightsRow]
-          .withFieldConst(_.blockHash, fetchRights.blockHash.value)
+          .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
           .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
           .withFieldConst(_.cycle, fetchRights.cycle)
           .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
@@ -637,9 +643,35 @@ object DatabaseConversions {
             .into[Tables.EndorsingRightsRow]
             .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
             .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, fetchRights.blockHash.value)
+            .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
             .withFieldConst(_.cycle, fetchRights.cycle)
             .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
+            .transform
+        }
+      }
+    }
+
+  implicit val bakingRightsToRowsWithoutBlockHash = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
+    override def convert(from: BakingRights): tezos.Tables.BakingRightsRow = {
+      val bakingRights = from
+      bakingRights
+        .into[Tables.BakingRightsRow]
+        .withFieldConst(_.blockHash, None)
+        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .transform
+    }
+  }
+
+  implicit val endorsingRightsToRowsWithoutBlockHash =
+    new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
+        val endorsingRights = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, None)
             .transform
         }
       }

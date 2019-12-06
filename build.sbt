@@ -61,6 +61,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick"           %% "slick"                         % slickVersion exclude ("org.reactivestreams", "reactive-streams") exclude ("com.typesafe", "config") exclude ("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"           %% "slick-hikaricp"                % slickVersion exclude ("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"           %% "slick-codegen"                 % slickVersion,
+  "com.github.tminglei"          %% "slick-pg"                     % "0.18.0",
   "com.kubukoz"                  %% "slick-effect"                  % "0.1.0" exclude ("com.typesafe.slick", "slick"),
   "org.postgresql"               % "postgresql"                     % "42.1.4",
   "com.github.scopt"             %% "scopt"                         % "4.0.0-RC2",
