@@ -580,8 +580,8 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield (voteMaxLevel + 1 to headBlockLevel).toSet
   }
 
-  /** Voting fields representation */
-  case class VotingFields(
+  /** Voting data representation */
+  case class VotingData(
       proposalHash: Option[String],
       level: Int,
       hash: String,
@@ -592,7 +592,7 @@ object TezosDatabaseOperations extends LazyLogging {
   )
 
   /** Get necessary fields to populate votes table from ballot operations */
-  def fetchVotingFields(levels: Set[Int])(implicit ec: ExecutionContext): DBIO[Seq[VotingFields]] =
+  def fetchVotingData(levels: Set[Int])(implicit ec: ExecutionContext): DBIO[Seq[VotingData]] =
     Tables.Operations
       .filter(_.kind inSet Set("ballot"))
       .filter(_.blockLevel inSet levels)
@@ -600,7 +600,7 @@ object TezosDatabaseOperations extends LazyLogging {
       .map(
         results =>
           results.map { o =>
-            VotingFields(
+            VotingData(
               o.proposal,
               o.blockLevel,
               o.blockHash,

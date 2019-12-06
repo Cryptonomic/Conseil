@@ -522,6 +522,13 @@ CREATE INDEX fki_fk_blockhashes ON tezos.operations USING btree (block_hash);
 
 
 --
+-- Name: proposal_hash_ix; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX proposal_hash_ix ON tezos.governance USING btree (proposal_hash);
+
+
+--
 -- TOC entry 2083 (class 1259 OID 99702)
 -- Name: ix_accounts_block_level; Type: INDEX; Schema: tezos; Owner: -
 --

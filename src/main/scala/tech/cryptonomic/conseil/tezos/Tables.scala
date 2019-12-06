@@ -1233,6 +1233,9 @@ trait Tables {
 
     /** Database column period_index SqlType(int4) */
     val periodIndex: Rep[Int] = column[Int]("period_index")
+
+    /** Index over (proposalHash) (database name proposal_hash_ix) */
+    val index1 = index("proposal_hash_ix", proposalHash)
   }
 
   /** Collection-like TableQuery object for table Governance */

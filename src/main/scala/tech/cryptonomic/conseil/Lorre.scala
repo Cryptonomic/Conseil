@@ -1,9 +1,8 @@
 package tech.cryptonomic.conseil
 
-import slick.jdbc.PostgresProfile.api._
 import akka.actor.ActorSystem
 import akka.Done
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
@@ -12,7 +11,6 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
-  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -24,12 +22,12 @@ import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
 import tech.cryptonomic.conseil.config.Platforms
-import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.VotingFields
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.VotingData
 import tech.cryptonomic.conseil.config._
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
@@ -82,31 +80,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-//  -Fetch range of block levels to be queried for operations, from head level in Votes Table to head Level in Blocks Table
-//    -For each block level
-//    -fetch voting fields from database, based on period_kind group by block level
-//  -PERIOD -> OPERATION KIND
-//    proposal -> proposal
-//  testing vote -> ballot
-//    testing -> N / A
-//  promotion vote -> ballot
-//    -if ballot, calculate count/stake yays, nays, passes using length function/rpc call
-//  -if proposal, create database row directly
-//    -create database rows, and write
-//  def sth = {
-//  for {
-//      finish <- apiOperations.fetchMaxLevel()
-//      start <-  apiOperations.fetchVotesMaxLevel()
-//    } yield {
-//      List.range(start, finish).map { xxx =>
-//        apiOperations.fetchVotesAtLevel(xxx).map { yyy =>
-//          yyy.map {
-//            case zzz@Tables.VotesRow =>
-//          }
-//        }
-//      }
-//    }
-//  }
+  // starts processing Tezos votes
+  system.scheduler.scheduleOnce(1.minute)(processTezosVotes())
 
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {
@@ -160,7 +135,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     val processing = for {
       nextRefreshes <- processAccountRefreshes(accountsRefreshLevels)
       _ <- processTezosBlocks()
-      _ <- processTezosVotes()
+//      _ <- processTezosVotes()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
@@ -416,42 +391,51 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * @param ex the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
-  private[this] def processTezosVotes()(implicit ex: ExecutionContext): Future[Option[Int]] = {
+  private[this] def processTezosVotes(): Unit = {
     import slick.jdbc.PostgresProfile.api._
+    implicit val mat = ActorMaterializer()
 
     logger.info("Processing latest Tezos votes data...")
 
     /**
       * * Helper function, takes a sequence of GovernanceData, separates them by ballot types.
-      * @param fields
+      * @param votingData
       * @return
       */
-    def partitionByVote(fields: Seq[VotingFields]): (Seq[VotingFields], Seq[VotingFields], Seq[VotingFields]) = {
-      val (yays, notYays) = fields.partition(x => x.ballot.contains("yay"))
+    def partitionByVote(votingData: Seq[VotingData]): (Seq[VotingData], Seq[VotingData], Seq[VotingData]) = {
+      val (yays, notYays) = votingData.partition(x => x.ballot.contains("yay"))
       val (nays, notYaysOrNays) = notYays.partition(x => x.ballot.contains("nay"))
       val (passes, _) = notYaysOrNays.partition(x => x.ballot.contains("pass"))
       (yays, nays, passes)
     }
 
-    def calculateStake(fields: Seq[VotingFields]): Future[BigDecimal] =
+    /**
+      * * Helper function, takes a sequence of GovernanceData, calculates stake.
+      * @param votingData
+      * @return
+      */
+    def calculateStake(votingData: Seq[VotingData]): Future[BigDecimal] =
       Future
-        .traverse(
-          fields.map {
-            case VotingFields(_, _, hash, _, _, _, address) =>
-              (BlockHash(hash), AccountId(address.get))
+        .sequence(
+          votingData.map {
+            case VotingData(_, _, hash, _, _, _, address) =>
+              tezosNodeOperator.getAccountBalanceForBlock(BlockHash(hash), AccountId(address.get))
           }
-        ) { x =>
-          tezosNodeOperator.getAccountBalanceForBlock(x._1, x._2)
-        }
+        )
         .map(balances => balances.reduceOption(_ + _).getOrElse(0))
 
-    def processVoteAggregate(votingFields: Seq[VotingFields]): Future[TezosTypes.VoteAggregates] = {
-      val sampleVotingField = votingFields.head
+    /**
+      * * Helper function, takes a sequence of GovernanceData, processes aggregate fields.
+      * @param votingData
+      * @return
+      */
+    def processVoteAggregate(votingData: Seq[VotingData]): Future[TezosTypes.VoteAggregates] = {
+      val sampleVotingField = votingData.head
       val timestamp = sampleVotingField.timestamp
       val cycle = sampleVotingField.cycle
       val level = sampleVotingField.level
       val proposalHash = sampleVotingField.proposalHash
-      val (yays, nays, passes) = partitionByVote(votingFields)
+      val (yays, nays, passes) = partitionByVote(votingData)
       val yayCount = yays.length
       val nayCount = nays.length
       val passCount = passes.length
@@ -477,23 +461,30 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
 
     //get fields from db in Tezos Database Operations, use the block levels as input
-    val computeAndStore = for {
-      blockLevels <- TezosDb.fetchVotingBlockLevels
-      listOfVotingFields <- TezosDb.fetchVotingFields(blockLevels)
-      listOfListOfVotingFields = listOfVotingFields.groupBy(_.level).values
-      votes <- DBIO.from {
-        Future.traverse(listOfListOfVotingFields.toSeq) { x =>
-          processVoteAggregate(x)
-        }
-      }
-      dbWrites <- TezosDb.writeVotes(votes.toList)
-    } yield dbWrites
+    db.run(TezosDb.fetchVotingBlockLevels).flatMap { levels =>
+      Source
+        .fromIterator(() => levels.toIterator)
+        .grouped(batchingConf.blockPageSize) // we use here block page size, because pr
+        .mapAsync(1) { blockLevels =>
+          val computeAndStore = for {
+            listOfVotingFields <- TezosDb.fetchVotingData(blockLevels.toSet)
+            ballotOperationsByClock = listOfVotingFields.groupBy(_.level).values
+            votes <- DBIO.from {
+              Future.traverse(ballotOperationsByClock.toSeq)(processVoteAggregate)
+            }
+            dbWrites <- TezosDb.writeVotes(votes.toList)
+          } yield dbWrites
 
-    db.run(computeAndStore).andThen {
-      case Success(Some(written)) => logger.info("Wrote {} vote aggregates to the database.", written)
-      case Success(None) => logger.info("Wrote vote aggregates to the database.")
-      case Failure(e) => logger.error("Could not write vote aggregates to the database because", e)
+          db.run(computeAndStore).andThen {
+            case Success(Some(written)) => logger.info("Wrote {} vote aggregates to the database.", written)
+            case Success(None) => logger.info("Wrote vote aggregates to the database.")
+            case Failure(e) => logger.error("Could not write vote aggregates to the database because", e)
+          }
+        }
+        .runWith(Sink.ignore)
     }
+
+    ()
   }
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
