@@ -134,7 +134,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
       "modify parameters with monocle's lenses" in {
         // given
-        val modifiedTransaction = transaction.copy(parameters = Some(Micheline("micheline script")))
+        val modifiedTransaction = transaction.copy(parameters = Some(Parameters("default", Micheline("micheline script"))))
         val modifiedOperations = List(operationGroup.copy(contents = origination :: modifiedTransaction :: Nil))
 
         val block = Block(blockData, modifiedOperations, blockVotes)
@@ -147,7 +147,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Transaction =>
-            op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
+            op.parameters.head.value.expression shouldEqual "MICHELINE SCRIPT"
           case _ =>
         }
       }

@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,6 +36,14 @@ object TezosNodeOperator {
     * @param operationGroupID Operation group ID
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
+
+  /**
+    * Information for fetching baking/endorsing rights
+    * @param cycle            block cycle
+    * @param governancePeriod governance period
+    * @param blockHash        hash of a block
+    */
+  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: BlockHash)
 
   /**
     * Given a contiguous valus range, creates sub-ranges of max the given size
@@ -126,10 +135,14 @@ class TezosNodeOperator(
     * @param blockHashes  Hash of given block
     * @return             Baking rights
     */
-  def getBatchBakingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[BakingRights]]] = {
+  def getBatchBakingRights(
+      blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
+  ): Future[Map[FetchRights, List[BakingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
-    fetch[BlockHash, List[BakingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+    fetch[FetchRights, List[BakingRights], Future, List, Throwable]
+      .run(blockHashesWithCycleAndGovernancePeriod)
+      .map(_.toMap)
   }
 
   /**
@@ -159,10 +172,14 @@ class TezosNodeOperator(
     * @param blockHashes  Hash of given block
     * @return             Endorsing rights
     */
-  def getBatchEndorsingRights(blockHashes: List[BlockHash]): Future[Map[BlockHash, List[EndorsingRights]]] = {
+  def getBatchEndorsingRights(
+      blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
+  ): Future[Map[FetchRights, List[EndorsingRights]]] = {
     import cats.instances.future._
     import cats.instances.list._
-    fetch[BlockHash, List[EndorsingRights], Future, List, Throwable].run(blockHashes).map(_.toMap)
+    fetch[FetchRights, List[EndorsingRights], Future, List, Throwable]
+      .run(blockHashesWithCycleAndGovernancePeriod)
+      .map(_.toMap)
   }
 
   /**
@@ -539,7 +556,7 @@ class TezosNodeOperator(
             maxLevel,
             headLevel - maxLevel
           )
-        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
+        val pagedResults = partitionBlocksRanges(maxLevel to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
         val minLevel = if (bootstrapping) 1 else maxLevel

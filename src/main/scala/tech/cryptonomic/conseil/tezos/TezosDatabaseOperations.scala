@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory
 import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import slick.jdbc.JdbcCapabilities
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 /**
   * Functions for writing Tezos data to a database.
@@ -371,13 +372,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
-  def upsertBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
-    logger.info("Upserting baking rights to the DB...")
+  def writeBakingRights(
+      bakingRightsMap: Map[FetchRights, List[BakingRights]]
+  ): DBIO[Option[Int]] = {
+    logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
-      (blockHash, bakingRightsList) <- bakingRightsMap
+      (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
       bakingRights <- bakingRightsList
-    } yield (blockHash, bakingRights).convertTo[Tables.BakingRightsRow]
+    } yield (blockHashWithCycleAndGovernancePeriod, bakingRights).convertTo[Tables.BakingRightsRow]
 
     Tables.BakingRights.insertOrUpdateAll(conversionResult)
   }
@@ -386,13 +388,14 @@ object TezosDatabaseOperations extends LazyLogging {
     * Upserts endorsing rights to the database
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
-  def upsertEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
-    logger.info("Upserting endorsing rights to the DB...")
+  def writeEndorsingRights(
+      endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
+  ): DBIO[Option[Int]] = {
+    logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
-      (blockHash, endorsingRightsList) <- endorsingRightsMap
+      (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
-    } yield (blockHash, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+    } yield (blockHashWithCycleAndGovernancePeriod, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }

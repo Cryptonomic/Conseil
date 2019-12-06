@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonStri
 import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
 import org.slf4j.LoggerFactory
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
@@ -260,7 +261,7 @@ trait BlocksDataFetchers {
     import JsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = BlockHash
+    override type In = FetchRights
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[BakingRights]
@@ -268,16 +269,19 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/baking_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.value}/helpers/baking_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+    override val fetchData: Kleisli[Future, List[In], List[
+      (FetchRights, String)
+    ]] =
       Kleisli(
-        hashes => {
+        hashesWithCycleAndGovernancePeriod => {
+          val hashes = hashesWithCycleAndGovernancePeriod.map(_.blockHash)
           logger.info("Fetching baking rights")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
@@ -311,7 +315,7 @@ trait BlocksDataFetchers {
     import JsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = BlockHash
+    override type In = FetchRights
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[EndorsingRights]
@@ -319,16 +323,19 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/endorsing_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+    override val fetchData: Kleisli[Future, List[In], List[
+      (FetchRights, String)
+    ]] =
       Kleisli(
-        hashes => {
+        hashesWithCycleAndGovernancePeriod => {
+          val hashes = hashesWithCycleAndGovernancePeriod.map(_.blockHash)
           logger.info("Fetching endorsing rights")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
