@@ -258,6 +258,7 @@ object JsonDecoders {
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
       implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
         deriveDecoder
+      implicit val parametersDecoder: Decoder[InternalOperationResults.Parameters] = deriveDecoder
       implicit val internalRevealResultDecoder: Decoder[InternalOperationResults.Reveal] = deriveDecoder
       implicit val internalTransactionResultDecoder: Decoder[InternalOperationResults.Transaction] =
         deriveDecoder
@@ -265,6 +266,7 @@ object JsonDecoders {
         deriveDecoder
       implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.Delegation] =
         deriveDecoder
+      implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
 

@@ -5,5 +5,6 @@ case class MichelsonSchema(parameter: MichelsonExpression, storage: MichelsonExp
     extends MichelsonElement
 
 object MichelsonSchema {
-  lazy val empty = MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(List.empty))
+  lazy val empty: MichelsonSchema =
+    MichelsonSchema(MichelsonEmptyExpression, MichelsonEmptyExpression, MichelsonCode(List.empty))
 }

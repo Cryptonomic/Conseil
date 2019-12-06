@@ -122,7 +122,7 @@ And..
 env SBT_OPTS="-Dconfig.file={path to custom lorre config file}" && sbt "runLorre <network>"
 ```
 
-Here `network` refers to a valid configuration key, defined in the `application.conf` file (or a custom one), and describing a blockchain node connection info.
+Here `network` refers to a valid configuration key, defined in the `.conf` file (any custom one), and describing a blockchain node connection info.
 Such configuration should provide `protocol, hostname, port, pathPrefix` for a chain rpc node. Such key will be looked-up under the `platforms.<blockchain-name>` path in the config file.
 (The only supported blockchain at the moment is "tezos").
 
@@ -138,18 +138,12 @@ The application expects to read and write from a database compatible with [Types
 
 Cryptonomic uses Postgres for all its Conseil deployments. Once a Postgres database is set up, `sql/conseil.sql` can be used to set up the latest schema.
 
-Please note that until a fix is put in place, you will have to execute the following instaces after applying the latest SQL schema. `$conseil-user` and `$conseil-database` should be replaced with actual values:
-
-```sql
-ALTER ROLE $conseil-user SET search_path TO tezos,public;
-ALTER DATABASE "$conseil-database" SET search_path TO tezos,public;
-```
-
 *For non-Postgres databases*: the schema file might have to be updated to reflect the idiosyncrasies of the particular SQL dialect being used.
 Additionally you will probably need to generate the proper scala classes and update the codebase to use a different db-profile with Slick. To generate the code from a running up-to-date database you can run the sbt task from the project root:
 ```bash
 env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "genSchema"
 ```
+Look at the task output to know where the file has been generated.
 
 ### Running in production
 
@@ -188,7 +182,7 @@ To run the database, from the project root
 ```bash
 docker-compose up -d
 ```
-This will launch the db container and setup the schema as described by the file under `doc/conseil.sql`
+This will launch the db container and setup the schema as described by the file under `sql/conseil.sql`
 
 To stop the database
 ```bash
@@ -283,4 +277,4 @@ For additional extra fine-grained configuration you can refer to [this appendix]
 If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](docs/publishing.md)
 
 ## Contribution
-If you want to contribute please read [practices we follow](CONTRIBUTION.md) in terms of organizing workflow with git. 
+If you want to contribute please read [practices we follow](CONTRIBUTION.md) in terms of organizing workflow with git.

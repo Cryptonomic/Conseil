@@ -250,10 +250,11 @@ object TezosDatabaseOperations extends LazyLogging {
     }
 
     logger.info(
-      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {} and time {}",
+      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {}, cycle {} and time {}",
       selectors.mkString(", "),
       hash.value,
       level,
+      cycle,
       timestamp
     )
 
