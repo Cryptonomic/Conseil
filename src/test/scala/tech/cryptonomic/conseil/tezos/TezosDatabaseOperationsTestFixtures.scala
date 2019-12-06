@@ -579,7 +579,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         storage_limit = PositiveDecimal(0),
         amount = PositiveDecimal(0),
         destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-        parameters = Some(Micheline("""{"string":"world"}""")),
+        parameters = Some(Parameters("default", Micheline("""{"string":"world"}"""))),
         metadata = ResultMetadata(
           balance_updates = List(
             BalanceUpdate(
