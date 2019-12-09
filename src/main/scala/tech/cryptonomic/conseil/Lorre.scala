@@ -20,8 +20,6 @@ import tech.cryptonomic.conseil.tezos.{
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.{Custom, Everything, LorreAppConfig, Newest}
-import tech.cryptonomic.conseil.config.Platforms
 import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.VotingData
 import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
@@ -82,7 +80,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   // starts processing Tezos votes
-  system.scheduler.scheduleOnce(1.minute)(processTezosVotes())
+  //system.scheduler.scheduleOnce(1.minute)(processTezosVotes())
+
+  def processVotes: Future[Done] = {
+    processTezosVotes().flatMap(_ => processVotes)
+  }
 
   /** close resources for application stop */
   private[this] def shutdown(): Unit = {
@@ -408,7 +410,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     * @param ex the needed ExecutionContext to combine multiple database operations
     * @return a future result of the number of rows stored to db, if supported by the driver
     */
-  private[this] def processTezosVotes(): Unit = {
+  private[this] def processTezosVotes(): Future[Done] = {
     import slick.jdbc.PostgresProfile.api._
     implicit val mat = ActorMaterializer()
 
@@ -481,7 +483,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     db.run(TezosDb.fetchVotingBlockLevels).flatMap { levels =>
       Source
         .fromIterator(() => levels.toIterator)
-        .grouped(batchingConf.blockPageSize) // we use here block page size, because pr
+        .grouped(batchingConf.blockPageSize) // we use here block page size, because
         .mapAsync(1) { blockLevels =>
           val computeAndStore = for {
             listOfVotingFields <- TezosDb.fetchVotingData(blockLevels.toSet)
@@ -501,7 +503,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         .runWith(Sink.ignore)
     }
 
-    ()
   }
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
