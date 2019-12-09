@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
 
 import scala.util.Try
 
@@ -269,6 +270,7 @@ object JsonDecoders {
       implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
+      implicit val parametersCompatDecoder: Decoder[ParametersCompatibility] = decodeUntaggedEither
 
     }
 

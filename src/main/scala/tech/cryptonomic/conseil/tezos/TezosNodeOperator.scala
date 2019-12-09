@@ -556,7 +556,7 @@ class TezosNodeOperator(
             maxLevel,
             headLevel - maxLevel
           )
-        val pagedResults = partitionBlocksRanges(maxLevel to headLevel).map(
+        val pagedResults = partitionBlocksRanges(max(0, maxLevel) to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
         val minLevel = if (bootstrapping) 1 else maxLevel
