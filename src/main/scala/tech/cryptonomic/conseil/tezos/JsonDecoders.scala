@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.tezos
 
 import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.util.JsonUtil.CirceCommonDecoders.decodeUntaggedEither
 
 import scala.util.Try
 
@@ -201,6 +202,32 @@ object JsonDecoders {
         ).reduceLeft(_ or _)
     }
 
+    /* decodes the big-map-diffs, both for pre-babylon and later */
+    object BigMapDiff {
+      import Numbers._
+      import Contract.{
+        BigMapDiff,
+        BigMapDiffAlloc,
+        BigMapDiffCopy,
+        BigMapDiffRemove,
+        BigMapDiffUpdate,
+        CompatBigMapDiff,
+        Protocol4BigMapDiff
+      }
+      //use the action field to distinguish subtypes of the protocol-5+ ADT
+      implicit private val conf = Derivation.tezosDerivationConfig.withDiscriminator("action")
+      import CirceCommonDecoders._
+
+      implicit private val protocol4Decoder: Decoder[Protocol4BigMapDiff] = deriveDecoder
+      implicit private val bigmapdiffDecoder: Decoder[BigMapDiff] = List[Decoder[BigMapDiff]](
+        deriveDecoder[BigMapDiffUpdate].widen,
+        deriveDecoder[BigMapDiffCopy].widen,
+        deriveDecoder[BigMapDiffAlloc].widen,
+        deriveDecoder[BigMapDiffRemove].widen
+      ).reduceLeft(_ or _)
+      implicit val compatDecoder: Decoder[CompatBigMapDiff] = decodeUntaggedEither
+    }
+
     /*
      * Collects definitions of decoders for the Operations hierarchy.
      * Import this in scope to be able to call `io.circe.parser.decode[T](json)` for a valid type of operation
@@ -209,6 +236,7 @@ object JsonDecoders {
       import Scripts._
       import Numbers._
       import Votes._
+      import BigMapDiff._
 
       /* decode any json value to its string representation wrapped in a Error*/
       implicit val errorDecoder: Decoder[OperationResult.Error] =
@@ -218,7 +246,6 @@ object JsonDecoders {
       implicit private val conf = Derivation.tezosDerivationConfig.withDiscriminator("kind")
 
       //derive all the remaining decoders, sorted to preserve dependencies
-      implicit val bigmapdiffDecoder: Decoder[Contract.BigMapDiff] = deriveDecoder
       implicit val balanceUpdateDecoder: Decoder[OperationMetadata.BalanceUpdate] = deriveDecoder
       implicit val endorsementMetadataDecoder: Decoder[EndorsementMetadata] = deriveDecoder
       implicit val balanceUpdatesMetadataDecoder: Decoder[BalanceUpdatesMetadata] = deriveDecoder
@@ -232,6 +259,7 @@ object JsonDecoders {
       implicit val delegationMetadataDecoder: Decoder[ResultMetadata[OperationResult.Delegation]] = deriveDecoder
       implicit val internalOperationResultDecoder: Decoder[InternalOperationResults.InternalOperationResult] =
         deriveDecoder
+      implicit val parametersDecoder: Decoder[InternalOperationResults.Parameters] = deriveDecoder
       implicit val internalRevealResultDecoder: Decoder[InternalOperationResults.Reveal] = deriveDecoder
       implicit val internalTransactionResultDecoder: Decoder[InternalOperationResults.Transaction] =
         deriveDecoder
@@ -239,8 +267,10 @@ object JsonDecoders {
         deriveDecoder
       implicit val internalDelegationResultDecoder: Decoder[InternalOperationResults.Delegation] =
         deriveDecoder
+      implicit val tezosTypesParametersDecoder: Decoder[TezosTypes.Parameters] = deriveDecoder
       implicit val operationDecoder: Decoder[Operation] = deriveDecoder
       implicit val operationGroupDecoder: Decoder[OperationsGroup] = deriveDecoder
+      implicit val parametersCompatDecoder: Decoder[ParametersCompatibility] = decodeUntaggedEither
 
     }
 

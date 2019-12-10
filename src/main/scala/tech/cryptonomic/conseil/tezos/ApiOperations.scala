@@ -17,6 +17,7 @@ import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
+import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
 
 object ApiOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
@@ -60,6 +61,26 @@ class ApiOperations extends DataOperations with MetadataOperations {
   }
 
   /**
+    * Fetches the max level of baking rights.
+    *
+    * @return Max level or -1 if no baking rights were found in the database.
+    */
+  def fetchMaxBakingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = runQuery(Tables.BakingRights.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
+  }
+
+  /**
+    * Fetches the max level of endorsing rights.
+    *
+    * @return Max level or -1 if no endorsing rights were found in the database.
+    */
+  def fetchMaxEndorsingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = runQuery(Tables.EndorsingRights.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
+  }
+
+  /**
     * Fetches the most recent block stored in the database.
     *
     * @return Latest block.
@@ -89,6 +110,15 @@ class ApiOperations extends DataOperations with MetadataOperations {
       }
     }
   }
+
+  /**
+    * Fetches a block by level from the db
+    *
+    * @param level the requested level for the block
+    * @return the block if that level is already stored
+    */
+  def fetchBlockAtLevel(level: Int): Future[Option[BlocksRow]] =
+    runQuery(Tables.Blocks.filter(_.level === level).result.headOption)
 
   /**
     * Fetch a given operation group

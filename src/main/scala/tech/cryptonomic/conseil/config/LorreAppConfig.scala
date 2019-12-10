@@ -9,6 +9,7 @@ import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import pureconfig.generic.FieldCoproductHint
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -71,8 +72,12 @@ trait LorreAppConfig {
     //applies convention to uses CamelCase when reading config fields
     @silent("local method hint in method loadApplicationConfiguration is never used")
     implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
-    @silent("local val seasonHint in method loadApplicationConfiguration is never used")
-    implicit val seasonHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
+    @silent("local val depthHint in method loadApplicationConfiguration is never used")
+    implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
+    @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
+    implicit val chainEventHint = new FieldCoproductHint[ChainEvent]("type") {
+      override def fieldValue(name: String): String = name.head.toLower +: name.tail
+    }
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)

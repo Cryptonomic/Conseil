@@ -309,14 +309,77 @@ trait OperationsJsonData {
     """{"prim":"code","args":[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]}"""
   )
 
-  val bigmapdiffJson =
+  val bigmapdiffAllocJson =
+    s"""{
+    |  "action": "alloc",
+    |  "big_map": "428",
+    |  "key_type": {
+    |      "prim": "int"
+    |  },
+    |  "value_type": {
+    |      "prim": "int"
+    |  }
+    |}""".stripMargin
+
+  val expectedBigmapdiffAlloc =
+    Contract.BigMapDiffAlloc(
+      action = "alloc",
+      big_map = Decimal(BigDecimal(428)),
+      key_type = Micheline("""{"prim":"int"}"""),
+      value_type = Micheline("""{"prim":"int"}""")
+    )
+
+  val bigmapdiffUpdateJson =
+    s"""{
+    |  "action": "update",
+    |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+    |  "key": $michelineJson,
+    |  "big_map": "428"
+    |}""".stripMargin
+
+  val expectedBigmapdiffUpdate =
+    Contract.BigMapDiffUpdate(
+      action = "update",
+      key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
+      key = expectedMicheline,
+      big_map = Decimal(BigDecimal(428)),
+      value = None
+    )
+
+  val bigmapdiffCopyJson =
+    s"""{
+    |  "action": "copy",
+    |  "source_big_map": "428",
+    |  "destination_big_map": "748"
+    |}""".stripMargin
+
+  val expectedBigmapdiffCopy =
+    Contract.BigMapDiffCopy(
+      action = "copy",
+      source_big_map = Decimal(BigDecimal(428)),
+      destination_big_map = Decimal(BigDecimal(748))
+    )
+
+  val bigmapdiffRemoveJson =
+    s"""{
+    |  "action": "remove",
+    |  "big_map": "428"
+    |}""".stripMargin
+
+  val expectedBigmapdiffRemove =
+    Contract.BigMapDiffRemove(
+      action = "remove",
+      big_map = Decimal(BigDecimal(428))
+    )
+
+  val p4BigmapdiffJson =
     s"""{
     |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
     |  "key": $michelineJson
     |}""".stripMargin
 
-  val expectedBigMapDiff =
-    Contract.BigMapDiff(
+  val expectedP4BigMapDiff =
+    Contract.Protocol4BigMapDiff(
       key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
       key = expectedMicheline,
       value = None
@@ -615,7 +678,7 @@ trait OperationsJsonData {
     storage_limit = PositiveDecimal(0),
     source = PublicKeyHash("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
     destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
-    parameters = Some(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")),
+    parameters = Some(Left(Parameters("default", Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")))),
     metadata = ResultMetadata(
       operation_result = OperationResult.Transaction(
         status = "applied",
@@ -638,7 +701,7 @@ trait OperationsJsonData {
             0,
             PositiveDecimal(1000),
             ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
-            Some(Micheline("""{"prim":"Unit"}""")),
+            Some(Left(Parameters("default", Micheline("""{"prim":"Unit"}""")))),
             OperationResult.Transaction(
               status = "applied",
               allocated_destination_contract = None,
@@ -688,7 +751,10 @@ trait OperationsJsonData {
       |    "amount": "0",
       |    "destination": "KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH",
       |    "parameters": {
-      |        "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
+      |        "entrypoint": "default",
+      |        "value": {
+      |            "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
+      |        }
       |    },
       |    "metadata": {
       |        "balance_updates": [],
@@ -708,7 +774,10 @@ trait OperationsJsonData {
       |                "amount": "1000",
       |                "destination": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN",
       |                "parameters": {
+      |                  "entrypoint": "default",
+      |                  "value": {
       |                    "prim": "Unit"
+      |                  }
       |                },
       |                "result": {
       |                    "status": "applied",
@@ -815,7 +884,10 @@ trait OperationsJsonData {
     |  "amount": "0",
     |  "destination": "KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy",
     |  "parameters": {
-    |      "string": "world"
+    |      "entrypoint": "default",
+    |      "value": {
+    |            "string": "world"
+    |      }
     |  },
     |  "metadata": {
     |      "balance_updates": [
@@ -852,7 +924,7 @@ trait OperationsJsonData {
       storage_limit = PositiveDecimal(0),
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-      parameters = Some(Micheline("""{"string":"world"}""")),
+      parameters = Some(Left(Parameters("default", Micheline("""{"string":"world"}""")))),
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(
@@ -886,6 +958,91 @@ trait OperationsJsonData {
         )
       )
     )
+
+  val backwardCompatibleTransactionJson =
+    """{
+      |  "kind": "transaction",
+      |  "source": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "fee": "1416",
+      |  "counter": "407940",
+      |  "gas_limit": "11475",
+      |  "storage_limit": "0",
+      |  "amount": "0",
+      |  "destination": "KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy",
+      |  "parameters": {
+      |      "string":"world"
+      |  },
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |              "change": "-1416"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+      |              "level": 1583,
+      |              "change": "1416"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "storage": {
+      |              "string": "world"
+      |          },
+      |          "consumed_gas": "11375",
+      |          "storage_size": "46"
+      |      }
+      |  }
+      |}""".stripMargin
+
+  val backwardCompatibleExpectedTransaction =
+    Transaction(
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      fee = PositiveDecimal(1416),
+      counter = PositiveDecimal(407940),
+      gas_limit = PositiveDecimal(11475),
+      storage_limit = PositiveDecimal(0),
+      amount = PositiveDecimal(0),
+      destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
+      parameters = Some(Right(Micheline("""{"string":"world"}"""))),
+      metadata = ResultMetadata(
+        balance_updates = List(
+          BalanceUpdate(
+            kind = "contract",
+            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+            change = -1416L,
+            category = None,
+            delegate = None,
+            level = None
+          ),
+          BalanceUpdate(
+            kind = "freezer",
+            category = Some("fees"),
+            delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+            level = Some(1583),
+            change = 1416L,
+            contract = None
+          )
+        ),
+        operation_result = OperationResult.Transaction(
+          status = "applied",
+          storage = Some(Micheline("""{"string":"world"}""")),
+          consumed_gas = Some(Decimal(11375)),
+          storage_size = Some(Decimal(46)),
+          allocated_destination_contract = None,
+          balance_updates = None,
+          big_map_diff = None,
+          originated_contracts = None,
+          paid_storage_size_diff = None,
+          errors = None
+        )
+      )
+    )
+
+
 
   val originationJson =
     s"""{
@@ -1170,7 +1327,8 @@ trait OperationsJsonData {
       |    $failedRevealJson,
       |    $transactionJson,
       |    $originationJson,
-      |    $delegationJson
+      |    $delegationJson,
+      |    $backwardCompatibleTransactionJson
       |  ],
       |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
       |}""".stripMargin
@@ -1191,7 +1349,8 @@ trait OperationsJsonData {
         expectedFailedReveal,
         expectedTransaction,
         expectedOrigination,
-        expectedDelegation
+        expectedDelegation,
+        backwardCompatibleExpectedTransaction
       )
     )
 

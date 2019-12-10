@@ -11,6 +11,8 @@ import tech.cryptonomic.conseil.util.JsonUtil
 import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
+import org.slf4j.LoggerFactory
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
@@ -151,11 +153,13 @@ trait BlocksDataFetchers {
 
   }
 
-  implicit val bakingRightsFetcher = new FutureFetcher {
+  val berLogger = LoggerFactory.getLogger("RightsFetcher")
+
+  implicit val futureBakingRightsFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = BlockHash
+    override type In = Int
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[BakingRights]
@@ -163,22 +167,127 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/baking_rights"
+    private val makeUrl = (level: Int) => s"blocks/head/helpers/baking_rights?level=$level"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+    override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
       Kleisli(
-        hashes => {
+        levels => {
+          berLogger.info("Fetching future baking rights")
+          node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
+            case err =>
+              berLogger
+                .error(
+                  "I encountered problems while fetching future baking rights from {}, for levels {}. The error says {}",
+                  network,
+                  levels.mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out` */
+    override val decodeData: Kleisli[Future, String, List[BakingRights]] = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched future baking rights json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
+  implicit val futureEndorsingRightsFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Rights._
+
+    /** the input type, e.g. ids of data */
+    override type In = Int
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = List[EndorsingRights]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (level: Int) => s"blocks/head/helpers/endorsing_rights?level=$level"
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData: Kleisli[Future, List[Int], List[(Int, String)]] =
+      Kleisli(
+        levels => {
+          berLogger.info("Fetching future endorsing rights")
+          node.runBatchedGetQuery(network, levels, makeUrl, fetchConcurrency).onError {
+            case err =>
+              berLogger
+                .error(
+                  "I encountered problems while fetching future endorsing rights from {}, for levels {}. The error says {}",
+                  network,
+                  levels.mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    /** an effectful function that decodes the json value to an output `Out` */
+    override val decodeData: Kleisli[Future, String, List[EndorsingRights]] = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched future endorsing rights json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
+  implicit val bakingRightsFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Rights._
+
+    /** the input type, e.g. ids of data */
+    override type In = FetchRights
+
+    /** the output type, e.g. the decoded block data */
+    override type Out = List[BakingRights]
+
+    /** the encoded representation type used e.g. some Json representation */
+    override type Encoded = String
+
+    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.get.value}/helpers/baking_rights"
+
+    /** an effectful function from a collection of inputs `T[In]`
+      * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
+      */
+    override val fetchData: Kleisli[Future, List[In], List[
+      (FetchRights, String)
+    ]] =
+      Kleisli(
+        hashesWithCycleAndGovernancePeriod => {
+          val hashes = hashesWithCycleAndGovernancePeriod.map(_.blockHash)
           logger.info("Fetching baking rights")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
                   "I encountered problems while fetching baking rights from {}, for blocks {}. The error says {}",
                   network,
-                  hashes.map(_.value).mkString(", "),
+                  hashes.map(_.get.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]
@@ -206,7 +315,7 @@ trait BlocksDataFetchers {
     import JsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
-    override type In = BlockHash
+    override type In = FetchRights
 
     /** the output type, e.g. the decoded block data */
     override type Out = List[EndorsingRights]
@@ -214,22 +323,25 @@ trait BlocksDataFetchers {
     /** the encoded representation type used e.g. some Json representation */
     override type Encoded = String
 
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/helpers/endorsing_rights"
+    private val makeUrl = (blockData: In) => s"blocks/${blockData.blockHash.get.value}/helpers/endorsing_rights"
 
     /** an effectful function from a collection of inputs `T[In]`
       * to the collection of encoded values, tupled with the corresponding input `T[(In, Encoded)]`
       */
-    override val fetchData: Kleisli[Future, List[BlockHash], List[(BlockHash, String)]] =
+    override val fetchData: Kleisli[Future, List[In], List[
+      (FetchRights, String)
+    ]] =
       Kleisli(
-        hashes => {
+        hashesWithCycleAndGovernancePeriod => {
+          val hashes = hashesWithCycleAndGovernancePeriod.map(_.blockHash)
           logger.info("Fetching endorsing rights")
-          node.runBatchedGetQuery(network, hashes, makeUrl, fetchConcurrency).onError {
+          node.runBatchedGetQuery(network, hashesWithCycleAndGovernancePeriod, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
                   "I encountered problems while fetching endorsing rights from {}, for blocks {}. The error says {}",
                   network,
-                  hashes.map(_.value).mkString(", "),
+                  hashes.map(_.get.value).mkString(", "),
                   err.getMessage
                 )
                 .pure[Future]

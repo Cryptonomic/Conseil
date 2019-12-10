@@ -52,11 +52,12 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
     Tables.AccountsCheckpoint,
     Tables.DelegatesCheckpoint,
     Tables.Rolls,
-    Tables.AccountsHistory
+    Tables.AccountsHistory,
+    Tables.ProcessedChainEvents
   )
 
-  protected val dbSchema =
-    allTables.map(_.schema).reduce(_ ++ _)
+  protected val dbSchema = Tables.schema
+  allTables.map(_.schema).reduce(_ ++ _)
 
   /**
     * calling deletes manually is needed to obviate the fact

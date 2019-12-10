@@ -120,7 +120,7 @@ object JsonParser {
    *
    * */
   case class JsonIntConstant(int: String) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonIntConstant(int.toLong)
+    override def toMichelsonInstruction = MichelsonIntConstant(int)
   }
 
   /*

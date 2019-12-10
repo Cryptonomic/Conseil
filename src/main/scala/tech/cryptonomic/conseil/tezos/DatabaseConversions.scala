@@ -5,12 +5,12 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
-
 import java.time.Instant
 
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 object DatabaseConversions {
@@ -41,6 +41,12 @@ object DatabaseConversions {
       .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle) //this is Option[Int]
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractCyclePosition(block: BlockMetadata): Option[Int] =
+    discardGenesis
+      .lift(block) //this returns an Option[BlockHeaderMetadata]
+      .map(_.level.cycle_position) //this is Option[Int]
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -62,7 +68,7 @@ object DatabaseConversions {
         }
 
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, timestamp, accounts) = from
+        val BlockTagged(hash, level, timestamp, cycle, accounts) = from
         accounts.map {
           case (id, Account(balance, delegate, script, counter, manager, spendable)) =>
             Tables.AccountsRow(
@@ -88,6 +94,7 @@ object DatabaseConversions {
         blockAccountsToAccountRows.convert(from).map {
           _.into[Tables.AccountsHistoryRow]
             .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
+            .withFieldConst(_.cycle, from.cycle)
             .transform
         }
     }
@@ -231,6 +238,11 @@ object DatabaseConversions {
       )
   }
 
+  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline = parametersCompatibility match {
+    case Left(value) => value.value
+    case Right(value) => value
+  }
+
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
         block,
@@ -248,7 +260,7 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
-        parameters = parameters.map(_.expression),
+        parameters = parameters.map(extractMicheline(_).expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
@@ -538,16 +550,17 @@ object DatabaseConversions {
   }
 
   implicit val blockAccountsAssociationToCheckpointRow =
-    new Conversion[List, (BlockHash, Int, Option[Instant], List[AccountId]), Tables.AccountsCheckpointRow] {
-      override def convert(from: (BlockHash, Int, Option[Instant], List[AccountId])) = {
-        val (blockHash, blockLevel, timestamp, ids) = from
+    new Conversion[List, (BlockHash, Int, Option[Instant], Option[Int], List[AccountId]), Tables.AccountsCheckpointRow] {
+      override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[AccountId])) = {
+        val (blockHash, blockLevel, timestamp, cycle, ids) = from
         ids.map(
           accountId =>
             Tables.AccountsCheckpointRow(
               accountId = accountId.id,
               blockId = blockHash.value,
               blockLevel = blockLevel,
-              asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0)))
+              asof = Timestamp.from(timestamp.getOrElse(Instant.ofEpochMilli(0))),
+              cycle = cycle
             )
         )
       }
@@ -555,9 +568,13 @@ object DatabaseConversions {
     }
 
   implicit val blockDelegatesAssociationToCheckpointRow =
-    new Conversion[List, (BlockHash, Int, Option[Instant], List[PublicKeyHash]), Tables.DelegatesCheckpointRow] {
-      override def convert(from: (BlockHash, Int, Option[Instant], List[PublicKeyHash])) = {
-        val (blockHash, blockLevel, _, pkhs) = from
+    new Conversion[
+      List,
+      (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash]),
+      Tables.DelegatesCheckpointRow
+    ] {
+      override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])) = {
+        val (blockHash, blockLevel, _, _, pkhs) = from
         pkhs.map(
           keyHash =>
             Tables.DelegatesCheckpointRow(
@@ -604,29 +621,65 @@ object DatabaseConversions {
     }
   }
 
-  implicit val bakingRightsToRows = new Conversion[Id, (BlockHash, BakingRights), Tables.BakingRightsRow] {
-    override def convert(from: (BlockHash, BakingRights)): tezos.Tables.BakingRightsRow = {
-      val (blockHash, bakingRights) = from
+  implicit val bakingRightsToRows =
+    new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {
+      override def convert(
+          from: (FetchRights, BakingRights)
+      ): tezos.Tables.BakingRightsRow = {
+        val (fetchRights, bakingRights) = from
+        bakingRights
+          .into[Tables.BakingRightsRow]
+          .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
+          .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
+          .withFieldConst(_.cycle, fetchRights.cycle)
+          .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
+          .transform
+      }
+    }
+
+  implicit val endorsingRightsToRows =
+    new Conversion[List, (FetchRights, EndorsingRights), Tables.EndorsingRightsRow] {
+      override def convert(
+          from: (FetchRights, EndorsingRights)
+      ): List[Tables.EndorsingRightsRow] = {
+        val (fetchRights, endorsingRights) = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
+            .withFieldConst(_.cycle, fetchRights.cycle)
+            .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
+            .transform
+        }
+      }
+    }
+
+  implicit val bakingRightsToRowsWithoutBlockHash = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
+    override def convert(from: BakingRights): tezos.Tables.BakingRightsRow = {
+      val bakingRights = from
       bakingRights
         .into[Tables.BakingRightsRow]
-        .withFieldConst(_.blockHash, blockHash.value)
-        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .withFieldConst(_.blockHash, None)
+        .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
         .transform
     }
   }
 
-  implicit val endorsingRightsToRows = new Conversion[List, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
-    override def convert(from: (BlockHash, EndorsingRights)): List[Tables.EndorsingRightsRow] = {
-      val (blockHash, endorsingRights) = from
-      endorsingRights.slots.map { slot =>
-        endorsingRights
-          .into[Tables.EndorsingRightsRow]
-          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
-          .withFieldConst(_.slot, slot)
-          .withFieldConst(_.blockHash, blockHash.value)
-          .transform
+  implicit val endorsingRightsToRowsWithoutBlockHash =
+    new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
+        val endorsingRights = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, None)
+            .transform
+        }
       }
     }
-  }
 
 }

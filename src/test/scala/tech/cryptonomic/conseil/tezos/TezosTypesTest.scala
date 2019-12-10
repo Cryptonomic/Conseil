@@ -2,12 +2,12 @@ package tech.cryptonomic.conseil.tezos
 
 import java.time.{Instant, ZonedDateTime}
 
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
-class TezosTypesTest extends WordSpec with Matchers with OptionValues {
+class TezosTypesTest extends WordSpec with Matchers with OptionValues with EitherValues {
 
   val sut = TezosTypes
 
@@ -55,7 +55,13 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        content.taggedWithBlock(hash, level, someTime) shouldEqual BlockTagged(hash, level, someTime, content)
+        content.taggedWithBlock(hash, level, someTime, None) shouldEqual BlockTagged(
+          hash,
+          level,
+          someTime,
+          None,
+          content
+        )
       }
     }
 
@@ -65,7 +71,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        BlockTagged(hash, level, someTime, content).asTuple shouldEqual (hash, level, someTime, content)
+        BlockTagged(hash, level, someTime, None, content).asTuple shouldEqual (hash, level, someTime, None, content)
       }
     }
 
@@ -128,7 +134,8 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
       "modify parameters with monocle's lenses" in {
         // given
-        val modifiedTransaction = transaction.copy(parameters = Some(Micheline("micheline script")))
+        val modifiedTransaction =
+          transaction.copy(parameters = Some(Left(Parameters("default", Micheline("micheline script")))))
         val modifiedOperations = List(operationGroup.copy(contents = origination :: modifiedTransaction :: Nil))
 
         val block = Block(blockData, modifiedOperations, blockVotes)
@@ -141,7 +148,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Transaction =>
-            op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
+            op.parameters.head.left.value.value.expression shouldEqual "MICHELINE SCRIPT"
           case _ =>
         }
       }

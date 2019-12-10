@@ -10,6 +10,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
   import JsonDecoders.Circe.Accounts._
   import JsonDecoders.Circe.Numbers._
+  import JsonDecoders.Circe.BigMapDiff._
   import JsonDecoders.Circe.Operations._
   import JsonDecoders.Circe.Scripts._
   import JsonDecoders.Circe.Votes._
@@ -282,9 +283,39 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
         decoded shouldBe 'left
       }
 
-      "decode valid json into a BigMapDiff value" in new OperationsJsonData {
-        val decoded = decode[Contract.BigMapDiff](bigmapdiffJson)
-        decoded.right.value shouldEqual expectedBigMapDiff
+      "decode valid protocol4 json into a BigMapDiff value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](p4BigmapdiffJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'right
+        decoded.right.value.right.value shouldEqual expectedP4BigMapDiff
+      }
+
+      "decode valid json into a BigMapDiffUpdate value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffUpdateJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffUpdate
+      }
+
+      "decode valid json into a BigMapDiffCopy value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffCopyJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffCopy
+      }
+
+      "decode valid json into a BigMapDiffAlloc value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffAllocJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffAlloc
+      }
+
+      "decode valid json into a BigMapDiffRemove value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffRemoveJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffRemove
       }
 
       "decode valid json into a Scipted.Contracts value" in new OperationsJsonData {

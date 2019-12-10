@@ -1,7 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+
+import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import org.scalatest.Inspectors._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.{Conversion, RandomSeed}
@@ -12,6 +13,7 @@ class DatabaseConversionsTest
     extends WordSpec
     with Matchers
     with OptionValues
+    with EitherValues
     with TezosDataGeneration
     with DBConversionsData {
 
@@ -522,7 +524,7 @@ class DatabaseConversionsTest
           case _ => converted.amount shouldBe 'empty
         }
         converted.destination.value shouldBe sampleTransaction.destination.id
-        converted.parameters shouldBe sampleTransaction.parameters.map(_.expression)
+        converted.parameters shouldBe sampleTransaction.parameters.map(_.left.value.value.expression)
         converted.status.value shouldBe sampleTransaction.metadata.operation_result.status
         sampleTransaction.metadata.operation_result.consumed_gas match {
           case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
