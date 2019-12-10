@@ -597,7 +597,7 @@ object TezosTypes {
       level: Int,
       delegate: String,
       priority: Int,
-      estimated_time: ZonedDateTime,
+      estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
       governancePeriod: Option[Int]
   )
@@ -607,7 +607,7 @@ object TezosTypes {
       level: Int,
       delegate: String,
       slots: List[Int],
-      estimated_time: ZonedDateTime,
+      estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
       governancePeriod: Option[Int]
   )

@@ -107,7 +107,7 @@ CREATE TABLE tezos.baking_rights (
     level integer NOT NULL,
     delegate character varying NOT NULL,
     priority integer NOT NULL,
-    estimated_time timestamp without time zone NOT NULL,
+    estimated_time timestamp without time zone,
     cycle integer,
     governance_period integer
 );
@@ -222,7 +222,7 @@ CREATE TABLE tezos.endorsing_rights (
     level integer NOT NULL,
     delegate character varying NOT NULL,
     slot integer NOT NULL,
-    estimated_time timestamp without time zone NOT NULL,
+    estimated_time timestamp without time zone,
     cycle integer,
     governance_period integer
 );
