@@ -163,7 +163,7 @@ object JsonParser {
 
     private def extractCode: Result[MichelsonCode] =
       code.collectFirst {
-        case it:JsonCodeSection => it.toMichelsonCode
+        case it @ JsonCodeSection("code", _) => it.toMichelsonCode
       }.toRight(ParserError("No code section found"))
   }
 
