@@ -31,8 +31,8 @@ object JsonParser {
     def toMichelsonExpression: Option[MichelsonExpression] = args.headOption.map(_.toMichelsonExpression)
   }
 
-  case class JsonCodeSection(prim: String, args: List[List[JsonInstruction]]) extends JsonSection {
-    def toMichelsonCode = MichelsonCode(args.flatten.map(_.toMichelsonInstruction))
+  case class JsonCodeSection(prim: String, args: Either[List[List[JsonInstruction]], List[JsonInstruction]]) extends JsonSection {
+    def toMichelsonCode: MichelsonCode = MichelsonCode(args.map(List(_)).merge.flatten.map(_.toMichelsonInstruction))
   }
 
   sealed trait JsonExpression {
@@ -152,7 +152,7 @@ object JsonParser {
       for {
         parameter <- extractExpression("parameter")
         storage <- extractExpression("storage")
-        code <- extractCode("code")
+        code <- extractCode
       } yield MichelsonSchema(parameter, storage, code)
 
     private def extractExpression(sectionName: String): Result[MichelsonExpression] =
@@ -161,17 +161,17 @@ object JsonParser {
       }.flatMap(_.toMichelsonExpression)
         .toRight(ParserError(s"No expression $sectionName found"))
 
-    private def extractCode(sectionName: String): Result[MichelsonCode] =
+    private def extractCode: Result[MichelsonCode] =
       code.collectFirst {
-        case it @ JsonCodeSection(`sectionName`, _) => it.toMichelsonCode
-      }.toRight(ParserError(s"No code $sectionName found"))
+        case it:JsonCodeSection => it.toMichelsonCode
+      }.toRight(ParserError("No code section found"))
   }
 
   object GenericDerivation {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
-        Decoder[JsonCodeSection].widen,
-        Decoder[JsonExpressionSection].widen
+        Decoder[JsonCodeSection].ensure(_.prim == "code", "No code section found").widen,
+        Decoder[JsonExpressionSection].widen,
       ).reduceLeft(_ or _)
 
     implicit val decodeExpression: Decoder[JsonExpression] = Decoder[JsonType].widen
