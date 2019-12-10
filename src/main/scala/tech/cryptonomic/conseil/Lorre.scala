@@ -86,7 +86,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   def writeFutureRights(): Unit = {
-    val berLogger = LoggerFactory.getLogger("BER")
+    val berLogger = LoggerFactory.getLogger("RightsFetcher")
 
     import cats.implicits._
 

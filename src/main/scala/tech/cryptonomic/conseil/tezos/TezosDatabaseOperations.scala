@@ -401,7 +401,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }
-  val berLogger = LoggerFactory.getLogger("BER")
+  val berLogger = LoggerFactory.getLogger("RightsFetcher")
 
   /**
     * Writes baking rights to the database
