@@ -153,7 +153,7 @@ trait BlocksDataFetchers {
 
   }
 
-  val berLogger = LoggerFactory.getLogger("BER")
+  val berLogger = LoggerFactory.getLogger("RightsFetcher")
 
   implicit val futureBakingRightsFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Rights._

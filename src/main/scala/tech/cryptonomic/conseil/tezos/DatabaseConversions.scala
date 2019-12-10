@@ -625,7 +625,7 @@ object DatabaseConversions {
         bakingRights
           .into[Tables.BakingRightsRow]
           .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
-          .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+          .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
           .withFieldConst(_.cycle, fetchRights.cycle)
           .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
           .transform
@@ -641,7 +641,7 @@ object DatabaseConversions {
         endorsingRights.slots.map { slot =>
           endorsingRights
             .into[Tables.EndorsingRightsRow]
-            .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
             .withFieldConst(_.slot, slot)
             .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
             .withFieldConst(_.cycle, fetchRights.cycle)
@@ -657,7 +657,7 @@ object DatabaseConversions {
       bakingRights
         .into[Tables.BakingRightsRow]
         .withFieldConst(_.blockHash, None)
-        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
         .transform
     }
   }
@@ -669,7 +669,7 @@ object DatabaseConversions {
         endorsingRights.slots.map { slot =>
           endorsingRights
             .into[Tables.EndorsingRightsRow]
-            .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
             .withFieldConst(_.slot, slot)
             .withFieldConst(_.blockHash, None)
             .transform
