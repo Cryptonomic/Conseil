@@ -81,10 +81,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   // starts processing Tezos votes
-  //system.scheduler.scheduleOnce(1.minute)(processTezosVotes())
+  system.scheduler.scheduleOnce(1.minute)(processTezosVotes())
 
+  /** Recursive process to start processing Tezos votes */
+  @tailrec
   def processVotes: Future[Done] = {
-    processTezosVotes().flatMap(_ => processVotes)
+    Await.result(processTezosVotes(), Duration.Inf)
+    Thread.sleep(lorreConf.sleepInterval.toMillis)
+    processVotes
   }
 
   /** Schedules method for fetching baking rights */
@@ -193,7 +197,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     val processing = for {
       nextRefreshes <- processAccountRefreshes(accountsRefreshLevels)
       _ <- processTezosBlocks()
-//      _ <- processTezosVotes()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
