@@ -103,11 +103,11 @@ CREATE TABLE tezos.accounts_checkpoint (
 --
 
 CREATE TABLE tezos.baking_rights (
-    block_hash character varying NOT NULL,
+    block_hash character varying,
     level integer NOT NULL,
     delegate character varying NOT NULL,
     priority integer NOT NULL,
-    estimated_time timestamp without time zone NOT NULL,
+    estimated_time timestamp without time zone,
     cycle integer,
     governance_period integer
 );
@@ -258,11 +258,11 @@ CREATE TABLE tezos.delegates_checkpoint (
 --
 
 CREATE TABLE tezos.endorsing_rights (
-    block_hash character varying NOT NULL,
+    block_hash character varying,
     level integer NOT NULL,
     delegate character varying NOT NULL,
     slot integer NOT NULL,
-    estimated_time timestamp without time zone NOT NULL,
+    estimated_time timestamp without time zone,
     cycle integer,
     governance_period integer
 );

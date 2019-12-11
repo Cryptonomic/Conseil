@@ -60,6 +60,26 @@ class ApiOperations extends DataOperations with MetadataOperations {
   }
 
   /**
+    * Fetches the max level of baking rights.
+    *
+    * @return Max level or -1 if no baking rights were found in the database.
+    */
+  def fetchMaxBakingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = runQuery(Tables.BakingRights.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
+  }
+
+  /**
+    * Fetches the max level of endorsing rights.
+    *
+    * @return Max level or -1 if no endorsing rights were found in the database.
+    */
+  def fetchMaxEndorsingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
+    val optionalMax: Future[Option[Int]] = runQuery(Tables.EndorsingRights.map(_.level).max.result)
+    optionalMax.map(_.getOrElse(-1))
+  }
+
+  /**
     * Fetches the level of the most recent votes stored in the database.
     *
     * @return Max level or -1 if no votes were found in the database.

@@ -370,32 +370,33 @@ trait Tables {
   lazy val AccountsHistory = new TableQuery(tag => new AccountsHistory(tag))
 
   /** Entity class storing rows of table BakingRights
-    *  @param blockHash Database column block_hash SqlType(varchar)
+    *  @param blockHash Database column block_hash SqlType(varchar), Default(None)
     *  @param level Database column level SqlType(int4)
     *  @param delegate Database column delegate SqlType(varchar)
     *  @param priority Database column priority SqlType(int4)
-    *  @param estimatedTime Database column estimated_time SqlType(timestamp)
+    *  @param estimatedTime Database column estimated_time SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param governancePeriod Database column governance_period SqlType(int4), Default(None) */
   case class BakingRightsRow(
-      blockHash: String,
+      blockHash: Option[String] = None,
       level: Int,
       delegate: String,
       priority: Int,
-      estimatedTime: java.sql.Timestamp,
+      estimatedTime: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
       governancePeriod: Option[Int] = None
   )
 
   /** GetResult implicit for fetching BakingRightsRow objects using plain SQL queries */
   implicit def GetResultBakingRightsRow(
-      implicit e0: GR[String],
+      implicit e0: GR[Option[String]],
       e1: GR[Int],
-      e2: GR[java.sql.Timestamp],
-      e3: GR[Option[Int]]
+      e2: GR[String],
+      e3: GR[Option[java.sql.Timestamp]],
+      e4: GR[Option[Int]]
   ): GR[BakingRightsRow] = GR { prs =>
     import prs._
-    BakingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
+    BakingRightsRow.tupled((<<?[String], <<[Int], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table baking_rights. Objects of this class serve as prototypes for rows in queries. */
@@ -406,25 +407,16 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (
-        (
-          Rep.Some(blockHash),
-          Rep.Some(level),
-          Rep.Some(delegate),
-          Rep.Some(priority),
-          Rep.Some(estimatedTime),
-          cycle,
-          governancePeriod
+      ((blockHash, Rep.Some(level), Rep.Some(delegate), Rep.Some(priority), estimatedTime, cycle, governancePeriod)).shaped
+        .<>(
+          { r =>
+            import r._; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
-      ).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => BakingRightsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
 
-    /** Database column block_hash SqlType(varchar) */
-    val blockHash: Rep[String] = column[String]("block_hash")
+    /** Database column block_hash SqlType(varchar), Default(None) */
+    val blockHash: Rep[Option[String]] = column[Option[String]]("block_hash", O.Default(None))
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -435,8 +427,9 @@ trait Tables {
     /** Database column priority SqlType(int4) */
     val priority: Rep[Int] = column[Int]("priority")
 
-    /** Database column estimated_time SqlType(timestamp) */
-    val estimatedTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("estimated_time")
+    /** Database column estimated_time SqlType(timestamp), Default(None) */
+    val estimatedTime: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("estimated_time", O.Default(None))
 
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
@@ -449,7 +442,7 @@ trait Tables {
 
     /** Foreign key referencing Blocks (database name fk_block_hash) */
     lazy val blocksFk = foreignKey("fk_block_hash", blockHash, Blocks)(
-      r => r.hash,
+      r => Rep.Some(r.hash),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )
@@ -973,32 +966,33 @@ trait Tables {
   lazy val DelegatesCheckpoint = new TableQuery(tag => new DelegatesCheckpoint(tag))
 
   /** Entity class storing rows of table EndorsingRights
-    *  @param blockHash Database column block_hash SqlType(varchar)
+    *  @param blockHash Database column block_hash SqlType(varchar), Default(None)
     *  @param level Database column level SqlType(int4)
     *  @param delegate Database column delegate SqlType(varchar)
     *  @param slot Database column slot SqlType(int4)
-    *  @param estimatedTime Database column estimated_time SqlType(timestamp)
+    *  @param estimatedTime Database column estimated_time SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param governancePeriod Database column governance_period SqlType(int4), Default(None) */
   case class EndorsingRightsRow(
-      blockHash: String,
+      blockHash: Option[String] = None,
       level: Int,
       delegate: String,
       slot: Int,
-      estimatedTime: java.sql.Timestamp,
+      estimatedTime: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
       governancePeriod: Option[Int] = None
   )
 
   /** GetResult implicit for fetching EndorsingRightsRow objects using plain SQL queries */
   implicit def GetResultEndorsingRightsRow(
-      implicit e0: GR[String],
+      implicit e0: GR[Option[String]],
       e1: GR[Int],
-      e2: GR[java.sql.Timestamp],
-      e3: GR[Option[Int]]
+      e2: GR[String],
+      e3: GR[Option[java.sql.Timestamp]],
+      e4: GR[Option[Int]]
   ): GR[EndorsingRightsRow] = GR { prs =>
     import prs._
-    EndorsingRightsRow.tupled((<<[String], <<[Int], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int], <<?[Int]))
+    EndorsingRightsRow.tupled((<<?[String], <<[Int], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
   /** Table description of table endorsing_rights. Objects of this class serve as prototypes for rows in queries. */
@@ -1009,25 +1003,16 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (
-        (
-          Rep.Some(blockHash),
-          Rep.Some(level),
-          Rep.Some(delegate),
-          Rep.Some(slot),
-          Rep.Some(estimatedTime),
-          cycle,
-          governancePeriod
+      ((blockHash, Rep.Some(level), Rep.Some(delegate), Rep.Some(slot), estimatedTime, cycle, governancePeriod)).shaped
+        .<>(
+          { r =>
+            import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
-      ).shaped.<>(
-        { r =>
-          import r._; _1.map(_ => EndorsingRightsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
-        },
-        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-      )
 
-    /** Database column block_hash SqlType(varchar) */
-    val blockHash: Rep[String] = column[String]("block_hash")
+    /** Database column block_hash SqlType(varchar), Default(None) */
+    val blockHash: Rep[Option[String]] = column[Option[String]]("block_hash", O.Default(None))
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -1038,8 +1023,9 @@ trait Tables {
     /** Database column slot SqlType(int4) */
     val slot: Rep[Int] = column[Int]("slot")
 
-    /** Database column estimated_time SqlType(timestamp) */
-    val estimatedTime: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("estimated_time")
+    /** Database column estimated_time SqlType(timestamp), Default(None) */
+    val estimatedTime: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("estimated_time", O.Default(None))
 
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
@@ -1052,7 +1038,7 @@ trait Tables {
 
     /** Foreign key referencing Blocks (database name fk_block_hash) */
     lazy val blocksFk = foreignKey("fk_block_hash", blockHash, Blocks)(
-      r => r.hash,
+      r => Rep.Some(r.hash),
       onUpdate = ForeignKeyAction.NoAction,
       onDelete = ForeignKeyAction.NoAction
     )

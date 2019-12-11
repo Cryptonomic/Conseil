@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import java.time.Instant
 import java.time.ZonedDateTime
 
-import monocle.Traversal
+import monocle.{Lens, Traversal}
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
@@ -24,7 +24,15 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    private val parametersExpresssion = GenLens[Parameters](_.value)
+    private val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
+      case Left(value) => value.value
+      case Right(value) => value
+    } { micheline =>
+      {
+        case Left(value) => Left(value.copy(value = micheline))
+        case Right(_) => Right(micheline)
+      }
+    }
 
     private val storage = GenLens[Scripted.Contracts](_.storage)
     private val code = GenLens[Scripted.Contracts](_.code)
@@ -234,6 +242,7 @@ object TezosTypes {
   /** root of the operation hiearchy */
   sealed trait Operation extends Product with Serializable
   //operations definition
+  type ParametersCompatibility = Either[Parameters, Micheline]
 
   final case class Endorsement(
       level: Int,
@@ -270,7 +279,7 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       source: PublicKeyHash,
       destination: ContractId,
-      parameters: Option[Parameters],
+      parameters: Option[ParametersCompatibility],
       metadata: ResultMetadata[OperationResult.Transaction]
   ) extends Operation
 
@@ -345,9 +354,7 @@ object TezosTypes {
         result: OperationResult.Reveal
     ) extends InternalOperationResult
 
-    case class Parameters(
-        entrypoint: String,
-        value: Micheline)
+    case class Parameters(entrypoint: String, value: Micheline)
 
     case class Transaction(
         kind: String,
@@ -355,7 +362,7 @@ object TezosTypes {
         nonce: Int,
         amount: PositiveBigNumber,
         destination: ContractId,
-        parameters: Option[Parameters],
+        parameters: Option[ParametersCompatibility],
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
@@ -622,7 +629,9 @@ object TezosTypes {
       level: Int,
       delegate: String,
       priority: Int,
-      estimated_time: ZonedDateTime
+      estimated_time: Option[ZonedDateTime],
+      cycle: Option[Int],
+      governancePeriod: Option[Int]
   )
 
   /** Endorsing rights model */
@@ -630,7 +639,9 @@ object TezosTypes {
       level: Int,
       delegate: String,
       slots: List[Int],
-      estimated_time: ZonedDateTime
+      estimated_time: Option[ZonedDateTime],
+      cycle: Option[Int],
+      governancePeriod: Option[Int]
   )
 
 }

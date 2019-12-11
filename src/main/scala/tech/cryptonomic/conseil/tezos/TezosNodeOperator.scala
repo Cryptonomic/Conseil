@@ -43,7 +43,7 @@ object TezosNodeOperator {
     * @param governancePeriod governance period
     * @param blockHash        hash of a block
     */
-  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: BlockHash)
+  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[BlockHash])
 
   /**
     * Given a contiguous valus range, creates sub-ranges of max the given size
@@ -153,6 +153,28 @@ class TezosNodeOperator(
     fetch[FetchRights, List[BakingRights], Future, List, Throwable]
       .run(blockHashesWithCycleAndGovernancePeriod)
       .map(_.toMap)
+  }
+
+  /**
+    * Fetches baking rights for given block level
+    * @param blockLevels  Block levels
+    * @return             Baking rights
+    */
+  def getBatchBakingRightsByLevels(blockLevels: List[Int]): Future[Map[Int, List[BakingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[Int, List[BakingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
+  }
+
+  /**
+    * Fetches endorsing rights for given block level
+    * @param blockLevels  Block levels
+    * @return             Endorsing rights
+    */
+  def getBatchEndorsingRightsByLevel(blockLevels: List[Int]): Future[Map[Int, List[EndorsingRights]]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    fetch[Int, List[EndorsingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
   }
 
   /**
@@ -544,7 +566,7 @@ class TezosNodeOperator(
             maxLevel,
             headLevel - maxLevel
           )
-        val pagedResults = partitionBlocksRanges(maxLevel to headLevel).map(
+        val pagedResults = partitionBlocksRanges(max(0, maxLevel) to headLevel).map(
           page => getBlocks((headHash, headLevel), page)
         )
         val minLevel = if (bootstrapping) 1 else maxLevel

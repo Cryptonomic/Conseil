@@ -2361,8 +2361,8 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
         )
       }
 
@@ -2393,8 +2393,8 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
         )
       }
 
@@ -2976,12 +2976,12 @@ class TezosDatabaseOperationsTest
       "should aggregate with datePart aggregation" in {
         val oneDay = Duration(1, DAYS).toMillis
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(3 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(1 + oneDay * 2), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2 + oneDay * 2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 4, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind")
         )
 
         val aggregate = List(
@@ -3006,9 +3006,9 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
         result shouldBe List(
-          Map("date_part_timestamp" -> Some("1970-01-02"), "count_medium" -> Some(3)),
-          Map("date_part_timestamp" -> Some("1970-01-03"), "count_medium" -> Some(2)),
-          Map("date_part_timestamp" -> Some("1970-01-01"), "count_medium" -> Some(1))
+          Map("date_part_timestamp" -> Some("2000-01-02"), "count_medium" -> Some(3)),
+          Map("date_part_timestamp" -> Some("2000-01-03"), "count_medium" -> Some(2)),
+          Map("date_part_timestamp" -> Some("2000-01-01"), "count_medium" -> Some(1))
         )
 
       }
@@ -3016,12 +3016,12 @@ class TezosDatabaseOperationsTest
       "should map date with datePart aggregation when it is only type of aggregation" in {
         val oneDay = Duration(1, DAYS).toMillis
         val feesTmp = List(
-          FeesRow(0, 1, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
-          FeesRow(0, 4, 4, new Timestamp(3 + oneDay), "kind"),
-          FeesRow(0, 5, 4, new Timestamp(1 + oneDay * 2), "kind"),
-          FeesRow(0, 6, 4, new Timestamp(2 + oneDay * 2), "kind")
+          FeesRow(0, 1, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 2, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 4, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 5, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 6, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind")
         )
 
         val populateAndTest = for {
@@ -3042,12 +3042,12 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
         result shouldBe List(
-          Map("date_part_timestamp" -> Some("1970-01-03")),
-          Map("date_part_timestamp" -> Some("1970-01-03")),
-          Map("date_part_timestamp" -> Some("1970-01-02")),
-          Map("date_part_timestamp" -> Some("1970-01-02")),
-          Map("date_part_timestamp" -> Some("1970-01-02")),
-          Map("date_part_timestamp" -> Some("1970-01-01"))
+          Map("date_part_timestamp" -> Some("2000-01-03")),
+          Map("date_part_timestamp" -> Some("2000-01-03")),
+          Map("date_part_timestamp" -> Some("2000-01-02")),
+          Map("date_part_timestamp" -> Some("2000-01-02")),
+          Map("date_part_timestamp" -> Some("2000-01-02")),
+          Map("date_part_timestamp" -> Some("2000-01-01"))
         )
       }
 

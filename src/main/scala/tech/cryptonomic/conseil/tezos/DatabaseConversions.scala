@@ -41,6 +41,12 @@ object DatabaseConversions {
       .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle) //this is Option[Int]
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractCyclePosition(block: BlockMetadata): Option[Int] =
+    discardGenesis
+      .lift(block) //this returns an Option[BlockHeaderMetadata]
+      .map(_.level.cycle_position) //this is Option[Int]
+
   //implicit conversions to database row types
 
   implicit val votesToVotesRow = new Conversion[Id, VoteAggregates, Tables.VotesRow] {
@@ -249,6 +255,11 @@ object DatabaseConversions {
       )
   }
 
+  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline = parametersCompatibility match {
+    case Left(value) => value.value
+    case Right(value) => value
+  }
+
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
         block,
@@ -266,7 +277,7 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
-        parameters = parameters.map(_.value.expression),
+        parameters = parameters.map(extractMicheline(_).expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
@@ -635,8 +646,8 @@ object DatabaseConversions {
         val (fetchRights, bakingRights) = from
         bakingRights
           .into[Tables.BakingRightsRow]
-          .withFieldConst(_.blockHash, fetchRights.blockHash.value)
-          .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+          .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
+          .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
           .withFieldConst(_.cycle, fetchRights.cycle)
           .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
           .transform
@@ -652,11 +663,37 @@ object DatabaseConversions {
         endorsingRights.slots.map { slot =>
           endorsingRights
             .into[Tables.EndorsingRightsRow]
-            .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
             .withFieldConst(_.slot, slot)
-            .withFieldConst(_.blockHash, fetchRights.blockHash.value)
+            .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
             .withFieldConst(_.cycle, fetchRights.cycle)
             .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
+            .transform
+        }
+      }
+    }
+
+  implicit val bakingRightsToRowsWithoutBlockHash = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
+    override def convert(from: BakingRights): tezos.Tables.BakingRightsRow = {
+      val bakingRights = from
+      bakingRights
+        .into[Tables.BakingRightsRow]
+        .withFieldConst(_.blockHash, None)
+        .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
+        .transform
+    }
+  }
+
+  implicit val endorsingRightsToRowsWithoutBlockHash =
+    new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
+        val endorsingRights = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, None)
             .transform
         }
       }

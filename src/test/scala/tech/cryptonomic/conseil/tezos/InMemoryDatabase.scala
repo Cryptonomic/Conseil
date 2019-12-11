@@ -1,8 +1,8 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.github.ghik.silencer.silent
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
+import org.testcontainers.containers.PostgreSQLContainer
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -13,45 +13,31 @@ import scala.concurrent.duration._
 trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
   import java.nio.file._
-  import scala.collection.JavaConverters._
   import slick.jdbc.PostgresProfile.api._
-  import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres
-  import ru.yandex.qatools.embed.postgresql.distribution.Version
+
+  val dbInstance = new PostgreSQLContainer()
+  dbInstance.start()
 
   /** how to name the database schema for the test */
-  protected val databaseName = "conseil-test"
-
-  /** port to use, try to avoid conflicting usage */
-  protected val databasePort = 5433
+  protected val databaseName = dbInstance.getDatabaseName
 
   /** here are temp files for the embedded process, can wipe out if needed */
   protected val cachedRuntimePath = Paths.get("test-postgres-path")
 
   /** defines configuration for a randomly named embedded instance */
-  protected val confString =
+  protected lazy val confString =
     s"""testdb = {
-       |    url                 = "jdbc:postgresql://localhost:$databasePort/$databaseName"
+       |    url                 = "${dbInstance.getJdbcUrl}"
        |    connectionPool      = disabled
        |    keepAliveConnection = true
        |    driver              = org.postgresql.Driver
        |    properties = {
-       |      user     = ${EmbeddedPostgres.DEFAULT_USER}
-       |      password = ${EmbeddedPostgres.DEFAULT_PASSWORD}
+       |      user     = ${dbInstance.getUsername}
+       |      password = ${dbInstance.getPassword}
        |    }
        |  }
     """.stripMargin
 
-  /* turns off anti-corruption guarantees settings that will improve performance on testing
-   * override to change or add test-specific settings
-   */
-  protected val pgInitParams = List("--nosync", "--lc-collate=C")
-  /* turns off anti-corruption guarantees settings that will improve performance on testing
-   * override to change or add test-specific settings
-   */
-  protected val pgConfigs = List("-c", "full_page_writes=off")
-
-  @silent("deprecated")
-  lazy val dbInstance = new EmbeddedPostgres(Version.V9_5_15)
   lazy val dbHandler: Database = Database.forConfig("testdb", config = ConfigFactory.parseString(confString))
 
   //keep in mind that this is sorted to preserve key consistency
@@ -84,16 +70,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    dbInstance.start(
-      EmbeddedPostgres.cachedRuntimeConfig(cachedRuntimePath),
-      "localhost",
-      databasePort,
-      databaseName,
-      EmbeddedPostgres.DEFAULT_USER,
-      EmbeddedPostgres.DEFAULT_PASSWORD,
-      pgInitParams.asJava,
-      pgConfigs.asJava
-    )
+    dbInstance.start()
     Await.result(dbHandler.run(sql"CREATE SCHEMA IF NOT EXISTS tezos".as[Int]), 1.second)
     Await.result(
       dbHandler.run(sql"""ALTER DATABASE "#$databaseName" SET search_path TO tezos,public""".as[Int]),

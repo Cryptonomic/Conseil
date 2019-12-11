@@ -6,6 +6,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
+import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
   DatabaseConversions,
@@ -84,6 +85,60 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   def processVotes: Future[Done] = {
     processTezosVotes().flatMap(_ => processVotes)
+  }
+
+  /** Schedules method for fetching baking rights */
+  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
+    writeFutureRights()
+  )
+
+  /** Fetches future baking and endorsing rights to insert it into the DB */
+  def writeFutureRights(): Unit = {
+    val berLogger = LoggerFactory.getLogger("RightsFetcher")
+
+    import cats.implicits._
+
+    implicit val mat = ActorMaterializer()
+    berLogger.info("Fetching future baking and endorsing rights")
+    val blockHead = tezosNodeOperator.getBareBlockHead()
+    val brLevelFut = apiOperations.fetchMaxBakingRightsLevel()
+    val erLevelFut = apiOperations.fetchMaxEndorsingRightsLevel()
+
+    (blockHead, brLevelFut, erLevelFut).mapN { (head, brLevel, erLevel) =>
+      val headLevel = head.header.level
+      val rightsStartLevel = math.max(brLevel, erLevel) + 1
+      berLogger.info(
+        s"Current Tezos block head level: $headLevel DB stored baking rights level: $brLevel DB stored endorsing rights level: $erLevel"
+      )
+
+      val length = DatabaseConversions
+        .extractCyclePosition(head.metadata)
+        .map { cyclePosition =>
+          // calculates amount of future rights levels to be fetched based on cycle_position, cycle_size and amount cycles to fetch
+          (lorreConf.blockRightsFetching.cycleSize - cyclePosition) + lorreConf.blockRightsFetching.cycleSize * lorreConf.blockRightsFetching.cyclesToFetch
+        }
+        .getOrElse(0)
+
+      berLogger.info(s"Level and position to fetch ($headLevel, $length)")
+      val range = List.range(Math.max(headLevel + 1, rightsStartLevel), headLevel + length)
+      Source
+        .fromIterator(() => range.toIterator)
+        .grouped(lorreConf.blockRightsFetching.fetchSize)
+        .mapAsync(1) { partition =>
+          tezosNodeOperator.getBatchBakingRightsByLevels(partition.toList).flatMap { bakingRightsResult =>
+            val brResults = bakingRightsResult.values.flatten
+            berLogger.info(s"Got ${brResults.size} baking rights")
+            db.run(TezosDb.insertBakingRights(brResults.toList))
+          }
+          tezosNodeOperator.getBatchEndorsingRightsByLevel(partition.toList).flatMap { endorsingRightsResult =>
+            val erResults = endorsingRightsResult.values.flatten
+            berLogger.info(s"Got ${erResults.size} endorsing rights")
+            db.run(TezosDb.insertEndorsingRights(erResults.toList))
+          }
+        }
+        .runWith(Sink.ignore)
+    }.flatten
+    ()
   }
 
   /** close resources for application stop */
@@ -307,9 +362,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           val data = results._1.data
           val hash = data.hash
           data.metadata match {
-            case GenesisMetadata => FetchRights(None, None, hash)
+            case GenesisMetadata => FetchRights(None, None, Some(hash))
             case BlockHeaderMetadata(_, _, _, _, _, level) =>
-              FetchRights(Some(level.cycle), Some(level.voting_period), hash)
+              FetchRights(Some(level.cycle), Some(level.voting_period), Some(hash))
 
           }
         }
@@ -320,7 +375,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)
       ).mapN {
         case (br, er) =>
-          (db.run(TezosDb.writeBakingRights(br)), db.run(TezosDb.writeEndorsingRights(er)))
+          (db.run(TezosDb.upsertBakingRights(br)), db.run(TezosDb.upsertEndorsingRights(er)))
             .mapN((_, _) => ())
       }.flatten
     }
