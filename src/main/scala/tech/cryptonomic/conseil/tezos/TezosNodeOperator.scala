@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.convert
+import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.{convert, toMichelsonScript}
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
 import cats.instances.future._
@@ -235,6 +235,7 @@ class TezosNodeOperator(
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
     def parseMichelsonScripts: Account => Account = {
+      implicit lazy val _ = logger
       val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
 
@@ -614,6 +615,7 @@ class TezosNodeOperator(
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
     def parseMichelsonScripts: Block => Block = {
+      implicit lazy val _ = logger
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
@@ -648,24 +650,6 @@ class TezosNodeOperator(
     }
   }
 
-  private def toMichelsonScript[T <: MichelsonElement: Parser](json: String)(implicit tag: ClassTag[T]): String = {
-
-    def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
-      exception match {
-        case Some(t) => logger.error(s"${tag.runtimeClass}: Error during conversion of $json", t)
-        case None => logger.error(s"${tag.runtimeClass}: Error during conversion of $json")
-      }
-
-      s"Unparsable code: $json"
-    }
-
-    def parse(json: String): String = convert[T](json) match {
-      case Right(convertedResult) => convertedResult
-      case Left(exception) => unparsableResult(json, Some(exception))
-    }
-
-    Try(parse(json)).getOrElse(unparsableResult(json))
-  }
 }
 
 /**

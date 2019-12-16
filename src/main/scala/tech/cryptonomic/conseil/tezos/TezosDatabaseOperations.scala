@@ -120,14 +120,83 @@ object TezosDatabaseOperations extends LazyLogging {
     val saveOperationsAndBalances: Kleisli[DBIO, (OperationsRow, List[BalanceUpdatesRow]), Option[Int]] =
       saveOperationGetNewId.first andThen saveBalanceUpdatesForOperationId
 
-    //Sequence the save actions, the third being applied to a whole collection of operations and balances
+    //Sequence the save actions, some of which are being applied to a whole collection of operations and balances
     DBIO.seq(
       saveBlocksAction,
       saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
-      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData]))
+      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData])),
+      saveBigMaps(blocks)
     )
 
+  }
+
+  /**
+    * Writes big map information from relevant operations occurring in the blocks.
+    * This means creating new rows on originations' allocations, or creating/updating
+    * map contents on transactions' update/copy, or removing all data on
+    * transactions' remove.
+    *
+    * @param blocks the blocks containing the operations
+    * @param ec the context to run async operations
+    */
+  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+    import Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
+
+    val copyDiffs = blocks.flatMap(TezosOptics.Blocks.readBigMapDiffCopy.getAll)
+    val removalDiffs = blocks.flatMap(TezosOptics.Blocks.readBigMapDiffRemove.getAll)
+
+    //need to load the sources and copy them with a new destination id
+    val contentCopies = copyDiffs.collect {
+      case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
+        Tables.BigMapContents
+          .filter(_.bigMapId === sourceId)
+          .result
+          .map(
+            _.map(row => row.copy(bigMapId = Some(destinationId)))
+          )
+    }
+
+    /* The interleaving of these operations would actually need more complexity to handle properly,
+     * as we process collections of blocks, because some operations handled "after" might be referring to
+     * something "happening before" or viceversa.
+     * E.g. you could find that a new origination creates a map with the same identifier of another previously
+     * removed (is this allowed?).
+     * Therefore the insert might fail on finding the old record id still there, whereas the real sequence
+     * of events would have removed the old first.
+     * We might consider improving the situation by doing a pre-check that the altered sequencing of the operations
+     * doesn't interfere with the "causality" of the chain events.
+     */
+    val saveMaps = Tables.BigMaps ++= blocks.flatMap(_.convertToA[List, BigMapsRow])
+
+    val saveContent = Tables.BigMapContents ++= blocks.flatMap(_.convertToA[List, BigMapContentsRow])
+    //TODO converge to insertOrUpdateAll as soon as you merge master!
+
+    val copyContent = DBIO
+      .sequence(contentCopies)
+      .flatMap { updateRows =>
+        DBIO.sequence(updateRows.flatten.map(Tables.BigMapContents.insertOrUpdate))
+      }
+      .map(_.sum)
+
+    val saveContractOrigin =
+      Tables.OriginatedAccountMaps ++= blocks.flatMap(
+            _.convertToA[List, OriginatedAccountMapsRow]
+          )
+
+    val removeAnyNeeded: DBIO[Unit] = {
+      val idsToRemove = removalDiffs.collect {
+        case Contract.BigMapRemove(_, Decimal(bigMapId)) =>
+          bigMapId
+      }.toSet
+
+      DBIO.seq(
+        Tables.BigMaps.filter(_.bigMapId inSet idsToRemove).delete,
+        Tables.BigMapContents.filter(_.bigMapId inSet idsToRemove).delete
+      )
+    }
+
+    DBIO.seq(saveMaps, saveContent, copyContent, saveContractOrigin, removeAnyNeeded)
   }
 
   /**

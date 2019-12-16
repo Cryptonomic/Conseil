@@ -648,6 +648,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
           ),
           operation_result = OperationResult.Origination(
             status = "applied",
+            big_map_diff = None,
             balance_updates = Some(
               List(
                 BalanceUpdate(

@@ -335,6 +335,29 @@ CREATE TABLE tezos.rolls (
     block_level integer NOT NULL
 );
 
+CREATE TABLE tezos.big_maps (
+    big_map_id numeric PRIMARY KEY,
+    key_type character varying,
+    value_type character varying
+);
+
+CREATE TABLE tezos.big_map_contents (
+    big_map_id numeric,
+    key character varying,
+    key_hash character varying,
+    value character varying
+);
+
+ALTER TABLE ONLY tezos.big_map_contents
+    ADD CONSTRAINT big_map_contents_id_fkey FOREIGN KEY (big_map_id) REFERENCES tezos.big_maps(big_map_id);
+
+CREATE TABLE tezos.originated_account_maps (
+    big_map_id numeric,
+    account_id character varying,
+    PRIMARY KEY (big_map_id, account_id)
+);
+
+CREATE INDEX accounts_maps_idx ON tezos.originated_account_maps USING btree (account_id);
 
 --
 -- Name: balance_updates id; Type: DEFAULT; Schema: tezos; Owner: -

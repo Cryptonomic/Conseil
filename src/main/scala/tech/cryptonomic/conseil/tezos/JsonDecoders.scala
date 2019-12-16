@@ -207,10 +207,10 @@ object JsonDecoders {
       import Numbers._
       import Contract.{
         BigMapDiff,
-        BigMapDiffAlloc,
-        BigMapDiffCopy,
-        BigMapDiffRemove,
-        BigMapDiffUpdate,
+        BigMapAlloc,
+        BigMapCopy,
+        BigMapRemove,
+        BigMapUpdate,
         CompatBigMapDiff,
         Protocol4BigMapDiff
       }
@@ -220,10 +220,10 @@ object JsonDecoders {
 
       implicit private val protocol4Decoder: Decoder[Protocol4BigMapDiff] = deriveDecoder
       implicit private val bigmapdiffDecoder: Decoder[BigMapDiff] = List[Decoder[BigMapDiff]](
-        deriveDecoder[BigMapDiffUpdate].widen,
-        deriveDecoder[BigMapDiffCopy].widen,
-        deriveDecoder[BigMapDiffAlloc].widen,
-        deriveDecoder[BigMapDiffRemove].widen
+        deriveDecoder[BigMapUpdate].widen,
+        deriveDecoder[BigMapCopy].widen,
+        deriveDecoder[BigMapAlloc].widen,
+        deriveDecoder[BigMapRemove].widen
       ).reduceLeft(_ or _)
       implicit val compatDecoder: Decoder[CompatBigMapDiff] = decodeUntaggedEither
     }
