@@ -10,7 +10,17 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
+  DatabaseConversions,
+  FeeOperations,
+  ShutdownComplete,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -586,15 +596,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           taggedAccounts: List[BlockTagged[AccountsIndex]],
           taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
       ): Future[(Int, Option[Int], List[BlockTagged[DelegateKeys]])] = {
-          for {
-            _ <- activateAccounts(taggedAccounts)
-            res <- db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys))
-              .map {
-                case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
-                  (accountWrites, delegateCheckpoints, taggedDelegateKeys)
-              }
-          } yield res
-        }.andThen(logWriteFailure)
+        for {
+          res <- db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys)).map {
+            case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
+              (accountWrites, delegateCheckpoints, taggedDelegateKeys)
+          }
+          _ <- activateAccounts(taggedAccounts)
+        } yield res
+      }.andThen(logWriteFailure)
 
       /** Activates accounts in Accounts and AccountsHistory tables */
       def activateAccounts(taggedAccounts: List[BlockTagged[AccountsIndex]]): Future[Int] = {
@@ -615,7 +624,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             activatedAccounts <- TezosDb.findActivatedAccounts
             activateAccountsInHistory <- TezosDb.activateAccountHistory(
               activatedAccounts.toList,
-              Timestamp.from(taggedAccounts.map(_.timestamp.getOrElse(Instant.ofEpochMilli(0))).min) //it should never be 0
+              Timestamp
+                .from(taggedAccounts.map(_.timestamp.getOrElse(Instant.ofEpochMilli(0))).min) //it should never be 0
             )
           } yield activateAccountsResult.sum + activateAccountsInHistory
         }.andThen(logWriteFailure)

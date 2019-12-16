@@ -554,7 +554,6 @@ object TezosDatabaseOperations extends LazyLogging {
       .map(_.isActivated)
       .update(true)
 
-
   /** Updates an account history by id and asof, marking it with a flag.
     * @param id the account identifier on database (corresponds to the pkh)
     * @param asof which flag to set "on"
@@ -569,12 +568,11 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Finds activated accounts - useful when updating accounts history
     * @return sequence of activated account ids
     */
-  def findActivatedAccounts: DBIO[Seq[String]] = {
+  def findActivatedAccounts: DBIO[Seq[String]] =
     Tables.Accounts
       .filter(_.isActivated)
       .map(_.accountId)
       .result
-  }
 
   /** Load all operations referenced from a block level and higher, that are of a specific kind.
     * @param ofKind a set of kinds to filter operations, if empty there will be no result
@@ -582,8 +580,8 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return the matching operations, sorted by ascending block-level
     */
   def fetchRecentOperationsByKind(
-    ofKind: Set[String],
-    fromLevel: Int = 0
+      ofKind: Set[String],
+      fromLevel: Int = 0
   ): DBIOAction[Seq[Tables.OperationsRow], Streaming[Tables.OperationsRow], Effect.Read] =
     Tables.Operations
       .filter(
