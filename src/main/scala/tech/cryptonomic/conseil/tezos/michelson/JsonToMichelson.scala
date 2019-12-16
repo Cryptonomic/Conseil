@@ -16,7 +16,9 @@ object JsonToMichelson {
   def convert[T <: MichelsonElement: Parser](json: String): Result[String] =
     JsonParser.parse[T](json).map(_.render())
 
-  def toMichelsonScript[T <: MichelsonElement: Parser](json: String)(implicit tag: ClassTag[T], logger: Logger): String = {
+  def toMichelsonScript[T <: MichelsonElement: Parser](
+      json: String
+  )(implicit tag: ClassTag[T], logger: Logger): String = {
 
     def unparsableResult(json: Any, exception: Option[Throwable] = None): String = {
       exception match {

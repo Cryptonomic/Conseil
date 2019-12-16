@@ -206,9 +206,9 @@ object JsonDecoders {
     object BigMapDiff {
       import Numbers._
       import Contract.{
-        BigMapDiff,
         BigMapAlloc,
         BigMapCopy,
+        BigMapDiff,
         BigMapRemove,
         BigMapUpdate,
         CompatBigMapDiff,
