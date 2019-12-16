@@ -47,7 +47,8 @@ trait Tables {
     *  @param spendable Database column spendable SqlType(bool), Default(None)
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
-    *  @param isBaker Database column is_baker SqlType(bool), Default(false) */
+    *  @param isBaker Database column is_baker SqlType(bool), Default(false)
+    *  @param isActivated Database column is_activated SqlType(bool), Default(false) */
   case class AccountsRow(
       accountId: String,
       blockId: String,
@@ -60,7 +61,8 @@ trait Tables {
       spendable: Option[Boolean] = None,
       delegateSetable: Option[Boolean] = None,
       delegateValue: Option[String] = None,
-      isBaker: Boolean = false
+      isBaker: Boolean = false,
+      isActivated: Boolean = false
   )
 
   /** GetResult implicit for fetching AccountsRow objects using plain SQL queries */
@@ -86,6 +88,7 @@ trait Tables {
         <<?[Boolean],
         <<?[Boolean],
         <<?[String],
+        <<[Boolean],
         <<[Boolean]
       )
     )
@@ -106,7 +109,8 @@ trait Tables {
         spendable,
         delegateSetable,
         delegateValue,
-        isBaker
+        isBaker,
+        isActivated
       ) <> (AccountsRow.tupled, AccountsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -124,12 +128,15 @@ trait Tables {
           spendable,
           delegateSetable,
           delegateValue,
-          Rep.Some(isBaker)
+          Rep.Some(isBaker),
+          Rep.Some(isActivated)
         )
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get)))
+          _1.map(
+            _ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get))
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -170,6 +177,9 @@ trait Tables {
 
     /** Database column is_baker SqlType(bool), Default(false) */
     val isBaker: Rep[Boolean] = column[Boolean]("is_baker", O.Default(false))
+
+    /** Database column is_activated SqlType(bool), Default(false) */
+    val isActivated: Rep[Boolean] = column[Boolean]("is_activated", O.Default(false))
 
     /** Foreign key referencing Blocks (database name accounts_block_id_fkey) */
     lazy val blocksFk = foreignKey("accounts_block_id_fkey", blockId, Blocks)(
@@ -263,7 +273,8 @@ trait Tables {
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param asof Database column asof SqlType(timestamp)
     *  @param isBaker Database column is_baker SqlType(bool), Default(false)
-    *  @param cycle Database column cycle SqlType(int4), Default(None) */
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param isActivated Database column is_activated SqlType(bool), Default(false) */
   case class AccountsHistoryRow(
       accountId: String,
       blockId: String,
@@ -274,7 +285,8 @@ trait Tables {
       delegateValue: Option[String] = None,
       asof: java.sql.Timestamp,
       isBaker: Boolean = false,
-      cycle: Option[Int] = None
+      cycle: Option[Int] = None,
+      isActivated: Boolean = false
   )
 
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
@@ -298,7 +310,8 @@ trait Tables {
         <<?[String],
         <<[java.sql.Timestamp],
         <<[Boolean],
-        <<?[Int]
+        <<?[Int],
+        <<[Boolean]
       )
     )
   }
@@ -307,7 +320,7 @@ trait Tables {
   class AccountsHistory(_tableTag: Tag)
       extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("tezos"), "accounts_history") {
     def * =
-      (accountId, blockId, counter, storage, balance, blockLevel, delegateValue, asof, isBaker, cycle) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
+      (accountId, blockId, counter, storage, balance, blockLevel, delegateValue, asof, isBaker, cycle, isActivated) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -322,12 +335,15 @@ trait Tables {
           delegateValue,
           Rep.Some(asof),
           Rep.Some(isBaker),
-          cycle
+          cycle,
+          Rep.Some(isActivated)
         )
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10)))
+          _1.map(
+            _ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get))
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -362,6 +378,9 @@ trait Tables {
 
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column is_activated SqlType(bool), Default(false) */
+    val isActivated: Rep[Boolean] = column[Boolean]("is_activated", O.Default(false))
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */
