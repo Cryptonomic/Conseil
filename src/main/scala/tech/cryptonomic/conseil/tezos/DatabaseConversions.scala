@@ -12,11 +12,13 @@ import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
-import tech.cryptonomic.conseil.tezos.michelson
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.{BigMapAlloc, BigMapRemove, BigMapUpdate}
 
 object DatabaseConversions extends LazyLogging {
+
+  // Simplify understanding in parts of the code
+  case class BlockBigMapDiff(get: (BlockHash, Contract.BigMapDiff)) extends AnyVal
+  case class BlockContractIdsBigMapDiff(get: (BlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
 
   //adapts from the java timestamp to sql
   private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
@@ -566,9 +568,11 @@ object DatabaseConversions extends LazyLogging {
       group -> (group.contents, internal)
     }.toMap
 
-  implicit private val bigMapDiffToBigMapRow: Conversion[Option, (BlockHash, Contract.BigMapDiff), Tables.BigMapsRow] =
-    new Conversion[Option, (BlockHash, Contract.BigMapDiff), Tables.BigMapsRow] {
-      def convert(from: (BlockHash, TezosTypes.Contract.BigMapDiff)) = from match {
+  implicit private val bigMapDiffToBigMapRow =
+    new Conversion[Option, BlockBigMapDiff, Tables.BigMapsRow] {
+      import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
+
+      def convert(from: BlockBigMapDiff) = from.get match {
         case (_, BigMapAlloc(_, Decimal(id), key_type, value_type)) =>
           Some(
             Tables.BigMapsRow(
@@ -587,23 +591,21 @@ object DatabaseConversions extends LazyLogging {
         case diff =>
           logger.warn(
             "A big_map_diff allocation hasn't been converted to a BigMap on db, because the diff action was unexpected: {}",
-            from._2
+            from.get._2
           )
           None
       }
     }
 
-  implicit private val bigMapDiffToBigMapContentsRow: Conversion[
-    Option,
-    (BlockHash, Contract.BigMapDiff),
-    Tables.BigMapContentsRow
-  ] =
-    new Conversion[Option, (BlockHash, Contract.BigMapDiff), Tables.BigMapContentsRow] {
+  implicit private val bigMapDiffToBigMapContentsRow =
+    new Conversion[Option, BlockBigMapDiff, Tables.BigMapContentsRow] {
+      import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
       import michelson.dto.MichelsonExpression
       import michelson.JsonToMichelson.toMichelsonScript
       import michelson.parser.JsonParser._
       implicit lazy val _ = logger
-      def convert(from: (BlockHash, TezosTypes.Contract.BigMapDiff)) = from match {
+
+      def convert(from: BlockBigMapDiff) = from.get match {
         case (_, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
           Some(
             Tables.BigMapContentsRow(
@@ -623,16 +625,18 @@ object DatabaseConversions extends LazyLogging {
         case diff =>
           logger.warn(
             "A big_map_diff update hasn't been converted to a BigMapContent on db, because the diff action was unexpected: {}",
-            from._2
+            from.get._2
           )
           None
       }
     }
 
   implicit private val bigMapDiffToBigMapOriginatedContracts =
-    new Conversion[List, (BlockHash, List[ContractId], Contract.BigMapDiff), Tables.OriginatedAccountMapsRow] {
+    new Conversion[List, BlockContractIdsBigMapDiff, Tables.OriginatedAccountMapsRow] {
+      import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
       implicit lazy val _ = logger
-      def convert(from: (BlockHash, List[ContractId], TezosTypes.Contract.BigMapDiff)) = from match {
+
+      def convert(from: BlockContractIdsBigMapDiff) = from.get match {
         case (_, ids, BigMapAlloc(_, Decimal(id), _, _)) =>
           ids.map(
             contractId =>
@@ -641,7 +645,7 @@ object DatabaseConversions extends LazyLogging {
                 accountId = contractId.id
               )
           )
-        case (hash, ids, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
+        case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
           logger.warn(
             "A big_map_diff allocation hasn't been converted to a relation for OriginatedAccounts to BigMap on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}, involving accounts {}",
             json,
@@ -652,7 +656,7 @@ object DatabaseConversions extends LazyLogging {
         case diff =>
           logger.warn(
             "A big_map_diff allocation hasn't been converted to a relation for OriginatedAccounts to BigMap on db, because the diff action was unexpected: {}",
-            from._2
+            from.get._2
           )
           List.empty
       }
@@ -675,7 +679,7 @@ object DatabaseConversions extends LazyLogging {
           .collect[Contract.BigMapDiff, List[Contract.BigMapDiff]] {
             case Left(diff) => diff
           }
-          .flatMap(diff => (from.data.hash, diff).convertToA[Option, Tables.BigMapsRow])
+          .flatMap(diff => BlockBigMapDiff((from.data.hash, diff)).convertToA[Option, Tables.BigMapsRow])
 
       ops.toList.flatten.flatMap {
         case op: Origination => extractDiffsToRows(op.metadata.operation_result)
@@ -704,7 +708,7 @@ object DatabaseConversions extends LazyLogging {
           .collect[Contract.BigMapDiff, List[Contract.BigMapDiff]] {
             case Left(diff) => diff
           }
-          .flatMap(diff => (from.data.hash, diff).convertToA[Option, Tables.BigMapContentsRow])
+          .flatMap(diff => BlockBigMapDiff((from.data.hash, diff)).convertToA[Option, Tables.BigMapContentsRow])
 
       ops.toList.flatten.flatMap {
         case op: Transaction => extractDiffsToRows(op.metadata.operation_result)
@@ -735,7 +739,8 @@ object DatabaseConversions extends LazyLogging {
             .collect[Contract.BigMapDiff, List[Contract.BigMapDiff]] {
               case Left(diff) => diff
             }
-          rows <- (from.data.hash, contractIds, diff).convertToA[List, Tables.OriginatedAccountMapsRow]
+          rows <- BlockContractIdsBigMapDiff((from.data.hash, contractIds, diff))
+            .convertToA[List, Tables.OriginatedAccountMapsRow]
         } yield rows
 
       ops.toList.flatten.flatMap {
