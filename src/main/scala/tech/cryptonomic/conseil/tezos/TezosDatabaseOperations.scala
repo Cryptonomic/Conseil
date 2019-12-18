@@ -635,21 +635,17 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Operations
       .filter(_.kind === "ballot")
       .filter(_.blockLevel inSet levels)
+      .map { o =>
+        (o.proposal,
+          o.blockLevel,
+          o.blockHash,
+          o.cycle,
+          o.timestamp,
+          o.ballot,
+          o.source)
+      }
       .result
-      .map(
-        results =>
-          results.map { o =>
-            VotingData(
-              o.proposal,
-              o.blockLevel,
-              o.blockHash,
-              o.cycle,
-              o.timestamp,
-              o.ballot,
-              o.source
-            )
-          }
-      )
+      .map(_.map(VotingData.tupled))
 
   /** is there any block stored? */
   def doBlocksExist(): DBIO[Boolean] =

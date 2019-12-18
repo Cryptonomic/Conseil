@@ -55,7 +55,7 @@ class ApiOperations extends DataOperations with MetadataOperations {
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int] =
+  def fetchMaxLevel(): Future[Int] =
     runQuery(Tables.Blocks.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   /**
@@ -63,7 +63,7 @@ class ApiOperations extends DataOperations with MetadataOperations {
     *
     * @return Max level or -1 if no baking rights were found in the database.
     */
-  def fetchMaxBakingRightsLevel()(implicit ec: ExecutionContext): Future[Int] =
+  def fetchMaxBakingRightsLevel(): Future[Int] =
     runQuery(Tables.BakingRights.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   /**
@@ -71,7 +71,7 @@ class ApiOperations extends DataOperations with MetadataOperations {
     *
     * @return Max level or -1 if no endorsing rights were found in the database.
     */
-  def fetchMaxEndorsingRightsLevel()(implicit ec: ExecutionContext): Future[Int] =
+  def fetchMaxEndorsingRightsLevel(): Future[Int] =
     runQuery(Tables.EndorsingRights.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   /**
@@ -79,9 +79,14 @@ class ApiOperations extends DataOperations with MetadataOperations {
     *
     * @return Max level or -1 if no votes were found in the database.
     */
-  def fetchVotesMaxLevel()(implicit ec: ExecutionContext): Future[Int] =
+  def fetchVotesMaxLevel(): Future[Int] =
     runQuery(Tables.Votes.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
+  /**
+    * Fetches the votes stored ad block level.
+    *
+    * @return List of votes rows
+    */
   def fetchVotesAtLevel(level: Int)(implicit ec: ExecutionContext): Future[List[VotesRow]] =
     runQuery(Tables.Votes.filter(_.level === level).result).map(_.toList)
 

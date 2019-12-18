@@ -81,7 +81,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   // starts processing Tezos votes
-  system.scheduler.scheduleOnce(1.minute)(processTezosVotes())
+  system.scheduler.scheduleOnce(1.minute)(processVotes())
 
   /** Recursive process to start processing Tezos votes */
   @tailrec
