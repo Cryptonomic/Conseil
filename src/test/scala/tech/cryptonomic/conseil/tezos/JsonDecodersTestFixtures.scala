@@ -1042,8 +1042,6 @@ trait OperationsJsonData {
       )
     )
 
-
-
   val originationJson =
     s"""{
     |  "kind": "origination",

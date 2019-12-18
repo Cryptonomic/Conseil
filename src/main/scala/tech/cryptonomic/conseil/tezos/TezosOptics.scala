@@ -62,12 +62,29 @@ object TezosOptics {
     val groupOperations =
       GenLens[OperationsGroup](_.contents) composeTraversal Traversal.fromTraverse[List, Operation]
 
-    val selectTransation = GenPrism[Operation, Transaction]
+    val selectOrigination = GenPrism[Operation, Origination]
+    val originationResult = GenLens[Origination](_.metadata.operation_result)
+    val originationBigMapDiffs =
+      Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
+        diff => tr => tr.copy(big_map_diff = diff.some)
+      )
+
+    val selectTransaction = GenPrism[Operation, Transaction]
     val transactionResult = GenLens[Transaction](_.metadata.operation_result)
     val transactionBigMapDiffs =
       Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
         diff => tr => tr.copy(big_map_diff = diff.some)
       )
+
+    val selectBigMapAlloc = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+            Contract.BigMapDiff,
+            Contract.BigMapAlloc
+          ]
+
+    val selectBigMapUpdate = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+            Contract.BigMapDiff,
+            Contract.BigMapUpdate
+          ]
 
     val selectBigMapCopy = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
@@ -79,14 +96,26 @@ object TezosOptics {
             Contract.BigMapRemove
           ]
 
+    val operationBigMapDiffAlloc =
+      selectOrigination composeLens
+          originationResult composeOptional
+          originationBigMapDiffs composeTraversal
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapAlloc)
+
+    val operationBigMapDiffUpdate =
+      selectTransaction composeLens
+          transactionResult composeOptional
+          transactionBigMapDiffs composeTraversal
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapUpdate)
+
     val operationBigMapDiffCopy =
-      selectTransation composeLens
+      selectTransaction composeLens
           transactionResult composeOptional
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapCopy)
 
     val operationBigMapDiffRemove =
-      selectTransation composeLens
+      selectTransaction composeLens
           transactionResult composeOptional
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)

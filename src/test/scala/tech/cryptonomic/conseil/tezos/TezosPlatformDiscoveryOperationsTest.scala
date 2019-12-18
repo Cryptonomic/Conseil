@@ -322,7 +322,11 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of originated account maps" in {
 
-        sut.getTableAttributes(EntityPath("originated_account_maps", networkPath)).futureValue.value.toSet should matchTo(
+        sut
+          .getTableAttributes(EntityPath("originated_account_maps", networkPath))
+          .futureValue
+          .value
+          .toSet should matchTo(
           Set(
             Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "originated_account_maps"),
             Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "originated_account_maps")

@@ -13,6 +13,7 @@ import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
+import com.typesafe.scalalogging.Logger
 
 object DatabaseConversions extends LazyLogging {
 
@@ -571,14 +572,19 @@ object DatabaseConversions extends LazyLogging {
   implicit private val bigMapDiffToBigMapRow =
     new Conversion[Option, BlockBigMapDiff, Tables.BigMapsRow] {
       import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
+      import michelson.dto.MichelsonExpression
+      import michelson.JsonToMichelson.toMichelsonScript
+      import michelson.parser.JsonParser._
+      //needed to call the michelson conversion
+      implicit lazy val _: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
         case (_, BigMapAlloc(_, Decimal(id), key_type, value_type)) =>
           Some(
             Tables.BigMapsRow(
               bigMapId = id,
-              keyType = Some(key_type.expression),
-              valueType = Some(value_type.expression)
+              keyType = Some(toMichelsonScript[MichelsonExpression](key_type.expression)),
+              valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression))
             )
           )
         case (hash, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
@@ -600,17 +606,18 @@ object DatabaseConversions extends LazyLogging {
   implicit private val bigMapDiffToBigMapContentsRow =
     new Conversion[Option, BlockBigMapDiff, Tables.BigMapContentsRow] {
       import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
-      import michelson.dto.MichelsonExpression
+      import michelson.dto.{MichelsonExpression, MichelsonInstruction}
       import michelson.JsonToMichelson.toMichelsonScript
       import michelson.parser.JsonParser._
-      implicit lazy val _ = logger
+      //needed to call the michelson conversion
+      implicit lazy val _: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
         case (_, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
           Some(
             Tables.BigMapContentsRow(
               bigMapId = Some(id),
-              key = Some(toMichelsonScript[MichelsonExpression](key.expression)),
+              key = Some(toMichelsonScript[MichelsonInstruction](key.expression)), //I had to use instruction to make a real case work
               keyHash = Some(keyHash.value),
               value = value.map(it => toMichelsonScript[MichelsonExpression](it.expression))
             )

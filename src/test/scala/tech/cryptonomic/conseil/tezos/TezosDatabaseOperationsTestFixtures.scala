@@ -748,6 +748,48 @@ trait TezosDataGeneration extends RandomGenerationKit {
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
           DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
 
+    def updateOperationToBigMapAllocation(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
+    )(
+        operations: List[Operation]
+    ) = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      val allocSetter = selectOrigination composeLens originationResult composeOptional originationBigMapDiffs
+      operations.map { op =>
+        // applies the function to create a possible value to set on each individual operation
+        val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
+
+        //sets the diff value list in the optional field of the operation if there's something, or returns the unchanged operation
+        maybeDiff.fold(op) { diff =>
+          val diffFieldValue = List(Left(diff))
+          allocSetter.set(diffFieldValue)(op)
+        }
+
+      }
+    }
+
+    def updateOperationToBigMapUpdate(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
+    )(
+        operations: List[Operation]
+    ) = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      val updateSetter = selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      operations.map { op =>
+        // applies the function to create a possible value to set on each individual operation
+        val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
+
+        //sets the diff value list in the optional field of the operation if there's something, or returns the unchanged operation
+        maybeDiff.fold(op) { diff =>
+          val diffFieldValue = List(Left(diff))
+          updateSetter.set(diffFieldValue)(op)
+        }
+
+      }
+    }
+
   }
 
 }
