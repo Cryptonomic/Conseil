@@ -42,6 +42,7 @@ object ApiOperations {
 class ApiOperations extends DataOperations with MetadataOperations {
   import ApiOperations._
   lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
+  private val MAX_NOT_FOUND = -1
 
   /**
     * @see `MetadataOperations#runQuery`
@@ -54,40 +55,32 @@ class ApiOperations extends DataOperations with MetadataOperations {
     *
     * @return Max level or -1 if no blocks were found in the database.
     */
-  def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.Blocks.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchMaxLevel()(implicit ec: ExecutionContext): Future[Int] =
+    runQuery(Tables.Blocks.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   /**
     * Fetches the max level of baking rights.
     *
     * @return Max level or -1 if no baking rights were found in the database.
     */
-  def fetchMaxBakingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.BakingRights.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchMaxBakingRightsLevel()(implicit ec: ExecutionContext): Future[Int] =
+    runQuery(Tables.BakingRights.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   /**
     * Fetches the max level of endorsing rights.
     *
     * @return Max level or -1 if no endorsing rights were found in the database.
     */
-  def fetchMaxEndorsingRightsLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.EndorsingRights.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchMaxEndorsingRightsLevel()(implicit ec: ExecutionContext): Future[Int] =
+    runQuery(Tables.EndorsingRights.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   /**
     * Fetches the level of the most recent votes stored in the database.
     *
     * @return Max level or -1 if no votes were found in the database.
     */
-  def fetchVotesMaxLevel()(implicit ec: ExecutionContext): Future[Int] = {
-    val optionalMax: Future[Option[Int]] = runQuery(Tables.Votes.map(_.level).max.result)
-    optionalMax.map(_.getOrElse(-1))
-  }
+  def fetchVotesMaxLevel()(implicit ec: ExecutionContext): Future[Int] =
+    runQuery(Tables.Votes.map(_.level).max.getOrElse(MAX_NOT_FOUND).result)
 
   def fetchVotesAtLevel(level: Int)(implicit ec: ExecutionContext): Future[List[VotesRow]] =
     runQuery(Tables.Votes.filter(_.level === level).result).map(_.toList)

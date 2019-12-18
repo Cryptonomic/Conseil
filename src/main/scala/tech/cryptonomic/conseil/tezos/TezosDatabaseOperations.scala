@@ -633,7 +633,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Get necessary fields to populate votes table from ballot operations */
   def fetchVotingData(levels: Set[Int])(implicit ec: ExecutionContext): DBIO[Seq[VotingData]] =
     Tables.Operations
-      .filter(_.kind inSet Set("ballot"))
+      .filter(_.kind === "ballot")
       .filter(_.blockLevel inSet levels)
       .result
       .map(

@@ -465,8 +465,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   /**
     * Collect data from Blocks Table, Operations Table, and the Tezos RPC,
     * return the appropriate list of VoteAggregates, and write them to the Votes table.
-    * @param ex the needed ExecutionContext to combine multiple database operations
-    * @return a future result of the number of rows stored to db, if supported by the driver
+    * @return a Future[Done] when completes
     */
   private[this] def processTezosVotes(): Future[Done] = {
     import slick.jdbc.PostgresProfile.api._
@@ -479,12 +478,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       * @param votingData
       * @return
       */
-    def partitionByVote(votingData: Seq[VotingData]): (Seq[VotingData], Seq[VotingData], Seq[VotingData]) = {
-      val (yays, notYays) = votingData.partition(x => x.ballot.contains("yay"))
-      val (nays, notYaysOrNays) = notYays.partition(x => x.ballot.contains("nay"))
-      val (passes, _) = notYaysOrNays.partition(x => x.ballot.contains("pass"))
-      (yays, nays, passes)
-    }
+    def partitionByVote(votingData: Seq[VotingData]): (Seq[VotingData], Seq[VotingData], Seq[VotingData]) =
+      votingData.groupBy(_.ballot).foldLeft((Seq.empty[VotingData], Seq.empty[VotingData], Seq.empty[VotingData])) {
+        case ((_, nays, passes), (Some("yay"), votingDatas)) => (votingDatas, nays, passes)
+        case ((yays, _, passes), (Some("nay"), votingDatas)) => (yays, votingDatas, passes)
+        case ((yays, nays, _), (Some("pass"), votingDatas)) => (yays, nays, votingDatas)
+      }
 
     /**
       * * Helper function, takes a sequence of GovernanceData, calculates stake.
@@ -493,18 +492,21 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       */
     def calculateStake(votingData: Seq[VotingData]): Future[BigDecimal] =
       Future
-        .sequence(
+        .traverse(
           votingData.map {
             case VotingData(_, _, hash, _, _, _, address) =>
-              tezosNodeOperator.getAccountBalanceForBlock(BlockHash(hash), AccountId(address.get))
+              (BlockHash(hash), AccountId(address.get))
           }
-        )
+        ) {
+          case (blockHash, accountId) =>
+            tezosNodeOperator.getAccountBalanceForBlock(blockHash, accountId)
+        }
         .map(balances => balances.reduceOption(_ + _).getOrElse(0))
 
     /**
       * * Helper function, takes a sequence of GovernanceData, processes aggregate fields.
       * @param votingData
-      * @return
+      * @return future of vote aggregates
       */
     def processVoteAggregate(votingData: Seq[VotingData]): Future[TezosTypes.VoteAggregates] = {
       val sampleVotingField = votingData.head
@@ -516,10 +518,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val yayCount = yays.length
       val nayCount = nays.length
       val passCount = passes.length
+      val yayStakeCalculation = calculateStake(yays)
+      val nayStakeCalculation = calculateStake(nays)
+      val passStakeCalculation = calculateStake(passes)
       for {
-        yayStake <- calculateStake(yays)
-        nayStake <- calculateStake(nays)
-        passStake <- calculateStake(passes)
+        yayStake <- yayStakeCalculation
+        nayStake <- nayStakeCalculation
+        passStake <- passStakeCalculation
         totalStake = yayStake + nayStake + passStake
       } yield
         VoteAggregates(
@@ -541,7 +546,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     db.run(TezosDb.fetchVotingBlockLevels).flatMap { levels =>
       Source
         .fromIterator(() => levels.toIterator)
-        .grouped(batchingConf.blockPageSize) // we use here block page size, because
+        .grouped(batchingConf.blockPageSize) // we use here block page size, because we want to have it ran in similar pace as regular Lorre process
         .mapAsync(1) { blockLevels =>
           val computeAndStore = for {
             listOfVotingFields <- TezosDb.fetchVotingData(blockLevels.toSet)

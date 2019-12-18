@@ -131,8 +131,9 @@ class TezosNodeOperator(
       .map(fromJson[Account])
 
   /**
-    * Given an account's address, get it's balance/stake.
-    * @param source Account address
+    * Given an account's address and block hash, get its balance.
+    * @param blockHash  Hash of given block
+    * @param accountId  Account ID
     * @return       Balance
     */
   def getAccountBalanceForBlock(blockHash: BlockHash, accountId: AccountId): Future[BigDecimal] =
