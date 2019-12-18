@@ -85,10 +85,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   /** Recursive process to start processing Tezos votes */
   @tailrec
-  def processVotes: Future[Done] = {
+  def processVotes(): Unit = {
     Await.result(processTezosVotes(), Duration.Inf)
     Thread.sleep(lorreConf.sleepInterval.toMillis)
-    processVotes
+    processVotes()
   }
 
   /** Schedules method for fetching baking rights */
