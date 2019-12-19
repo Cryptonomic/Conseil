@@ -552,7 +552,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             dbWrites <- TezosDb.writeVotes(votes.toList)
           } yield dbWrites
 
-          db.run(computeAndStore).andThen {
+          db.run(computeAndStore.transactionally).andThen {
             case Success(Some(written)) => logger.info("Wrote {} vote aggregates to the database.", written)
             case Success(None) => logger.info("Wrote vote aggregates to the database.")
             case Failure(e) => logger.error("Could not write vote aggregates to the database because", e)
