@@ -492,14 +492,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       */
     def calculateStake(votingData: Seq[VotingData]): Future[BigDecimal] =
       Future
-        .traverse(
-          votingData.map {
-            case VotingData(_, _, hash, _, _, _, address) =>
-              (BlockHash(hash), AccountId(address.get))
-          }
-        ) {
-          case (blockHash, accountId) =>
-            tezosNodeOperator.getAccountBalanceForBlock(blockHash, accountId)
+        .traverse(votingData) {
+          case VotingData(_, _, hash, _, _, _, address) =>
+            tezosNodeOperator.getAccountBalanceForBlock(BlockHash(hash), AccountId(address.get))
         }
         .map(balances => balances.reduceOption(_ + _).getOrElse(0))
 

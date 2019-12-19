@@ -636,13 +636,7 @@ object TezosDatabaseOperations extends LazyLogging {
       .filter(_.kind === "ballot")
       .filter(_.blockLevel inSet levels)
       .map { o =>
-        (o.proposal,
-          o.blockLevel,
-          o.blockHash,
-          o.cycle,
-          o.timestamp,
-          o.ballot,
-          o.source)
+        (o.proposal, o.blockLevel, o.blockHash, o.cycle, o.timestamp, o.ballot, o.source)
       }
       .result
       .map(_.map(VotingData.tupled))
