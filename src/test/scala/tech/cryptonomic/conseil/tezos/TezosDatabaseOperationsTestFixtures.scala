@@ -61,7 +61,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel, Some(time))
+    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None)
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -93,7 +93,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)))
+    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -579,7 +579,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         storage_limit = PositiveDecimal(0),
         amount = PositiveDecimal(0),
         destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-        parameters = Some(Micheline("""{"string":"world"}""")),
+        parameters = Some(Left(Parameters("default", Micheline("""{"string":"world"}""")))),
         metadata = ResultMetadata(
           balance_updates = List(
             BalanceUpdate(
