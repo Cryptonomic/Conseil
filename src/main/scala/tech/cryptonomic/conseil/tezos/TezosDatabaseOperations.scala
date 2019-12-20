@@ -482,7 +482,7 @@ object TezosDatabaseOperations extends LazyLogging {
     logger.info("Updating accounts history table with active bakers...")
     val accountsHistoryUpdated = DBIO.sequence {
       delegates.flatMap {
-        case BlockTagged(blockHash, blockLevel, timestamp, delegateMap) =>
+        case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
           delegateMap.map {
             case (pkh, delegate) =>
               Tables.AccountsHistory

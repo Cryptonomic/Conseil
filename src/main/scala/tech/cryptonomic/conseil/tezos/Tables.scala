@@ -263,7 +263,7 @@ trait Tables {
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param asof Database column asof SqlType(timestamp)
     *  @param isBaker Database column is_baker SqlType(bool), Default(false)
-    *  @param cycle Database column cycle SqlType(int4), Default(None) */
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
     *  @param isBakerDeactivated Database column is_baker_deactivated SqlType(bool), Default(None) */
   case class AccountsHistoryRow(
       accountId: String,
@@ -286,7 +286,8 @@ trait Tables {
       e2: GR[Option[String]],
       e3: GR[scala.math.BigDecimal],
       e4: GR[java.sql.Timestamp],
-      e5: GR[Boolean]
+      e5: GR[Boolean],
+      e6: GR[Option[Boolean]]
   ): GR[AccountsHistoryRow] = GR { prs =>
     import prs._
     AccountsHistoryRow.tupled(
@@ -314,13 +315,9 @@ trait Tables {
         accountId,
         blockId,
         counter,
-        script,
         storage,
         balance,
         blockLevel,
-        manager,
-        spendable,
-        delegateSetable,
         delegateValue,
         asof,
         isBaker,
@@ -341,17 +338,13 @@ trait Tables {
           delegateValue,
           Rep.Some(asof),
           Rep.Some(isBaker),
-          cycle
+          cycle,
           isBakerDeactivated
         )
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(
-            _ =>
-              AccountsHistoryRow
-                .tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get, _14))
-          )
+          _1.map(_ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )

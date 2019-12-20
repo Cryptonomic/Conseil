@@ -239,10 +239,11 @@ object DatabaseConversions {
       )
   }
 
-  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline = parametersCompatibility match {
-    case Left(value) => value.value
-    case Right(value) => value
-  }
+  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline =
+    parametersCompatibility match {
+      case Left(value) => value.value
+      case Right(value) => value
+    }
 
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (

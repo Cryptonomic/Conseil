@@ -82,7 +82,7 @@ CREATE TABLE tezos.accounts_history (
     delegate_value char varying, -- retro-compat from protocol 5+
     asof timestamp without time zone NOT NULL,
     is_baker boolean NOT NULL DEFAULT false,
-    cycle integer
+    cycle integer,
     is_baker_deactivated boolean
 );
 
