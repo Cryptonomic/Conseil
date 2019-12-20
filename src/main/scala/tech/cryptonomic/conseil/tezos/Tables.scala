@@ -253,7 +253,8 @@ trait Tables {
     *  @param delegateSetable Database column delegate_setable SqlType(bool), Default(None)
     *  @param delegateValue Database column delegate_value SqlType(varchar), Default(None)
     *  @param asof Database column asof SqlType(timestamp)
-    *  @param isBaker Database column is_baker SqlType(bool), Default(false) */
+    *  @param isBaker Database column is_baker SqlType(bool), Default(false)
+    *  @param isBakerDeactivated Database column is_baker_deactivated SqlType(bool), Default(None) */
   case class AccountsHistoryRow(
       accountId: String,
       blockId: String,
@@ -267,7 +268,8 @@ trait Tables {
       delegateSetable: Option[Boolean] = None,
       delegateValue: Option[String] = None,
       asof: java.sql.Timestamp,
-      isBaker: Boolean = false
+      isBaker: Boolean = false,
+      isBakerDeactivated: Option[Boolean] = None
   )
 
   /** GetResult implicit for fetching AccountsHistoryRow objects using plain SQL queries */
@@ -295,7 +297,8 @@ trait Tables {
         <<?[Boolean],
         <<?[String],
         <<[java.sql.Timestamp],
-        <<[Boolean]
+        <<[Boolean],
+        <<?[Boolean]
       )
     )
   }
@@ -317,7 +320,8 @@ trait Tables {
         delegateSetable,
         delegateValue,
         asof,
-        isBaker
+        isBaker,
+        isBakerDeactivated
       ) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -336,7 +340,8 @@ trait Tables {
           delegateSetable,
           delegateValue,
           Rep.Some(asof),
-          Rep.Some(isBaker)
+          Rep.Some(isBaker),
+          isBakerDeactivated
         )
       ).shaped.<>(
         { r =>
@@ -344,7 +349,7 @@ trait Tables {
           _1.map(
             _ =>
               AccountsHistoryRow
-                .tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get))
+                .tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get, _14))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -389,6 +394,9 @@ trait Tables {
 
     /** Database column is_baker SqlType(bool), Default(false) */
     val isBaker: Rep[Boolean] = column[Boolean]("is_baker", O.Default(false))
+
+    /** Database column is_baker_deactivated SqlType(bool), Default(None) */
+    val isBakerDeactivated: Rep[Option[Boolean]] = column[Option[Boolean]]("is_baker_deactivated", O.Default(None))
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */

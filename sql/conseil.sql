@@ -76,7 +76,7 @@ CREATE TABLE tezos.accounts_history (
     delegate_value char varying, -- retro-compat from protocol 5+
     asof timestamp without time zone NOT NULL,
     is_baker boolean NOT NULL DEFAULT false,
-    is_baker_active boolean
+    is_baker_deactivated boolean
 );
 
 --

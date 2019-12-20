@@ -88,6 +88,7 @@ object DatabaseConversions {
         blockAccountsToAccountRows.convert(from).map {
           _.into[Tables.AccountsHistoryRow]
             .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
+            .withFieldConst(_.isBakerDeactivated, None)
             .transform
         }
     }

@@ -519,8 +519,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       def processDelegatesPage(
           taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
       ): Future[Int] =
-        db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates.toList))
-          .andThen(logWriteFailure)
+        db.run {
+          for {
+            delegateWrites <- TezosDb.writeDelegatesAndCopyContracts(taggedDelegates.toList)
+            accountUpdates <- TezosDb.updateAccountsHistoryWithIsBakerActive(taggedDelegates.toList)
+          } yield delegateWrites + accountUpdates
+        }.andThen(logWriteFailure)
 
       def cleanup[T] = (_: T) => {
         //can fail with no real downsides
