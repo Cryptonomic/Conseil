@@ -142,6 +142,10 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
     import Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
+    import CustomPostgresProfile.api._
+
+    logger.info("Writing big map differences to DB...")
+    //TODO add log entries at each step
 
     val copyDiffs = blocks.flatMap(TezosOptics.Blocks.readBigMapDiffCopy.getAll)
     val removalDiffs = blocks.flatMap(TezosOptics.Blocks.readBigMapDiffRemove.getAll)
@@ -151,38 +155,37 @@ object TezosDatabaseOperations extends LazyLogging {
       case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
         Tables.BigMapContents
           .filter(_.bigMapId === sourceId)
+          .map(it => (destinationId, it.key, it.keyHash, it.value))
           .result
-          .map(
-            _.map(row => row.copy(bigMapId = Some(destinationId)))
-          )
+          .map(rows => rows.map(BigMapContentsRow.tupled).toList)
     }
-
-    /* The interleaving of these operations would actually need more complexity to handle properly,
-     * as we process collections of blocks, because some operations handled "after" might be referring to
-     * something "happening before" or viceversa.
-     * E.g. you could find that a new origination creates a map with the same identifier of another previously
-     * removed (is this allowed?).
-     * Therefore the insert might fail on finding the old record id still there, whereas the real sequence
-     * of events would have removed the old first.
-     * We might consider improving the situation by doing a pre-check that the altered sequencing of the operations
-     * doesn't interfere with the "causality" of the chain events.
-     */
-    val saveMaps = Tables.BigMaps ++= blocks.flatMap(_.convertToA[List, BigMapsRow])
-
-    val saveContent = Tables.BigMapContents ++= blocks.flatMap(_.convertToA[List, BigMapContentsRow])
-    //TODO converge to insertOrUpdateAll as soon as you merge master!
 
     val copyContent = DBIO
       .sequence(contentCopies)
       .flatMap { updateRows =>
-        DBIO.sequence(updateRows.flatten.map(Tables.BigMapContents.insertOrUpdate))
+        val copies = updateRows.flatten
+        logger.info("{} big maps will be copied.", copies.size)
+        Tables.BigMapContents.insertOrUpdateAll(copies)
       }
       .map(_.sum)
 
-    val saveContractOrigin =
-      Tables.OriginatedAccountMaps ++= blocks.flatMap(
-            _.convertToA[List, OriginatedAccountMapsRow]
-          )
+    val saveMaps = {
+      val maps = blocks.flatMap(_.convertToA[List, BigMapsRow])
+      logger.info("{} big maps will be added.", maps.size)
+      Tables.BigMaps ++= maps
+    }
+
+    val saveContent = {
+      val content = blocks.flatMap(_.convertToA[List, BigMapContentsRow])
+      logger.info("{} big map content entries will be added.", content.size)
+      Tables.BigMapContents ++= content
+    }
+
+    val saveContractOrigin = {
+      val refs = blocks.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
+      logger.info("{} big map accounts references will be made.", refs.size)
+      Tables.OriginatedAccountMaps ++= refs
+    }
 
     val removeAnyNeeded: DBIO[Unit] = {
       val idsToRemove = removalDiffs.collect {
@@ -190,13 +193,25 @@ object TezosDatabaseOperations extends LazyLogging {
           bigMapId
       }.toSet
 
+      logger.info("{} big maps will be removed.", idsToRemove.size)
       DBIO.seq(
+        Tables.BigMapContents.filter(_.bigMapId inSet idsToRemove).delete,
         Tables.BigMaps.filter(_.bigMapId inSet idsToRemove).delete,
-        Tables.BigMapContents.filter(_.bigMapId inSet idsToRemove).delete
+        Tables.OriginatedAccountMaps.filter(_.bigMapId inSet idsToRemove).delete
       )
     }
 
-    DBIO.seq(saveMaps, saveContent, copyContent, saveContractOrigin, removeAnyNeeded)
+    /* The interleaving of these operations would actually need more complexity to handle properly,
+     * since we're processing collections of blocks, therefore some operations handled "after" might be
+     * referring to something "happening before" or viceversa.
+     * E.g. you could find that a new origination creates a map with the same identifier of another previously
+     * removed (is this allowed?).
+     * Therefore the insert might fail on finding the old record id being there already, whereas the real sequence
+     * of events would have removed the old first.
+     * We might consider improving the situation by doing a pre-check that the altered sequencing of the operations
+     * doesn't interfere with the "causality" of the chain events.
+     */
+    DBIO.seq(saveMaps, saveContent, saveContractOrigin, copyContent, removeAnyNeeded)
   }
 
   /**

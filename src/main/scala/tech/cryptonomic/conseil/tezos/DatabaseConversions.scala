@@ -596,17 +596,20 @@ object DatabaseConversions extends LazyLogging {
           None
         case diff =>
           logger.warn(
-            "A big_map_diff allocation hasn't been converted to a BigMap on db, because the diff action was unexpected: {}",
+            "A big_map_diff result will be ignored by the allocation conversion to BigMap on db, because the diff action is not supported: {}",
             from.get._2
           )
           None
       }
     }
 
+  /* This will only convert big map updates actually, as the other types of
+   * operations are handled differently
+   */
   implicit private val bigMapDiffToBigMapContentsRow =
     new Conversion[Option, BlockBigMapDiff, Tables.BigMapContentsRow] {
       import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
-      import michelson.dto.{MichelsonExpression, MichelsonInstruction}
+      import michelson.dto.MichelsonInstruction
       import michelson.JsonToMichelson.toMichelsonScript
       import michelson.parser.JsonParser._
       //needed to call the michelson conversion
@@ -616,10 +619,10 @@ object DatabaseConversions extends LazyLogging {
         case (_, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
           Some(
             Tables.BigMapContentsRow(
-              bigMapId = Some(id),
-              key = Some(toMichelsonScript[MichelsonInstruction](key.expression)), //I had to use instruction to make a real case work
+              bigMapId = id,
+              key = Some(toMichelsonScript[MichelsonInstruction](key.expression)), //we're using instructions to represent data values
               keyHash = Some(keyHash.value),
-              value = value.map(it => toMichelsonScript[MichelsonExpression](it.expression))
+              value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)) //we're using instructions to represent data values
             )
           )
         case (hash, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
@@ -631,7 +634,7 @@ object DatabaseConversions extends LazyLogging {
           None
         case diff =>
           logger.warn(
-            "A big_map_diff update hasn't been converted to a BigMapContent on db, because the diff action was unexpected: {}",
+            "A big_map_diff result will be ignored by the update conversion to BigMapContent on db, because the diff action is not supported: {}",
             from.get._2
           )
           None
@@ -662,7 +665,7 @@ object DatabaseConversions extends LazyLogging {
           List.empty
         case diff =>
           logger.warn(
-            "A big_map_diff allocation hasn't been converted to a relation for OriginatedAccounts to BigMap on db, because the diff action was unexpected: {}",
+            "A big_map_diff result will be ignored and not be converted to a relation for OriginatedAccounts to BigMap on db, because the diff action is not supported: {}",
             from.get._2
           )
           List.empty

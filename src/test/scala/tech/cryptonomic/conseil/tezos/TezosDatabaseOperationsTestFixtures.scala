@@ -9,6 +9,7 @@ import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, DelegatesR
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
+import monocle.Optional
 
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
@@ -606,7 +607,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             storage_size = Some(Decimal(46)),
             allocated_destination_contract = None,
             balance_updates = None,
-            big_map_diff = None,
+            big_map_diff = Some(List.empty),
             originated_contracts = None,
             paid_storage_size_diff = None,
             errors = None
@@ -648,7 +649,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
           ),
           operation_result = OperationResult.Origination(
             status = "applied",
-            big_map_diff = None,
+            big_map_diff = Some(List.empty),
             balance_updates = Some(
               List(
                 BalanceUpdate(
@@ -748,47 +749,100 @@ trait TezosDataGeneration extends RandomGenerationKit {
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
           DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
 
-    def updateOperationToBigMapAllocation(
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Originations
+      */
+    def updateOperationsWithBigMapAllocation(
         diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
-    )(
-        operations: List[Operation]
-    ) = {
+    ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
 
-      val allocSetter = selectOrigination composeLens originationResult composeOptional originationBigMapDiffs
-      operations.map { op =>
-        // applies the function to create a possible value to set on each individual operation
-        val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
-
-        //sets the diff value list in the optional field of the operation if there's something, or returns the unchanged operation
-        maybeDiff.fold(op) { diff =>
-          val diffFieldValue = List(Left(diff))
-          allocSetter.set(diffFieldValue)(op)
-        }
-
-      }
+      //applies to the alloc diffs nested within originations
+      updateOperationsToBigMapDiff[Contract.BigMapAlloc](
+        diffGenerate,
+        selectOrigination composeLens originationResult composeOptional originationBigMapDiffs
+      )
     }
 
-    def updateOperationToBigMapUpdate(
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Transacions
+      */
+    def updateOperationsWithBigMapUpdate(
         diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
-    )(
-        operations: List[Operation]
-    ) = {
+    ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
 
-      val updateSetter = selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      //applies to the update diffs nested within transactions
+      updateOperationsToBigMapDiff[Contract.BigMapUpdate](
+        diffGenerate,
+        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      )
+    }
+
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Transactions
+      */
+    def updateOperationsWithBigMapCopy(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapCopy]
+    ): List[Operation] => List[Operation] = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      //applies to the update diffs nested within transactions
+      updateOperationsToBigMapDiff[Contract.BigMapCopy](
+        diffGenerate,
+        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      )
+    }
+
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Transacions
+      */
+    def updateOperationsWithBigMapRemove(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapRemove]
+    ): List[Operation] => List[Operation] = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      //applies to the update diffs nested within transactions
+      updateOperationsToBigMapDiff[Contract.BigMapRemove](
+        diffGenerate,
+        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      )
+    }
+
+    /* Scans a list of operations to apply a specific BigMapDiff in the
+     * results, of selected ones
+     * @param diffGenerate is a custom function that, based on the specific operation of interests
+     *        provides the BigMapDiff value to set in the operation results
+     * @param diffSetter is an optic `Optional` type which allows to directly inject
+     *        a value inside a deeply nested structure, corresponding to a specific operation type
+     * @return the updated operations
+     */
+    private def updateOperationsToBigMapDiff[Diff <: Contract.BigMapDiff](
+        diffGenerate: PartialFunction[Operation, Diff],
+        diffSetter: Optional[Operation, List[Contract.CompatBigMapDiff]]
+    )(operations: List[Operation]): List[Operation] =
       operations.map { op =>
         // applies the function to create a possible value to set on each individual operation
         val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
 
         //sets the diff value list in the optional field of the operation if there's something, or returns the unchanged operation
         maybeDiff.fold(op) { diff =>
-          val diffFieldValue = List(Left(diff))
-          updateSetter.set(diffFieldValue)(op)
+          val diffFieldValue = Left(diff) //look at how CompatBigMapDiff is defined
+          diffSetter.modify(diffs => diffFieldValue :: diffs)(op)
         }
-
       }
-    }
 
   }
 

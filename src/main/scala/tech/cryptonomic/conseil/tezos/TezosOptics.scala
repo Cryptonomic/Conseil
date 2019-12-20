@@ -66,14 +66,14 @@ object TezosOptics {
     val originationResult = GenLens[Origination](_.metadata.operation_result)
     val originationBigMapDiffs =
       Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
-        diff => tr => tr.copy(big_map_diff = diff.some)
+        diffs => result => result.copy(big_map_diff = diffs.some)
       )
 
     val selectTransaction = GenPrism[Operation, Transaction]
     val transactionResult = GenLens[Transaction](_.metadata.operation_result)
     val transactionBigMapDiffs =
       Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
-        diff => tr => tr.copy(big_map_diff = diff.some)
+        diffs => result => result.copy(big_map_diff = diffs.some)
       )
 
     val selectBigMapAlloc = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
