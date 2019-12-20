@@ -476,7 +476,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param delegates the full delegates' data
     * @return a database action that updates accounts_history table and returns the number of updated rows
     */
-  def updateAccountsHistoryWithIsBakerActive(
+  def updateAccountsHistoryWithIsBakerDeactivated(
       delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   )(implicit ec: ExecutionContext): DBIO[Int] = {
     logger.info("Updating accounts history table with active bakers...")
