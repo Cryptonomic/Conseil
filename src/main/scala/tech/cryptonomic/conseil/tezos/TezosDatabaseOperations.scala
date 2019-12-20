@@ -486,16 +486,17 @@ object TezosDatabaseOperations extends LazyLogging {
           delegateMap.map {
             case (pkh, delegate) =>
               Tables.AccountsHistory
-                .filter(account => account.accountId === pkh.value && account.blockLevel === BigDecimal(blockLevel))
+                .filter(account =>
+                  account.accountId === pkh.value
+                  && account.blockLevel === BigDecimal(blockLevel)
+                  && account.isBakerDeactivated =!= Option(delegate.deactivated))
                 .map(_.isBakerDeactivated)
                 .update(Some(delegate.deactivated))
           }
       }
     }
 
-    (for {
-      updated <- accountsHistoryUpdated.map(_.sum)
-    } yield updated).transactionally
+    accountsHistoryUpdated.map(_.sum).transactionally
   }
 
   /** Writes bakers to the database */
