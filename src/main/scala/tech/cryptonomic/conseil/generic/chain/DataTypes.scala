@@ -198,7 +198,8 @@ object DataTypes {
       operation: OperationType,
       set: Option[List[Any]] = Some(List.empty),
       inverse: Option[Boolean] = Some(false),
-      precision: Option[Int] = None
+      precision: Option[Int] = None,
+      group: Option[String] = None
   ) {
 
     /** Method creating Predicate out of ApiPredicate which is received by the API */

@@ -4,6 +4,7 @@ import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
@@ -15,7 +16,12 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
+import com.github.tminglei.slickpg.ExPostgresProfile
+import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import slick.jdbc.JdbcCapabilities
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import com.typesafe.scalalogging.Logger
 
 /**
   * Functions for writing Tezos data to a database.
@@ -224,20 +230,52 @@ object TezosDatabaseOperations extends LazyLogging {
     * Takes all existing account ids and puts them in the
     * checkpoint to be later reloaded, based on the passed block reference
     */
-  def refillAccountsCheckpointFromExisting(hash: BlockHash, level: Int, timestamp: Instant, cycle: Option[Int])(
+  def refillAccountsCheckpointFromExisting(
+      hash: BlockHash,
+      level: Int,
+      timestamp: Instant,
+      cycle: Option[Int],
+      selectors: Set[AccountIdPattern] = Set(".*")
+  )(
       implicit ec: ExecutionContext
   ): DBIO[Option[Int]] = {
+
+    /* as taken almost literally from this S.O. suggestion
+     * https://stackoverflow.com/questions/46218122/slick-is-there-a-way-to-create-a-where-clause-with-a-regex
+     * will add the postgres '~' operator to slick filters, to do regular expression matching
+     */
+    implicit class postgresPosixRegexMatch(value: Rep[String]) {
+      def ~(pattern: Rep[String]): Rep[Boolean] = {
+        val expr = SimpleExpression.binary[String, String, Boolean] { (v, pat, builder) =>
+          builder.expr(v)
+          builder.sqlBuilder += " ~ "
+          builder.expr(pat)
+        }
+        expr(value, pattern)
+      }
+    }
+
     logger.info(
-      "Fetching all ids for existing accounts and checkpointing them with block hash {}, level {}, time {} and cycle {}",
+      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {}, cycle {} and time {}",
+      selectors.mkString(", "),
       hash.value,
       level,
-      timestamp,
-      cycle
+      cycle,
+      timestamp
     )
-    Tables.Accounts
-      .map(_.accountId)
-      .distinct
-      .result
+
+    //for each pattern, create a query and then union them all
+    val regexQueries = selectors
+      .map(
+        sel =>
+          Tables.Accounts
+            .filter(_.accountId ~ sel)
+            .map(_.accountId)
+            .distinct
+      )
+      .reduce(_ union _)
+
+    regexQueries.distinct.result
       .flatMap(
         ids =>
           writeAccountsCheckpoint(
@@ -308,32 +346,67 @@ object TezosDatabaseOperations extends LazyLogging {
       .map(keepLatestDelegatesKeys)
   }
 
+  /** Custom postgres profile for enabling `insertOrUpdateAll` */
+  trait CustomPostgresProfile extends ExPostgresProfile {
+    // Add back `capabilities.insertOrUpdate` to enable native `upsert` support; for postgres 9.5+
+    override protected def computeCapabilities: Set[Capability] =
+      super.computeCapabilities + JdbcCapabilities.insertOrUpdate
+  }
+
+  object CustomPostgresProfile extends CustomPostgresProfile
+
   /**
-    * Writes the baking rights to the database
+    * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
     */
-  def writeBakingRights(bakingRightsMap: Map[BlockHash, List[BakingRights]]): DBIO[Option[Int]] = {
+  def upsertBakingRights(
+      bakingRightsMap: Map[FetchRights, List[BakingRights]]
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
-      (blockHash, bakingRightsList) <- bakingRightsMap
+      (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
       bakingRights <- bakingRightsList
-    } yield (blockHash, bakingRights).convertTo[Tables.BakingRightsRow]
+    } yield (blockHashWithCycleAndGovernancePeriod, bakingRights).convertTo[Tables.BakingRightsRow]
 
-    Tables.BakingRights ++= conversionResult
+    Tables.BakingRights.insertOrUpdateAll(conversionResult)
   }
 
   /**
-    * Writes the endorsing rights to the database
+    * Upserts endorsing rights to the database
     * @param endorsingRightsMap mapping of hash to endorsingRights list
     */
-  def writeEndorsingRights(endorsingRightsMap: Map[BlockHash, List[EndorsingRights]]): DBIO[Option[Int]] = {
+  def upsertEndorsingRights(
+      endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
-      (blockHash, endorsingRightsList) <- endorsingRightsMap
+      (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
       endorsingRights <- endorsingRightsList
-    } yield (blockHash, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+    } yield (blockHashWithCycleAndGovernancePeriod, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
 
-    Tables.EndorsingRights ++= transformationResult.flatten
+    Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
+  }
+
+  val berLogger = Logger("RightsFetcher")
+
+  /**
+    * Writes baking rights to the database
+    * @param bakingRights mapping of hash to endorsingRights list
+    */
+  def insertBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
+    berLogger.info("Inserting baking rights to the DB...")
+    Tables.BakingRights ++= bakingRights.map(_.convertTo[Tables.BakingRightsRow])
+  }
+
+  /**
+    * Writes endorsing rights to the database
+    * @param endorsingRights mapping of hash to endorsingRights list
+    */
+  def insertEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
+    berLogger.info("Inserting endorsing rights to the DB...")
+    Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 
   /**

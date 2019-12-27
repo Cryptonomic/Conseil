@@ -2,6 +2,7 @@ package tech.cryptonomic.conseil.config
 
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.SortedSet
 
 final case class ServerConfiguration(
     hostname: String,
@@ -16,6 +17,9 @@ sealed trait ChainEvent extends Product with Serializable
 
 object ChainEvent {
 
+  type AccountIdPattern = String
+  type AccountUpdatesEvents = SortedSet[(Int, ChainEvent.AccountIdPattern)]
+
   //used to store strings as typed enumerated values with no runtime overhead, and custom rendering
   case class ChainEventType private (render: String) extends AnyVal with Product with Serializable
 
@@ -23,7 +27,7 @@ object ChainEvent {
   val accountsRefresh = ChainEventType("accountsRefresh")
 
   //these will be used as values
-  final case class AccountsRefresh(levels: List[Int]) extends ChainEvent
+  final case class AccountsRefresh(levels: Map[String, List[Int]]) extends ChainEvent
 
 }
 
@@ -35,7 +39,8 @@ final case class LorreConfiguration(
     numberOfFeesAveraged: Int,
     depth: Depth,
     headHash: Option[BlockHash],
-    chainEvents: List[ChainEvent]
+    chainEvents: List[ChainEvent],
+    blockRightsFetching: BakingAndEndorsingRights
 )
 
 final case class BatchFetchConfiguration(
@@ -62,6 +67,15 @@ final case class SodiumConfiguration(libraryPath: String) extends AnyVal with Pr
 
 /** holds configuration for the akka-http-caching used in metadata endpoint */
 final case class HttpCacheConfiguration(cacheConfig: com.typesafe.config.Config)
+
+/** configuration for fetching baking and endorsing rights */
+final case class BakingAndEndorsingRights(
+    initDelay: FiniteDuration,
+    interval: FiniteDuration,
+    cyclesToFetch: Int,
+    cycleSize: Int,
+    fetchSize: Int
+)
 
 /** used to pattern match on natural numbers */
 object Natural {

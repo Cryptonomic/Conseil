@@ -5,13 +5,12 @@ import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import java.sql.Timestamp
-
 import java.time.Instant
 
 import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.tezos
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 
 object DatabaseConversions {
 
@@ -232,6 +231,11 @@ object DatabaseConversions {
       )
   }
 
+  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline = parametersCompatibility match {
+    case Left(value) => value.value
+    case Right(value) => value
+  }
+
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
         block,
@@ -249,7 +253,7 @@ object DatabaseConversions {
         storageLimit = extractBigDecimal(storage_limit),
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
-        parameters = parameters.map(_.expression),
+        parameters = parameters.map(extractMicheline(_).expression),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
@@ -610,29 +614,65 @@ object DatabaseConversions {
     }
   }
 
-  implicit val bakingRightsToRows = new Conversion[Id, (BlockHash, BakingRights), Tables.BakingRightsRow] {
-    override def convert(from: (BlockHash, BakingRights)): tezos.Tables.BakingRightsRow = {
-      val (blockHash, bakingRights) = from
+  implicit val bakingRightsToRows =
+    new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {
+      override def convert(
+          from: (FetchRights, BakingRights)
+      ): tezos.Tables.BakingRightsRow = {
+        val (fetchRights, bakingRights) = from
+        bakingRights
+          .into[Tables.BakingRightsRow]
+          .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
+          .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
+          .withFieldConst(_.cycle, fetchRights.cycle)
+          .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
+          .transform
+      }
+    }
+
+  implicit val endorsingRightsToRows =
+    new Conversion[List, (FetchRights, EndorsingRights), Tables.EndorsingRightsRow] {
+      override def convert(
+          from: (FetchRights, EndorsingRights)
+      ): List[Tables.EndorsingRightsRow] = {
+        val (fetchRights, endorsingRights) = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, fetchRights.blockHash.map(_.value))
+            .withFieldConst(_.cycle, fetchRights.cycle)
+            .withFieldConst(_.governancePeriod, fetchRights.governancePeriod)
+            .transform
+        }
+      }
+    }
+
+  implicit val bakingRightsToRowsWithoutBlockHash = new Conversion[Id, BakingRights, Tables.BakingRightsRow] {
+    override def convert(from: BakingRights): tezos.Tables.BakingRightsRow = {
+      val bakingRights = from
       bakingRights
         .into[Tables.BakingRightsRow]
-        .withFieldConst(_.blockHash, blockHash.value)
-        .withFieldConst(_.estimatedTime, toSql(bakingRights.estimated_time))
+        .withFieldConst(_.blockHash, None)
+        .withFieldConst(_.estimatedTime, bakingRights.estimated_time.map(toSql))
         .transform
     }
   }
 
-  implicit val endorsingRightsToRows = new Conversion[List, (BlockHash, EndorsingRights), Tables.EndorsingRightsRow] {
-    override def convert(from: (BlockHash, EndorsingRights)): List[Tables.EndorsingRightsRow] = {
-      val (blockHash, endorsingRights) = from
-      endorsingRights.slots.map { slot =>
-        endorsingRights
-          .into[Tables.EndorsingRightsRow]
-          .withFieldConst(_.estimatedTime, toSql(endorsingRights.estimated_time))
-          .withFieldConst(_.slot, slot)
-          .withFieldConst(_.blockHash, blockHash.value)
-          .transform
+  implicit val endorsingRightsToRowsWithoutBlockHash =
+    new Conversion[List, EndorsingRights, Tables.EndorsingRightsRow] {
+      override def convert(from: EndorsingRights): List[Tables.EndorsingRightsRow] = {
+        val endorsingRights = from
+        endorsingRights.slots.map { slot =>
+          endorsingRights
+            .into[Tables.EndorsingRightsRow]
+            .withFieldConst(_.estimatedTime, endorsingRights.estimated_time.map(toSql))
+            .withFieldConst(_.slot, slot)
+            .withFieldConst(_.blockHash, None)
+            .transform
+        }
       }
     }
-  }
 
 }

@@ -1,19 +1,19 @@
 package tech.cryptonomic.conseil
 
 import com.typesafe.scalalogging.LazyLogging
-import scala.collection.SortedSet
 import scala.concurrent.duration._
 
 import cats.data.Kleisli
 import cats.syntax.all._
 import cats.effect.{ExitCode, IO, IOApp}
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.config.{LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.config.{ChainEvent, LorreAppConfig, Newest, Platforms}
 import tech.cryptonomic.conseil.util.IOUtils.{lift, IOLogging}
 import tech.cryptonomic.conseil.application.LorreOperations
 import tech.cryptonomic.conseil.application.BlocksOperations.BlocksProcessingFailed
 import tech.cryptonomic.conseil.application.AccountsOperations.AccountsProcessingFailed
 import tech.cryptonomic.conseil.application.DelegatesOperations.DelegatesProcessingFailed
+import tech.cryptonomic.conseil.application.LorreBakerRightsOperations
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -22,20 +22,36 @@ object Lorre extends IOApp with LazyLogging with IOLogging with LorreAppConfig w
 
   //defines the main logic, given all necessary dependencies and configurations
   override def run(args: List[String]): IO[ExitCode] = {
-    import LorreAppConfig.ConfiguredResourses
+    import LorreAppConfig.ConfiguredResources
     import cats.arrow.Arrow
     import cats.instances.function._
 
     //builds operations on which Lorre depends, applying the configured resources
     //it uses cats.arrow idioms to pair the input with the output
-    val buildDeps: ConfiguredResourses => (ConfiguredResourses, Dependencies) =
-      Arrow[Function].lift(identity[ConfiguredResourses]).merge((makeOperations _).tupled)
+    val buildDeps: ConfiguredResources => (ConfiguredResources, Dependencies) =
+      Arrow[Function].lift(identity[ConfiguredResources]).merge((makeOperations _).tupled)
 
-    //an effectful program built from a function, with "adapted" input
-    val program = Kleisli((runLorre _).tupled).local(buildDeps)
+    /* An effectful program built from a function, with "adapted" input
+     * The adapter function "extends" the app resources by pairing them with
+     * the services built upon them.
+     */
+    val blocksLoop: Kleisli[IO, ConfiguredResources, Unit] = Kleisli(
+      (runLorre _).tupled
+    ).local(buildDeps)
 
+    /* the bakers rights scheduled update */
+    val bakerRightsSchedule: Kleisli[IO, ConfiguredResources, Unit] = Kleisli(
+      (res: ConfiguredResources) =>
+        new LorreBakerRightsOperations(res).scheduling.void
+    )
+
+    /* Combines all the processing functions as a single function,
+     * applied to a common input value: i.e. the configured resources.
+     * Uses cats.arrow idioms to pair the kleisli functions
+     */
+    val program = (blocksLoop &&& bakerRightsSchedule).map(_ => ())
     //builds the actual resources and then pass the adapted program as a function to execute
-    useConfiguredResources(args)(program.run(_)).as(ExitCode.Success)
+    useConfiguredResources(args)(program.run).as(ExitCode.Success)
   }
 
   /** This is the core logic of Lorre, based on additional resources and services
@@ -45,7 +61,7 @@ object Lorre extends IOApp with LazyLogging with IOLogging with LorreAppConfig w
     * @param ops a tuple of all speciific operations needed by Lorre
     * @return an IO value, which doesn't have any particular meaning
     */
-  def runLorre(resources: LorreAppConfig.ConfiguredResourses, ops: Dependencies) = {
+  def runLorre(resources: LorreAppConfig.ConfiguredResources, ops: Dependencies) = {
     val (conf, db, system, node, api) = resources
     val (blocksOperations, accountsOperations, delegatesOperations, feeOperations, contextShift) = ops
     import conf.lorre.{
@@ -92,7 +108,7 @@ object Lorre extends IOApp with LazyLogging with IOLogging with LorreAppConfig w
             _ <- accountsOperations.storeAccountsCheckpoint(touchedAccountIds)
             storedBlocks <- blocksOperations.storeBlocks(blockPage)
             _ <- blocksOperations.fetchAndStoreVotesForBlocks(blocks)
-            _ <- blocksOperations.fetchAndStoreBakingAndEndorsingRights(blocks.map(_.data.hash))
+            _ <- blocksOperations.fetchAndStoreBakingAndEndorsingRights(blocks.map(_.data))
             _ <- liftLog(_.info("Processing latest Tezos data for updated accounts..."))
             delegateKeys <- accountsOperations.processAccountsAndGetDelegateKeys(
               discardOldestDuplicates(touchedAccountIds)
@@ -111,7 +127,7 @@ object Lorre extends IOApp with LazyLogging with IOLogging with LorreAppConfig w
     val processing = configuredDepth match {
       case Newest =>
         //in this case we do the same thing over and over, after short breaks
-        val repeatStep = (iteration: Int, accountsRefreshLevels: SortedSet[Int]) =>
+        val repeatStep = (iteration: Int, accountsRefreshLevels: ChainEvent.AccountUpdatesEvents) =>
           for {
             conseilLevel <- lift(api.fetchMaxLevel())(contextShift)
             nextRefreshes <- accountsOperations.processAccountRefreshes(conseilLevel, accountsRefreshLevels)
@@ -123,8 +139,7 @@ object Lorre extends IOApp with LazyLogging with IOLogging with LorreAppConfig w
             _ <- IO.sleep(conf.lorre.sleepInterval)
           } yield ((iteration + 1) % Int.MaxValue, nextRefreshes)
 
-        unprocessedLevelsForRefreshingAccounts(db, conf.lorre)(contextShift).flatMap { refreshLevels =>
-          val accountRefreshesToRun = SortedSet(refreshLevels: _*)
+        unprocessedLevelsForRefreshingAccounts(db, conf.lorre)(contextShift).flatMap { accountRefreshesToRun =>
           //builds a stream over the iterated step, and then runs it ignoring the result value
           fs2.Stream
             .iterateEval((0, accountRefreshesToRun))(repeatStep.tupled)

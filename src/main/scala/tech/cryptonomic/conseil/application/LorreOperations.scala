@@ -16,6 +16,7 @@ import cats.effect.{ContextShift, IO}
 import cats.effect.Timer
 import cats.syntax.all._
 import slick.jdbc.PostgresProfile.api._
+import scala.collection.SortedSet
 
 trait LorreOperations {
   self: IOLogging =>
@@ -92,14 +93,19 @@ trait LorreOperations {
   // Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain)
   protected def unprocessedLevelsForRefreshingAccounts(db: Database, lorreConf: LorreConfiguration)(
       implicit cs: ContextShift[IO]
-  ) =
+  ): IO[ChainEvent.AccountUpdatesEvents] =
     lorreConf.chainEvents.collectFirst {
       case ChainEvent.AccountsRefresh(levelsNeedingRefresh) if levelsNeedingRefresh.nonEmpty =>
         lift(db.run(TezosDb.fetchProcessedEventsLevels(ChainEvent.accountsRefresh.render))).map { levels =>
+          //used to remove processed events
           val processed = levels.map(_.intValue).toSet
-          levelsNeedingRefresh.filterNot(processed).sorted
+          //we want individial event levels with the associated pattern, such that we can sort them by level
+          val unprocessedEvents = levelsNeedingRefresh.toList.flatMap {
+            case (accountPattern, levels) => levels.filterNot(processed).sorted.map(_ -> accountPattern)
+          }
+          SortedSet(unprocessedEvents: _*)
         }
-    }.getOrElse(IO.pure(List.empty))
+    }.getOrElse(IO.pure(SortedSet.empty))
 
   /* grabs all remainig data in the checkpoints tables and processes them */
   protected def processCheckpoints(

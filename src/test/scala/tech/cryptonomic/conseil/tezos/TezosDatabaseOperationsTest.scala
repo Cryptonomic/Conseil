@@ -2361,8 +2361,8 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
         )
       }
 
@@ -2393,8 +2393,8 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
         )
       }
 
@@ -2976,12 +2976,12 @@ class TezosDatabaseOperationsTest
       "should aggregate with datePart aggregation" in {
         val oneDay = Duration(1, DAYS).toMillis
         val feesTmp = List(
-          FeesRow(0, 2, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 4, 8, new Timestamp(1 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(3 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(1 + oneDay * 2), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2 + oneDay * 2), "kind")
+          FeesRow(0, 2, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 4, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind")
         )
 
         val aggregate = List(
@@ -3006,9 +3006,9 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
         result shouldBe List(
-          Map("date_part_timestamp" -> Some("1970-01-02"), "count_medium" -> Some(3)),
-          Map("date_part_timestamp" -> Some("1970-01-03"), "count_medium" -> Some(2)),
-          Map("date_part_timestamp" -> Some("1970-01-01"), "count_medium" -> Some(1))
+          Map("date_part_timestamp" -> Some("2000-01-02"), "count_medium" -> Some(3)),
+          Map("date_part_timestamp" -> Some("2000-01-03"), "count_medium" -> Some(2)),
+          Map("date_part_timestamp" -> Some("2000-01-01"), "count_medium" -> Some(1))
         )
 
       }
@@ -3016,12 +3016,12 @@ class TezosDatabaseOperationsTest
       "should map date with datePart aggregation when it is only type of aggregation" in {
         val oneDay = Duration(1, DAYS).toMillis
         val feesTmp = List(
-          FeesRow(0, 1, 4, new Timestamp(0), "kind"),
-          FeesRow(0, 2, 8, new Timestamp(1 + oneDay), "kind"),
-          FeesRow(0, 3, 4, new Timestamp(2 + oneDay), "kind"),
-          FeesRow(0, 4, 4, new Timestamp(3 + oneDay), "kind"),
-          FeesRow(0, 5, 4, new Timestamp(1 + oneDay * 2), "kind"),
-          FeesRow(0, 6, 4, new Timestamp(2 + oneDay * 2), "kind")
+          FeesRow(0, 1, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 2, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 3, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 4, 4, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 5, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind"),
+          FeesRow(0, 6, 4, new Timestamp(100, 0, 3, 0, 0, 0, 0), "kind")
         )
 
         val populateAndTest = for {
@@ -3042,12 +3042,12 @@ class TezosDatabaseOperationsTest
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
 
         result shouldBe List(
-          Map("date_part_timestamp" -> Some("1970-01-03")),
-          Map("date_part_timestamp" -> Some("1970-01-03")),
-          Map("date_part_timestamp" -> Some("1970-01-02")),
-          Map("date_part_timestamp" -> Some("1970-01-02")),
-          Map("date_part_timestamp" -> Some("1970-01-02")),
-          Map("date_part_timestamp" -> Some("1970-01-01"))
+          Map("date_part_timestamp" -> Some("2000-01-03")),
+          Map("date_part_timestamp" -> Some("2000-01-03")),
+          Map("date_part_timestamp" -> Some("2000-01-02")),
+          Map("date_part_timestamp" -> Some("2000-01-02")),
+          Map("date_part_timestamp" -> Some("2000-01-02")),
+          Map("date_part_timestamp" -> Some("2000-01-01"))
         )
       }
 
@@ -3252,7 +3252,12 @@ class TezosDatabaseOperationsTest
 
         //when
         val dbAction =
-          sut.refillAccountsCheckpointFromExisting(BlockHash(block.hash), block.level, block.timestamp.toInstant, block.metaCycle)
+          sut.refillAccountsCheckpointFromExisting(
+            BlockHash(block.hash),
+            block.level,
+            block.timestamp.toInstant,
+            block.metaCycle
+          )
 
         val results = dbHandler.run(dbAction).futureValue
         results.value shouldBe 3
@@ -3261,6 +3266,60 @@ class TezosDatabaseOperationsTest
         val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
 
         checkpoint.keys should contain theSameElementsAs accountsInfo.content.keys
+
+        import org.scalatest.Inspectors._
+        forAll(checkpoint.values) {
+          case (hash, level, instantOpt, cycleOpt) =>
+            hash.value shouldEqual block.hash
+            level shouldEqual block.level
+            instantOpt.value shouldEqual block.timestamp.toInstant
+            cycleOpt shouldEqual block.metaCycle
+        }
+      }
+
+      "read selected distinct account ids via regex and add entries for each in the checkpoint" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val expectedCount = 3
+        val matchingId = AccountId("tz19alkdjf83aadkcl")
+
+        val block = generateBlockRows(1, testReferenceTimestamp).head
+        val BlockTagged(hash, level, ts, cycle, accountsContent) =
+          generateAccounts(expectedCount, BlockHash(block.hash), block.level)
+        val updatedContent = accountsContent.map {
+          case (AccountId(id), account) if id == "1" => (matchingId, account)
+          case any => any
+        }
+
+        val accountsInfo = BlockTagged(hash, level, ts, cycle, updatedContent)
+
+        val populate =
+          (Tables.Blocks += block) >>
+              sut.writeAccounts(List(accountsInfo))
+
+        val write = dbHandler.run(populate.transactionally)
+
+        write.isReadyWithin(5.seconds) shouldBe true
+
+        //when
+        val dbAction =
+          sut.refillAccountsCheckpointFromExisting(
+            BlockHash(block.hash),
+            block.level,
+            block.timestamp.toInstant,
+            block.metaCycle,
+            Set("tz1.+")
+          )
+
+        val results = dbHandler.run(dbAction).futureValue
+        results.value shouldBe 1
+
+        //then
+        val checkpoint = dbHandler.run(sut.getLatestAccountsFromCheckpoint).futureValue
+
+        checkpoint.keys.size shouldBe 1
+        checkpoint.keySet should contain only matchingId
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {

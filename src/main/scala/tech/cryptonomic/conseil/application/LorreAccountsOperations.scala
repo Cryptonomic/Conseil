@@ -44,6 +44,7 @@ class AccountsOperations(
   import AccountsOperations.{AccountFetchingResults, AccountsIndex, AccountsProcessingFailed}
   import delegateOps.storeDelegatesCheckpoint
   import DelegatesOperations.DelegateKeys
+  import ChainEvent.{AccountUpdatesEvents, AccountIdPattern}
 
   /** Fetches the referenced accounts by ids and stores them returning the
     * referenced delegates by key, tagged with the block info
@@ -93,10 +94,13 @@ class AccountsOperations(
       .onError(LorreAccountsProcessingLog.failedCheckpointAccountsCleanup)
 
   /* Fills the checkpoint with all existing account ids stored, based on the passed block reference */
-  def refreshAllAccountsInCheckpoint(ref: BlockReference): IO[Option[Int]] = {
+  def refreshAllAccountsInCheckpoint(
+      ref: BlockReference,
+      selectors: Set[AccountIdPattern] = Set(".*")
+  ): IO[Option[Int]] = {
     val (hashRef, levelRef, Some(timestamp), cycle) = ref
 
-    lift(db.run(TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle)))
+    lift(db.run(TezosDb.refillAccountsCheckpointFromExisting(hashRef, levelRef, timestamp, cycle, selectors)))
       .flatTap(LorreAccountsProcessingLog.accountsRefreshStored)
       .onError(LorreAccountsProcessingLog.failedToRefreshAccounts)
   }
@@ -130,20 +134,21 @@ class AccountsOperations(
 
   /* Possibly updates all accounts if the current block level is past any of the given ones
    * @param storedLevel the currently stored head level in conseil
-   * @param eventLevels the relevant levels that calls for a refresh
+   * @param events the relevant levels that calls for a refresh
    * @return the event levels to process left after the process
    */
-  def processAccountRefreshes(storedLevel: Int, eventLevels: SortedSet[Int]): IO[SortedSet[Int]] =
-    if (eventLevels.nonEmpty && eventLevels.exists(_ <= storedLevel)) {
-      val (past, toCome) = eventLevels.partition(_ <= storedLevel)
+  def processAccountRefreshes(storedLevel: Int, events: AccountUpdatesEvents): IO[AccountUpdatesEvents] =
+    if (events.nonEmpty && events.exists(_._1 <= storedLevel)) {
+      val (past, toCome) = events.partition(_._1 <= storedLevel)
+      val (levels, selectors) = past.unzip
       for {
         _ <- liftLog(
           _.info(
             "A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block eventLevels: {}",
-            past.mkString(", ")
+            levels.mkString(", ")
           )
         )
-        refreshBlock <- lift(api.fetchBlockAtLevel(past.max))
+        refreshBlock <- lift(api.fetchBlockAtLevel(levels.max))
         _ <- refreshBlock match {
           case Some(referenceBlockForRefresh) =>
             val blockRef =
@@ -153,18 +158,18 @@ class AccountsOperations(
                 Some(referenceBlockForRefresh.timestamp.toInstant),
                 referenceBlockForRefresh.metaCycle
               )
-            refreshAllAccountsInCheckpoint(blockRef) >>
-              storeProcessedAccountEvents(past.toList)
+            refreshAllAccountsInCheckpoint(blockRef, selectors.toSet) >>
+              storeProcessedAccountEvents(levels.toList)
           case None =>
             liftLog(
               _.warn(
                 "I couldn't find in Conseil the block data at level {}, required for the general accounts update, and this is actually unexpected. I'll retry the whole operation at next cycle.",
-                past.max
+                levels.max
               )
             )
         }
       } yield toCome
-    } else IO.pure(eventLevels)
+    } else IO.pure(events)
 
   /* adapts the page processing to fetched accounts, returning the included delegate keys */
   private def forEachAccountPage(

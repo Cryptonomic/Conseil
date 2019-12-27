@@ -5,10 +5,17 @@ import tech.cryptonomic.conseil.util.IOUtils.{lift, IOLogging}
 import cats.syntax.all._
 import cats.effect.{ContextShift, IO}
 import tech.cryptonomic.conseil.tezos.{TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, BlockHash, BlockTagged}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{
+  AccountId,
+  Block,
+  BlockData,
+  BlockHash,
+  BlockHeaderMetadata,
+  BlockTagged,
+  GenesisMetadata
+}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.tezos.TezosTypes.BlockData
 import tech.cryptonomic.conseil.config.{Custom, Depth, Everything, Newest}
 
 object BlocksOperations {
@@ -26,6 +33,7 @@ class BlocksOperations(protected val nodeOperator: TezosNodeOperator, db: Databa
     with IOLogging {
 
   import BlocksOperations.BlocksProcessingFailed
+  import TezosNodeOperator.FetchRights
 
   /* Write the blocks to the db */
   def storeBlocks(blockResults: nodeOperator.BlockFetchingResults): IO[Int] = {
@@ -81,12 +89,20 @@ class BlocksOperations(protected val nodeOperator: TezosNodeOperator, db: Databa
       .onError(LorreBlocksProcessingLog.failedToStoreVotes)
   }
 
-  def fetchAndStoreBakingAndEndorsingRights(blockHashes: List[BlockHash]): IO[Option[Int]] = {
+  def fetchAndStoreBakingAndEndorsingRights(blockHashes: List[BlockData]): IO[Option[Int]] = {
     import slickeffect.implicits._
     import cats.implicits._
-    (lift(nodeOperator.getBatchBakingRights(blockHashes)), lift(nodeOperator.getBatchEndorsingRights(blockHashes))).mapN {
+    val rightsToFetch = blockHashes.map { result =>
+      result.metadata match {
+        case GenesisMetadata => FetchRights(result.hash.some)
+        case md: BlockHeaderMetadata =>
+          FetchRights(result.hash.some, md.level.cycle.some, md.level.voting_period.some)
+      }
+    }
+
+    (lift(nodeOperator.getBatchBakingRights(rightsToFetch)), lift(nodeOperator.getBatchEndorsingRights(rightsToFetch))).mapN {
       case (bakes, endorses) =>
-        (TezosDb.writeBakingRights(bakes), TezosDb.writeEndorsingRights(endorses))
+        (TezosDb.upsertBakingRights(bakes), TezosDb.upsertEndorsingRights(endorses))
           .mapN(_ |+| _) //generic sum works over Option[Int], taking care of the optionality
     }.flatMap(dbOp => lift(db.run(dbOp.transactionally)))
       .flatTap(LorreBlocksProcessingLog.blockRightsStored)
