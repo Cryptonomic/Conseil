@@ -1,0 +1,92 @@
+[
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3e75hU4EhDU3ukyJueh5v6UvEHzGwkg3yC",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 27,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3bTdwZinP8U1JmSweNzVKhmwafqWmFWRfk",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 30,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3bTdwZinP8U1JmSweNzVKhmwafqWmFWRfk",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 21,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3bEQoFCZEEfZMskefZ8q8e4eiHH1pssRax",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 6,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3WMqdzXqRWXwyvj5Hp2H7QEepaUuS7vd9K",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 16,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 15,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 2,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3UoffC7FG7zfpmvmjUmUeAaHvzdcUvAj6r",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 18,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3RB4aoyjov4KEVRbuhvQ1CKJgBJMWhaeB8",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 24,
+        "level": 778240
+    },
+    {
+        "estimated_time": 1578897897000,
+        "delegate": "tz3RB4aoyjov4KEVRbuhvQ1CKJgBJMWhaeB8",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "slot": 14,
+        "level": 778240
+    }
+]

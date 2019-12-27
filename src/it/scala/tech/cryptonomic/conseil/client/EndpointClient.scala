@@ -5,14 +5,12 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.sys.process._
 import scala.Console.{GREEN, RED, RESET}
-import org.http4s.client.blaze._
-import org.http4s.Header
-import org.http4s.headers._
-import org.http4s.MediaType
+import org.http4s.{Header, MediaType, Uri}
 import org.http4s.circe._
+import org.http4s.headers._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
-import org.http4s.Uri
+import org.http4s.client.blaze._
 import io.circe.{parser, Json}
 import cats.effect.IO
 import cats.syntax.all._
@@ -23,6 +21,9 @@ import com.softwaremill.diffx.{Diff, Identical}
   * against predefined expectations on the responses
   */
 object DataEndpointsClientProbe {
+
+  //improve: find how to correctly pass a custom IT config directly to a forked process
+  private val apiKey = "hooman"
 
   object Setup {
     implicit val ioShift = IO.contextShift(scala.concurrent.ExecutionContext.global)
@@ -73,7 +74,9 @@ object DataEndpointsClientProbe {
       .usingConseil(syncToNetwork) {
         infoEndpoint *>
           blockHeadEndpoint *>
-          groupingPredicatesQueryEndpoint
+          groupingPredicatesQueryEndpoint *>
+          bakingRightsQueryEndpoint *>
+          endorsingRightsQueryEndpoint
       }
       .flatMap {
         case Left(error) => IO(println(s"$RED Regression tests failed: ${error.getMessage()}$RESET"))
@@ -96,7 +99,7 @@ object DataEndpointsClientProbe {
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", "hooman")
+        Header("apiKey", apiKey)
       )
       client.expect[Json](req).attempt.map {
         case Right(received) =>
@@ -154,7 +157,7 @@ object DataEndpointsClientProbe {
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", "hooman")
+        Header("apiKey", apiKey)
       )
       client.expect[Json](req).attempt.map {
         case Right(received) =>
@@ -175,18 +178,8 @@ object DataEndpointsClientProbe {
   /** operations query using grouping in the predicates */
   def groupingPredicatesQueryEndpoint = {
 
-    val callBody = parser
-      .parse(Source.fromResource("groupingPredicatesQuery.body.json").mkString)
-      .ensuring(_.isRight)
-      .right
-      .get
-
-    val expected = parser
-      .parse(Source.fromResource("groupingPredicatesQuery.response.json").mkString)
-      .ensuring(_.isRight)
-      .right
-      .get
-
+    val callBody = parseJsonResource("groupingPredicatesQuery.body.json")
+    val expected = parseJsonResource("groupingPredicatesQuery.response.json")
     val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/operations")
 
     clientBuild.resource.use { client =>
@@ -195,7 +188,7 @@ object DataEndpointsClientProbe {
         uri = endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", "hooman")
+        Header("apiKey", apiKey)
       )
       client.expect[Json](req).attempt.map {
         case Right(received) =>
@@ -213,6 +206,72 @@ object DataEndpointsClientProbe {
 
   }
 
+  def bakingRightsQueryEndpoint = {
+
+    val callBody = parseJsonResource("futureBakingRightsQuery.body.json")
+    val expected = parseJsonResource("futureBakingRightsQuery.response.json")
+    val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/baking_rights")
+
+    clientBuild.resource.use { client =>
+      val req = POST(
+        body = callBody,
+        uri = endpoint,
+        `Content-Type`(MediaType.application.json),
+        Accept(MediaType.application.json),
+        Header("apiKey", apiKey)
+      )
+      client.expect[Json](req).attempt.map {
+        case Right(received) =>
+          Diff[Json].apply(received, expected) match {
+            case Identical(value) =>
+              value.asRight[Throwable]
+            case different =>
+              new Exception(
+                s"Failed to match on $endpoint: diff result is \n${different.show}"
+              ).asLeft[Json]
+          }
+        case left => left
+      }
+    }
+  }
+
+  def endorsingRightsQueryEndpoint = {
+
+    val callBody = parseJsonResource("futureEndorsingRightsQuery.body.json")
+    val expected = parseJsonResource("futureEndorsingRightsQuery.response.json")
+    val endpoint = Uri.uri("http://localhost:1337/v2/data/tezos/mainnet/endorsing_rights")
+
+    clientBuild.resource.use { client =>
+      val req = POST(
+        body = callBody,
+        uri = endpoint,
+        `Content-Type`(MediaType.application.json),
+        Accept(MediaType.application.json),
+        Header("apiKey", apiKey)
+      )
+      client.expect[Json](req).attempt.map {
+        case Right(received) =>
+          Diff[Json].apply(received, expected) match {
+            case Identical(value) =>
+              value.asRight[Throwable]
+            case different =>
+              new Exception(
+                s"Failed to match on $endpoint: diff result is \n${different.show}"
+              ).asLeft[Json]
+          }
+        case left => left
+      }
+    }
+  }
+
+  private def parseJsonResource(fileName: String): Json =
+    parser
+      .parse(Source.fromResource(fileName).mkString)
+      .ensuring(_.isRight)
+      .right
+      .get
+
+  /** removes operation id fields (which are generated by the db) from the passed json */
   val ignoreOperationId: Json => Json = (in: Json) =>
     in.arrayOrObject(
       jsonObject = op => Json.fromJsonObject(op.remove("operation_id")),

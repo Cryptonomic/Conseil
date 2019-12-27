@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.application.BlocksOperations.BlocksProcessingFai
 import tech.cryptonomic.conseil.application.AccountsOperations.AccountsProcessingFailed
 import tech.cryptonomic.conseil.application.DelegatesOperations.DelegatesProcessingFailed
 import tech.cryptonomic.conseil.application.LorreBakerRightsOperations
+import cats.Parallel
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -47,9 +48,10 @@ object Lorre extends IOApp with LazyLogging with IOLogging with LorreAppConfig w
 
     /* Combines all the processing functions as a single function,
      * applied to a common input value: i.e. the configured resources.
-     * Uses cats.arrow idioms to pair the kleisli functions
+     * Uses cats.Parallel to pair the kleisli functions and run the io effects in parallel
+     * on the available ContextShift[IO]
      */
-    val program = (blocksLoop &&& bakerRightsSchedule).map(_ => ())
+    val program = Parallel.parProduct(blocksLoop, bakerRightsSchedule).void
     //builds the actual resources and then pass the adapted program as a function to execute
     useConfiguredResources(args)(program.run).as(ExitCode.Success)
   }

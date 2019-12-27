@@ -1,0 +1,92 @@
+[
+    {
+        "priority": 0,
+        "estimated_time": 1578897957000,
+        "delegate": "tz1bRaSjKZrSrSeQHBDiCqjKXqtZYZM1t8FW",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 1,
+        "estimated_time": 1578897997000,
+        "delegate": "tz1TNWtofRofCU11YwCNwTMWNFBodYi6eNqU",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 2,
+        "estimated_time": 1578898037000,
+        "delegate": "tz1NortRftucvAkD1J58L32EhSVrQEWJCEnB",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 3,
+        "estimated_time": 1578898077000,
+        "delegate": "tz1S8MNvuFEUsWgjHvi3AxibRBf388NhT1q2",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 4,
+        "estimated_time": 1578898117000,
+        "delegate": "tz1TDSmoZXwVevLTEvKCTHWpomG76oC9S2fJ",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 5,
+        "estimated_time": 1578898157000,
+        "delegate": "tz2FCNBrERXtaTtNX6iimR1UJ5JSDxvdHM93",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 6,
+        "estimated_time": 1578898197000,
+        "delegate": "tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 7,
+        "estimated_time": 1578898237000,
+        "delegate": "tz3RB4aoyjov4KEVRbuhvQ1CKJgBJMWhaeB8",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 8,
+        "estimated_time": 1578898277000,
+        "delegate": "tz3RDC3Jdn4j15J7bBHZd29EUee9gVB1CxD9",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    },
+    {
+        "priority": 9,
+        "estimated_time": 1578898317000,
+        "delegate": "tz1RCFbB9GpALpsZtu6J58sb74dm8qe6XBzv",
+        "governance_period": null,
+        "block_hash": null,
+        "cycle": null,
+        "level": 778240
+    }
+]

@@ -1,0 +1,10 @@
+{
+  "predicates": [],
+  "orderBy": [
+    {
+      "field": "level",
+      "direction": "desc"
+    }
+  ],
+  "limit": 10
+}

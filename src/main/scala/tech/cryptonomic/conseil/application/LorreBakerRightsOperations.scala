@@ -12,7 +12,6 @@ import com.typesafe.scalalogging.Logger
 import scala.concurrent.ExecutionContext
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import akka.actor.Cancellable
 
 class LorreBakerRightsOperations(resources: LorreAppConfig.ConfiguredResources) extends LazyLogging with IOLogging {
 
