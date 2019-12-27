@@ -17,6 +17,7 @@ import io.circe.{parser, Json}
 import cats.effect.IO
 import cats.syntax.all._
 import scala.io.Source
+import com.softwaremill.diffx.{Diff, Identical}
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
@@ -75,8 +76,8 @@ object DataEndpointsClientProbe {
           groupingPredicatesQueryEndpoint
       }
       .flatMap {
-        case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
-        case Right(value) => IO(println(s"$GREEN Regression test passed: OK$RESET"))
+        case Left(error) => IO(println(s"$RED Regression tests failed: ${error.getMessage()}$RESET"))
+        case Right(value) => IO(println(s"$GREEN Regression tests passed: OK$RESET"))
       }
 
   /** info */
@@ -98,12 +99,12 @@ object DataEndpointsClientProbe {
         Header("apiKey", "hooman")
       )
       client.expect[Json](req).attempt.map {
-        case Right(json) =>
+        case Right(received) =>
           Either.cond(
-            json \\ "application" == expected \\ "application" && (json \\ "version").nonEmpty,
-            right = json,
+            received \\ "application" == expected \\ "application" && (received \\ "version").nonEmpty,
+            right = received,
             left = new Exception(
-              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${received.spaces2}"
             )
           )
         case left => left
@@ -156,20 +157,24 @@ object DataEndpointsClientProbe {
         Header("apiKey", "hooman")
       )
       client.expect[Json](req).attempt.map {
-        case Right(json) =>
-          Either.cond(
-            json == expected,
-            right = json,
-            left = new Exception(
-              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
-            )
-          )
+        case Right(received) =>
+          Diff[Json].apply(received, expected) match {
+            case Identical(value: Json) =>
+              value.asRight[Throwable]
+            case different =>
+              new Exception(
+                s"Failed to match on $endpoint: diff result is \n${different.show}"
+              ).asLeft[Json]
+          }
         case left => left
       }
     }
+
   }
 
+  /** operations query using grouping in the predicates */
   def groupingPredicatesQueryEndpoint = {
+
     val callBody = parser
       .parse(Source.fromResource("groupingPredicatesQuery.body.json").mkString)
       .ensuring(_.isRight)
@@ -193,18 +198,26 @@ object DataEndpointsClientProbe {
         Header("apiKey", "hooman")
       )
       client.expect[Json](req).attempt.map {
-        case Right(json) =>
-          Either.cond(
-            json == expected,
-            right = json,
-            left = new Exception(
-              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
-            )
-          )
+        case Right(received) =>
+          Diff[Json].apply(ignoreOperationId(received), ignoreOperationId(expected)) match {
+            case Identical(value) =>
+              value.asRight[Throwable]
+            case different =>
+              new Exception(
+                s"Failed to match on $endpoint: diff result is \n${different.show}"
+              ).asLeft[Json]
+          }
         case left => left
       }
     }
 
   }
+
+  val ignoreOperationId: Json => Json = (in: Json) =>
+    in.arrayOrObject(
+      jsonObject = op => Json.fromJsonObject(op.remove("operation_id")),
+      jsonArray = ops => Json.fromValues(ops.map(ignoreOperationId)),
+      or = in
+    )
 
 }

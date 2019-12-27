@@ -80,7 +80,7 @@ libraryDependencies ++= Seq(
   "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
   "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
   "org.testcontainers"           %  "postgresql"                    % "1.12.3" % "it, test",
-  "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % "it, test",
+  "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.15" % "it, test",
   "org.http4s"                   %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
   "org.http4s"                   %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
   "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest,
