@@ -16,14 +16,18 @@ import cats.effect.IO
 import cats.syntax.all._
 import scala.io.Source
 import com.softwaremill.diffx.{Diff, Identical}
+import com.typesafe.config.ConfigFactory
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
   */
 object DataEndpointsClientProbe {
 
-  //improve: find how to correctly pass a custom IT config directly to a forked process
-  private val apiKey = "hooman"
+  /* improvements: find how to correctly pass a custom IT config directly to a forked process
+   * we would eventually prefer to define here the testing secret instead of relying on an outside
+   * configuration file being available in the testing environment
+   */
+  private val apiKey = ConfigFactory.load().getStringList("conseil.security.apiKeys.keys").get(0)
 
   object Setup {
     implicit val ioShift = IO.contextShift(scala.concurrent.ExecutionContext.global)
