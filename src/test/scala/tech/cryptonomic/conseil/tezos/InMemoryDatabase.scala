@@ -12,17 +12,13 @@ import scala.concurrent.duration._
   */
 trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
-  import java.nio.file._
   import slick.jdbc.PostgresProfile.api._
 
-  val dbInstance = new PostgreSQLContainer()
+  val dbInstance = new PostgreSQLContainer("postgres:11.6-alpine")
   dbInstance.start()
 
   /** how to name the database schema for the test */
   protected val databaseName = dbInstance.getDatabaseName
-
-  /** here are temp files for the embedded process, can wipe out if needed */
-  protected val cachedRuntimePath = Paths.get("test-postgres-path")
 
   /** defines configuration for a randomly named embedded instance */
   protected lazy val confString =
@@ -57,7 +53,6 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   )
 
   protected val dbSchema = Tables.schema
-  allTables.map(_.schema).reduce(_ ++ _)
 
   /**
     * calling deletes manually is needed to obviate the fact
@@ -71,11 +66,8 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     dbInstance.start()
+    Await.result(dbHandler.run(sql"SET client_encoding = 'UTF8'".asUpdate), 1.second)
     Await.result(dbHandler.run(sql"CREATE SCHEMA IF NOT EXISTS tezos".as[Int]), 1.second)
-    Await.result(
-      dbHandler.run(sql"""ALTER DATABASE "#$databaseName" SET search_path TO tezos,public""".as[Int]),
-      1.second
-    )
     Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
 
@@ -87,8 +79,9 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   }
 
   override protected def beforeEach(): Unit = {
-    Await.ready(dbHandler.run(truncateAll), 1.second)
     super.beforeEach()
+    Await.ready(dbHandler.run(truncateAll), 1.second)
+    ()
   }
 
 }

@@ -2,7 +2,7 @@ version: "3.1"
 
 services:
   conseil-postgres:
-    image: postgres:10.3-alpine
+    image: postgres:11.6-alpine
     ports:
     - 5432:5432
     environment:

@@ -2254,7 +2254,8 @@ class TezosDatabaseOperationsTest
 
         import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
         val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val tableName = Tables.Blocks.baseTableRow.tableName
+        val tableSpace = "tezos"
+        val tableName = s"$tableSpace.${Tables.Blocks.baseTableRow.tableName}"
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
           generatedQuery <- makeQuery(tableName, columns, List.empty).as[AnyMap]
@@ -2361,8 +2362,8 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
         )
       }
 
@@ -2393,8 +2394,8 @@ class TezosDatabaseOperationsTest
 
         val result = dbHandler.run(populateAndTest.transactionally).futureValue
         result shouldBe List(
-          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
-          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
+          Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
+          Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
         )
       }
 
