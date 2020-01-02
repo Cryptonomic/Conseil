@@ -769,10 +769,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   ): Unit = {
     val elapsed = System.nanoTime() - processStartNanos
     val progress = processed.toDouble / totalToProcess
+    logger.info("================================== Progress Report ==================================")
     logger.info("Completed processing {}% of total requested {}s", "%.2f".format(progress * 100), entityName)
 
     val etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
     if (processed < totalToProcess && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
+    logger.info("=====================================================================================")
   }
 
 }
