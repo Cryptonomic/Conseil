@@ -429,7 +429,8 @@ class TezosNodeOperator(
     * @param delegatesIndex the pkh-to-blockhash index to get data for
     * @return               the pages of delegates wrapped in a [[Future]], indexed by PublicKeyHash
     */
-  val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => LazyPages[(BlockHash, Map[PublicKeyHash, Delegate])
+  val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => LazyPages[
+    (BlockHash, Map[PublicKeyHash, Delegate])
   ] =
     getPaginatedEntitiesForBlock(getDelegatesForBlock)
 

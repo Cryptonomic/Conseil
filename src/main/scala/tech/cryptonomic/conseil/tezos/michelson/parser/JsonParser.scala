@@ -31,7 +31,8 @@ object JsonParser {
     def toMichelsonExpression: Option[MichelsonExpression] = args.headOption.map(_.toMichelsonExpression)
   }
 
-  case class JsonCodeSection(prim: String, args: Either[List[List[JsonInstruction]], List[JsonInstruction]]) extends JsonSection {
+  case class JsonCodeSection(prim: String, args: Either[List[List[JsonInstruction]], List[JsonInstruction]])
+      extends JsonSection {
     def toMichelsonCode: MichelsonCode = MichelsonCode(args.map(List(_)).merge.flatten.map(_.toMichelsonInstruction))
   }
 
@@ -171,7 +172,7 @@ object JsonParser {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
         Decoder[JsonCodeSection].ensure(_.prim == "code", "No code section found").widen,
-        Decoder[JsonExpressionSection].widen,
+        Decoder[JsonExpressionSection].widen
       ).reduceLeft(_ or _)
 
     implicit val decodeExpression: Decoder[JsonExpression] = Decoder[JsonType].widen

@@ -705,7 +705,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           TezosDb.getLevelsForDelegates(selection).map { currentlyStored =>
             ids.filterNot {
               case (PublicKeyHash(pkh), (_, updateLevel, _, _)) =>
-                currentlyStored.exists { case (storedPkh, storedLevel) => storedPkh == pkh && storedLevel > updateLevel }
+                currentlyStored.exists {
+                  case (storedPkh, storedLevel) => storedPkh == pkh && storedLevel > updateLevel
+                }
             }
           }
         } else Future.successful(ids)
