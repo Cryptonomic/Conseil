@@ -1,10 +1,10 @@
 package tech.cryptonomic.conseil.application
 
-import tech.cryptonomic.conseil.util.IOUtils.{lift, IOLogging}
+import tech.cryptonomic.conseil.util.IOUtils.IOLogging
 import tech.cryptonomic.conseil.config.LorreAppConfig
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{discardGenesis, BlockMetadata}
-import cats.effect.{IO, Timer}
+import cats.effect.IO
 import scala.{Stream => _}
 import com.typesafe.scalalogging.LazyLogging
 import cats.implicits._

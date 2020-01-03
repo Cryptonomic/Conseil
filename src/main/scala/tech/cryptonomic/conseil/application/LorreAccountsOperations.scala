@@ -18,7 +18,6 @@ import cats.syntax.all._
 import cats.effect.{ContextShift, IO}
 import slick.jdbc.PostgresProfile.api._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.collection.SortedSet
 
 object AccountsOperations {
   type AccountsIndex = Map[AccountId, Account]
