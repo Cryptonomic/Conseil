@@ -43,7 +43,7 @@ class AccountsOperations(
   import AccountsOperations.{AccountFetchingResults, AccountsIndex, AccountsProcessingFailed}
   import delegateOps.storeDelegatesCheckpoint
   import DelegatesOperations.DelegateKeys
-  import ChainEvent.{AccountUpdatesEvents, AccountIdPattern}
+  import ChainEvent.{AccountIdPattern, AccountUpdatesEvents}
 
   /** Fetches the referenced accounts by ids and stores them returning the
     * referenced delegates by key, tagged with the block info

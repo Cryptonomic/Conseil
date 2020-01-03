@@ -110,11 +110,11 @@ trait LorreAppConfig {
           .toRight[ConfigReaderFailures](ConfigReaderFailures(new ThrowableFailure(new IllegalArgumentException, None)))
 
       //applies convention to uses CamelCase when reading config fields
-      @silent("""local method hint in value \$anonfun is never used""")
+      @silent("local method hint in value \\$anonfun is never used")
       implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
-      @silent("""local val depthHint in value \$anonfun is never used""")
+      @silent("local val depthHint in value \\$anonfun is never used")
       implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
-      @silent("""local val chainEventHint in value \$anonfun is never used""")
+      @silent("local val chainEventHint in value \\$anonfun is never used")
       implicit val chainEventHint = new FieldCoproductHint[ChainEvent]("type") {
         override def fieldValue(name: String): String = name.head.toLower +: name.tail
       }

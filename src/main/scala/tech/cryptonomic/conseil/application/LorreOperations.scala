@@ -18,10 +18,9 @@ import cats.syntax.all._
 import slick.jdbc.PostgresProfile.api._
 import scala.collection.SortedSet
 
+/** Defines useful and general operations used by Lorre */
 trait LorreOperations {
   self: IOLogging =>
-
-  type Dependencies = (BlocksOperations, AccountsOperations, DelegatesOperations, FeeOperations, ContextShift[IO])
 
   /** "Unpacks" lists of block-referenced elements and removes any duplicate by
     * keeping those at the highest level
@@ -64,30 +63,6 @@ trait LorreOperations {
             IO.sleep(bootupRetryInterval) >>
             checkTezosConnection(nodeOperator, bootupConnectionCheckTimeout, bootupRetryInterval)
     )
-  }
-
-  protected def makeOperations(
-      conf: CombinedConfiguration,
-      db: Database,
-      system: ActorSystem,
-      node: TezosNodeOperator,
-      api: ApiOperations
-  ): Dependencies = {
-    //brings the execution context in scope
-    import system.dispatcher
-
-    //to use the actor system thread pool for concurrency, considering IOApp already provides a global one
-    implicit val contextShift: ContextShift[IO] = IO.contextShift(dispatcher)
-
-    val blocksOperations = new BlocksOperations(node, db)
-    val delegatesOperations =
-      new DelegatesOperations(conf.batching.blockPageSize, node, db)
-    val accountsOperations =
-      new AccountsOperations(delegatesOperations, conf.batching.blockPageSize, node, db, api)
-
-    val feeOperations = new FeeOperations(db)
-
-    (blocksOperations, accountsOperations, delegatesOperations, feeOperations, contextShift)
   }
 
   // Finds unprocessed levels for account refreshes (i.e. when there is a need to reload all accounts data from the chain)
