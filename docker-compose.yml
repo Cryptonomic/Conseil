@@ -2,14 +2,14 @@ version: "3.1"
 
 services:
   conseil-postgres:
-    image: postgres:11.6-alpine
+    image: postgres:11.6
     ports:
     - 5432:5432
     environment:
       POSTGRES_USER: "conseiluser"
       POSTGRES_PASSWORD: "p@ssw0rd"
       POSTGRES_DB: "conseil-local"
-      POSTGRES_INITDB_ARGS: "--nosync --lc-collate=C"
+      POSTGRES_INITDB_ARGS: "--lc-collate=en_US.UTF-8 -E UTF8"
     volumes:
     - "./pgdata:/var/lib/postgresql/data"
     - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"

@@ -14,7 +14,15 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   self: TestSuite =>
   import slick.jdbc.PostgresProfile.api._
 
-  val dbInstance = new PostgreSQLContainer("postgres:11.6-alpine")
+  //#JavaThankYou
+  val dbInstance =
+    new PostgreSQLContainer("postgres:11.6")
+      .asInstanceOf[PostgreSQLContainer[_]]
+      .withInitScript("in-memory-db/init-script.sql") //startup will prepare the schema
+      .asInstanceOf[PostgreSQLContainer[_]]
+      .withCommand("-c full_page_writes=off") //should improve performance for the tests
+      .asInstanceOf[PostgreSQLContainer[_]]
+
   dbInstance.start()
 
   /** how to name the database schema for the test */
@@ -66,8 +74,6 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     dbInstance.start()
-    Await.result(dbHandler.run(sql"SET client_encoding = 'UTF8'".asUpdate), 1.second)
-    Await.result(dbHandler.run(sql"CREATE SCHEMA IF NOT EXISTS tezos".as[Int]), 1.second)
     Await.result(dbHandler.run(dbSchema.create), 1.second)
   }
 
