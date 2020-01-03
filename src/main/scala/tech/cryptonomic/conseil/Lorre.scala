@@ -614,8 +614,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       //if needed, we get the stored levels and only keep updates that are more recent
       def prunedUpdates(): Future[Map[AccountId, BlockReference]] =
         if (onlyProcessLatest) db.run {
-          val selection = ids.map(_._1).toSet
-          TezosDb.getLevelsForAccounts(selection).map { currentlyStored =>
+          TezosDb.getLevelsForAccounts(ids.keySet).map { currentlyStored =>
             ids.filterNot {
               case (AccountId(id), (_, updateLevel, _, _)) =>
                 currentlyStored.exists { case (storedId, storedLevel) => storedId == id && storedLevel > updateLevel }
@@ -701,8 +700,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       //if needed, we get the stored levels and only keep updates that are more recent
       def prunedUpdates(): Future[Map[PublicKeyHash, BlockReference]] =
         if (onlyProcessLatest) db.run {
-          val selection = ids.map(_._1).toSet
-          TezosDb.getLevelsForDelegates(selection).map { currentlyStored =>
+          TezosDb.getLevelsForDelegates(ids.keySet).map { currentlyStored =>
             ids.filterNot {
               case (PublicKeyHash(pkh), (_, updateLevel, _, _)) =>
                 currentlyStored.exists {
@@ -745,13 +743,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           DelegatesProcessingFailed(message = error, e)
         }
       )
-      // (saveDelegates flatTap cleanup).transform {
-      //   case Failure(e) =>
-      //     val error = "I failed to fetch delegates from client and update them"
-      //     logger.error(error, e)
-      //     Failure(DelegatesProcessingFailed(message = error, e))
-      //   case success => Success(Done)
-      // }
 
     }
   }
