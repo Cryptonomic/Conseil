@@ -43,6 +43,12 @@ class TezosDatabaseOperationsTest
       val sut = TezosDatabaseOperations
       val feesToConsider = 1000
 
+      "use the right collation" in {
+        val ordered =
+          dbHandler.run(sql"SELECT val FROM unnest(ARRAY['a', 'b', 'A', 'B']) val ORDER BY val".as[String]).futureValue
+        ordered should contain inOrderOnly ("a", "A", "b", "B")
+      }
+
       "write fees" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -2254,7 +2260,8 @@ class TezosDatabaseOperationsTest
 
         import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
         val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val tableName = Tables.Blocks.baseTableRow.tableName
+        val tableSpace = "tezos"
+        val tableName = s"$tableSpace.${Tables.Blocks.baseTableRow.tableName}"
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
           generatedQuery <- makeQuery(tableName, columns, List.empty).as[AnyMap]
