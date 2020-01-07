@@ -47,6 +47,12 @@ object DatabaseConversions {
       .lift(block) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle_position) //this is Option[Int]
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractPeriod(block: BlockMetadata): Option[Int] =
+    discardGenesis
+      .lift(block)
+      .map(_.level.voting_period)
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -180,7 +186,8 @@ object DatabaseConversions {
         internal = false,
         cycle = extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
-        numberOfSlots = Some(metadata.slots.length)
+        numberOfSlots = Some(metadata.slots.length),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -196,7 +203,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -212,7 +220,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -234,7 +243,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -269,7 +279,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -317,7 +328,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -339,7 +351,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -394,7 +407,8 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
