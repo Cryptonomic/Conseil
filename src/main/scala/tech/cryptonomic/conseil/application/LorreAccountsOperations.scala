@@ -80,7 +80,7 @@ class AccountsOperations(
   }
 
   /** Gets the stored levels and only keep updates that are more recent */
-  private def prunedUpdates(indices: Map[AcccountId, BlockReference]): IO[Map[AccountId, BlockReference]] =
+  private def prunedUpdates(indices: Map[AccountId, BlockReference]): IO[Map[AccountId, BlockReference]] =
     lift(db.run(TezosDb.getLevelsForAccounts(indices.keySet))).map { currentlyStored =>
       indices.filterNot {
         case (AccountId(id), (_, updateLevel, _, _)) =>
