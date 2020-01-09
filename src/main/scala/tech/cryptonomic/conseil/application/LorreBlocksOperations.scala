@@ -33,7 +33,7 @@ class BlocksOperations(protected val nodeOperator: TezosNodeOperator, db: Databa
     with IOLogging {
 
   import BlocksOperations.BlocksProcessingFailed
-  import TezosNodeOperator.FetchRights
+  import TezosNodeOperator.{FetchRights, LazyPages}
 
   /* Write the blocks to the db */
   def storeBlocks(blockResults: nodeOperator.BlockFetchingResults): IO[Int] = {
@@ -111,7 +111,7 @@ class BlocksOperations(protected val nodeOperator: TezosNodeOperator, db: Databa
 
   /* adapts the page processing to fetched blocks */
   def forEachBlockPage(
-      pages: Iterator[Future[nodeOperator.BlockFetchingResults]],
+      pages: LazyPages[nodeOperator.BlockFetchingResults],
       notifyProgress: Int => IO[Unit]
   )(handlePage: nodeOperator.BlockFetchingResults => IO[Int]) = {
     import cats.instances.int._

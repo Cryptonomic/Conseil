@@ -93,10 +93,12 @@ trait LorreOperations {
     for {
       _ <- liftLog(_.info("Selecting all accounts left in the checkpoint table..."))
       accountsCheckpoint <- getAccountsCheckpoint
-      _ <- processAccountsAndGetDelegateKeys(accountsCheckpoint).unlessA(accountsCheckpoint.isEmpty).void
+      _ <- processAccountsAndGetDelegateKeys(accountsCheckpoint, onlyProcessLatest = true)
+        .unlessA(accountsCheckpoint.isEmpty)
       _ <- liftLog(_.info("Selecting all delegates left in the checkpoint table..."))
       delegatesCheckpoint <- getDelegatesCheckpoint
-      _ <- processDelegates(delegatesCheckpoint).unlessA(delegatesCheckpoint.isEmpty)
+      _ <- processDelegates(delegatesCheckpoint, onlyProcessLatest = true)
+        .unlessA(delegatesCheckpoint.isEmpty)
     } yield ()
   }
 
@@ -122,9 +124,8 @@ trait LorreOperations {
       eta = if (elapsed * progress > 0) Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS)
       else Duration.Inf
       _ <- cs.shift //log from another thread to keep processing other blocks
-      _ <- liftLog(
-        _.info("Completed processing {}% of total requested blocks", "%.2f".format(progress * 100))
-      )
+      _ <- liftLog(_.info("================================== Progress Report =================================="))
+      _ <- liftLog(_.info("Completed processing {}% of total requested blocks", "%.2f".format(progress * 100)))
       _ <- liftLog(
         _.info(
           "Estimated average throughput is {}/min.",
@@ -138,5 +139,6 @@ trait LorreOperations {
           eta.toMinutes % 60
         )
       ).whenA(processed < totalToProcess && eta.isFinite && eta.toMinutes > 1)
+      _ <- liftLog(_.info("====================================================================================="))
     } yield ()
 }

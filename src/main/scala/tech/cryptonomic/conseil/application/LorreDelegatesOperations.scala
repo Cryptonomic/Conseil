@@ -28,24 +28,45 @@ class DelegatesOperations(batching: Int, nodeOperator: TezosNodeOperator, db: Da
     with LazyLogging
     with IOLogging {
   import DelegatesOperations.{DelegateFetchingResults, DelegateKeys, DelegatesIndex, DelegatesProcessingFailed}
+  import TezosNodeOperator.LazyPages
 
-  /** fetches the referenced delegates by keys and stores them */
-  def processDelegates(keys: Map[PublicKeyHash, BlockReference]): IO[Unit] = {
+  /** Fetches the referenced delegates by keys and stores them
+    * @param keys a pre-filtered map of delegate hashes with latest block referring to them
+    * @param onlyProcessLatest verify that no recent update was made to the delegate before processing each key
+    *                          (default = false)
+    */
+  def processDelegates(keys: Map[PublicKeyHash, BlockReference], onlyProcessLatest: Boolean = false): IO[Unit] = {
 
-    val (delegates, _) = nodeOperator.getDelegatesForBlocks(keys)
+    //we get accounts data, only considering more recent updates than stored, if so requested
+    val pages: IO[LazyPages[DelegateFetchingResults]] = {
+      if (onlyProcessLatest) prunedUpdates(keys)
+      else IO.pure(keys)
+    }.map(nodeOperator.getDelegatesForBlocks(_)._1)
 
     liftLog(_.info("Ready to fetch updated delegates information from the chain")) >>
-      forEachDelegatePage(delegates) { fetchResults =>
-        val pagePKHs = fetchResults.flatMap {
-          _.content.keys
-        }.toSet
+      pages.flatMap(
+        delegates =>
+          forEachDelegatePage(delegates) { fetchResults =>
+            val pagePKHs = fetchResults.flatMap {
+              _.content.keys
+            }.toSet
 
-        storeDelegates(fetchResults) >>
-          liftLog(_.info("Cleaning {} processed delegates from the checkpoint...", pagePKHs.size)) >>
-          cleanDelegatesCheckpoint(pagePKHs)
-      }.void
+            storeDelegates(fetchResults) >>
+              liftLog(_.info("Cleaning {} processed delegates from the checkpoint...", pagePKHs.size)) >>
+              cleanDelegatesCheckpoint(pagePKHs)
+          }.void
+      )
 
   }
+
+  /** Gets the stored levels and only keep updates that are more recent */
+  private def prunedUpdates(keys: Map[PublicKeyHash, BlockReference]): IO[Map[PublicKeyHash, BlockReference]] =
+    lift(db.run(TezosDb.getLevelsForDelegates(keys.keySet))).map { currentlyStored =>
+      keys.filterNot {
+        case (PublicKeyHash(pkh), (_, updateLevel, _, _)) =>
+          currentlyStored.exists { case (storedPkh, storedLevel) => storedPkh == pkh && storedLevel > updateLevel }
+      }
+    }
 
   /** Writes delegates to the database */
   def storeDelegates(
@@ -77,7 +98,7 @@ class DelegatesOperations(batching: Int, nodeOperator: TezosNodeOperator, db: Da
 
   /* adapts the page processing to fetched delegates */
   private def forEachDelegatePage(
-      pages: Iterator[Future[DelegateFetchingResults]]
+      pages: LazyPages[DelegateFetchingResults]
   )(handlePage: DelegateFetchingResults => IO[Int]) = {
     import cats.instances.int._
 

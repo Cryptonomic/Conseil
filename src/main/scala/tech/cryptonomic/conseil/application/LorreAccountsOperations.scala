@@ -44,29 +44,49 @@ class AccountsOperations(
   import delegateOps.storeDelegatesCheckpoint
   import DelegatesOperations.DelegateKeys
   import ChainEvent.{AccountIdPattern, AccountUpdatesEvents}
+  import TezosNodeOperator.LazyPages
 
   /** Fetches the referenced accounts by ids and stores them returning the
     * referenced delegates by key, tagged with the block info
+    * @param indices a pre-filtered map of account ids with latest block referring to them
+    * @param onlyProcessLatest verify that no recent update was made to the account before processing each id
+    *                          (default = false)
     */
-  def processAccountsAndGetDelegateKeys(indices: Map[AccountId, BlockReference]) = {
+  def processAccountsAndGetDelegateKeys(indices: Map[AccountId, BlockReference], onlyProcessLatest: Boolean = false) = {
 
-    val (accounts, _) = nodeOperator.getAccountsForBlocks(indices)
+    //we get accounts data, only considering more recent updates than stored, if so requested
+    val pages: IO[LazyPages[AccountFetchingResults]] = {
+      if (onlyProcessLatest) prunedUpdates(indices)
+      else IO.pure(indices)
+    }.map(nodeOperator.getAccountsForBlocks(_)._1)
 
     liftLog(_.info("Ready to fetch updated accounts information from the chain")) >>
-      forEachAccountPage(accounts) { fetchResults =>
-        val ids = fetchResults.flatMap {
-          _.content.keys
-        }.toSet
-        val delegateReferences = extractDelegatesInfo(fetchResults)
+      pages.flatMap(
+        accounts =>
+          forEachAccountPage(accounts) { fetchResults =>
+            val ids = fetchResults.flatMap {
+              _.content.keys
+            }.toSet
+            val delegateReferences = extractDelegatesInfo(fetchResults)
 
-        storeDelegatesCheckpoint(delegateReferences) >>
-          storeAccounts(fetchResults) >>
-          liftLog(_.info("Cleaning {} processed accounts from the checkpoint...", ids.size)) >>
-          cleanAccountsCheckpoint(ids) >>
-          delegateReferences.pure[IO]
-      }
+            storeDelegatesCheckpoint(delegateReferences) >>
+              storeAccounts(fetchResults) >>
+              liftLog(_.info("Cleaning {} processed accounts from the checkpoint...", ids.size)) >>
+              cleanAccountsCheckpoint(ids) >>
+              delegateReferences.pure[IO]
+          }
+      )
 
   }
+
+  /** Gets the stored levels and only keep updates that are more recent */
+  private def prunedUpdates(indices: Map[AcccountId, BlockReference]): IO[Map[AccountId, BlockReference]] =
+    lift(db.run(TezosDb.getLevelsForAccounts(indices.keySet))).map { currentlyStored =>
+      indices.filterNot {
+        case (AccountId(id), (_, updateLevel, _, _)) =>
+          currentlyStored.exists { case (storedId, storedLevel) => storedId == id && storedLevel > updateLevel }
+      }
+    }
 
   /** Writes accounts to the database */
   def storeAccounts(indices: List[BlockTagged[AccountsIndex]]): IO[Int] =
@@ -172,7 +192,7 @@ class AccountsOperations(
 
   /* adapts the page processing to fetched accounts, returning the included delegate keys */
   private def forEachAccountPage(
-      pages: Iterator[Future[AccountFetchingResults]]
+      pages: LazyPages[AccountFetchingResults]
   )(handlePage: AccountFetchingResults => IO[List[BlockTagged[DelegateKeys]]]) = {
     import cats.instances.list._
     import cats.instances.option._

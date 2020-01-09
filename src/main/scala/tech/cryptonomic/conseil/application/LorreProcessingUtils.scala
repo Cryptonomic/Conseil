@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.application
 
 import tech.cryptonomic.conseil.util.IOUtils.lift
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.LazyPages
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 import cats.effect.{ContextShift, IO}
@@ -17,7 +18,7 @@ trait LorreProcessingUtils {
     * @return the stream of contents
     */
   protected def streamPages[Content](
-      pages: Iterator[Future[Content]],
+      pages: LazyPages[Content],
       adaptFetchError: Throwable => Throwable = identity
   )(implicit cs: ContextShift[IO]): fs2.Stream[IO, Content] =
     fs2.Stream

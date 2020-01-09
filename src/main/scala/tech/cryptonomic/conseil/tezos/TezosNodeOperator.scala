@@ -22,6 +22,8 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object TezosNodeOperator {
+  type LazyPages[T] = Iterator[Future[T]]
+  type Paginated[T] = (LazyPages[T], Int)
 
   /**
     * Output of operation signing.
@@ -82,17 +84,19 @@ class TezosNodeOperator(
 ) extends LazyLogging
     with BlocksDataFetchers
     with AccountsDataFetchers {
-  import TezosNodeOperator.isGenesis
+  import TezosNodeOperator.{isGenesis, LazyPages, Paginated}
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
 
   override val fetchConcurrency = blockOperationsConcurrencyLevel
   override val accountsFetchConcurrency = accountConcurrencyLevel
 
-  //use this alias to make signatures easier to read and kept in-sync
+  //use this alias to make signatures easier to read and keep in-sync
   type BlockFetchingResults = List[(Block, List[AccountId])]
-  type PaginatedBlocksResults = (Iterator[Future[BlockFetchingResults]], Int)
-  type PaginatedAccountResults = (Iterator[Future[List[BlockTagged[Map[AccountId, Account]]]]], Int)
-  type PaginatedDelegateResults = (Iterator[Future[List[BlockTagged[Map[PublicKeyHash, Delegate]]]]], Int)
+  type AccountFetchingResults = List[BlockTagged[Map[AccountId, Account]]]
+  type DelegateFetchingResults = List[BlockTagged[Map[PublicKeyHash, Delegate]]]
+  type PaginatedBlocksResults = Paginated[BlockFetchingResults]
+  type PaginatedAccountResults = Paginated[AccountFetchingResults]
+  type PaginatedDelegateResults = Paginated[DelegateFetchingResults]
 
   //introduced to simplify signatures
   type BallotBlock = (Block, List[Voting.Ballot])
@@ -110,7 +114,7 @@ class TezosNodeOperator(
       entityLoad: (List[Key], BlockHash) => Future[Map[Key, Entity]]
   )(
       keyIndex: Map[Key, BlockHash]
-  ): Iterator[Future[(BlockHash, Map[Key, Entity])]] = {
+  ): LazyPages[(BlockHash, Map[Key, Entity])] = {
     //collect by hash and paginate based on that
     val reversedIndex =
       keyIndex.groupBy { case (key, blockHash) => blockHash }
@@ -214,9 +218,7 @@ class TezosNodeOperator(
     * @param delegatesIndex the accountid-to-blockhash index to get data for
     * @return               the pages of accounts wrapped in a [[Future]], indexed by AccountId
     */
-  val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => Iterator[
-    Future[(BlockHash, Map[AccountId, Account])]
-  ] =
+  val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => LazyPages[(BlockHash, Map[AccountId, Account])] =
     getPaginatedEntitiesForBlock(getAccountsForBlock)
 
   /**
@@ -430,8 +432,8 @@ class TezosNodeOperator(
     * @param delegatesIndex the pkh-to-blockhash index to get data for
     * @return               the pages of delegates wrapped in a [[Future]], indexed by PublicKeyHash
     */
-  val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => Iterator[
-    Future[(BlockHash, Map[PublicKeyHash, Delegate])]
+  val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => LazyPages[
+    (BlockHash, Map[PublicKeyHash, Delegate])
   ] =
     getPaginatedEntitiesForBlock(getDelegatesForBlock)
 

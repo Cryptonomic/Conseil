@@ -196,7 +196,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Removes  data from a generic checkpoint table
     * @param selection limits the removed rows to those
     *                  concerning the selected elements, by default no selection is made.
-    *                  We strictly assume those keys were previously loaded from the checkpoint table itself
+    *                  We can't assume those keys were previously loaded from the checkpoint table itself
     * @param tableQuery the slick table query to identify which is the table to clean up
     * @param tableTotal an action needed to compute the number of max keys in the checkpoint
     * @param applySelection used to filter the results to clean-up, using the available `selection`
@@ -458,6 +458,20 @@ object TezosDatabaseOperations extends LazyLogging {
     } yield updated).transactionally
 
   }
+
+  /** Fetch the latest block level available for each account id stored */
+  def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BigDecimal)]] =
+    Tables.Accounts
+      .map(table => (table.accountId, table.blockLevel))
+      .filter(_._1 inSet ids.map(_.id))
+      .result
+
+  /** Fetch the latest block level available for each delegate pkh stored */
+  def getLevelsForDelegates(ids: Set[PublicKeyHash]): DBIO[Seq[(String, Int)]] =
+    Tables.Delegates
+      .map(table => (table.pkh, table.blockLevel))
+      .filter(_._1 inSet ids.map(_.value))
+      .result
 
   /** Writes bakers to the database */
   def writeVotingRolls(bakers: List[(Block, List[Voting.BakerRolls])]): DBIO[Option[Int]] = {
