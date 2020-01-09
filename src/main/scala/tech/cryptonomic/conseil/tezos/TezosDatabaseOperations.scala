@@ -22,6 +22,7 @@ import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import slick.jdbc.JdbcCapabilities
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import scala.collection.immutable.Queue
 
 /**
   * Functions for writing Tezos data to a database.
@@ -49,13 +50,21 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeAccounts(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
-  )(implicit ec: ExecutionContext): DBIO[Int] = {
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+
+    val keepMostRecent = (rows: List[Tables.AccountsRow]) =>
+      rows
+        .sortBy(_.blockLevel)(Ordering[BigDecimal].reverse)
+        .foldLeft((Queue.empty[Tables.AccountsRow], Set.empty[String])) { (accumulator, row) =>
+          val (queued, index) = accumulator
+          if (index(row.accountId)) accumulator else (queued :+ row, index + row.accountId)
+        }
+        ._1
+
     logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
-    DBIO
-      .sequence(accountsInfo.flatMap { info =>
-        info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
-      })
-      .map(_.sum)
+    val rows = accountsInfo.flatMap(_.convertToA[List, Tables.AccountsRow])
+    (keepMostRecent andThen Tables.Accounts.insertOrUpdateAll)(rows)
   }
 
   /**
@@ -66,13 +75,9 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeAccountsHistory(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
-  )(implicit ec: ExecutionContext): DBIO[Int] = {
+  ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${accountsInfo.length} accounts_history to DB...""")
-    DBIO
-      .sequence(accountsInfo.flatMap { info =>
-        info.convertToA[List, Tables.AccountsHistoryRow].map(Tables.AccountsHistory += _)
-      })
-      .map(_.sum)
+    Tables.AccountsHistory ++= accountsInfo.flatMap(_.convertToA[List, Tables.AccountsHistoryRow])
   }
 
   /**
@@ -430,19 +435,19 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeAccountsAndCheckpointDelegates(
       accounts: List[BlockTagged[Map[AccountId, Account]]],
       delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
-  )(implicit ec: ExecutionContext): DBIO[(Int, Int, Option[Int])] = {
+  )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int], Option[Int])] = {
     import slickeffect.implicits._
 
     logger.info("Writing accounts and delegate checkpoints to the DB...")
 
-    //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
+    //we tuple because we want transactionality guarantees and we need all insert-counts to get returned
     Async[DBIO]
       .tuple3(
         writeAccounts(accounts),
         writeAccountsHistory(accounts),
         writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
       )
-      .transactionally
+    .transactionally
   }
 
   /**
@@ -453,22 +458,28 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeDelegatesAndCopyContracts(
       delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
-  )(implicit ec: ExecutionContext): DBIO[Int] = {
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+
+    val keepMostRecent = (rows: List[Tables.DelegatesRow]) =>
+      rows
+        .sortBy(_.blockLevel)(Ordering[Int].reverse)
+        .foldLeft((Queue.empty[Tables.DelegatesRow], Set.empty[String])) { (accumulator, row) =>
+          val (queued, index) = accumulator
+          if (index(row.pkh)) accumulator else (queued :+ row, index + row.pkh)
+        }
+        ._1
+
     logger.info("Writing delegates to DB and copying contracts to delegates contracts table...")
-    val delegatesUpdateAction = DBIO.sequence(
-      delegates.flatMap {
-        case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
-          delegateMap.map {
-            case (pkh, delegate) =>
-              Tables.Delegates insertOrUpdate (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]
-          }
-      }
-    )
 
-    (for {
-      updated <- delegatesUpdateAction.map(_.sum)
-    } yield updated).transactionally
-
+    val rows = delegates.flatMap {
+      case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
+        delegateMap.map {
+          case (pkh, delegate) =>
+            (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]
+        }
+    }
+    (keepMostRecent andThen Tables.Delegates.insertOrUpdateAll)(rows)
   }
 
   /** Fetch the latest block level available for each account id stored */
@@ -505,7 +516,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Updates accounts with bakers */
   def updateAccountsWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
-    logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
+    logger.info(s"""Writing ${bakers.length} accounts updates to the DB...""")
     Tables.Accounts
       .filter(
         account =>
