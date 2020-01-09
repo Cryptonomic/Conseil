@@ -483,6 +483,9 @@ CREATE INDEX ix_accounts_checkpoint_block_level ON tezos.accounts_checkpoint USI
 
 CREATE INDEX ix_accounts_manager ON tezos.accounts USING btree (manager);
 
+CREATE INDEX ix_accounts_block_id ON tezos.accounts USING btree (block_id);
+
+CREATE INDEX ix_accounts_history_block_id ON tezos.accounts_history USING btree (block_id);
 
 --
 -- Name: ix_blocks_level; Type: INDEX; Schema: tezos; Owner: -

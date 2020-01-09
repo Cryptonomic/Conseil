@@ -447,7 +447,7 @@ object TezosDatabaseOperations extends LazyLogging {
         writeAccountsHistory(accounts),
         writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
       )
-    .transactionally
+      .transactionally
   }
 
   /**
