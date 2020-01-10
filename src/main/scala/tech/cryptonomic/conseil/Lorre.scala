@@ -609,9 +609,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         } else Future.successful(ids)
 
       logger.info("Ready to fetch updated accounts information from the chain")
-      val (pages, total) = tezosNodeOperator.getAccountsForBlocks(ids)
-      // we are updating accounts with isBaker information
-      val updatedPages = pages.map { pageFut =>
+
+      // updates account pages with baker information
+      def updateAccountPages(pages: LazyPages[tezosNodeOperator.AccountFetchingResults]) = pages.map { pageFut =>
         pageFut.map { accounts =>
           accounts.map { taggedAccounts =>
             votingData.find {
@@ -651,7 +651,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       val fetchAndStore = for {
         (accountPages, _) <- prunedUpdates().map(tezosNodeOperator.getAccountsForBlocks)
-        (stored, checkpoints, delegateKeys) <- saveAccounts(accountPages) flatTap cleanup
+        updatedPages = updateAccountPages(accountPages)
+        (stored, checkpoints, delegateKeys) <- saveAccounts(updatedPages) flatTap cleanup
       } yield delegateKeys
 
       fetchAndStore.transform(
