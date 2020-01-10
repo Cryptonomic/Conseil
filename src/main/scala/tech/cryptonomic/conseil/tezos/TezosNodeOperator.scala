@@ -250,6 +250,20 @@ class TezosNodeOperator(
   }
 
   /**
+    * Fetches bakers by list of block hashes
+    *
+    * @param hashes block hashes
+    * @return       list of bakers per block hash
+    */
+  def getBakersByHash(hashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+    import cats.instances.future._
+    import cats.instances.list._
+    val fetchBakers = fetch[BlockHash, List[Voting.BakerRolls], Future, List, Throwable]
+    fetchBakers.run(hashes)
+  }
+
+  /**
     * Get accounts for all the identifiers passed-in with the corresponding block
     * @param accountsBlocksIndex a map from unique id to the [latest] block reference
     * @return         Accounts with their corresponding block data

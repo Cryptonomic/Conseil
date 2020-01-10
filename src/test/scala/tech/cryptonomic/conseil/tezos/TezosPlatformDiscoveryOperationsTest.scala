@@ -323,7 +323,15 @@ class TezosPlatformDiscoveryOperationsTest
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
         val account =
-          Account(balance = 12.34, counter = Some(1), delegate = None, script = None, manager = None, spendable = None)
+          Account(
+            balance = 12.34,
+            counter = Some(1),
+            delegate = None,
+            script = None,
+            manager = None,
+            spendable = None,
+            isBaker = None
+          )
 
         val accounts = List(
           BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-1") -> account.copy())),

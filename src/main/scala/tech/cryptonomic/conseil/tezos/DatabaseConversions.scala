@@ -70,7 +70,7 @@ object DatabaseConversions {
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
         val BlockTagged(hash, level, timestamp, cycle, accounts) = from
         accounts.map {
-          case (id, Account(balance, delegate, script, counter, manager, spendable)) =>
+          case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker)) =>
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
@@ -82,7 +82,8 @@ object DatabaseConversions {
               manager = manager.map(_.value),
               spendable = spendable,
               delegateSetable = toDelegateSetable(delegate),
-              delegateValue = toDelegateValue(delegate)
+              delegateValue = toDelegateValue(delegate),
+              isBaker = isBaker.getOrElse(false)
             )
         }.toList
       }
@@ -238,10 +239,11 @@ object DatabaseConversions {
       )
   }
 
-  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline = parametersCompatibility match {
-    case Left(value) => value.value
-    case Right(value) => value
-  }
+  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline =
+    parametersCompatibility match {
+      case Left(value) => value.value
+      case Right(value) => value
+    }
 
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
