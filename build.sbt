@@ -1,5 +1,5 @@
 name := "Conseil"
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.10"
 
 lazy val conseil = (project in file("."))
   .configs(IntegrationTest)
@@ -10,7 +10,7 @@ lazy val conseil = (project in file("."))
 val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
-val slickVersion = "3.3.0"
+val slickVersion = "3.3.2"
 val catsVersion = "1.6.0"
 val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
@@ -73,7 +73,7 @@ libraryDependencies ++= Seq(
   "com.rklaehn"                  %% "radixtree"                     % "0.5.1",
   "com.typesafe.akka"            %% "akka-testkit"                  % akkaVersion % Test exclude ("com.typesafe", "config"),
   "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
-  "org.scalatest"                %% "scalatest"                     % "3.0.5" % "it, test",
+  "org.scalatest"                %% "scalatest"                     % "3.1.0" % "it, test",
   "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
   "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
   "org.testcontainers"           % "postgresql"                     % "1.12.3" % "it, test",

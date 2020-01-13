@@ -287,7 +287,7 @@ object TezosTypes {
       extends Operation
   final case class Ballot(
       ballot: Voting.Vote,
-      proposal: Option[String],
+      proposal: List[String],
       source: Option[ContractId],
       period: Option[Int]
   ) extends Operation

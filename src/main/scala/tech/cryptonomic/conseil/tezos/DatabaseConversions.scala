@@ -355,7 +355,7 @@ object DatabaseConversions {
         timestamp = toSql(block.data.header.timestamp),
         ballot = Some(ballot.value),
         internal = false,
-        proposal = proposal,
+        proposal = Some(proposal),
         source = source.map(_.id),
         cycle = extractCycle(block),
         period = period
@@ -372,7 +372,7 @@ object DatabaseConversions {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        proposal = proposals.map(x => concatenateToString(x)),
+        proposal = proposals,
         source = source.map(_.id),
         cycle = extractCycle(block),
         period = period

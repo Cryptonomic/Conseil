@@ -3,6 +3,9 @@ package tech.cryptonomic.conseil.scripts
 import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping}
 import pureconfig.generic.auto._
 import pureconfig.generic.ProductHint
+import scala.concurrent.ExecutionContext.Implicits.global
+import slick.codegen.SourceCodeGenerator
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.CustomPostgresProfile
 
 /**
   * Uses Slick's code-generation capabilities to infer code from Conseil database schema.
@@ -12,7 +15,9 @@ object GenSchema extends App {
 
   sealed trait DatabaseConfig {
     def databaseName: String
+
     def user: String
+
     def password: String
   }
 
@@ -31,21 +36,44 @@ object GenSchema extends App {
 
   conseilDbConf.foreach { cfg =>
     println(s"Generating database Tables source file under ${cfg.dest}, in package ${cfg.`package`}")
-    slick.codegen.SourceCodeGenerator.main(
-      Array(
+
+    val db = CustomPostgresProfile.api.Database.forURL(
+      cfg.url,
+      driver = cfg.jdbcDriver,
+      user = cfg.user,
+      password = cfg.password
+    )
+
+    val model = db.run(CustomPostgresProfile.createModel(Some(CustomPostgresProfile.defaultTables)))
+
+    val generatedCode = model.map(
+      model =>
+        new SourceCodeGenerator(model) {
+          override def Table =
+            table =>
+              new Table(table) {
+                override def Column = column => {
+                  if (table.name.table == "operations" && column.name == "proposal") {
+                    new Column(column.copy(tpe = "List[String]", nullable = true))
+                  } else
+                    new Column(column)
+                }
+              }
+        }
+    )
+
+    generatedCode.failed.foreach(println)
+
+    generatedCode.foreach { codegen =>
+      codegen.writeToFile(
         cfg.slickProfile,
-        cfg.jdbcDriver,
-        cfg.url,
         cfg.dest,
         cfg.`package`,
-        cfg.user,
-        cfg.password
+        "Tables",
+        "Tables.scala"
       )
-    )
-  }
+    }
 
-  conseilDbConf.left.foreach { failures =>
-    sys.error(failures.toList.mkString("\n"))
+    Thread.sleep(20000)
   }
-
 }
