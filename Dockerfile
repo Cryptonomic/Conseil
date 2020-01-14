@@ -8,19 +8,23 @@ USER builduser
 COPY --chown=builduser:builduser . /src
 WORKDIR /src
 RUN rm -rf test-postgres-path
-RUN sbt clean assembly -J-Xss32m
+RUN sbt 'set test in assembly := {}' clean assembly -J-Xss32m
 
 FROM openjdk:13-alpine
 RUN apk --no-cache add ca-certificates
+RUN apk add netcat-openbsd
 WORKDIR /root/
 COPY --from=0 /tmp/conseil.jar conseil.jar
-ADD ./src/main/resources/metadata/tezos.alphanet.conf /root/tezos.alphanet.conf
 ADD ./src/main/resources/metadata/tezos.mainnet.conf /root/tezos.mainnet.conf
 ADD ./src/main/resources/metadata/tezos.babylonnet.conf /root/tezos.babylonnet.conf
 ADD ./src/main/resources/metadata.conf /root/metadata.conf
 ADD ./docker/template.conf /root/template.conf
 ADD ./docker/entrypoint.sh /root/entrypoint.sh
+ADD ./docker/wait-for.sh /root/wait-for.sh
+ADD ./sql/conseil.sql /root/sql/conseil.sql
+
 RUN chmod +x /root/entrypoint.sh
+RUN chmod +rwx /root/wait-for.sh
 
 
 ENTRYPOINT ["/root/entrypoint.sh"]
