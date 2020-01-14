@@ -570,6 +570,9 @@ trait Tables {
 
     /** Database column operation_group_hash SqlType(varchar), Default(None) */
     val operationGroupHash: Rep[Option[String]] = column[Option[String]]("operation_group_hash", O.Default(None))
+
+    /** Index over (operationGroupHash) (database name ix_balance_updates_op_group_hash) */
+    val index1 = index("ix_balance_updates_op_group_hash", operationGroupHash)
   }
 
   /** Collection-like TableQuery object for table BalanceUpdates */

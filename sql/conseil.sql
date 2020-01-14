@@ -556,6 +556,7 @@ CREATE INDEX ix_rolls_block_id ON tezos.rolls USING btree (block_id);
 
 CREATE INDEX ix_rolls_block_level ON tezos.rolls USING btree (block_level);
 
+CREATE INDEX ix_balance_updates_op_group_hash ON tezos.balance_updates USING btree (operation_group_hash);
 
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
