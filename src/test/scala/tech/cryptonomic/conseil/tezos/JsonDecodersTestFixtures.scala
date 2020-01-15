@@ -322,7 +322,7 @@ trait OperationsJsonData {
     |}""".stripMargin
 
   val expectedBigmapdiffAlloc =
-    Contract.BigMapDiffAlloc(
+    Contract.BigMapAlloc(
       action = "alloc",
       big_map = Decimal(BigDecimal(428)),
       key_type = Micheline("""{"prim":"int"}"""),
@@ -338,7 +338,7 @@ trait OperationsJsonData {
     |}""".stripMargin
 
   val expectedBigmapdiffUpdate =
-    Contract.BigMapDiffUpdate(
+    Contract.BigMapUpdate(
       action = "update",
       key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
       key = expectedMicheline,
@@ -354,7 +354,7 @@ trait OperationsJsonData {
     |}""".stripMargin
 
   val expectedBigmapdiffCopy =
-    Contract.BigMapDiffCopy(
+    Contract.BigMapCopy(
       action = "copy",
       source_big_map = Decimal(BigDecimal(428)),
       destination_big_map = Decimal(BigDecimal(748))
@@ -367,7 +367,7 @@ trait OperationsJsonData {
     |}""".stripMargin
 
   val expectedBigmapdiffRemove =
-    Contract.BigMapDiffRemove(
+    Contract.BigMapRemove(
       action = "remove",
       big_map = Decimal(BigDecimal(428))
     )
@@ -1042,8 +1042,6 @@ trait OperationsJsonData {
       )
     )
 
-
-
   val originationJson =
     s"""{
     |  "kind": "origination",
@@ -1140,6 +1138,7 @@ trait OperationsJsonData {
         ),
         operation_result = OperationResult.Origination(
           status = "applied",
+          big_map_diff = None,
           balance_updates = Some(
             List(
               BalanceUpdate(
