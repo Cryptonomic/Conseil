@@ -24,7 +24,7 @@ ADD ./docker/wait-for.sh /root/wait-for.sh
 ADD ./sql/conseil.sql /root/sql/conseil.sql
 
 RUN chmod +x /root/entrypoint.sh
-RUN chmod +rwx /root/wait-for.sh
+RUN chmod +rx /root/wait-for.sh
 
 
 ENTRYPOINT ["/root/entrypoint.sh"]
