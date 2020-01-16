@@ -57,7 +57,10 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
     Tables.DelegatesCheckpoint,
     Tables.Rolls,
     Tables.AccountsHistory,
-    Tables.ProcessedChainEvents
+    Tables.ProcessedChainEvents,
+    Tables.BigMaps,
+    Tables.BigMapContents,
+    Tables.OriginatedAccountMaps
   )
 
   protected val dbSchema = Tables.schema

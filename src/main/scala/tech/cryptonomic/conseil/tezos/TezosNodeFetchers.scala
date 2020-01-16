@@ -545,50 +545,6 @@ trait BlocksDataFetchers {
     }
   }
 
-  /** a fetcher of baker rolls for blocks */
-  implicit val bakersByBlockHashFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Votes._
-    import cats.instances.future._
-
-    type Encoded = String
-    type In = BlockHash
-    type Out = List[Voting.BakerRolls]
-
-    private val makeUrl = (hash: BlockHash) => s"blocks/${hash.value}/votes/listings"
-
-    override val fetchData =
-      Kleisli(
-        blockHashes => {
-          logger.info("Fetching bakers for hashes {}", blockHashes.mkString(","))
-          node.runBatchedGetQuery(network, blockHashes, makeUrl, fetchConcurrency).onError {
-            case err =>
-              logger
-                .error(
-                  "I encountered problems while fetching baker rolls from {}, for blocks {}. The error says {}",
-                  network,
-                  blockHashes.mkString(", "),
-                  err.getMessage
-                )
-                .pure[Future]
-          }
-        }
-      )
-
-    override val decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Out](json)
-        .onError(
-          logWarnOnJsonDecoding(
-            s"I fetched baker rolls json from tezos node that I'm unable to decode: $json",
-            ignore = Option(json).forall(_.trim.isEmpty)
-          )
-        )
-        .recover {
-          //we recover parsing failures with an empty result, as we have no optionality here to lean on
-          case NonFatal(_) => List.empty
-        }
-    }
-  }
-
   /** a fetcher of ballot votes for blocks */
   implicit val ballotsFetcher = new FutureFetcher {
     import JsonDecoders.Circe.Votes._

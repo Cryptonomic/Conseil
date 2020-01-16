@@ -22,6 +22,8 @@ trait Tables {
     AccountsHistory.schema,
     BakingRights.schema,
     BalanceUpdates.schema,
+    BigMapContents.schema,
+    BigMaps.schema,
     Blocks.schema,
     Delegates.schema,
     DelegatesCheckpoint.schema,
@@ -29,6 +31,7 @@ trait Tables {
     Fees.schema,
     OperationGroups.schema,
     Operations.schema,
+    OriginatedAccountMaps.schema,
     ProcessedChainEvents.schema,
     Rolls.schema
   ).reduceLeft(_ ++ _)
@@ -362,6 +365,9 @@ trait Tables {
 
     /** Database column cycle SqlType(int4), Default(None) */
     val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Index over (blockId) (database name ix_accounts_history_block_id) */
+    val index1 = index("ix_accounts_history_block_id", blockId)
   }
 
   /** Collection-like TableQuery object for table AccountsHistory */
@@ -567,10 +573,108 @@ trait Tables {
 
     /** Database column operation_group_hash SqlType(varchar), Default(None) */
     val operationGroupHash: Rep[Option[String]] = column[Option[String]]("operation_group_hash", O.Default(None))
+
+    /** Index over (operationGroupHash) (database name ix_balance_updates_op_group_hash) */
+    val index1 = index("ix_balance_updates_op_group_hash", operationGroupHash)
   }
 
   /** Collection-like TableQuery object for table BalanceUpdates */
   lazy val BalanceUpdates = new TableQuery(tag => new BalanceUpdates(tag))
+
+  /** Entity class storing rows of table BigMapContents
+    *  @param bigMapId Database column big_map_id SqlType(numeric), PrimaryKey
+    *  @param key Database column key SqlType(varchar), Default(None)
+    *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
+    *  @param value Database column value SqlType(varchar), Default(None) */
+  case class BigMapContentsRow(
+      bigMapId: scala.math.BigDecimal,
+      key: Option[String] = None,
+      keyHash: Option[String] = None,
+      value: Option[String] = None
+  )
+
+  /** GetResult implicit for fetching BigMapContentsRow objects using plain SQL queries */
+  implicit def GetResultBigMapContentsRow(
+      implicit e0: GR[scala.math.BigDecimal],
+      e1: GR[Option[String]]
+  ): GR[BigMapContentsRow] = GR { prs =>
+    import prs._
+    BigMapContentsRow.tupled((<<[scala.math.BigDecimal], <<?[String], <<?[String], <<?[String]))
+  }
+
+  /** Table description of table big_map_contents. Objects of this class serve as prototypes for rows in queries. */
+  class BigMapContents(_tableTag: Tag)
+      extends profile.api.Table[BigMapContentsRow](_tableTag, Some("tezos"), "big_map_contents") {
+    def * = (bigMapId, key, keyHash, value) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(bigMapId), key, keyHash, value)).shaped.<>({ r =>
+        import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2, _3, _4)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column big_map_id SqlType(numeric), PrimaryKey */
+    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id", O.PrimaryKey)
+
+    /** Database column key SqlType(varchar), Default(None) */
+    val key: Rep[Option[String]] = column[Option[String]]("key", O.Default(None))
+
+    /** Database column key_hash SqlType(varchar), Default(None) */
+    val keyHash: Rep[Option[String]] = column[Option[String]]("key_hash", O.Default(None))
+
+    /** Database column value SqlType(varchar), Default(None) */
+    val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))
+
+    /** Foreign key referencing BigMaps (database name big_map_contents_id_fkey) */
+    lazy val bigMapsFk = foreignKey("big_map_contents_id_fkey", bigMapId, BigMaps)(
+      r => r.bigMapId,
+      onUpdate = ForeignKeyAction.NoAction,
+      onDelete = ForeignKeyAction.NoAction
+    )
+  }
+
+  /** Collection-like TableQuery object for table BigMapContents */
+  lazy val BigMapContents = new TableQuery(tag => new BigMapContents(tag))
+
+  /** Entity class storing rows of table BigMaps
+    *  @param bigMapId Database column big_map_id SqlType(numeric), PrimaryKey
+    *  @param keyType Database column key_type SqlType(varchar), Default(None)
+    *  @param valueType Database column value_type SqlType(varchar), Default(None) */
+  case class BigMapsRow(
+      bigMapId: scala.math.BigDecimal,
+      keyType: Option[String] = None,
+      valueType: Option[String] = None
+  )
+
+  /** GetResult implicit for fetching BigMapsRow objects using plain SQL queries */
+  implicit def GetResultBigMapsRow(implicit e0: GR[scala.math.BigDecimal], e1: GR[Option[String]]): GR[BigMapsRow] =
+    GR { prs =>
+      import prs._
+      BigMapsRow.tupled((<<[scala.math.BigDecimal], <<?[String], <<?[String]))
+    }
+
+  /** Table description of table big_maps. Objects of this class serve as prototypes for rows in queries. */
+  class BigMaps(_tableTag: Tag) extends profile.api.Table[BigMapsRow](_tableTag, Some("tezos"), "big_maps") {
+    def * = (bigMapId, keyType, valueType) <> (BigMapsRow.tupled, BigMapsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(bigMapId), keyType, valueType)).shaped.<>({ r =>
+        import r._; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column big_map_id SqlType(numeric), PrimaryKey */
+    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id", O.PrimaryKey)
+
+    /** Database column key_type SqlType(varchar), Default(None) */
+    val keyType: Rep[Option[String]] = column[Option[String]]("key_type", O.Default(None))
+
+    /** Database column value_type SqlType(varchar), Default(None) */
+    val valueType: Rep[Option[String]] = column[Option[String]]("value_type", O.Default(None))
+  }
+
+  /** Collection-like TableQuery object for table BigMaps */
+  lazy val BigMaps = new TableQuery(tag => new BigMaps(tag))
 
   /** Entity class storing rows of table Blocks
     *  @param level Database column level SqlType(int4)
@@ -1555,6 +1659,47 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Operations */
   lazy val Operations = new TableQuery(tag => new Operations(tag))
+
+  /** Entity class storing rows of table OriginatedAccountMaps
+    *  @param bigMapId Database column big_map_id SqlType(numeric)
+    *  @param accountId Database column account_id SqlType(varchar) */
+  case class OriginatedAccountMapsRow(bigMapId: scala.math.BigDecimal, accountId: String)
+
+  /** GetResult implicit for fetching OriginatedAccountMapsRow objects using plain SQL queries */
+  implicit def GetResultOriginatedAccountMapsRow(
+      implicit e0: GR[scala.math.BigDecimal],
+      e1: GR[String]
+  ): GR[OriginatedAccountMapsRow] = GR { prs =>
+    import prs._
+    OriginatedAccountMapsRow.tupled((<<[scala.math.BigDecimal], <<[String]))
+  }
+
+  /** Table description of table originated_account_maps. Objects of this class serve as prototypes for rows in queries. */
+  class OriginatedAccountMaps(_tableTag: Tag)
+      extends profile.api.Table[OriginatedAccountMapsRow](_tableTag, Some("tezos"), "originated_account_maps") {
+    def * = (bigMapId, accountId) <> (OriginatedAccountMapsRow.tupled, OriginatedAccountMapsRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(bigMapId), Rep.Some(accountId))).shaped.<>({ r =>
+        import r._; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column big_map_id SqlType(numeric) */
+    val bigMapId: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("big_map_id")
+
+    /** Database column account_id SqlType(varchar) */
+    val accountId: Rep[String] = column[String]("account_id")
+
+    /** Primary key of OriginatedAccountMaps (database name originated_account_maps_pkey) */
+    val pk = primaryKey("originated_account_maps_pkey", (bigMapId, accountId))
+
+    /** Index over (accountId) (database name accounts_maps_idx) */
+    val index1 = index("accounts_maps_idx", accountId)
+  }
+
+  /** Collection-like TableQuery object for table OriginatedAccountMaps */
+  lazy val OriginatedAccountMaps = new TableQuery(tag => new OriginatedAccountMaps(tag))
 
   /** Entity class storing rows of table ProcessedChainEvents
     *  @param eventLevel Database column event_level SqlType(numeric)

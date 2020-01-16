@@ -330,11 +330,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }.unzip
 
       for {
-        _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         votingData <- processVotesForBlocks(results.map { case (block, _) => block })
-        delegateCheckpoints <- processAccountsForBlocks(accountUpdates, votingData.map {
+        _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
+        rollsData = votingData.map {
           case (block, rolls) => block.data.hash -> rolls
-        }) // should this fail, we still recover data from the checkpoint
+        }.toMap
+        delegateCheckpoints <- processAccountsForBlocks(accountUpdates, rollsData) // should this fail, we still recover data from the checkpoint
         _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
       } yield results.size
 
@@ -436,7 +437,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
    */
   private[this] def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]],
-      votingData: List[(BlockHash, List[Voting.BakerRolls])]
+      votingData: Map[BlockHash, List[Voting.BakerRolls]]
   )(implicit mat: ActorMaterializer): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
     logger.info("Processing latest Tezos data for updated accounts...")
 
@@ -468,8 +469,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           checkpoints.size
         )
         // here we need to get missing bakers for the given block
-        tezosNodeOperator.getBakersByHash(checkpoints.values.map(_._1).toList).flatMap { bakers =>
-          AccountsProcessor.process(checkpoints, bakers, onlyProcessLatest = true).map(_ => Done)
+        db.run(TezosDb.getBakersForBlocks(checkpoints.values.map(_._1).toList)).flatMap { bakers =>
+          AccountsProcessor.process(checkpoints, bakers.toMap, onlyProcessLatest = true).map(_ => Done)
         }
 
       } else {
@@ -531,7 +532,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
      */
     def process(
         ids: Map[AccountId, BlockReference],
-        votingData: List[(BlockHash, List[Voting.BakerRolls])],
+        votingData: Map[BlockHash, List[Voting.BakerRolls]],
         onlyProcessLatest: Boolean = false
     )(implicit mat: ActorMaterializer): Future[List[BlockTagged[DelegateKeys]]] = {
       import cats.Monoid
@@ -549,11 +550,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           logger.error("Could not write accounts to the database")
       }
 
-      def logOutcome: PartialFunction[Try[(Int, Option[Int], _)], Unit] = {
+      def logOutcome: PartialFunction[Try[(Option[Int], Option[Int], _)], Unit] = {
         case Success((accountsRows, delegateCheckpointRows, _)) =>
           logger.info(
             "{} accounts were touched on the database. Checkpoint stored for{} delegates.",
-            accountsRows,
+            accountsRows.fold("The")(String.valueOf),
             delegateCheckpointRows.fold("")(" " + _)
           )
       }
@@ -581,7 +582,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       def processAccountsPage(
           taggedAccounts: List[BlockTagged[AccountsIndex]],
           taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
-      ): Future[(Int, Option[Int], List[BlockTagged[DelegateKeys]])] =
+      ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] =
         db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys))
           .map {
             case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
@@ -645,7 +646,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .grouped(batchingConf.blockPageSize) //re-arranges the process batching
           .map(extractDelegatesInfo)
           .mapAsync(1)((processAccountsPage _).tupled)
-          .runFold(Monoid[(Int, Option[Int], List[BlockTagged[DelegateKeys]])].empty) { (processed, justDone) =>
+          .runFold(Monoid[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])].empty) { (processed, justDone) =>
             processed |+| justDone
           } andThen logOutcome
 
@@ -676,6 +677,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     ): Future[Done] = {
       import cats.Monoid
       import cats.instances.int._
+      import cats.instances.option._
       import cats.instances.future._
       import cats.syntax.monoid._
       import cats.syntax.flatMap._
@@ -685,14 +687,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           logger.error(s"Could not write delegates to the database", e)
       }
 
-      def logOutcome: PartialFunction[Try[Int], Unit] = {
+      def logOutcome: PartialFunction[Try[Option[Int]], Unit] = {
         case Success(rows) =>
-          logger.info("{} delegates were touched on the database.", rows)
+          logger.info("{} delegates were touched on the database.", rows.fold("The")(String.valueOf))
       }
 
       def processDelegatesPage(
           taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
-      ): Future[Int] =
+      ): Future[Option[Int]] =
         db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates.toList))
           .andThen(logWriteFailure)
 
@@ -733,7 +735,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
           .grouped(batchingConf.blockPageSize) //re-arranges the process batching
           .mapAsync(1)(processDelegatesPage)
-          .runFold(Monoid[Int].empty) { (processed, justDone) =>
+          .runFold(Monoid[Option[Int]].empty) { (processed, justDone) =>
             processed |+| justDone
           } andThen logOutcome
 
