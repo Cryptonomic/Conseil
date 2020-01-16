@@ -365,7 +365,10 @@ object TezosTypes {
 
   /** defines common result structures, following the json-schema definitions */
   object OperationResult {
-    //we're not yet encoding the complex schema for errors, storing them as simple strings
+    /* we're not yet decoding the complex schema for errors,
+     * as every error can have additional custom fields
+     * see: https://tezos.gitlab.io/api/errors.html
+     */
     final case class Error(json: String) extends AnyVal
 
     //we're currently making no difference between different statuses in any of the results
