@@ -524,7 +524,7 @@ class DatabaseConversionsTest
           case _ => converted.amount shouldBe 'empty
         }
         converted.destination.value shouldBe sampleTransaction.destination.id
-        converted.parameters shouldBe sampleTransaction.parameters.map(_.left.value.value.expression)
+        converted.parameters shouldBe sampleTransaction.parameters.map(_.expression)
         converted.status.value shouldBe sampleTransaction.metadata.operation_result.status
         sampleTransaction.metadata.operation_result.consumed_gas match {
           case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber

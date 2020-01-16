@@ -678,7 +678,7 @@ trait OperationsJsonData {
     storage_limit = PositiveDecimal(0),
     source = PublicKeyHash("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
     destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
-    parameters = Some(Left(Parameters("default", Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")))),
+    parameters = Some(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")),
     metadata = ResultMetadata(
       operation_result = OperationResult.Transaction(
         status = "applied",
@@ -701,7 +701,7 @@ trait OperationsJsonData {
             0,
             PositiveDecimal(1000),
             ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
-            Some(Left(Parameters("default", Micheline("""{"prim":"Unit"}""")))),
+            Some(Micheline("""{"prim":"Unit"}""")),
             OperationResult.Transaction(
               status = "applied",
               allocated_destination_contract = None,
@@ -751,10 +751,7 @@ trait OperationsJsonData {
       |    "amount": "0",
       |    "destination": "KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH",
       |    "parameters": {
-      |        "entrypoint": "default",
-      |        "value": {
-      |            "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
-      |        }
+      |        "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
       |    },
       |    "metadata": {
       |        "balance_updates": [],
@@ -774,10 +771,7 @@ trait OperationsJsonData {
       |                "amount": "1000",
       |                "destination": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN",
       |                "parameters": {
-      |                  "entrypoint": "default",
-      |                  "value": {
-      |                    "prim": "Unit"
-      |                  }
+      |                  "prim": "Unit"
       |                },
       |                "result": {
       |                    "status": "applied",
@@ -884,10 +878,7 @@ trait OperationsJsonData {
     |  "amount": "0",
     |  "destination": "KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy",
     |  "parameters": {
-    |      "entrypoint": "default",
-    |      "value": {
-    |            "string": "world"
-    |      }
+    |      "string": "world"
     |  },
     |  "metadata": {
     |      "balance_updates": [
@@ -924,7 +915,7 @@ trait OperationsJsonData {
       storage_limit = PositiveDecimal(0),
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-      parameters = Some(Left(Parameters("default", Micheline("""{"string":"world"}""")))),
+      parameters = Some(Micheline("""{"string":"world"}""")),
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(
@@ -1007,7 +998,7 @@ trait OperationsJsonData {
       storage_limit = PositiveDecimal(0),
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-      parameters = Some(Right(Micheline("""{"string":"world"}"""))),
+      parameters = Some(Micheline("""{"string":"world"}""")),
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(

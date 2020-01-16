@@ -135,7 +135,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
       "modify parameters with monocle's lenses" in {
         // given
         val modifiedTransaction =
-          transaction.copy(parameters = Some(Left(Parameters("default", Micheline("micheline script")))))
+          transaction.copy(parameters = Some(Micheline("micheline script")))
         val modifiedOperations = List(operationGroup.copy(contents = origination :: modifiedTransaction :: Nil))
 
         val block = Block(blockData, modifiedOperations, blockVotes)
@@ -148,7 +148,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Transaction =>
-            op.parameters.head.left.value.value.expression shouldEqual "MICHELINE SCRIPT"
+            op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
           case _ =>
         }
       }

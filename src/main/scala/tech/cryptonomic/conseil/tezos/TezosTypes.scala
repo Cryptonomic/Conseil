@@ -24,16 +24,6 @@ object TezosTypes {
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
 
-    private val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
-      case Left(value) => value.value
-      case Right(value) => value
-    } { micheline =>
-      {
-        case Left(value) => Left(value.copy(value = micheline))
-        case Right(_) => Right(micheline)
-      }
-    }
-
     private val storage = GenLens[Scripted.Contracts](_.storage)
     private val code = GenLens[Scripted.Contracts](_.code)
 
@@ -53,7 +43,7 @@ object TezosTypes {
           operations composeTraversal each composePrism
           transaction composeLens
           parameters composePrism some composeLens
-          parametersExpresssion composeLens expression
+          expression
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
@@ -210,7 +200,6 @@ object TezosTypes {
   /** root of the operation hiearchy */
   sealed trait Operation extends Product with Serializable
   //operations definition
-  type ParametersCompatibility = Either[Parameters, Micheline]
 
   final case class Endorsement(
       level: Int,
@@ -247,14 +236,9 @@ object TezosTypes {
       storage_limit: PositiveBigNumber,
       source: PublicKeyHash,
       destination: ContractId,
-      parameters: Option[ParametersCompatibility],
+      parameters: Option[Micheline],
       metadata: ResultMetadata[OperationResult.Transaction]
   ) extends Operation
-
-  final case class Parameters(
-      entrypoint: String,
-      value: Micheline
-  )
 
   final case class Origination(
       counter: PositiveBigNumber,
@@ -330,7 +314,7 @@ object TezosTypes {
         nonce: Int,
         amount: PositiveBigNumber,
         destination: ContractId,
-        parameters: Option[ParametersCompatibility],
+        parameters: Option[Micheline],
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
