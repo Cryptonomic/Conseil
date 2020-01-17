@@ -330,11 +330,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }.unzip
 
       for {
-        votingData <- processVotesForBlocks(results.map { case (block, _) => block })
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
+        votingData <- processVotesForBlocks(results.map { case (block, _) => block })
         rollsData = votingData.map {
           case (block, rolls) => block.data.hash -> rolls
-        }.toMap
+        }
         delegateCheckpoints <- processAccountsForBlocks(accountUpdates, rollsData) // should this fail, we still recover data from the checkpoint
         _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
       } yield results.size
@@ -437,7 +437,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
    */
   private[this] def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]],
-      votingData: Map[BlockHash, List[Voting.BakerRolls]]
+      votingData: List[(BlockHash, List[Voting.BakerRolls])]
   )(implicit mat: ActorMaterializer): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
     logger.info("Processing latest Tezos data for updated accounts...")
 
@@ -456,7 +456,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     val toBeFetched = keepMostRecent(sorted)
 
-    AccountsProcessor.process(toBeFetched, votingData)
+    AccountsProcessor.process(toBeFetched, votingData.toMap)
   }
 
   /** Fetches and stores all accounts from the latest blocks still in the checkpoint */
@@ -615,10 +615,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       def updateAccountPages(pages: LazyPages[tezosNodeOperator.AccountFetchingResults]) = pages.map { pageFut =>
         pageFut.map { accounts =>
           accounts.map { taggedAccounts =>
-            votingData.find {
-              case (blockHash, _) => blockHash == taggedAccounts.blockHash
-            }.map {
-              case (_, rolls) =>
+            votingData
+              .get(taggedAccounts.blockHash)
+              .map { rolls =>
                 val affectedAccounts = rolls.map(_.pkh.value)
                 val accUp = taggedAccounts.content.map {
                   case (accId, acc) if affectedAccounts.contains(accId.id) =>
@@ -626,7 +625,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
                   case x => x
                 }
                 taggedAccounts.copy(content = accUp)
-            }.getOrElse(taggedAccounts)
+              }
+              .getOrElse(taggedAccounts)
           }
         }
       }
