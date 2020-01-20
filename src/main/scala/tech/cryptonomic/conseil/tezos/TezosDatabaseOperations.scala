@@ -723,6 +723,14 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
+  def writeRegisteredTokensRowsIfEmpty(
+      rows: List[Tables.RegisteredTokensRow]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
+    Tables.RegisteredTokens.length.result.flatMap {
+      case len if len == 0 => Tables.RegisteredTokens ++= rows
+      case _ => DBIO.successful(Some(0))
+    }
+
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"
 

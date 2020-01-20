@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
+  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -21,7 +22,7 @@ import tech.cryptonomic.conseil.tezos.{
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
 import scala.concurrent.duration._
@@ -78,6 +79,29 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     batchingConf,
     apiOperations
   )
+
+  readCSV
+
+  def readCSV = {
+    import kantan.csv._
+    import kantan.csv.ops._
+    import kantan.csv.generic._
+    val rawData: java.net.URL = getClass.getResource("/" + tezosConf.network + ".csv")
+    val reader = rawData.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
+
+    def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
+      cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
+    val (errors, rows) = reader.toList.foldRight((List[kantan.csv.ReadError](), List[Tables.RegisteredTokensRow]()))(
+      (e, p) => e.fold(l => (l :: p._1, p._2), r => (p._1, r :: p._2))
+    )
+
+    errors.foreach(err => logger.error(s"Error while getting following row from file ${err.getMessage}"))
+
+    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)).map {
+      case Some(value) => logger.info(s"Written $value registered token rows")
+      case None => logger.info("Registered token rows table was not empty. Did not write anything.")
+    }
+  }
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(

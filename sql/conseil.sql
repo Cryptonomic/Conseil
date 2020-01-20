@@ -53,6 +53,18 @@ CREATE TABLE tezos.processed_chain_events (
 );
 
 --
+-- Name: registered_tokens; Type: TABLE; Schema: tezos; Owner: -
+--
+
+CREATE TABLE tezos.registered_tokens (
+    id integer PRIMARY KEY,
+    name text NOT NULL,
+    standard text NOT NULL,
+    account_id text NOT NULL
+);
+
+
+--
 -- Name: accounts; Type: TABLE; Schema: tezos; Owner: -
 --
 
