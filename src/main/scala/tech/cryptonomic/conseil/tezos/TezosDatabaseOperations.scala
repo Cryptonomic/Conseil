@@ -22,6 +22,8 @@ import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import slick.jdbc.JdbcCapabilities
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
+
 import scala.collection.immutable.Queue
 
 /**
@@ -610,6 +612,18 @@ object TezosDatabaseOperations extends LazyLogging {
       .map(_.isBaker)
       .update(true)
   }
+
+  def getBakersForBlocks(
+      hashes: List[BlockHash]
+  )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
+    DBIO.sequence {
+      hashes.map { hash =>
+        Tables.Rolls
+          .filter(_.pkh === hash.value)
+          .result
+          .map(rolls => hash -> rolls.map(roll => BakerRolls(PublicKeyHash(roll.pkh), roll.rolls)).toList)
+      }
+    }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
