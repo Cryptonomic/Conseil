@@ -80,9 +80,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  readCSV
+  /** Inits registered tokens at startup */
+  initRegisteredTokensFromCsv()
 
-  def readCSV = {
+  /** Reads and inserts CSV file to the database for the */
+  def initRegisteredTokensFromCsv(): Future[Unit] = {
     import kantan.csv._
     import kantan.csv.ops._
     import kantan.csv.generic._
@@ -91,14 +93,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
       cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
-    val (errors, rows) = reader.toList.foldRight((List[kantan.csv.ReadError](), List[Tables.RegisteredTokensRow]()))(
-      (e, p) => e.fold(l => (l :: p._1, p._2), r => (p._1, r :: p._2))
+
+    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
+      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, r :: pair._2))
     )
 
-    errors.foreach(err => logger.error(s"Error while getting following row from file ${err.getMessage}"))
+    errors.foreach(err => logger.error(s"Error while reading registered tokens file: ${err.getMessage}"))
 
-    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)).map {
-      case Some(value) => logger.info(s"Written $value registered token rows")
+    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows.map(trimFields))).map {
+      case Some(_) => logger.info(s"Written ${rows.size} registered token rows")
       case None => logger.info("Registered token rows table was not empty. Did not write anything.")
     }
   }
