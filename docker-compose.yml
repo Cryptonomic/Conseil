@@ -1,15 +1,80 @@
 version: "3.1"
 
 services:
+  conseil:
+    image: cryptonomictech/conseil:0.2002.0020-SNAPSHOT
+    ports:
+      - 80:80
+    environment:
+#  List of supported environment variables with default values:
+#  DB_Host: db
+#  DB_User: user
+#  DB_Password: password
+#  DB_Database: conseil
+#  DB_Port: 5432
+#  XTZ_Scheme: http
+#  XTZ_Host: node
+#  XTZ_Prefix:
+#  XTZ_Port: 8732
+#  XTZ_Network: mainnet
+#  API_PORT: 80
+#  API_KEY: conseil
+      DB_Host: conseil-postgres
+      DB_User: conseiluser
+      DB_Password: p@ssw0rd
+      DB_Database: conseil-local
+      DB_Port: 5432
+      XTZ_Scheme: https
+      XTZ_Host: tezos-staging.cryptonomic-infra.tech
+      XTZ_Port: 443
+      XTZ_Network: mainnet
+    entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil"]
+    volumes:
+      - "conseil-sql:/root/sql/"
+    networks:
+      - conseil-net
+
+  lorre:
+    image: cryptonomictech/conseil:0.2002.0020-SNAPSHOT
+    environment:
+      DB_Host: conseil-postgres
+      DB_User: conseiluser
+      DB_Password: p@ssw0rd
+      DB_Database: conseil-local
+      DB_Port: 5432
+      XTZ_Scheme: https
+      XTZ_Host: tezos-staging.cryptonomic-infra.tech
+      XTZ_Port: 443
+      XTZ_Network: mainnet
+    command: lorre
+    depends_on:
+      - conseil-postgres
+    networks:
+      - conseil-net
+
   conseil-postgres:
     image: postgres:11.6
     ports:
-    - 5432:5432
+      - 5432:5432
     environment:
       POSTGRES_USER: "conseiluser"
       POSTGRES_PASSWORD: "p@ssw0rd"
       POSTGRES_DB: "conseil-local"
       POSTGRES_INITDB_ARGS: "--lc-collate=en_US.UTF-8 -E UTF8"
     volumes:
-    - "./pgdata:/var/lib/postgresql/data"
-    - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
+#     uncomment if you want your data to be stored in the local directory
+#      - "./pgdata:/var/lib/postgresql/data"
+      - "conseil-sql:/docker-entrypoint-initdb.d/"
+#     use one below if you want sql file modified by yourself
+#      - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
+    depends_on:
+      - conseil
+    networks:
+      - conseil-net
+
+volumes:
+  conseil-sql:
+
+networks:
+  conseil-net:
+    driver: bridge
