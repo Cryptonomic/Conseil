@@ -342,10 +342,11 @@ CREATE TABLE tezos.big_maps (
 );
 
 CREATE TABLE tezos.big_map_contents (
-    big_map_id numeric PRIMARY KEY,
+    big_map_id numeric NOT NULL,
     key character varying,
     key_hash character varying,
-    value character varying
+    value character varying,
+    PRIMARY KEY (big_map_id, key)
 );
 
 ALTER TABLE ONLY tezos.big_map_contents

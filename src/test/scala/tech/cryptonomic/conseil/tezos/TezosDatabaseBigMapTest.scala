@@ -104,7 +104,7 @@ class TezosDatabaseBigMapTest
         contents(0) should matchTo(
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
-            key = Some("0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 20 {}")
           )
@@ -139,7 +139,7 @@ class TezosDatabaseBigMapTest
         val initialBigMapContent =
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
-            key = Some("0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 20 {}")
           )
@@ -212,7 +212,7 @@ class TezosDatabaseBigMapTest
         contents(0) should matchTo(
           BigMapContentsRow(
             bigMapId = BigDecimal(2),
-            key = Some("0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
             value = Some("Pair 20 {}")
           )

@@ -620,7 +620,7 @@ object DatabaseConversions extends LazyLogging {
           Some(
             Tables.BigMapContentsRow(
               bigMapId = id,
-              key = Some(toMichelsonScript[MichelsonInstruction](key.expression)), //we're using instructions to represent data values
+              key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
               keyHash = Some(keyHash.value),
               value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)) //we're using instructions to represent data values
             )
