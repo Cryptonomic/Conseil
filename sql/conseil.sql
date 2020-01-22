@@ -301,6 +301,7 @@ CREATE TABLE tezos.operations (
     ballot character varying,
     internal boolean NOT NULL,
     period integer,
+    ballot_period integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
