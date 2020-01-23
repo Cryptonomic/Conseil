@@ -278,3 +278,28 @@ If you're a contributor and need to publish the artifacts on sonatype, you'll fi
 
 ## Contribution
 If you want to contribute please read [practices we follow](CONTRIBUTION.md) in terms of organizing workflow with git.
+
+## Technology Stack
+
+This are the main libraries used throughout the project:
+
+* [Cats](https://typelevel.org/cats)
+  * fundamental support for functional programming development, providing all the basic blocks
+* [Typelevel Cats-Effect](https://typelevel.org/cats-effect)
+  * functional handling of "effects" based on type classes and the included `IO` type
+* [Akka-Http](https://doc.akka.io/docs/akka-http/current)
+  * used to provide client and server implementations for connecting to blockchain Rest APIs and to expose Conseil's own API
+* [Fs2 (functional streaming for scala)](https://fs2.io)
+  * used to collect concurrently multiple data elements and progressively process them inside
+* [Circe](https://circe.github.io/circe) and [Jackson](https://github.com/FasterXML/jackson-module-scala)
+  * we mostly employ Circe for the encoding/decoding of json, but some older parts still rely on Jackson
+* [Endpoints](http://julienrf.github.io/endpoints)
+  * used to describe our Rest Api and implement the OpenApi spec and Akka-http server from the same blueprint
+* [Lightbend Slick](https://scala-slick.org)
+  * we use this to define the database model, create and compose database queries, compose the asynchronous calls as needed
+* [Pureconfig](https://pureconfig.github.io)
+  * read configuration with early detection of expectations and type-safe modeling of the configured values
+* [Scopt](https://github.com/scopt/scopt)
+  * command line parsing of options/arguments
+* [Scalatest](http://www.scalatest.org) and [Scalamock](http://scalamock.org)
+  * unit testing and mock/stub/dummies

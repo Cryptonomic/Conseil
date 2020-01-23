@@ -172,7 +172,7 @@ object TezosTypes {
 
     sealed trait BigMapDiff extends Product with Serializable
 
-    final case class BigMapDiffUpdate(
+    final case class BigMapUpdate(
         action: String,
         key: Micheline,
         key_hash: ScriptId,
@@ -180,20 +180,20 @@ object TezosTypes {
         value: Option[Micheline]
     ) extends BigMapDiff
 
-    final case class BigMapDiffCopy(
+    final case class BigMapCopy(
         action: String,
         source_big_map: BigNumber,
         destination_big_map: BigNumber
     ) extends BigMapDiff
 
-    final case class BigMapDiffAlloc(
+    final case class BigMapAlloc(
         action: String,
         big_map: BigNumber,
         key_type: Micheline,
         value_type: Micheline
     ) extends BigMapDiff
 
-    final case class BigMapDiffRemove(
+    final case class BigMapRemove(
         action: String,
         big_map: BigNumber
     ) extends BigMapDiff
@@ -391,6 +391,7 @@ object TezosTypes {
 
     final case class Origination(
         status: String,
+        big_map_diff: Option[List[Contract.CompatBigMapDiff]],
         balance_updates: Option[List[OperationMetadata.BalanceUpdate]],
         consumed_gas: Option[BigNumber],
         originated_contracts: Option[List[ContractId]],
@@ -463,7 +464,8 @@ object TezosTypes {
       script: Option[Scripted.Contracts],
       counter: Option[Int],
       manager: Option[PublicKeyHash], // retro-compat from protocol 5+
-      spendable: Option[Boolean] // retro-compat from protocol 5+
+      spendable: Option[Boolean], // retro-compat from protocol 5+
+      isBaker: Option[Boolean]
   )
 
   /** Keeps track of association between some domain type and a block reference
