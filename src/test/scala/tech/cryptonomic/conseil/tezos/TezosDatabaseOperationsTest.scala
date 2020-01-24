@@ -43,6 +43,12 @@ class TezosDatabaseOperationsTest
       val sut = TezosDatabaseOperations
       val feesToConsider = 1000
 
+      "use the right collation" in {
+        val ordered =
+          dbHandler.run(sql"SELECT val FROM unnest(ARRAY['a', 'b', 'A', 'B']) val ORDER BY val".as[String]).futureValue
+        ordered should contain inOrderOnly ("a", "A", "b", "B")
+      }
+
       "write fees" in {
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -303,7 +309,7 @@ class TezosDatabaseOperationsTest
 
         val (stored, dbAccounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
-        stored shouldBe expectedCount
+        stored.value shouldBe expectedCount
 
         dbAccounts should have size expectedCount
 
@@ -367,7 +373,7 @@ class TezosDatabaseOperationsTest
         val (updates, dbAccounts) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
 
         //number of db changes
-        updates shouldBe accountChanges
+        updates.value shouldBe accountChanges
 
         //total number of rows on db (1 update and 1 insert expected)
         dbAccounts should have size accountChanges
@@ -534,7 +540,7 @@ class TezosDatabaseOperationsTest
 
         val (stored, dbDelegates) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
-        stored shouldBe expectedCount
+        stored.value shouldBe expectedCount
 
         dbDelegates should have size expectedCount
 
@@ -629,7 +635,7 @@ class TezosDatabaseOperationsTest
         val (updates, dbDelegates) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
 
         //number of db changes
-        updates shouldBe changes
+        updates.value shouldBe changes
 
         //total number of rows on db (1 update and 1 insert expected)
         dbDelegates should have size changes
@@ -2254,7 +2260,8 @@ class TezosDatabaseOperationsTest
 
         import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
         val columns = List(SimpleField("level"), SimpleField("proto"), SimpleField("protocol"), SimpleField("hash"))
-        val tableName = Tables.Blocks.baseTableRow.tableName
+        val tableSpace = "tezos"
+        val tableName = s"$tableSpace.${Tables.Blocks.baseTableRow.tableName}"
         val populateAndTest = for {
           _ <- Tables.Blocks ++= blocksTmp
           generatedQuery <- makeQuery(tableName, columns, List.empty).as[AnyMap]
