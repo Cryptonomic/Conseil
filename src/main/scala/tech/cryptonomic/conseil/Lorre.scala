@@ -1,8 +1,5 @@
 package tech.cryptonomic.conseil
 
-import java.sql.Timestamp
-import java.time.Instant
-
 import akka.actor.ActorSystem
 import akka.Done
 import akka.stream.scaladsl.{Sink, Source}
@@ -15,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
+  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -587,38 +585,46 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
       ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
         for {
-          res <- db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys)).map {
+          activatedOperations <- fetchActivatedOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
+          activatedAccounts <- db.run(TezosDb.findActivatedAccounts)
+          updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
+            taggedAccounts,
+            activatedOperations,
+            activatedAccounts.toList
+          )
+          res <- db.run(TezosDb.writeAccountsAndCheckpointDelegates(updatedTaggedAccounts, taggedDelegateKeys)).map {
             case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
               (accountWrites, delegateCheckpoints, taggedDelegateKeys)
           }
-          _ <- activateAccounts(taggedAccounts)
         } yield res
       }.andThen(logWriteFailure)
 
-      /** Activates accounts in Accounts and AccountsHistory tables */
-      def activateAccounts(taggedAccounts: List[BlockTagged[AccountsIndex]]): Future[Int] = {
+      def updateTaggedAccountsWithIsActivated(
+          taggedAccounts: List[BlockTagged[AccountsIndex]],
+          activatedOperations: Map[Int, Seq[Tables.OperationsRow]],
+          activatedAccountIds: List[String]
+      ): List[BlockTagged[Map[AccountId, Account]]] =
+        taggedAccounts.map { taggedAccount =>
+          val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toSeq.flatten.map(_.pkh)
+          taggedAccount.copy(
+            content = taggedAccount.content.mapValues { account =>
+              val hash = account.manager.map(_.value)
+              if (activatedAccountsHashes.contains(hash) || activatedAccountIds.contains(hash.getOrElse(""))) {
+                account.copy(isActivated = Some(true))
+              } else account
+            }
+          )
+        }
+
+      def fetchActivatedOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Tables.OperationsRow]]] = {
         import slick.jdbc.PostgresProfile.api._
         db.run {
-          for {
-            activateAccountOperations <- DBIO.sequence {
-              taggedAccounts.map(_.blockLevel).distinct.map { level =>
-                TezosDb.fetchRecentOperationsByKind(Set("activate_account"), level)
-              }
+          DBIO.sequence {
+            levels.map { level =>
+              TezosDb.fetchRecentOperationsByKind(Set("activate_account"), level).map(x => level -> x)
             }
-            activateAccountsResult <- DBIO.sequence {
-              val operations = activateAccountOperations.flatten
-              operations.map { operationsRow =>
-                TezosDb.activateAccount(operationsRow.pkh.getOrElse(""))
-              }
-            }
-            activatedAccounts <- TezosDb.findActivatedAccounts
-            activateAccountsInHistory <- TezosDb.activateAccountHistory(
-              activatedAccounts.toList,
-              Timestamp
-                .from(taggedAccounts.map(_.timestamp.getOrElse(Instant.ofEpochMilli(0))).min) //it should never be 0
-            )
-          } yield activateAccountsResult.sum + activateAccountsInHistory
-        }.andThen(logWriteFailure)
+          }.map(_.toMap)
+        }
       }
 
       def cleanup[T] = (_: T) => {

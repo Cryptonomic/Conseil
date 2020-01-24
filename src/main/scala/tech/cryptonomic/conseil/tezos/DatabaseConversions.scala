@@ -76,7 +76,7 @@ object DatabaseConversions extends LazyLogging {
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
         val BlockTagged(hash, level, timestamp, cycle, accounts) = from
         accounts.map {
-          case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker)) =>
+          case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker, isActivated)) =>
             Tables.AccountsRow(
               accountId = id.id,
               blockId = hash.value,
@@ -89,7 +89,8 @@ object DatabaseConversions extends LazyLogging {
               spendable = spendable,
               delegateSetable = toDelegateSetable(delegate),
               delegateValue = toDelegateValue(delegate),
-              isBaker = isBaker.getOrElse(false)
+              isBaker = isBaker.getOrElse(false),
+              isActivated = isActivated.getOrElse(false)
             )
         }.toList
       }
