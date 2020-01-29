@@ -278,6 +278,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
             Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
             Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "delegates"),
             Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
             Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
             Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")

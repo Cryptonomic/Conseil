@@ -196,6 +196,7 @@ CREATE TABLE tezos.delegates (
     frozen_balance numeric,
     staking_balance numeric,
     delegated_balance numeric,
+    rolls integer DEFAULT 0 NOT NULL,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
     block_level integer DEFAULT '-1'::integer NOT NULL

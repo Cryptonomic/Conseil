@@ -916,6 +916,7 @@ trait Tables {
     *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
     *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
     *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
+    *  @param rolls Database column rolls SqlType(int4), Default(0)
     *  @param deactivated Database column deactivated SqlType(bool)
     *  @param gracePeriod Database column grace_period SqlType(int4)
     *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
@@ -926,6 +927,7 @@ trait Tables {
       frozenBalance: Option[scala.math.BigDecimal] = None,
       stakingBalance: Option[scala.math.BigDecimal] = None,
       delegatedBalance: Option[scala.math.BigDecimal] = None,
+      rolls: Int = 0,
       deactivated: Boolean,
       gracePeriod: Int,
       blockLevel: Int = -1
@@ -935,8 +937,8 @@ trait Tables {
   implicit def GetResultDelegatesRow(
       implicit e0: GR[String],
       e1: GR[Option[scala.math.BigDecimal]],
-      e2: GR[Boolean],
-      e3: GR[Int]
+      e2: GR[Int],
+      e3: GR[Boolean]
   ): GR[DelegatesRow] = GR { prs =>
     import prs._
     DelegatesRow.tupled(
@@ -947,6 +949,7 @@ trait Tables {
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
+        <<[Int],
         <<[Boolean],
         <<[Int],
         <<[Int]
@@ -957,7 +960,18 @@ trait Tables {
   /** Table description of table delegates. Objects of this class serve as prototypes for rows in queries. */
   class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, Some("tezos"), "delegates") {
     def * =
-      (pkh, blockId, balance, frozenBalance, stakingBalance, delegatedBalance, deactivated, gracePeriod, blockLevel) <> (DelegatesRow.tupled, DelegatesRow.unapply)
+      (
+        pkh,
+        blockId,
+        balance,
+        frozenBalance,
+        stakingBalance,
+        delegatedBalance,
+        rolls,
+        deactivated,
+        gracePeriod,
+        blockLevel
+      ) <> (DelegatesRow.tupled, DelegatesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -969,13 +983,15 @@ trait Tables {
           frozenBalance,
           stakingBalance,
           delegatedBalance,
+          Rep.Some(rolls),
           Rep.Some(deactivated),
           Rep.Some(gracePeriod),
           Rep.Some(blockLevel)
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => DelegatesRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get)))
+          import r._;
+          _1.map(_ => DelegatesRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1000,6 +1016,9 @@ trait Tables {
     /** Database column delegated_balance SqlType(numeric), Default(None) */
     val delegatedBalance: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("delegated_balance", O.Default(None))
+
+    /** Database column rolls SqlType(int4), Default(0) */
+    val rolls: Rep[Int] = column[Int]("rolls", O.Default(0))
 
     /** Database column deactivated SqlType(bool) */
     val deactivated: Rep[Boolean] = column[Boolean]("deactivated")

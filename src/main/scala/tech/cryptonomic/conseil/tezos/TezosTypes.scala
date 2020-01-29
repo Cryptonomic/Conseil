@@ -488,9 +488,12 @@ object TezosTypes {
       staking_balance: PositiveBigNumber,
       delegated_contracts: List[ContractId],
       delegated_balance: PositiveBigNumber,
+      rolls: Option[Int] = None,
       deactivated: Boolean,
       grace_period: Int
-  )
+  ) {
+    def updateRolls(rolls: Int): Delegate = this.copy(rolls = Some(rolls))
+  }
 
   final case class CycleBalance(
       cycle: Int,

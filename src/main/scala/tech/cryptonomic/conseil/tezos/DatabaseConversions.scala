@@ -813,6 +813,7 @@ object DatabaseConversions extends LazyLogging {
         frozenBalance = extractBigDecimal(delegate.frozen_balance),
         stakingBalance = extractBigDecimal(delegate.staking_balance),
         delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+        rolls = delegate.rolls.getOrElse(0),
         deactivated = delegate.deactivated,
         gracePeriod = delegate.grace_period,
         blockLevel = blockLevel

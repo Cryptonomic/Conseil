@@ -91,7 +91,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
               delegated_contracts = List(ContractId(accountPkh)),
               delegated_balance = PositiveDecimal(rnd.nextInt()),
               deactivated = false,
-              grace_period = rnd.nextInt()
+              grace_period = rnd.nextInt(),
+              rolls = None
             )
     }.toMap
 

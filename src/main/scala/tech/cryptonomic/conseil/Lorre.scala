@@ -693,10 +693,23 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def processDelegatesPage(
-          taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
-      ): Future[Option[Int]] =
-        db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates.toList))
+          taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]],
+          rolls: List[Voting.BakerRolls]
+      ): Future[Option[Int]] = {
+
+        val enrichedDelegates = taggedDelegates
+          .map(
+            blockTagged =>
+              blockTagged.copy(content = blockTagged.content.map {
+                case (key, delegate) =>
+                  val rollsSum = rolls.filter(_.pkh.value == key.value).map(_.rolls).sum
+                  (key, delegate.updateRolls(rollsSum))
+              })
+          )
+
+        db.run(TezosDb.writeDelegatesAndCopyContracts(enrichedDelegates.toList))
           .andThen(logWriteFailure)
+      }
 
       def cleanup[T] = (_: T) => {
         //can fail with no real downsides
@@ -734,7 +747,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .mapAsync(1)(identity) //extracts the future value as an element of the stream
           .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
           .grouped(batchingConf.blockPageSize) //re-arranges the process batching
-          .mapAsync(1)(processDelegatesPage)
+          .mapAsync(1)(taggedDelegates => {
+
+            val hashIds = taggedDelegates.toList.map(_.blockHash.value)
+            val rolls = tezosNodeOperator.getRolls(hashIds)
+
+            rolls.map((taggedDelegates, _))
+          })
+          .mapAsync(1) {
+            case (delegates, rolls) => processDelegatesPage(delegates, rolls)
+          }
           .runFold(Monoid[Option[Int]].empty) { (processed, justDone) =>
             processed |+| justDone
           } andThen logOutcome
