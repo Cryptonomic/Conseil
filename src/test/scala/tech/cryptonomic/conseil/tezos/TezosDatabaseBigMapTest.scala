@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.tezos
 
-import scala.concurrent.duration._
 import org.scalatest.Matchers
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.IntegrationPatience
@@ -118,6 +117,73 @@ class TezosDatabaseBigMapTest
             )
         )
 
+      }
+
+      "allow content diff updates for existing keys in a big map" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val initialBigMap = BigMapsRow(
+          bigMapId = BigDecimal(1),
+          keyType = Some("address"),
+          valueType = Some("nat")
+        )
+        val initialBigMapContent = BigMapContentsRow(
+          bigMapId = BigDecimal(1),
+          key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+          keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+          value = Some("Pair 20 {}")
+        )
+
+        val populate = for {
+          mapAdded <- Tables.BigMaps += initialBigMap
+          contentAdded <- Tables.BigMapContents += initialBigMapContent
+        } yield (mapAdded, contentAdded)
+
+        dbHandler.run(populate).futureValue shouldEqual ((1, 1))
+
+        val updateMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapUpdate {
+          case (_: Transaction) =>
+            Contract.BigMapUpdate(
+              action = "udpate",
+              big_map = Decimal(1),
+              key = Micheline("""{"bytes":"0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"}"""),
+              key_hash = ScriptId("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+              value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
+            )
+        }
+
+        val block = generateSingleBlock(1, testReferenceDateTime)
+        val sampleOperations = generateOperationGroup(block, generateOperations = true)
+        val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
+            contents = updateMap(sampleOperations.contents)
+          ) :: Nil
+
+        val blockToSave = block.copy(operationGroups = operationsWithDiffs)
+
+        //when
+        val writeAndGetRows = for {
+          _ <- sut.saveBigMaps(blockToSave :: Nil)
+          maps <- Tables.BigMaps.result
+          contents <- Tables.BigMapContents.result
+          accountMapLinks <- Tables.OriginatedAccountMaps.result
+        } yield (maps, contents, accountMapLinks)
+
+        val (maps, contents, accounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+        //then
+        maps.size shouldBe 1
+        contents.size shouldBe 1
+        accounts shouldBe 'empty
+
+        contents(0) should matchTo(
+          BigMapContentsRow(
+            bigMapId = BigDecimal(1),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 50 {}")
+          )
+        )
       }
 
       "copy and delete big map contents for diffs contained in a list of blocks" in {

@@ -182,10 +182,21 @@ object TezosDatabaseOperations extends LazyLogging {
       Tables.BigMaps ++= maps
     }
 
-    val saveContent = {
-      val content = blocks.flatMap(_.convertToA[List, BigMapContentsRow])
-      logger.info("{} big map content entries will be added.", content.size)
-      Tables.BigMapContents ++= content
+    val upsertContent = {
+      //only keep latest values from multiple blocks
+      val newContent = blocks
+        .sortBy(_.data.header.level)(Ordering[Int].reverse)
+        .foldLeft(Map.empty[(BigDecimal, String), BigMapContentsRow]) {
+          case (collected, block) =>
+            val seen = collected.keySet
+            val rows = blocks
+              .flatMap(_.convertToA[List, BigMapContentsRow])
+              .filterNot(row => seen((row.bigMapId, row.key)))
+            collected ++ rows.map(row => (row.bigMapId, row.key) -> row)
+        }
+        .values
+      logger.info("{} big map content entries will be added.", newContent.size)
+      Tables.BigMapContents.insertOrUpdateAll(newContent)
     }
 
     val saveContractOrigin = {
@@ -218,7 +229,7 @@ object TezosDatabaseOperations extends LazyLogging {
      * We might consider improving the situation by doing a pre-check that the altered sequencing of the operations
      * doesn't interfere with the "causality" of the chain events.
      */
-    DBIO.seq(saveMaps, saveContent, saveContractOrigin, copyContent, removeAnyNeeded)
+    DBIO.seq(saveMaps, upsertContent, saveContractOrigin, copyContent, removeAnyNeeded)
   }
 
   /**
