@@ -12,7 +12,6 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
-  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -586,7 +585,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
         for {
           activatedOperations <- fetchActivatedOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
-          activatedAccounts <- db.run(TezosDb.findActivatedAccounts)
+          activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
           updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
             taggedAccounts,
             activatedOperations,
@@ -601,11 +600,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       def updateTaggedAccountsWithIsActivated(
           taggedAccounts: List[BlockTagged[AccountsIndex]],
-          activatedOperations: Map[Int, Seq[Tables.OperationsRow]],
+          activatedOperations: Map[Int, Seq[Option[String]]],
           activatedAccountIds: List[String]
       ): List[BlockTagged[Map[AccountId, Account]]] =
         taggedAccounts.map { taggedAccount =>
-          val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toSeq.flatten.map(_.pkh)
+          val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toSeq.flatten
           taggedAccount.copy(
             content = taggedAccount.content.mapValues { account =>
               val hash = account.manager.map(_.value)
@@ -616,12 +615,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           )
         }
 
-      def fetchActivatedOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Tables.OperationsRow]]] = {
+      def fetchActivatedOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Option[String]]]] = {
         import slick.jdbc.PostgresProfile.api._
         db.run {
           DBIO.sequence {
             levels.map { level =>
-              TezosDb.fetchRecentOperationsByKind(Set("activate_account"), level).map(x => level -> x)
+              TezosDb.fetchRecentOperationsHashByKind(Set("activate_account"), level).map(x => level -> x)
             }
           }.map(_.toMap)
         }

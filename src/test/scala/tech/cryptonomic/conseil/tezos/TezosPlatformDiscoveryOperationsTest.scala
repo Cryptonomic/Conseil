@@ -134,7 +134,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
             Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts"),
-            Attribute("is_activated","Is activated",DataType.Boolean,None,KeyType.NonKey,"accounts")
+            Attribute("is_activated", "Is activated", DataType.Boolean, None, KeyType.NonKey, "accounts")
           )
         )
       }
@@ -368,7 +368,8 @@ class TezosPlatformDiscoveryOperationsTest
             script = None,
             manager = None,
             spendable = None,
-            isBaker = None
+            isBaker = None,
+            isActivated = None
           )
 
         val accounts = List(
