@@ -286,18 +286,6 @@ class TezosPlatformDiscoveryOperationsTest
         )
       }
 
-      "return list of attributes of rolls" in {
-
-        sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue.value.toSet should matchTo(
-          Set(
-            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
-            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
-            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
-          )
-        )
-      }
-
       "return list of attributes of big maps" in {
 
         sut.getTableAttributes(EntityPath("big_maps", networkPath)).futureValue.value.toSet should matchTo(

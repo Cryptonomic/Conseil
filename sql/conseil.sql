@@ -324,18 +324,6 @@ CREATE SEQUENCE tezos.operations_operation_id_seq
 
 ALTER SEQUENCE tezos.operations_operation_id_seq OWNED BY tezos.operations.operation_id;
 
-
---
--- Name: rolls; Type: TABLE; Schema: tezos; Owner: -
---
-
-CREATE TABLE tezos.rolls (
-    pkh character varying NOT NULL,
-    rolls integer NOT NULL,
-    block_id character varying NOT NULL,
-    block_level integer NOT NULL
-);
-
 CREATE TABLE tezos.big_maps (
     big_map_id numeric PRIMARY KEY,
     key_type character varying,
@@ -567,20 +555,6 @@ CREATE INDEX ix_operations_source ON tezos.operations USING btree (source);
 
 CREATE INDEX ix_operations_timestamp ON tezos.operations USING btree ("timestamp");
 
-
---
--- Name: ix_rolls_block_id; Type: INDEX; Schema: tezos; Owner: -
---
-
-CREATE INDEX ix_rolls_block_id ON tezos.rolls USING btree (block_id);
-
-
---
--- Name: ix_rolls_block_level; Type: INDEX; Schema: tezos; Owner: -
---
-
-CREATE INDEX ix_rolls_block_level ON tezos.rolls USING btree (block_level);
-
 CREATE INDEX ix_balance_updates_op_group_hash ON tezos.balance_updates USING btree (operation_group_hash);
 
 --
@@ -646,15 +620,6 @@ ALTER TABLE ONLY tezos.operations
 
 ALTER TABLE ONLY tezos.operations
     ADD CONSTRAINT fk_opgroups FOREIGN KEY (operation_group_hash, block_hash) REFERENCES tezos.operation_groups(hash, block_id);
-
-
---
--- Name: rolls rolls_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
---
-
-ALTER TABLE ONLY tezos.rolls
-    ADD CONSTRAINT rolls_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
-
 
 --
 -- PostgreSQL database dump complete

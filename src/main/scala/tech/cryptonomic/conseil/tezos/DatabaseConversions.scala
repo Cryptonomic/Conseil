@@ -821,23 +821,6 @@ object DatabaseConversions extends LazyLogging {
     }
   }
 
-  implicit val rollsToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.RollsRow] {
-    override def convert(from: (Block, List[Voting.BakerRolls])) = {
-      val (block, bakers) = from
-      val blockHash = block.data.hash.value
-      val blockLevel = block.data.header.level
-      bakers.map {
-        case Voting.BakerRolls(PublicKeyHash(hash), rolls) =>
-          Tables.RollsRow(
-            pkh = hash,
-            rolls = rolls,
-            blockId = blockHash,
-            blockLevel = blockLevel
-          )
-      }
-    }
-  }
-
   implicit val bakingRightsToRows =
     new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {
       override def convert(
