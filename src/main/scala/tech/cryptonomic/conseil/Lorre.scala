@@ -604,11 +604,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           activatedAccountIds: List[String]
       ): List[BlockTagged[Map[AccountId, Account]]] =
         taggedAccounts.map { taggedAccount =>
-          val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toSeq.flatten
+          val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toList.flatten
           taggedAccount.copy(
             content = taggedAccount.content.mapValues { account =>
               val hash = account.manager.map(_.value)
-              if (activatedAccountsHashes.contains(hash) || activatedAccountIds.contains(hash.getOrElse(""))) {
+              if ((activatedAccountsHashes ::: activatedAccountIds.map(Some(_))).contains(hash)) {
                 account.copy(isActivated = Some(true))
               } else account
             }
