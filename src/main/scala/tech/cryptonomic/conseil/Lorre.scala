@@ -580,15 +580,35 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def processAccountsPage(
-          taggedAccounts: List[BlockTagged[AccountsIndex]],
+          taggedAccounts: List[BlockTagged[Map[AccountId, Account]]],
           taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
-      ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] =
-        db.run(TezosDb.writeAccountsAndCheckpointDelegates(taggedAccounts, taggedDelegateKeys))
-          .map {
-            case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
-              (accountWrites, delegateCheckpoints, taggedDelegateKeys)
+      ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
+        // we fetch active delegates per block so we can filter out current active bakers
+        // at this point in time and put the information about it in the separate row
+        // (there is no operation like bakers deactivation)
+        val accountsWithHistoryFut = for {
+          activeBakers <- tezosNodeOperator.fetchActiveDelegates(taggedAccounts.map(x => (x.blockLevel, x.blockHash)))
+          accountsWithHistory <- Future.traverse(taggedAccounts) { blockTaggedAccounts =>
+            db.run {
+              TezosDb
+                .getInactiveBakersFromAccountsHistoryByBlock(
+                  blockTaggedAccounts.blockLevel,
+                  activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
+                )
+                .map(blockTaggedAccounts -> _)
+            }
           }
-          .andThen(logWriteFailure)
+        } yield accountsWithHistory
+
+        accountsWithHistoryFut.flatMap { accountsWithHistory =>
+          db.run(TezosDb.writeAccountsAndCheckpointDelegates(accountsWithHistory, taggedDelegateKeys))
+            .map {
+              case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
+                (accountWrites, delegateCheckpoints, taggedDelegateKeys)
+            }
+            .andThen(logWriteFailure)
+        }
+      }
 
       def cleanup[T] = (_: T) => {
         //can fail with no real downsides

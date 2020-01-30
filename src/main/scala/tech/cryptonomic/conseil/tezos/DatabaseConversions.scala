@@ -14,6 +14,7 @@ import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
 import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil.tezos.Tables.AccountsHistoryRow
 
 object DatabaseConversions extends LazyLogging {
 
@@ -96,15 +97,34 @@ object DatabaseConversions extends LazyLogging {
     }
 
   implicit val blockAccountsToAccountHistoryRows =
-    new Conversion[List, BlockTagged[Map[AccountId, Account]], Tables.AccountsHistoryRow] {
-      override def convert(from: BlockTagged[Map[AccountId, Account]]): List[Tables.AccountsHistoryRow] =
-        blockAccountsToAccountRows.convert(from).map {
-          _.into[Tables.AccountsHistoryRow]
-            .withFieldConst(_.asof, Timestamp.from(from.timestamp.getOrElse(Instant.ofEpochMilli(0))))
-            .withFieldConst(_.cycle, from.cycle)
-            .withFieldConst(_.isBakerDeactivated, None)
+    new Conversion[List, (BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow]), Tables.AccountsHistoryRow] {
+      override def convert(
+          from: (BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])
+      ): List[Tables.AccountsHistoryRow] = {
+        val (blockTaggedAccounts, accountsHistoryRows) = from
+        val touchedAccounts = blockAccountsToAccountRows.convert(blockTaggedAccounts).map { accountsRow =>
+          val isBakerDeactivated =
+            if (accountsHistoryRows.map(_.accountId).contains(accountsRow.accountId))
+              Some(true)
+            else if (accountsRow.isBaker)
+              Some(false)
+            else
+              None
+
+          accountsRow
+            .into[Tables.AccountsHistoryRow]
+            .withFieldConst(_.asof, Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0))))
+            .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
+            .withFieldConst(_.isBakerDeactivated, isBakerDeactivated)
             .transform
         }
+        val notTouchedAccounts =
+          accountsHistoryRows
+            .map(_.copy(isBakerDeactivated = Some(true)))
+            .filterNot(accountsHistoryRow => touchedAccounts.map(_.accountId).contains(accountsHistoryRow.accountId))
+
+        notTouchedAccounts ::: touchedAccounts
+      }
     }
 
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {

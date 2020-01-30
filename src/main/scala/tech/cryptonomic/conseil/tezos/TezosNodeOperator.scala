@@ -377,6 +377,15 @@ class TezosNodeOperator(
     (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
+  /** Fetches active delegates from node */
+  def fetchActiveDelegates(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+
+    fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashes.filterNot(_._1 == 0).map(_._2))
+  }
+
   //move it to the node operator
   def getDelegatesForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
     import TezosTypes.Syntax._

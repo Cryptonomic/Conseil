@@ -706,4 +706,42 @@ trait AccountsDataFetchers {
     }
   }
 
+  implicit val activeDelegateFetcher = new FutureFetcher {
+    type Encoded = String
+    type In = BlockHash
+    type Out = List[String]
+
+    private val makeUrl = (blockHash: BlockHash) => s"blocks/${blockHash.value}/context/delegates?active"
+
+    override val fetchData = Kleisli(
+      blockHashes => {
+        logger.info("Fetching active delegates")
+        node.runBatchedGetQuery(network, blockHashes, makeUrl, accountsFetchConcurrency).onError {
+          case err =>
+            logger
+              .error(
+                "I encountered problems while fetching active delegates data from {}, for pkhs {}. The error says {}",
+                network,
+                blockHashes.map(_.value).mkString(", "),
+                err.getMessage
+              )
+              .pure[Future]
+        }
+      }
+    )
+
+    override def decodeData = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched active delegates json from tezos node that I'm unable to decode: $json"
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
 }
