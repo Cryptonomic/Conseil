@@ -284,6 +284,7 @@ CREATE TABLE tezos.operations (
     amount numeric,
     destination character varying,
     parameters character varying,
+    parameters_entrypoint character varying,
     manager_pubkey character varying,
     balance numeric,
     proposal character varying,

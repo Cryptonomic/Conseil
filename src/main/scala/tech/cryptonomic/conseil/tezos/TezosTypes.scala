@@ -252,8 +252,8 @@ object TezosTypes {
   ) extends Operation
 
   final case class Parameters(
-      entrypoint: String,
-      value: Micheline
+      value: Micheline,
+      entrypoint: Option[String] = None
   )
 
   final case class Origination(
