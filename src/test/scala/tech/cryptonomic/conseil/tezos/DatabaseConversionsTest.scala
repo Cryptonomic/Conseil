@@ -338,6 +338,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.errors ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -382,6 +383,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.errors ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -426,6 +428,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.errors ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -444,6 +447,8 @@ class DatabaseConversionsTest
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "reveal"
         converted.source.value shouldBe sampleReveal.source.value
+        converted.status.value shouldBe "applied"
+        converted.errors.value shouldBe "[error1,error2]"
         sampleReveal.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -503,6 +508,8 @@ class DatabaseConversionsTest
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "transaction"
         converted.source.value shouldBe sampleTransaction.source.value
+        converted.status.value shouldBe "applied"
+        converted.errors.value shouldBe "[error1,error2]"
         sampleTransaction.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -572,6 +579,8 @@ class DatabaseConversionsTest
         converted.kind shouldBe "origination"
         converted.delegate shouldBe sampleOrigination.delegate.map(_.value)
         converted.source.value shouldBe sampleOrigination.source.value
+        converted.status.value shouldBe "applied"
+        converted.errors.value shouldBe "[error1,error2]"
         sampleOrigination.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -641,6 +650,8 @@ class DatabaseConversionsTest
         converted.kind shouldBe "delegation"
         converted.delegate shouldBe sampleDelegation.delegate.map(_.value)
         converted.source.value shouldBe sampleDelegation.source.value
+        converted.status.value shouldBe "applied"
+        converted.errors.value shouldBe "[error1,error2]"
         sampleDelegation.fee match {
           case PositiveDecimal(bignumber) => converted.fee.value shouldBe bignumber
           case _ => converted.fee shouldBe 'empty
@@ -725,6 +736,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.status ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -769,6 +781,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.status ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -815,6 +828,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.status ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -862,6 +876,7 @@ class DatabaseConversionsTest
               converted.storageSize ::
               converted.paidStorageSizeDiff ::
               converted.originatedContracts ::
+              converted.status ::
               Nil
         ) {
           _ shouldBe 'empty

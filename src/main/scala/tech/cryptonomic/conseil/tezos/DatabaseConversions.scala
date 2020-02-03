@@ -5,6 +5,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
+import cats.implicits._
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -39,6 +40,27 @@ object DatabaseConversions extends LazyLogging {
   def extractBigDecimal(number: BigNumber): Option[BigDecimal] = number match {
     case Decimal(value) => Some(value)
     case _ => None
+  }
+
+  private def extractResultErrorIds(errors: Option[List[OperationResult.Error]]) = {
+    def extractId(error: OperationResult.Error): Option[String] = {
+      import io.circe.JsonObject
+
+      //we expect this to work as long as the error was previously built from json parsing
+      //refer to the JsonDecoders
+      for {
+        obj <- io.circe.parser
+          .decode[JsonObject](error.json)
+          .toOption
+        id <- obj("id")
+        idString <- id.asString
+      } yield idString
+    }
+
+    for {
+      es <- errors
+      ids <- es.traverse(extractId)
+    } yield concatenateToString(ids)
   }
 
   //Note, cycle 0 starts at the level 2 block
@@ -242,7 +264,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
 
@@ -278,7 +301,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
 
@@ -326,7 +350,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
 
@@ -348,7 +373,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
 
