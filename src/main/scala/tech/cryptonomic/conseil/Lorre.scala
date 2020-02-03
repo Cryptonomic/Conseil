@@ -588,7 +588,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         // (there is no operation like bakers deactivation)
         val accountsWithHistoryFut = for {
           activeBakers <- tezosNodeOperator.fetchActiveDelegates(taggedAccounts.map(x => (x.blockLevel, x.blockHash)))
-          accountsWithHistory <- Future.traverse(taggedAccounts) { blockTaggedAccounts =>
+          activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
+          activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
+          updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
+            taggedAccounts,
+            activatedOperations,
+            activatedAccounts.toList
+          )
+          accountsWithHistory <- Future.traverse(updatedTaggedAccounts) { blockTaggedAccounts =>
             db.run {
               TezosDb
                 .getInactiveBakersFromAccountsHistoryByBlock(
@@ -609,21 +616,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             .andThen(logWriteFailure)
         }
       }
-      ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
-        for {
-          activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
-          activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
-          updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
-            taggedAccounts,
-            activatedOperations,
-            activatedAccounts.toList
-          )
-          res <- db.run(TezosDb.writeAccountsAndCheckpointDelegates(updatedTaggedAccounts, taggedDelegateKeys)).map {
-            case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
-              (accountWrites, delegateCheckpoints, taggedDelegateKeys)
-          }
-        } yield res
-      }.andThen(logWriteFailure)
 
       def updateTaggedAccountsWithIsActivated(
           taggedAccounts: List[BlockTagged[AccountsIndex]],

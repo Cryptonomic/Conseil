@@ -330,7 +330,6 @@ trait Tables {
   class AccountsHistory(_tableTag: Tag)
       extends profile.api.Table[AccountsHistoryRow](_tableTag, Some("tezos"), "accounts_history") {
     def * =
-      (accountId, blockId, counter, storage, balance, blockLevel, delegateValue, asof, isBaker, cycle, isActivated) <> (AccountsHistoryRow.tupled, AccountsHistoryRow.unapply)
       (
         accountId,
         blockId,
@@ -367,7 +366,8 @@ trait Tables {
         { r =>
           import r._;
           _1.map(
-            _ => AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12))
+            _ =>
+              AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
