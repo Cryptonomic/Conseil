@@ -53,6 +53,13 @@ env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt -J-Xss32m "runConseil"
 env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt -J-Xss32m "runLorre alphanet"
 ```
 
+### Building from docker-compose
+
+To avoid pulling whole repository you can just download `docker-compose.yml` from it. 
+It starts Conseil, Lorre and PostgreSQL with predefined configuration and DB schema.
+Whole stack can be started with the simple `docker-compose up`.
+ 
+
 ### Logging
 
 Both `conseil` and `lorre` write to `syslog`. The logs are verbose enough to determine the point of synchronization between the database, the blockchain, and the status of lorre/conseil.  If any issues arise, please check the log to see whether the services are running and whether the chain and db are synced as this would be the starting point of all troubleshooting inquiries.

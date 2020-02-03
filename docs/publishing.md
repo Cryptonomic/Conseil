@@ -87,6 +87,17 @@ The `gitTag` task would read the current version to tag and commit the next rele
 
 **Important**: the same user should `git push origin --tags` to finally complete the process, after ensuring that the generated tag matches the expectations.
 
+
+## Releasing Docker Image
+To release official version of Conseil you need to be added to the `cryptonomictech` organization on DockerHub.
+
+There is `docker-publish.sh` script which does all the necessary steps to publish image. 
+Release tag is generated based on the information `BuildInfo.scala`.
+
+It can be used also to publish image locally with `./docker-publish.sh local`.
+
+
+
 ---
 ## Additional references
 You can find detailed information here:

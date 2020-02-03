@@ -297,6 +297,43 @@ class TezosPlatformDiscoveryOperationsTest
         )
       }
 
+      "return list of attributes of big maps" in {
+
+        sut.getTableAttributes(EntityPath("big_maps", networkPath)).futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "big_maps"),
+            Attribute("key_type", "Key type", DataType.String, None, KeyType.NonKey, "big_maps"),
+            Attribute("value_type", "Value type", DataType.String, None, KeyType.NonKey, "big_maps")
+          )
+        )
+      }
+
+      "return list of attributes of big map contents" in {
+
+        sut.getTableAttributes(EntityPath("big_map_contents", networkPath)).futureValue.value.toSet should matchTo(
+          Set(
+            Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "big_map_contents"),
+            Attribute("key", "Key", DataType.String, None, KeyType.UniqueKey, "big_map_contents"),
+            Attribute("key_hash", "Key hash", DataType.String, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents")
+          )
+        )
+      }
+
+      "return list of attributes of originated account maps" in {
+
+        sut
+          .getTableAttributes(EntityPath("originated_account_maps", networkPath))
+          .futureValue
+          .value
+          .toSet should matchTo(
+          Set(
+            Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "originated_account_maps"),
+            Attribute("account_id", "Account id", DataType.String, None, KeyType.UniqueKey, "originated_account_maps")
+          )
+        )
+      }
+
       "return empty list for non existing table" in {
         sut.getTableAttributes(EntityPath("nonExisting", networkPath)).futureValue shouldBe None
       }
@@ -323,7 +360,15 @@ class TezosPlatformDiscoveryOperationsTest
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
         val account =
-          Account(balance = 12.34, counter = Some(1), delegate = None, script = None, manager = None, spendable = None)
+          Account(
+            balance = 12.34,
+            counter = Some(1),
+            delegate = None,
+            script = None,
+            manager = None,
+            spendable = None,
+            isBaker = None
+          )
 
         val accounts = List(
           BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-1") -> account.copy())),
