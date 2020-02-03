@@ -666,6 +666,32 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
+  /** Finds activated accounts - useful when updating accounts history
+    * @return sequence of activated account ids
+    */
+  def findActivatedAccountIds: DBIO[Seq[String]] =
+    Tables.Accounts
+      .filter(_.isActivated)
+      .map(_.accountId)
+      .result
+
+  /** Load all operations referenced from a block level and higher, that are of a specific kind.
+    * @param ofKind a set of kinds to filter operations, if empty there will be no result
+    * @param fromLevel the lowest block-level to start from, zero by default
+    * @return the matching operations pkh, sorted by ascending block-level
+    */
+  def fetchRecentOperationsHashByKind(
+      ofKind: Set[String],
+      fromLevel: Int = 0
+  ): DBIO[Seq[Option[String]]] =
+    Tables.Operations
+      .filter(
+        row => (row.kind inSet ofKind) && (row.blockLevel >= fromLevel)
+      )
+      .sortBy(_.blockLevel.asc)
+      .map(_.pkh)
+      .result
+
   /**
     * Reads in all operations referring to the group
     * @param groupHash is the group identifier
