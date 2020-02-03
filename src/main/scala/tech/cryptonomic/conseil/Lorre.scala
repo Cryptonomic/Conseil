@@ -609,6 +609,49 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             .andThen(logWriteFailure)
         }
       }
+      ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
+        for {
+          activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
+          activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
+          updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
+            taggedAccounts,
+            activatedOperations,
+            activatedAccounts.toList
+          )
+          res <- db.run(TezosDb.writeAccountsAndCheckpointDelegates(updatedTaggedAccounts, taggedDelegateKeys)).map {
+            case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
+              (accountWrites, delegateCheckpoints, taggedDelegateKeys)
+          }
+        } yield res
+      }.andThen(logWriteFailure)
+
+      def updateTaggedAccountsWithIsActivated(
+          taggedAccounts: List[BlockTagged[AccountsIndex]],
+          activatedOperations: Map[Int, Seq[Option[String]]],
+          activatedAccountIds: List[String]
+      ): List[BlockTagged[Map[AccountId, Account]]] =
+        taggedAccounts.map { taggedAccount =>
+          val activatedAccountsHashes = activatedOperations.get(taggedAccount.blockLevel).toList.flatten
+          taggedAccount.copy(
+            content = taggedAccount.content.mapValues { account =>
+              val hash = account.manager.map(_.value)
+              if ((activatedAccountsHashes ::: activatedAccountIds.map(Some(_))).contains(hash)) {
+                account.copy(isActivated = Some(true))
+              } else account
+            }
+          )
+        }
+
+      def fetchActivationOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Option[String]]]] = {
+        import slick.jdbc.PostgresProfile.api._
+        db.run {
+          DBIO.sequence {
+            levels.map { level =>
+              TezosDb.fetchRecentOperationsHashByKind(Set("activate_account"), level).map(x => level -> x)
+            }
+          }.map(_.toMap)
+        }
+      }
 
       def cleanup[T] = (_: T) => {
         //can fail with no real downsides

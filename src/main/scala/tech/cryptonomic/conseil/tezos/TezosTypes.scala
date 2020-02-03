@@ -465,7 +465,8 @@ object TezosTypes {
       counter: Option[Int],
       manager: Option[PublicKeyHash], // retro-compat from protocol 5+
       spendable: Option[Boolean], // retro-compat from protocol 5+
-      isBaker: Option[Boolean]
+      isBaker: Option[Boolean],
+      isActivated: Option[Boolean]
   )
 
   /** Keeps track of association between some domain type and a block reference
