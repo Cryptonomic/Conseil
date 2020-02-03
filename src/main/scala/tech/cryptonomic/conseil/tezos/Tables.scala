@@ -1532,8 +1532,9 @@ trait Tables {
               r(35).asInstanceOf[Option[String]],
               r(36).asInstanceOf[Option[Boolean]].get,
               r(37).asInstanceOf[Option[Int]],
-              r(38).asInstanceOf[Option[java.sql.Timestamp]].get,
-              r(39).asInstanceOf[Option[String]]
+              r(38).asInstanceOf[Option[Int]],
+              r(39).asInstanceOf[Option[java.sql.Timestamp]].get,
+              r(40).asInstanceOf[Option[String]]
             ),
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
