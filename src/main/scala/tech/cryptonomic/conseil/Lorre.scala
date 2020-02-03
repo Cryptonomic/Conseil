@@ -584,7 +584,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
       ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
         for {
-          activatedOperations <- fetchActivatedOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
+          activatedOperations <- fetchActivationOperationsByLevel(taggedAccounts.map(_.blockLevel).distinct)
           activatedAccounts <- db.run(TezosDb.findActivatedAccountIds)
           updatedTaggedAccounts = updateTaggedAccountsWithIsActivated(
             taggedAccounts,
@@ -615,7 +615,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           )
         }
 
-      def fetchActivatedOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Option[String]]]] = {
+      def fetchActivationOperationsByLevel(levels: List[Int]): Future[Map[Int, Seq[Option[String]]]] = {
         import slick.jdbc.PostgresProfile.api._
         db.run {
           DBIO.sequence {

@@ -666,17 +666,6 @@ object TezosDatabaseOperations extends LazyLogging {
     }
   }
 
-  /** Updates an account by id, marking it with a flag.
-    * @param id the account identifier on database (corresponds to the pkh)
-    * @return the action to run against the db, which will tell how many rows where touched
-    */
-  def activateAccount(id: String): DBIO[Int] =
-    Tables.Accounts
-      .findBy(_.accountId)
-      .extract(id)
-      .map(_.isActivated)
-      .update(true)
-
   /** Finds activated accounts - useful when updating accounts history
     * @return sequence of activated account ids
     */

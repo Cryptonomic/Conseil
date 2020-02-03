@@ -488,6 +488,11 @@ CREATE INDEX fki_fk_blockhashes ON tezos.operations USING btree (block_hash);
 
 CREATE INDEX ix_accounts_block_level ON tezos.accounts USING btree (block_level);
 
+--
+-- Name: ix_accounts_is_activated; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX ix_accounts_is_activated ON tezos.accounts USING btree (is_activated);
 
 --
 -- Name: ix_accounts_checkpoint_account_id; Type: INDEX; Schema: tezos; Owner: -
