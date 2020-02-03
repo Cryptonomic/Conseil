@@ -250,8 +250,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("ballot_period", "Ballot period", DataType.Int, None, KeyType.NonKey, "operations")
-
+            Attribute("ballot_period", "Ballot period", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("errors", "Errors", DataType.String, None, KeyType.NonKey, "operations")
           )
         )
       }
