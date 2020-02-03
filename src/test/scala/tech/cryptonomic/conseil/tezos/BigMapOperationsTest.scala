@@ -22,7 +22,7 @@ import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.tezos.Tables.OriginatedAccountMapsRow
 
-class TezosDatabaseBigMapTest
+class BigMapOperationsTest
     extends WordSpec
     with TezosDataGeneration
     with InMemoryDatabase
@@ -31,15 +31,15 @@ class TezosDatabaseBigMapTest
     with LazyLogging
     with IntegrationPatience {
 
-  "The database api" should {
+  "The big-maps operations" should {
       //simplify signatures
       type ListTransf[A] = List[A] => List[A]
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      val sut = TezosDatabaseOperations
+      val sut = BigMapsOperations(TezosDatabaseOperations.CustomPostgresProfile)
 
-      "save big map diffs allocations and updates contained in a list of blocks" in {
+      "save big map diffs allocations contained in a list of blocks" in {
         //given
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -54,6 +54,36 @@ class TezosDatabaseBigMapTest
             )
         }
 
+        val block = generateSingleBlock(1, testReferenceDateTime)
+        val sampleOperations = generateOperationGroup(block, generateOperations = true)
+        val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
+            contents = allocateMap(sampleOperations.contents)
+          ) :: Nil
+
+        val blockToSave = block.copy(operationGroups = operationsWithDiffs)
+
+        //when
+        val writeAndGetRows = sut.saveMaps(blockToSave :: Nil) andThen Tables.BigMaps.result
+
+        val maps = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+        //then
+        maps.size shouldBe 1
+
+        maps(0) should matchTo(
+          BigMapsRow(
+            bigMapId = BigDecimal(1),
+            keyType = Some("address"),
+            valueType = Some("nat")
+          )
+        )
+      }
+
+      "save big map diffs updates contained in a list of blocks" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        //use combinators defined in the fixtures to update big_map_diff values within lists of operations
         val updateMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapUpdate {
           case (_: Transaction) =>
             Contract.BigMapUpdate(
@@ -65,41 +95,33 @@ class TezosDatabaseBigMapTest
             )
         }
 
+        //we need this to be referred as a FK from the content record
+        val initialBigMap = BigMapsRow(
+          bigMapId = BigDecimal(1),
+          keyType = Some("address"),
+          valueType = Some("nat")
+        )
+
         val block = generateSingleBlock(1, testReferenceDateTime)
         val sampleOperations = generateOperationGroup(block, generateOperations = true)
         val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
-            contents = (allocateMap andThen updateMap)(sampleOperations.contents)
+            contents = updateMap(sampleOperations.contents)
           ) :: Nil
 
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
         val writeAndGetRows = for {
-          _ <- sut.saveBigMaps(blockToSave :: Nil)
-          maps <- Tables.BigMaps.result
+          _ <- Tables.BigMaps += initialBigMap
+          _ <- sut.upsertContent(blockToSave :: Nil)
           contents <- Tables.BigMapContents.result
-          accountMapLinks <- Tables.OriginatedAccountMaps.result
-        } yield (maps, contents, accountMapLinks)
+        } yield contents
 
-        val (maps, contents, accounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
-
-        //the origination used for the generated sample is used to create the test big map
-        val sampleAccountIds =
-          Operations.sampleOrigination.metadata.operation_result.originated_contracts
-            .fold(List.empty[String])(_.map(_.id))
+        val contents = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
         //then
-        maps.size shouldBe 1
         contents.size shouldBe 1
-        accounts.size shouldEqual sampleAccountIds.size
 
-        maps(0) should matchTo(
-          BigMapsRow(
-            bigMapId = BigDecimal(1),
-            keyType = Some("address"),
-            valueType = Some("nat")
-          )
-        )
         contents(0) should matchTo(
           BigMapContentsRow(
             bigMapId = BigDecimal(1),
@@ -108,6 +130,44 @@ class TezosDatabaseBigMapTest
             value = Some("Pair 20 {}")
           )
         )
+
+      }
+
+      "save big map diffs references to originated accounts in a list of blocks" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        //use combinators defined in the fixtures to update big_map_diff values within lists of operations
+        val allocateMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapAllocation {
+          case (_: Origination) =>
+            Contract.BigMapAlloc(
+              action = "alloc",
+              big_map = Decimal(1),
+              key_type = Micheline("""{"prim":"address"}"""),
+              value_type = Micheline("""{"prim":"nat"}""")
+            )
+        }
+
+        val block = generateSingleBlock(1, testReferenceDateTime)
+        val sampleOperations = generateOperationGroup(block, generateOperations = true)
+        val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
+            contents = allocateMap(sampleOperations.contents)
+          ) :: Nil
+
+        val blockToSave = block.copy(operationGroups = operationsWithDiffs)
+
+        //when
+        val writeAndGetRows = sut.saveContractOrigin(blockToSave :: Nil) andThen Tables.OriginatedAccountMaps.result
+
+        val accounts = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+        //the origination used for the generated sample is used to create the test big map
+        val sampleAccountIds =
+          Operations.sampleOrigination.metadata.operation_result.originated_contracts
+            .fold(List.empty[String])(_.map(_.id))
+
+        //then
+        accounts.size shouldEqual sampleAccountIds.size
 
         accounts should contain theSameElementsAs sampleAccountIds.map(
           id =>
@@ -162,19 +222,12 @@ class TezosDatabaseBigMapTest
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
-        val writeAndGetRows = for {
-          _ <- sut.saveBigMaps(blockToSave :: Nil)
-          maps <- Tables.BigMaps.result
-          contents <- Tables.BigMapContents.result
-          accountMapLinks <- Tables.OriginatedAccountMaps.result
-        } yield (maps, contents, accountMapLinks)
+        val writeAndGetRows = sut.upsertContent(blockToSave :: Nil) andThen Tables.BigMapContents.result
 
-        val (maps, contents, accounts) = dbHandler.run(writeAndGetRows.transactionally).futureValue
+        val contents = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
         //then
-        maps.size shouldBe 1
         contents.size shouldBe 1
-        accounts shouldBe 'empty
 
         contents(0) should matchTo(
           BigMapContentsRow(
@@ -186,7 +239,82 @@ class TezosDatabaseBigMapTest
         )
       }
 
-      "copy and delete big map contents for diffs contained in a list of blocks" in {
+      "copy big map contents for diffs contained in a list of blocks" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        //we need 2 pre-existing big maps to transafer content between
+        val initialBigMaps =
+          1 :: 2 :: Nil map (
+                  i =>
+                    BigMapsRow(
+                      bigMapId = BigDecimal(i),
+                      keyType = None,
+                      valueType = None
+                    )
+                )
+
+        //the content to copy
+        val initialBigMapContent =
+          BigMapContentsRow(
+            bigMapId = BigDecimal(1),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 20 {}")
+          )
+
+        //store the data
+        val populate = for {
+          maps <- Tables.BigMaps ++= initialBigMaps
+          contents <- Tables.BigMapContents += initialBigMapContent
+        } yield (maps, contents)
+
+        dbHandler.run(populate.transactionally).futureValue shouldEqual ((Some(2), 1))
+
+        //we want to copy content between the first and second map, and then remove the former
+        val copyMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapCopy {
+          case (_: Transaction) =>
+            Contract.BigMapCopy(
+              action = "copy",
+              source_big_map = Decimal(1),
+              destination_big_map = Decimal(2)
+            )
+        }
+
+        val block = generateSingleBlock(1, testReferenceDateTime)
+        val sampleOperations = generateOperationGroup(block, generateOperations = true)
+        val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
+            contents = copyMap(sampleOperations.contents)
+          ) :: Nil
+
+        val blockToSave = block.copy(operationGroups = operationsWithDiffs)
+
+        //when
+        val writeAndGetRows = for {
+          _ <- sut.copyContent(blockToSave :: Nil)
+          maps <- Tables.BigMaps.result
+          contents <- Tables.BigMapContents.result
+        } yield (maps, contents)
+
+        val (maps, contents) = dbHandler.run(writeAndGetRows).futureValue
+
+        //then
+        maps.size shouldBe initialBigMaps.size
+
+        contents.size shouldBe 2
+
+        contents(1) should matchTo(
+          BigMapContentsRow(
+            bigMapId = BigDecimal(2),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 20 {}")
+          )
+        )
+
+      }
+
+      "delete all data in selected big maps for diffs contained in a list of blocks" in {
         //given
         implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
 
@@ -232,16 +360,6 @@ class TezosDatabaseBigMapTest
 
         dbHandler.run(populate.transactionally).futureValue shouldEqual ((Some(2), 1, Some(1)))
 
-        //we want to copy content between the first and second map, and then remove the former
-        val copyMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapCopy {
-          case (_: Transaction) =>
-            Contract.BigMapCopy(
-              action = "copy",
-              source_big_map = Decimal(1),
-              destination_big_map = Decimal(2)
-            )
-        }
-
         val removeMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapRemove {
           case (_: Transaction) =>
             Contract.BigMapRemove(
@@ -253,14 +371,14 @@ class TezosDatabaseBigMapTest
         val block = generateSingleBlock(1, testReferenceDateTime)
         val sampleOperations = generateOperationGroup(block, generateOperations = true)
         val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
-            contents = (copyMap andThen removeMap)(sampleOperations.contents)
+            contents = removeMap(sampleOperations.contents)
           ) :: Nil
 
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
         val writeAndGetRows = for {
-          _ <- sut.saveBigMaps(blockToSave :: Nil)
+          _ <- sut.removeMaps(blockToSave :: Nil)
           maps <- Tables.BigMaps.result
           contents <- Tables.BigMapContents.result
           accountMapLinks <- Tables.OriginatedAccountMaps.result
@@ -269,20 +387,10 @@ class TezosDatabaseBigMapTest
         val (maps, contents, accounts) = dbHandler.run(writeAndGetRows).futureValue
 
         //then
-        maps.size shouldBe (initialBigMaps.size - 1)
+        maps.size shouldEqual (initialBigMaps.size - 1)
         maps.map(_.bigMapId) should not contain BigDecimal(1)
-
-        accounts shouldBe empty
-
-        contents.size shouldBe 1
-        contents(0) should matchTo(
-          BigMapContentsRow(
-            bigMapId = BigDecimal(2),
-            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
-            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
-          )
-        )
+        contents shouldBe 'empty
+        accounts shouldBe 'empty
 
       }
 
