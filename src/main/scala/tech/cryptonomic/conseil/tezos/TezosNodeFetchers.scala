@@ -502,8 +502,51 @@ trait BlocksDataFetchers {
   }
 
   /** a fetcher of baker rolls for blocks */
-  implicit val bakersFetcher = new FutureFetcher {
+  implicit val bakersFetcherByHash = new FutureFetcher {
     import JsonDecoders.Circe.Votes._
+    import cats.instances.future._
+
+    type Encoded = String
+    type In = String
+    type Out = List[Voting.BakerRolls]
+
+    private val makeUrl = (blockHash: String) => s"blocks/$blockHash/votes/listings"
+
+    override val fetchData =
+      Kleisli(
+        blocks => {
+          logger.info("Fetching bakers for {} blocks", blocks.size)
+          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
+            case err =>
+              logger
+                .error(
+                  "I encountered problems while fetching baker rolls from {}, for blocks {}. The error says {}",
+                  network,
+                  blocks.mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    override val decodeData = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched baker rolls json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => List.empty
+        }
+    }
+  }
+
+  /** a fetcher of baker rolls for blocks */
+  implicit val bakersFetcher = new FutureFetcher {
     import cats.instances.future._
 
     type Encoded = String
@@ -530,19 +573,7 @@ trait BlocksDataFetchers {
         }
       )
 
-    override val decodeData = Kleisli { json =>
-      decodeLiftingTo[Future, Out](json)
-        .onError(
-          logWarnOnJsonDecoding(
-            s"I fetched baker rolls json from tezos node that I'm unable to decode: $json",
-            ignore = Option(json).forall(_.trim.isEmpty)
-          )
-        )
-        .recover {
-          //we recover parsing failures with an empty result, as we have no optionality here to lean on
-          case NonFatal(_) => List.empty
-        }
-    }
+    override val decodeData = bakersFetcherByHash.decodeData
   }
 
   /** a fetcher of ballot votes for blocks */
