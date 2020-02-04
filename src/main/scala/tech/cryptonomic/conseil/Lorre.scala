@@ -94,13 +94,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
       cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
 
+    // separates List[Either[L, R]] into List[L] and List[R]
     val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
-      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, r :: pair._2))
+      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimFields(r) :: pair._2))
     )
 
     errors.foreach(err => logger.error(s"Error while reading registered tokens file: ${err.getMessage}"))
 
-    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows.map(trimFields))).map {
+    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)).map {
       case Some(_) => logger.info(s"Written ${rows.size} registered token rows")
       case None => logger.info("Registered token rows table was not empty. Did not write anything.")
     }
