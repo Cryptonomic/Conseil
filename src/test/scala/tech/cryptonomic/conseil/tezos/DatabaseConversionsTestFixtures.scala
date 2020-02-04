@@ -6,6 +6,11 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 trait DBConversionsData {
 
+  val sampleOperationResultsErrors = List(
+    OperationResult.Error("""{"id":"error1", "kind":"permanent"}"""),
+    OperationResult.Error("""{"id":"error2", "kind":"temporary"}""")
+  )
+
   val sampleScriptedContract =
     Scripted.Contracts(
       code = Micheline(
@@ -116,7 +121,7 @@ trait DBConversionsData {
         operation_result = OperationResult.Reveal(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
@@ -160,7 +165,7 @@ trait DBConversionsData {
           big_map_diff = None,
           originated_contracts = None,
           paid_storage_size_diff = None,
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
@@ -242,7 +247,7 @@ trait DBConversionsData {
           consumed_gas = Some(Decimal(11262)),
           storage_size = Some(Decimal(46)),
           paid_storage_size_diff = Some(Decimal(46)),
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
@@ -277,7 +282,7 @@ trait DBConversionsData {
         operation_result = OperationResult.Delegation(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
