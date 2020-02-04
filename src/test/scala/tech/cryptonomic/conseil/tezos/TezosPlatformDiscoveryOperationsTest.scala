@@ -133,7 +133,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
-            Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts")
+            Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("is_activated", "Is activated", DataType.Boolean, None, KeyType.UniqueKey, "accounts")
           )
         )
       }
@@ -248,7 +249,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("errors", "Errors", DataType.String, None, KeyType.NonKey, "operations")
           )
         )
       }
@@ -356,7 +358,8 @@ class TezosPlatformDiscoveryOperationsTest
             script = None,
             manager = None,
             spendable = None,
-            isBaker = None
+            isBaker = None,
+            isActivated = None
           )
 
         val accounts = List(

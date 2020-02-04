@@ -221,7 +221,8 @@ trait AccountsJsonData {
           )
         )
       ),
-      isBaker = None
+      isBaker = None,
+      isActivated = None
     )
 
   val accountJson =
@@ -239,7 +240,8 @@ trait AccountsJsonData {
       counter = Some(0),
       manager = None,
       spendable = None,
-      isBaker = None
+      isBaker = None,
+      isActivated = None
     )
 
   val scriptJson =

@@ -59,7 +59,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
           script = Some(Contracts(Micheline("storage"), Micheline("script"))),
           manager = None,
           spendable = None,
-          isBaker = None
+          isBaker = None,
+          isActivated = None
         )
     }.toMap
 
