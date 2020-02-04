@@ -515,7 +515,7 @@ trait BlocksDataFetchers {
     override val fetchData =
       Kleisli(
         blocks => {
-          logger.info("Fetching {} bakers", blocks.size)
+          logger.info("Fetching bakers for {} blocks", blocks.size)
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
