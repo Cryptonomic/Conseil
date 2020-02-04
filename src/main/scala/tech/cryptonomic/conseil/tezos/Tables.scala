@@ -1376,6 +1376,7 @@ trait Tables {
     *  @param ballot Database column ballot SqlType(varchar), Default(None)
     *  @param internal Database column internal SqlType(bool)
     *  @param period Database column period SqlType(int4), Default(None)
+    *  @param ballotPeriod Database column ballot_period SqlType(int4), Default(None)
     *  @param timestamp Database column timestamp SqlType(timestamp)
     *  @param errors Database column errors SqlType(varchar), Default(None) */
   case class OperationsRow(
@@ -1418,6 +1419,7 @@ trait Tables {
       ballot: Option[String] = None,
       internal: Boolean,
       period: Option[Int] = None,
+      ballotPeriod: Option[Int] = None,
       timestamp: java.sql.Timestamp,
       errors: Option[String] = None
   )
@@ -1474,6 +1476,7 @@ trait Tables {
       <<?[String],
       <<[Boolean],
       <<?[Int],
+      <<?[Int],
       <<[java.sql.Timestamp],
       <<?[String]
     )
@@ -1482,7 +1485,7 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoint :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: timestamp :: errors :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoint :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -1532,8 +1535,9 @@ trait Tables {
               r(36).asInstanceOf[Option[String]],
               r(37).asInstanceOf[Option[Boolean]].get,
               r(38).asInstanceOf[Option[Int]],
-              r(39).asInstanceOf[Option[java.sql.Timestamp]].get,
-              r(40).asInstanceOf[Option[String]]
+              r(39).asInstanceOf[Option[Int]],
+              r(40).asInstanceOf[Option[java.sql.Timestamp]].get,
+              r(41).asInstanceOf[Option[String]]
             ),
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
@@ -1659,6 +1663,9 @@ trait Tables {
 
     /** Database column period SqlType(int4), Default(None) */
     val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Database column ballot_period SqlType(int4), Default(None) */
+    val ballotPeriod: Rep[Option[Int]] = column[Option[Int]]("ballot_period", O.Default(None))
 
     /** Database column timestamp SqlType(timestamp) */
     val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")

@@ -802,7 +802,7 @@ class DatabaseConversionsTest
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "proposals"
         converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
-        converted.period shouldBe Some(10)
+        converted.ballotPeriod shouldBe Some(10)
         converted.proposal shouldBe Some("[Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z]")
 
         forAll(
@@ -851,7 +851,7 @@ class DatabaseConversionsTest
         converted.ballot shouldBe Some("yay")
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
-        converted.period shouldBe Some(0)
+        converted.ballotPeriod shouldBe Some(0)
 
         forAll(
           converted.level ::

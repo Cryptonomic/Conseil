@@ -75,6 +75,12 @@ object DatabaseConversions extends LazyLogging {
       .lift(block) //this returns an Option[BlockHeaderMetadata]
       .map(_.level.cycle_position) //this is Option[Int]
 
+  //Note, cycle 0 starts at the level 2 block
+  def extractPeriod(block: BlockMetadata): Option[Int] =
+    discardGenesis
+      .lift(block)
+      .map(_.level.voting_period)
+
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -210,7 +216,8 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         cycle = extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
-        numberOfSlots = Some(metadata.slots.length)
+        numberOfSlots = Some(metadata.slots.length),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -226,7 +233,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -242,7 +250,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
@@ -265,6 +274,7 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
@@ -298,6 +308,7 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
@@ -347,6 +358,7 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
@@ -370,12 +382,13 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors)
       )
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Ballot(ballot, proposal, source, period)) =>
+    case (block, groupHash, Ballot(ballot, proposal, source, ballotPeriod)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -388,12 +401,13 @@ object DatabaseConversions extends LazyLogging {
         proposal = proposal,
         source = source.map(_.id),
         cycle = extractCycle(block),
-        period = period
+        ballotPeriod = ballotPeriod,
+        period = extractPeriod(block.data.metadata)
       )
   }
 
   private val convertProposals: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
-    case (block, groupHash, Proposals(source, period, proposals)) =>
+    case (block, groupHash, Proposals(source, ballotPeriod, proposals)) =>
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -405,7 +419,8 @@ object DatabaseConversions extends LazyLogging {
         proposal = proposals.map(x => concatenateToString(x)),
         source = source.map(_.id),
         cycle = extractCycle(block),
-        period = period
+        ballotPeriod = ballotPeriod,
+        period = extractPeriod(block.data.metadata)
       )
 
   }
@@ -425,7 +440,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block)
+        cycle = extractCycle(block),
+        period = extractPeriod(block.data.metadata)
       )
   }
 
