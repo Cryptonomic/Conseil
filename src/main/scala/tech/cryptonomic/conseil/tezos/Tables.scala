@@ -1482,15 +1482,14 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: timestamp :: errors :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoint :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: timestamp :: errors :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
-            .Some(
-              blockHash
-            ) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: Rep.Some(timestamp) :: errors :: HNil).shaped
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoint :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep.Some(
+            blockHash
+          ) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: Rep.Some(timestamp) :: errors :: HNil).shaped
         .<>(
           r =>
             OperationsRow(
@@ -1516,24 +1515,25 @@ trait Tables {
               r(19).asInstanceOf[Option[String]],
               r(20).asInstanceOf[Option[String]],
               r(21).asInstanceOf[Option[String]],
-              r(22).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(23).asInstanceOf[Option[String]],
-              r(24).asInstanceOf[Option[Boolean]],
+              r(22).asInstanceOf[Option[String]],
+              r(23).asInstanceOf[Option[scala.math.BigDecimal]],
+              r(24).asInstanceOf[Option[String]],
               r(25).asInstanceOf[Option[Boolean]],
-              r(26).asInstanceOf[Option[String]],
+              r(26).asInstanceOf[Option[Boolean]],
               r(27).asInstanceOf[Option[String]],
               r(28).asInstanceOf[Option[String]],
-              r(29).asInstanceOf[Option[scala.math.BigDecimal]],
+              r(29).asInstanceOf[Option[String]],
               r(30).asInstanceOf[Option[scala.math.BigDecimal]],
               r(31).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(32).asInstanceOf[Option[String]],
-              r(33).asInstanceOf[Option[String]].get,
-              r(34).asInstanceOf[Option[Int]].get,
-              r(35).asInstanceOf[Option[String]],
-              r(36).asInstanceOf[Option[Boolean]].get,
-              r(37).asInstanceOf[Option[Int]],
-              r(38).asInstanceOf[Option[java.sql.Timestamp]].get,
-              r(39).asInstanceOf[Option[String]]
+              r(32).asInstanceOf[Option[scala.math.BigDecimal]],
+              r(33).asInstanceOf[Option[String]],
+              r(34).asInstanceOf[Option[String]].get,
+              r(35).asInstanceOf[Option[Int]].get,
+              r(36).asInstanceOf[Option[String]],
+              r(37).asInstanceOf[Option[Boolean]].get,
+              r(38).asInstanceOf[Option[Int]],
+              r(39).asInstanceOf[Option[java.sql.Timestamp]].get,
+              r(40).asInstanceOf[Option[String]]
             ),
           (_: Any) => throw new Exception("Inserting into ? projection not supported.")
         )
