@@ -84,7 +84,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   initRegisteredTokensFromCsv()
 
   /** Reads and inserts CSV file to the database for the */
-  def initRegisteredTokensFromCsv(): Future[Unit] = {
+  def initRegisteredTokensFromCsv(): Future[Option[Int]] = {
     import kantan.csv._
     import kantan.csv.ops._
     import kantan.csv.generic._
@@ -101,9 +101,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     errors.foreach(err => logger.error(s"Error while reading registered tokens file: ${err.getMessage}"))
 
-    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)).map {
-      case Some(_) => logger.info(s"Written ${rows.size} registered token rows")
-      case None => logger.info("Registered token rows table was not empty. Did not write anything.")
+    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)) andThen {
+      case Success(_) => logger.info(s"Written ${rows.size} registered token rows")
+      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
     }
   }
 

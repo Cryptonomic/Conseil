@@ -763,7 +763,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
-  /** Adds any new level for which a custom event processing has been executed
+  /** Inserts registered tokens to the table if empty
     *
     * @param rows the type of event to record
     * @return the number of entries saved added to the
@@ -771,9 +771,9 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeRegisteredTokensRowsIfEmpty(
       rows: List[Tables.RegisteredTokensRow]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
-    Tables.RegisteredTokens.length.result.flatMap {
-      case len if len == 0 => Tables.RegisteredTokens ++= rows
-      case _ => DBIO.successful(Some(0))
+    Tables.RegisteredTokens.exists.result.flatMap {
+      case true => DBIO.successful(Some(0))
+      case false => Tables.RegisteredTokens ++= rows
     }
 
   /** Prefix for the table queries */
