@@ -68,7 +68,8 @@ CREATE TABLE tezos.accounts (
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
     delegate_value char varying, -- retro-compat from protocol 5+
-    is_baker boolean NOT NULL DEFAULT false
+    is_baker boolean NOT NULL DEFAULT false,
+    is_activated boolean NOT NULL DEFAULT false
 );
 
 
@@ -82,7 +83,8 @@ CREATE TABLE tezos.accounts_history (
     delegate_value char varying, -- retro-compat from protocol 5+
     asof timestamp without time zone NOT NULL,
     is_baker boolean NOT NULL DEFAULT false,
-    cycle integer
+    cycle integer,
+    is_activated boolean NOT NULL DEFAULT false
 );
 
 --
@@ -341,7 +343,8 @@ CREATE TABLE tezos.operations (
     ballot character varying,
     internal boolean NOT NULL,
     period integer,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    errors character varying
 );
 
 
@@ -375,6 +378,30 @@ CREATE TABLE tezos.rolls (
     block_level integer NOT NULL
 );
 
+CREATE TABLE tezos.big_maps (
+    big_map_id numeric PRIMARY KEY,
+    key_type character varying,
+    value_type character varying
+);
+
+CREATE TABLE tezos.big_map_contents (
+    big_map_id numeric NOT NULL,
+    key character varying,
+    key_hash character varying,
+    value character varying,
+    PRIMARY KEY (big_map_id, key)
+);
+
+ALTER TABLE ONLY tezos.big_map_contents
+    ADD CONSTRAINT big_map_contents_id_fkey FOREIGN KEY (big_map_id) REFERENCES tezos.big_maps(big_map_id);
+
+CREATE TABLE tezos.originated_account_maps (
+    big_map_id numeric,
+    account_id character varying,
+    PRIMARY KEY (big_map_id, account_id)
+);
+
+CREATE INDEX accounts_maps_idx ON tezos.originated_account_maps USING btree (account_id);
 
 --
 -- Name: balance_updates id; Type: DEFAULT; Schema: tezos; Owner: -
@@ -509,6 +536,11 @@ CREATE INDEX proposal_hash_ix ON tezos.governance USING btree (proposal_hash);
 
 CREATE INDEX ix_accounts_block_level ON tezos.accounts USING btree (block_level);
 
+--
+-- Name: ix_accounts_is_activated; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX ix_accounts_is_activated ON tezos.accounts USING btree (is_activated);
 
 --
 -- Name: ix_accounts_checkpoint_account_id; Type: INDEX; Schema: tezos; Owner: -
@@ -530,6 +562,9 @@ CREATE INDEX ix_accounts_checkpoint_block_level ON tezos.accounts_checkpoint USI
 
 CREATE INDEX ix_accounts_manager ON tezos.accounts USING btree (manager);
 
+CREATE INDEX ix_accounts_block_id ON tezos.accounts USING btree (block_id);
+
+CREATE INDEX ix_accounts_history_block_id ON tezos.accounts_history USING btree (block_id);
 
 --
 -- Name: ix_blocks_level; Type: INDEX; Schema: tezos; Owner: -
@@ -600,6 +635,7 @@ CREATE INDEX ix_rolls_block_id ON tezos.rolls USING btree (block_id);
 
 CREATE INDEX ix_rolls_block_level ON tezos.rolls USING btree (block_level);
 
+CREATE INDEX ix_balance_updates_op_group_hash ON tezos.balance_updates USING btree (operation_group_hash);
 
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -

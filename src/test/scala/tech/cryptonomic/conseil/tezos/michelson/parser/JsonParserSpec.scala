@@ -441,6 +441,47 @@ class JsonParserSpec extends FlatSpec with Matchers {
       )
     }
 
+  it should "convert json with code wrapped in single array to MichelsonSchema" in {
+
+      val json =
+        """[
+        |  {
+        |    "prim": "parameter",
+        |    "args": [
+        |      {
+        |        "prim": "int"
+        |      }
+        |    ]
+        |  },
+        |  {
+        |    "prim": "storage",
+        |    "args": [
+        |      {
+        |        "prim": "int"
+        |      }
+        |    ]
+        |  },
+        |  {
+        |    "prim": "code",
+        |    "args": [
+               {
+        |        "prim": "DUP"
+        |      }
+        |    ]
+        |  }
+        |]""".stripMargin
+
+      parse[MichelsonSchema](json) should equal(
+        Right(
+          MichelsonSchema(
+            MichelsonType("int"),
+            MichelsonType("int"),
+            MichelsonCode(List(MichelsonSingleInstruction("DUP")))
+          )
+        )
+      )
+    }
+
   it should "parse MichelsonCode" in {
       val json = """[{"prim": "DUP"}]"""
 
@@ -457,7 +498,7 @@ class JsonParserSpec extends FlatSpec with Matchers {
       val json =
         """[{"prim": "parameter", "args": [{"prim": "unit"}]}, {"prim": "storage", "args": [{"prim": "unit"}]}]"""
 
-      parse[MichelsonSchema](json) should equal(Left(ParserError("No code code found")))
+      parse[MichelsonSchema](json) should equal(Left(ParserError("No code section found")))
     }
 
   it should "parse empty schema" in {
