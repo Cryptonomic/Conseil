@@ -22,6 +22,8 @@ import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import slick.jdbc.JdbcCapabilities
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
+
 import scala.collection.immutable.Queue
 
 /**
@@ -611,6 +613,18 @@ object TezosDatabaseOperations extends LazyLogging {
       .update(true)
   }
 
+  def getBakersForBlocks(
+      hashes: List[BlockHash]
+  )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
+    DBIO.sequence {
+      hashes.map { hash =>
+        Tables.Rolls
+          .filter(_.pkh === hash.value)
+          .result
+          .map(rolls => hash -> rolls.map(roll => BakerRolls(PublicKeyHash(roll.pkh), roll.rolls)).toList)
+      }
+    }
+
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
     * @param kind                 Operation kind
@@ -651,6 +665,32 @@ object TezosDatabaseOperations extends LazyLogging {
       }
     }
   }
+
+  /** Finds activated accounts - useful when updating accounts history
+    * @return sequence of activated account ids
+    */
+  def findActivatedAccountIds: DBIO[Seq[String]] =
+    Tables.Accounts
+      .filter(_.isActivated)
+      .map(_.accountId)
+      .result
+
+  /** Load all operations referenced from a block level and higher, that are of a specific kind.
+    * @param ofKind a set of kinds to filter operations, if empty there will be no result
+    * @param fromLevel the lowest block-level to start from, zero by default
+    * @return the matching operations pkh, sorted by ascending block-level
+    */
+  def fetchRecentOperationsHashByKind(
+      ofKind: Set[String],
+      fromLevel: Int = 0
+  ): DBIO[Seq[Option[String]]] =
+    Tables.Operations
+      .filter(
+        row => (row.kind inSet ofKind) && (row.blockLevel >= fromLevel)
+      )
+      .sortBy(_.blockLevel.asc)
+      .map(_.pkh)
+      .result
 
   /**
     * Reads in all operations referring to the group

@@ -7,9 +7,8 @@ import tech.cryptonomic.conseil.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
-import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.{convert, toMichelsonScript}
-import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, MichelsonInstruction, MichelsonSchema}
-import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.Parser
+import tech.cryptonomic.conseil.tezos.michelson.JsonToMichelson.toMichelsonScript
+import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
@@ -18,7 +17,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
-import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object TezosNodeOperator {

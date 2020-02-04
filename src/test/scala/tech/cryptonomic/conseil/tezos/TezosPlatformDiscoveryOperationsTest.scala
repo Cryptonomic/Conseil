@@ -133,7 +133,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("spendable", "Spendable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_setable", "Delegate setable", DataType.Boolean, None, KeyType.NonKey, "accounts"),
             Attribute("delegate_value", "Delegate value", DataType.String, None, KeyType.NonKey, "accounts"),
-            Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts")
+            Attribute("is_baker", "Is baker", DataType.Boolean, None, KeyType.NonKey, "accounts"),
+            Attribute("is_activated", "Is activated", DataType.Boolean, None, KeyType.UniqueKey, "accounts")
           )
         )
       }
@@ -248,7 +249,8 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations")
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("errors", "Errors", DataType.String, None, KeyType.NonKey, "operations")
           )
         )
       }
@@ -313,7 +315,7 @@ class TezosPlatformDiscoveryOperationsTest
         sut.getTableAttributes(EntityPath("big_map_contents", networkPath)).futureValue.value.toSet should matchTo(
           Set(
             Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "big_map_contents"),
-            Attribute("key", "Key", DataType.String, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("key", "Key", DataType.String, None, KeyType.UniqueKey, "big_map_contents"),
             Attribute("key_hash", "Key hash", DataType.String, None, KeyType.NonKey, "big_map_contents"),
             Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents")
           )
@@ -360,7 +362,16 @@ class TezosPlatformDiscoveryOperationsTest
 
         val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
         val account =
-          Account(balance = 12.34, counter = Some(1), delegate = None, script = None, manager = None, spendable = None)
+          Account(
+            balance = 12.34,
+            counter = Some(1),
+            delegate = None,
+            script = None,
+            manager = None,
+            spendable = None,
+            isBaker = None,
+            isActivated = None
+          )
 
         val accounts = List(
           BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-1") -> account.copy())),

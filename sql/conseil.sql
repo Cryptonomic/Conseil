@@ -80,7 +80,8 @@ CREATE TABLE tezos.accounts (
     spendable boolean, -- retro-compat from protocol 5+
     delegate_setable boolean, -- retro-compat from protocol 5+
     delegate_value char varying, -- retro-compat from protocol 5+
-    is_baker boolean NOT NULL DEFAULT false
+    is_baker boolean NOT NULL DEFAULT false,
+    is_activated boolean NOT NULL DEFAULT false
 );
 
 
@@ -94,7 +95,8 @@ CREATE TABLE tezos.accounts_history (
     delegate_value char varying, -- retro-compat from protocol 5+
     asof timestamp without time zone NOT NULL,
     is_baker boolean NOT NULL DEFAULT false,
-    cycle integer
+    cycle integer,
+    is_activated boolean NOT NULL DEFAULT false
 );
 
 --
@@ -313,7 +315,8 @@ CREATE TABLE tezos.operations (
     ballot character varying,
     internal boolean NOT NULL,
     period integer,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    errors character varying
 );
 
 
@@ -354,10 +357,11 @@ CREATE TABLE tezos.big_maps (
 );
 
 CREATE TABLE tezos.big_map_contents (
-    big_map_id numeric PRIMARY KEY,
+    big_map_id numeric NOT NULL,
     key character varying,
     key_hash character varying,
-    value character varying
+    value character varying,
+    PRIMARY KEY (big_map_id, key)
 );
 
 ALTER TABLE ONLY tezos.big_map_contents
@@ -497,6 +501,11 @@ CREATE INDEX fki_fk_blockhashes ON tezos.operations USING btree (block_hash);
 
 CREATE INDEX ix_accounts_block_level ON tezos.accounts USING btree (block_level);
 
+--
+-- Name: ix_accounts_is_activated; Type: INDEX; Schema: tezos; Owner: -
+--
+
+CREATE INDEX ix_accounts_is_activated ON tezos.accounts USING btree (is_activated);
 
 --
 -- Name: ix_accounts_checkpoint_account_id; Type: INDEX; Schema: tezos; Owner: -

@@ -365,7 +365,10 @@ object TezosTypes {
 
   /** defines common result structures, following the json-schema definitions */
   object OperationResult {
-    //we're not yet encoding the complex schema for errors, storing them as simple strings
+    /* we're not yet decoding the complex schema for errors,
+     * as every error can have additional custom fields
+     * see: https://tezos.gitlab.io/api/errors.html
+     */
     final case class Error(json: String) extends AnyVal
 
     //we're currently making no difference between different statuses in any of the results
@@ -464,7 +467,9 @@ object TezosTypes {
       script: Option[Scripted.Contracts],
       counter: Option[Int],
       manager: Option[PublicKeyHash], // retro-compat from protocol 5+
-      spendable: Option[Boolean] // retro-compat from protocol 5+
+      spendable: Option[Boolean], // retro-compat from protocol 5+
+      isBaker: Option[Boolean],
+      isActivated: Option[Boolean]
   )
 
   /** Keeps track of association between some domain type and a block reference

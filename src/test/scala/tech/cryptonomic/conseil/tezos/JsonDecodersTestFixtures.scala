@@ -219,7 +219,9 @@ trait AccountsJsonData {
             value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
           )
         )
-      )
+      ),
+      isBaker = None,
+      isActivated = None
     )
 
   val accountJson =
@@ -236,7 +238,9 @@ trait AccountsJsonData {
       script = None,
       counter = Some(0),
       manager = None,
-      spendable = None
+      spendable = None,
+      isBaker = None,
+      isActivated = None
     )
 
   val scriptJson =
