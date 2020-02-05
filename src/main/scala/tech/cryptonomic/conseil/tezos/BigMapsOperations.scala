@@ -166,7 +166,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       rowsMap.map(_._2).flatten
     } else blocks.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
-    logger.info("{} big map accounts references will be made.", refs.size)
+    logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
     Tables.OriginatedAccountMaps ++= refs
   }
 
