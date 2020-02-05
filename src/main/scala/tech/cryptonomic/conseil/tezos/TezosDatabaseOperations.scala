@@ -584,36 +584,6 @@ object TezosDatabaseOperations extends LazyLogging {
       .result
 
   /**
-    * Updates accounts history with information is baker deactivated
-    * @param delegates the full delegates' data
-    * @return a database action that updates accounts_history table and returns the number of updated rows
-    */
-  def updateAccountsHistoryWithIsBakerDeactivated(
-      delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
-  )(implicit ec: ExecutionContext): DBIO[Int] = {
-    logger.info("Updating accounts history table with active bakers...")
-    val accountsHistoryUpdated = DBIO.sequence {
-      delegates.flatMap {
-        case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
-          delegateMap.map {
-            case (pkh, delegate) =>
-              Tables.AccountsHistory
-                .filter(
-                  account =>
-                    account.accountId === pkh.value
-                      && account.blockLevel === BigDecimal(blockLevel)
-                      && account.isBakerDeactivated =!= Option(delegate.deactivated)
-                )
-                .map(_.isBakerDeactivated)
-                .update(Some(delegate.deactivated))
-          }
-      }
-    }
-
-    accountsHistoryUpdated.map(_.sum).transactionally
-  }
-
-  /**
     * Gets inactive bakers at given block level
     * @param blockLevel
     * @param activeBakers needed to filter out them from all of the bakers

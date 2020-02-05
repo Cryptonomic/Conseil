@@ -749,7 +749,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
                   (key, delegate.updateRolls(rollsSum))
               })
           )
-//            _ <- TezosDb.updateAccountsHistoryWithIsBakerDeactivated(taggedDelegates.toList)
+
         db.run(TezosDb.writeDelegatesAndCopyContracts(enrichedDelegates.toList))
           .andThen(logWriteFailure)
       }
