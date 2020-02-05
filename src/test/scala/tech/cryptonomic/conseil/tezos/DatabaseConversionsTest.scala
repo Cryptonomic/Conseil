@@ -800,7 +800,7 @@ class DatabaseConversionsTest
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.kind shouldBe "proposals"
         converted.source shouldBe Some("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")
-        converted.period shouldBe Some(10)
+        converted.ballotPeriod shouldBe Some(10)
         converted.proposal shouldBe Some("[Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z]")
 
         forAll(
@@ -849,7 +849,7 @@ class DatabaseConversionsTest
         converted.ballot shouldBe Some("yay")
         converted.timestamp shouldBe Timestamp.from(block.data.header.timestamp.toInstant)
         converted.proposal shouldBe Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU")
-        converted.period shouldBe Some(0)
+        converted.ballotPeriod shouldBe Some(0)
 
         forAll(
           converted.level ::
@@ -883,24 +883,5 @@ class DatabaseConversionsTest
         }
 
       }
-
-      "convert a Voting Baker to a database row" in {
-        import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
-
-        val sampleRolls = BakerRolls(pkh = PublicKeyHash("key"), rolls = 500)
-
-        val converted = (block, List(sampleRolls)).convertToA[List, Tables.RollsRow]
-        converted should have size 1
-
-        converted should contain only (
-          Tables.RollsRow(
-            pkh = sampleRolls.pkh.value,
-            rolls = sampleRolls.rolls,
-            blockId = block.data.hash.value,
-            blockLevel = block.data.header.level
-          )
-        )
-      }
-
     }
 }
