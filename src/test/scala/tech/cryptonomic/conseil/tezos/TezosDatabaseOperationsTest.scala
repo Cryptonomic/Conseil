@@ -1045,40 +1045,6 @@ class TezosDatabaseOperationsTest
 
       }
 
-      "write voting bakers rolls" in {
-        import DatabaseConversions._
-        import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-        //generate data
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime)
-        val rolls = Voting.generateBakersRolls(howMany = 3)
-
-        //write
-        val writeAndGetRows = for {
-          _ <- Tables.Blocks += block.convertTo[Tables.BlocksRow]
-          written <- sut.writeVotingRolls(List(block -> rolls))
-          rows <- Tables.Rolls.result
-        } yield (written, rows)
-
-        val (stored, dbRolls) = dbHandler.run(writeAndGetRows.transactionally).futureValue
-
-        //expectations
-        stored.value shouldEqual rolls.size
-        dbRolls should have size rolls.size
-
-        import org.scalatest.Inspectors._
-
-        forAll(dbRolls) { rollsRow =>
-          val generated = rolls.find(_.pkh.value == rollsRow.pkh).value
-          rollsRow.rolls shouldEqual generated.rolls
-          rollsRow.blockId shouldBe block.data.hash.value
-          rollsRow.blockLevel shouldBe block.data.header.level
-        }
-
-      }
-
       "return the default when fetching the latest block level and there's no block stored" in {
         val expected = -1
         val maxLevel = dbHandler

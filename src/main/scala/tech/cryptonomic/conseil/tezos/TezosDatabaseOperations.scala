@@ -634,12 +634,6 @@ object TezosDatabaseOperations extends LazyLogging {
       .as[AccountsHistoryRow]
       .map(_.toList)
 
-  /** Writes bakers to the database */
-  def writeVotingRolls(bakers: List[(Block, List[Voting.BakerRolls])]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${bakers.size} bakers to the DB...""")
-    Tables.Rolls ++= bakers.flatMap(_.convertToA[List, Tables.RollsRow])
-  }
-
   /** Updates accounts history with bakers */
   def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
     logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
@@ -670,10 +664,10 @@ object TezosDatabaseOperations extends LazyLogging {
   )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
     DBIO.sequence {
       hashes.map { hash =>
-        Tables.Rolls
+        Tables.Delegates
           .filter(_.pkh === hash.value)
           .result
-          .map(rolls => hash -> rolls.map(roll => BakerRolls(PublicKeyHash(roll.pkh), roll.rolls)).toList)
+          .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
       }
     }
 
