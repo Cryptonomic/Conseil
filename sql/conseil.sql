@@ -85,7 +85,7 @@ CREATE TABLE tezos.accounts_history (
     is_baker boolean NOT NULL DEFAULT false,
     cycle integer,
     is_activated boolean NOT NULL DEFAULT false,
-    is_baker_deactivated boolean
+    is_active_baker boolean
 );
 
 --

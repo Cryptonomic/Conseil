@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
+  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -584,13 +585,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             activatedAccounts.toList
           )
           accountsWithHistory <- Future.traverse(updatedTaggedAccounts) { blockTaggedAccounts =>
-            db.run {
-              TezosDb
-                .getInactiveBakersFromAccountsHistoryByBlock(
-                  blockTaggedAccounts.blockLevel,
-                  activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
-                )
-                .map(blockTaggedAccounts -> _)
+            if (blockTaggedAccounts.blockLevel % lorreConf.blockRightsFetching.cycleSize == 1) {
+              db.run {
+                TezosDb
+                  .getInactiveBakersFromAccountsHistoryByBlock(
+                    blockTaggedAccounts.blockLevel,
+                    activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
+                  )
+                  .map(blockTaggedAccounts -> _)
+              }
+            } else {
+              Future.successful(blockTaggedAccounts -> List.empty[Tables.AccountsHistoryRow])
             }
           }
         } yield accountsWithHistory
