@@ -130,10 +130,11 @@ object DatabaseConversions extends LazyLogging {
       override def convert(
           from: (BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])
       ): List[Tables.AccountsHistoryRow] = {
-        val (blockTaggedAccounts, accountsHistoryRowsWithInactiveBakers) = from
-        val touchedAccounts = blockAccountsToAccountRows.convert(blockTaggedAccounts).map { accountsRow =>
+        import tech.cryptonomic.conseil.util.Conversion.Syntax._
+        val (blockTaggedAccounts, inactiveBakers) = from
+        val touchedAccounts = blockTaggedAccounts.convertToA[List, Tables.AccountsRow].map { accountsRow =>
           val isActiveBaker =
-            if (accountsHistoryRowsWithInactiveBakers.map(_.accountId).contains(accountsRow.accountId))
+            if (inactiveBakers.map(_.accountId).contains(accountsRow.accountId))
               Some(false)
             else if (accountsRow.isBaker)
               Some(true)
@@ -147,12 +148,15 @@ object DatabaseConversions extends LazyLogging {
             .withFieldConst(_.isActiveBaker, isActiveBaker)
             .transform
         }
-        val notTouchedAccounts =
-          accountsHistoryRowsWithInactiveBakers
-            .map(_.copy(isActiveBaker = Some(false)))
-            .filterNot(accountsHistoryRow => touchedAccounts.map(_.accountId).contains(accountsHistoryRow.accountId))
 
-        notTouchedAccounts ::: touchedAccounts
+        val touched = touchedAccounts.map(_.accountId).toSet
+
+        val untouchedAccounts =
+          inactiveBakers
+            .map(_.copy(isActiveBaker = Some(false)))
+            .filterNot(accountsHistoryRow => touched.contains(accountsHistoryRow.accountId))
+
+        untouchedAccounts ::: touchedAccounts
       }
     }
 

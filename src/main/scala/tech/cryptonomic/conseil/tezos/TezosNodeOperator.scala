@@ -383,7 +383,11 @@ class TezosNodeOperator(
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
-    fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashes.filterNot(_._1 == 0).map(_._2))
+    val blockHashesWithoutGenesis = blockHashes.filterNot {
+      case (blockLevel, _) => blockLevel == 0
+    }.map(_._2)
+
+    fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashesWithoutGenesis)
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
