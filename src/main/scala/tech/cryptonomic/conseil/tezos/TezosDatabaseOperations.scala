@@ -757,6 +757,19 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
+  /** Inserts registered tokens to the table if empty
+    *
+    * @param rows the type of event to record
+    * @return the number of entries saved added to the
+    */
+  def writeRegisteredTokensRowsIfEmpty(
+      rows: List[Tables.RegisteredTokensRow]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
+    Tables.RegisteredTokens.exists.result.flatMap {
+      case true => DBIO.successful(Some(0))
+      case false => Tables.RegisteredTokens ++= rows
+    }
+
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"
 
