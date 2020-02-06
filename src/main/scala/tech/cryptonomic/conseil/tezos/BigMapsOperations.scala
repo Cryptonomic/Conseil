@@ -26,7 +26,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       val diffMap = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffCopy.getAll(b))
       diffMap.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
-          logger.debug("For block hash {}, I'm about to copy the following big maps data: \n\t{}", diffs.mkString(", "))
+          logger.debug(
+            "For block hash {}, I'm about to copy the following big maps data: \n\t{}",
+            hash.value,
+            diffs.mkString(", ")
+          )
         case _ =>
       }
       diffMap.map(_._2).flatten
@@ -68,7 +72,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       val diffMap = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffRemove.getAll(b))
       diffMap.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
-          logger.debug("For block hash {}, I'm about to delete the big maps for ids: \n\t{}", diffs.mkString(", "))
+          logger.debug(
+            "For block hash {}, I'm about to delete the big maps for ids: \n\t{}",
+            hash.value,
+            diffs.mkString(", ")
+          )
         case _ =>
       }
       diffMap.map(_._2).flatten
@@ -101,7 +109,11 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       val rowsMap = blocks.map(b => b.data.hash.value -> b.convertToA[List, BigMapsRow])
       rowsMap.foreach {
         case (hash, rows) if rows.nonEmpty =>
-          logger.debug("For block hash {}, I'm about to add the following big maps: \n\t{}", rows.mkString(", "))
+          logger.debug(
+            "For block hash {}, I'm about to add the following big maps: \n\t{}",
+            hash.value,
+            rows.mkString(", ")
+          )
         case _ =>
       }
       rowsMap.map(_._2).flatten
@@ -125,6 +137,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case (hash, rows) if rows.nonEmpty =>
           logger.debug(
             "For block hash {}, I'm about to update big map contents with the following data: \n\t{}",
+            hash.value,
             rows.mkString(", ")
           )
         case _ =>
@@ -164,6 +177,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case (hash, rows) if rows.nonEmpty =>
           logger.debug(
             "For block hash {}, I'm about to add the following links from big maps to originated accounts: \n\t{}",
+            hash.value,
             rows.mkString(", ")
           )
         case _ =>
