@@ -12,6 +12,7 @@ import tech.cryptonomic.conseil.tezos.{
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
+  Tables,
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
@@ -21,7 +22,7 @@ import tech.cryptonomic.conseil.tezos.{
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config.{ChainEvent, Custom, Everything, LorreAppConfig, Newest, Platforms}
+import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
 import scala.concurrent.duration._
@@ -78,6 +79,33 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     batchingConf,
     apiOperations
   )
+
+  /** Inits registered tokens at startup */
+  initRegisteredTokensFromCsv()
+
+  /** Reads and inserts CSV file to the database for the */
+  def initRegisteredTokensFromCsv(): Future[Option[Int]] = {
+    import kantan.csv._
+    import kantan.csv.ops._
+    import kantan.csv.generic._
+    val rawData: java.net.URL = getClass.getResource("/" + tezosConf.network + ".csv")
+    val reader = rawData.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
+
+    def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
+      cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
+
+    // separates List[Either[L, R]] into List[L] and List[R]
+    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
+      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimFields(r) :: pair._2))
+    )
+
+    errors.foreach(err => logger.error(s"Error while reading registered tokens file: ${err.getMessage}"))
+
+    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)) andThen {
+      case Success(_) => logger.info(s"Written ${rows.size} registered token rows")
+      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
+    }
+  }
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
@@ -415,20 +443,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     */
   private[this] def processVotesForBlocks(
       blocks: List[TezosTypes.Block]
-  ): Future[List[(Block, List[Voting.BakerRolls])]] = {
-    import slick.jdbc.PostgresProfile.api._
-
-    tezosNodeOperator.getVotingDetails(blocks).flatMap {
-      case (proposals, bakersBlocks, ballotsBlocks) =>
-        //this is a nested list, each block with many baker rolls
-        val writeBakers = TezosDb.writeVotingRolls(bakersBlocks)
-
-        val combinedVoteWrites = for {
-          bakersWritten <- writeBakers
-        } yield bakersWritten.map(_ + proposals.size + ballotsBlocks.size)
-
-        db.run(combinedVoteWrites.transactionally).map(_ => bakersBlocks)
-    }
+  ): Future[List[(Block, List[Voting.BakerRolls])]] = tezosNodeOperator.getVotingDetails(blocks).map {
+    case (_, bakersBlocks, _) => bakersBlocks
   }
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
@@ -729,10 +745,23 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
       def processDelegatesPage(
-          taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]]
-      ): Future[Option[Int]] =
-        db.run(TezosDb.writeDelegatesAndCopyContracts(taggedDelegates.toList))
+          taggedDelegates: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]],
+          rolls: List[Voting.BakerRolls]
+      ): Future[Option[Int]] = {
+
+        val enrichedDelegates = taggedDelegates
+          .map(
+            blockTagged =>
+              blockTagged.copy(content = blockTagged.content.map {
+                case (key, delegate) =>
+                  val rollsSum = rolls.filter(_.pkh.value == key.value).map(_.rolls).sum
+                  (key, delegate.updateRolls(rollsSum))
+              })
+          )
+
+        db.run(TezosDb.writeDelegatesAndCopyContracts(enrichedDelegates.toList))
           .andThen(logWriteFailure)
+      }
 
       def cleanup[T] = (_: T) => {
         //can fail with no real downsides
@@ -770,7 +799,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .mapAsync(1)(identity) //extracts the future value as an element of the stream
           .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
           .grouped(batchingConf.blockPageSize) //re-arranges the process batching
-          .mapAsync(1)(processDelegatesPage)
+          .mapAsync(1)(taggedDelegates => {
+
+            val hashIds = taggedDelegates.toList.map(_.blockHash.value)
+            val rolls = tezosNodeOperator.getRolls(hashIds)
+
+            rolls.map((taggedDelegates, _))
+          })
+          .mapAsync(1) {
+            case (delegates, rolls) => processDelegatesPage(delegates, rolls)
+          }
           .runFold(Monoid[Option[Int]].empty) { (processed, justDone) =>
             processed |+| justDone
           } andThen logOutcome

@@ -282,21 +282,10 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
             Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
             Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "delegates"),
             Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
             Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
             Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
-          )
-        )
-      }
-
-      "return list of attributes of rolls" in {
-
-        sut.getTableAttributes(EntityPath("rolls", networkPath)).futureValue.value.toSet should matchTo(
-          Set(
-            Attribute("pkh", "Pkh", DataType.String, None, KeyType.NonKey, "rolls"),
-            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "rolls"),
-            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "rolls"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.UniqueKey, "rolls")
           )
         )
       }

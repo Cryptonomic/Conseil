@@ -186,6 +186,7 @@ trait DelegatesJsonData {
         ContractId("KT19RhkHK8ssqXX1VxSSpyuyMXHK6V9RHizs"),
         ContractId("KT18bmcAvpLZPv6BF79RqTmZLZQSjodr3f2S")
       ),
+      rolls = None,
       delegated_balance = PositiveDecimal(13935725110L),
       deactivated = false,
       grace_period = 181

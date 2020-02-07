@@ -17,6 +17,7 @@
     </appender>
 
     <logger name="com.base22" level="TRACE"/>
+    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="OFF"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />

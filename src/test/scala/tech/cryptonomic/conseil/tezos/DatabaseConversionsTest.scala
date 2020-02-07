@@ -885,24 +885,5 @@ class DatabaseConversionsTest
         }
 
       }
-
-      "convert a Voting Baker to a database row" in {
-        import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
-
-        val sampleRolls = BakerRolls(pkh = PublicKeyHash("key"), rolls = 500)
-
-        val converted = (block, List(sampleRolls)).convertToA[List, Tables.RollsRow]
-        converted should have size 1
-
-        converted should contain only (
-          Tables.RollsRow(
-            pkh = sampleRolls.pkh.value,
-            rolls = sampleRolls.rolls,
-            blockId = block.data.hash.value,
-            blockLevel = block.data.header.level
-          )
-        )
-      }
-
     }
 }

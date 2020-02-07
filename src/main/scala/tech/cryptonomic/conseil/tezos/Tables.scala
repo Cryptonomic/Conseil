@@ -33,7 +33,7 @@ trait Tables {
     Operations.schema,
     OriginatedAccountMaps.schema,
     ProcessedChainEvents.schema,
-    Rolls.schema
+    RegisteredTokens.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
@@ -938,6 +938,7 @@ trait Tables {
     *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
     *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
     *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
+    *  @param rolls Database column rolls SqlType(int4), Default(0)
     *  @param deactivated Database column deactivated SqlType(bool)
     *  @param gracePeriod Database column grace_period SqlType(int4)
     *  @param blockLevel Database column block_level SqlType(int4), Default(-1) */
@@ -948,6 +949,7 @@ trait Tables {
       frozenBalance: Option[scala.math.BigDecimal] = None,
       stakingBalance: Option[scala.math.BigDecimal] = None,
       delegatedBalance: Option[scala.math.BigDecimal] = None,
+      rolls: Int = 0,
       deactivated: Boolean,
       gracePeriod: Int,
       blockLevel: Int = -1
@@ -957,8 +959,8 @@ trait Tables {
   implicit def GetResultDelegatesRow(
       implicit e0: GR[String],
       e1: GR[Option[scala.math.BigDecimal]],
-      e2: GR[Boolean],
-      e3: GR[Int]
+      e2: GR[Int],
+      e3: GR[Boolean]
   ): GR[DelegatesRow] = GR { prs =>
     import prs._
     DelegatesRow.tupled(
@@ -969,6 +971,7 @@ trait Tables {
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
+        <<[Int],
         <<[Boolean],
         <<[Int],
         <<[Int]
@@ -979,7 +982,18 @@ trait Tables {
   /** Table description of table delegates. Objects of this class serve as prototypes for rows in queries. */
   class Delegates(_tableTag: Tag) extends profile.api.Table[DelegatesRow](_tableTag, Some("tezos"), "delegates") {
     def * =
-      (pkh, blockId, balance, frozenBalance, stakingBalance, delegatedBalance, deactivated, gracePeriod, blockLevel) <> (DelegatesRow.tupled, DelegatesRow.unapply)
+      (
+        pkh,
+        blockId,
+        balance,
+        frozenBalance,
+        stakingBalance,
+        delegatedBalance,
+        rolls,
+        deactivated,
+        gracePeriod,
+        blockLevel
+      ) <> (DelegatesRow.tupled, DelegatesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -991,13 +1005,15 @@ trait Tables {
           frozenBalance,
           stakingBalance,
           delegatedBalance,
+          Rep.Some(rolls),
           Rep.Some(deactivated),
           Rep.Some(gracePeriod),
           Rep.Some(blockLevel)
         )
       ).shaped.<>(
         { r =>
-          import r._; _1.map(_ => DelegatesRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get)))
+          import r._;
+          _1.map(_ => DelegatesRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1022,6 +1038,9 @@ trait Tables {
     /** Database column delegated_balance SqlType(numeric), Default(None) */
     val delegatedBalance: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("delegated_balance", O.Default(None))
+
+    /** Database column rolls SqlType(int4), Default(0) */
+    val rolls: Rep[Int] = column[Int]("rolls", O.Default(0))
 
     /** Database column deactivated SqlType(bool) */
     val deactivated: Rep[Boolean] = column[Boolean]("deactivated")
@@ -1786,52 +1805,47 @@ trait Tables {
   /** Collection-like TableQuery object for table ProcessedChainEvents */
   lazy val ProcessedChainEvents = new TableQuery(tag => new ProcessedChainEvents(tag))
 
-  /** Entity class storing rows of table Rolls
-    *  @param pkh Database column pkh SqlType(varchar)
-    *  @param rolls Database column rolls SqlType(int4)
-    *  @param blockId Database column block_id SqlType(varchar)
-    *  @param blockLevel Database column block_level SqlType(int4) */
-  case class RollsRow(pkh: String, rolls: Int, blockId: String, blockLevel: Int)
+  /** Entity class storing rows of table RegisteredTokens
+    *  @param id Database column id SqlType(int4), PrimaryKey
+    *  @param name Database column name SqlType(text)
+    *  @param standard Database column standard SqlType(text)
+    *  @param accountId Database column account_id SqlType(text) */
+  case class RegisteredTokensRow(id: Int, name: String, standard: String, accountId: String)
 
-  /** GetResult implicit for fetching RollsRow objects using plain SQL queries */
-  implicit def GetResultRollsRow(implicit e0: GR[String], e1: GR[Int]): GR[RollsRow] = GR { prs =>
+  /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
+  implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
     import prs._
-    RollsRow.tupled((<<[String], <<[Int], <<[String], <<[Int]))
+    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String]))
   }
 
-  /** Table description of table rolls. Objects of this class serve as prototypes for rows in queries. */
-  class Rolls(_tableTag: Tag) extends profile.api.Table[RollsRow](_tableTag, Some("tezos"), "rolls") {
-    def * = (pkh, rolls, blockId, blockLevel) <> (RollsRow.tupled, RollsRow.unapply)
+  /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
+  class RegisteredTokens(_tableTag: Tag)
+      extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
+    def * = (id, name, standard, accountId) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(pkh), Rep.Some(rolls), Rep.Some(blockId), Rep.Some(blockLevel))).shaped.<>({ r =>
-        import r._; _1.map(_ => RollsRow.tupled((_1.get, _2.get, _3.get, _4.get)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(id), Rep.Some(name), Rep.Some(standard), Rep.Some(accountId))).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
-    /** Database column pkh SqlType(varchar) */
-    val pkh: Rep[String] = column[String]("pkh")
+    /** Database column id SqlType(int4), PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.PrimaryKey)
 
-    /** Database column rolls SqlType(int4) */
-    val rolls: Rep[Int] = column[Int]("rolls")
+    /** Database column name SqlType(text) */
+    val name: Rep[String] = column[String]("name")
 
-    /** Database column block_id SqlType(varchar) */
-    val blockId: Rep[String] = column[String]("block_id")
+    /** Database column standard SqlType(text) */
+    val standard: Rep[String] = column[String]("standard")
 
-    /** Database column block_level SqlType(int4) */
-    val blockLevel: Rep[Int] = column[Int]("block_level")
-
-    /** Foreign key referencing Blocks (database name rolls_block_id_fkey) */
-    lazy val blocksFk = foreignKey("rolls_block_id_fkey", blockId, Blocks)(
-      r => r.hash,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
-
-    /** Index over (blockLevel) (database name ix_rolls_block_level) */
-    val index1 = index("ix_rolls_block_level", blockLevel)
+    /** Database column account_id SqlType(text) */
+    val accountId: Rep[String] = column[String]("account_id")
   }
 
-  /** Collection-like TableQuery object for table Rolls */
-  lazy val Rolls = new TableQuery(tag => new Rolls(tag))
+  /** Collection-like TableQuery object for table RegisteredTokens */
+  lazy val RegisteredTokens = new TableQuery(tag => new RegisteredTokens(tag))
+
 }

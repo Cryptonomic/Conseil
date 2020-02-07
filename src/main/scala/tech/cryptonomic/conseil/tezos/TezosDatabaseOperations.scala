@@ -16,13 +16,13 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
-import com.github.tminglei.slickpg.ExPostgresProfile
 import org.slf4j.LoggerFactory
-import slick.basic.Capability
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
-import slick.jdbc.JdbcCapabilities
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
+import slick.basic.Capability
+import slick.jdbc.JdbcCapabilities
+import com.github.tminglei.slickpg.ExPostgresProfile
 
 import scala.collection.immutable.Queue
 
@@ -32,6 +32,7 @@ import scala.collection.immutable.Queue
 object TezosDatabaseOperations extends LazyLogging {
 
   import DatabaseConversions._
+  val bigMapOps = BigMapsOperations(CustomPostgresProfile)
 
   /**
     * Writes computed fees averages to a database.
@@ -148,68 +149,13 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param ec the context to run async operations
     */
   def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
-    import Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
-    import CustomPostgresProfile.api._
+    import cats.implicits._
+    import slickeffect.implicits._
 
     logger.info("Writing big map differences to DB...")
-    //TODO add log entries at each step
 
-    val copyDiffs = blocks.flatMap(TezosOptics.Blocks.readBigMapDiffCopy.getAll)
-    val removalDiffs = blocks.flatMap(TezosOptics.Blocks.readBigMapDiffRemove.getAll)
-
-    //need to load the sources and copy them with a new destination id
-    val contentCopies = copyDiffs.collect {
-      case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
-        Tables.BigMapContents
-          .filter(_.bigMapId === sourceId)
-          .map(it => (destinationId, it.key, it.keyHash, it.value))
-          .result
-          .map(rows => rows.map(BigMapContentsRow.tupled).toList)
-    }
-
-    val copyContent = DBIO
-      .sequence(contentCopies)
-      .flatMap { updateRows =>
-        val copies = updateRows.flatten
-        logger.info("{} big maps will be copied.", copies.size)
-        Tables.BigMapContents.insertOrUpdateAll(copies)
-      }
-      .map(_.sum)
-
-    val saveMaps = {
-      val maps = blocks.flatMap(_.convertToA[List, BigMapsRow])
-      logger.info("{} big maps will be added.", maps.size)
-      Tables.BigMaps ++= maps
-    }
-
-    val saveContent = {
-      val content = blocks.flatMap(_.convertToA[List, BigMapContentsRow])
-      logger.info("{} big map content entries will be added.", content.size)
-      Tables.BigMapContents ++= content
-    }
-
-    val saveContractOrigin = {
-      val refs = blocks.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
-      logger.info("{} big map accounts references will be made.", refs.size)
-      Tables.OriginatedAccountMaps ++= refs
-    }
-
-    val removeAnyNeeded: DBIO[Unit] = {
-      val idsToRemove = removalDiffs.collect {
-        case Contract.BigMapRemove(_, Decimal(bigMapId)) =>
-          bigMapId
-      }.toSet
-
-      logger.info("{} big maps will be removed.", idsToRemove.size)
-      DBIO.seq(
-        Tables.BigMapContents.filter(_.bigMapId inSet idsToRemove).delete,
-        Tables.BigMaps.filter(_.bigMapId inSet idsToRemove).delete,
-        Tables.OriginatedAccountMaps.filter(_.bigMapId inSet idsToRemove).delete
-      )
-    }
-
-    /* The interleaving of these operations would actually need more complexity to handle properly,
-     * since we're processing collections of blocks, therefore some operations handled "after" might be
+    /* The interleaving of these operations would actually need a more sophisticated handling to be robust:
+     * we're processing collections of blocks, therefore some operations handled "after" might be
      * referring to something "happening before" or viceversa.
      * E.g. you could find that a new origination creates a map with the same identifier of another previously
      * removed (is this allowed?).
@@ -218,7 +164,19 @@ object TezosDatabaseOperations extends LazyLogging {
      * We might consider improving the situation by doing a pre-check that the altered sequencing of the operations
      * doesn't interfere with the "causality" of the chain events.
      */
-    DBIO.seq(saveMaps, saveContent, saveContractOrigin, copyContent, removeAnyNeeded)
+    val operationSequence: List[List[Block] => DBIO[Unit]] = List(
+      (bigMapOps.saveMaps _).rmap(_.void),
+      (bigMapOps.upsertContent _).rmap(_.void),
+      (bigMapOps.saveContractOrigin _).rmap(_.void),
+      (bigMapOps.copyContent _).rmap(_.void),
+      (bigMapOps.removeMaps _)
+    )
+
+    operationSequence
+      .traverse[DBIO, Unit](
+        op => op(blocks)
+      )
+      .void
   }
 
   /**
@@ -582,12 +540,6 @@ object TezosDatabaseOperations extends LazyLogging {
       .filter(_._1 inSet ids.map(_.value))
       .result
 
-  /** Writes bakers to the database */
-  def writeVotingRolls(bakers: List[(Block, List[Voting.BakerRolls])]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${bakers.size} bakers to the DB...""")
-    Tables.Rolls ++= bakers.flatMap(_.convertToA[List, Tables.RollsRow])
-  }
-
   /** Updates accounts history with bakers */
   def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
     logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
@@ -618,10 +570,10 @@ object TezosDatabaseOperations extends LazyLogging {
   )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
     DBIO.sequence {
       hashes.map { hash =>
-        Tables.Rolls
+        Tables.Delegates
           .filter(_.pkh === hash.value)
           .result
-          .map(rolls => hash -> rolls.map(roll => BakerRolls(PublicKeyHash(roll.pkh), roll.rolls)).toList)
+          .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
       }
     }
 
@@ -762,6 +714,19 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
+
+  /** Inserts registered tokens to the table if empty
+    *
+    * @param rows the type of event to record
+    * @return the number of entries saved added to the
+    */
+  def writeRegisteredTokensRowsIfEmpty(
+      rows: List[Tables.RegisteredTokensRow]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
+    Tables.RegisteredTokens.exists.result.flatMap {
+      case true => DBIO.successful(Some(0))
+      case false => Tables.RegisteredTokens ++= rows
+    }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

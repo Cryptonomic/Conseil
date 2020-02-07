@@ -852,27 +852,11 @@ object DatabaseConversions extends LazyLogging {
         frozenBalance = extractBigDecimal(delegate.frozen_balance),
         stakingBalance = extractBigDecimal(delegate.staking_balance),
         delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+        rolls = delegate.rolls.getOrElse(0),
         deactivated = delegate.deactivated,
         gracePeriod = delegate.grace_period,
         blockLevel = blockLevel
       )
-    }
-  }
-
-  implicit val rollsToRows = new Conversion[List, (Block, List[Voting.BakerRolls]), Tables.RollsRow] {
-    override def convert(from: (Block, List[Voting.BakerRolls])) = {
-      val (block, bakers) = from
-      val blockHash = block.data.hash.value
-      val blockLevel = block.data.header.level
-      bakers.map {
-        case Voting.BakerRolls(PublicKeyHash(hash), rolls) =>
-          Tables.RollsRow(
-            pkh = hash,
-            rolls = rolls,
-            blockId = blockHash,
-            blockLevel = blockLevel
-          )
-      }
     }
   }
 
