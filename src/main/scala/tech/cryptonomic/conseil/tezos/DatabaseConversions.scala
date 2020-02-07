@@ -298,7 +298,7 @@ object DatabaseConversions extends LazyLogging {
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
         parameters = extractedParameters.map(_.value.expression),
-        parametersEntrypoint = extractedParameters.flatMap(_.entrypoint),
+        parametersEntrypoints = extractedParameters.flatMap(_.entrypoint),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
