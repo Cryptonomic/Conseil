@@ -482,7 +482,7 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
-              converted.parametersEntrypoint ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -533,7 +533,7 @@ class DatabaseConversionsTest
         }
         converted.destination.value shouldBe sampleTransaction.destination.id
         converted.parameters shouldBe sampleTransaction.parameters.map(_.left.value.value.expression)
-        converted.parametersEntrypoint shouldBe sampleTransaction.parameters.flatMap(_.left.value.entrypoint)
+        converted.parametersEntrypoints shouldBe sampleTransaction.parameters.flatMap(_.left.value.entrypoint)
         converted.status.value shouldBe sampleTransaction.metadata.operation_result.status
         sampleTransaction.metadata.operation_result.consumed_gas match {
           case Some(Decimal(bignumber)) => converted.consumedGas.value shouldBe bignumber
