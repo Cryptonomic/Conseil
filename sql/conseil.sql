@@ -96,7 +96,8 @@ CREATE TABLE tezos.accounts_history (
     asof timestamp without time zone NOT NULL,
     is_baker boolean NOT NULL DEFAULT false,
     cycle integer,
-    is_activated boolean NOT NULL DEFAULT false
+    is_activated boolean NOT NULL DEFAULT false,
+    is_active_baker boolean
 );
 
 --

@@ -18,6 +18,8 @@ import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import slick.jdbc.JdbcCapabilities
+import tech.cryptonomic.conseil.tezos.Tables.AccountsHistoryRow
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
@@ -77,7 +79,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeAccountsHistory(
-      accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
+      accountsInfo: List[(BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${accountsInfo.length} accounts_history to DB...""")
     Tables.AccountsHistory ++= accountsInfo.flatMap(_.convertToA[List, Tables.AccountsHistoryRow])
@@ -477,7 +479,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that stores both arguments and return a tuple of the row counts inserted
     */
   def writeAccountsAndCheckpointDelegates(
-      accounts: List[BlockTagged[Map[AccountId, Account]]],
+      accounts: List[(BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])],
       delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
   )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int], Option[Int])] = {
     import slickeffect.implicits._
@@ -487,7 +489,7 @@ object TezosDatabaseOperations extends LazyLogging {
     //we tuple because we want transactionality guarantees and we need all insert-counts to get returned
     Async[DBIO]
       .tuple3(
-        writeAccounts(accounts),
+        writeAccounts(accounts.map(_._1)),
         writeAccountsHistory(accounts),
         writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
       )
@@ -539,6 +541,27 @@ object TezosDatabaseOperations extends LazyLogging {
       .map(table => (table.pkh, table.blockLevel))
       .filter(_._1 inSet ids.map(_.value))
       .result
+
+  /**
+    * Gets inactive bakers at given block level
+    * @param blockLevel
+    * @param activeBakers needed to filter out them from all of the bakers
+    * @return inactive baker accounts
+    * */
+  def getInactiveBakersFromAccountsHistoryByBlock(
+      blockLevel: Int,
+      activeBakers: List[String]
+  )(implicit ec: ExecutionContext): DBIO[List[AccountsHistoryRow]] =
+    sql"""
+         SELECT s.*
+         FROM (
+           SELECT *, rank() OVER (PARTITION BY account_id ORDER BY asof DESC) AS r
+           FROM tezos.accounts_history WHERE block_level <= $blockLevel
+         ) s
+         WHERE s.r = 1 AND s.is_baker = true AND s.account_id NOT IN (${activeBakers.mkString(",")})
+       """
+      .as[AccountsHistoryRow]
+      .map(_.toList)
 
   /** Updates accounts history with bakers */
   def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {

@@ -377,6 +377,19 @@ class TezosNodeOperator(
     (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
+  /** Fetches active delegates from node */
+  def fetchActiveDelegates(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+
+    val blockHashesWithoutGenesis = blockHashes.filterNot {
+      case (blockLevel, _) => blockLevel == 0
+    }.map(_._2)
+
+    fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashesWithoutGenesis)
+  }
+
   /** Fetches detailed data for voting associated to the passed-in blocks */
   def getRolls(blockHashes: List[String]): Future[List[Voting.BakerRolls]] = {
     import cats.instances.future._
