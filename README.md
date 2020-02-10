@@ -186,11 +186,17 @@ This will launch the db container and setup the schema as described by the file 
 
 To stop the database
 ```bash
+docker-compose stop
+```
+This will stop container but will not remove the data. You can remove container and the data with 
+```bash
+docker-compose rm
+```
+To stop the database and remove container
+```bash
 docker-compose down
 ```
-This will stop and remove the container, but will keep the db data in the `pgdata` project folder, hence you can restart the container without losing any information stored.
-
-To clean and restart the db from scratch, simply remove all `pgdata` content while the container is _not running_.
+This will stop and remove the container and the data stored.
 
 ### Unit Testing
 

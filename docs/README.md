@@ -55,7 +55,7 @@ env SBT_OPTS="-Dconfig.file=conseil.conf" && sbt -J-Xss32m "runLorre alphanet"
 
 ### Building from docker-compose
 
-To avoid pulling whole repository you can just download `docker-compose.yml` from it. 
+To avoid pulling whole repository you can just download `docker-compose.yml` from the `docker/` directory. 
 It starts Conseil, Lorre and PostgreSQL with predefined configuration and DB schema.
 Whole stack can be started with the simple `docker-compose up`.
  
