@@ -304,18 +304,13 @@ object DatabaseConversions extends LazyLogging {
       )
   }
 
-  private def extractMicheline(parametersCompatibility: ParametersCompatibility): Micheline =
-    parametersCompatibility match {
-      case Left(value) => value.value
-      case Right(value) => value
-    }
-
   private val convertTransaction: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (
         block,
         groupHash,
         Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
         ) =>
+      val extractedParameters = parameters.map(_.map(Parameters(_)).merge)
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -327,7 +322,8 @@ object DatabaseConversions extends LazyLogging {
         storageLimit = extractBigDecimal(storage_limit),
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
-        parameters = parameters.map(extractMicheline(_).expression),
+        parameters = extractedParameters.map(_.value.expression),
+        parametersEntrypoints = extractedParameters.flatMap(_.entrypoint),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
