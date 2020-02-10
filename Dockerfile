@@ -5,9 +5,17 @@ RUN apt-get update && apt-get install -y apt-transport-https libpq5 && echo "deb
     apt-get install -y sbt
 RUN adduser --disabled-password --gecos '' builduser && su builduser
 USER builduser
-COPY --chown=builduser:builduser . /src
+COPY --chown=builduser:builduser ./docker /src/docker
+COPY --chown=builduser:builduser ./lib /src/lib
+COPY --chown=builduser:builduser ./project/build.properties /src/project/
+COPY --chown=builduser:builduser ./project/plugins.sbt /src/project/
+COPY --chown=builduser:builduser ./project/ScalacOptions.scala /src/project/
+COPY --chown=builduser:builduser ./project/versioning.scala /src/project/
+COPY --chown=builduser:builduser ./src /src/src
+COPY --chown=builduser:builduser ./build.sbt /src
+COPY --chown=builduser:builduser ./coverage.sbt /src
+COPY --chown=builduser:builduser ./publishing.sbt /src
 WORKDIR /src
-RUN rm -rf test-postgres-path
 RUN sbt 'set test in assembly := {}' clean assembly -J-Xss32m
 
 FROM openjdk:13-alpine
@@ -25,6 +33,5 @@ ADD ./sql/conseil.sql /root/sql/conseil.sql
 
 RUN chmod +x /root/entrypoint.sh
 RUN chmod +rx /root/wait-for.sh
-
 
 ENTRYPOINT ["/root/entrypoint.sh"]
