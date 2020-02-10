@@ -11,6 +11,5 @@ services:
       POSTGRES_DB: "conseil-local"
       POSTGRES_INITDB_ARGS: "--lc-collate=en_US.UTF-8 -E UTF8"
     volumes:
-      - "./pgdata:/var/lib/postgresql/data"
       - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
 
