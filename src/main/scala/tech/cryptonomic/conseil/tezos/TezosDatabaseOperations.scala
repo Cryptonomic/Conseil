@@ -79,7 +79,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeAccountsHistory(
-      accountsInfo: List[(BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])]
+      accountsInfo: List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${accountsInfo.length} accounts_history to DB...""")
     Tables.AccountsHistory ++= accountsInfo.flatMap(_.convertToA[List, Tables.AccountsHistoryRow])
@@ -479,7 +479,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return a database action that stores both arguments and return a tuple of the row counts inserted
     */
   def writeAccountsAndCheckpointDelegates(
-      accounts: List[(BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])],
+      accounts: List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])],
       delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
   )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int], Option[Int])] = {
     import slickeffect.implicits._
@@ -561,6 +561,20 @@ object TezosDatabaseOperations extends LazyLogging {
          WHERE s.r = 1 AND s.is_baker = true AND s.account_id NOT IN (${activeBakers.mkString(",")})
        """
       .as[AccountsHistoryRow]
+      .map(_.toList)
+
+  /**
+    * Gets inactive bakers from accounts
+    * @param activeBakers needed to filter out them from all of the bakers
+    * @return inactive baker accounts
+    * */
+  def getInactiveBakersFromAccounts(
+      activeBakers: List[String]
+  )(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsRow]] =
+    Tables.Accounts
+      .filter(_.isBaker === true)
+      .filterNot(_.accountId inSet activeBakers)
+      .result
       .map(_.toList)
 
   /** Updates accounts history with bakers */

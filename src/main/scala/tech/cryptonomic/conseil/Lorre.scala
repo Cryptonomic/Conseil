@@ -610,8 +610,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             activatedOperations,
             activatedAccounts.toList
           )
-          accountsWithHistory <- getInactiveBakersWithTaggedAccounts(updatedTaggedAccounts)
-        } yield accountsWithHistory
+          inactiveBakerAccounts <- getInactiveBakersWithTaggedAccounts(updatedTaggedAccounts)
+        } yield inactiveBakerAccounts
 
         accountsWithHistoryFut.flatMap { accountsWithHistory =>
           db.run(TezosDb.writeAccountsAndCheckpointDelegates(accountsWithHistory, taggedDelegateKeys))
@@ -625,22 +625,21 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       def getInactiveBakersWithTaggedAccounts(
           taggedAccounts: List[BlockTagged[Map[AccountId, Account]]]
-      ): Future[List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsHistoryRow])]] =
+      ): Future[List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])]] =
         Future.traverse(taggedAccounts) { blockTaggedAccounts =>
           if (blockTaggedAccounts.blockLevel % lorreConf.blockRightsFetching.cycleSize == 1) {
             tezosNodeOperator.fetchActiveDelegates(taggedAccounts.map(x => (x.blockLevel, x.blockHash))).flatMap {
               activeBakers =>
                 db.run {
                   TezosDb
-                    .getInactiveBakersFromAccountsHistoryByBlock(
-                      blockTaggedAccounts.blockLevel,
+                    .getInactiveBakersFromAccounts(
                       activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
                     )
                     .map(blockTaggedAccounts -> _)
                 }
             }
           } else {
-            Future.successful(blockTaggedAccounts -> List.empty[Tables.AccountsHistoryRow])
+            Future.successful(blockTaggedAccounts -> List.empty[Tables.AccountsRow])
           }
         }
 
