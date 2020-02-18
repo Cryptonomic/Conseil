@@ -3,14 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, MetadataOperations}
-import tech.cryptonomic.conseil.generic.chain.DataTypes.{
-  Field,
-  FormattedField,
-  Predicate,
-  Query,
-  QueryResponse,
-  SimpleField
-}
+import tech.cryptonomic.conseil.generic.chain.DataTypes.{Field, FormattedField, Predicate, Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
@@ -18,6 +11,7 @@ import tech.cryptonomic.conseil.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 import tech.cryptonomic.conseil.tezos.Tables.BlocksRow
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.defaultBlockLevel
 
 object ApiOperations {
   case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
@@ -179,6 +173,14 @@ class ApiOperations extends DataOperations with MetadataOperations {
           .result
           .headOption
     )
+
+  /** Fetches max block level from governance table
+    *
+    * @return  Max level or -1 if no blocks were found in the database.
+    */
+  def governanceMaxLevel(implicit ec: ExecutionContext): Future[Int] = {
+    runQuery(TezosDatabaseOperations.fetchGovernanceMaxLevel)
+  }
 
   /** Executes the query with given predicates
     *

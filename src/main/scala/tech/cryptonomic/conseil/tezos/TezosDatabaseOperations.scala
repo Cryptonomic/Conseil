@@ -19,7 +19,7 @@ import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 import slick.jdbc.JdbcCapabilities
-import tech.cryptonomic.conseil.tezos.Tables.AccountsHistoryRow
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsHistoryRow, GovernanceRow}
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
@@ -472,6 +472,11 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 
+  def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
+    logger.info("Writing governance rows into database...")
+    Tables.Governance ++= governance
+  }
+
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
     * @param accounts the full accounts' data
@@ -750,6 +755,14 @@ object TezosDatabaseOperations extends LazyLogging {
       case true => DBIO.successful(Some(0))
       case false => Tables.RegisteredTokens ++= rows
     }
+
+  /** Fetches max block level from governance table
+    *
+    * @return  Max level or [[defaultBlockLevel]] if no blocks were found in the database.
+    */
+  def fetchGovernanceMaxLevel(implicit ec: ExecutionContext): DBIO[Int] = {
+    Tables.Governance.map(_.level).max.getOrElse(defaultBlockLevel.toInt).result
+  }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

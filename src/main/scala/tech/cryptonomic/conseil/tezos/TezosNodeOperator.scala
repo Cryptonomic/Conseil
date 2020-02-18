@@ -13,6 +13,7 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.{BakerRolls, BallotCounts, Vote}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -96,6 +97,7 @@ class TezosNodeOperator(
   //introduced to simplify signatures
   type BallotBlock = (Block, List[Voting.Ballot])
   type BakerBlock = (Block, List[Voting.BakerRolls])
+  type BallotCountsBlock = (Block, Option[Voting.BallotCounts])
 
   /**
     * Generic fetch for paginated data relative to a specific block.
@@ -350,8 +352,15 @@ class TezosNodeOperator(
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
+  def getProposals(blocks: List[BlockData]) = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+    fetch[BlockHash, Option[ProtocolId], Future, List, Throwable].run(blocks.filterNot(b => isGenesis(b)).map(_.hash))
+  }
+
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock])] = {
+  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
@@ -371,10 +380,13 @@ class TezosNodeOperator(
     val fetchBallots =
       fetch[Block, List[Voting.Ballot], Future, List, Throwable]
 
+    val fetchBallotCounts =
+      fetch[Block, Option[BallotCounts], Future, List, Throwable]
+
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input blocks
      */
-    (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
+    (fetchProposals, fetchBakers, fetchBallots, fetchBallotCounts).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
   /** Fetches active delegates from node */
@@ -672,7 +684,91 @@ class TezosNodeOperator(
     }
   }
 
+  def getBlocksForLevels(
+    reference: (BlockHash, Int),
+    levelRange: Range.Inclusive
+  ): Future[List[BlockData]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+    val (hashRef, levelRef) = reference
+    val offsets = levelRange.map(lvl => levelRef - lvl).toList
+    implicit val blockFetcher = blocksFetcher(hashRef)
+    fetch[Offset, BlockData, Future, List, Throwable]
+      .run(offsets)
+      .map(_.collect { case (_, block) if !isGenesis(block) => block })
+  }
+
+  def getBlocksForGovernanceNotInDatabase(): Future[List[BlockData]] = {
+    val result = for {
+      maxLevel <- apiOperations.governanceMaxLevel
+      blockHead <- getBlockHead()
+      headLevel = blockHead.data.header.level
+      headHash = blockHead.data.hash
+      blocks <- {
+        val bootstrapping = maxLevel == -1
+        if (maxLevel < headLevel) {
+          //got something to load
+          if (bootstrapping) logger.warn("There were apparently no governances. Starting from the beginning...")
+          else
+            logger.info(
+              "I found the new block head at level {}, the currently stored governance max is {}. I'll fetch the missing {} blocks.",
+              headLevel,
+              maxLevel,
+              headLevel - maxLevel
+            )
+
+          Future.traverse(partitionBlocksRanges((maxLevel + 1) to headLevel))(
+            page =>
+              getBlocksForLevels((headHash, headLevel), page)
+          ).map(_.flatten)
+
+        } else {
+          Future.successful(Iterator.empty)
+        }
+      }
+    } yield blocks
+    result.map(_.toList)
+  }
+
+//  {
+//    import cats.instances.future._
+//    import cats.instances.list._
+//    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+//    //apiOperations.governanceMaxLevel
+//    for {
+//      maxLevel <- apiOperations.governanceMaxLevel
+//      blockHead <- getBlockHead()
+//      headLevel = blockHead.data.header.level
+//      headHash = blockHead.data.hash
+//    } yield {
+//      val bootstrapping = maxLevel == -1
+//      if (maxLevel < headLevel) {
+//        //got something to load
+//        if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
+//        else
+//          logger.info(
+//            "I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.",
+//            headLevel,
+//            maxLevel,
+//            headLevel - maxLevel
+//          )
+//        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
+//          page => getBlocks((headHash, headLevel), page)
+//        )
+//        val minLevel = if (bootstrapping) 1 else maxLevel
+//        (pagedResults, headLevel - minLevel)
+//      } else {
+//        logger.info("No new blocks to fetch from the network")
+//        (Iterator.empty, 0)
+//      }
+//    }
+//  }
+
 }
+
+
+
 
 /**
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations

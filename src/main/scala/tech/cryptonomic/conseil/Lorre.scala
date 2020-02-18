@@ -7,23 +7,13 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import tech.cryptonomic.conseil.tezos.{
-  ApiOperations,
-  DatabaseConversions,
-  FeeOperations,
-  ShutdownComplete,
-  Tables,
-  TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
-  TezosTypes,
-  TezosDatabaseOperations => TezosDb
-}
+import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, Tables, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config._
-import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
+import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages, isGenesis}
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -32,6 +22,7 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -83,6 +74,86 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   /** Inits registered tokens at startup */
   initRegisteredTokensFromCsv()
 
+  GovernanceProcessor.processGovernance()
+
+  object GovernanceProcessor {
+    /** */
+    def processGovernance(): Unit = {
+      tezosNodeOperator.getBlocksForGovernanceNotInDatabase().flatMap {
+        // Fails the whole process if any page processing fails
+        case pages => {
+          //this will be used for the pages streaming, and within all sub-processing doing a similar paging trick
+          implicit val mat = ActorMaterializer()
+
+          // Process each page on his own, and keep track of the progress
+          Source
+            .fromIterator(() => pages.toIterator)
+            .grouped(batchingConf.blockPageSize)
+            .mapAsync(1) { fetchingResult =>
+              processBlocksForGovernance(fetchingResult.toList)
+            }
+            .runWith(Sink.ignore)
+        }
+      }
+    }
+
+
+    def processBlocksForGovernance(blocks: List[BlockData]) = {
+      for {
+        proposals <- tezosNodeOperator.getProposals(blocks)
+        (_, listings, ballots, ballotCounts) <- tezosNodeOperator.getVotingDetails(blocks.map(blockData => Block(blockData, List.empty, CurrentVotes(None, None))))
+      } yield {
+        blocks.map { block =>
+          val blockHeaderMetadata = block.metadata.asInstanceOf[BlockHeaderMetadata]
+          val correspondingBallotCount = ballotCounts.find {
+            case (ballotCountBlockHash, _) => block.hash == ballotCountBlockHash.data.hash
+          }.flatMap(_._2)
+          val correspondingBakerRolls = listings.find {
+            case (listingsBlock, _) => block.hash == listingsBlock.data.hash
+          }.toList.flatMap(_._2)
+          val (yayRolls, nayRolls, passRolls) = ballots.find {
+            case (ballotBlock, _) => block.hash == ballotBlock.data.hash
+          }.toList.flatMap(_._2).foldLeft((0,0,0)) {
+            case ((yays, nays, passes), votingBallot) =>
+              val rolls = correspondingBakerRolls.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
+              votingBallot.ballot match {
+                case Vote("yay") => (yays + rolls, nays, passes)
+                case Vote("nay") => (yays, nays + rolls, passes)
+                case Vote("pass") => (yays, nays, passes + rolls)
+                case Vote(notSupported) =>
+                  logger.error("Not supported vote type {}", notSupported)
+                  (yays, nays, passes)
+              }
+          }
+
+          Tables.GovernanceRow(
+            votingPeriod = blockHeaderMetadata.level.voting_period,
+            votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
+            cycle = Some(blockHeaderMetadata.level.cycle),
+            level = Some(blockHeaderMetadata.level.level),
+            blockHash = block.hash.value,
+            proposalHash = proposals.find {
+              case (blockHash, _) => block.hash == blockHash
+            }.flatMap(_._2).map(_.id).getOrElse(""),
+            yayCount = correspondingBallotCount.map(_.yay),
+            nayCount = correspondingBallotCount.map(_.nay),
+            passCount = correspondingBallotCount.map(_.pass),
+            yayRolls = Some(yayRolls),
+            nayRolls = Some(nayRolls),
+            passRolls = Some(passRolls),
+            totalRolls = Some(yayRolls + nayRolls + passRolls)
+          )
+        }
+
+      }
+    }
+  }
+
+
+
+
+
+
   /** Reads and inserts CSV file to the database for the */
   def initRegisteredTokensFromCsv(): Future[Option[Int]] = {
     import kantan.csv._
@@ -108,9 +179,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   /** Schedules method for fetching baking rights */
-  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
-    writeFutureRights()
-  )
+//  system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
+//    writeFutureRights()
+//  )
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   def writeFutureRights(): Unit = {
@@ -249,13 +320,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   if (verbose.on)
     displayConfiguration(Platforms.Tezos, tezosConf, lorreConf, (LORRE_FAILURE_IGNORE_VAR, ignoreProcessFailures))
 
-  try {
-    checkTezosConnection()
-    val accountRefreshesToRun = Await.result(unprocessedLevelsForRefreshingAccounts(), atMost = 5.seconds)
-    mainLoop(0, accountRefreshesToRun)
-  } finally {
-    shutdown()
-  }
+//  try {
+//    checkTezosConnection()
+//    val accountRefreshesToRun = Await.result(unprocessedLevelsForRefreshingAccounts(), atMost = 5.seconds)
+//    mainLoop(0, accountRefreshesToRun)
+//  } finally {
+//    shutdown()
+//  }
 
   /* Possibly updates all accounts if the current block level is past any of the given ones
    * @param events the relevant levels, each with its own selection pattern, that calls for a refresh
@@ -444,7 +515,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processVotesForBlocks(
       blocks: List[TezosTypes.Block]
   ): Future[List[(Block, List[Voting.BakerRolls])]] = tezosNodeOperator.getVotingDetails(blocks).map {
-    case (_, bakersBlocks, _) => bakersBlocks
+    case (_, bakersBlocks, _, _) => bakersBlocks
   }
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
