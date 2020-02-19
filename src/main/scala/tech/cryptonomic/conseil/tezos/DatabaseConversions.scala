@@ -160,11 +160,13 @@ object DatabaseConversions extends LazyLogging {
                   Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0)))
                 )
                 .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
+                .withFieldConst(_.blockLevel, blockTaggedAccounts.blockLevel)
+                .withFieldConst(_.blockId, blockTaggedAccounts.blockHash.value)
                 .withFieldConst(_.isActiveBaker, Some(false))
                 .transform
             }
 
-        untouchedAccounts ::: touchedAccounts
+        (untouchedAccounts ::: touchedAccounts).distinct
       }
     }
 
