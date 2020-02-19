@@ -18,8 +18,6 @@ import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
-import slick.jdbc.JdbcCapabilities
-import tech.cryptonomic.conseil.tezos.Tables.AccountsHistoryRow
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
@@ -75,7 +73,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /**
     * Writes accounts history with block data to a database.
     *
-    * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those
+    * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those with accounts that became inactive
     * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
     */
   def writeAccountsHistory(
@@ -474,7 +472,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
-    * @param accounts the full accounts' data
+    * @param accounts the full accounts' data with account rows of inactive bakers
     * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block
     * @return a database action that stores both arguments and return a tuple of the row counts inserted
     */
@@ -543,29 +541,8 @@ object TezosDatabaseOperations extends LazyLogging {
       .result
 
   /**
-    * Gets inactive bakers at given block level
-    * @param blockLevel
-    * @param activeBakers needed to filter out them from all of the bakers
-    * @return inactive baker accounts
-    * */
-  def getInactiveBakersFromAccountsHistoryByBlock(
-      blockLevel: Int,
-      activeBakers: List[String]
-  )(implicit ec: ExecutionContext): DBIO[List[AccountsHistoryRow]] =
-    sql"""
-         SELECT s.*
-         FROM (
-           SELECT *, rank() OVER (PARTITION BY account_id ORDER BY asof DESC) AS r
-           FROM tezos.accounts_history WHERE block_level <= $blockLevel
-         ) s
-         WHERE s.r = 1 AND s.is_baker = true AND s.account_id NOT IN (${activeBakers.mkString(",")})
-       """
-      .as[AccountsHistoryRow]
-      .map(_.toList)
-
-  /**
     * Gets inactive bakers from accounts
-    * @param activeBakers needed to filter out them from all of the bakers
+    * @param activeBakers accountIds needed to filter out them from all of the bakers
     * @return inactive baker accounts
     * */
   def getInactiveBakersFromAccounts(

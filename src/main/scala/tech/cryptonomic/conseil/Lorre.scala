@@ -630,16 +630,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           if (blockTaggedAccounts.blockLevel % lorreConf.blockRightsFetching.cycleSize == 1) {
             tezosNodeOperator.fetchActiveDelegates(taggedAccounts.map(x => (x.blockLevel, x.blockHash))).flatMap {
               activeBakers =>
+                val activeBakersIds = activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
                 db.run {
                   TezosDb
-                    .getInactiveBakersFromAccounts(
-                      activeBakers.toMap.apply(blockTaggedAccounts.blockHash)
-                    )
+                    .getInactiveBakersFromAccounts(activeBakersIds)
                     .map(blockTaggedAccounts -> _)
                 }
             }
           } else {
-            Future.successful(blockTaggedAccounts -> List.empty[Tables.AccountsRow])
+            Future.successful(blockTaggedAccounts -> List.empty)
           }
         }
 

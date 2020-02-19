@@ -152,7 +152,7 @@ object DatabaseConversions extends LazyLogging {
 
         val untouchedAccounts =
           inactiveBakers
-            .filterNot(inactiveAccountsRow => touched.contains(inactiveAccountsRow.accountId))
+            .filterNot(row => touched.contains(row.accountId))
             .map {
               _.into[Tables.AccountsHistoryRow]
                 .withFieldConst(
@@ -160,7 +160,7 @@ object DatabaseConversions extends LazyLogging {
                   Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0)))
                 )
                 .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
-                .withFieldConst(_.blockLevel, blockTaggedAccounts.blockLevel)
+                .withFieldConst(_.blockLevel, BigDecimal(blockTaggedAccounts.blockLevel))
                 .withFieldConst(_.blockId, blockTaggedAccounts.blockHash.value)
                 .withFieldConst(_.isActiveBaker, Some(false))
                 .transform
