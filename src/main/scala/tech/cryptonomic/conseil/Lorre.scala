@@ -88,7 +88,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           // Process each page on his own, and keep track of the progress
           Source
             .fromIterator(() => pages.toIterator)
-            .grouped(batchingConf.blockPageSize)
+            .grouped(2)
             .mapAsync(1) { fetchingResult =>
               processBlocksForGovernance(fetchingResult.toList)
             }

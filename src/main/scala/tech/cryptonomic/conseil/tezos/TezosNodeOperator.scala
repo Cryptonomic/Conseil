@@ -13,7 +13,7 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
-import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.{BakerRolls, BallotCounts, Vote}
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BallotCounts
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -705,7 +705,7 @@ class TezosNodeOperator(
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
-      blocks <- {
+      } yield {
         val bootstrapping = maxLevel == -1
         if (maxLevel < headLevel) {
           //got something to load
@@ -718,16 +718,17 @@ class TezosNodeOperator(
               headLevel - maxLevel
             )
 
-          Future.traverse(partitionBlocksRanges((maxLevel + 1) to headLevel))(
+          partitionBlocksRanges((maxLevel + 1) to headLevel).map(
             page =>
+              getBlocks((headHash, headLevel), page).map(_.map(_._1.data))
               getBlocksForLevels((headHash, headLevel), page)
-          ).map(_.flatten)
+          )
 
         } else {
-          Future.successful(Iterator.empty)
+          Iterator.empty
         }
       }
-    } yield blocks
+
     result.map(_.toList)
   }
 
