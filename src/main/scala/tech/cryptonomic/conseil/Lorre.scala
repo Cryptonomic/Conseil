@@ -7,7 +7,6 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
   DatabaseConversions,
