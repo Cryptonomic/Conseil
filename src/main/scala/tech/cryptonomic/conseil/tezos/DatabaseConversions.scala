@@ -16,7 +16,6 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
 import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil
-import tech.cryptonomic.conseil.tezos.Tables.AccountsHistoryRow
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 object DatabaseConversions extends LazyLogging {
