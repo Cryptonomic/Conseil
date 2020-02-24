@@ -128,9 +128,9 @@ object DatabaseConversions extends LazyLogging {
     }
 
   implicit val blockAccountsToAccountHistoryRows =
-    new Conversion[List, (BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow]), Tables.AccountsHistoryRow] {
+    new Conversion[List, (BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow]), Tables.AccountsHistoryRow] {
       override def convert(
-          from: (BlockTagged[Map[AccountId, Account]], List[AccountsHistoryRow])
+          from: (BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])
       ): List[Tables.AccountsHistoryRow] = {
         import tech.cryptonomic.conseil.util.Conversion.Syntax._
         val (blockTaggedAccounts, inactiveBakers) = from
@@ -155,10 +155,21 @@ object DatabaseConversions extends LazyLogging {
 
         val untouchedAccounts =
           inactiveBakers
-            .map(_.copy(isActiveBaker = Some(false)))
-            .filterNot(accountsHistoryRow => touched.contains(accountsHistoryRow.accountId))
+            .filterNot(row => touched.contains(row.accountId))
+            .map {
+              _.into[Tables.AccountsHistoryRow]
+                .withFieldConst(
+                  _.asof,
+                  Timestamp.from(blockTaggedAccounts.timestamp.getOrElse(Instant.ofEpochMilli(0)))
+                )
+                .withFieldConst(_.cycle, blockTaggedAccounts.cycle)
+                .withFieldConst(_.blockLevel, BigDecimal(blockTaggedAccounts.blockLevel))
+                .withFieldConst(_.blockId, blockTaggedAccounts.blockHash.value)
+                .withFieldConst(_.isActiveBaker, Some(false))
+                .transform
+            }
 
-        untouchedAccounts ::: touchedAccounts
+        (untouchedAccounts ::: touchedAccounts).distinct
       }
     }
 
