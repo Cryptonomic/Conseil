@@ -949,8 +949,26 @@ object DatabaseConversions extends LazyLogging {
     }
 
   implicit val governanceConversion =
-    new Conversion[List, (List[BlockData] ,List[(BlockHash, Option[ProtocolId])], List[(Block, List[Voting.BakerRolls])], List[(Block, List[Voting.Ballot])], List[(Block, Option[Voting.BallotCounts])]), Tables.GovernanceRow] {
-      override def convert(from: (List[BlockData],List[(BlockHash, Option[ProtocolId])], List[(Block, List[Voting.BakerRolls])], List[(Block, List[Voting.Ballot])], List[(Block, Option[Voting.BallotCounts])])): List[conseil.tezos.Tables.GovernanceRow] = {
+    new Conversion[
+      List,
+      (
+          List[BlockData],
+          List[(BlockHash, Option[ProtocolId])],
+          List[(Block, List[Voting.BakerRolls])],
+          List[(Block, List[Voting.Ballot])],
+          List[(Block, Option[Voting.BallotCounts])]
+      ),
+      Tables.GovernanceRow
+    ] {
+      override def convert(
+          from: (
+              List[BlockData],
+              List[(BlockHash, Option[ProtocolId])],
+              List[(Block, List[Voting.BakerRolls])],
+              List[(Block, List[Voting.Ballot])],
+              List[(Block, Option[Voting.BallotCounts])]
+          )
+      ): List[conseil.tezos.Tables.GovernanceRow] = {
         val (blocksWithProposals, proposals, listings, ballots, ballotCounts) = from
         blocksWithProposals.map { block =>
           val blockHeaderMetadata: BlockHeaderMetadata = TezosTypes.discardGenesis(block.metadata)
@@ -962,7 +980,7 @@ object DatabaseConversions extends LazyLogging {
           }.toList.flatMap(_._2)
           val (yayRolls, nayRolls, passRolls) = ballots.find {
             case (ballotBlock, _) => block.hash == ballotBlock.data.hash
-          }.toList.flatMap(_._2).foldLeft((0,0,0)) {
+          }.toList.flatMap(_._2).foldLeft((0, 0, 0)) {
             case ((yays, nays, passes), votingBallot) =>
               val rolls = correspondingBakerRolls.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
               votingBallot.ballot match {

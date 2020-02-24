@@ -8,7 +8,18 @@ import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil
-import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, Tables, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.tezos.{
+  ApiOperations,
+  DatabaseConversions,
+  FeeOperations,
+  ShutdownComplete,
+  Tables,
+  TezosErrors,
+  TezosNodeInterface,
+  TezosNodeOperator,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
@@ -73,33 +84,35 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   /** Inits registered tokens at startup */
   initRegisteredTokensFromCsv()
 
-  /** Processes governance */
-  GovernanceProcessor.processGovernance()
+  /** Inits governance processing */
+  system.scheduler.scheduleOnce(5.seconds)(GovernanceProcessor.processGovernance())
 
   object GovernanceProcessor {
-    /** */
+
+    /** Main governance process */
     def processGovernance(): Unit = {
       val processing = tezosNodeOperator.getBlocksForGovernanceNotInDatabase().flatMap {
         // Fails the whole process if any page processing fails
-        pages => {
-          implicit val mat = ActorMaterializer()
-          Source
-            .fromIterator(() => pages)
-            .mapAsync(1)(identity)
-            .mapAsync(1) (processBlocksForGovernance)
-            .mapAsync(1) { governanceRows =>
-              db.run(TezosDb.insertGovernance(governanceRows))
-            }
-            .runWith(Sink.ignore)
-        }
+        pages =>
+          {
+            implicit val mat = ActorMaterializer()
+            Source
+              .fromIterator(() => pages)
+              .mapAsync(1)(identity)
+              .mapAsync(1)(processBlocksForGovernance)
+              .mapAsync(1) { governanceRows =>
+                db.run(TezosDb.insertGovernance(governanceRows))
+              }
+              .runWith(Sink.ignore)
+          }
       }
 
       Await.result(processing, atMost = Duration.Inf)
       processGovernance()
     }
 
-
-    def processBlocksForGovernance(blocks: List[BlockData]): Future[List[conseil.tezos.Tables.GovernanceRow]] = {
+    /** Processes blocks and fetches needed data to produce Governance rows*/
+    def processBlocksForGovernance(blocks: List[BlockData]): Future[List[Tables.GovernanceRow]] = {
       import DatabaseConversions._
       import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
@@ -108,14 +121,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
         blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.hash))
         (listings, ballots, ballotCounts) <- {
-          if(blocksWithProposals.nonEmpty) {
-            tezosNodeOperator.getVoting(blocksWithProposals.map(blockData => Block(blockData, List.empty, CurrentVotes(None, None))))
+          if (blocksWithProposals.nonEmpty) {
+            tezosNodeOperator.getVoting(
+              blocksWithProposals.map(blockData => Block(blockData, List.empty, CurrentVotes(None, None)))
+            )
           } else {
             Future.successful((List.empty, List.empty, List.empty))
           }
         }
       } yield (blocksWithProposals, proposals, listings, ballots, ballotCounts).convertToA[List, Tables.GovernanceRow]
-
     }
   }
 
@@ -480,7 +494,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private[this] def processVotesForBlocks(
       blocks: List[TezosTypes.Block]
   ): Future[List[(Block, List[Voting.BakerRolls])]] = tezosNodeOperator.getVotingDetails(blocks).map {
-    case (_, bakersBlocks, _, _) => bakersBlocks
+    case (_, bakersBlocks, _) => bakersBlocks
   }
 
   /* Fetches accounts from account-id and saves those associated with the latest operations

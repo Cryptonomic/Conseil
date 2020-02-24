@@ -8,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.util.JsonUtil
-import tech.cryptonomic.conseil.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
+import tech.cryptonomic.conseil.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
 import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
 import org.slf4j.LoggerFactory
@@ -635,7 +635,8 @@ trait BlocksDataFetchers {
     override val fetchData =
       Kleisli(
         blocks => {
-          logger.info("Fetching ballot counts in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
+          logger
+            .info("Fetching ballot counts in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger

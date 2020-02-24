@@ -760,9 +760,8 @@ object TezosDatabaseOperations extends LazyLogging {
     *
     * @return  Max level or [[defaultBlockLevel]] if no blocks were found in the database.
     */
-  def fetchGovernanceMaxLevel(implicit ec: ExecutionContext): DBIO[Int] = {
+  def fetchGovernanceMaxLevel(implicit ec: ExecutionContext): DBIO[Int] =
     Tables.Governance.map(_.level).max.getOrElse(defaultBlockLevel.toInt).result
-  }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

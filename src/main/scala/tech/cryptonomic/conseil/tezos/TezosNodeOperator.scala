@@ -360,7 +360,7 @@ class TezosNodeOperator(
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
+  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock])] = {
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
@@ -380,15 +380,11 @@ class TezosNodeOperator(
     val fetchBallots =
       fetch[Block, List[Voting.Ballot], Future, List, Throwable]
 
-    val fetchBallotCounts =
-      fetch[Block, Option[BallotCounts], Future, List, Throwable]
-
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input blocks
      */
-    (fetchProposals, fetchBakers, fetchBallots, fetchBallotCounts).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
+    (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
-
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
   def getVoting(blocks: List[Block]): Future[(List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
@@ -710,8 +706,8 @@ class TezosNodeOperator(
   }
 
   def getBlocksForLevels(
-    reference: (BlockHash, Int),
-    levelRange: Range.Inclusive
+      reference: (BlockHash, Int),
+      levelRange: Range.Inclusive
   ): Future[List[BlockData]] = {
     import cats.instances.future._
     import cats.instances.list._
@@ -730,36 +726,32 @@ class TezosNodeOperator(
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
-      } yield {
-        val bootstrapping = maxLevel == -1
-        if (maxLevel < headLevel) {
-          //got something to load
-          if (bootstrapping) logger.warn("There were apparently no governances. Starting from the beginning...")
-          else
-            logger.info(
-              "I found the new block head at level {}, the currently stored governance max is {}. I'll fetch the missing {} blocks.",
-              headLevel,
-              maxLevel,
-              headLevel - maxLevel
-            )
-
-          partitionBlocksRanges((maxLevel + 1) to headLevel).map(
-            page =>
-              getBlocksForLevels((headHash, headLevel), page)
+    } yield {
+      val bootstrapping = maxLevel == -1
+      if (maxLevel < headLevel) {
+        //got something to load
+        if (bootstrapping) logger.warn("There were apparently no governances. Starting from the beginning...")
+        else
+          logger.info(
+            "I found the new block head at level {}, the currently stored governance max is {}. I'll fetch the missing {} blocks.",
+            headLevel,
+            maxLevel,
+            headLevel - maxLevel
           )
 
-        } else {
-          Iterator.empty
-        }
+        partitionBlocksRanges((maxLevel + 1) to headLevel).map(
+          page => getBlocksForLevels((headHash, headLevel), page)
+        )
+
+      } else {
+        Iterator.empty
       }
+    }
 
     result
   }
 
 }
-
-
-
 
 /**
   * Adds more specific API functionalities to perform on a tezos node, in particular those involving write and cryptographic operations
