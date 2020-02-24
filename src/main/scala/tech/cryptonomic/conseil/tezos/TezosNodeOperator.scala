@@ -389,6 +389,31 @@ class TezosNodeOperator(
     (fetchProposals, fetchBakers, fetchBallots, fetchBallotCounts).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
+
+  /** Fetches detailed data for voting associated to the passed-in blocks */
+  def getVoting(blocks: List[Block]): Future[(List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import cats.syntax.apply._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+
+    val sortedBlocks = blocks.sortBy(_.data.header.level)
+    val fetchBakers =
+      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
+
+    val fetchBallots =
+      fetch[Block, List[Voting.Ballot], Future, List, Throwable]
+
+    val fetchBallotCounts =
+      fetch[Block, Option[BallotCounts], Future, List, Throwable]
+
+    /* combine the three kleisli operations to return a tuple of the results
+     * and then run the composition on the input blocks
+     */
+    (fetchBakers, fetchBallots, fetchBallotCounts).tupled.run(sortedBlocks.filterNot(b => isGenesis(b.data)))
+
+  }
+
   /** Fetches active delegates from node */
   def fetchActiveDelegates(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
     import cats.instances.future._
@@ -699,9 +724,9 @@ class TezosNodeOperator(
       .map(_.collect { case (_, block) if !isGenesis(block) => block })
   }
 
-  def getBlocksForGovernanceNotInDatabase(): Future[List[BlockData]] = {
+  def getBlocksForGovernanceNotInDatabase() = {
     val result = for {
-      maxLevel <- apiOperations.governanceMaxLevel
+      maxLevel <- apiOperations.governanceMaxLevel.map(maxLevel => Math.max(maxLevel, batchConf.governanceStartLevel))
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -720,7 +745,6 @@ class TezosNodeOperator(
 
           partitionBlocksRanges((maxLevel + 1) to headLevel).map(
             page =>
-              getBlocks((headHash, headLevel), page).map(_.map(_._1.data))
               getBlocksForLevels((headHash, headLevel), page)
           )
 
@@ -729,42 +753,8 @@ class TezosNodeOperator(
         }
       }
 
-    result.map(_.toList)
+    result
   }
-
-//  {
-//    import cats.instances.future._
-//    import cats.instances.list._
-//    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
-//    //apiOperations.governanceMaxLevel
-//    for {
-//      maxLevel <- apiOperations.governanceMaxLevel
-//      blockHead <- getBlockHead()
-//      headLevel = blockHead.data.header.level
-//      headHash = blockHead.data.hash
-//    } yield {
-//      val bootstrapping = maxLevel == -1
-//      if (maxLevel < headLevel) {
-//        //got something to load
-//        if (bootstrapping) logger.warn("There were apparently no blocks in the database. Downloading the whole chain..")
-//        else
-//          logger.info(
-//            "I found the new block head at level {}, the currently stored max is {}. I'll fetch the missing {} blocks.",
-//            headLevel,
-//            maxLevel,
-//            headLevel - maxLevel
-//          )
-//        val pagedResults = partitionBlocksRanges((maxLevel + 1) to headLevel).map(
-//          page => getBlocks((headHash, headLevel), page)
-//        )
-//        val minLevel = if (bootstrapping) 1 else maxLevel
-//        (pagedResults, headLevel - minLevel)
-//      } else {
-//        logger.info("No new blocks to fetch from the network")
-//        (Iterator.empty, 0)
-//      }
-//    }
-//  }
 
 }
 

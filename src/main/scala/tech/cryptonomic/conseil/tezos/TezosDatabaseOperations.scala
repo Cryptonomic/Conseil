@@ -473,7 +473,7 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
-    logger.info("Writing governance rows into database...")
+    logger.info("Writing {} governance rows into database...", governance.size)
     Tables.Governance ++= governance
   }
 

@@ -15,7 +15,9 @@ import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
 import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil
 import tech.cryptonomic.conseil.tezos.Tables.AccountsHistoryRow
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 object DatabaseConversions extends LazyLogging {
 
@@ -942,6 +944,54 @@ object DatabaseConversions extends LazyLogging {
             .withFieldConst(_.slot, slot)
             .withFieldConst(_.blockHash, None)
             .transform
+        }
+      }
+    }
+
+  implicit val governanceConversion =
+    new Conversion[List, (List[BlockData] ,List[(BlockHash, Option[ProtocolId])], List[(Block, List[Voting.BakerRolls])], List[(Block, List[Voting.Ballot])], List[(Block, Option[Voting.BallotCounts])]), Tables.GovernanceRow] {
+      override def convert(from: (List[BlockData],List[(BlockHash, Option[ProtocolId])], List[(Block, List[Voting.BakerRolls])], List[(Block, List[Voting.Ballot])], List[(Block, Option[Voting.BallotCounts])])): List[conseil.tezos.Tables.GovernanceRow] = {
+        val (blocksWithProposals, proposals, listings, ballots, ballotCounts) = from
+        blocksWithProposals.map { block =>
+          val blockHeaderMetadata: BlockHeaderMetadata = TezosTypes.discardGenesis(block.metadata)
+          val correspondingBallotCount = ballotCounts.find {
+            case (ballotCountBlockHash, _) => block.hash == ballotCountBlockHash.data.hash
+          }.flatMap(_._2)
+          val correspondingBakerRolls = listings.find {
+            case (listingsBlock, _) => block.hash == listingsBlock.data.hash
+          }.toList.flatMap(_._2)
+          val (yayRolls, nayRolls, passRolls) = ballots.find {
+            case (ballotBlock, _) => block.hash == ballotBlock.data.hash
+          }.toList.flatMap(_._2).foldLeft((0,0,0)) {
+            case ((yays, nays, passes), votingBallot) =>
+              val rolls = correspondingBakerRolls.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
+              votingBallot.ballot match {
+                case Vote("yay") => (yays + rolls, nays, passes)
+                case Vote("nay") => (yays, nays + rolls, passes)
+                case Vote("pass") => (yays, nays, passes + rolls)
+                case Vote(notSupported) =>
+                  logger.error("Not supported vote type {}", notSupported)
+                  (yays, nays, passes)
+              }
+          }
+
+          Tables.GovernanceRow(
+            votingPeriod = blockHeaderMetadata.level.voting_period,
+            votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
+            cycle = Some(blockHeaderMetadata.level.cycle),
+            level = Some(blockHeaderMetadata.level.level),
+            blockHash = block.hash.value,
+            proposalHash = proposals.find {
+              case (blockHash, _) => block.hash == blockHash
+            }.flatMap(_._2).map(_.id).getOrElse(""),
+            yayCount = correspondingBallotCount.map(_.yay),
+            nayCount = correspondingBallotCount.map(_.nay),
+            passCount = correspondingBallotCount.map(_.pass),
+            yayRolls = Some(yayRolls),
+            nayRolls = Some(nayRolls),
+            passRolls = Some(passRolls),
+            totalRolls = Some(yayRolls + nayRolls + passRolls)
+          )
         }
       }
     }

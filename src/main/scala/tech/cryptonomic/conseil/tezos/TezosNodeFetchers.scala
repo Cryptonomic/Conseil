@@ -630,17 +630,17 @@ trait BlocksDataFetchers {
     type In = Block
     type Out = Option[BallotCounts]
 
-    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballot"
+    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballots"
 
     override val fetchData =
       Kleisli(
         blocks => {
-          logger.info("Fetching ballots in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
+          logger.info("Fetching ballot counts in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
           node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
             case err =>
               logger
                 .error(
-                  "I encountered problems while fetching ballot votes from {}, for blocks {}. The error says {}",
+                  "I encountered problems while fetching ballot counts from {}, for blocks {}. The error says {}",
                   network,
                   blocks.map(_.data.hash.value).mkString(", "),
                   err.getMessage
@@ -654,7 +654,7 @@ trait BlocksDataFetchers {
       decodeLiftingTo[Future, Out](json)
         .onError(
           logWarnOnJsonDecoding(
-            s"I fetched ballot votes json from tezos node that I'm unable to decode: $json",
+            s"I fetched ballot counts json from tezos node that I'm unable to decode: $json",
             ignore = Option(json).forall(_.trim.isEmpty)
           )
         )
