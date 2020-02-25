@@ -20,7 +20,7 @@ class TezosNodeOperatorTest
     with IntegrationPatience {
   import ExecutionContext.Implicits.global
 
-  val config = BatchFetchConfiguration(1, 1, 500, 10 seconds, 10 seconds, 10 seconds)
+  val config = BatchFetchConfiguration(1, 1, 500, -1, 10 seconds, 10 seconds, 10 seconds)
 
   "getBlock" should "correctly fetch the genesis block" in {
       //given
