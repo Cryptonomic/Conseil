@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import com.github.tminglei.slickpg.ExPostgresProfile
 import scala.concurrent.ExecutionContext
+import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
@@ -187,6 +188,69 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
     Tables.OriginatedAccountMaps ++= refs
+  }
+
+  /** Matches blocks' transactions to extract updated balance for any contract corresponding to a known
+    * token definition
+    *
+    * We only consider transactions whose source starts with a valid contract address hash
+    *
+    * @param blocks containing the possible token exchange operations
+    * @param ec needed to sequence multiple database operations
+    * @return optional count of rows stored on db
+    */
+  def updateTokenBalances(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    import slickeffect.implicits._
+    val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
+
+    //we first extract all data available from the blocks themselves, as necessary to make a proper balance entry
+    val balanceData = if (logger.underlying.isDebugEnabled()) {
+      val balanceMap = blocks.map(b => b.data.hash.value -> b.convertToA[List, DatabaseConversions.BlockTokenBalances])
+      balanceMap.foreach {
+        case (hash, balances) if balances.nonEmpty =>
+          logger.debug(
+            "For block hash {}, I'm about to extract the following token balance updates from big maps: \n\t{}",
+            hash.value,
+            balances.mkString(", ")
+          )
+        case _ =>
+      }
+      rowsMap.map(_._2).flatten
+    } else blocks.flatMap(_.convertToA[List, DatabaseConversions.BlockTokenBalances])
+
+    //now we need to check on the token registry for matching contracts, to get a valid token-id as defined on the db
+    val rowOptions = balanceData.map {
+      data =>
+        val blockData = data.block.data
+
+        Tables.RegisteredTokens
+          .filter(_.accountId === data.tokenContractId.id)
+          .map(_.id)
+          .result
+          .map { results =>
+            results.headOption.map(
+              tokenId =>
+                Tables.TokenBalancesRow(
+                  tokenId,
+                  address = data.accountId.id,
+                  balance = BigDecimal(data.balance),
+                  blockId = blockData.hash.value,
+                  blockLevel = BigDecimal(blockData.header.level),
+                  asof = toSql(blockData.header.timestamp)
+                )
+            )
+          }
+    }.sequence[DBIO, Option[Tables.TokenBalancesRow]]
+
+    rowOptions.flatMap { ops =>
+      val validBalances = ops.flatten
+      logger.info(
+        "{} token balance updates will be stored.",
+        if (validBalances.nonEmpty) s"A total of ${validBalances.size}" else "No"
+      )
+
+      Tables.TokenBalances ++= validBalances
+    }
   }
 
 }

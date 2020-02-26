@@ -86,6 +86,15 @@ CREATE TABLE tezos.registered_tokens (
     account_id text NOT NULL
 );
 
+CREATE TABLE tezos.token_balances (
+    token_id integer PRIMARY KEY,
+    address text NOT NULL,
+    balance numeric NOT NULL,
+    block_id character varying NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    asof timestamp without time zone NOT NULL
+);
+
 
 --
 -- Name: accounts; Type: TABLE; Schema: tezos; Owner: -

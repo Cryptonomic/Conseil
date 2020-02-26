@@ -171,6 +171,7 @@ object TezosDatabaseOperations extends LazyLogging {
       (bigMapOps.saveContractOrigin _).rmap(_.void),
       (bigMapOps.copyContent _).rmap(_.void),
       (bigMapOps.removeMaps _)
+      (bigMapOps.updateTokenBalances _)
     )
 
     operationSequence
