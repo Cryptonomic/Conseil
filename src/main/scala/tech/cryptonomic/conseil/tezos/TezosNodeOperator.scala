@@ -352,7 +352,8 @@ class TezosNodeOperator(
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
-  def getProposals(blocks: List[BlockData]) = {
+  /** Fetches proposals for given blocks */
+  def getProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
@@ -360,30 +361,16 @@ class TezosNodeOperator(
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock])] = {
+  def getVotingDetails(blocks: List[Block]): Future[List[BakerBlock]] = {
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
-    //adapt the proposal protocols result to include the block
-    val fetchProposals =
-      fetch[Block, List[(ProtocolId, ProposalSupporters)], Future, List, Throwable].map { proposalsList =>
-        proposalsList.map {
-          case (block, protocols) => Voting.Proposal(protocols, block)
-        }
-      }
-
     val fetchBakers =
       fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
 
-    val fetchBallots =
-      fetch[Block, List[Voting.Ballot], Future, List, Throwable]
-
-    /* combine the three kleisli operations to return a tuple of the results
-     * and then run the composition on the input blocks
-     */
-    (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
+    fetchBakers.run(blocks.filterNot(b => isGenesis(b.data)))
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */

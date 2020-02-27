@@ -83,55 +83,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   /** Inits registered tokens at startup */
   initRegisteredTokensFromCsv()
 
-  /** Inits governance processing */
-  system.scheduler.scheduleOnce(5.seconds)(GovernanceProcessor.processGovernance())
-
-  object GovernanceProcessor {
-
-    /** Main governance process */
-    def processGovernance(): Unit = {
-      val processing = tezosNodeOperator.getBlocksForGovernanceNotInDatabase().flatMap {
-        // Fails the whole process if any page processing fails
-        pages =>
-          {
-            implicit val mat = ActorMaterializer()
-            Source
-              .fromIterator(() => pages)
-              .mapAsync(1)(identity)
-              .mapAsync(1)(processBlocksForGovernance)
-              .mapAsync(1) { governanceRows =>
-                db.run(TezosDb.insertGovernance(governanceRows))
-              }
-              .runWith(Sink.ignore)
-          }
-      }
-
-      Await.result(processing, atMost = Duration.Inf)
-      processGovernance()
-    }
-
-    /** Processes blocks and fetches needed data to produce Governance rows*/
-    def processBlocksForGovernance(blocks: List[BlockData]): Future[List[Tables.GovernanceRow]] = {
-      import DatabaseConversions._
-      import tech.cryptonomic.conseil.util.Conversion.Syntax._
-
-      for {
-        proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks)
-        blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
-        blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.hash))
-        (listings, ballots, ballotCounts) <- {
-          if (blocksWithProposals.nonEmpty) {
-            tezosNodeOperator.getVoting(
-              blocksWithProposals.map(blockData => Block(blockData, List.empty, CurrentVotes(None, None)))
-            )
-          } else {
-            Future.successful((List.empty, List.empty, List.empty))
-          }
-        }
-      } yield (blocksWithProposals, proposals, listings, ballots, ballotCounts).convertToA[List, Tables.GovernanceRow]
-    }
-  }
-
   /** Reads and inserts CSV file to the database for the */
   def initRegisteredTokensFromCsv(): Future[Option[Int]] = {
     import kantan.csv._
@@ -414,8 +365,31 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }
         delegateCheckpoints <- processAccountsForBlocks(accountUpdates, rollsData) // should this fail, we still recover data from the checkpoint
         _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
+        _ <- processBlocksForGovernance(blocks)
       } yield results.size
 
+    }
+
+    /** Processes blocks and fetches needed data to produce Governance rows*/
+    def processBlocksForGovernance(blocks: List[Block]): Future[Unit] = {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      for {
+        proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks.map(_.data))
+        blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
+        blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
+        (listings, ballots, ballotCounts) <- {
+          if (blocksWithProposals.nonEmpty) {
+            tezosNodeOperator.getVoting(blocksWithProposals)
+          } else {
+            Future.successful((List.empty, List.empty, List.empty))
+          }
+        }
+        governanceRows = (blocksWithProposals.map(_.data), proposals, listings, ballots, ballotCounts)
+          .convertToA[List, Tables.GovernanceRow]
+        _ <- db.run(TezosDb.insertGovernance(governanceRows))
+      } yield ()
     }
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
@@ -492,9 +466,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     */
   private[this] def processVotesForBlocks(
       blocks: List[TezosTypes.Block]
-  ): Future[List[(Block, List[Voting.BakerRolls])]] = tezosNodeOperator.getVotingDetails(blocks).map {
-    case (_, bakersBlocks, _) => bakersBlocks
-  }
+  ): Future[List[(Block, List[Voting.BakerRolls])]] =
+    tezosNodeOperator.getVotingDetails(blocks)
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)
