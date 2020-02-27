@@ -240,7 +240,8 @@ CREATE TABLE tezos.endorsing_rights (
     slot integer NOT NULL,
     estimated_time timestamp without time zone,
     cycle integer,
-    governance_period integer
+    governance_period integer,
+    endorsed_block integer
 );
 
 

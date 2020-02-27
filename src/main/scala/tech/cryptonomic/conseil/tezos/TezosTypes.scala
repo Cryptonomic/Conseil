@@ -618,7 +618,8 @@ object TezosTypes {
       slots: List[Int],
       estimated_time: Option[ZonedDateTime],
       cycle: Option[Int],
-      governancePeriod: Option[Int]
+      governancePeriod: Option[Int],
+      endorsedBlock: Option[Int]
   )
 
 }
