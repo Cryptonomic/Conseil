@@ -364,7 +364,6 @@ class TezosNodeOperator(
   def getVotingDetails(blocks: List[Block]): Future[List[BakerBlock]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import cats.syntax.apply._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     val fetchBakers =
@@ -374,7 +373,7 @@ class TezosNodeOperator(
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVoting(blocks: List[Block]): Future[(List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
+  def getVotes(blocks: List[Block]): Future[(List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
@@ -690,52 +689,6 @@ class TezosNodeOperator(
           (parseMichelsonScripts(Block(md, ops, votes)), accs)
       }
     }
-  }
-
-  def getBlocksForLevels(
-      reference: (BlockHash, Int),
-      levelRange: Range.Inclusive
-  ): Future[List[BlockData]] = {
-    import cats.instances.future._
-    import cats.instances.list._
-    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
-    val (hashRef, levelRef) = reference
-    val offsets = levelRange.map(lvl => levelRef - lvl).toList
-    implicit val blockFetcher = blocksFetcher(hashRef)
-    fetch[Offset, BlockData, Future, List, Throwable]
-      .run(offsets)
-      .map(_.collect { case (_, block) if !isGenesis(block) => block })
-  }
-
-  def getBlocksForGovernanceNotInDatabase() = {
-    val result = for {
-      maxLevel <- apiOperations.governanceMaxLevel.map(maxLevel => Math.max(maxLevel, batchConf.governanceStartLevel))
-      blockHead <- getBlockHead()
-      headLevel = blockHead.data.header.level
-      headHash = blockHead.data.hash
-    } yield {
-      val bootstrapping = maxLevel == -1
-      if (maxLevel < headLevel) {
-        //got something to load
-        if (bootstrapping) logger.warn("There were apparently no governances. Starting from the beginning...")
-        else
-          logger.info(
-            "I found the new block head at level {}, the currently stored governance max is {}. I'll fetch the missing {} blocks.",
-            headLevel,
-            maxLevel,
-            headLevel - maxLevel
-          )
-
-        partitionBlocksRanges((maxLevel + 1) to headLevel).map(
-          page => getBlocksForLevels((headHash, headLevel), page)
-        )
-
-      } else {
-        Iterator.empty
-      }
-    }
-
-    result
   }
 
 }

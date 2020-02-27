@@ -381,7 +381,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
         (listings, ballots, ballotCounts) <- {
           if (blocksWithProposals.nonEmpty) {
-            tezosNodeOperator.getVoting(blocksWithProposals)
+            tezosNodeOperator.getVotes(blocksWithProposals)
           } else {
             Future.successful((List.empty, List.empty, List.empty))
           }

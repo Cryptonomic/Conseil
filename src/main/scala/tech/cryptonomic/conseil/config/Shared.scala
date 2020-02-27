@@ -45,7 +45,6 @@ final case class BatchFetchConfiguration(
     accountConcurrencyLevel: Int,
     blockOperationsConcurrencyLevel: Int,
     blockPageSize: Int,
-    governanceStartLevel: Int,
     blockPageProcessingTimeout: FiniteDuration,
     accountPageProcessingTimeout: FiniteDuration,
     delegatePageProcessingTimeout: FiniteDuration

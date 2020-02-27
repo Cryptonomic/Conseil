@@ -179,13 +179,6 @@ class ApiOperations extends DataOperations with MetadataOperations {
           .headOption
     )
 
-  /** Fetches max block level from governance table
-    *
-    * @return  Max level or -1 if no blocks were found in the database.
-    */
-  def governanceMaxLevel: Future[Int] =
-    runQuery(TezosDatabaseOperations.fetchGovernanceMaxLevel)
-
   /** Executes the query with given predicates
     *
     * @param  tableName name of the table which we query
