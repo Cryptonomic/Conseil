@@ -12,4 +12,6 @@ services:
       POSTGRES_INITDB_ARGS: "--lc-collate=en_US.UTF-8 -E UTF8"
     volumes:
       - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
+#   uncomment if you want your data to be stored in the local directory
+#     - "./pgdata:/var/lib/postgresql/data"
 
