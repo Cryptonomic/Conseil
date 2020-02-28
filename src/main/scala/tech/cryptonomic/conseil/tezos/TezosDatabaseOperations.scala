@@ -749,7 +749,6 @@ object TezosDatabaseOperations extends LazyLogging {
       case false => Tables.RegisteredTokens ++= rows
     }
 
-
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"
 

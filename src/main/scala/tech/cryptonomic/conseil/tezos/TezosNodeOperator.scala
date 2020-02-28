@@ -373,15 +373,13 @@ class TezosNodeOperator(
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotes(blocks: List[Block]): Future[(List[BakerBlock], List[BallotBlock], List[BallotCountsBlock])] = {
+  def getVotes(blocks: List[Block]): Future[(List[BallotBlock], List[BallotCountsBlock])] = {
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     val sortedBlocks = blocks.sortBy(_.data.header.level)
-    val fetchBakers =
-      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
 
     val fetchBallots =
       fetch[Block, List[Voting.Ballot], Future, List, Throwable]
@@ -392,7 +390,7 @@ class TezosNodeOperator(
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input blocks
      */
-    (fetchBakers, fetchBallots, fetchBallotCounts).tupled.run(sortedBlocks.filterNot(b => isGenesis(b.data)))
+    (fetchBallots, fetchBallotCounts).tupled.run(sortedBlocks.filterNot(b => isGenesis(b.data)))
 
   }
 
