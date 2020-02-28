@@ -215,7 +215,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           )
         case _ =>
       }
-      rowsMap.map(_._2).flatten
+      balanceMap.map(_._2).flatten
     } else blocks.flatMap(_.convertToA[List, DatabaseConversions.BlockTokenBalances])
 
     //now we need to check on the token registry for matching contracts, to get a valid token-id as defined on the db
