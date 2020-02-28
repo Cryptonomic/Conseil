@@ -29,6 +29,7 @@ trait Tables {
     DelegatesCheckpoint.schema,
     EndorsingRights.schema,
     Fees.schema,
+    Governance.schema,
     OperationGroups.schema,
     Operations.schema,
     OriginatedAccountMaps.schema,
@@ -1285,6 +1286,164 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Fees */
   lazy val Fees = new TableQuery(tag => new Fees(tag))
+
+  /** Entity class storing rows of table Governance
+    *  @param votingPeriod Database column voting_period SqlType(int4)
+    *  @param votingPeriodKind Database column voting_period_kind SqlType(varchar)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param level Database column level SqlType(int4), Default(None)
+    *  @param blockHash Database column block_hash SqlType(varchar)
+    *  @param proposalHash Database column proposal_hash SqlType(varchar)
+    *  @param yayCount Database column yay_count SqlType(int4), Default(None)
+    *  @param nayCount Database column nay_count SqlType(int4), Default(None)
+    *  @param passCount Database column pass_count SqlType(int4), Default(None)
+    *  @param yayRolls Database column yay_rolls SqlType(numeric), Default(None)
+    *  @param nayRolls Database column nay_rolls SqlType(numeric), Default(None)
+    *  @param passRolls Database column pass_rolls SqlType(numeric), Default(None)
+    *  @param totalRolls Database column total_rolls SqlType(numeric), Default(None) */
+  case class GovernanceRow(
+      votingPeriod: Int,
+      votingPeriodKind: String,
+      cycle: Option[Int] = None,
+      level: Option[Int] = None,
+      blockHash: String,
+      proposalHash: String,
+      yayCount: Option[Int] = None,
+      nayCount: Option[Int] = None,
+      passCount: Option[Int] = None,
+      yayRolls: Option[scala.math.BigDecimal] = None,
+      nayRolls: Option[scala.math.BigDecimal] = None,
+      passRolls: Option[scala.math.BigDecimal] = None,
+      totalRolls: Option[scala.math.BigDecimal] = None
+  )
+
+  /** GetResult implicit for fetching GovernanceRow objects using plain SQL queries */
+  implicit def GetResultGovernanceRow(
+      implicit e0: GR[Int],
+      e1: GR[String],
+      e2: GR[Option[Int]],
+      e3: GR[Option[scala.math.BigDecimal]]
+  ): GR[GovernanceRow] = GR { prs =>
+    import prs._
+    GovernanceRow.tupled(
+      (
+        <<[Int],
+        <<[String],
+        <<?[Int],
+        <<?[Int],
+        <<[String],
+        <<[String],
+        <<?[Int],
+        <<?[Int],
+        <<?[Int],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal]
+      )
+    )
+  }
+
+  /** Table description of table governance. Objects of this class serve as prototypes for rows in queries. */
+  class Governance(_tableTag: Tag) extends profile.api.Table[GovernanceRow](_tableTag, Some("tezos"), "governance") {
+    def * =
+      (
+        votingPeriod,
+        votingPeriodKind,
+        cycle,
+        level,
+        blockHash,
+        proposalHash,
+        yayCount,
+        nayCount,
+        passCount,
+        yayRolls,
+        nayRolls,
+        passRolls,
+        totalRolls
+      ) <> (GovernanceRow.tupled, GovernanceRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(votingPeriod),
+          Rep.Some(votingPeriodKind),
+          cycle,
+          level,
+          Rep.Some(blockHash),
+          Rep.Some(proposalHash),
+          yayCount,
+          nayCount,
+          passCount,
+          yayRolls,
+          nayRolls,
+          passRolls,
+          totalRolls
+        )
+      ).shaped.<>(
+        { r =>
+          import r._;
+          _1.map(_ => GovernanceRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8, _9, _10, _11, _12, _13)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column voting_period SqlType(int4) */
+    val votingPeriod: Rep[Int] = column[Int]("voting_period")
+
+    /** Database column voting_period_kind SqlType(varchar) */
+    val votingPeriodKind: Rep[String] = column[String]("voting_period_kind")
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column level SqlType(int4), Default(None) */
+    val level: Rep[Option[Int]] = column[Option[Int]]("level", O.Default(None))
+
+    /** Database column block_hash SqlType(varchar) */
+    val blockHash: Rep[String] = column[String]("block_hash")
+
+    /** Database column proposal_hash SqlType(varchar) */
+    val proposalHash: Rep[String] = column[String]("proposal_hash")
+
+    /** Database column yay_count SqlType(int4), Default(None) */
+    val yayCount: Rep[Option[Int]] = column[Option[Int]]("yay_count", O.Default(None))
+
+    /** Database column nay_count SqlType(int4), Default(None) */
+    val nayCount: Rep[Option[Int]] = column[Option[Int]]("nay_count", O.Default(None))
+
+    /** Database column pass_count SqlType(int4), Default(None) */
+    val passCount: Rep[Option[Int]] = column[Option[Int]]("pass_count", O.Default(None))
+
+    /** Database column yay_rolls SqlType(numeric), Default(None) */
+    val yayRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("yay_rolls", O.Default(None))
+
+    /** Database column nay_rolls SqlType(numeric), Default(None) */
+    val nayRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("nay_rolls", O.Default(None))
+
+    /** Database column pass_rolls SqlType(numeric), Default(None) */
+    val passRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("pass_rolls", O.Default(None))
+
+    /** Database column total_rolls SqlType(numeric), Default(None) */
+    val totalRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("total_rolls", O.Default(None))
+
+    /** Primary key of Governance (database name governance_pkey) */
+    val pk = primaryKey("governance_pkey", (blockHash, proposalHash))
+
+    /** Index over (blockHash) (database name governance_block_hash_idx) */
+    val index1 = index("governance_block_hash_idx", blockHash)
+
+    /** Index over (proposalHash) (database name governance_proposal_hash_idx) */
+    val index2 = index("governance_proposal_hash_idx", proposalHash)
+  }
+
+  /** Collection-like TableQuery object for table Governance */
+  lazy val Governance = new TableQuery(tag => new Governance(tag))
 
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)

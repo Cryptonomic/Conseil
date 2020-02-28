@@ -18,6 +18,8 @@ import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import slick.jdbc.JdbcCapabilities
+import tech.cryptonomic.conseil.tezos.Tables.GovernanceRow
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
@@ -468,6 +470,11 @@ object TezosDatabaseOperations extends LazyLogging {
   def insertEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
     berLogger.info("Inserting endorsing rights to the DB...")
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
+  }
+
+  def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
+    logger.info("Writing {} governance rows into database...", governance.size)
+    Tables.Governance ++= governance
   }
 
   /**

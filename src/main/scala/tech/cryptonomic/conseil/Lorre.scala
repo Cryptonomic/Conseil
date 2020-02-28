@@ -365,8 +365,57 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }
         delegateCheckpoints <- processAccountsForBlocks(accountUpdates, rollsData) // should this fail, we still recover data from the checkpoint
         _ <- processDelegatesForBlocks(delegateCheckpoints) // same as above
+        _ <- processBlocksForGovernance(blocks, votingData)
       } yield results.size
 
+    }
+
+    /** Processes blocks and fetches needed data to produce Governance rows*/
+    def processBlocksForGovernance(
+        blocks: List[Block],
+        listings: List[(Block, List[Voting.BakerRolls])]
+    ): Future[Unit] = {
+      import DatabaseConversions._
+      import tech.cryptonomic.conseil.util.Conversion.Syntax._
+
+      for {
+        proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks.map(_.data))
+        blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
+        blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
+        (ballots, ballotCounts) <- {
+          if (blocksWithProposals.nonEmpty) {
+            tezosNodeOperator.getVotes(blocksWithProposals)
+          } else {
+            Future.successful((List.empty, List.empty))
+          }
+        }
+        governanceRows = groupGovernanceDataByBlock(
+          blocksWithProposals.map(_.data),
+          proposals,
+          listings,
+          ballots,
+          ballotCounts
+        ).map(_.convertTo[Tables.GovernanceRow])
+        _ <- db.run(TezosDb.insertGovernance(governanceRows))
+      } yield ()
+    }
+
+    /** Groups data needed for generating Governance */
+    def groupGovernanceDataByBlock(
+        blockData: List[BlockData],
+        proposals: List[(BlockHash, Option[ProtocolId])],
+        listings: List[(Block, List[Voting.BakerRolls])],
+        ballots: List[(Block, List[Voting.Ballot])],
+        ballotCounts: List[(Block, Option[Voting.BallotCounts])]
+    ): List[
+      (BlockData, Option[ProtocolId], List[Voting.BakerRolls], List[Voting.Ballot], Option[Voting.BallotCounts])
+    ] = blockData.map { bd =>
+      val hash = bd.hash
+      val proposal = proposals.find { case (blockHash, _) => blockHash == hash }.flatMap(_._2)
+      val listing = listings.find { case (block, _) => block.data.hash == hash }.toList.flatMap(_._2)
+      val ballot = ballots.find { case (block, _) => block.data.hash == hash }.toList.flatMap(_._2)
+      val ballotCount = ballotCounts.find { case (block, _) => block.data.hash == hash }.flatMap(_._2)
+      (bd, proposal, listing, ballot, ballotCount)
     }
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
@@ -443,9 +492,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     */
   private[this] def processVotesForBlocks(
       blocks: List[TezosTypes.Block]
-  ): Future[List[(Block, List[Voting.BakerRolls])]] = tezosNodeOperator.getVotingDetails(blocks).map {
-    case (_, bakersBlocks, _) => bakersBlocks
-  }
+  ): Future[List[(Block, List[Voting.BakerRolls])]] =
+    tezosNodeOperator.getVotingDetails(blocks)
 
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)

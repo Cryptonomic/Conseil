@@ -582,6 +582,7 @@ object TezosTypes {
     final case class Proposal(protocols: List[(ProtocolId, ProposalSupporters)], block: Block)
     final case class BakerRolls(pkh: PublicKeyHash, rolls: Int)
     final case class Ballot(pkh: PublicKeyHash, ballot: Vote)
+    final case class BallotCounts(yay: Int, nay: Int, pass: Int)
   }
 
   object Syntax {

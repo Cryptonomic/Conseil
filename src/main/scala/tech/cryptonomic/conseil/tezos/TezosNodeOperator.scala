@@ -13,6 +13,7 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BallotCounts
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -96,6 +97,7 @@ class TezosNodeOperator(
   //introduced to simplify signatures
   type BallotBlock = (Block, List[Voting.Ballot])
   type BakerBlock = (Block, List[Voting.BakerRolls])
+  type BallotCountsBlock = (Block, Option[Voting.BallotCounts])
 
   /**
     * Generic fetch for paginated data relative to a specific block.
@@ -350,31 +352,46 @@ class TezosNodeOperator(
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
+  /** Fetches proposals for given blocks */
+  def getProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+    fetch[BlockHash, Option[ProtocolId], Future, List, Throwable].run(blocks.filterNot(b => isGenesis(b)).map(_.hash))
+  }
+
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotingDetails(blocks: List[Block]): Future[(List[Voting.Proposal], List[BakerBlock], List[BallotBlock])] = {
+  def getVotingDetails(blocks: List[Block]): Future[List[BakerBlock]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
+
+    val fetchBakers =
+      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
+
+    fetchBakers.run(blocks.filterNot(b => isGenesis(b.data)))
+  }
+
+  /** Fetches detailed data for voting associated to the passed-in blocks */
+  def getVotes(blocks: List[Block]): Future[(List[BallotBlock], List[BallotCountsBlock])] = {
     import cats.instances.future._
     import cats.instances.list._
     import cats.syntax.apply._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
-    //adapt the proposal protocols result to include the block
-    val fetchProposals =
-      fetch[Block, List[(ProtocolId, ProposalSupporters)], Future, List, Throwable].map { proposalsList =>
-        proposalsList.map {
-          case (block, protocols) => Voting.Proposal(protocols, block)
-        }
-      }
-
-    val fetchBakers =
-      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
+    val sortedBlocks = blocks.sortBy(_.data.header.level)
 
     val fetchBallots =
       fetch[Block, List[Voting.Ballot], Future, List, Throwable]
 
+    val fetchBallotCounts =
+      fetch[Block, Option[BallotCounts], Future, List, Throwable]
+
     /* combine the three kleisli operations to return a tuple of the results
      * and then run the composition on the input blocks
      */
-    (fetchProposals, fetchBakers, fetchBallots).tupled.run(blocks.filterNot(b => isGenesis(b.data)))
+    (fetchBallots, fetchBallotCounts).tupled.run(sortedBlocks.filterNot(b => isGenesis(b.data)))
+
   }
 
   /** Fetches active delegates from node */

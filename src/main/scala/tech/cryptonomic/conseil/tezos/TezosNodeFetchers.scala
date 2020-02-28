@@ -13,6 +13,7 @@ import tech.cryptonomic.conseil.util.CollectionOps._
 import TezosTypes._
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BallotCounts
 
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
@@ -616,6 +617,51 @@ trait BlocksDataFetchers {
         .recover {
           //we recover parsing failures with an empty result, as we have no optionality here to lean on
           case NonFatal(_) => List.empty
+        }
+    }
+  }
+
+  /** a fetcher of ballot votes for blocks */
+  implicit val ballotCountFetcher = new FutureFetcher {
+    import JsonDecoders.Circe.Votes._
+    import cats.instances.future._
+
+    type Encoded = String
+    type In = Block
+    type Out = Option[BallotCounts]
+
+    private val makeUrl = (block: Block) => s"blocks/${block.data.hash.value}/votes/ballots"
+
+    override val fetchData =
+      Kleisli(
+        blocks => {
+          logger
+            .info("Fetching ballot counts in levels {}", blocks.head.data.header.level to blocks.last.data.header.level)
+          node.runBatchedGetQuery(network, blocks, makeUrl, fetchConcurrency).onError {
+            case err =>
+              logger
+                .error(
+                  "I encountered problems while fetching ballot counts from {}, for blocks {}. The error says {}",
+                  network,
+                  blocks.map(_.data.hash.value).mkString(", "),
+                  err.getMessage
+                )
+                .pure[Future]
+          }
+        }
+      )
+
+    override val decodeData = Kleisli { json =>
+      decodeLiftingTo[Future, Out](json)
+        .onError(
+          logWarnOnJsonDecoding(
+            s"I fetched ballot counts json from tezos node that I'm unable to decode: $json",
+            ignore = Option(json).forall(_.trim.isEmpty)
+          )
+        )
+        .recover {
+          //we recover parsing failures with an empty result, as we have no optionality here to lean on
+          case NonFatal(_) => None
         }
     }
   }

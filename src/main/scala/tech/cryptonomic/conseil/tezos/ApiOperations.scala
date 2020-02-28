@@ -11,7 +11,6 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.{
   QueryResponse,
   SimpleField
 }
-import tech.cryptonomic.conseil.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.util.DatabaseUtil

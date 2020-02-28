@@ -138,6 +138,7 @@ object JsonDecoders {
 
       implicit val bakerDecoder: Decoder[BakerRolls] = deriveDecoder
       implicit val ballotDecoder: Decoder[Ballot] = deriveDecoder
+      implicit val ballotCountsDecoder: Decoder[BallotCounts] = deriveDecoder
       implicit val bakersDecoder: Decoder[List[BakerRolls]] =
         Decoder.decodeList[BakerRolls]
       implicit val ballotsDecoder: Decoder[List[Ballot]] =

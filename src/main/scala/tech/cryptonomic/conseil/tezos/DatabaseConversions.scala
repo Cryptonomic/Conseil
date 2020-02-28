@@ -15,6 +15,7 @@ import tech.cryptonomic.conseil.tezos
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
 import com.typesafe.scalalogging.Logger
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 object DatabaseConversions extends LazyLogging {
 
@@ -953,6 +954,54 @@ object DatabaseConversions extends LazyLogging {
             .withFieldConst(_.blockHash, None)
             .transform
         }
+      }
+    }
+
+  implicit val governanceConv =
+    new Conversion[
+      Id,
+      (BlockData, Option[ProtocolId], List[Voting.BakerRolls], List[Voting.Ballot], Option[Voting.BallotCounts]),
+      Tables.GovernanceRow
+    ] {
+
+      override def convert(
+          from: (
+              BlockData,
+              Option[ProtocolId],
+              List[Voting.BakerRolls],
+              List[Voting.Ballot],
+              Option[Voting.BallotCounts]
+          )
+      ): Id[Tables.GovernanceRow] = {
+        val (block, proposal, listings, ballots, count) = from
+        val blockHeaderMetadata: BlockHeaderMetadata = TezosTypes.discardGenesis(block.metadata)
+        val (yayRolls, nayRolls, passRolls) = ballots.foldLeft((0, 0, 0)) {
+          case ((yays, nays, passes), votingBallot) =>
+            val rolls = listings.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
+            votingBallot.ballot match {
+              case Vote("yay") => (yays + rolls, nays, passes)
+              case Vote("nay") => (yays, nays + rolls, passes)
+              case Vote("pass") => (yays, nays, passes + rolls)
+              case Vote(notSupported) =>
+                logger.error("Not supported vote type {}", notSupported)
+                (yays, nays, passes)
+            }
+        }
+        Tables.GovernanceRow(
+          votingPeriod = blockHeaderMetadata.level.voting_period,
+          votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
+          cycle = Some(blockHeaderMetadata.level.cycle),
+          level = Some(blockHeaderMetadata.level.level),
+          blockHash = block.hash.value,
+          proposalHash = proposal.map(_.id).getOrElse(""),
+          yayCount = count.map(_.yay),
+          nayCount = count.map(_.nay),
+          passCount = count.map(_.pass),
+          yayRolls = Some(yayRolls),
+          nayRolls = Some(nayRolls),
+          passRolls = Some(passRolls),
+          totalRolls = Some(yayRolls + nayRolls + passRolls)
+        )
       }
     }
 

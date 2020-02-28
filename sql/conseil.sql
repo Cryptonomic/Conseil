@@ -46,6 +46,29 @@ SET default_tablespace = '';
 
 SET default_with_oids = false;
 
+
+CREATE TABLE tezos.governance (
+voting_period integer NOT NULL,
+voting_period_kind character varying NOT NULL,
+cycle integer,
+level integer,
+block_hash character varying NOT NULL,
+proposal_hash character varying NOT NULL,
+yay_count integer,
+nay_count integer,
+pass_count integer,
+yay_rolls numeric,
+nay_rolls numeric,
+pass_rolls numeric,
+total_rolls numeric,
+PRIMARY KEY (block_hash, proposal_hash)
+);
+
+CREATE INDEX governance_block_hash_idx ON tezos.governance USING btree (block_hash);
+CREATE INDEX governance_proposal_hash_idx ON tezos.governance USING btree (proposal_hash);
+
+
+
 CREATE TABLE tezos.processed_chain_events (
     event_level numeric,
     event_type char varying,
