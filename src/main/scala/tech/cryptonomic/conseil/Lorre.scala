@@ -390,27 +390,33 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)
       ).mapN {
         case (br, er) =>
-          val updatedEndorsingRights = er.map {
-            case (fetchRights, endorsingRightsList) =>
-              fetchRights -> endorsingRightsList.map { rights =>
-                    val endorsedBlock = fetchingResults.find {
-                      case (block, _) =>
-                        fetchRights.blockHash.contains(block.data.hash)
-                    }.flatMap {
-                      case (block, _) =>
-                        block.operationGroups.flatMap {
-                          _.contents.collect {
-                            case e: Endorsement if e.metadata.delegate.value == rights.delegate => e
-                          }.map(_.level)
-                        }.headOption
-                    }
-                    rights.copy(endorsedBlock = endorsedBlock)
-                  }
-          }
-          (db.run(TezosDb.upsertBakingRights(br)), db.run(TezosDb.upsertEndorsingRights(updatedEndorsingRights)))
-            .mapN((_, _) => ())
-      }.flatten
+          val updatedEndorsingRights = updateEndorsingRights(er, fetchingResults)
+          (db.run(TezosDb.upsertBakingRights(br)), db.run(TezosDb.upsertEndorsingRights(updatedEndorsingRights))).void
+      }
     }
+
+    /** Updates endorsing rights with endorsed block */
+    def updateEndorsingRights(
+        endorsingRights: Map[FetchRights, List[EndorsingRights]],
+        fetchingResults: tezosNodeOperator.BlockFetchingResults
+    ): Map[FetchRights, List[EndorsingRights]] =
+      endorsingRights.map {
+        case (fetchRights, endorsingRightsList) =>
+          fetchRights -> endorsingRightsList.map { rights =>
+                val endorsedBlock = fetchingResults.find {
+                  case (block, _) =>
+                    fetchRights.blockHash.contains(block.data.hash)
+                }.flatMap {
+                  case (block, _) =>
+                    block.operationGroups.flatMap {
+                      _.contents.collect {
+                        case e: Endorsement if e.metadata.delegate.value == rights.delegate => e
+                      }.map(_.level)
+                    }.headOption
+                }
+                rights.copy(endorsedBlock = endorsedBlock)
+              }
+      }
 
     blockPagesToSynchronize.flatMap {
       // Fails the whole process if any page processing fails
