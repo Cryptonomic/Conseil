@@ -17,7 +17,7 @@ object BlockOperations {
     * @param block the block to inspect
     * @return a Map holding for each group both external and internal operations' results
     */
-  def extractOperationsWithInternalResults(
+  def extractOperationsAlongWithInternalResults(
       block: Block
   ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
     block.operationGroups.map { group =>

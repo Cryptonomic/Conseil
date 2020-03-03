@@ -11,9 +11,10 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{
 import cats.implicits._
 import scala.util.Try
 import tech.cryptonomic.conseil.tezos.TezosTypes.Decimal
+import com.typesafe.scalalogging.LazyLogging
 
 /** Collects custom token contracts structures and operations */
-object TokenLedgers {
+object TokenLedgers extends LazyLogging {
 
   /** alias to the custom code that will read the new balance for a token from big map diffs */
   private type BalanceExtractor = Contract.BigMapUpdate => Option[(AccountId, BigInt)]
@@ -52,11 +53,13 @@ object TokenLedgers {
     * @param diff the big map changes found in a transaction
     * @return a possible pair of an account and its new balance for a token associated to the passed-in contract
     */
-  def readBalance(token: ContractId, diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
+  def readBalance(token: ContractId)(diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
     //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
     case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _)
         if customBalanceStorage.keySet.contains(token -> BigMapId(mapId)) =>
       customBalanceStorage.getOrElse(token -> BigMapId(mapId), TokenLedgers.emptyBalanceExtractor)(update)
+    case update =>
+      None
   }
 
   //common operations to read/extract data from big maps
@@ -87,16 +90,20 @@ object TokenLedgers {
     import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
 
     /* reads a map value as a list with a balance as head */
-    def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] =
-      JsonParser
+    def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] = {
+      val parsedCode = JsonParser
         .parse[MichelsonInstruction](mapCode.expression)
-        .toOption
-        .collect {
-          case MichelsonSingleInstruction("PAIR", MichelsonIntConstant(balance) :: _, _) => balance
-        }
-        .flatMap { balance =>
-          Try(BigInt(balance)).toOption
-        }
+
+      parsedCode.left.foreach(
+        err => logger.error("Failed to parse michelson expression for token balance extraction", err)
+      )
+
+      parsedCode.toOption.collect {
+        case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) => balance
+      }.flatMap { balance =>
+        Try(BigInt(balance)).toOption
+      }
+    }
 
     /* extracts a bytes value as a string if it corresponds to the micheline argument */
     def parseBytes(code: Micheline): Option[String] =

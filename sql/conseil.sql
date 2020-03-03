@@ -87,12 +87,13 @@ CREATE TABLE tezos.registered_tokens (
 );
 
 CREATE TABLE tezos.token_balances (
-    token_id integer PRIMARY KEY,
+    token_id integer,
     address text NOT NULL,
     balance numeric NOT NULL,
     block_id character varying NOT NULL,
     block_level numeric DEFAULT '-1'::integer NOT NULL,
-    asof timestamp without time zone NOT NULL
+    asof timestamp without time zone NOT NULL,
+    PRIMARY KEY (token_id, address, block_level)
 );
 
 

@@ -2104,7 +2104,7 @@ trait Tables {
   lazy val RegisteredTokens = new TableQuery(tag => new RegisteredTokens(tag))
 
   /** Entity class storing rows of table TokenBalances
-    *  @param tokenId Database column token_id SqlType(int4), PrimaryKey
+    *  @param tokenId Database column token_id SqlType(int4)
     *  @param address Database column address SqlType(text)
     *  @param balance Database column balance SqlType(numeric)
     *  @param blockId Database column block_id SqlType(varchar)
@@ -2156,8 +2156,8 @@ trait Tables {
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    /** Database column token_id SqlType(int4), PrimaryKey */
-    val tokenId: Rep[Int] = column[Int]("token_id", O.PrimaryKey)
+    /** Database column token_id SqlType(int4) */
+    val tokenId: Rep[Int] = column[Int]("token_id")
 
     /** Database column address SqlType(text) */
     val address: Rep[String] = column[String]("address")
@@ -2174,6 +2174,9 @@ trait Tables {
 
     /** Database column asof SqlType(timestamp) */
     val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Primary key of TokenBalances (database name token_balances_pkey) */
+    val pk = primaryKey("token_balances_pkey", (tokenId, address, blockLevel))
   }
 
   /** Collection-like TableQuery object for table TokenBalances */
