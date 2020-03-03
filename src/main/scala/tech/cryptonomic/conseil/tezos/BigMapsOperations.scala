@@ -219,27 +219,26 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     } else blocks.flatMap(_.convertToA[List, DatabaseConversions.BlockTokenBalances])
 
     //now we need to check on the token registry for matching contracts, to get a valid token-id as defined on the db
-    val rowOptions = balanceData.map {
-      data =>
-        val blockData = data.block.data
+    val rowOptions = balanceData.map { data =>
+      val blockData = data.block.data
 
-        Tables.RegisteredTokens
-          .filter(_.accountId === data.tokenContractId.id)
-          .map(_.id)
-          .result
-          .map { results =>
-            results.headOption.map(
-              tokenId =>
-                Tables.TokenBalancesRow(
-                  tokenId,
-                  address = data.accountId.id,
-                  balance = BigDecimal(data.balance),
-                  blockId = blockData.hash.value,
-                  blockLevel = BigDecimal(blockData.header.level),
-                  asof = toSql(blockData.header.timestamp)
-                )
-            )
-          }
+      Tables.RegisteredTokens
+        .filter(_.accountId === data.tokenContractId.id)
+        .map(_.id)
+        .result
+        .map { results =>
+          results.headOption.map(
+            tokenId =>
+              Tables.TokenBalancesRow(
+                tokenId,
+                address = data.accountId.id,
+                balance = BigDecimal(data.balance),
+                blockId = blockData.hash.value,
+                blockLevel = BigDecimal(blockData.header.level),
+                asof = toSql(blockData.header.timestamp)
+              )
+          )
+        }
     }.sequence[DBIO, Option[Tables.TokenBalancesRow]]
 
     rowOptions.flatMap { ops =>
