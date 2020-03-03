@@ -88,7 +88,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     import kantan.csv._
     import kantan.csv.ops._
     import kantan.csv.generic._
-    val rawData: java.net.URL = getClass.getResource("/" + tezosConf.network + ".csv")
+    val rawData: java.net.URL = getClass.getResource("/csv/" + tezosConf.network + ".csv")
     val reader = rawData.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
 
     def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
