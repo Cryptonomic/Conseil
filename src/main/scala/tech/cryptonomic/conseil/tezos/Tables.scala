@@ -1142,7 +1142,8 @@ trait Tables {
     *  @param slot Database column slot SqlType(int4)
     *  @param estimatedTime Database column estimated_time SqlType(timestamp), Default(None)
     *  @param cycle Database column cycle SqlType(int4), Default(None)
-    *  @param governancePeriod Database column governance_period SqlType(int4), Default(None) */
+    *  @param governancePeriod Database column governance_period SqlType(int4), Default(None)
+    *  @param endorsedBlock Database column endorsed_block SqlType(int4), Default(None) */
   case class EndorsingRightsRow(
       blockHash: Option[String] = None,
       level: Int,
@@ -1150,7 +1151,8 @@ trait Tables {
       slot: Int,
       estimatedTime: Option[java.sql.Timestamp] = None,
       cycle: Option[Int] = None,
-      governancePeriod: Option[Int] = None
+      governancePeriod: Option[Int] = None,
+      endorsedBlock: Option[Int] = None
   )
 
   /** GetResult implicit for fetching EndorsingRightsRow objects using plain SQL queries */
@@ -1162,24 +1164,36 @@ trait Tables {
       e4: GR[Option[Int]]
   ): GR[EndorsingRightsRow] = GR { prs =>
     import prs._
-    EndorsingRightsRow.tupled((<<?[String], <<[Int], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int]))
+    EndorsingRightsRow.tupled(
+      (<<?[String], <<[Int], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int], <<?[Int])
+    )
   }
 
   /** Table description of table endorsing_rights. Objects of this class serve as prototypes for rows in queries. */
   class EndorsingRights(_tableTag: Tag)
       extends profile.api.Table[EndorsingRightsRow](_tableTag, Some("tezos"), "endorsing_rights") {
     def * =
-      (blockHash, level, delegate, slot, estimatedTime, cycle, governancePeriod) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
+      (blockHash, level, delegate, slot, estimatedTime, cycle, governancePeriod, endorsedBlock) <> (EndorsingRightsRow.tupled, EndorsingRightsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((blockHash, Rep.Some(level), Rep.Some(delegate), Rep.Some(slot), estimatedTime, cycle, governancePeriod)).shaped
-        .<>(
-          { r =>
-            import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7)))
-          },
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      (
+        (
+          blockHash,
+          Rep.Some(level),
+          Rep.Some(delegate),
+          Rep.Some(slot),
+          estimatedTime,
+          cycle,
+          governancePeriod,
+          endorsedBlock
         )
+      ).shaped.<>(
+        { r =>
+          import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column block_hash SqlType(varchar), Default(None) */
     val blockHash: Rep[Option[String]] = column[Option[String]]("block_hash", O.Default(None))
@@ -1202,6 +1216,9 @@ trait Tables {
 
     /** Database column governance_period SqlType(int4), Default(None) */
     val governancePeriod: Rep[Option[Int]] = column[Option[Int]]("governance_period", O.Default(None))
+
+    /** Database column endorsed_block SqlType(int4), Default(None) */
+    val endorsedBlock: Rep[Option[Int]] = column[Option[Int]]("endorsed_block", O.Default(None))
 
     /** Primary key of EndorsingRights (database name endorsing_rights_pkey) */
     val pk = primaryKey("endorsing_rights_pkey", (level, delegate, slot))
