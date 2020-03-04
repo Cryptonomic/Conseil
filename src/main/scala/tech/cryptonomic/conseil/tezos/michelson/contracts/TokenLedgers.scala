@@ -16,33 +16,41 @@ import com.typesafe.scalalogging.LazyLogging
 /** Collects custom token contracts structures and operations */
 object TokenLedgers extends LazyLogging {
 
-  /** alias to the custom code that will read the new balance for a token from big map diffs */
-  private type BalanceExtractor = Contract.BigMapUpdate => Option[(AccountId, BigInt)]
-
   type BalanceUpdate = (AccountId, BigInt)
 
-  /** this extractor always returns an empty result and it's meant as a default fallback */
-  private val emptyBalanceExtractor: BalanceExtractor =
-    Function.const[Option[(AccountId, BigInt)], Contract.BigMapUpdate](Option.empty)
-
-  /** typed wrapper to identify the meaning of the numerical id */
+  /** typed wrapper to clarify the meaning of the numerical id */
   case class BigMapId(id: BigDecimal) extends AnyVal
 
-  /** For a specific token contract we define a way to read the new balance
-    * on a transaction update, based on the BigMap contents
-    * The map key is made up of
-    * - a contract address that contains the token smart contract
-    * - a big-map identifier that keeps the ledger data for the contract (used for double-checking)
+  /** alias to the custom code that will read the new balance for a token from big map diffs */
+  private type BalanceReader = Contract.BigMapUpdate => Option[(AccountId, BigInt)]
+
+  /* data structure wrapping useful information + functions to act on ledgers
+   *
+   * mapId is a reference to the big map used to store data on balances
+   * balanceReader is a function that will use a big map update and extract
+   *   balance information from it
+   */
+  private case class LedgerToolbox(
+      mapId: BigMapId,
+      balanceReader: BalanceReader
+  )
+
+  /** For each specific contract available we store a few
+    * relevant bits of data useful to extract information
+    * related to that specific contract shape
     *
-    * This implicitly assumes that, independently of the network used, the chance of collision, on
-    * both contract address and map assignment, is negligible
+    * We're assuming here that the risk of collision on contract addresses representing
+    * tokens, even on different tezos networks, is actually zero.
     */
-  private val customBalanceStorage: Map[(ContractId, BigMapId), BalanceExtractor] = Map(
-    (ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux"), BigMapId(1718)) -> KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Ledger
+  private val ledgers: Map[ContractId, LedgerToolbox] = Map(
+    ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux") -> LedgerToolbox(
+          BigMapId(1718),
+          KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read
+        )
   )
 
   //this code needs to take into account an input of available account ids and check each for a matching balance value
-  private lazy val KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Ledger: BalanceExtractor = update =>
+  private lazy val KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read: BalanceReader = update =>
     (MichelineOps.parseBytes(update.key), BigMapOps.parseMapCode(update).flatMap(MichelineOps.parseBalanceFromMap _)).mapN {
       case (bytesKey, balance) => AccountId(bytesKey) -> balance
     }
@@ -55,10 +63,13 @@ object TokenLedgers extends LazyLogging {
     */
   def readBalance(token: ContractId)(diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
     //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-    case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _)
-        if customBalanceStorage.keySet.contains(token -> BigMapId(mapId)) =>
-      customBalanceStorage.getOrElse(token -> BigMapId(mapId), TokenLedgers.emptyBalanceExtractor)(update)
-    case update =>
+    case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _) if ledgers.contains(token) =>
+      for {
+        LedgerToolbox(BigMapId(id), balanceExtract) <- ledgers get token
+        if mapId == id
+        balanceChange <- balanceExtract(update)
+      } yield balanceChange
+    case _ =>
       None
   }
 
