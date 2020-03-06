@@ -17,7 +17,7 @@
     </appender>
 
     <logger name="com.base22" level="TRACE"/>
-    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="OFF"/>
+    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-OFF}"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />
