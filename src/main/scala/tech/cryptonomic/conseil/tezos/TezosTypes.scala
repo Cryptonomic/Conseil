@@ -7,6 +7,7 @@ import monocle.{Lens, Traversal}
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
+import scala.util.Try
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -372,6 +373,16 @@ object TezosTypes {
     final case class Error(json: String) extends AnyVal
 
     //we're currently making no difference between different statuses in any of the results
+
+    /** Utility to handle some known status strings */
+    object Status extends Enumeration {
+      type Status = Value
+      val applied, failed, skipped, backtracked = Value
+
+      def parse(in: String): Option[Status] =
+        Try(withName(in)).toOption
+
+    }
 
     final case class Reveal(
         status: String,
