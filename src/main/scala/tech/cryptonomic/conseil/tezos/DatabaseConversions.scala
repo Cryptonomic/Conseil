@@ -755,6 +755,9 @@ object DatabaseConversions extends LazyLogging {
    */
   implicit val blockToBigMapsRow = new Conversion[List, Block, Tables.BigMapsRow] {
     import tech.cryptonomic.conseil.util.Conversion.Syntax._
+    import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+
+    def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     override def convert(from: TezosTypes.Block): List[Tables.BigMapsRow] = {
 
@@ -768,11 +771,13 @@ object DatabaseConversions extends LazyLogging {
           .flatMap(diff => BlockBigMapDiff((from.data.hash, diff)).convertToA[Option, Tables.BigMapsRow])
 
       ops.toList.flatten.flatMap {
-        case op: Origination => extractDiffsToRows(op.metadata.operation_result)
+        case op: Origination if isApplied(op.metadata.operation_result.status) =>
+          extractDiffsToRows(op.metadata.operation_result)
         case _ => List.empty
       } ++
         intOps.toList.flatten.flatMap {
-          case intOp: InternalOperationResults.Origination => extractDiffsToRows(intOp.result)
+          case intOp: InternalOperationResults.Origination if isApplied(intOp.result.status) =>
+            extractDiffsToRows(intOp.result)
           case _ => List.empty
         }
     }
@@ -785,6 +790,9 @@ object DatabaseConversions extends LazyLogging {
    */
   implicit val blockToBigMapContentsRow = new Conversion[List, Block, Tables.BigMapContentsRow] {
     import tech.cryptonomic.conseil.util.Conversion.Syntax._
+    import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+
+    def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     override def convert(from: TezosTypes.Block): List[Tables.BigMapContentsRow] = {
       val (ops, intOps) = extractOperationsWithInternalResults(from).values.unzip
@@ -797,11 +805,13 @@ object DatabaseConversions extends LazyLogging {
           .flatMap(diff => BlockBigMapDiff((from.data.hash, diff)).convertToA[Option, Tables.BigMapContentsRow])
 
       ops.toList.flatten.flatMap {
-        case op: Transaction => extractDiffsToRows(op.metadata.operation_result)
+        case op: Transaction if isApplied(op.metadata.operation_result.status) =>
+          extractDiffsToRows(op.metadata.operation_result)
         case _ => List.empty
       } ++
         intOps.toList.flatten.flatMap {
-          case intOp: InternalOperationResults.Transaction => extractDiffsToRows(intOp.result)
+          case intOp: InternalOperationResults.Transaction if isApplied(intOp.result.status) =>
+            extractDiffsToRows(intOp.result)
           case _ => List.empty
         }
 
@@ -814,6 +824,9 @@ object DatabaseConversions extends LazyLogging {
     */
   implicit val blockToBigMapOriginatedContracts = new Conversion[List, Block, Tables.OriginatedAccountMapsRow] {
     import tech.cryptonomic.conseil.util.Conversion.Syntax._
+    import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+
+    def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     override def convert(from: TezosTypes.Block): List[Tables.OriginatedAccountMapsRow] = {
       val (ops, intOps) = extractOperationsWithInternalResults(from).values.unzip
@@ -830,11 +843,13 @@ object DatabaseConversions extends LazyLogging {
         } yield rows
 
       ops.toList.flatten.flatMap {
-        case op: Origination => extractDiffsToRows(op.metadata.operation_result)
+        case op: Origination if isApplied(op.metadata.operation_result.status) =>
+          extractDiffsToRows(op.metadata.operation_result)
         case _ => List.empty
       } ++
         intOps.toList.flatten.flatMap {
-          case intOp: InternalOperationResults.Origination => extractDiffsToRows(intOp.result)
+          case intOp: InternalOperationResults.Origination if isApplied(intOp.result.status) =>
+            extractDiffsToRows(intOp.result)
           case _ => List.empty
         }
     }

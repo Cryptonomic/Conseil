@@ -437,11 +437,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       (
         tezosNodeOperator.getBatchBakingRights(blockHashesWithCycleAndGovernancePeriod),
         tezosNodeOperator.getBatchEndorsingRights(blockHashesWithCycleAndGovernancePeriod)
-      ).mapN {
-        case (br, er) =>
-          val updatedEndorsingRights = updateEndorsingRights(er, fetchingResults)
-          (db.run(TezosDb.upsertBakingRights(br)), db.run(TezosDb.upsertEndorsingRights(updatedEndorsingRights))).void
-      }
+      ).mapN { (br, er) =>
+        val updatedEndorsingRights = updateEndorsingRights(er, fetchingResults)
+        (db.run(TezosDb.upsertBakingRights(br)), db.run(TezosDb.upsertEndorsingRights(updatedEndorsingRights)))
+      }.void
     }
 
     /** Updates endorsing rights with endorsed block */
