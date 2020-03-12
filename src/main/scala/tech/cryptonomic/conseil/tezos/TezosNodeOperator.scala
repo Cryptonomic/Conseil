@@ -682,9 +682,14 @@ class TezosNodeOperator(
       val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
+          val accountIdsWithUpdatedBalances = for {
+            blockHeaderMetadata <- discardGenesis.lift(md.metadata).toList
+            balanceUpdate <- blockHeaderMetadata.balance_updates
+            id <- balanceUpdate.contract.map(_.id).orElse(balanceUpdate.delegate.map(_.value)).toList
+          } yield AccountId(id)
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-          (parseMichelsonScripts(Block(md, ops, votes)), accs)
+          (parseMichelsonScripts(Block(md, ops, votes)), (accs:::accountIdsWithUpdatedBalances).distinct)
       }
     }
   }
