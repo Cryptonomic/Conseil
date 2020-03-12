@@ -380,9 +380,6 @@ CREATE TABLE tezos.big_map_contents (
     PRIMARY KEY (big_map_id, key)
 );
 
-ALTER TABLE ONLY tezos.big_map_contents
-    ADD CONSTRAINT big_map_contents_id_fkey FOREIGN KEY (big_map_id) REFERENCES tezos.big_maps(big_map_id);
-
 CREATE TABLE tezos.originated_account_maps (
     big_map_id numeric,
     account_id character varying,
