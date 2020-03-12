@@ -673,13 +673,6 @@ trait Tables {
 
     /** Primary key of BigMapContents (database name big_map_contents_pkey) */
     val pk = primaryKey("big_map_contents_pkey", (bigMapId, key))
-
-    /** Foreign key referencing BigMaps (database name big_map_contents_id_fkey) */
-    lazy val bigMapsFk = foreignKey("big_map_contents_id_fkey", bigMapId, BigMaps)(
-      r => r.bigMapId,
-      onUpdate = ForeignKeyAction.NoAction,
-      onDelete = ForeignKeyAction.NoAction
-    )
   }
 
   /** Collection-like TableQuery object for table BigMapContents */
