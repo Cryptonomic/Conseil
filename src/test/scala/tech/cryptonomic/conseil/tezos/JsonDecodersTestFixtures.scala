@@ -683,7 +683,8 @@ trait OperationsJsonData {
     storage_limit = PositiveDecimal(0),
     source = PublicKeyHash("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
     destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
-    parameters = Some(Left(Parameters(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}"""), Some("default")))),
+    parameters =
+      Some(Left(Parameters(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}"""), Some("default")))),
     metadata = ResultMetadata(
       operation_result = OperationResult.Transaction(
         status = "applied",
