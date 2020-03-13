@@ -662,6 +662,12 @@ class TezosNodeOperator(
       codeAlter compose storageAlter compose parametersAlter
     }
 
+    def extractAccountIds(blockData: BlockData): List[AccountId] = for {
+      blockHeaderMetadata <- discardGenesis.lift(blockData.metadata).toList
+      balanceUpdate <- blockHeaderMetadata.balance_updates
+      id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
+    } yield AccountId(id)
+
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
     for {
@@ -682,14 +688,9 @@ class TezosNodeOperator(
       val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
-          val accountIdsWithUpdatedBalances = for {
-            blockHeaderMetadata <- discardGenesis.lift(md.metadata).toList
-            balanceUpdate <- blockHeaderMetadata.balance_updates
-            id <- balanceUpdate.contract.map(_.id).orElse(balanceUpdate.delegate.map(_.value)).toList
-          } yield AccountId(id)
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-          (parseMichelsonScripts(Block(md, ops, votes)), (accs:::accountIdsWithUpdatedBalances).distinct)
+          (parseMichelsonScripts(Block(md, ops, votes)), (accs:::extractAccountIds(md)).distinct)
       }
     }
   }
