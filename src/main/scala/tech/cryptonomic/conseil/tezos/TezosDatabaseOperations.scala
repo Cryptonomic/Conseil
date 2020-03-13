@@ -533,6 +533,25 @@ object TezosDatabaseOperations extends LazyLogging {
     (keepMostRecent andThen Tables.Delegates.insertOrUpdateAll)(rows)
   }
 
+  /** Gets ballot operations for given cycle */
+  def getBallotOperationsForCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
+    Tables.Operations
+      .filter(op => op.kind === "ballot" && op.cycle === cycle)
+      .groupBy(_.ballot)
+      .map {
+        case (vote, ops) => vote -> ops.length
+      }
+      .result
+      .map { res =>
+        val (yaysCount, naysCount, passesCount) = res.foldLeft(0, 0, 0) {
+          case ((_, nays, passes), (Some("yay"), count)) => (count, nays, passes)
+          case ((yays, _, passes), (Some("nay"), count)) => (count, count, passes)
+          case ((yays, nays, _), (Some("pass"), count)) => (count, nays, count)
+          case (acc, _) => acc
+        }
+        Voting.BallotCounts(yaysCount, naysCount, passesCount)
+      }
+
   /** Fetch the latest block level available for each account id stored */
   def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BigDecimal)]] =
     Tables.Accounts

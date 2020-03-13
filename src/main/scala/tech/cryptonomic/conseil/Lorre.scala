@@ -382,11 +382,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks.map(_.data))
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
         blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
-        (ballots, ballotCounts) <- {
+        ballotCounts <- Future.traverse(blocksWithProposals) { block =>
+          db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).level.cycle))
+            .map(block -> _)
+        }
+        ballots <- {
           if (blocksWithProposals.nonEmpty) {
             tezosNodeOperator.getVotes(blocksWithProposals)
           } else {
-            Future.successful((List.empty, List.empty))
+            Future.successful(List.empty)
           }
         }
         governanceRows = groupGovernanceDataByBlock(
@@ -406,15 +410,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         proposals: List[(BlockHash, Option[ProtocolId])],
         listings: List[(Block, List[Voting.BakerRolls])],
         ballots: List[(Block, List[Voting.Ballot])],
-        ballotCounts: List[(Block, Option[Voting.BallotCounts])]
+        ballotCounts: List[(Block, Voting.BallotCounts)]
     ): List[
       (BlockData, Option[ProtocolId], List[Voting.BakerRolls], List[Voting.Ballot], Option[Voting.BallotCounts])
     ] = blockData.map { bd =>
       val hash = bd.hash
+
       val proposal = proposals.find { case (blockHash, _) => blockHash == hash }.flatMap(_._2)
       val listing = listings.find { case (block, _) => block.data.hash == hash }.toList.flatMap(_._2)
       val ballot = ballots.find { case (block, _) => block.data.hash == hash }.toList.flatMap(_._2)
-      val ballotCount = ballotCounts.find { case (block, _) => block.data.hash == hash }.flatMap(_._2)
+      val ballotCount = ballotCounts.find { case (block, _) => block.data.hash == hash }.map(_._2)
       (bd, proposal, listing, ballot, ballotCount)
     }
 
