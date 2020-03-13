@@ -951,17 +951,14 @@ object DatabaseConversions extends LazyLogging {
       //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
       val tokenBalances: List[(ContractId, List[TokenLedgers.BalanceUpdate])] = keyedUpdates.map {
         case (tokenId, updates) =>
-          val balanceUpdates = updates.map(TokenLedgers.readBalance(tokenId)).flattenOption
-          tokenId -> balanceUpdates
+          val tokenUpdates = updates.map(TokenLedgers.readBalance(tokenId)).flattenOption
+          tokenId -> tokenUpdates
       }.toList
 
-      tokenBalances.flatMap {
-        case (tokenId, balances) =>
-          balances.map {
-            case (accountId, balance) =>
-              BlockTokenBalances(from, tokenId, accountId, balance)
-          }
-      }
+      for {
+        (tokenId, balances) <- tokenBalances
+        (accountId, balance) <- balances
+      } yield BlockTokenBalances(from, tokenId, accountId, balance)
     }
   }
 

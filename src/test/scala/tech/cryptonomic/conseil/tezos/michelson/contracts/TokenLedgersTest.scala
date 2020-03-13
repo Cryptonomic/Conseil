@@ -1,12 +1,9 @@
 package tech.cryptonomic.conseil.tezos.michelson.contracts
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.cryptonomic.conseil.tezos.TezosTypes.ContractId
-import tech.cryptonomic.conseil.tezos.TezosTypes.Contract
-import tech.cryptonomic.conseil.tezos.TezosTypes.Micheline
-import tech.cryptonomic.conseil.tezos.TezosTypes.ScriptId
-import tech.cryptonomic.conseil.tezos.TezosTypes.Decimal
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, Micheline, ScriptId}
 import org.scalatest.OptionValues
+import scala.util.Success
 
 class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
 
@@ -175,6 +172,35 @@ class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
         balanceUpdate should not be defined
 
       }
+
+      "allow computation of the correct key hash for an account address" in {
+        //example taken from relevant conseil.js tests
+        val hash = sut.Codecs.computeKeyHash(AccountId("tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi8"))
+        hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
+      }
+
+      "compute the correct key hash for the sample babylon account address" in {
+        //some values sampled from a real babylon use-case
+        val hash = sut.Codecs.computeKeyHash(AccountId("tz1dae51wqhBwC7YdGiJAAU5JYwEvVH3Usf2"))
+        hash shouldBe Success("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx")
+      }
+
+      "allow computation of the correct hash from a binary string" in {
+        //example taken from relevant conseil.js tests
+        val bytes = sut.Codecs.readHex("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
+        bytes shouldBe a[Success[_]]
+        val hash = sut.Codecs.encodeBigMapKey(bytes.get)
+        hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
+      }
+
+      "compute the correct hash from the sample babylon key bytes" in {
+        //some values sampled from a real babylon use-case
+        val bytes = sut.Codecs.readHex("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
+        bytes shouldBe a[Success[_]]
+        val hash = sut.Codecs.encodeBigMapKey(bytes.get)
+        hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
+      }
+
     }
 
 }
