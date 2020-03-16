@@ -15,13 +15,14 @@ import com.typesafe.scalalogging.LazyLogging
 /** Collects custom token contracts structures and operations */
 object TokenLedgers extends LazyLogging {
 
-  type BalanceUpdate = (AccountId, BigInt)
+  /** a key hash paired with a balance */
+  type BalanceUpdate = (ScriptId, BigInt)
 
   /** typed wrapper to clarify the meaning of the numerical id */
   case class BigMapId(id: BigDecimal) extends AnyVal
 
   /** alias to the custom code that will read the new balance for a token from big map diffs */
-  private type BalanceReader = Contract.BigMapUpdate => Option[(AccountId, BigInt)]
+  private type BalanceReader = Contract.BigMapUpdate => Option[BalanceUpdate]
 
   /* data structure wrapping useful information + functions to act on ledgers
    *
@@ -49,13 +50,14 @@ object TokenLedgers extends LazyLogging {
   )
 
   //this code needs to take into account an input of available account ids and check each for a matching balance value
-  private lazy val KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read: BalanceReader = update => {
-    val extractKey = MichelineOps.parseBytes(update.key)
-    val extractBalance = BigMapOps.parseMapCode(update).flatMap(MichelineOps.parseBalanceFromMap)
-    (extractKey, extractBalance).mapN {
-      case (key, balance) => AccountId(key) -> balance
-    }
-  }
+  private lazy val KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read: BalanceReader = update =>
+    for {
+      code <- update.value
+      balance <- MichelineOps.parseBalanceFromMap(code)
+    } yield update.key_hash -> balance
+
+  /** Does the Id reference a known token smart contract? */
+  def isKnownToken(token: ContractId): Boolean = ledgers.contains(token)
 
   /** Extracts any available balance changes for a given reference contract representing a known token ledger
     *
@@ -65,56 +67,35 @@ object TokenLedgers extends LazyLogging {
     */
   def readBalance(token: ContractId)(diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
     //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-    case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _) if ledgers.contains(token) =>
+    case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _) =>
       for {
-        LedgerToolbox(BigMapId(id), balanceExtract) <- ledgers.get(token)
+        LedgerToolbox(BigMapId(id), customReadBalance) <- ledgers.get(token)
         if mapId == id
-        balanceChange <- balanceExtract(update)
+        balanceChange <- customReadBalance(update)
       } yield balanceChange
     case _ =>
       None
   }
 
-  //common operations to read/extract data from big maps
-  private object BigMapOps {
+  /* Given the key hash stored in the big map and an account, checks if the
+   * two match, after encoding the account address first.
+   *
+   * @param keyHash a b58check script hash, corresponding to a map key in bytes
+   * @param accountReference the address we expect to match
+   * @return true if encoding the address and the key gives the same result
+   */
+  def hashCheck(keyHash: ScriptId)(accountReference: AccountId): Boolean = {
+    val check = Codecs.computeKeyHash(accountReference)
 
-    /* Given the key hash stored in the big map and an account, checks if the
-     * two match, after encoding the account address first.
-     *
-     * @param keyHash a b58check script hash, corresponding to a map key in bytes
-     * @param accountReference the address we expect to match
-     * @return true if encoding the address and the key gives the same result
-     */
-    private def hashCheck(keyHash: ScriptId)(accountReference: AccountId): Boolean = {
-      val check = Codecs.computeKeyHash(accountReference)
+    check.failed.foreach(
+      err =>
+        logger.error(
+          "I couldn't check big maps token updates. Failure to check hash encoding of the expected account against the map key",
+          err
+        )
+    )
 
-      check.failed.foreach(
-        err =>
-          logger.error(
-            "I couldn't check big maps token updates. Failure to check hash encoding of the expected account against the map key",
-            err
-          )
-      )
-
-      check.exists(_ == keyHash.value)
-    }
-
-    /* We extract the update code but consider it valid only if there's
-     * a matching account address as a map key, optionally.
-     * We need to pass in some address extracted from the corresponding operation's
-     * paramters call, to compare its encoding with that of the map's keys.
-     *
-     * @param update the map update object
-     * @param accountCheck optionally pass in the expected account address
-     *                     that the update might be referring to
-     */
-    def parseMapCode(
-        update: Contract.BigMapUpdate,
-        accountCheck: Option[AccountId] = None
-    ): Option[Micheline] =
-      if (accountCheck.forall(hashCheck(update.key_hash))) update.value
-      else None
-
+    check.exists(_ == keyHash.value)
   }
 
   /** Defines enc-dec operation used for token big maps */
@@ -199,12 +180,6 @@ object TokenLedgers extends LazyLogging {
         Try(BigInt(balance)).toOption
       }
     }
-
-    /* Extracts the value of type "bytes" as a string if it corresponds to the micheline argument */
-    def parseBytes(code: Micheline): Option[String] =
-      JsonParser.parse[MichelsonInstruction](code.expression).toOption.collect {
-        case MichelsonBytesConstant(bytes) => bytes
-      }
 
   }
 }

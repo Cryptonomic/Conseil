@@ -39,73 +39,9 @@ class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
 
         //then
-        val (accountId, balance) = balanceUpdate.value
-        accountId.id shouldBe "0000c4ce21c7a7ac69810bb3425a043def752fddc817"
+        val (keyHash, balance) = balanceUpdate.value
+        keyHash shouldEqual mapUpdate.key_hash
         balance shouldEqual BigInt(10000)
-
-      }
-
-      "read no balance update from big maps diff for a contract that's not registered" in {
-        //given
-
-        //some values sampled from a real babylon use-case
-        val ledgerId = ContractId("noHash")
-        val updateValue = """
-                    |{
-                    |  "prim": "Pair",
-                    |  "args": [
-                    |    {
-                    |      "int": "10000"
-                    |    },
-                    |    []
-                    |  ]
-                    |}
-        """.stripMargin
-        val mapUpdate = Contract.BigMapUpdate(
-          action = "update",
-          key = Micheline("""{"bytes" : "0000c4ce21c7a7ac69810bb3425a043def752fddc817"}"""),
-          key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
-          big_map = Decimal(1718),
-          value = Some(Micheline(updateValue))
-        )
-
-        //when
-        val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
-
-        //then
-        balanceUpdate should not be defined
-
-      }
-
-      "read no balance update from big maps diff with a key that's not bytes-encoded" in {
-        //given
-
-        //some values sampled from a real babylon use-case
-        val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
-        val updateValue = """
-                    |{
-                    |  "prim": "Pair",
-                    |  "args": [
-                    |    {
-                    |      "int": "10000"
-                    |    },
-                    |    []
-                    |  ]
-                    |}
-        """.stripMargin
-        val mapUpdate = Contract.BigMapUpdate(
-          action = "update",
-          key = Micheline("""{"string" : "0000c4ce21c7a7ac69810bb3425a043def752fddc817"}"""),
-          key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
-          big_map = Decimal(1718),
-          value = Some(Micheline(updateValue))
-        )
-
-        //when
-        val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
-
-        //then
-        balanceUpdate should not be defined
 
       }
 

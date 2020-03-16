@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.util.Conversion
+import tech.cryptonomic.conseil.util.{Conversion, JsonUtil}
 import cats.{Id, Show}
 import cats.implicits._
 import java.sql.Timestamp
@@ -933,23 +933,54 @@ object DatabaseConversions extends LazyLogging {
             _.collect { case Left(diff: Contract.BigMapUpdate) => diff }
           }
 
+      //we'll use this to get out any address-looking string from the transaction params
+      val extractAddresses = (transactionParams: Micheline) => {
+        transactionParams.expression match {
+          case JsonUtil.AccountIds(id, ids @ _*) =>
+            (id :: ids.toList).distinct.map(AccountId)
+          case _ =>
+            List.empty[AccountId]
+        }
+      }
+
+      //focus on the micheline value
+      val readParams: Option[ParametersCompatibility] => Option[Micheline] =
+        _ map {
+            case Left(Parameters(micheline, _)) => micheline
+            case Right(micheline) => micheline
+          }
+
       val (ops, intOps) =
         BlockOperations.extractOperationsAlongWithInternalResults(from).values.unzip
 
-      val keyedUpdates: Map[ContractId, List[Contract.BigMapUpdate]] =
+      /* Extracted potential accounts from the transactions
+       * we'll use this as a directory to look for addresses involved in
+       * the token exchange operation
+       */
+      val addressesInvolved: Set[AccountId] =
         (
           ops.toList.flatten.collect {
-            case op: Transaction if op.destination.id.nonEmpty =>
-              op.destination -> extractDiffs(op.metadata.operation_result)
+            case op: Transaction if TokenLedgers.isKnownToken(op.destination) =>
+              readParams(op.parameters).toList.flatMap(extractAddresses)
           } ++
               intOps.toList.flatten.collect {
-                case intOp: InternalOperationResults.Transaction if intOp.destination.id.nonEmpty =>
-                  intOp.destination -> extractDiffs(intOp.result)
+                case intOp: InternalOperationResults.Transaction if TokenLedgers.isKnownToken(intOp.destination) =>
+                  readParams(intOp.parameters).toList.flatMap(extractAddresses)
               }
-        ).toMap
+        ).combineAll.toSet
+
+      val contractUpdates: List[(ContractId, List[Contract.BigMapUpdate])] =
+        ops.toList.flatten.collect {
+          case op: Transaction if TokenLedgers.isKnownToken(op.destination) =>
+            op.destination -> extractDiffs(op.metadata.operation_result)
+        } ++
+            intOps.toList.flatten.collect {
+              case intOp: InternalOperationResults.Transaction if TokenLedgers.isKnownToken(intOp.destination) =>
+                intOp.destination -> extractDiffs(intOp.result)
+            }
 
       //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-      val tokenBalances: List[(ContractId, List[TokenLedgers.BalanceUpdate])] = keyedUpdates.map {
+      val tokenBalances: List[(ContractId, List[TokenLedgers.BalanceUpdate])] = contractUpdates.map {
         case (tokenId, updates) =>
           val tokenUpdates = updates.map(TokenLedgers.readBalance(tokenId)).flattenOption
           tokenId -> tokenUpdates
@@ -957,7 +988,8 @@ object DatabaseConversions extends LazyLogging {
 
       for {
         (tokenId, balances) <- tokenBalances
-        (accountId, balance) <- balances
+        (scriptId, balance) <- balances
+        accountId <- addressesInvolved.find(TokenLedgers.hashCheck(scriptId))
       } yield BlockTokenBalances(from, tokenId, accountId, balance)
     }
   }

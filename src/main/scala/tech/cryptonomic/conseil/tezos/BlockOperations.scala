@@ -13,7 +13,7 @@ import TezosTypes.{
 object BlockOperations {
 
   /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
-    * in a from more amenable to processing
+    * in a form more amenable to processing
     * @param block the block to inspect
     * @return a Map holding for each group both external and internal operations' results
     */
