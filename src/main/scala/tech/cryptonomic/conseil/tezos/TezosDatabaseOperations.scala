@@ -545,8 +545,8 @@ object TezosDatabaseOperations extends LazyLogging {
       .map { res =>
         val (yaysCount, naysCount, passesCount) = res.foldLeft(0, 0, 0) {
           case ((_, nays, passes), (Some("yay"), count)) => (count, nays, passes)
-          case ((yays, _, passes), (Some("nay"), count)) => (count, count, passes)
-          case ((yays, nays, _), (Some("pass"), count)) => (count, nays, count)
+          case ((yays, _, passes), (Some("nay"), count)) => (yays, count, passes)
+          case ((yays, nays, _), (Some("pass"), count)) => (yays, nays, count)
           case (acc, _) => acc
         }
         Voting.BallotCounts(yaysCount, naysCount, passesCount)
