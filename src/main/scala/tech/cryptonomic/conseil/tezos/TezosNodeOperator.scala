@@ -13,7 +13,6 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
-import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BallotCounts
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -373,10 +372,9 @@ class TezosNodeOperator(
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotes(blocks: List[Block]): Future[(List[BallotBlock], List[BallotCountsBlock])] = {
+  def getVotes(blocks: List[Block]): Future[List[BallotBlock]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import cats.syntax.apply._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 
     val sortedBlocks = blocks.sortBy(_.data.header.level)
@@ -384,13 +382,7 @@ class TezosNodeOperator(
     val fetchBallots =
       fetch[Block, List[Voting.Ballot], Future, List, Throwable]
 
-    val fetchBallotCounts =
-      fetch[Block, Option[BallotCounts], Future, List, Throwable]
-
-    /* combine the three kleisli operations to return a tuple of the results
-     * and then run the composition on the input blocks
-     */
-    (fetchBallots, fetchBallotCounts).tupled.run(sortedBlocks.filterNot(b => isGenesis(b.data)))
+    fetchBallots.run(sortedBlocks.filterNot(b => isGenesis(b.data)))
 
   }
 
@@ -662,11 +654,12 @@ class TezosNodeOperator(
       codeAlter compose storageAlter compose parametersAlter
     }
 
-    def extractAccountIds(blockData: BlockData): List[AccountId] = for {
-      blockHeaderMetadata <- discardGenesis.lift(blockData.metadata).toList
-      balanceUpdate <- blockHeaderMetadata.balance_updates
-      id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
-    } yield AccountId(id)
+    def extractAccountIds(blockData: BlockData): List[AccountId] =
+      for {
+        blockHeaderMetadata <- discardGenesis.lift(blockData.metadata).toList
+        balanceUpdate <- blockHeaderMetadata.balance_updates
+        id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
+      } yield AccountId(id)
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
@@ -690,7 +683,7 @@ class TezosNodeOperator(
         case (offset, md) =>
           val (ops, accs) = if (isGenesis(md)) (List.empty, List.empty) else operationalDataMap(md.hash)
           val votes = proposalsMap.getOrElse(md.hash, CurrentVotes.empty)
-          (parseMichelsonScripts(Block(md, ops, votes)), (accs:::extractAccountIds(md)).distinct)
+          (parseMichelsonScripts(Block(md, ops, votes)), (accs ::: extractAccountIds(md)).distinct)
       }
     }
   }
