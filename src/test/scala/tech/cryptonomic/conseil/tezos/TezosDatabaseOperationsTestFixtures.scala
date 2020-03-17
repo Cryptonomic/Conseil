@@ -584,6 +584,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         amount = PositiveDecimal(0),
         destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
         parameters = Some(Left(Parameters(Micheline("""{"string":"world"}""")))),
+        parameters_micheline = None,
         metadata = ResultMetadata(
           balance_updates = List(
             BalanceUpdate(
