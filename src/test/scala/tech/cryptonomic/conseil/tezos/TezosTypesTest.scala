@@ -115,6 +115,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
         PublicKeyHash("_"),
         ContractId("_"),
         None,
+        None,
         ResultMetadata(null, List.empty)
       )
       val origination = Origination(

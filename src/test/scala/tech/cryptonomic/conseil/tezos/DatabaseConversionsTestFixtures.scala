@@ -136,6 +136,7 @@ trait DBConversionsData {
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
       parameters = Some(Left(Parameters(Micheline("""{"string":"world"}"""), Some("default")))),
+      parameters_micheline = None,
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(

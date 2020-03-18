@@ -24,6 +24,7 @@ object TezosTypes {
 
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
+    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
 
     private val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
       case Left(value) => value.value
@@ -55,6 +56,12 @@ object TezosTypes {
           transaction composeLens
           parameters composePrism some composeLens
           parametersExpresssion composeLens expression
+
+    val parametersMichelineLens: Traversal[Block, Option[String]] =
+      operationGroups composeTraversal each composeLens
+          operations composeTraversal each composePrism
+          transaction composeLens
+          parametersMicheline
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
@@ -249,6 +256,7 @@ object TezosTypes {
       source: PublicKeyHash,
       destination: ContractId,
       parameters: Option[ParametersCompatibility],
+      parameters_micheline: Option[String],
       metadata: ResultMetadata[OperationResult.Transaction]
   ) extends Operation
 
@@ -332,6 +340,7 @@ object TezosTypes {
         amount: PositiveBigNumber,
         destination: ContractId,
         parameters: Option[ParametersCompatibility],
+        parameters_micheline: Option[String],
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 
