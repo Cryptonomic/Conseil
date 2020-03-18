@@ -250,7 +250,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
         activeProposal = None,
         baker = Some(generateHash(10)),
         nonceHash = Some(generateHash(10)),
-        consumedGas = Some(0)
+        consumedGas = Some(0),
+        utcYear = 1970,
+        utcMonth = 1,
+        utcDay = 1,
+        utcTime = "00:00:00"
       )
 
     //we need somewhere to start with
@@ -325,7 +329,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
         blockLevel = block.level,
         timestamp = block.timestamp,
         level = Some(block.level),
-        internal = false
+        internal = false,
+        utcYear = 1970,
+        utcMonth = 1,
+        utcDay = 1,
+        utcTime = "00:00:00"
       )
     }
 
@@ -342,7 +350,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
           blockLevel = block.level,
           timestamp = new Timestamp(block.timestamp.getTime + index),
           level = Some(block.level),
-          internal = false
+          internal = false,
+          utcYear = 1970,
+          utcMonth = 1,
+          utcDay = 1,
+          utcTime = "00:00:00"
         )
     }
 
