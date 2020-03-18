@@ -44,6 +44,7 @@ object DatabaseConversions extends LazyLogging {
     case _ => None
   }
 
+  /** Extracts date parts and time in UTC */
   def extractDateTime(timestamp: java.sql.Timestamp): (Int, Int, Int, String) = {
     val offsetDateTime = timestamp.toLocalDateTime.atOffset(ZoneOffset.UTC)
     val format = DateTimeFormatter.ofPattern("HH:mm:ss")
