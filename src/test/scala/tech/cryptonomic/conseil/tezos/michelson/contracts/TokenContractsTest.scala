@@ -5,11 +5,11 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractI
 import org.scalatest.OptionValues
 import scala.util.Success
 
-class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
+class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
-  val sut = TokenLedgers
+  val sut = TokenContracts
 
-  "The Token Ledgers operations for a known FA1.2 compliant contract" should {
+  "The Token Contracts operations for a known FA1.2 compliant contract" should {
 
       "read a balance update from big maps diff for a registered contract" in {
         //given
@@ -77,7 +77,7 @@ class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
 
       }
 
-      "read no balance update from big maps diff for an unecpected value format of the call params" in {
+      "read no balance update from big maps diff for an unexpected value format of the call params" in {
         //given
 
         //some values sampled from a real babylon use-case
@@ -123,7 +123,7 @@ class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
 
       "allow computation of the correct hash from a binary string" in {
         //example taken from relevant conseil.js tests
-        val bytes = sut.Codecs.readHex("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
+        val bytes = scorex.util.encode.Base16.decode("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
         bytes shouldBe a[Success[_]]
         val hash = sut.Codecs.encodeBigMapKey(bytes.get)
         hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
@@ -131,7 +131,7 @@ class TokenLedgersTest extends WordSpec with Matchers with OptionValues {
 
       "compute the correct hash from the sample babylon key bytes" in {
         //some values sampled from a real babylon use-case
-        val bytes = sut.Codecs.readHex("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
+        val bytes = scorex.util.encode.Base16.decode("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
         bytes shouldBe a[Success[_]]
         val hash = sut.Codecs.encodeBigMapKey(bytes.get)
         hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")

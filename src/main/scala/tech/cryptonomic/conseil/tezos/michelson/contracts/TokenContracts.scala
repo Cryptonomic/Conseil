@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos.michelson.contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, ScriptId}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Micheline
 import tech.cryptonomic.conseil.tezos.michelson.dto.{
-  MichelsonBytesConstant,
   MichelsonInstruction,
   MichelsonIntConstant,
   MichelsonSingleInstruction
@@ -11,9 +10,10 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{
 import cats.implicits._
 import scala.util.Try
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.util.CryptoUtil
 
 /** Collects custom token contracts structures and operations */
-object TokenLedgers extends LazyLogging {
+object TokenContracts extends LazyLogging {
 
   /** a key hash paired with a balance */
   type BalanceUpdate = (ScriptId, BigInt)
@@ -24,13 +24,13 @@ object TokenLedgers extends LazyLogging {
   /** alias to the custom code that will read the new balance for a token from big map diffs */
   private type BalanceReader = Contract.BigMapUpdate => Option[BalanceUpdate]
 
-  /* data structure wrapping useful information + functions to act on ledgers
+  /* data structure wrapping useful information + functions to act on tokens
    *
    * mapId is a reference to the big map used to store data on balances
    * balanceReader is a function that will use a big map update and extract
    *   balance information from it
    */
-  private case class LedgerToolbox(
+  private case class TokenToolbox(
       mapId: BigMapId,
       balanceReader: BalanceReader
   )
@@ -42,8 +42,8 @@ object TokenLedgers extends LazyLogging {
     * We're assuming here that the risk of collision on contract addresses representing
     * tokens, even on different tezos networks, is actually zero.
     */
-  private val ledgers: Map[ContractId, LedgerToolbox] = Map(
-    ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux") -> LedgerToolbox(
+  private val registry: Map[ContractId, TokenToolbox] = Map(
+    ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux") -> TokenToolbox(
           BigMapId(1718),
           KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read
         )
@@ -57,7 +57,7 @@ object TokenLedgers extends LazyLogging {
     } yield update.key_hash -> balance
 
   /** Does the Id reference a known token smart contract? */
-  def isKnownToken(token: ContractId): Boolean = ledgers.contains(token)
+  def isKnownToken(token: ContractId): Boolean = registry.contains(token)
 
   /** Extracts any available balance changes for a given reference contract representing a known token ledger
     *
@@ -69,7 +69,7 @@ object TokenLedgers extends LazyLogging {
     //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
     case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _) =>
       for {
-        LedgerToolbox(BigMapId(id), customReadBalance) <- ledgers.get(token)
+        TokenToolbox(BigMapId(id), customReadBalance) <- registry.get(token)
         if mapId == id
         balanceChange <- customReadBalance(update)
       } yield balanceChange
@@ -100,63 +100,21 @@ object TokenLedgers extends LazyLogging {
 
   /** Defines enc-dec operation used for token big maps */
   object Codecs {
-    import scorex.util.encode.{Base16 => Hex, Base58}
-    import scorex.crypto.hash.{Sha256, Blake2b256 => Blake}
-
-    /** Tries to decode an hex string into bytes */
-    def readHex(hexEncoded: String): Try[Array[Byte]] = Hex.decode(hexEncoded)
-
-    /** Simplified b58check decoder.
-      *
-      * It's derived from bitcoin encoding, ignoring the prefix identification byte.
-      * reference: https://en.bitcoin.it/wiki/Base58Check_encoding
-      * scala impl: https://github.com/ACINQ/bitcoin-lib/blob/master/src/main/scala/fr/acinq/bitcoin/Base58.scala
-      */
-    def b58CheckDecode(input: String): Try[Array[Byte]] = Base58.decode(input).map(_.dropRight(4))
-
-    /** Simplified b58check encoder.
-      *
-      * see also [[b58CheckDecode]] for additional refs
-      */
-    def b58CheckEncode(input: Array[Byte]): String = {
-      val checksum = (Sha256.hash _ compose Sha256.hash)(input).take(4)
-      Base58.encode(input ++ checksum)
-    }
+    import scorex.util.encode.{Base16 => Hex}
+    import scorex.crypto.hash.{Blake2b256 => Blake}
 
     /** Complete sequence to compute key_hash from a tz#|KT1... account address */
     def computeKeyHash(address: AccountId): Try[String] =
       for {
-        packed <- packAddress(address)
+        packed <- CryptoUtil.packAddress(address.id)
         binary <- Hex.decode(packed)
         hashed <- encodeBigMapKey(binary)
       } yield hashed
 
-    /** Decodes the account b58-check address as an hexadecimal bytestring */
-    def packAddress(accId: AccountId): Try[String] = {
-      val AccountId(b58encoded) = accId
-
-      def dataLength(num: Long) = ("0000000" + num.toHexString).takeRight(8)
-
-      def wrap(hexString: String): String =
-        b58encoded.toLowerCase.take(3) match {
-          case "tz1" => "0000" + hexString
-          case "tz2" => "0001" + hexString
-          case "tz3" => "0002" + hexString
-          case "kt1" => "01" + hexString + "00"
-        }
-
-      //what if the wrapped length is odd?
-      b58CheckDecode(b58encoded).map { bytes =>
-        val wrapped = wrap(Hex.encode(bytes drop 3))
-        s"050a${dataLength(wrapped.length / 2)}$wrapped"
-      }
-    }
-
     /** Takes the bytes for a map key and creates the key-hash */
     def encodeBigMapKey(bytes: Array[Byte]): Try[String] = {
-      val hashed = Blake.hash(bytes)
-      val hintEncode = "0d2c401b" + Hex.encode(hashed)
-      Hex.decode(hintEncode).map(b58CheckEncode)
+      val hashed = Blake.hash(bytes).toSeq
+      CryptoUtil.base58CheckEncode(hashed, "expr")
     }
 
   }
