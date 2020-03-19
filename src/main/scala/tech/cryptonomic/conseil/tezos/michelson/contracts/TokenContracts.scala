@@ -8,9 +8,57 @@ import tech.cryptonomic.conseil.tezos.michelson.dto.{
   MichelsonSingleInstruction
 }
 import cats.implicits._
+import scala.collection.immutable.TreeSet
 import scala.util.Try
+import scala.concurrent.SyncVar
+import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.CryptoUtil
+import tech.cryptonomic.conseil.tezos.Tables
+
+/** For each specific contract available we store a few
+  * relevant bits of data useful to extract information
+  * related to that specific contract shape.
+  */
+class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
+  import TokenContracts._
+
+  /** Does the Id reference a known token smart contract? */
+  def isKnownToken(token: ContractId): Boolean = registry.exists(_.id == token)
+
+  /** Extracts any available balance changes for a given reference contract representing a known token ledger
+    *
+    * @param token the id for a smart contract
+    * @param diff the big map changes found in a transaction
+    * @return a possible pair of an account and its new balance for a token associated to the passed-in contract
+    */
+  def readBalance(token: ContractId)(diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
+    //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
+    case update @ Contract.BigMapUpdate("update", _, _, Decimal(updateMapId), _) =>
+      for {
+        TokenToolbox(_, registryId, customReadBalance) <- registry.find(_.id == token)
+        if mapIdsMatch(registryId, updateMapId, token)
+        balanceChange <- customReadBalance(update)
+      } yield balanceChange
+    case _ =>
+      None
+  }
+
+  /** Call this to store a big-map-id associated with a token contract.
+    * This is supposed to happen once the chain records a block originating
+    * one of the contracts identified via [[isKnownToken]].
+    * This will be needed to identify the right map tracking token operation
+    * updates, if more than one has been updated.
+    *
+    * @param token the contract identifier
+    * @param id the id of the map used to store tokens
+    */
+  def setMapId(token: ContractId, id: BigDecimal): Unit =
+    registry.find(_.id == token).foreach {
+      case TokenToolbox(_, syncMapId, _) =>
+        syncMapId.put(BigMapId(id))
+    }
+}
 
 /** Collects custom token contracts structures and operations */
 object TokenContracts extends LazyLogging {
@@ -24,57 +72,62 @@ object TokenContracts extends LazyLogging {
   /** alias to the custom code that will read the new balance for a token from big map diffs */
   private type BalanceReader = Contract.BigMapUpdate => Option[BalanceUpdate]
 
-  /* data structure wrapping useful information + functions to act on tokens
+  /* Data structure wrapping useful information + functions to act on tokens.
+   * The value of the map id is not initially known, until the chain originates the
+   * contract that refers to this toolbox, creating the id itself.
    *
-   * mapId is a reference to the big map used to store data on balances
+   * mapId is a reference to the big map used to store data on balances, in a [[SyncVar]]
    * balanceReader is a function that will use a big map update and extract
    *   balance information from it
    */
   private case class TokenToolbox(
-      mapId: BigMapId,
+      id: ContractId,
+      mapId: SyncVar[BigMapId] = new SyncVar(),
       balanceReader: BalanceReader
   )
 
-  /** For each specific contract available we store a few
-    * relevant bits of data useful to extract information
-    * related to that specific contract shape
-    *
-    * We're assuming here that the risk of collision on contract addresses representing
-    * tokens, even on different tezos networks, is actually zero.
-    */
-  private val registry: Map[ContractId, TokenToolbox] = Map(
-    ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux") -> TokenToolbox(
-          BigMapId(1718),
-          KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read
+  //we sort toolboxes by the contract id
+  implicit private val toolboxOrdering: Ordering[TokenToolbox] = Ordering.by(_.id.id)
+
+  /* Creates a new toolbox, only if the standard is a known one, or returns an empty Option */
+  private def newToolbox(id: ContractId, standard: String) =
+    PartialFunction.condOpt(standard) {
+      case "FA1.2" =>
+        TokenToolbox(
+          id,
+          // the extraction code makes no check about the correctness of the key_hash
+          // wrt. any potential account hash, which must be done somewhere else
+          balanceReader = update =>
+            for {
+              code <- update.value
+              balance <- MichelineOps.parseBalanceFromMap(code)
+            } yield update.key_hash -> balance
         )
-  )
+    }
 
-  //this code needs to take into account an input of available account ids and check each for a matching balance value
-  private lazy val KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux_Balance_Read: BalanceReader = update =>
-    for {
-      code <- update.value
-      balance <- MichelineOps.parseBalanceFromMap(code)
-    } yield update.key_hash -> balance
-
-  /** Does the Id reference a known token smart contract? */
-  def isKnownToken(token: ContractId): Boolean = registry.contains(token)
-
-  /** Extracts any available balance changes for a given reference contract representing a known token ledger
+  /** Builds a registry of token contracts with the token data passed-in
     *
-    * @param token the id for a smart contract
-    * @param diff the big map changes found in a transaction
-    * @return a possible pair of an account and its new balance for a token associated to the passed-in contract
+    * @param knownTokens the pair of contract and standard used, the latter as a String
     */
-  def readBalance(token: ContractId)(diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
-    //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-    case update @ Contract.BigMapUpdate("update", _, _, Decimal(mapId), _) =>
-      for {
-        TokenToolbox(BigMapId(id), customReadBalance) <- registry.get(token)
-        if mapId == id
-        balanceChange <- customReadBalance(update)
-      } yield balanceChange
-    case _ =>
-      None
+  def fromTokens(knownTokens: List[(ContractId, String)]): TokenContracts = {
+    val tokens = knownTokens.flatMap {
+      case (cid, std) => newToolbox(cid, std)
+    }
+    // we keep the token tools in a sorted set to speed up searching
+    new TokenContracts(TreeSet(tokens: _*))
+  }
+
+  /* Will check if the possibly unavailable id registered matches with the value referred from the update */
+  private def mapIdsMatch(registeredId: SyncVar[BigMapId], updateId: BigDecimal, token: ContractId): Boolean = {
+    if (!registeredId.isSet)
+      logger.error(
+        """A token balance update was found where the map of the given token is not yet identified from contract origination
+          | map_id: {}
+          | token: {}""".stripMargin,
+        updateId,
+        token
+      )
+    registeredId.isSet && registeredId.get.id == updateId
   }
 
   /* Given the key hash stored in the big map and an account, checks if the

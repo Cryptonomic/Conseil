@@ -9,6 +9,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.Tables.{
   AccountsHistoryRow,
@@ -39,6 +40,7 @@ class TezosDatabaseOperationsTest
 
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
+      implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
 
       val sut = TezosDatabaseOperations
       val feesToConsider = 1000

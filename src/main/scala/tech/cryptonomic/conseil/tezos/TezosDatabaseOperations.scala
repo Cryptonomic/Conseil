@@ -26,6 +26,7 @@ import slick.jdbc.JdbcCapabilities
 import com.github.tminglei.slickpg.ExPostgresProfile
 
 import scala.collection.immutable.Queue
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 /**
   * Functions for writing Tezos data to a database.
@@ -89,7 +90,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks   Block with operations.
     * @return         Database action to execute.
     */
-  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import cats.data.Kleisli
     import cats.instances.list._
@@ -149,7 +150,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks the blocks containing the operations
     * @param ec the context to run async operations
     */
-  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Unit] = {
     import cats.implicits._
     import slickeffect.implicits._
 
@@ -404,7 +405,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
       accountUpdates: List[BlockTagged[List[AccountId]]]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
@@ -754,6 +755,32 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
+
+  /** Reads a CSV file with available tokens, returning a set of rows to save in the database */
+  def readRegisteredTokensFromCsv(
+      csvConfig: java.net.URL
+  ): List[Tables.RegisteredTokensRow] = {
+    import kantan.csv._
+    import kantan.csv.ops._
+    import kantan.csv.generic._
+
+    val reader = csvConfig.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
+
+    def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
+      cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
+
+    // separates List[Either[L, R]] into List[L] and List[R]
+    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
+      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimFields(r) :: pair._2))
+    )
+
+    if (errors.nonEmpty) {
+      val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
+      logger.error(s"Error while reading registered tokens file: $messages")
+    }
+
+    rows
+  }
 
   /** Inserts registered tokens to the table if empty
     *

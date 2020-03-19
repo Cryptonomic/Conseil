@@ -7,11 +7,49 @@ import scala.util.Success
 
 class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
-  val sut = TokenContracts
-
   "The Token Contracts operations for a known FA1.2 compliant contract" should {
 
       "read a balance update from big maps diff for a registered contract" in {
+        //given
+
+        //values sampled from a real babylon use-case
+        val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val mapId = 1718
+        val updateValue = """
+                    |{
+                    |  "prim": "Pair",
+                    |  "args": [
+                    |    {
+                    |      "int": "10000"
+                    |    },
+                    |    []
+                    |  ]
+                    |}
+        """.stripMargin
+        val mapUpdate = Contract.BigMapUpdate(
+          action = "update",
+          key = Micheline("""{"bytes" : "0000c4ce21c7a7ac69810bb3425a043def752fddc817"}"""),
+          key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
+          big_map = Decimal(mapId),
+          value = Some(Micheline(updateValue))
+        )
+
+        //register the token info
+        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        //set the map id for the contract
+        sut.setMapId(ledgerId, BigDecimal(mapId))
+
+        //when
+        val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
+
+        //then
+        val (keyHash, balance) = balanceUpdate.value
+        keyHash shouldEqual mapUpdate.key_hash
+        balance shouldEqual BigInt(10000)
+
+      }
+
+      "read no balance update from big maps diff for a non-registered map id" in {
         //given
 
         //values sampled from a real babylon use-case
@@ -35,14 +73,12 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
           value = Some(Micheline(updateValue))
         )
 
+        //register the token info
+        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
-
-        //then
-        val (keyHash, balance) = balanceUpdate.value
-        keyHash shouldEqual mapUpdate.key_hash
-        balance shouldEqual BigInt(10000)
-
+        balanceUpdate.isDefined shouldBe false
       }
 
       "read no balance update from big maps diff for a non-matching map id" in {
@@ -69,6 +105,11 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
           value = Some(Micheline(updateValue))
         )
 
+        //register the token info
+        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        //set the map id for the contract
+        sut.setMapId(ledgerId, BigDecimal(1718))
+
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
 
@@ -82,6 +123,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
         //some values sampled from a real babylon use-case
         val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val mapId = 1718
         val updateValue = """
                     |{
                     |  "prim": "Pair",
@@ -97,9 +139,14 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
           action = "update",
           key = Micheline("""{"bytes" : "0000c4ce21c7a7ac69810bb3425a043def752fddc817"}"""),
           key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
-          big_map = Decimal(1718),
+          big_map = Decimal(mapId),
           value = Some(Micheline(updateValue))
         )
+
+        //register the token info
+        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        //set the map id for the contract
+        sut.setMapId(ledgerId, BigDecimal(mapId))
 
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
@@ -111,13 +158,13 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
       "allow computation of the correct key hash for an account address" in {
         //example taken from relevant conseil.js tests
-        val hash = sut.Codecs.computeKeyHash(AccountId("tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi8"))
+        val hash = TokenContracts.Codecs.computeKeyHash(AccountId("tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi8"))
         hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
       }
 
       "compute the correct key hash for the sample babylon account address" in {
         //some values sampled from a real babylon use-case
-        val hash = sut.Codecs.computeKeyHash(AccountId("tz1dae51wqhBwC7YdGiJAAU5JYwEvVH3Usf2"))
+        val hash = TokenContracts.Codecs.computeKeyHash(AccountId("tz1dae51wqhBwC7YdGiJAAU5JYwEvVH3Usf2"))
         hash shouldBe Success("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx")
       }
 
@@ -125,7 +172,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         //example taken from relevant conseil.js tests
         val bytes = scorex.util.encode.Base16.decode("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
         bytes shouldBe a[Success[_]]
-        val hash = sut.Codecs.encodeBigMapKey(bytes.get)
+        val hash = TokenContracts.Codecs.encodeBigMapKey(bytes.get)
         hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
       }
 
@@ -133,7 +180,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         //some values sampled from a real babylon use-case
         val bytes = scorex.util.encode.Base16.decode("050a000000160000cc04e65d3e38e4e8059041f27a649c76630f95e2")
         bytes shouldBe a[Success[_]]
-        val hash = sut.Codecs.encodeBigMapKey(bytes.get)
+        val hash = TokenContracts.Codecs.encodeBigMapKey(bytes.get)
         hash shouldBe Success("exprv7U7pkJHbeUGhs7Wj8GTUnvfZfJRUcSCRo2EYqRSnUx1xWKrY9")
       }
 

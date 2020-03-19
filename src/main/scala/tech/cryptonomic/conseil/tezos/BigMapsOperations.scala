@@ -5,6 +5,8 @@ import com.github.tminglei.slickpg.ExPostgresProfile
 import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.TezosTypes.ContractId
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -171,7 +173,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param blocks the blocks containing the diffs
     * @return the count of records added, if available from the underlying db-engine
     */
-  def saveContractOrigin(blocks: List[Block]): DBIO[Option[Int]] = {
+  def saveContractOrigin(blocks: List[Block])(implicit tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     val refs = if (logger.underlying.isDebugEnabled()) {
       val rowsMap = blocks.map(b => b.data.hash.value -> b.convertToA[List, OriginatedAccountMapsRow])
       rowsMap.foreach {
@@ -187,8 +189,18 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     } else blocks.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
+    //we might need to update the information registered about tokens
+    updateTokens(refs, tokenContracts)
     Tables.OriginatedAccountMaps ++= refs
   }
+
+  /* Updates information on the stored map, for accounts associated to a token contract */
+  private def updateTokens(contractsReferences: List[OriginatedAccountMapsRow], tokenContracts: TokenContracts) =
+    contractsReferences.foreach {
+      case OriginatedAccountMapsRow(mapId, accountId) if tokenContracts.isKnownToken(ContractId(accountId)) =>
+        tokenContracts.setMapId(ContractId(accountId), mapId)
+      case _ =>
+    }
 
   /** Matches blocks' transactions to extract updated balance for any contract corresponding to a known
     * token definition
@@ -199,7 +211,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param ec needed to sequence multiple database operations
     * @return optional count of rows stored on db
     */
-  def updateTokenBalances(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+  def updateTokenBalances(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
 

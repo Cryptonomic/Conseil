@@ -21,6 +21,7 @@ import tech.cryptonomic.conseil.tezos.Tables.BigMapContentsRow
 import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.tezos.Tables.OriginatedAccountMapsRow
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 class BigMapOperationsTest
     extends WordSpec
@@ -157,6 +158,7 @@ class BigMapOperationsTest
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
+        implicit val noTokenContract = TokenContracts.fromTokens(List.empty)
         val writeAndGetRows = sut.saveContractOrigin(blockToSave :: Nil) andThen Tables.OriginatedAccountMaps.result
 
         val accounts = dbHandler.run(writeAndGetRows.transactionally).futureValue

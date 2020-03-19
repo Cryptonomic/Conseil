@@ -32,6 +32,7 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -81,15 +82,30 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   /** Inits registered tokens at startup */
-  import kantan.csv.generic._
+  implicit val tokenContracts: TokenContracts = {
+    import kantan.csv.generic._
 
-  val tokenRows: List[Tables.RegisteredTokensRow] =
-    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+    val tokensRows: List[Tables.RegisteredTokensRow] =
+      ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
 
-  db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(tokenRows)) andThen {
-      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
-      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
-    }
+    val futureTokenContracts =
+      db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(tokensRows))
+        .andThen {
+          case Success(_) => logger.info("Written {} registered token rows", tokensRows.size)
+          case Failure(e) => logger.error("Could not fill registered_tokens table", e)
+        }
+        .map(
+          _ =>
+            TokenContracts.fromTokens(
+              tokensRows.map {
+                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                  ContractId(accountId) -> standard
+              }
+            )
+        )
+
+    Await.result(futureTokenContracts, 5.seconds)
+  }
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
