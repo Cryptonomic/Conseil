@@ -1120,7 +1120,11 @@ class TezosDatabaseOperationsTest
           "protocol",
           Some("YLBMy"),
           "R0NpYZuUeF",
-          None
+          None,
+          utcYear = 1970,
+          utcMonth = 1,
+          utcDay = 1,
+          utcTime = "00:00:00"
         ),
         BlocksRow(
           1,
@@ -1134,7 +1138,11 @@ class TezosDatabaseOperationsTest
           "protocol",
           Some("YLBMy"),
           "aQeGrbXCmG",
-          None
+          None,
+          utcYear = 1970,
+          utcMonth = 1,
+          utcDay = 1,
+          utcTime = "00:00:00"
         )
       )
 
@@ -1184,7 +1192,11 @@ class TezosDatabaseOperationsTest
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
             "expected_commitment" -> None,
-            "priority" -> None
+            "priority" -> None,
+            "utc_year" -> Some(1970),
+            "utc_month" -> Some(1),
+            "utc_day" -> Some(1),
+            "utc_time" -> Some("00:00:00")
           ),
           Map(
             "operations_hash" -> None,
@@ -1212,7 +1224,11 @@ class TezosDatabaseOperationsTest
             "meta_voting_period" -> None,
             "meta_voting_period_position" -> None,
             "expected_commitment" -> None,
-            "priority" -> None
+            "priority" -> None,
+            "utc_year" -> Some(1970),
+            "utc_month" -> Some(1),
+            "utc_day" -> Some(1),
+            "utc_time" -> Some("00:00:00")
           )
         )
       }
@@ -1231,7 +1247,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("YLBMy"),
             "R0NpYZuUeF",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           ),
           BlocksRow(
             1,
@@ -1245,7 +1265,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("YLBMy"),
             "aQeGrbXCmG",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           )
         )
         val columns = List(
@@ -1305,7 +1329,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("YLBMy"),
             "R0NpYZuUeF",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           ),
           BlocksRow(
             1,
@@ -1319,7 +1347,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("YLBMy"),
             "aQeGrbXCmG",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           )
         )
         val columns = List(
@@ -1552,7 +1584,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("chainId"),
             "blockHash1",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           ),
           BlocksRow(
             1,
@@ -1566,7 +1602,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("chainId"),
             "blockHash2",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           ),
           BlocksRow(
             2,
@@ -1580,7 +1620,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("chainId"),
             "blockHash3",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           ),
           BlocksRow(
             3,
@@ -1594,7 +1638,11 @@ class TezosDatabaseOperationsTest
             "protocol",
             Some("chainId"),
             "blockHash4",
-            None
+            None,
+            utcYear = 1970,
+            utcMonth = 1,
+            utcDay = 1,
+            utcTime = "00:00:00"
           )
         )
 
