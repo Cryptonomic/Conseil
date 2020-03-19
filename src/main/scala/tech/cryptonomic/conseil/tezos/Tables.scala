@@ -1597,6 +1597,7 @@ trait Tables {
     *  @param destination Database column destination SqlType(varchar), Default(None)
     *  @param parameters Database column parameters SqlType(varchar), Default(None)
     *  @param parametersEntrypoints Database column parameters_entrypoints SqlType(varchar), Default(None)
+    *  @param parametersMicheline Database column parameters_micheline SqlType(varchar), Default(None)
     *  @param managerPubkey Database column manager_pubkey SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(numeric), Default(None)
     *  @param proposal Database column proposal SqlType(varchar), Default(None)
@@ -1644,6 +1645,7 @@ trait Tables {
       destination: Option[String] = None,
       parameters: Option[String] = None,
       parametersEntrypoints: Option[String] = None,
+      parametersMicheline: Option[String] = None,
       managerPubkey: Option[String] = None,
       balance: Option[scala.math.BigDecimal] = None,
       proposal: Option[String] = None,
@@ -1706,6 +1708,7 @@ trait Tables {
       <<?[String],
       <<?[String],
       <<?[String],
+      <<?[String],
       <<?[scala.math.BigDecimal],
       <<?[String],
       <<?[Boolean],
@@ -1735,12 +1738,12 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
             .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
             .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
             utcTime
@@ -1770,29 +1773,30 @@ trait Tables {
             r(20).asInstanceOf[Option[String]],
             r(21).asInstanceOf[Option[String]],
             r(22).asInstanceOf[Option[String]],
-            r(23).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(24).asInstanceOf[Option[String]],
-            r(25).asInstanceOf[Option[Boolean]],
+            r(23).asInstanceOf[Option[String]],
+            r(24).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(25).asInstanceOf[Option[String]],
             r(26).asInstanceOf[Option[Boolean]],
-            r(27).asInstanceOf[Option[String]],
+            r(27).asInstanceOf[Option[Boolean]],
             r(28).asInstanceOf[Option[String]],
             r(29).asInstanceOf[Option[String]],
-            r(30).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(30).asInstanceOf[Option[String]],
             r(31).asInstanceOf[Option[scala.math.BigDecimal]],
             r(32).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(33).asInstanceOf[Option[String]],
-            r(34).asInstanceOf[Option[String]].get,
-            r(35).asInstanceOf[Option[Int]].get,
-            r(36).asInstanceOf[Option[String]],
-            r(37).asInstanceOf[Option[Boolean]].get,
-            r(38).asInstanceOf[Option[Int]],
+            r(33).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(34).asInstanceOf[Option[String]],
+            r(35).asInstanceOf[Option[String]].get,
+            r(36).asInstanceOf[Option[Int]].get,
+            r(37).asInstanceOf[Option[String]],
+            r(38).asInstanceOf[Option[Boolean]].get,
             r(39).asInstanceOf[Option[Int]],
-            r(40).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(41).asInstanceOf[Option[String]],
-            r(42).asInstanceOf[Option[Int]].get,
+            r(40).asInstanceOf[Option[Int]],
+            r(41).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(42).asInstanceOf[Option[String]],
             r(43).asInstanceOf[Option[Int]].get,
             r(44).asInstanceOf[Option[Int]].get,
-            r(45).asInstanceOf[Option[String]].get
+            r(45).asInstanceOf[Option[Int]].get,
+            r(46).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1864,6 +1868,9 @@ trait Tables {
 
     /** Database column parameters_entrypoints SqlType(varchar), Default(None) */
     val parametersEntrypoints: Rep[Option[String]] = column[Option[String]]("parameters_entrypoints", O.Default(None))
+
+    /** Database column parameters_micheline SqlType(varchar), Default(None) */
+    val parametersMicheline: Rep[Option[String]] = column[Option[String]]("parameters_micheline", O.Default(None))
 
     /** Database column manager_pubkey SqlType(varchar), Default(None) */
     val managerPubkey: Rep[Option[String]] = column[Option[String]]("manager_pubkey", O.Default(None))

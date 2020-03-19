@@ -685,6 +685,7 @@ trait OperationsJsonData {
     destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
     parameters =
       Some(Left(Parameters(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}"""), Some("default")))),
+    parameters_micheline = None,
     metadata = ResultMetadata(
       operation_result = OperationResult.Transaction(
         status = "applied",
@@ -708,6 +709,7 @@ trait OperationsJsonData {
             PositiveDecimal(1000),
             ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
             Some(Left(Parameters(Micheline("""{"prim":"Unit"}"""), Some("default")))),
+            None,
             OperationResult.Transaction(
               status = "applied",
               allocated_destination_contract = None,
@@ -931,6 +933,7 @@ trait OperationsJsonData {
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
       parameters = Some(Left(Parameters(Micheline("""{"string":"world"}"""), Some("default")))),
+      parameters_micheline = None,
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(
@@ -1014,6 +1017,7 @@ trait OperationsJsonData {
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
       parameters = Some(Right(Micheline("""{"string":"world"}"""))),
+      parameters_micheline = None,
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(

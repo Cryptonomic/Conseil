@@ -219,6 +219,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("parameters_micheline", "Parameters micheline", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute(
               "parameters_entrypoints",
               "Parameters entrypoints",

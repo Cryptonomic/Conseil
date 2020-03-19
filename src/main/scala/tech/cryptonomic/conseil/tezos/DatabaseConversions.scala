@@ -357,7 +357,18 @@ object DatabaseConversions extends LazyLogging {
     case (
         block,
         groupHash,
-        Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
+        Transaction(
+          counter,
+          amount,
+          fee,
+          gas_limit,
+          storage_limit,
+          source,
+          destination,
+          parameters,
+          parameters_micheline,
+          metadata
+        )
         ) =>
       val extractedParameters = parameters.map(_.map(Parameters(_)).merge)
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
@@ -373,6 +384,7 @@ object DatabaseConversions extends LazyLogging {
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
         parameters = extractedParameters.map(_.value.expression),
+        parametersMicheline = parameters_micheline,
         parametersEntrypoints = extractedParameters.flatMap(_.entrypoint),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),

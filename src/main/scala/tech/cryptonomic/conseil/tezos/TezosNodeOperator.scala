@@ -645,13 +645,14 @@ class TezosNodeOperator(
     val proposalsStateFetch =
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
-    def parseMichelsonScripts: Block => Block = {
+    def parseMichelsonScripts: Block => Block = { block: Block =>
       implicit lazy val _ = logger
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val setUnparsedMicheline = parametersMichelineLens.set(parametersLens.headOption(block))
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      codeAlter compose storageAlter compose parametersAlter
+      (codeAlter compose storageAlter compose setUnparsedMicheline compose parametersAlter)(block)
     }
 
     def extractAccountIds(blockData: BlockData): List[AccountId] =
