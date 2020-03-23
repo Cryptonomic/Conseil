@@ -940,75 +940,76 @@ object DatabaseConversions extends LazyLogging {
 
   case class BlockTokenBalances(block: Block, tokenContractId: ContractId, accountId: AccountId, balance: BigInt)
 
-  implicit def blockToTokenBalanceUpdates(implicit tokenContracts: TokenContracts) = new Conversion[List, Block, BlockTokenBalances] {
-    def convert(from: TezosTypes.Block): List[BlockTokenBalances] = {
+  implicit def blockToTokenBalanceUpdates(implicit tokenContracts: TokenContracts) =
+    new Conversion[List, Block, BlockTokenBalances] {
+      def convert(from: TezosTypes.Block): List[BlockTokenBalances] = {
 
-      //we'll use this to dig into the transaction results and reach for the updates
-      val extractDiffs = (transactionResult: OperationResult.Transaction) =>
-        transactionResult.big_map_diff
-          .fold(ifEmpty = List.empty[Contract.BigMapUpdate]) {
-            _.collect { case Left(diff: Contract.BigMapUpdate) => diff }
+        //we'll use this to dig into the transaction results and reach for the updates
+        val extractDiffs = (transactionResult: OperationResult.Transaction) =>
+          transactionResult.big_map_diff
+            .fold(ifEmpty = List.empty[Contract.BigMapUpdate]) {
+              _.collect { case Left(diff: Contract.BigMapUpdate) => diff }
+            }
+
+        //we'll use this to get out any address-looking string from the transaction params
+        val extractAddresses = (transactionParams: Micheline) => {
+          transactionParams.expression match {
+            case JsonUtil.AccountIds(id, ids @ _*) =>
+              (id :: ids.toList).distinct.map(AccountId)
+            case _ =>
+              List.empty[AccountId]
           }
-
-      //we'll use this to get out any address-looking string from the transaction params
-      val extractAddresses = (transactionParams: Micheline) => {
-        transactionParams.expression match {
-          case JsonUtil.AccountIds(id, ids @ _*) =>
-            (id :: ids.toList).distinct.map(AccountId)
-          case _ =>
-            List.empty[AccountId]
         }
-      }
 
-      //focus on the micheline value
-      val readParams: Option[ParametersCompatibility] => Option[Micheline] =
-        _ map {
-            case Left(Parameters(micheline, _)) => micheline
-            case Right(micheline) => micheline
-          }
+        //focus on the micheline value
+        val readParams: Option[ParametersCompatibility] => Option[Micheline] =
+          _ map {
+              case Left(Parameters(micheline, _)) => micheline
+              case Right(micheline) => micheline
+            }
 
-      val (ops, intOps) = extractOperationsAlongWithInternalResults(from).values.unzip
+        val (ops, intOps) = extractOperationsAlongWithInternalResults(from).values.unzip
 
-      /* Extracted potential accounts from the transactions
-       * we'll use this as a directory to look for addresses involved in
-       * the token exchange operation
-       */
-      val addressesInvolved: Set[AccountId] =
-        (
+        /* Extracted potential accounts from the transactions
+         * we'll use this as a directory to look for addresses involved in
+         * the token exchange operation
+         */
+        val addressesInvolved: Set[AccountId] =
+          (
+            ops.toList.flatten.collect {
+              case op: Transaction if tokenContracts.isKnownToken(op.destination) =>
+                readParams(op.parameters).toList.flatMap(extractAddresses)
+            } ++
+                intOps.toList.flatten.collect {
+                  case intOp: InternalOperationResults.Transaction if tokenContracts.isKnownToken(intOp.destination) =>
+                    readParams(intOp.parameters).toList.flatMap(extractAddresses)
+                }
+          ).combineAll.toSet
+
+        val contractUpdates: List[(ContractId, List[Contract.BigMapUpdate])] =
           ops.toList.flatten.collect {
             case op: Transaction if tokenContracts.isKnownToken(op.destination) =>
-              readParams(op.parameters).toList.flatMap(extractAddresses)
+              op.destination -> extractDiffs(op.metadata.operation_result)
           } ++
               intOps.toList.flatten.collect {
                 case intOp: InternalOperationResults.Transaction if tokenContracts.isKnownToken(intOp.destination) =>
-                  readParams(intOp.parameters).toList.flatMap(extractAddresses)
+                  intOp.destination -> extractDiffs(intOp.result)
               }
-        ).combineAll.toSet
 
-      val contractUpdates: List[(ContractId, List[Contract.BigMapUpdate])] =
-        ops.toList.flatten.collect {
-          case op: Transaction if tokenContracts.isKnownToken(op.destination) =>
-            op.destination -> extractDiffs(op.metadata.operation_result)
-        } ++
-            intOps.toList.flatten.collect {
-              case intOp: InternalOperationResults.Transaction if tokenContracts.isKnownToken(intOp.destination) =>
-                intOp.destination -> extractDiffs(intOp.result)
-            }
+        //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
+        val tokenBalances: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
+          case (tokenId, updates) =>
+            val tokenUpdates = updates.map(tokenContracts.readBalance(tokenId)).flattenOption
+            tokenId -> tokenUpdates
+        }
 
-      //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-      val tokenBalances: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
-        case (tokenId, updates) =>
-          val tokenUpdates = updates.map(tokenContracts.readBalance(tokenId)).flattenOption
-          tokenId -> tokenUpdates
+        for {
+          (tokenId, balances) <- tokenBalances
+          (scriptId, balance) <- balances
+          accountId <- addressesInvolved.find(TokenContracts.hashCheck(scriptId))
+        } yield BlockTokenBalances(from, tokenId, accountId, balance)
       }
-
-      for {
-        (tokenId, balances) <- tokenBalances
-        (scriptId, balance) <- balances
-        accountId <- addressesInvolved.find(TokenContracts.hashCheck(scriptId))
-      } yield BlockTokenBalances(from, tokenId, accountId, balance)
     }
-  }
 
   implicit val blockAccountsAssociationToCheckpointRow =
     new Conversion[List, (BlockHash, Int, Option[Instant], Option[Int], List[AccountId]), Tables.AccountsCheckpointRow] {

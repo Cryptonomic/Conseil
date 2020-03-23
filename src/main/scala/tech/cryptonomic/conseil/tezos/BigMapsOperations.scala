@@ -211,7 +211,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param ec needed to sequence multiple database operations
     * @return optional count of rows stored on db
     */
-  def updateTokenBalances(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
+  def updateTokenBalances(
+      blocks: List[Block]
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
 
