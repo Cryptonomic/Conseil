@@ -11,10 +11,8 @@ import cats.implicits._
 import scala.collection.immutable.TreeSet
 import scala.util.Try
 import scala.concurrent.SyncVar
-import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.CryptoUtil
-import tech.cryptonomic.conseil.tezos.Tables
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information

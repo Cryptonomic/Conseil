@@ -1000,7 +1000,7 @@ object DatabaseConversions extends LazyLogging {
         case (tokenId, updates) =>
           val tokenUpdates = updates.map(tokenContracts.readBalance(tokenId)).flattenOption
           tokenId -> tokenUpdates
-      }.toList
+      }
 
       for {
         (tokenId, balances) <- tokenBalances
