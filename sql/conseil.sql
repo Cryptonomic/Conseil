@@ -219,7 +219,11 @@ CREATE TABLE tezos.blocks (
     meta_voting_period integer,
     meta_voting_period_position integer,
     expected_commitment boolean,
-    priority integer
+    priority integer,
+    utc_year integer NOT NULL,
+    utc_month integer NOT NULL,
+    utc_day integer NOT NULL,
+    utc_time character varying NOT NULL
 );
 
 
@@ -325,6 +329,7 @@ CREATE TABLE tezos.operations (
     destination character varying,
     parameters character varying,
     parameters_entrypoints character varying,
+    parameters_micheline character varying,
     manager_pubkey character varying,
     balance numeric,
     proposal character varying,
@@ -344,7 +349,11 @@ CREATE TABLE tezos.operations (
     period integer,
     ballot_period integer,
     "timestamp" timestamp without time zone NOT NULL,
-    errors character varying
+    errors character varying,
+    utc_year integer NOT NULL,
+    utc_month integer NOT NULL,
+    utc_day integer NOT NULL,
+    utc_time character varying NOT NULL
 );
 
 

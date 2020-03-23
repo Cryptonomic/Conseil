@@ -7,7 +7,8 @@ import tech.cryptonomic.conseil.util.Conversion
 import cats.{Id, Show}
 import cats.implicits._
 import java.sql.Timestamp
-import java.time.Instant
+import java.time.{Instant, ZoneOffset}
+import java.time.format.DateTimeFormatter
 
 import monocle.Getter
 import io.scalaland.chimney.dsl._
@@ -41,6 +42,18 @@ object DatabaseConversions extends LazyLogging {
   def extractBigDecimal(number: BigNumber): Option[BigDecimal] = number match {
     case Decimal(value) => Some(value)
     case _ => None
+  }
+
+  /** Extracts date parts and time in UTC */
+  def extractDateTime(timestamp: java.sql.Timestamp): (Int, Int, Int, String) = {
+    val offsetDateTime = timestamp.toLocalDateTime.atOffset(ZoneOffset.UTC)
+    val format = DateTimeFormatter.ofPattern("HH:mm:ss")
+    (
+      offsetDateTime.getYear,
+      offsetDateTime.getMonth.getValue,
+      offsetDateTime.getDayOfMonth,
+      offsetDateTime.format(format)
+    )
   }
 
   private def extractResultErrorIds(errors: Option[List[OperationResult.Error]]) = {
@@ -176,6 +189,7 @@ object DatabaseConversions extends LazyLogging {
       val header = from.data.header
       val metadata = discardGenesis.lift(from.data.metadata)
       val CurrentVotes(expectedQuorum, proposal) = from.votes
+      val (year, month, day, time) = extractDateTime(toSql(header.timestamp))
       Tables.BlocksRow(
         level = header.level,
         proto = header.proto,
@@ -202,7 +216,11 @@ object DatabaseConversions extends LazyLogging {
         metaVotingPeriod = metadata.map(_.level.voting_period),
         metaVotingPeriodPosition = metadata.map(_.level.voting_period_position),
         expectedCommitment = metadata.map(_.level.expected_commitment),
-        priority = header.priority
+        priority = header.priority,
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
     }
   }
@@ -239,6 +257,7 @@ object DatabaseConversions extends LazyLogging {
 
   private val convertEndorsement: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Endorsement(level, metadata)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -253,12 +272,17 @@ object DatabaseConversions extends LazyLogging {
         cycle = extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
         numberOfSlots = Some(metadata.slots.length),
-        period = extractPeriod(block.data.metadata)
+        period = extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
   private val convertNonceRevelation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, SeedNonceRevelation(level, nonce, metadata)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -270,12 +294,17 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata)
+        period = extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
   private val convertActivateAccount: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, ActivateAccount(pkh, secret, metadata)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -287,12 +316,17 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata)
+        period = extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
   private val convertReveal: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Reveal(counter, fee, gas_limit, storage_limit, pk, source, metadata)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -311,7 +345,11 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         cycle = extractCycle(block),
         period = extractPeriod(block.data.metadata),
-        errors = extractResultErrorIds(metadata.operation_result.errors)
+        errors = extractResultErrorIds(metadata.operation_result.errors),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
@@ -319,9 +357,21 @@ object DatabaseConversions extends LazyLogging {
     case (
         block,
         groupHash,
-        Transaction(counter, amount, fee, gas_limit, storage_limit, source, destination, parameters, metadata)
+        Transaction(
+          counter,
+          amount,
+          fee,
+          gas_limit,
+          storage_limit,
+          source,
+          destination,
+          parameters,
+          parameters_micheline,
+          metadata
+        )
         ) =>
       val extractedParameters = parameters.map(_.map(Parameters(_)).merge)
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -334,6 +384,7 @@ object DatabaseConversions extends LazyLogging {
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
         parameters = extractedParameters.map(_.value.expression),
+        parametersMicheline = parameters_micheline,
         parametersEntrypoints = extractedParameters.flatMap(_.entrypoint),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
@@ -345,7 +396,11 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         cycle = extractCycle(block),
         period = extractPeriod(block.data.metadata),
-        errors = extractResultErrorIds(metadata.operation_result.errors)
+        errors = extractResultErrorIds(metadata.operation_result.errors),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
@@ -368,6 +423,7 @@ object DatabaseConversions extends LazyLogging {
           metadata
         )
         ) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -395,12 +451,17 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         cycle = extractCycle(block),
         period = extractPeriod(block.data.metadata),
-        errors = extractResultErrorIds(metadata.operation_result.errors)
+        errors = extractResultErrorIds(metadata.operation_result.errors),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
   private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Delegation(counter, source, fee, gas_limit, storage_limit, delegate, metadata)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -419,12 +480,17 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         cycle = extractCycle(block),
         period = extractPeriod(block.data.metadata),
-        errors = extractResultErrorIds(metadata.operation_result.errors)
+        errors = extractResultErrorIds(metadata.operation_result.errors),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
   private val convertBallot: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Ballot(ballot, proposal, source, ballotPeriod)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -438,12 +504,17 @@ object DatabaseConversions extends LazyLogging {
         source = source.map(_.id),
         cycle = extractCycle(block),
         ballotPeriod = ballotPeriod,
-        period = extractPeriod(block.data.metadata)
+        period = extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 
   private val convertProposals: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {
     case (block, groupHash, Proposals(source, ballotPeriod, proposals)) =>
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -456,7 +527,11 @@ object DatabaseConversions extends LazyLogging {
         source = source.map(_.id),
         cycle = extractCycle(block),
         ballotPeriod = ballotPeriod,
-        period = extractPeriod(block.data.metadata)
+        period = extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
 
   }
@@ -468,6 +543,7 @@ object DatabaseConversions extends LazyLogging {
         case DoubleBakingEvidence => "double_baking_evidence"
         case _ => ""
       }
+      val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -477,7 +553,11 @@ object DatabaseConversions extends LazyLogging {
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
         cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata)
+        period = extractPeriod(block.data.metadata),
+        utcYear = year,
+        utcMonth = month,
+        utcDay = day,
+        utcTime = time
       )
   }
 

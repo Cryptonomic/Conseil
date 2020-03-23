@@ -744,7 +744,11 @@ trait Tables {
     *  @param metaVotingPeriod Database column meta_voting_period SqlType(int4), Default(None)
     *  @param metaVotingPeriodPosition Database column meta_voting_period_position SqlType(int4), Default(None)
     *  @param expectedCommitment Database column expected_commitment SqlType(bool), Default(None)
-    *  @param priority Database column priority SqlType(int4), Default(None) */
+    *  @param priority Database column priority SqlType(int4), Default(None)
+    *  @param utcYear Database column utc_year SqlType(int4)
+    *  @param utcMonth Database column utc_month SqlType(int4)
+    *  @param utcDay Database column utc_day SqlType(int4)
+    *  @param utcTime Database column utc_time SqlType(varchar) */
   case class BlocksRow(
       level: Int,
       proto: Int,
@@ -771,7 +775,11 @@ trait Tables {
       metaVotingPeriod: Option[Int] = None,
       metaVotingPeriodPosition: Option[Int] = None,
       expectedCommitment: Option[Boolean] = None,
-      priority: Option[Int] = None
+      priority: Option[Int] = None,
+      utcYear: Int,
+      utcMonth: Int,
+      utcDay: Int,
+      utcTime: String
   )
 
   /** GetResult implicit for fetching BlocksRow objects using plain SQL queries */
@@ -811,52 +819,60 @@ trait Tables {
       <<?[Int],
       <<?[Int],
       <<?[Boolean],
-      <<?[Int]
+      <<?[Int],
+      <<[Int],
+      <<[Int],
+      <<[Int],
+      <<[String]
     )
   }
 
   /** Table description of table blocks. Objects of this class serve as prototypes for rows in queries. */
   class Blocks(_tableTag: Tag) extends profile.api.Table[BlocksRow](_tableTag, Some("tezos"), "blocks") {
     def * =
-      (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: HNil)
+      (level :: proto :: predecessor :: timestamp :: validationPass :: fitness :: context :: signature :: protocol :: chainId :: hash :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
         .mapTo[BlocksRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       (Rep.Some(level) :: Rep.Some(proto) :: Rep.Some(predecessor) :: Rep.Some(timestamp) :: Rep.Some(validationPass) :: Rep
-            .Some(fitness) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: HNil).shaped
-        .<>(
-          r =>
-            BlocksRow(
-              r(0).asInstanceOf[Option[Int]].get,
-              r(1).asInstanceOf[Option[Int]].get,
-              r(2).asInstanceOf[Option[String]].get,
-              r(3).asInstanceOf[Option[java.sql.Timestamp]].get,
-              r(4).asInstanceOf[Option[Int]].get,
-              r(5).asInstanceOf[Option[String]].get,
-              r(6).asInstanceOf[Option[String]],
-              r(7).asInstanceOf[Option[String]],
-              r(8).asInstanceOf[Option[String]].get,
-              r(9).asInstanceOf[Option[String]],
-              r(10).asInstanceOf[Option[String]].get,
-              r(11).asInstanceOf[Option[String]],
-              r(12).asInstanceOf[Option[String]],
-              r(13).asInstanceOf[Option[Int]],
-              r(14).asInstanceOf[Option[String]],
-              r(15).asInstanceOf[Option[String]],
-              r(16).asInstanceOf[Option[String]],
-              r(17).asInstanceOf[Option[scala.math.BigDecimal]],
-              r(18).asInstanceOf[Option[Int]],
-              r(19).asInstanceOf[Option[Int]],
-              r(20).asInstanceOf[Option[Int]],
-              r(21).asInstanceOf[Option[Int]],
-              r(22).asInstanceOf[Option[Int]],
-              r(23).asInstanceOf[Option[Int]],
-              r(24).asInstanceOf[Option[Boolean]],
-              r(25).asInstanceOf[Option[Int]]
-            ),
-          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
-        )
+            .Some(fitness) :: context :: signature :: Rep.Some(protocol) :: chainId :: Rep.Some(hash) :: operationsHash :: periodKind :: currentExpectedQuorum :: activeProposal :: baker :: nonceHash :: consumedGas :: metaLevel :: metaLevelPosition :: metaCycle :: metaCyclePosition :: metaVotingPeriod :: metaVotingPeriodPosition :: expectedCommitment :: priority :: Rep
+            .Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(utcTime) :: HNil).shaped.<>(
+        r =>
+          BlocksRow(
+            r(0).asInstanceOf[Option[Int]].get,
+            r(1).asInstanceOf[Option[Int]].get,
+            r(2).asInstanceOf[Option[String]].get,
+            r(3).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(4).asInstanceOf[Option[Int]].get,
+            r(5).asInstanceOf[Option[String]].get,
+            r(6).asInstanceOf[Option[String]],
+            r(7).asInstanceOf[Option[String]],
+            r(8).asInstanceOf[Option[String]].get,
+            r(9).asInstanceOf[Option[String]],
+            r(10).asInstanceOf[Option[String]].get,
+            r(11).asInstanceOf[Option[String]],
+            r(12).asInstanceOf[Option[String]],
+            r(13).asInstanceOf[Option[Int]],
+            r(14).asInstanceOf[Option[String]],
+            r(15).asInstanceOf[Option[String]],
+            r(16).asInstanceOf[Option[String]],
+            r(17).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(18).asInstanceOf[Option[Int]],
+            r(19).asInstanceOf[Option[Int]],
+            r(20).asInstanceOf[Option[Int]],
+            r(21).asInstanceOf[Option[Int]],
+            r(22).asInstanceOf[Option[Int]],
+            r(23).asInstanceOf[Option[Int]],
+            r(24).asInstanceOf[Option[Boolean]],
+            r(25).asInstanceOf[Option[Int]],
+            r(26).asInstanceOf[Option[Int]].get,
+            r(27).asInstanceOf[Option[Int]].get,
+            r(28).asInstanceOf[Option[Int]].get,
+            r(29).asInstanceOf[Option[String]].get
+          ),
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column level SqlType(int4) */
     val level: Rep[Int] = column[Int]("level")
@@ -936,6 +952,18 @@ trait Tables {
 
     /** Database column priority SqlType(int4), Default(None) */
     val priority: Rep[Option[Int]] = column[Option[Int]]("priority", O.Default(None))
+
+    /** Database column utc_year SqlType(int4) */
+    val utcYear: Rep[Int] = column[Int]("utc_year")
+
+    /** Database column utc_month SqlType(int4) */
+    val utcMonth: Rep[Int] = column[Int]("utc_month")
+
+    /** Database column utc_day SqlType(int4) */
+    val utcDay: Rep[Int] = column[Int]("utc_day")
+
+    /** Database column utc_time SqlType(varchar) */
+    val utcTime: Rep[String] = column[String]("utc_time")
 
     /** Uniqueness Index over (hash) (database name blocks_hash_key) */
     val index1 = index("blocks_hash_key", hash :: HNil, unique = true)
@@ -1569,6 +1597,7 @@ trait Tables {
     *  @param destination Database column destination SqlType(varchar), Default(None)
     *  @param parameters Database column parameters SqlType(varchar), Default(None)
     *  @param parametersEntrypoints Database column parameters_entrypoints SqlType(varchar), Default(None)
+    *  @param parametersMicheline Database column parameters_micheline SqlType(varchar), Default(None)
     *  @param managerPubkey Database column manager_pubkey SqlType(varchar), Default(None)
     *  @param balance Database column balance SqlType(numeric), Default(None)
     *  @param proposal Database column proposal SqlType(varchar), Default(None)
@@ -1588,7 +1617,11 @@ trait Tables {
     *  @param period Database column period SqlType(int4), Default(None)
     *  @param ballotPeriod Database column ballot_period SqlType(int4), Default(None)
     *  @param timestamp Database column timestamp SqlType(timestamp)
-    *  @param errors Database column errors SqlType(varchar), Default(None) */
+    *  @param errors Database column errors SqlType(varchar), Default(None)
+    *  @param utcYear Database column utc_year SqlType(int4)
+    *  @param utcMonth Database column utc_month SqlType(int4)
+    *  @param utcDay Database column utc_day SqlType(int4)
+    *  @param utcTime Database column utc_time SqlType(varchar) */
   case class OperationsRow(
       branch: Option[String] = None,
       numberOfSlots: Option[Int] = None,
@@ -1612,6 +1645,7 @@ trait Tables {
       destination: Option[String] = None,
       parameters: Option[String] = None,
       parametersEntrypoints: Option[String] = None,
+      parametersMicheline: Option[String] = None,
       managerPubkey: Option[String] = None,
       balance: Option[scala.math.BigDecimal] = None,
       proposal: Option[String] = None,
@@ -1631,7 +1665,11 @@ trait Tables {
       period: Option[Int] = None,
       ballotPeriod: Option[Int] = None,
       timestamp: java.sql.Timestamp,
-      errors: Option[String] = None
+      errors: Option[String] = None,
+      utcYear: Int,
+      utcMonth: Int,
+      utcDay: Int,
+      utcTime: String
   )
 
   /** GetResult implicit for fetching OperationsRow objects using plain SQL queries */
@@ -1670,6 +1708,7 @@ trait Tables {
       <<?[String],
       <<?[String],
       <<?[String],
+      <<?[String],
       <<?[scala.math.BigDecimal],
       <<?[String],
       <<?[Boolean],
@@ -1688,21 +1727,27 @@ trait Tables {
       <<?[Int],
       <<?[Int],
       <<[java.sql.Timestamp],
-      <<?[String]
+      <<?[String],
+      <<[Int],
+      <<[Int],
+      <<[Int],
+      <<[String]
     )
   }
 
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
             .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
-            .Some(timestamp) :: errors :: HNil).shaped.<>(
+            .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
+            utcTime
+          ) :: HNil).shaped.<>(
         r =>
           OperationsRow(
             r(0).asInstanceOf[Option[String]],
@@ -1728,25 +1773,30 @@ trait Tables {
             r(20).asInstanceOf[Option[String]],
             r(21).asInstanceOf[Option[String]],
             r(22).asInstanceOf[Option[String]],
-            r(23).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(24).asInstanceOf[Option[String]],
-            r(25).asInstanceOf[Option[Boolean]],
+            r(23).asInstanceOf[Option[String]],
+            r(24).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(25).asInstanceOf[Option[String]],
             r(26).asInstanceOf[Option[Boolean]],
-            r(27).asInstanceOf[Option[String]],
+            r(27).asInstanceOf[Option[Boolean]],
             r(28).asInstanceOf[Option[String]],
             r(29).asInstanceOf[Option[String]],
-            r(30).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(30).asInstanceOf[Option[String]],
             r(31).asInstanceOf[Option[scala.math.BigDecimal]],
             r(32).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(33).asInstanceOf[Option[String]],
-            r(34).asInstanceOf[Option[String]].get,
-            r(35).asInstanceOf[Option[Int]].get,
-            r(36).asInstanceOf[Option[String]],
-            r(37).asInstanceOf[Option[Boolean]].get,
-            r(38).asInstanceOf[Option[Int]],
+            r(33).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(34).asInstanceOf[Option[String]],
+            r(35).asInstanceOf[Option[String]].get,
+            r(36).asInstanceOf[Option[Int]].get,
+            r(37).asInstanceOf[Option[String]],
+            r(38).asInstanceOf[Option[Boolean]].get,
             r(39).asInstanceOf[Option[Int]],
-            r(40).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(41).asInstanceOf[Option[String]]
+            r(40).asInstanceOf[Option[Int]],
+            r(41).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(42).asInstanceOf[Option[String]],
+            r(43).asInstanceOf[Option[Int]].get,
+            r(44).asInstanceOf[Option[Int]].get,
+            r(45).asInstanceOf[Option[Int]].get,
+            r(46).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1819,6 +1869,9 @@ trait Tables {
     /** Database column parameters_entrypoints SqlType(varchar), Default(None) */
     val parametersEntrypoints: Rep[Option[String]] = column[Option[String]]("parameters_entrypoints", O.Default(None))
 
+    /** Database column parameters_micheline SqlType(varchar), Default(None) */
+    val parametersMicheline: Rep[Option[String]] = column[Option[String]]("parameters_micheline", O.Default(None))
+
     /** Database column manager_pubkey SqlType(varchar), Default(None) */
     val managerPubkey: Rep[Option[String]] = column[Option[String]]("manager_pubkey", O.Default(None))
 
@@ -1881,6 +1934,18 @@ trait Tables {
 
     /** Database column errors SqlType(varchar), Default(None) */
     val errors: Rep[Option[String]] = column[Option[String]]("errors", O.Default(None))
+
+    /** Database column utc_year SqlType(int4) */
+    val utcYear: Rep[Int] = column[Int]("utc_year")
+
+    /** Database column utc_month SqlType(int4) */
+    val utcMonth: Rep[Int] = column[Int]("utc_month")
+
+    /** Database column utc_day SqlType(int4) */
+    val utcDay: Rep[Int] = column[Int]("utc_day")
+
+    /** Database column utc_time SqlType(varchar) */
+    val utcTime: Rep[String] = column[String]("utc_time")
 
     /** Foreign key referencing Blocks (database name fk_blockhashes) */
     lazy val blocksFk = foreignKey("fk_blockhashes", blockHash :: HNil, Blocks)(

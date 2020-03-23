@@ -181,7 +181,11 @@ class TezosPlatformDiscoveryOperationsTest
               "blocks"
             ),
             Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
-            Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks")
+            Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("utc_year", "Utc year", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("utc_month", "Utc month", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("utc_day", "Utc day", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("utc_time", "Utc time", DataType.String, None, KeyType.NonKey, "blocks")
           )
         )
 
@@ -215,6 +219,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("parameters_micheline", "Parameters micheline", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute(
               "parameters_entrypoints",
               "Parameters entrypoints",
@@ -259,7 +264,11 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("ballot_period", "Ballot period", DataType.Int, None, KeyType.NonKey, "operations"),
-            Attribute("errors", "Errors", DataType.String, None, KeyType.NonKey, "operations")
+            Attribute("errors", "Errors", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("utc_year", "Utc year", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("utc_month", "Utc month", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("utc_day", "Utc day", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("utc_time", "Utc time", DataType.String, None, KeyType.NonKey, "operations")
           )
         )
       }
