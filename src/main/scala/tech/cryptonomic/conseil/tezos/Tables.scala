@@ -30,6 +30,7 @@ trait Tables {
     EndorsingRights.schema,
     Fees.schema,
     Governance.schema,
+    KnownAddresses.schema,
     OperationGroups.schema,
     Operations.schema,
     OriginatedAccountMaps.schema,
@@ -1482,6 +1483,38 @@ trait Tables {
 
   /** Collection-like TableQuery object for table Governance */
   lazy val Governance = new TableQuery(tag => new Governance(tag))
+
+  /** Entity class storing rows of table KnownAddresses
+    *  @param address Database column address SqlType(varchar)
+    *  @param alias Database column alias SqlType(varchar) */
+  case class KnownAddressesRow(address: String, alias: String)
+
+  /** GetResult implicit for fetching KnownAddressesRow objects using plain SQL queries */
+  implicit def GetResultKnownAddressesRow(implicit e0: GR[String]): GR[KnownAddressesRow] = GR { prs =>
+    import prs._
+    KnownAddressesRow.tupled((<<[String], <<[String]))
+  }
+
+  /** Table description of table known_addresses. Objects of this class serve as prototypes for rows in queries. */
+  class KnownAddresses(_tableTag: Tag)
+      extends profile.api.Table[KnownAddressesRow](_tableTag, Some("tezos"), "known_addresses") {
+    def * = (address, alias) <> (KnownAddressesRow.tupled, KnownAddressesRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(address), Rep.Some(alias))).shaped.<>({ r =>
+        import r._; _1.map(_ => KnownAddressesRow.tupled((_1.get, _2.get)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column address SqlType(varchar) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column alias SqlType(varchar) */
+    val alias: Rep[String] = column[String]("alias")
+  }
+
+  /** Collection-like TableQuery object for table KnownAddresses */
+  lazy val KnownAddresses = new TableQuery(tag => new KnownAddresses(tag))
 
   /** Entity class storing rows of table OperationGroups
     *  @param protocol Database column protocol SqlType(varchar)

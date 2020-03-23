@@ -80,32 +80,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  /** Inits registered tokens at startup */
-  initRegisteredTokensFromCsv()
-
-  /** Reads and inserts CSV file to the database for the */
-  def initRegisteredTokensFromCsv(): Future[Option[Int]] = {
-    import kantan.csv._
-    import kantan.csv.ops._
-    import kantan.csv.generic._
-    val rawData: java.net.URL = getClass.getResource("/csv/" + tezosConf.network + ".csv")
-    val reader = rawData.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
-
-    def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
-      cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
-
-    // separates List[Either[L, R]] into List[L] and List[R]
-    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
-      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimFields(r) :: pair._2))
-    )
-
-    errors.foreach(err => logger.error(s"Error while reading registered tokens file: ${err.getMessage}"))
-
-    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)) andThen {
-      case Success(_) => logger.info(s"Written ${rows.size} registered token rows")
-      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
-    }
-  }
+  /** Inits tables with values from CSV files */
+  import kantan.csv.generic._
+  TezosDb.initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+  TezosDb.initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
