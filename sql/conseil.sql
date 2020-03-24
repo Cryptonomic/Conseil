@@ -608,6 +608,10 @@ CREATE INDEX ix_operations_source ON tezos.operations USING btree (source);
 
 CREATE INDEX ix_operations_timestamp ON tezos.operations USING btree ("timestamp");
 
+CREATE INDEX ix_operations_cycle ON tezos.operations USING btree("cycle");
+
+CREATE INDEX ix_operations_kind ON tezos.operations USING btree("kind");
+
 CREATE INDEX ix_balance_updates_op_group_hash ON tezos.balance_updates USING btree (operation_group_hash);
 
 --
