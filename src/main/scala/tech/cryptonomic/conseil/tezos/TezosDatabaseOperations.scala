@@ -805,7 +805,7 @@ object TezosDatabaseOperations extends LazyLogging {
       rawData.asCsvReader[A#TableElementType](rfc.withHeader.withCellSeparator(separator))
 
     // separates List[Either[L, R]] into List[L] and List[R]
-    val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List[A#TableElementType]()))(
+    val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[A#TableElementType]))(
       (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), rr => (pair._1, trimStringFields(rr) :: pair._2))
     )
 
