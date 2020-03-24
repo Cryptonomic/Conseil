@@ -759,10 +759,10 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Inserts to the table if table is empty
     * @param table slick TableQuery[_] to which we want to insert
-    * @param rows the type of event to record
+    * @param rows rows to be added
     * @return the number of entries saved added to the
     */
-  def insertIfEmptyTable[A <: AbstractTable[_]](
+  def insertWhenEmpty[A <: AbstractTable[_]](
       table: TableQuery[A],
       rows: List[A#TableElementType]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
@@ -781,7 +781,7 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /** Uses a Generic to transform the instance into an HList, maps over it and convert it back into the case class */
-  private def trimCaseClass[C, H <: HList](
+  private def trimStringFields[C, H <: HList](
       c: C
   )(implicit g: Generic.Aux[C, H], m: Mapper.Aux[Trimmer.type, H, H]): C = {
     val hlist = g.to(c)
@@ -805,13 +805,13 @@ object TezosDatabaseOperations extends LazyLogging {
       rawData.asCsvReader[A#TableElementType](rfc.withHeader.withCellSeparator(separator))
 
     // separates List[Either[L, R]] into List[L] and List[R]
-    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[A#TableElementType]()))(
-      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), rr => (pair._1, trimCaseClass(rr) :: pair._2))
+    val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List[A#TableElementType]()))(
+      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), rr => (pair._1, trimStringFields(rr) :: pair._2))
     )
 
     errors.foreach(err => logger.error(s"Error while reading file: ${err.getMessage}"))
 
-    val res = db.run(insertIfEmptyTable(table, rows)) andThen {
+    val res = db.run(insertWhenEmpty(table, rows)) andThen {
           case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
           case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
         }
