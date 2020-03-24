@@ -172,4 +172,70 @@ object ConfigUtil {
 
   }
 
+  object Csv extends LazyLogging {
+    import kantan.csv.HeaderDecoder
+    import slick.lifted.{AbstractTable, TableQuery}
+    import shapeless._
+    import shapeless.ops.hlist._
+
+    /** Trims if passed a String value, otherwise returns the value unchanged */
+    object Trimmer extends Poly1 {
+      implicit val stringTrim = at[String] { _.trim }
+      implicit def noop[T] = at[T] { identity }
+    }
+
+    /** Reads a CSV file with tabular data, returning a set of rows to save in the database */
+    def readTableRowsFromCsv[T <: AbstractTable[_], H <: HList](
+        table: TableQuery[T],
+        network: String,
+        separator: Char = ','
+    )(
+        implicit
+        hd: HeaderDecoder[T#TableElementType],
+        g: Generic.Aux[T#TableElementType, H],
+        m: Mapper.Aux[Trimmer.type, H, H]
+    ): List[T#TableElementType] =
+      readTableRowsFromCsv[T#TableElementType, H](
+        csvSource = getClass.getResource(s"/${table.baseTableRow.tableName}/$network.csv"),
+        separator
+      )
+
+    /** Reads a CSV file with tabular data, returning a set of rows to save in the database */
+    def readTableRowsFromCsv[TableRow, H <: HList](
+        csvSource: java.net.URL,
+        separator: Char
+    )(
+        implicit
+        hd: HeaderDecoder[TableRow],
+        g: Generic.Aux[TableRow, H],
+        m: Mapper.Aux[Trimmer.type, H, H]
+    ): List[TableRow] = {
+      import kantan.csv._
+      import kantan.csv.ops._
+
+      /* Uses a Generic to transform the instance into an HList, maps over it and convert it back into the case class */
+      def trimStringFields[C](c: C)(implicit g: Generic.Aux[C, H]): C = {
+        val hlist = g.to(c)
+        val trimmed = hlist.map(Trimmer)
+        g.from(trimmed)
+      }
+
+      val reader: CsvReader[ReadResult[TableRow]] =
+        csvSource.asCsvReader[TableRow](rfc.withHeader.withCellSeparator(separator))
+
+      // separates List[Either[L, R]] into List[L] and List[R]
+      val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[TableRow]))(
+        (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
+      )
+
+      if (errors.nonEmpty) {
+        val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
+        logger.error("Error while reading registered source file {}: {}", csvSource.toExternalForm(), messages)
+      }
+
+      rows
+    }
+
+  }
+
 }
