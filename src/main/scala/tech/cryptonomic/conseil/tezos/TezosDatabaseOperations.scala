@@ -760,7 +760,7 @@ object TezosDatabaseOperations extends LazyLogging {
   /** Inserts to the table if table is empty
     * @param table slick TableQuery[_] to which we want to insert
     * @param rows rows to be added
-    * @return the number of entries saved added to the
+    * @return the number of entries saved
     */
   def insertWhenEmpty[A <: AbstractTable[_]](
       table: TableQuery[A],
