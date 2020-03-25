@@ -113,8 +113,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   def initTableFromCsv[A <: AbstractTable[_], H <: HList](table: TableQuery[A], network: String, separator: Char = ',')(
       implicit hd: HeaderDecoder[A#TableElementType],
       g: Generic.Aux[A#TableElementType, H],
-      m: Mapper.Aux[tech.cryptonomic.conseil.util.ConfigUtil.Csv.Trimmer.type, H, H]
-  ): Future[Option[ProposalSupporters]] = {
+      m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H]
+  ): Future[Option[Int]] = {
     val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
     db.run(insertWhenEmpty(table, rows)) andThen {
       case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
