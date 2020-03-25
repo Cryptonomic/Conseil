@@ -17,8 +17,11 @@ object CryptoUtil {
     * @return       Byte prefix
     */
   private def getBase58BytesForPrefix(prefix: String): Try[List[Byte]] = Try {
-    prefix match {
+    prefix.toLowerCase match {
       case "tz1" => List(6, 161, 159).map(_.toByte)
+      case "tz2" => List(6, 161, 161).map(_.toByte)
+      case "tz3" => List(6, 161, 164).map(_.toByte)
+      case "kt1" => List(2, 90, 121).map(_.toByte)
       case "edpk" => List(13, 15, 37, 217).map(_.toByte)
       case "edsk" => List(43, 246, 78, 7).map(_.toByte)
       case "edsig" => List(9, 245, 205, 134, 18).map(_.toByte)
