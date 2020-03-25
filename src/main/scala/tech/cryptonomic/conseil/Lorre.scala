@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.tezos.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
@@ -80,6 +80,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
+  /** Inits registered tokens at startup */
+  import kantan.csv.generic._
+
+  val tokenRows: List[Tables.RegisteredTokensRow] =
+    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+
+  db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(tokenRows)) andThen {
+      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
+      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
+    }
   /** Inits tables with values from CSV files */
   import kantan.csv.generic._
   TezosDb.initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
