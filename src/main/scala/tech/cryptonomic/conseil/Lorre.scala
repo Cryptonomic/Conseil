@@ -11,6 +11,7 @@ import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import kantan.codecs.strings.StringDecoder
 import org.slf4j.LoggerFactory
+import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
   DatabaseConversions,
@@ -25,8 +26,9 @@ import tech.cryptonomic.conseil.tezos.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
 import tech.cryptonomic.conseil.config._
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.insertWhenEmpty
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 import java.time.format.DateTimeFormatter
 
@@ -85,22 +87,38 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
+  /** Inits registered tokens at startup */
+//  import kantan.csv.generic._
+//
+//  val tokenRows: List[Tables.RegisteredTokensRow] =
+//    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+//
+//  db.run(TezosDb.insertWhenEmpty(Tables.RegisteredTokens, tokenRows)) andThen {
+//      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
+//      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
+//    }
   /** Inits tables with values from CSV files */
   import kantan.csv.generic._
+  initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+  initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
+
+  import shapeless._
+  import shapeless.ops.hlist._
+
   import kantan.csv._
 
-  implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
-    val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
-    StringDecoder
-      .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
-      .map(Timestamp.from)
-      .left
-      .map(x => DecodeError.TypeError(x.message))
+  /** Reads and inserts CSV file to the database for the given table */
+  def initTableFromCsv[A <: AbstractTable[_], H <: HList](table: TableQuery[A], network: String, separator: Char = ',')(
+      implicit hd: HeaderDecoder[A#TableElementType],
+      g: Generic.Aux[A#TableElementType, H],
+      m: Mapper.Aux[tech.cryptonomic.conseil.util.ConfigUtil.Csv.Trimmer.type, H, H]
+  ): Future[Option[ProposalSupporters]] = {
+    val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
+    db.run(insertWhenEmpty(table, rows)) andThen {
+      case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
+      case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
+    }
   }
-
-  TezosDb.initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
-  TezosDb.initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
-  TezosDb.initTableFromCsv(Tables.BakerRegistry, tezosConf.network)
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(

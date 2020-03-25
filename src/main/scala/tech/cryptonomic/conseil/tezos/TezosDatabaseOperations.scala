@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
@@ -25,10 +25,8 @@ import slick.basic.Capability
 import slick.jdbc.JdbcCapabilities
 import com.github.tminglei.slickpg.ExPostgresProfile
 import slick.lifted.{AbstractTable, TableQuery}
-import tech.cryptonomic.conseil.Lorre.db
 
 import scala.collection.immutable.Queue
-import scala.util.{Failure, Success}
 
 /**
   * Functions for writing Tezos data to a database.
@@ -770,54 +768,6 @@ object TezosDatabaseOperations extends LazyLogging {
       case true => DBIO.successful(Some(0))
       case false => table ++= rows
     }
-
-  import shapeless._
-  import shapeless.ops.hlist._
-
-  /** Trims if passed a String value, otherwise returns the value unchanged */
-  object Trimmer extends Poly1 {
-    implicit val stringTrim = at[String] { _.trim }
-    implicit def noop[T] = at[T] { identity }
-  }
-
-  /** Uses a Generic to transform the instance into an HList, maps over it and convert it back into the case class */
-  private def trimStringFields[C, H <: HList](
-      c: C
-  )(implicit g: Generic.Aux[C, H], m: Mapper.Aux[Trimmer.type, H, H]): C = {
-    val hlist = g.to(c)
-    val trimmed = hlist.map(Trimmer)
-    g.from(trimmed)
-  }
-
-  import kantan.csv._
-  import kantan.csv.ops._
-
-  /** Reads and inserts CSV file to the database for the */
-  def initTableFromCsv[A <: AbstractTable[_], H <: HList](table: TableQuery[A], network: String, separator: Char = ',')(
-      implicit hd: HeaderDecoder[A#TableElementType],
-      g: Generic.Aux[A#TableElementType, H],
-      m: Mapper.Aux[Trimmer.type, H, H],
-      ec: ExecutionContext
-  ): Future[List[A#TableElementType]] = {
-
-    val rawData: java.net.URL = getClass.getResource(s"/${table.baseTableRow.tableName}/" + network + ".csv")
-    val reader: CsvReader[ReadResult[A#TableElementType]] =
-      rawData.asCsvReader[A#TableElementType](rfc.withHeader.withCellSeparator(separator))
-
-    // separates List[Either[L, R]] into List[L] and List[R]
-    val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[A#TableElementType]))(
-      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), rr => (pair._1, trimStringFields(rr) :: pair._2))
-    )
-
-    errors.foreach(err => logger.error(s"Error while reading file: ${err.getMessage}"))
-
-    val res = db.run(insertWhenEmpty(table, rows)) andThen {
-          case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
-          case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
-        }
-
-    res.map(_ => rows)
-  }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"
