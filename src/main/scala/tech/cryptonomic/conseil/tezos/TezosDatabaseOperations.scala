@@ -18,7 +18,6 @@ import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
-import slick.jdbc.JdbcCapabilities
 import tech.cryptonomic.conseil.tezos.Tables.GovernanceRow
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls

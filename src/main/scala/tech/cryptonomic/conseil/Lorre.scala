@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.tezos.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
@@ -81,31 +81,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   /** Inits registered tokens at startup */
-  initRegisteredTokensFromCsv()
+  import kantan.csv.generic._
 
-  /** Reads and inserts CSV file to the database for the */
-  def initRegisteredTokensFromCsv(): Future[Option[Int]] = {
-    import kantan.csv._
-    import kantan.csv.ops._
-    import kantan.csv.generic._
-    val rawData: java.net.URL = getClass.getResource("/csv/" + tezosConf.network + ".csv")
-    val reader = rawData.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
+  val tokenRows: List[Tables.RegisteredTokensRow] =
+    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
 
-    def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
-      cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
-
-    // separates List[Either[L, R]] into List[L] and List[R]
-    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
-      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimFields(r) :: pair._2))
-    )
-
-    errors.foreach(err => logger.error(s"Error while reading registered tokens file: ${err.getMessage}"))
-
-    db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(rows)) andThen {
-      case Success(_) => logger.info(s"Written ${rows.size} registered token rows")
+  db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(tokenRows)) andThen {
+      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
       case Failure(e) => logger.error("Could not fill registered_tokens table", e)
     }
-  }
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
