@@ -90,6 +90,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   /** Inits tables with values from CSV files */
   import kantan.csv._
   import kantan.csv.generic._
+  initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+  initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
 
   implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
     val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
