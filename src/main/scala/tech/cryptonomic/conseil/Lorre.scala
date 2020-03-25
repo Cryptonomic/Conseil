@@ -7,6 +7,7 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
+import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
   DatabaseConversions,
@@ -23,6 +24,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
 import tech.cryptonomic.conseil.config._
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.insertWhenEmpty
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
 import scala.concurrent.duration._
@@ -80,16 +82,28 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  /** Inits registered tokens at startup */
+  /** Inits tables with values from CSV files */
   import kantan.csv.generic._
+  initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+  initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
 
-  val tokenRows: List[Tables.RegisteredTokensRow] =
-    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
+  import shapeless._
+  import shapeless.ops.hlist._
 
-  db.run(TezosDb.writeRegisteredTokensRowsIfEmpty(tokenRows)) andThen {
-      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
-      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
+  import kantan.csv._
+
+  /** Reads and inserts CSV file to the database for the given table */
+  def initTableFromCsv[A <: AbstractTable[_], H <: HList](table: TableQuery[A], network: String, separator: Char = ',')(
+      implicit hd: HeaderDecoder[A#TableElementType],
+      g: Generic.Aux[A#TableElementType, H],
+      m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H]
+  ): Future[Option[Int]] = {
+    val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
+    db.run(insertWhenEmpty(table, rows)) andThen {
+      case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
+      case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
     }
+  }
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(

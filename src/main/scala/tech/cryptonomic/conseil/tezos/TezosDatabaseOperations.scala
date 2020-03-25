@@ -24,6 +24,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
 import slick.jdbc.JdbcCapabilities
 import com.github.tminglei.slickpg.ExPostgresProfile
+import slick.lifted.{AbstractTable, TableQuery}
 
 import scala.collection.immutable.Queue
 
@@ -754,17 +755,18 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
-  /** Inserts registered tokens to the table if empty
-    *
-    * @param rows the type of event to record
-    * @return the number of entries saved added to the
+  /** Inserts to the table if table is empty
+    * @param table slick TableQuery[_] to which we want to insert
+    * @param rows rows to be added
+    * @return the number of entries saved
     */
-  def writeRegisteredTokensRowsIfEmpty(
-      rows: List[Tables.RegisteredTokensRow]
+  def insertWhenEmpty[A <: AbstractTable[_]](
+      table: TableQuery[A],
+      rows: List[A#TableElementType]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
-    Tables.RegisteredTokens.exists.result.flatMap {
+    table.exists.result.flatMap {
       case true => DBIO.successful(Some(0))
-      case false => Tables.RegisteredTokens ++= rows
+      case false => table ++= rows
     }
 
   /** Prefix for the table queries */
