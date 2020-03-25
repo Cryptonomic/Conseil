@@ -87,37 +87,22 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-//  /** Inits registered tokens at startup */
-//
-//
-//  import kantan.csv._
-//
-//  implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
-//    val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
-//    StringDecoder
-//      .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
-//      .map(Timestamp.from)
-//      .left
-//      .map(x => DecodeError.TypeError(x.message))
-//  }
-//
-//  TezosDb.initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
-//  TezosDb.initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
-//  TezosDb.initTableFromCsv(Tables.BakerRegistry, tezosConf.network)
-
-  //  import kantan.csv.generic._
-//
-//  val tokenRows: List[Tables.RegisteredTokensRow] =
-//    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
-//
-//  db.run(TezosDb.insertWhenEmpty(Tables.RegisteredTokens, tokenRows)) andThen {
-//      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
-//      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
-//    }
   /** Inits tables with values from CSV files */
+  import kantan.csv._
   import kantan.csv.generic._
+
+  implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
+    val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
+    StringDecoder
+      .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
+      .map(Timestamp.from)
+      .left
+      .map(x => DecodeError.TypeError(x.message))
+  }
+
   initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
   initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
+  initTableFromCsv(Tables.BakerRegistry, tezosConf.network)
 
   import shapeless._
   import shapeless.ops.hlist._
