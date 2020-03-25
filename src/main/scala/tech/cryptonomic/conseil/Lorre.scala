@@ -103,7 +103,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
       case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
     }
-  }
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
