@@ -82,16 +82,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  /** Inits registered tokens at startup */
-//  import kantan.csv.generic._
-//
-//  val tokenRows: List[Tables.RegisteredTokensRow] =
-//    ConfigUtil.Csv.readTableRowsFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
-//
-//  db.run(TezosDb.insertWhenEmpty(Tables.RegisteredTokens, tokenRows)) andThen {
-//      case Success(_) => logger.info(s"Written ${tokenRows.size} registered token rows")
-//      case Failure(e) => logger.error("Could not fill registered_tokens table", e)
-//    }
   /** Inits tables with values from CSV files */
   import kantan.csv.generic._
   initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
