@@ -860,6 +860,22 @@ trait TezosDataGeneration extends RandomGenerationKit {
         }
       }
 
+    /** Scans a list of operaonts to apply a specific change to
+      * some, selectively, based on the partial function matching.
+      *
+      * Non-matching operations will be left untouched
+      *
+      * @param update a transaction mapping, which will be applied to matching operations
+      * @return the transformed list
+      */
+    def modifyTransactions(
+        update: PartialFunction[Transaction, Transaction]
+    ): List[Operation] => List[Operation] = operations => {
+      operations.map {
+        case op: Transaction => PartialFunction.condOpt(op)(update).getOrElse(op)
+        case op => op
+      }
+    }
   }
 
 }

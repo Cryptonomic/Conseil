@@ -34,9 +34,9 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
     //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
     case update @ Contract.BigMapUpdate("update", _, _, Decimal(updateMapId), _) =>
       for {
-        TokenToolbox(_, registryId, customReadBalance) <- registry.find(_.id == token)
+        TokenToolbox(_, registryId, readBalanceForToken) <- registry.find(_.id == token)
         if mapIdsMatch(registryId, updateMapId, token)
-        balanceChange <- customReadBalance(update)
+        balanceChange <- readBalanceForToken(update)
       } yield balanceChange
     case _ =>
       None
@@ -108,9 +108,15 @@ object TokenContracts extends LazyLogging {
     * @param knownTokens the pair of contract and standard used, the latter as a String
     */
   def fromTokens(knownTokens: List[(ContractId, String)]): TokenContracts = {
+    logger.info("Creating a token registry from the following values: {}", knownTokens.map {
+      case (cid, std) => cid.id -> std
+    }.mkString(","))
+
     val tokens = knownTokens.flatMap {
       case (cid, std) => newToolbox(cid, std)
     }
+
+    logger.info("The following token contracts were actually registered: {}", tokens.map(_.id.id).mkString(","))
     // we keep the token tools in a sorted set to speed up searching
     new TokenContracts(TreeSet(tokens: _*))
   }
@@ -146,6 +152,12 @@ object TokenContracts extends LazyLogging {
         )
     )
 
+    logger.debug(
+      "checking key hash {} against computed hash for account {}, which is {}",
+      keyHash,
+      accountReference,
+      check
+    )
     check.exists(_ == keyHash.value)
   }
 
@@ -183,6 +195,7 @@ object TokenContracts extends LazyLogging {
         err => logger.error("Failed to parse michelson expression for token balance extraction", err)
       )
 
+      logger.info("Parsed code for {} is {}", mapCode, parsedCode.toOption)
       parsedCode.toOption.collect {
         case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) => balance
       }.flatMap { balance =>

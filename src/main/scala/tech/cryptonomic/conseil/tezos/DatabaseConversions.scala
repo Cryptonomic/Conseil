@@ -997,17 +997,31 @@ object DatabaseConversions extends LazyLogging {
               }
 
         //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-        val tokenBalances: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
+        val tokenTransactions: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
           case (tokenId, updates) =>
-            val tokenUpdates = updates.map(tokenContracts.readBalance(tokenId)).flattenOption
+            val bigMapToTokenTransaction: Contract.BigMapUpdate => Option[TokenContracts.BalanceUpdate] =
+              tokenContracts.readBalance(tokenId)
+            val tokenUpdates = updates.map(bigMapToTokenTransaction).flattenOption
             tokenId -> tokenUpdates
         }
 
+        if (contractUpdates.nonEmpty) {
+          logger.info(
+            """A known token contract was invoked, converting to database rows
+              |Updates to big maps: {}
+              |Addresses involved in the transaction: {}
+              |Token balance changes to store: {}""".stripMargin,
+            contractUpdates,
+            addressesInvolved,
+            tokenTransactions
+          )
+        }
+
         for {
-          (tokenId, balances) <- tokenBalances
-          (scriptId, balance) <- balances
+          (tokenId, balanceChanges) <- tokenTransactions
+          (scriptId, newBalance) <- balanceChanges
           accountId <- addressesInvolved.find(TokenContracts.hashCheck(scriptId))
-        } yield BlockTokenBalances(from, tokenId, accountId, balance)
+        } yield BlockTokenBalances(from, tokenId, accountId, newBalance)
       }
     }
 
