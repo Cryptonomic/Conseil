@@ -13,7 +13,8 @@ import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
@@ -28,6 +29,7 @@ import slick.lifted.{AbstractTable, TableQuery}
 
 import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 /**
   * Functions for writing Tezos data to a database.
@@ -770,6 +772,32 @@ object TezosDatabaseOperations extends LazyLogging {
       case true => DBIO.successful(Some(0))
       case false => table ++= rows
     }
+
+  import shapeless._
+  import shapeless.ops.hlist._
+
+  import kantan.csv._
+
+  /** Reads and inserts CSV file to the database for the given table */
+  def initTableFromCsv[A <: AbstractTable[_], H <: HList](
+      db: Database,
+      table: TableQuery[A],
+      network: String,
+      separator: Char = ','
+  )(
+      implicit hd: HeaderDecoder[A#TableElementType],
+      g: Generic.Aux[A#TableElementType, H],
+      m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
+      ec: ExecutionContext
+  ): Future[(List[A#TableElementType], Option[Int])] = {
+    val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
+    db.run(insertWhenEmpty(table, rows))
+      .andThen {
+        case Success(_) => logger.info("Written {} {} rows", rows.size, table.baseTableRow.tableName)
+        case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
+      }
+      .map(rows -> _)
+  }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"
