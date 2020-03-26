@@ -47,6 +47,11 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 
+CREATE TABLE tezos.known_addresses (
+    address character varying NOT NULL,
+    alias character varying NOT NULL
+);
+
 CREATE TABLE tezos.governance (
 voting_period integer NOT NULL,
 voting_period_kind character varying NOT NULL,

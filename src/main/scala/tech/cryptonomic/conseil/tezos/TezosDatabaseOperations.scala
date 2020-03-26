@@ -24,6 +24,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
 import slick.jdbc.JdbcCapabilities
 import com.github.tminglei.slickpg.ExPostgresProfile
+import slick.lifted.{AbstractTable, TableQuery}
 
 import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
@@ -756,43 +757,18 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
-  /** Reads a CSV file with available tokens, returning a set of rows to save in the database */
-  def readRegisteredTokensFromCsv(
-      csvConfig: java.net.URL
-  ): List[Tables.RegisteredTokensRow] = {
-    import kantan.csv._
-    import kantan.csv.ops._
-    import kantan.csv.generic._
-
-    val reader = csvConfig.asCsvReader[Tables.RegisteredTokensRow](rfc.withHeader.withCellSeparator('|'))
-
-    def trimFields(cc: Tables.RegisteredTokensRow): Tables.RegisteredTokensRow =
-      cc.copy(name = cc.name.trim, standard = cc.standard.trim, accountId = cc.accountId.trim)
-
-    // separates List[Either[L, R]] into List[L] and List[R]
-    val (errors, rows) = reader.toList.foldRight((List[ReadError](), List[Tables.RegisteredTokensRow]()))(
-      (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimFields(r) :: pair._2))
-    )
-
-    if (errors.nonEmpty) {
-      val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
-      logger.error(s"Error while reading registered tokens file: $messages")
-    }
-
-    rows
-  }
-
-  /** Inserts registered tokens to the table if empty
-    *
-    * @param rows the type of event to record
-    * @return the number of entries saved added to the
+  /** Inserts to the table if table is empty
+    * @param table slick TableQuery[_] to which we want to insert
+    * @param rows rows to be added
+    * @return the number of entries saved
     */
-  def writeRegisteredTokensRowsIfEmpty(
-      rows: List[Tables.RegisteredTokensRow]
+  def insertWhenEmpty[A <: AbstractTable[_]](
+      table: TableQuery[A],
+      rows: List[A#TableElementType]
   )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
-    Tables.RegisteredTokens.exists.result.flatMap {
+    table.exists.result.flatMap {
       case true => DBIO.successful(Some(0))
-      case false => Tables.RegisteredTokens ++= rows
+      case false => table ++= rows
     }
 
   /** Prefix for the table queries */
