@@ -20,6 +20,7 @@ trait Tables {
     Accounts.schema,
     AccountsCheckpoint.schema,
     AccountsHistory.schema,
+    BakerRegistry.schema,
     BakingRights.schema,
     BalanceUpdates.schema,
     BigMapContents.schema,
@@ -419,6 +420,252 @@ trait Tables {
 
   /** Collection-like TableQuery object for table AccountsHistory */
   lazy val AccountsHistory = new TableQuery(tag => new AccountsHistory(tag))
+
+  /** Entity class storing rows of table BakerRegistry
+    *  @param name Database column name SqlType(varchar)
+    *  @param isAcceptingDelegation Database column is_accepting_delegation SqlType(bool), Default(None)
+    *  @param externalDataUrl Database column external_data_url SqlType(varchar), Default(None)
+    *  @param split Database column split SqlType(numeric), Default(None)
+    *  @param paymentAccounts Database column payment_accounts SqlType(varchar), Default(None)
+    *  @param minimumDelegation Database column minimum_delegation SqlType(int4), Default(None)
+    *  @param payoutDelay Database column payout_delay SqlType(int4), Default(None)
+    *  @param payoutFrequency Database column payout_frequency SqlType(int4), Default(None)
+    *  @param minimumPayout Database column minimum_payout SqlType(int4), Default(None)
+    *  @param isCheap Database column is_cheap SqlType(bool), Default(None)
+    *  @param payForOwnBlocks Database column pay_for_own_blocks SqlType(bool), Default(None)
+    *  @param payForEndorsements Database column pay_for_endorsements SqlType(bool), Default(None)
+    *  @param payGainedFees Database column pay_gained_fees SqlType(bool), Default(None)
+    *  @param payForAccusationGains Database column pay_for_accusation_gains SqlType(bool), Default(None)
+    *  @param subtractLostDepositsWhenAccused Database column subtract_lost_deposits_when_accused SqlType(bool), Default(None)
+    *  @param subtractLostRewardsWhenAccused Database column subtract_lost_rewards_when_accused SqlType(bool), Default(None)
+    *  @param subtractLostFeesWhenAccused Database column subtract_lost_fees_when_accused SqlType(bool), Default(None)
+    *  @param payForRevelation Database column pay_for_revelation SqlType(bool), Default(None)
+    *  @param subtractLostRewardsWhenMissRevelation Database column subtract_lost_rewards_when_miss_revelation SqlType(bool), Default(None)
+    *  @param subtractLostFeesWhenMissRevelation Database column subtract_lost_fees_when_miss_revelation SqlType(bool), Default(None)
+    *  @param compensateMissedBlocks Database column compensate_missed_blocks SqlType(bool), Default(None)
+    *  @param payForStolenBlocks Database column pay_for_stolen_blocks SqlType(bool), Default(None)
+    *  @param compensateMissedEndorsements Database column compensate_missed_endorsements SqlType(bool), Default(None)
+    *  @param compensateLowPriorityEndorsementLoss Database column compensate_low_priority_endorsement_loss SqlType(bool), Default(None)
+    *  @param overdelegationThreshold Database column overdelegation_threshold SqlType(int4), Default(None)
+    *  @param subtractRewardsFromUninvitedDelegation Database column subtract_rewards_from_uninvited_delegation SqlType(bool), Default(None)
+    *  @param recordManager Database column record_manager SqlType(varchar), Default(None)
+    *  @param timestamp Database column timestamp SqlType(timestamp) */
+  case class BakerRegistryRow(
+      name: String,
+      isAcceptingDelegation: Option[Boolean] = None,
+      externalDataUrl: Option[String] = None,
+      split: Option[scala.math.BigDecimal] = None,
+      paymentAccounts: Option[String] = None,
+      minimumDelegation: Option[Int] = None,
+      payoutDelay: Option[Int] = None,
+      payoutFrequency: Option[Int] = None,
+      minimumPayout: Option[Int] = None,
+      isCheap: Option[Boolean] = None,
+      payForOwnBlocks: Option[Boolean] = None,
+      payForEndorsements: Option[Boolean] = None,
+      payGainedFees: Option[Boolean] = None,
+      payForAccusationGains: Option[Boolean] = None,
+      subtractLostDepositsWhenAccused: Option[Boolean] = None,
+      subtractLostRewardsWhenAccused: Option[Boolean] = None,
+      subtractLostFeesWhenAccused: Option[Boolean] = None,
+      payForRevelation: Option[Boolean] = None,
+      subtractLostRewardsWhenMissRevelation: Option[Boolean] = None,
+      subtractLostFeesWhenMissRevelation: Option[Boolean] = None,
+      compensateMissedBlocks: Option[Boolean] = None,
+      payForStolenBlocks: Option[Boolean] = None,
+      compensateMissedEndorsements: Option[Boolean] = None,
+      compensateLowPriorityEndorsementLoss: Option[Boolean] = None,
+      overdelegationThreshold: Option[Int] = None,
+      subtractRewardsFromUninvitedDelegation: Option[Boolean] = None,
+      recordManager: Option[String] = None,
+      timestamp: java.sql.Timestamp
+  )
+
+  /** GetResult implicit for fetching BakerRegistryRow objects using plain SQL queries */
+  implicit def GetResultBakerRegistryRow(
+      implicit e0: GR[String],
+      e1: GR[Option[Boolean]],
+      e2: GR[Option[String]],
+      e3: GR[Option[scala.math.BigDecimal]],
+      e4: GR[Option[Int]],
+      e5: GR[java.sql.Timestamp]
+  ): GR[BakerRegistryRow] = GR { prs =>
+    import prs._
+    BakerRegistryRow(
+      <<[String],
+      <<?[Boolean],
+      <<?[String],
+      <<?[scala.math.BigDecimal],
+      <<?[String],
+      <<?[Int],
+      <<?[Int],
+      <<?[Int],
+      <<?[Int],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Boolean],
+      <<?[Int],
+      <<?[Boolean],
+      <<?[String],
+      <<[java.sql.Timestamp]
+    )
+  }
+
+  /** Table description of table baker_registry. Objects of this class serve as prototypes for rows in queries. */
+  class BakerRegistry(_tableTag: Tag)
+      extends profile.api.Table[BakerRegistryRow](_tableTag, Some("tezos"), "baker_registry") {
+    def * =
+      (name :: isAcceptingDelegation :: externalDataUrl :: split :: paymentAccounts :: minimumDelegation :: payoutDelay :: payoutFrequency :: minimumPayout :: isCheap :: payForOwnBlocks :: payForEndorsements :: payGainedFees :: payForAccusationGains :: subtractLostDepositsWhenAccused :: subtractLostRewardsWhenAccused :: subtractLostFeesWhenAccused :: payForRevelation :: subtractLostRewardsWhenMissRevelation :: subtractLostFeesWhenMissRevelation :: compensateMissedBlocks :: payForStolenBlocks :: compensateMissedEndorsements :: compensateLowPriorityEndorsementLoss :: overdelegationThreshold :: subtractRewardsFromUninvitedDelegation :: recordManager :: timestamp :: HNil)
+        .mapTo[BakerRegistryRow]
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (Rep.Some(name) :: isAcceptingDelegation :: externalDataUrl :: split :: paymentAccounts :: minimumDelegation :: payoutDelay :: payoutFrequency :: minimumPayout :: isCheap :: payForOwnBlocks :: payForEndorsements :: payGainedFees :: payForAccusationGains :: subtractLostDepositsWhenAccused :: subtractLostRewardsWhenAccused :: subtractLostFeesWhenAccused :: payForRevelation :: subtractLostRewardsWhenMissRevelation :: subtractLostFeesWhenMissRevelation :: compensateMissedBlocks :: payForStolenBlocks :: compensateMissedEndorsements :: compensateLowPriorityEndorsementLoss :: overdelegationThreshold :: subtractRewardsFromUninvitedDelegation :: recordManager :: Rep
+            .Some(timestamp) :: HNil).shaped.<>(
+        r =>
+          BakerRegistryRow(
+            r(0).asInstanceOf[Option[String]].get,
+            r(1).asInstanceOf[Option[Boolean]],
+            r(2).asInstanceOf[Option[String]],
+            r(3).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(4).asInstanceOf[Option[String]],
+            r(5).asInstanceOf[Option[Int]],
+            r(6).asInstanceOf[Option[Int]],
+            r(7).asInstanceOf[Option[Int]],
+            r(8).asInstanceOf[Option[Int]],
+            r(9).asInstanceOf[Option[Boolean]],
+            r(10).asInstanceOf[Option[Boolean]],
+            r(11).asInstanceOf[Option[Boolean]],
+            r(12).asInstanceOf[Option[Boolean]],
+            r(13).asInstanceOf[Option[Boolean]],
+            r(14).asInstanceOf[Option[Boolean]],
+            r(15).asInstanceOf[Option[Boolean]],
+            r(16).asInstanceOf[Option[Boolean]],
+            r(17).asInstanceOf[Option[Boolean]],
+            r(18).asInstanceOf[Option[Boolean]],
+            r(19).asInstanceOf[Option[Boolean]],
+            r(20).asInstanceOf[Option[Boolean]],
+            r(21).asInstanceOf[Option[Boolean]],
+            r(22).asInstanceOf[Option[Boolean]],
+            r(23).asInstanceOf[Option[Boolean]],
+            r(24).asInstanceOf[Option[Int]],
+            r(25).asInstanceOf[Option[Boolean]],
+            r(26).asInstanceOf[Option[String]],
+            r(27).asInstanceOf[Option[java.sql.Timestamp]].get
+          ),
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column name SqlType(varchar) */
+    val name: Rep[String] = column[String]("name")
+
+    /** Database column is_accepting_delegation SqlType(bool), Default(None) */
+    val isAcceptingDelegation: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("is_accepting_delegation", O.Default(None))
+
+    /** Database column external_data_url SqlType(varchar), Default(None) */
+    val externalDataUrl: Rep[Option[String]] = column[Option[String]]("external_data_url", O.Default(None))
+
+    /** Database column split SqlType(numeric), Default(None) */
+    val split: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("split", O.Default(None))
+
+    /** Database column payment_accounts SqlType(varchar), Default(None) */
+    val paymentAccounts: Rep[Option[String]] = column[Option[String]]("payment_accounts", O.Default(None))
+
+    /** Database column minimum_delegation SqlType(int4), Default(None) */
+    val minimumDelegation: Rep[Option[Int]] = column[Option[Int]]("minimum_delegation", O.Default(None))
+
+    /** Database column payout_delay SqlType(int4), Default(None) */
+    val payoutDelay: Rep[Option[Int]] = column[Option[Int]]("payout_delay", O.Default(None))
+
+    /** Database column payout_frequency SqlType(int4), Default(None) */
+    val payoutFrequency: Rep[Option[Int]] = column[Option[Int]]("payout_frequency", O.Default(None))
+
+    /** Database column minimum_payout SqlType(int4), Default(None) */
+    val minimumPayout: Rep[Option[Int]] = column[Option[Int]]("minimum_payout", O.Default(None))
+
+    /** Database column is_cheap SqlType(bool), Default(None) */
+    val isCheap: Rep[Option[Boolean]] = column[Option[Boolean]]("is_cheap", O.Default(None))
+
+    /** Database column pay_for_own_blocks SqlType(bool), Default(None) */
+    val payForOwnBlocks: Rep[Option[Boolean]] = column[Option[Boolean]]("pay_for_own_blocks", O.Default(None))
+
+    /** Database column pay_for_endorsements SqlType(bool), Default(None) */
+    val payForEndorsements: Rep[Option[Boolean]] = column[Option[Boolean]]("pay_for_endorsements", O.Default(None))
+
+    /** Database column pay_gained_fees SqlType(bool), Default(None) */
+    val payGainedFees: Rep[Option[Boolean]] = column[Option[Boolean]]("pay_gained_fees", O.Default(None))
+
+    /** Database column pay_for_accusation_gains SqlType(bool), Default(None) */
+    val payForAccusationGains: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("pay_for_accusation_gains", O.Default(None))
+
+    /** Database column subtract_lost_deposits_when_accused SqlType(bool), Default(None) */
+    val subtractLostDepositsWhenAccused: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("subtract_lost_deposits_when_accused", O.Default(None))
+
+    /** Database column subtract_lost_rewards_when_accused SqlType(bool), Default(None) */
+    val subtractLostRewardsWhenAccused: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("subtract_lost_rewards_when_accused", O.Default(None))
+
+    /** Database column subtract_lost_fees_when_accused SqlType(bool), Default(None) */
+    val subtractLostFeesWhenAccused: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("subtract_lost_fees_when_accused", O.Default(None))
+
+    /** Database column pay_for_revelation SqlType(bool), Default(None) */
+    val payForRevelation: Rep[Option[Boolean]] = column[Option[Boolean]]("pay_for_revelation", O.Default(None))
+
+    /** Database column subtract_lost_rewards_when_miss_revelation SqlType(bool), Default(None) */
+    val subtractLostRewardsWhenMissRevelation: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("subtract_lost_rewards_when_miss_revelation", O.Default(None))
+
+    /** Database column subtract_lost_fees_when_miss_revelation SqlType(bool), Default(None) */
+    val subtractLostFeesWhenMissRevelation: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("subtract_lost_fees_when_miss_revelation", O.Default(None))
+
+    /** Database column compensate_missed_blocks SqlType(bool), Default(None) */
+    val compensateMissedBlocks: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("compensate_missed_blocks", O.Default(None))
+
+    /** Database column pay_for_stolen_blocks SqlType(bool), Default(None) */
+    val payForStolenBlocks: Rep[Option[Boolean]] = column[Option[Boolean]]("pay_for_stolen_blocks", O.Default(None))
+
+    /** Database column compensate_missed_endorsements SqlType(bool), Default(None) */
+    val compensateMissedEndorsements: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("compensate_missed_endorsements", O.Default(None))
+
+    /** Database column compensate_low_priority_endorsement_loss SqlType(bool), Default(None) */
+    val compensateLowPriorityEndorsementLoss: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("compensate_low_priority_endorsement_loss", O.Default(None))
+
+    /** Database column overdelegation_threshold SqlType(int4), Default(None) */
+    val overdelegationThreshold: Rep[Option[Int]] = column[Option[Int]]("overdelegation_threshold", O.Default(None))
+
+    /** Database column subtract_rewards_from_uninvited_delegation SqlType(bool), Default(None) */
+    val subtractRewardsFromUninvitedDelegation: Rep[Option[Boolean]] =
+      column[Option[Boolean]]("subtract_rewards_from_uninvited_delegation", O.Default(None))
+
+    /** Database column record_manager SqlType(varchar), Default(None) */
+    val recordManager: Rep[Option[String]] = column[Option[String]]("record_manager", O.Default(None))
+
+    /** Database column timestamp SqlType(timestamp) */
+    val timestamp: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("timestamp")
+  }
+
+  /** Collection-like TableQuery object for table BakerRegistry */
+  lazy val BakerRegistry = new TableQuery(tag => new BakerRegistry(tag))
 
   /** Entity class storing rows of table BakingRights
     *  @param blockHash Database column block_hash SqlType(varchar), Default(None)
