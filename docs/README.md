@@ -20,7 +20,7 @@ Should you chose to compile from source, a Scala development environment will be
 
 - JDK (> 8.x)
 - Scala (> 2.12.x)
-- SBT (> 1.2.6)
+- SBT (> 1.3.x)
 
 To package, simply run `sbt -J-Xss32m clean assembly`. This process may take a minute to complete, once it's done, `.jar` will be produced in `/tmp/conseil.jar`. To just compile, run `sbt -J-Xss32m clean compile`.
 
