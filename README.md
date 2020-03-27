@@ -74,7 +74,7 @@ The Conseil server should be run behind a proxy such as Nginx with TLS enabled t
 Development
 - JDK (> 8.x)
 - Scala (> 2.12.x)
-- SBT (> 1.2.6)
+- SBT (> 1.3.x)
 - A database supported by Typesafe Slick, e.g. Postgres
 
 Deployment
@@ -188,7 +188,7 @@ To stop the database
 ```bash
 docker-compose stop
 ```
-This will stop container but will not remove the data. You can remove container and the data with 
+This will stop container but will not remove the data. You can remove container and the data with
 ```bash
 docker-compose rm
 ```
