@@ -2,5 +2,5 @@ language: scala
 jdk:
   - openjdk8
 scala:
-   - 2.12.8
+   - 2.12.10
 after_success: "sbt coverage test coverageReport coveralls"
