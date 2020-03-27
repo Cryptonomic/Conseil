@@ -1,11 +1,15 @@
 package tech.cryptonomic.conseil
 
+import java.sql.Timestamp
+import java.time.Instant
+
 import akka.actor.ActorSystem
 import akka.Done
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
+import kantan.codecs.strings.StringDecoder
 import org.slf4j.LoggerFactory
 import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.tezos.{
@@ -26,6 +30,7 @@ import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.insertWhenEmpty
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
+import java.time.format.DateTimeFormatter
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -83,14 +88,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   )
 
   /** Inits tables with values from CSV files */
+  import kantan.csv._
   import kantan.csv.generic._
+
+  implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
+    val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
+    StringDecoder
+      .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
+      .map(Timestamp.from)
+      .left
+      .map(x => DecodeError.TypeError(x.message))
+  }
+
   initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
   initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
+  initTableFromCsv(Tables.BakerRegistry, tezosConf.network)
 
   import shapeless._
   import shapeless.ops.hlist._
-
-  import kantan.csv._
 
   /** Reads and inserts CSV file to the database for the given table */
   def initTableFromCsv[A <: AbstractTable[_], H <: HList](table: TableQuery[A], network: String, separator: Char = ',')(

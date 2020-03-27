@@ -47,6 +47,38 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 
+
+CREATE TABLE tezos.baker_registry (
+    name character varying NOT NULL,
+    is_accepting_delegation boolean,
+    external_data_url character varying,
+    split numeric,
+    payment_accounts character varying,
+    minimum_delegation integer,
+    payout_delay integer,
+    payout_frequency integer,
+    minimum_payout integer,
+    is_cheap boolean,
+    pay_for_own_blocks boolean,
+    pay_for_endorsements boolean,
+    pay_gained_fees boolean,
+    pay_for_accusation_gains boolean,
+    subtract_lost_deposits_when_accused boolean,
+    subtract_lost_rewards_when_accused boolean,
+    subtract_lost_fees_when_accused boolean,
+    pay_for_revelation boolean,
+    subtract_lost_rewards_when_miss_revelation boolean,
+    subtract_lost_fees_when_miss_revelation boolean,
+    compensate_missed_blocks boolean,
+    pay_for_stolen_blocks boolean,
+    compensate_missed_endorsements boolean,
+    compensate_low_priority_endorsement_loss boolean,
+    overdelegation_threshold integer,
+    subtract_rewards_from_uninvited_delegation boolean,
+    record_manager character varying,
+    "timestamp" timestamp without time zone NOT NULL
+);
+
 CREATE TABLE tezos.known_addresses (
     address character varying NOT NULL,
     alias character varying NOT NULL

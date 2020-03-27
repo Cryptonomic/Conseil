@@ -17,6 +17,7 @@ val endpointsVersion = "0.9.0"
 val circeVersion = "0.11.1"
 val http4sVersion = "0.20.10"
 val silencerVersion = "1.4.4"
+val kantanCsvVersion = "0.6.0"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -71,7 +72,8 @@ libraryDependencies ++= Seq(
   "com.muquit.libsodiumjna"      % "libsodium-jna"                  % "1.0.4" exclude ("org.slf4j", "slf4j-log4j12") exclude ("org.slf4j", "slf4j-api"),
   "com.github.alanverbner"       %% "bip39"                         % "0.1",
   "com.rklaehn"                  %% "radixtree"                     % "0.5.1",
-  "com.nrinaudo"                 %% "kantan.csv-generic"            % "0.6.0",
+  "com.nrinaudo"                 %% "kantan.csv-generic"            % kantanCsvVersion,
+  "com.nrinaudo"                 %% "kantan.csv-java8"              % kantanCsvVersion,
   "com.typesafe.akka"            %% "akka-testkit"                  % akkaVersion % Test exclude ("com.typesafe", "config"),
   "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
   "org.scalatest"                %% "scalatest"                     % "3.0.5" % "it, test",
