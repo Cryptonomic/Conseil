@@ -173,8 +173,12 @@ object ConfigUtil {
   }
 
   object Csv extends LazyLogging {
-    import kantan.csv.HeaderDecoder
+    import kantan.csv._
+    import kantan.codecs.strings.StringDecoder
     import slick.lifted.{AbstractTable, TableQuery}
+    import java.sql.Timestamp
+    import java.time.Instant
+    import java.time.format.DateTimeFormatter
     import shapeless._
     import shapeless.ops.hlist._
 
@@ -182,6 +186,15 @@ object ConfigUtil {
     object Trimmer extends Poly1 {
       implicit val stringTrim = at[String] { _.trim }
       implicit def noop[T] = at[T] { identity }
+    }
+
+    implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
+      val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
+      StringDecoder
+        .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
+        .map(Timestamp.from)
+        .left
+        .map(x => DecodeError.TypeError(x.message))
     }
 
     /** Reads a CSV file with tabular data, returning a set of rows to save in the database.

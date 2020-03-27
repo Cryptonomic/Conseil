@@ -1,15 +1,11 @@
 package tech.cryptonomic.conseil
 
-import java.sql.Timestamp
-import java.time.Instant
-
 import akka.actor.ActorSystem
 import akka.Done
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import kantan.codecs.strings.StringDecoder
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
@@ -28,7 +24,6 @@ import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
-import java.time.format.DateTimeFormatter
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -86,8 +81,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  import kantan.csv._
   import kantan.csv.generic._
+  import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
 
   /** Inits registered tokens at startup */
   implicit val tokenContracts: TokenContracts = {
@@ -105,15 +100,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       }
 
     Await.result(futureTokenContracts, 5.seconds)
-  }
-
-  implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
-    val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
-    StringDecoder
-      .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
-      .map(Timestamp.from)
-      .left
-      .map(x => DecodeError.TypeError(x.message))
   }
 
   /** Inits tables with values from CSV files */
