@@ -395,8 +395,12 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks.map(_.data))
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
         blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
-        ballotCounts <- Future.traverse(blocksWithProposals) { block =>
+        ballotCountsPerCycle <- Future.traverse(blocksWithProposals) { block =>
           db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).level.cycle))
+            .map(block -> _)
+        }
+        ballotCountsPerLevel <- Future.traverse(blocksWithProposals) { block =>
+          db.run(TezosDb.getBallotOperationsForLevel(TezosTypes.discardGenesis(block.data.metadata).level.level))
             .map(block -> _)
         }
         ballots <- tezosNodeOperator.getVotes(blocksWithProposals)
@@ -405,7 +409,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           proposals.toMap,
           listings.toMap,
           ballots.toMap,
-          ballotCounts.toMap
+          ballotCountsPerCycle.toMap
         ).map(_.convertTo[Tables.GovernanceRow])
         _ <- db.run(TezosDb.insertGovernance(governanceRows))
       } yield ()

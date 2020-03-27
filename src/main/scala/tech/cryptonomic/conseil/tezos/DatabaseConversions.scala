@@ -1095,7 +1095,13 @@ object DatabaseConversions extends LazyLogging {
           yayRolls = Some(yayRolls),
           nayRolls = Some(nayRolls),
           passRolls = Some(passRolls),
-          totalRolls = Some(yayRolls + nayRolls + passRolls)
+          totalRolls = Some(yayRolls + nayRolls + passRolls),
+          blockYayCount = None,
+          blockNayCount = None,
+          blockPassCount = None,
+          blockYayRolls = None,
+          blockNayRolls = None,
+          blockPassRolls = None
         )
       }
     }

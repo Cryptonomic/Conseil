@@ -1586,7 +1586,13 @@ trait Tables {
     *  @param yayRolls Database column yay_rolls SqlType(numeric), Default(None)
     *  @param nayRolls Database column nay_rolls SqlType(numeric), Default(None)
     *  @param passRolls Database column pass_rolls SqlType(numeric), Default(None)
-    *  @param totalRolls Database column total_rolls SqlType(numeric), Default(None) */
+    *  @param totalRolls Database column total_rolls SqlType(numeric), Default(None)
+    *  @param blockYayCount Database column block_yay_count SqlType(int4), Default(None)
+    *  @param blockNayCount Database column block_nay_count SqlType(int4), Default(None)
+    *  @param blockPassCount Database column block_pass_count SqlType(int4), Default(None)
+    *  @param blockYayRolls Database column block_yay_rolls SqlType(numeric), Default(None)
+    *  @param blockNayRolls Database column block_nay_rolls SqlType(numeric), Default(None)
+    *  @param blockPassRolls Database column block_pass_rolls SqlType(numeric), Default(None) */
   case class GovernanceRow(
       votingPeriod: Int,
       votingPeriodKind: String,
@@ -1600,7 +1606,13 @@ trait Tables {
       yayRolls: Option[scala.math.BigDecimal] = None,
       nayRolls: Option[scala.math.BigDecimal] = None,
       passRolls: Option[scala.math.BigDecimal] = None,
-      totalRolls: Option[scala.math.BigDecimal] = None
+      totalRolls: Option[scala.math.BigDecimal] = None,
+      blockYayCount: Option[Int] = None,
+      blockNayCount: Option[Int] = None,
+      blockPassCount: Option[Int] = None,
+      blockYayRolls: Option[scala.math.BigDecimal] = None,
+      blockNayRolls: Option[scala.math.BigDecimal] = None,
+      blockPassRolls: Option[scala.math.BigDecimal] = None
   )
 
   /** GetResult implicit for fetching GovernanceRow objects using plain SQL queries */
@@ -1625,6 +1637,12 @@ trait Tables {
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
+        <<?[Int],
+        <<?[Int],
+        <<?[Int],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal]
       )
     )
@@ -1646,7 +1664,13 @@ trait Tables {
         yayRolls,
         nayRolls,
         passRolls,
-        totalRolls
+        totalRolls,
+        blockYayCount,
+        blockNayCount,
+        blockPassCount,
+        blockYayRolls,
+        blockNayRolls,
+        blockPassRolls
       ) <> (GovernanceRow.tupled, GovernanceRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
@@ -1665,12 +1689,23 @@ trait Tables {
           yayRolls,
           nayRolls,
           passRolls,
-          totalRolls
+          totalRolls,
+          blockYayCount,
+          blockNayCount,
+          blockPassCount,
+          blockYayRolls,
+          blockNayRolls,
+          blockPassRolls
         )
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => GovernanceRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8, _9, _10, _11, _12, _13)))
+          _1.map(
+            _ =>
+              GovernanceRow.tupled(
+                (_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19)
+              )
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1717,6 +1752,27 @@ trait Tables {
     /** Database column total_rolls SqlType(numeric), Default(None) */
     val totalRolls: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("total_rolls", O.Default(None))
+
+    /** Database column block_yay_count SqlType(int4), Default(None) */
+    val blockYayCount: Rep[Option[Int]] = column[Option[Int]]("block_yay_count", O.Default(None))
+
+    /** Database column block_nay_count SqlType(int4), Default(None) */
+    val blockNayCount: Rep[Option[Int]] = column[Option[Int]]("block_nay_count", O.Default(None))
+
+    /** Database column block_pass_count SqlType(int4), Default(None) */
+    val blockPassCount: Rep[Option[Int]] = column[Option[Int]]("block_pass_count", O.Default(None))
+
+    /** Database column block_yay_rolls SqlType(numeric), Default(None) */
+    val blockYayRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("block_yay_rolls", O.Default(None))
+
+    /** Database column block_nay_rolls SqlType(numeric), Default(None) */
+    val blockNayRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("block_nay_rolls", O.Default(None))
+
+    /** Database column block_pass_rolls SqlType(numeric), Default(None) */
+    val blockPassRolls: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("block_pass_rolls", O.Default(None))
 
     /** Primary key of Governance (database name governance_pkey) */
     val pk = primaryKey("governance_pkey", (blockHash, proposalHash))
@@ -2244,17 +2300,23 @@ trait Tables {
     /** Index over (blockLevel) (database name ix_operations_block_level) */
     val index1 = index("ix_operations_block_level", blockLevel :: HNil)
 
+    /** Index over (cycle) (database name ix_operations_cycle) */
+    val index2 = index("ix_operations_cycle", cycle :: HNil)
+
     /** Index over (delegate) (database name ix_operations_delegate) */
-    val index2 = index("ix_operations_delegate", delegate :: HNil)
+    val index3 = index("ix_operations_delegate", delegate :: HNil)
 
     /** Index over (destination) (database name ix_operations_destination) */
-    val index3 = index("ix_operations_destination", destination :: HNil)
+    val index4 = index("ix_operations_destination", destination :: HNil)
+
+    /** Index over (kind) (database name ix_operations_kind) */
+    val index5 = index("ix_operations_kind", kind :: HNil)
 
     /** Index over (source) (database name ix_operations_source) */
-    val index4 = index("ix_operations_source", source :: HNil)
+    val index6 = index("ix_operations_source", source :: HNil)
 
     /** Index over (timestamp) (database name ix_operations_timestamp) */
-    val index5 = index("ix_operations_timestamp", timestamp :: HNil)
+    val index7 = index("ix_operations_timestamp", timestamp :: HNil)
   }
 
   /** Collection-like TableQuery object for table Operations */
