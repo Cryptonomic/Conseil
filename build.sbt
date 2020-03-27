@@ -1,5 +1,5 @@
 name := "Conseil"
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.10"
 
 lazy val conseil = (project in file("."))
   .configs(IntegrationTest)
