@@ -7,7 +7,7 @@ import scala.concurrent.Future
 trait MetadataOperations {
 
   /**
-    * Runs DBIO action
+    * Runs DBIO action for reading purposes
     * @param  action action to be performed on db
     * @return result of DBIO action as a Future
     */

@@ -6,13 +6,8 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
-import tech.cryptonomic.conseil.config.Platforms
-import tech.cryptonomic.conseil.config.Platforms.{
-  PlatformsConfiguration,
-  Tezos,
-  TezosConfiguration,
-  TezosNodeConfiguration
-}
+import tech.cryptonomic.conseil.config.{MetadataConfiguration, Platforms}
+import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.generic.chain.{DataOperations, DataPlatform}
@@ -20,8 +15,7 @@ import tech.cryptonomic.conseil.metadata.{
   AttributeValuesCacheConfiguration,
   MetadataService,
   TestPlatformDiscoveryOperations,
-  TransparentUnitTransformation,
-  UnitTransformation
+  TransparentUnitTransformation
 }
 import tech.cryptonomic.conseil.routes.Data
 
@@ -150,6 +144,8 @@ class DataTest
 
   val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
+  val metadataConf = MetadataConfiguration(Map.empty)
+
   val metadataService =
     new MetadataService(
       PlatformsConfiguration(
@@ -163,10 +159,11 @@ class DataTest
       cacheOverrides,
       platformDiscoveryOperations
     )
+  val apiOps: ApiOperations = new ApiOperations
 
-  val postRoute: Route = new Data(cfg, fakeQPP, metadataService).postRoute
+  val postRoute: Route = new Data(fakeQPP, metadataService, metadataConf, apiOps).postRoute
 
-  val getRoute: Route = new Data(cfg, fakeQPP, metadataService).getRoute
+  val getRoute: Route = new Data(fakeQPP, metadataService, metadataConf, apiOps).getRoute
 
   "Query protocol" should {
 

@@ -1,5 +1,11 @@
 name := "Conseil"
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.10"
+
+lazy val conseil = (project in file("."))
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings
+  )
 
 val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.8"
@@ -9,6 +15,9 @@ val catsVersion = "1.6.0"
 val monocleVersion = "1.5.1-cats"
 val endpointsVersion = "0.9.0"
 val circeVersion = "0.11.1"
+val http4sVersion = "0.20.10"
+val silencerVersion = "1.4.4"
+val kantanCsvVersion = "0.6.0"
 
 scapegoatVersion in ThisBuild := "1.3.8"
 parallelExecution in Test := false
@@ -54,6 +63,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick"           %% "slick"                         % slickVersion exclude ("org.reactivestreams", "reactive-streams") exclude ("com.typesafe", "config") exclude ("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"           %% "slick-hikaricp"                % slickVersion exclude ("org.slf4j", "slf4j-api"),
   "com.typesafe.slick"           %% "slick-codegen"                 % slickVersion,
+  "com.github.tminglei"          %% "slick-pg"                      % "0.18.0",
   "com.kubukoz"                  %% "slick-effect"                  % "0.1.0" exclude ("com.typesafe.slick", "slick"),
   "org.postgresql"               % "postgresql"                     % "42.1.4",
   "com.github.scopt"             %% "scopt"                         % "4.0.0-RC2",
@@ -63,12 +73,20 @@ libraryDependencies ++= Seq(
   "com.muquit.libsodiumjna"      % "libsodium-jna"                  % "1.0.4" exclude ("org.slf4j", "slf4j-log4j12") exclude ("org.slf4j", "slf4j-api"),
   "com.github.alanverbner"       %% "bip39"                         % "0.1",
   "com.rklaehn"                  %% "radixtree"                     % "0.5.1",
+  "com.nrinaudo"                 %% "kantan.csv-generic"            % kantanCsvVersion,
+  "com.nrinaudo"                 %% "kantan.csv-java8"              % kantanCsvVersion,
   "com.typesafe.akka"            %% "akka-testkit"                  % akkaVersion % Test exclude ("com.typesafe", "config"),
   "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
-  "org.scalatest"                %% "scalatest"                     % "3.0.5" % Test,
-  "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
-  "org.scalamock"                %% "scalamock"                     % "4.1.0" % Test,
-  "ru.yandex.qatools.embed"      % "postgresql-embedded"            % "2.10" % Test
+  "org.scalatest"                %% "scalatest"                     % "3.0.5" % "it, test",
+  "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
+  "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
+  "org.testcontainers"           % "postgresql"                     % "1.12.3" % "it, test",
+  "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % "it, test",
+  "org.http4s"                   %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
+  "org.http4s"                   %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
+  "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest,
+  compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+  "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
 )
 
 excludeDependencies ++= Seq(
@@ -78,7 +96,7 @@ excludeDependencies ++= Seq(
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
 scalacOptions ++= ScalacOptions.common
-
+scalacOptions += "-P:silencer:pathFilters=src/main/scala/tech/cryptonomic/conseil/tezos/Tables.scala"
 import complete.DefaultParsers._
 
 lazy val runConseil = inputKey[Unit]("A conseil run task.")

@@ -11,7 +11,8 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes._
   * Utility functions and members for common database operations.
   */
 object DatabaseUtil {
-  lazy val db = Database.forConfig("conseildb")
+  lazy val conseilDb = Database.forConfig("conseil.db")
+  lazy val lorreDb = Database.forConfig("lorre.db")
 
   /**
     * Utility object for generic query composition with SQL interpolation
@@ -132,20 +133,122 @@ object DatabaseUtil {
         }
     }
 
+    /* Example json query looks like that:
+     {
+      "predicates": [
+        {"field": "asof", "operation":"gt", "set":["2018-07-01"]},
+        {"field": "balance", "operation":"gt", "set":[0]}
+      ],
+      "aggregation": [
+      ],
+      "fields": [
+        "asof", "balance", "account_id"
+      ],
+      "orderBy": [
+        {"field":"asof", "direction":"desc"}
+      ],
+      "output": "json",
+      "limit": 10
+      }
+
+      and produces query like that:
+      SELECT s.* FROM (
+        SELECT asof, balance, account_id, rank() over (
+          partition by account_id ORDER BY asof desc
+        ) as r from accounts_history
+        WHERE true  AND asof > '2018-07-01' AND balance > '0') s
+      WHERE s.r = 1 LIMIT 10
+
+      In this case account_id is being set in the metadata config as the field by which the table is being partitioned.
+     */
+    /** Makes SQL query for temporal table
+      *
+      * @param table table name
+      * @param columns list of columns
+      * @param predicates list of predicates
+      * @param aggregations list of aggregations
+      * @param ordering list of orderings
+      * @param partitionBy partitioning table
+      * @param snapshot snapshot values for temporal query
+      * @param limit max returned rows count
+      * @return SQLActionBuilder
+      * */
+    def makeTemporalQuery(
+        table: String,
+        columns: List[Field],
+        predicates: List[Predicate],
+        aggregations: List[Aggregation],
+        ordering: List[QueryOrdering],
+        partitionBy: String,
+        snapshot: Snapshot,
+        limit: Int
+    ): SQLActionBuilder = {
+      val aggregationFields = aggregations.map { aggregation =>
+        mapAggregationToSQL(aggregation.function, aggregation.field) + " as " + mapAggregationToAlias(
+          aggregation.function,
+          aggregation.field
+        )
+      }
+      val columnNames = columns.map {
+        case SimpleField(field) => field
+        case FormattedField(field, function, format) =>
+          makeAggregationFormat(field, format) + " as " + mapFormatToAlias(function, field)
+      }
+      val aggr = aggregationFields ::: columnNames.toSet.diff(aggregations.map(_.field).toSet).toList
+      val cols = if (columns.isEmpty) "*" else aggr.mkString(",")
+      val outerSelect = sql"""SELECT s.* FROM ( """
+      val innerSelect = sql"""SELECT #$cols, rank() over ( """
+      val partitionWithOrdering = sql"""partition by #$partitionBy """
+        .addOrdering(snapshot.toOrdering :: ordering)
+      val predicatesAndAggregations = sql""") as r from #$table WHERE true """
+        .addPredicates(snapshot.toPredicate :: predicates)
+        .addGroupBy(aggregations, columns)
+        .addHaving(aggregations)
+      val closingOuterSelect = sql""") s """
+      val rankAndLimit = sql"""WHERE s.r = 1 """.addLimit(limit)
+
+      concatenateSqlActions(
+        outerSelect,
+        innerSelect,
+        partitionWithOrdering,
+        predicatesAndAggregations,
+        closingOuterSelect,
+        rankAndLimit
+      )
+    }
+
     /** Prepares predicates and transforms them into SQLActionBuilders
       *
       * @param  predicates list of predicates to be transformed
       * @return list of transformed predicates
       */
-    def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] =
-      predicates.map { predicate =>
-        concatenateSqlActions(
-          predicate.precision
-            .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
-            .getOrElse(sql""" AND #${predicate.field} """),
-          mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+    def makePredicates(predicates: List[Predicate]): List[SQLActionBuilder] = {
+      val predicateGroups = predicates
+        .groupBy(_.group)
+        .values
+        .toList
+        .map(
+          group =>
+            group.map { predicate =>
+              concatenateSqlActions(
+                predicate.precision
+                  .map(precision => sql""" AND ROUND(#${predicate.field}, $precision) """)
+                  .getOrElse(sql""" AND #${predicate.field} """),
+                mapOperationToSQL(predicate.operation, predicate.inverse, predicate.set.map(_.toString))
+              )
+            }
         )
+      predicateGroups match {
+        case Nil => Nil
+        case group :: Nil => group
+        case multiGroups =>
+          //first intersperse with internal ORs then add the opening and closing parens
+          val orGroups = multiGroups.reduce(
+            (group1, group2) => group1 ::: sql") OR (True" :: group2
+          )
+          sql"AND (True" :: (orGroups :+ sql") ")
       }
+    }
 
     /** Prepares query
       *
@@ -262,6 +365,7 @@ object DatabaseUtil {
         op
       }
     }
+
   }
 
 }

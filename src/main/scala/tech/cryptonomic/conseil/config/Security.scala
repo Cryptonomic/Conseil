@@ -10,6 +10,7 @@ import cats.effect.IO
 import cats.effect.concurrent.Ref
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
+import pureconfig.error.{ConfigReaderFailures, ThrowableFailure}
 import pureconfig.generic.auto._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -43,11 +44,32 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
   private def makeUri(ncc: NautilusCloudConfiguration): String =
     s"${ncc.host}:${ncc.port}/${ncc.path}"
 
+  final case class InvalidSecurityConfiguration(message: String) extends RuntimeException(message)
+
   /** creates security data from configuration */
   def apply(): Either[pureconfig.error.ConfigReaderFailures, SecurityApi] =
-    pureconfig.loadConfig[SecurityApi](namespace = "security.apiKeys.keys")
+    pureconfig
+      .loadConfig[SecurityApi](namespace = "conseil.security.apiKeys")
+      .filterOrElse(
+        _.isValid,
+        ConfigReaderFailures(
+          ThrowableFailure(
+            InvalidSecurityConfiguration(
+              "Security configuration is invalid. When allowBlank is set to false you need to provide at least one api key"
+            ),
+            None
+          )
+        )
+      )
 
-  final case class SecurityApi(keys: Set[String]) extends AnyVal with Product with Serializable {
+  final case class SecurityApi(keys: Set[String], allowBlank: Option[Boolean]) extends Product with Serializable {
+
+    /**
+      * Determines whether a configuration is valid
+      *
+      * @return True is valid, false otherwise.
+      */
+    def isValid: Boolean = allowBlank.contains(true) || keys.nonEmpty
 
     /**
       * Determines whether a given API key is valid.
@@ -55,8 +77,10 @@ object Security extends ErrorAccumulatingCirceSupport with LazyLogging {
       * @param candidateApiKey The given API key
       * @return True is valid, false otherwise.
       */
-    def validateApiKey(candidateApiKey: String): Future[Boolean] =
-      nautilusCloudKeys.get.map(ncKeys => (ncKeys ++ keys).contains(candidateApiKey)).unsafeToFuture()
+    def validateApiKey(candidateApiKey: Option[String]): Future[Boolean] =
+      nautilusCloudKeys.get
+        .map(_ ++ keys)
+        .map(allApiKeys => candidateApiKey.fold(allowBlank.contains(true))(allApiKeys.contains))
+        .unsafeToFuture()
   }
-
 }

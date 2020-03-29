@@ -1,7 +1,10 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.time.Instant
+
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
+import tech.cryptonomic.conseil.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
@@ -13,7 +16,17 @@ import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 import scala.concurrent.ExecutionContext
 import scala.math.{ceil, max}
 import cats.effect.Async
+import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
+import tech.cryptonomic.conseil.tezos.Tables.GovernanceRow
+import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
+import slick.basic.Capability
+import slick.jdbc.JdbcCapabilities
+import com.github.tminglei.slickpg.ExPostgresProfile
+import slick.lifted.{AbstractTable, TableQuery}
+
+import scala.collection.immutable.Queue
 
 /**
   * Functions for writing Tezos data to a database.
@@ -21,6 +34,7 @@ import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
 object TezosDatabaseOperations extends LazyLogging {
 
   import DatabaseConversions._
+  val bigMapOps = BigMapsOperations(CustomPostgresProfile)
 
   /**
     * Writes computed fees averages to a database.
@@ -41,13 +55,34 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeAccounts(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
-  )(implicit ec: ExecutionContext): DBIO[Int] = {
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+
+    val keepMostRecent = (rows: List[Tables.AccountsRow]) =>
+      rows
+        .sortBy(_.blockLevel)(Ordering[BigDecimal].reverse)
+        .foldLeft((Queue.empty[Tables.AccountsRow], Set.empty[String])) { (accumulator, row) =>
+          val (queued, index) = accumulator
+          if (index(row.accountId)) accumulator else (queued :+ row, index + row.accountId)
+        }
+        ._1
+
     logger.info(s"""Writing ${accountsInfo.length} accounts to DB...""")
-    DBIO
-      .sequence(accountsInfo.flatMap { info =>
-        info.convertToA[List, Tables.AccountsRow].map(Tables.Accounts.insertOrUpdate)
-      })
-      .map(_.sum)
+    val rows = accountsInfo.flatMap(_.convertToA[List, Tables.AccountsRow])
+    (keepMostRecent andThen Tables.Accounts.insertOrUpdateAll)(rows)
+  }
+
+  /**
+    * Writes accounts history with block data to a database.
+    *
+    * @param accountsInfo List data on the accounts and the corresponding blocks that operated on those with accounts that became inactive
+    * @return     Database action possibly containing the number of rows written (if available from the underlying driver)
+    */
+  def writeAccountsHistory(
+      accountsInfo: List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])]
+  ): DBIO[Option[Int]] = {
+    logger.info(s"""Writing ${accountsInfo.length} accounts_history to DB...""")
+    Tables.AccountsHistory ++= accountsInfo.flatMap(_.convertToA[List, Tables.AccountsHistoryRow])
   }
 
   /**
@@ -95,14 +130,55 @@ object TezosDatabaseOperations extends LazyLogging {
     val saveOperationsAndBalances: Kleisli[DBIO, (OperationsRow, List[BalanceUpdatesRow]), Option[Int]] =
       saveOperationGetNewId.first andThen saveBalanceUpdatesForOperationId
 
-    //Sequence the save actions, the third being applied to a whole collection of operations and balances
+    //Sequence the save actions, some of which are being applied to a whole collection of operations and balances
     DBIO.seq(
       saveBlocksAction,
       saveBlocksBalanceUpdatesAction,
       saveGroupsAction,
-      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData]))
+      saveOperationsAndBalances.traverse(blocks.flatMap(_.convertToA[List, OperationTablesData])),
+      saveBigMaps(blocks)
     )
 
+  }
+
+  /**
+    * Writes big map information from relevant operations occurring in the blocks.
+    * This means creating new rows on originations' allocations, or creating/updating
+    * map contents on transactions' update/copy, or removing all data on
+    * transactions' remove.
+    *
+    * @param blocks the blocks containing the operations
+    * @param ec the context to run async operations
+    */
+  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+    import cats.implicits._
+    import slickeffect.implicits._
+
+    logger.info("Writing big map differences to DB...")
+
+    /* The interleaving of these operations would actually need a more sophisticated handling to be robust:
+     * we're processing collections of blocks, therefore some operations handled "after" might be
+     * referring to something "happening before" or viceversa.
+     * E.g. you could find that a new origination creates a map with the same identifier of another previously
+     * removed (is this allowed?).
+     * Therefore the insert might fail on finding the old record id being there already, whereas the real sequence
+     * of events would have removed the old first.
+     * We might consider improving the situation by doing a pre-check that the altered sequencing of the operations
+     * doesn't interfere with the "causality" of the chain events.
+     */
+    val operationSequence: List[List[Block] => DBIO[Unit]] = List(
+      (bigMapOps.saveMaps _).rmap(_.void),
+      (bigMapOps.upsertContent _).rmap(_.void),
+      (bigMapOps.saveContractOrigin _).rmap(_.void),
+      (bigMapOps.copyContent _).rmap(_.void),
+      (bigMapOps.removeMaps _)
+    )
+
+    operationSequence
+      .traverse[DBIO, Unit](
+        op => op(blocks)
+      )
+      .void
   }
 
   /**
@@ -110,8 +186,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param accountIds will have block information, paired with corresponding account ids to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
-  def writeAccountsCheckpoint(accountIds: List[(BlockHash, Int, List[AccountId])]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${accountIds.map(_._3).map(_.length).sum} account checkpoints to DB...""")
+  def writeAccountsCheckpoint(
+      accountIds: List[(BlockHash, Int, Option[Instant], Option[Int], List[AccountId])]
+  ): DBIO[Option[Int]] = {
+    logger.info(s"""Writing ${accountIds.map(_._5).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
   }
 
@@ -120,8 +198,10 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param delegatesKeyHashes will have block information, paired with corresponding hashes to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
-  def writeDelegatesCheckpoint(delegatesKeyHashes: List[(BlockHash, Int, List[PublicKeyHash])]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${delegatesKeyHashes.map(_._3).map(_.length).sum} delegate checkpoints to DB...""")
+  def writeDelegatesCheckpoint(
+      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])]
+  ): DBIO[Option[Int]] = {
+    logger.info(s"""Writing ${delegatesKeyHashes.map(_._5).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
   }
 
@@ -165,7 +245,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Removes  data from a generic checkpoint table
     * @param selection limits the removed rows to those
     *                  concerning the selected elements, by default no selection is made.
-    *                  We strictly assume those keys were previously loaded from the checkpoint table itself
+    *                  We can't assume those keys were previously loaded from the checkpoint table itself
     * @param tableQuery the slick table query to identify which is the table to clean up
     * @param tableTotal an action needed to compute the number of max keys in the checkpoint
     * @param applySelection used to filter the results to clean-up, using the available `selection`
@@ -196,6 +276,66 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.AccountsCheckpoint.distinctOn(_.accountId).length.result
 
   /**
+    * Takes all existing account ids and puts them in the
+    * checkpoint to be later reloaded, based on the passed block reference
+    */
+  def refillAccountsCheckpointFromExisting(
+      hash: BlockHash,
+      level: Int,
+      timestamp: Instant,
+      cycle: Option[Int],
+      selectors: Set[AccountIdPattern] = Set(".*")
+  )(
+      implicit ec: ExecutionContext
+  ): DBIO[Option[Int]] = {
+
+    /* as taken almost literally from this S.O. suggestion
+     * https://stackoverflow.com/questions/46218122/slick-is-there-a-way-to-create-a-where-clause-with-a-regex
+     * will add the postgres '~' operator to slick filters, to do regular expression matching
+     */
+    implicit class postgresPosixRegexMatch(value: Rep[String]) {
+      def ~(pattern: Rep[String]): Rep[Boolean] = {
+        val expr = SimpleExpression.binary[String, String, Boolean] { (v, pat, builder) =>
+          builder.expr(v)
+          builder.sqlBuilder += " ~ "
+          builder.expr(pat)
+        }
+        expr(value, pattern)
+      }
+    }
+
+    logger.info(
+      "Fetching all ids for existing accounts matching {} and adding them to checkpoint with block hash {}, level {}, cycle {} and time {}",
+      selectors.mkString(", "),
+      hash.value,
+      level,
+      cycle,
+      timestamp
+    )
+
+    //for each pattern, create a query and then union them all
+    val regexQueries = selectors
+      .map(
+        sel =>
+          Tables.Accounts
+            .filter(_.accountId ~ sel)
+            .map(_.accountId)
+            .distinct
+      )
+      .reduce(_ union _)
+
+    regexQueries.distinct.result
+      .flatMap(
+        ids =>
+          writeAccountsCheckpoint(
+            List(
+              (hash, level, Some(timestamp), cycle, ids.map(AccountId(_)).toList)
+            )
+          )
+      )
+  }
+
+  /**
     * @return the number of distinct accounts present in the checkpoint table
     */
   def getDelegatesCheckpointSize(): DBIO[Int] =
@@ -215,7 +355,9 @@ object TezosDatabaseOperations extends LazyLogging {
     def keepLatestAccountIds(checkpoints: Seq[Tables.AccountsCheckpointRow]): Map[AccountId, BlockReference] =
       checkpoints.foldLeft(Map.empty[AccountId, BlockReference]) { (collected, row) =>
         val key = AccountId(row.accountId)
-        if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+        val time = row.asof.toInstant
+        if (collected.contains(key)) collected
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time), row.cycle))
       }
 
     logger.info("Getting the latest accounts from checkpoints in the DB...")
@@ -242,7 +384,8 @@ object TezosDatabaseOperations extends LazyLogging {
     ): Map[PublicKeyHash, BlockReference] =
       checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
         val key = PublicKeyHash(row.delegatePkh)
-        if (collected.contains(key)) collected else collected + (key -> (BlockHash(row.blockId), row.blockLevel))
+        if (collected.contains(key)) collected
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, None, None))
       }
 
     logger.info("Getting the latest delegates from checkpoints in the DB...")
@@ -267,23 +410,94 @@ object TezosDatabaseOperations extends LazyLogging {
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
   }
 
+  /** Custom postgres profile for enabling `insertOrUpdateAll` */
+  trait CustomPostgresProfile extends ExPostgresProfile {
+    // Add back `capabilities.insertOrUpdate` to enable native `upsert` support; for postgres 9.5+
+    override protected def computeCapabilities: Set[Capability] =
+      super.computeCapabilities + JdbcCapabilities.insertOrUpdate
+  }
+
+  object CustomPostgresProfile extends CustomPostgresProfile
+
+  /**
+    * Upserts baking rights to the database
+    * @param bakingRightsMap mapping of hash to bakingRights list
+    */
+  def upsertBakingRights(
+      bakingRightsMap: Map[FetchRights, List[BakingRights]]
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+    logger.info("Writing baking rights to the DB...")
+    val conversionResult = for {
+      (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
+      bakingRights <- bakingRightsList
+    } yield (blockHashWithCycleAndGovernancePeriod, bakingRights).convertTo[Tables.BakingRightsRow]
+
+    Tables.BakingRights.insertOrUpdateAll(conversionResult)
+  }
+
+  /**
+    * Upserts endorsing rights to the database
+    * @param endorsingRightsMap mapping of hash to endorsingRights list
+    */
+  def upsertEndorsingRights(
+      endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+    logger.info("Writing endorsing rights to the DB...")
+    val transformationResult = for {
+      (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
+      endorsingRights <- endorsingRightsList
+    } yield (blockHashWithCycleAndGovernancePeriod, endorsingRights).convertToA[List, Tables.EndorsingRightsRow]
+
+    Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
+  }
+  val berLogger = LoggerFactory.getLogger("RightsFetcher")
+
+  /**
+    * Writes baking rights to the database
+    * @param bakingRights mapping of hash to endorsingRights list
+    */
+  def insertBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
+    berLogger.info("Inserting baking rights to the DB...")
+    Tables.BakingRights ++= bakingRights.map(_.convertTo[Tables.BakingRightsRow])
+  }
+
+  /**
+    * Writes endorsing rights to the database
+    * @param endorsingRights mapping of hash to endorsingRights list
+    */
+  def insertEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
+    berLogger.info("Inserting endorsing rights to the DB...")
+    Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
+  }
+
+  def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
+    logger.info("Writing {} governance rows into database...", governance.size)
+    Tables.Governance ++= governance
+  }
+
   /**
     * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
-    * @param accounts the full accounts' data
+    * @param accounts the full accounts' data with account rows of inactive bakers
     * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block
     * @return a database action that stores both arguments and return a tuple of the row counts inserted
     */
   def writeAccountsAndCheckpointDelegates(
-      accounts: List[BlockTagged[Map[AccountId, Account]]],
+      accounts: List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])],
       delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
-  )(implicit ec: ExecutionContext): DBIO[(Int, Option[Int])] = {
+  )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int], Option[Int])] = {
     import slickeffect.implicits._
 
     logger.info("Writing accounts and delegate checkpoints to the DB...")
 
-    //we tuple because we want transactionality guarantees and we need both insert-counts to get returned
+    //we tuple because we want transactionality guarantees and we need all insert-counts to get returned
     Async[DBIO]
-      .tuple2(writeAccounts(accounts), writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple)))
+      .tuple3(
+        writeAccounts(accounts.map(_._1)),
+        writeAccountsHistory(accounts),
+        writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
+      )
       .transactionally
   }
 
@@ -295,69 +509,113 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeDelegatesAndCopyContracts(
       delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
-  )(implicit ec: ExecutionContext): DBIO[Int] = {
+  ): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+
+    val keepMostRecent = (rows: List[Tables.DelegatesRow]) =>
+      rows
+        .sortBy(_.blockLevel)(Ordering[Int].reverse)
+        .foldLeft((Queue.empty[Tables.DelegatesRow], Set.empty[String])) { (accumulator, row) =>
+          val (queued, index) = accumulator
+          if (index(row.pkh)) accumulator else (queued :+ row, index + row.pkh)
+        }
+        ._1
+
     logger.info("Writing delegates to DB and copying contracts to delegates contracts table...")
-    val delegatesUpdateAction = DBIO.sequence(
-      delegates.flatMap {
-        case BlockTagged(blockHash, blockLevel, delegateMap) =>
-          delegateMap.map {
-            case (pkh, delegate) =>
-              Tables.Delegates insertOrUpdate (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]
-          }
+
+    val rows = delegates.flatMap {
+      case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
+        delegateMap.map {
+          case (pkh, delegate) =>
+            (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]
+        }
+    }
+    (keepMostRecent andThen Tables.Delegates.insertOrUpdateAll)(rows)
+  }
+
+  /** Gets ballot operations for given cycle */
+  def getBallotOperationsForCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
+    Tables.Operations
+      .filter(op => op.kind === "ballot" && op.cycle === cycle)
+      .groupBy(_.ballot)
+      .map {
+        case (vote, ops) => vote -> ops.length
       }
-    )
-    val contractsUpdateAction =
-      copyAccountsToDelegateContracts(
-        delegates.flatMap(_.content.values.flatMap(_.delegated_contracts)).toSet
-      )
-
-    (for {
-      updated <- delegatesUpdateAction.map(_.sum)
-      _ <- contractsUpdateAction
-    } yield updated).transactionally
-
-  }
-
-  /* Selects accounts corresponding to the given ids and copy the rows
-   * into the delegated contracts tables, whose schema should match exactly
-   */
-  private def copyAccountsToDelegateContracts(
-      contractIds: Set[ContractId]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
-    logger.info("Copying select accounts to delegates contracts table in DB...")
-    val ids = contractIds.map(_.id)
-    val inputAccounts = Tables.Accounts
-      .filter(_.accountId inSet ids)
       .result
-      .map(_.map(_.convertTo[Tables.DelegatedContractsRow]))
+      .map { res =>
+        val (yaysCount, naysCount, passesCount) = res.foldLeft(0, 0, 0) {
+          case ((_, nays, passes), (Some("yay"), count)) => (count, nays, passes)
+          case ((yays, _, passes), (Some("nay"), count)) => (yays, count, passes)
+          case ((yays, nays, _), (Some("pass"), count)) => (yays, nays, count)
+          case (acc, _) => acc
+        }
+        Voting.BallotCounts(yaysCount, naysCount, passesCount)
+      }
 
-    //we read the accounts data, then remove matching ids from contracts and re-insert the updated rows
-    (for {
-      accounts <- inputAccounts
-      _ <- Tables.DelegatedContracts.filter(_.accountId inSet ids).delete
-      updated <- Tables.DelegatedContracts.forceInsertAll(accounts)
-    } yield updated).transactionally
+  /** Fetch the latest block level available for each account id stored */
+  def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BigDecimal)]] =
+    Tables.Accounts
+      .map(table => (table.accountId, table.blockLevel))
+      .filter(_._1 inSet ids.map(_.id))
+      .result
+
+  /** Fetch the latest block level available for each delegate pkh stored */
+  def getLevelsForDelegates(ids: Set[PublicKeyHash]): DBIO[Seq[(String, Int)]] =
+    Tables.Delegates
+      .map(table => (table.pkh, table.blockLevel))
+      .filter(_._1 inSet ids.map(_.value))
+      .result
+
+  /**
+    * Gets inactive bakers from accounts
+    * @param activeBakers accountIds needed to filter out them from all of the bakers
+    * @return inactive baker accounts
+    * */
+  def getInactiveBakersFromAccounts(
+      activeBakers: List[String]
+  )(implicit ec: ExecutionContext): DBIO[List[Tables.AccountsRow]] =
+    Tables.Accounts
+      .filter(_.isBaker === true)
+      .filterNot(_.accountId inSet activeBakers)
+      .result
+      .map(_.toList)
+
+  /** Updates accounts history with bakers */
+  def updateAccountsHistoryWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
+    logger.info(s"""Writing ${bakers.length} accounts history updates to the DB...""")
+    Tables.AccountsHistory
+      .filter(
+        ahs =>
+          ahs.isBaker === false && ahs.blockId === block.data.hash.value && ahs.accountId.inSet(bakers.map(_.pkh.value))
+      )
+      .map(_.isBaker)
+      .update(true)
   }
 
-  /** Writes proposals to the database */
-  def writeVotingProposals(proposals: List[Voting.Proposal]): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${proposals.length} voting proposals to the DB...""")
-    Tables.Proposals ++= proposals.flatMap(_.convertToA[List, Tables.ProposalsRow])
+  /** Updates accounts with bakers */
+  def updateAccountsWithBakers(bakers: List[Voting.BakerRolls], block: Block): DBIO[Int] = {
+    logger.info(s"""Writing ${bakers.length} accounts updates to the DB...""")
+    Tables.Accounts
+      .filter(
+        account =>
+          account.isBaker === false && account.blockId === block.data.hash.value && account.accountId
+              .inSet(bakers.map(_.pkh.value))
+      )
+      .map(_.isBaker)
+      .update(true)
   }
 
-  /** Writes bakers to the database */
-  def writeVotingRolls(bakers: List[Voting.BakerRolls], block: Block): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${bakers.length} bakers to the DB...""")
-    Tables.Rolls ++= (block, bakers).convertToA[List, Tables.RollsRow]
-  }
-
-  /** Writes ballots to the database */
-  def writeVotingBallots(ballots: List[Voting.Ballot], block: Block): DBIO[Option[Int]] = {
-    logger.info(
-      s"""Writing ${ballots.length} ballots for block ${block.data.hash.value} at level ${block.data.header.level} to the DB..."""
-    )
-    Tables.Ballots ++= (block, ballots).convertToA[List, Tables.BallotsRow]
-  }
+  def getBakersForBlocks(
+      hashes: List[BlockHash]
+  )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
+    DBIO.sequence {
+      hashes.map { hash =>
+        Tables.Delegates
+          .filter(_.pkh === hash.value)
+          .result
+          .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
+      }
+    }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
@@ -368,7 +626,12 @@ object TezosDatabaseOperations extends LazyLogging {
   def calculateAverageFees(kind: String, numberOfFeesAveraged: Int)(
       implicit ec: ExecutionContext
   ): DBIO[Option[AverageFees]] = {
-    def computeAverage(ts: java.sql.Timestamp, cycle: Option[Int], level: Option[Int], fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]): AverageFees = {
+    def computeAverage(
+        ts: java.sql.Timestamp,
+        cycle: Option[Int],
+        level: Option[Int],
+        fees: Seq[(Option[BigDecimal], java.sql.Timestamp, Option[Int], Option[Int])]
+    ): AverageFees = {
       val values = fees.map {
         case (fee, _, _, _) => fee.map(_.toDouble).getOrElse(0.0)
       }
@@ -394,6 +657,32 @@ object TezosDatabaseOperations extends LazyLogging {
       }
     }
   }
+
+  /** Finds activated accounts - useful when updating accounts history
+    * @return sequence of activated account ids
+    */
+  def findActivatedAccountIds: DBIO[Seq[String]] =
+    Tables.Accounts
+      .filter(_.isActivated)
+      .map(_.accountId)
+      .result
+
+  /** Load all operations referenced from a block level and higher, that are of a specific kind.
+    * @param ofKind a set of kinds to filter operations, if empty there will be no result
+    * @param fromLevel the lowest block-level to start from, zero by default
+    * @return the matching operations pkh, sorted by ascending block-level
+    */
+  def fetchRecentOperationsHashByKind(
+      ofKind: Set[String],
+      fromLevel: Int = 0
+  ): DBIO[Seq[Option[String]]] =
+    Tables.Operations
+      .filter(
+        row => (row.kind inSet ofKind) && (row.blockLevel >= fromLevel)
+      )
+      .sortBy(_.blockLevel.asc)
+      .map(_.pkh)
+      .result
 
   /**
     * Reads in all operations referring to the group
@@ -448,6 +737,41 @@ object TezosDatabaseOperations extends LazyLogging {
   def doBlocksExist(): DBIO[Boolean] =
     Tables.Blocks.exists.result
 
+  /** Returns all levels that have seen a custom event processing, e.g.
+    * - auto-refresh of all accounts after the babylon protocol amendment
+    *
+    * @param eventType the type of event levels to fetch
+    * @return a list of values marking specific levels that needs not be processed anymore
+    */
+  def fetchProcessedEventsLevels(eventType: String): DBIO[Seq[BigDecimal]] =
+    Tables.ProcessedChainEvents.filter(_.eventType === eventType).map(_.eventLevel).result
+
+  /** Adds any new level for which a custom event processing has been executed
+    *
+    * @param eventType the type of event to record
+    * @param levels the levels to write to db, currently there must be no collision with existing entries
+    * @return the number of entries saved to the checkpoint
+    */
+  def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
+    Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
+
+  /** Inserts to the table if table is empty
+    * @param table slick TableQuery[_] to which we want to insert
+    * @param rows rows to be added
+    * @return the number of entries saved
+    */
+  def insertWhenEmpty[A <: AbstractTable[_]](
+      table: TableQuery[A],
+      rows: List[A#TableElementType]
+  )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
+    table.exists.result.flatMap {
+      case true => DBIO.successful(Some(0))
+      case false => table ++= rows
+    }
+
+  /** Prefix for the table queries */
+  private val tablePrefix = "tezos"
+
   /**
     * Counts number of rows in the given table
     * @param table  slick table
@@ -464,7 +788,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return       amount of distinct elements in given column
     */
   def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
-    sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #$table) AS temp""".as[Int].map(_.head)
+    sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #${tablePrefix + "." + table}) AS temp"""
+      .as[Int]
+      .map(_.head)
 
   /**
     * Selects distinct elements by given table and column
@@ -474,7 +800,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return       distinct elements in given column as a list
     */
   def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] =
-    sql"""SELECT DISTINCT #$column::VARCHAR FROM #$table WHERE #$column IS NOT NULL""".as[String].map(_.toList)
+    sql"""SELECT DISTINCT #$column::VARCHAR FROM #${tablePrefix + "." + table} WHERE #$column IS NOT NULL"""
+      .as[String]
+      .map(_.toList)
 
   /**
     * Selects distinct elements by given table and column with filter
@@ -487,7 +815,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def selectDistinctLike(table: String, column: String, matchingString: String)(
       implicit ec: ExecutionContext
   ): DBIO[List[String]] =
-    sql"""SELECT DISTINCT #$column::VARCHAR FROM #$table WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
+    sql"""SELECT DISTINCT #$column::VARCHAR FROM #${tablePrefix + "." + table} WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
       .as[String]
       .map(_.toList)
 
@@ -508,16 +836,24 @@ object TezosDatabaseOperations extends LazyLogging {
       predicates: List[Predicate],
       ordering: List[QueryOrdering],
       aggregation: List[Aggregation],
+      temporalPartition: Option[String],
+      snapshot: Option[Snapshot],
       outputType: OutputType,
       limit: Int
   )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
+    val tableWithPrefix = tablePrefix + "." + table
+    val q = (temporalPartition, snapshot) match {
+      case (Some(tempPartition), Some(snap)) =>
+        makeTemporalQuery(tableWithPrefix, columns, predicates, aggregation, ordering, tempPartition, snap, limit)
+      case _ =>
+        makeQuery(tableWithPrefix, columns, aggregation)
+          .addPredicates(predicates)
+          .addGroupBy(aggregation, columns)
+          .addHaving(aggregation)
+          .addOrdering(ordering)
+          .addLimit(limit)
+    }
 
-    val q = makeQuery(table, columns, aggregation)
-      .addPredicates(predicates)
-      .addGroupBy(aggregation, columns)
-      .addHaving(aggregation)
-      .addOrdering(ordering)
-      .addLimit(limit)
     if (outputType == OutputType.sql) {
       DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
     } else {

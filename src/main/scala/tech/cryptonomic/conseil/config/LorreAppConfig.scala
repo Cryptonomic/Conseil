@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.config
 
+import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.config.Platforms._
 import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
 import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
@@ -8,6 +9,7 @@ import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
 import scopt.{OptionParser, Read}
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import pureconfig.generic.FieldCoproductHint
 
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
@@ -68,17 +70,23 @@ trait LorreAppConfig {
       argsParser.parse(args, ArgumentsConfig()).toRight[ConfigReaderFailures](sys.exit(1))
 
     //applies convention to uses CamelCase when reading config fields
-    implicit def hint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
-    implicit val seasonHint = new EnumCoproductHint[Depth]
+    @silent("local method hint in method loadApplicationConfiguration is never used")
+    implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+    @silent("local val depthHint in method loadApplicationConfiguration is never used")
+    implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
+    @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
+    implicit val chainEventHint = new FieldCoproductHint[ChainEvent]("type") {
+      override def fieldValue(name: String): String = name.head.toLower +: name.tail
+    }
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
       ArgumentsConfig(depth, verbose, headHash, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
-      nodeRequests <- loadConfig[NetworkCallsConfiguration]("")
+      nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
-      fetching <- loadConfig[BatchFetchConfiguration](namespace = "batchedFetches")
+      fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batchedFetches")
     } yield
       CombinedConfiguration(
         lorre,

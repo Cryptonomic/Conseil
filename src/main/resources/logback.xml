@@ -11,6 +11,7 @@
         </encoder>
     </appender>
 
+
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="STDOUT" />
     </appender>
@@ -33,7 +34,7 @@
     </logger>
 
     <logger name="com.base22" level="TRACE"/>
-    <logger name="de.flapdoodle.embed.process" level="OFF"/>
+    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-OFF}"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />

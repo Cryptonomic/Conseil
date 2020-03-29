@@ -186,6 +186,7 @@ trait DelegatesJsonData {
         ContractId("KT19RhkHK8ssqXX1VxSSpyuyMXHK6V9RHizs"),
         ContractId("KT18bmcAvpLZPv6BF79RqTmZLZQSjodr3f2S")
       ),
+      rolls = None,
       delegated_balance = PositiveDecimal(13935725110L),
       deactivated = false,
       grace_period = 181
@@ -194,7 +195,7 @@ trait DelegatesJsonData {
 
 /* defines example tezos json definitions of accounts and typed counterparts used in the tests */
 trait AccountsJsonData {
-  val accountJson =
+  val legacyAccountJson =
     """{
     |  "balance": "2921522468",
     |  "counter": "0",
@@ -202,21 +203,45 @@ trait AccountsJsonData {
     |      "setable": false,
     |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |  },
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
     |  "spendable": true
+    |}""".stripMargin
+
+  val expectedLegacyAccount =
+    Account(
+      balance = 2921522468L,
+      script = None,
+      counter = Some(0),
+      manager = None,
+      spendable = Some(true),
+      delegate = Some(
+        Left(
+          Protocol4Delegate(
+            setable = false,
+            value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
+          )
+        )
+      ),
+      isBaker = None,
+      isActivated = None
+    )
+
+  val accountJson =
+    """{
+    |  "balance": "2921522468",
+    |  "counter": "0",
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
     |}""".stripMargin
 
   val expectedAccount =
     Account(
-      manager = PublicKeyHash("tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY"),
       balance = 2921522468L,
-      spendable = true,
-      delegate = AccountDelegate(
-        setable = false,
-        value = Some(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))
-      ),
+      delegate = Some(Right(PublicKeyHash("tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"))),
       script = None,
-      counter = 0
+      counter = Some(0),
+      manager = None,
+      spendable = None,
+      isBaker = None,
+      isActivated = None
     )
 
   val scriptJson =
@@ -245,13 +270,8 @@ trait AccountsJsonData {
     s"""{
     |  "balance": "2921522468",
     |  "counter": "0",
-    |  "delegate": {
-    |      "setable": false,
-    |      "value": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23"
-    |  },
-    |  "script": $scriptJson,
-    |  "manager": "tz1Tzqh3CWLdPoH4kHSqcePatkBVKTwifCHY",
-    |  "spendable": true
+    |  "delegate": "tz1LdZ6S8ScNMgaCLqrekDvbBWhLqtUebk23",
+    |  "script": $scriptJson
     |}""".stripMargin
 
 }
@@ -294,14 +314,77 @@ trait OperationsJsonData {
     """{"prim":"code","args":[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]}"""
   )
 
-  val bigmapdiffJson =
+  val bigmapdiffAllocJson =
+    s"""{
+    |  "action": "alloc",
+    |  "big_map": "428",
+    |  "key_type": {
+    |      "prim": "int"
+    |  },
+    |  "value_type": {
+    |      "prim": "int"
+    |  }
+    |}""".stripMargin
+
+  val expectedBigmapdiffAlloc =
+    Contract.BigMapAlloc(
+      action = "alloc",
+      big_map = Decimal(BigDecimal(428)),
+      key_type = Micheline("""{"prim":"int"}"""),
+      value_type = Micheline("""{"prim":"int"}""")
+    )
+
+  val bigmapdiffUpdateJson =
+    s"""{
+    |  "action": "update",
+    |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
+    |  "key": $michelineJson,
+    |  "big_map": "428"
+    |}""".stripMargin
+
+  val expectedBigmapdiffUpdate =
+    Contract.BigMapUpdate(
+      action = "update",
+      key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
+      key = expectedMicheline,
+      big_map = Decimal(BigDecimal(428)),
+      value = None
+    )
+
+  val bigmapdiffCopyJson =
+    s"""{
+    |  "action": "copy",
+    |  "source_big_map": "428",
+    |  "destination_big_map": "748"
+    |}""".stripMargin
+
+  val expectedBigmapdiffCopy =
+    Contract.BigMapCopy(
+      action = "copy",
+      source_big_map = Decimal(BigDecimal(428)),
+      destination_big_map = Decimal(BigDecimal(748))
+    )
+
+  val bigmapdiffRemoveJson =
+    s"""{
+    |  "action": "remove",
+    |  "big_map": "428"
+    |}""".stripMargin
+
+  val expectedBigmapdiffRemove =
+    Contract.BigMapRemove(
+      action = "remove",
+      big_map = Decimal(BigDecimal(428))
+    )
+
+  val p4BigmapdiffJson =
     s"""{
     |  "key_hash": "tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio",
     |  "key": $michelineJson
     |}""".stripMargin
 
-  val expectedBigMapDiff =
-    Contract.BigMapDiff(
+  val expectedP4BigMapDiff =
+    Contract.Protocol4BigMapDiff(
       key_hash = ScriptId("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
       key = expectedMicheline,
       value = None
@@ -401,6 +484,7 @@ trait OperationsJsonData {
     Endorsement(
       level = 182308,
       metadata = EndorsementMetadata(
+        slot = None,
         slots = List(29, 27, 20, 17),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
         balance_updates = List(
@@ -547,7 +631,7 @@ trait OperationsJsonData {
 
   val expectedReveal =
     Reveal(
-      source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+      source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
       fee = PositiveDecimal(10000),
       counter = PositiveDecimal(1),
       gas_limit = PositiveDecimal(10000),
@@ -583,7 +667,7 @@ trait OperationsJsonData {
               result = OperationResult.Reveal("applied", Some(Decimal(10000)), None),
               public_key = PublicKey("edpktxRxk9r61tjEZCt5a2hY2MWC3gzECGL7FXS1K6WXGG28hTFdFz"),
               nonce = 1234,
-              source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+              source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
               kind = "reveal"
             )
           )
@@ -597,9 +681,11 @@ trait OperationsJsonData {
     fee = PositiveDecimal(0),
     gas_limit = PositiveDecimal(2215),
     storage_limit = PositiveDecimal(0),
-    source = ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
+    source = PublicKeyHash("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
     destination = ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
-    parameters = Some(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}""")),
+    parameters =
+      Some(Left(Parameters(Micheline("""{"string":"tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"}"""), Some("default")))),
+    parameters_micheline = None,
     metadata = ResultMetadata(
       operation_result = OperationResult.Transaction(
         status = "applied",
@@ -618,11 +704,12 @@ trait OperationsJsonData {
         List(
           InternalOperationResults.Transaction(
             "transaction",
-            ContractId("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
+            PublicKeyHash("KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH"),
             0,
             PositiveDecimal(1000),
             ContractId("tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"),
-            Some(Micheline("""{"prim":"Unit"}""")),
+            Some(Left(Parameters(Micheline("""{"prim":"Unit"}"""), Some("default")))),
+            None,
             OperationResult.Transaction(
               status = "applied",
               allocated_destination_contract = None,
@@ -672,7 +759,10 @@ trait OperationsJsonData {
       |    "amount": "0",
       |    "destination": "KT1XYHyoewY5CMDdcYB5BjN7dQbWreV5cWgH",
       |    "parameters": {
-      |        "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
+      |        "entrypoint": "default",
+      |        "value": {
+      |            "string": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN"
+      |        }
       |    },
       |    "metadata": {
       |        "balance_updates": [],
@@ -692,7 +782,10 @@ trait OperationsJsonData {
       |                "amount": "1000",
       |                "destination": "tz1MS1g7tETWfiPXtXx6Jx1XUrYJzzFY4QYN",
       |                "parameters": {
+      |                  "entrypoint": "default",
+      |                  "value": {
       |                    "prim": "Unit"
+      |                  }
       |                },
       |                "result": {
       |                    "status": "applied",
@@ -755,7 +848,7 @@ trait OperationsJsonData {
 
   val expectedFailedReveal =
     Reveal(
-      source = ContractId("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf"),
+      source = PublicKeyHash("tz1VXaVvVyLfZNWCcpHpKNSg61TEJVZtNJKf"),
       fee = PositiveDecimal(1300),
       counter = PositiveDecimal(454133),
       gas_limit = PositiveDecimal(100),
@@ -799,7 +892,10 @@ trait OperationsJsonData {
     |  "amount": "0",
     |  "destination": "KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy",
     |  "parameters": {
-    |      "string": "world"
+    |      "entrypoint": "default",
+    |      "value": {
+    |            "string": "world"
+    |      }
     |  },
     |  "metadata": {
     |      "balance_updates": [
@@ -829,14 +925,99 @@ trait OperationsJsonData {
 
   val expectedTransaction =
     Transaction(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1416),
       counter = PositiveDecimal(407940),
       gas_limit = PositiveDecimal(11475),
       storage_limit = PositiveDecimal(0),
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-      parameters = Some(Micheline("""{"string":"world"}""")),
+      parameters = Some(Left(Parameters(Micheline("""{"string":"world"}"""), Some("default")))),
+      parameters_micheline = None,
+      metadata = ResultMetadata(
+        balance_updates = List(
+          BalanceUpdate(
+            kind = "contract",
+            contract = Some(ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
+            change = -1416L,
+            category = None,
+            delegate = None,
+            level = None
+          ),
+          BalanceUpdate(
+            kind = "freezer",
+            category = Some("fees"),
+            delegate = Some(PublicKeyHash("tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u")),
+            level = Some(1583),
+            change = 1416L,
+            contract = None
+          )
+        ),
+        operation_result = OperationResult.Transaction(
+          status = "applied",
+          storage = Some(Micheline("""{"string":"world"}""")),
+          consumed_gas = Some(Decimal(11375)),
+          storage_size = Some(Decimal(46)),
+          allocated_destination_contract = None,
+          balance_updates = None,
+          big_map_diff = None,
+          originated_contracts = None,
+          paid_storage_size_diff = None,
+          errors = None
+        )
+      )
+    )
+
+  val backwardCompatibleTransactionJson =
+    """{
+      |  "kind": "transaction",
+      |  "source": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |  "fee": "1416",
+      |  "counter": "407940",
+      |  "gas_limit": "11475",
+      |  "storage_limit": "0",
+      |  "amount": "0",
+      |  "destination": "KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy",
+      |  "parameters": {
+      |      "string":"world"
+      |  },
+      |  "metadata": {
+      |      "balance_updates": [
+      |          {
+      |              "kind": "contract",
+      |              "contract": "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
+      |              "change": "-1416"
+      |          },
+      |          {
+      |              "kind": "freezer",
+      |              "category": "fees",
+      |              "delegate": "tz1boot2oCjTjUN6xDNoVmtCLRdh8cc92P1u",
+      |              "level": 1583,
+      |              "change": "1416"
+      |          }
+      |      ],
+      |      "operation_result": {
+      |          "status": "applied",
+      |          "storage": {
+      |              "string": "world"
+      |          },
+      |          "consumed_gas": "11375",
+      |          "storage_size": "46"
+      |      }
+      |  }
+      |}""".stripMargin
+
+  val backwardCompatibleExpectedTransaction =
+    Transaction(
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      fee = PositiveDecimal(1416),
+      counter = PositiveDecimal(407940),
+      gas_limit = PositiveDecimal(11475),
+      storage_limit = PositiveDecimal(0),
+      amount = PositiveDecimal(0),
+      destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
+      parameters = Some(Right(Micheline("""{"string":"world"}"""))),
+      parameters_micheline = None,
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(
@@ -935,12 +1116,12 @@ trait OperationsJsonData {
 
   val expectedOrigination =
     Origination(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1441),
       counter = PositiveDecimal(407941),
       gas_limit = PositiveDecimal(11362),
       storage_limit = PositiveDecimal(323),
-      manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      manager_pubkey = Some(PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR")),
       balance = PositiveDecimal(1000000),
       spendable = Some(false),
       delegatable = Some(false),
@@ -967,6 +1148,7 @@ trait OperationsJsonData {
         ),
         operation_result = OperationResult.Origination(
           status = "applied",
+          big_map_diff = None,
           balance_updates = Some(
             List(
               BalanceUpdate(
@@ -1108,7 +1290,7 @@ trait OperationsJsonData {
 
   val expectedDelegation =
     Delegation(
-      source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+      source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
       fee = PositiveDecimal(1400),
       counter = PositiveDecimal(2),
       gas_limit = PositiveDecimal(10100),
@@ -1154,7 +1336,8 @@ trait OperationsJsonData {
       |    $failedRevealJson,
       |    $transactionJson,
       |    $originationJson,
-      |    $delegationJson
+      |    $delegationJson,
+      |    $backwardCompatibleTransactionJson
       |  ],
       |  "signature": "sigvs8WYSK3AgpWwpUXg8B9NyJjPcLYNqmZvNFR3UmtiiLfPTNZSEeU8qRs6LVTquyVUDdu4imEWTqD6sinURdJAmRoyffy9"
       |}""".stripMargin
@@ -1175,7 +1358,8 @@ trait OperationsJsonData {
         expectedFailedReveal,
         expectedTransaction,
         expectedOrigination,
-        expectedDelegation
+        expectedDelegation,
+        backwardCompatibleExpectedTransaction
       )
     )
 

@@ -1,19 +1,21 @@
 package tech.cryptonomic.conseil.tezos
 
+import com.github.ghik.silencer.silent
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.util.JsonUtil.adaptManagerPubkeyField
 
+@silent("local val derivationConf")
 class JsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
   import JsonDecoders.Circe.Accounts._
   import JsonDecoders.Circe.Numbers._
+  import JsonDecoders.Circe.BigMapDiff._
   import JsonDecoders.Circe.Operations._
   import JsonDecoders.Circe.Scripts._
   import JsonDecoders.Circe.Votes._
   import JsonDecoders.Circe._
   import io.circe.parser.decode
-
   "the json decoders" should {
 
       val validB58Hash =
@@ -281,9 +283,39 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
         decoded shouldBe 'left
       }
 
-      "decode valid json into a BigMapDiff value" in new OperationsJsonData {
-        val decoded = decode[Contract.BigMapDiff](bigmapdiffJson)
-        decoded.right.value shouldEqual expectedBigMapDiff
+      "decode valid protocol4 json into a BigMapDiff value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](p4BigmapdiffJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'right
+        decoded.right.value.right.value shouldEqual expectedP4BigMapDiff
+      }
+
+      "decode valid json into a BigMapDiffUpdate value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffUpdateJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffUpdate
+      }
+
+      "decode valid json into a BigMapDiffCopy value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffCopyJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffCopy
+      }
+
+      "decode valid json into a BigMapDiffAlloc value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffAllocJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffAlloc
+      }
+
+      "decode valid json into a BigMapDiffRemove value" in new OperationsJsonData {
+        val decoded = decode[Contract.CompatBigMapDiff](bigmapdiffRemoveJson)
+        decoded shouldBe 'right
+        decoded.right.value shouldBe 'left
+        decoded.right.value.left.value shouldEqual expectedBigmapdiffRemove
       }
 
       "decode valid json into a Scipted.Contracts value" in new OperationsJsonData {
@@ -439,6 +471,14 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
 
         val account = decoded.right.value
         account shouldEqual expectedAccount
+      }
+
+      "decode legacy protocol4 accounts" in new AccountsJsonData {
+        val decoded = decode[Account](legacyAccountJson)
+        decoded shouldBe 'right
+
+        val account = decoded.right.value
+        account shouldEqual expectedLegacyAccount
       }
 
       "decode account scripts as wrapped and unparsed text, instead of a json object" in new AccountsJsonData {

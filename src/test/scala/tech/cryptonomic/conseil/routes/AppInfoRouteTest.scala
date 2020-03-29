@@ -20,9 +20,10 @@ class AppInfoRouteTest extends WordSpec with Matchers with ScalatestRouteTest {
         Get("/info") ~> addHeader("apiKey", "hooman") ~> sut ~> check {
           status shouldEqual StatusCodes.OK
           contentType shouldBe ContentTypes.`application/json`
-          val info: Map[String, String] = toMap[String](responseAs[String])
+          val info: Map[String, Any] = toMap[Any](responseAs[String])
           info("application") shouldBe "Conseil"
-          info("version") should fullyMatch regex """^0\.\d{4}\.\d{4}(-SNAPSHOT)?"""
+          info("version").toString should fullyMatch regex """^0\.\d{4}\.\d{4}(-SNAPSHOT)?"""
+          info("git").asInstanceOf[Map[String, String]]("commitHash") should fullyMatch regex """^[0-9a-f]+$"""
         }
       }
 

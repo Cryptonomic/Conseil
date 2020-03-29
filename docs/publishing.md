@@ -68,7 +68,7 @@ The project is using the `sbt-git` plugin, which allows to use Git directly from
 The versioning scheme is
  * use a major number as the platform version (e.g. `1`, `2`, ...)
  * add a date reference in form of `YYWW` (year + week in year)
- * use the latest git tag formatted as `ci-release-<xyz>` and take the numbers from `xyz`, increasing it
+ * use the latest committed tag in the git history, formatted as `<freeform>-release-<xyz>`, and take the numbers from `xyz`, increasing it
  * Compose the three separated by "dots" to have the version that will be released (e.g. `1.1845.0002`)
  * The Git plugin will add a trailing `-SNAPSHOT` if there are locally uncommitted changes
 
@@ -83,9 +83,20 @@ sbt gitTag
 ```
 The `sonatypeRelease` step might be postponed to check if the sonatype staging artifact is correct and all that.
 
-The `gitTag` task would read the current version to tag and commit the next `ci-release-<n+1>` on the _local_ repo.
+The `gitTag` task would read the current version to tag and commit the next release tag (e.g. `2019-december-release-<n+1>`) on the _local_ repo.
 
 **Important**: the same user should `git push origin --tags` to finally complete the process, after ensuring that the generated tag matches the expectations.
+
+
+## Releasing Docker Image
+To release official version of Conseil you need to be added to the `cryptonomictech` organization on DockerHub.
+
+There is `docker-publish.sh` script which does all the necessary steps to publish image. 
+Release tag is generated based on the information `BuildInfo.scala`.
+
+It can be used also to publish image locally with `./docker-publish.sh local`.
+
+
 
 ---
 ## Additional references

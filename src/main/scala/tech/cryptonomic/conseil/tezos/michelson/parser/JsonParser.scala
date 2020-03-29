@@ -4,7 +4,7 @@ import io.circe.parser.decode
 import cats.syntax.functor._
 import io.circe._
 import io.circe.generic.auto._
-import tech.cryptonomic.conseil.util.JsonUtil.JsonString
+import tech.cryptonomic.conseil.util.JsonUtil.{CirceCommonDecoders, JsonString}
 import tech.cryptonomic.conseil.tezos.michelson.dto.{MichelsonElement, _}
 import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser.EmbeddedElement.toMichelsonElement
 
@@ -31,8 +31,9 @@ object JsonParser {
     def toMichelsonExpression: Option[MichelsonExpression] = args.headOption.map(_.toMichelsonExpression)
   }
 
-  case class JsonCodeSection(prim: String, args: List[List[JsonInstruction]]) extends JsonSection {
-    def toMichelsonCode = MichelsonCode(args.flatten.map(_.toMichelsonInstruction))
+  case class JsonCodeSection(prim: String, args: Either[List[List[JsonInstruction]], List[JsonInstruction]])
+      extends JsonSection {
+    def toMichelsonCode: MichelsonCode = MichelsonCode(args.map(List(_)).merge.flatten.map(_.toMichelsonInstruction))
   }
 
   sealed trait JsonExpression {
@@ -120,7 +121,7 @@ object JsonParser {
    *
    * */
   case class JsonIntConstant(int: String) extends JsonInstruction {
-    override def toMichelsonInstruction = MichelsonIntConstant(int.toLong)
+    override def toMichelsonInstruction = MichelsonIntConstant(int)
   }
 
   /*
@@ -152,7 +153,7 @@ object JsonParser {
       for {
         parameter <- extractExpression("parameter")
         storage <- extractExpression("storage")
-        code <- extractCode("code")
+        code <- extractCode
       } yield MichelsonSchema(parameter, storage, code)
 
     private def extractExpression(sectionName: String): Result[MichelsonExpression] =
@@ -161,16 +162,16 @@ object JsonParser {
       }.flatMap(_.toMichelsonExpression)
         .toRight(ParserError(s"No expression $sectionName found"))
 
-    private def extractCode(sectionName: String): Result[MichelsonCode] =
+    private def extractCode: Result[MichelsonCode] =
       code.collectFirst {
-        case it @ JsonCodeSection(`sectionName`, _) => it.toMichelsonCode
-      }.toRight(ParserError(s"No code $sectionName found"))
+        case it @ JsonCodeSection("code", _) => it.toMichelsonCode
+      }.toRight(ParserError("No code section found"))
   }
 
   object GenericDerivation {
     implicit val decodeSection: Decoder[JsonSection] =
       List[Decoder[JsonSection]](
-        Decoder[JsonCodeSection].widen,
+        Decoder[JsonCodeSection].ensure(_.prim == "code", "No code section found").widen,
         Decoder[JsonExpressionSection].widen
       ).reduceLeft(_ or _)
 
@@ -189,7 +190,7 @@ object JsonParser {
       ).reduceLeft(_ or _)
 
     implicit def decodeEither[A, B](implicit leftDecoder: Decoder[A], rightDecoder: Decoder[B]): Decoder[Either[A, B]] =
-      leftDecoder.map(Left.apply) or rightDecoder.map(Right.apply)
+      CirceCommonDecoders.decodeUntaggedEither
   }
 
   trait Parser[T <: MichelsonElement] {

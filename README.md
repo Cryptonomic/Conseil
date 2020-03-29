@@ -41,6 +41,7 @@ Conseil Config:
 
 
 * API_PORT - Conseil API port, default: 80
+* API_KEY - Conseil API key, default: conseil
 
 Or, you can use your own config file, in which case specify the environment variable `CONFIG` with the path to your file
 
@@ -73,7 +74,7 @@ The Conseil server should be run behind a proxy such as Nginx with TLS enabled t
 Development
 - JDK (> 8.x)
 - Scala (> 2.12.x)
-- SBT (> 1.2.6)
+- SBT (> 1.3.x)
 - A database supported by Typesafe Slick, e.g. Postgres
 
 Deployment
@@ -112,16 +113,16 @@ java -Dconfig.file={path to custom config file} -cp {path to fat JAR} tech.crypt
 From the project root and having started a database instance [see the 'Database set-up' section]
 
 ```bash
-env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "runConseil"
+env SBT_OPTS="-Dconfig.file={path to custom conseil config file}" && sbt "runConseil"
 ```
 
 And..
 
 ```bash
-env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "runLorre <network>"
+env SBT_OPTS="-Dconfig.file={path to custom lorre config file}" && sbt "runLorre <network>"
 ```
 
-Here `network` refers to a valid configuration key, defined in the `application.conf` file (or a custom one), and describing a blockchain node connection info.
+Here `network` refers to a valid configuration key, defined in the `.conf` file (any custom one), and describing a blockchain node connection info.
 Such configuration should provide `protocol, hostname, port, pathPrefix` for a chain rpc node. Such key will be looked-up under the `platforms.<blockchain-name>` path in the config file.
 (The only supported blockchain at the moment is "tezos").
 
@@ -135,13 +136,14 @@ The application expects to read and write from a database compatible with [Types
 
 ##### Using a database instance
 
-Cryptonomic uses Postgres for all its Conseil deployments. Once a Postgres database is set up, `doc/conseil.sql` can be used to set up the latest schema.
+Cryptonomic uses Postgres for all its Conseil deployments. Once a Postgres database is set up, `sql/conseil.sql` can be used to set up the latest schema.
 
 *For non-Postgres databases*: the schema file might have to be updated to reflect the idiosyncrasies of the particular SQL dialect being used.
 Additionally you will probably need to generate the proper scala classes and update the codebase to use a different db-profile with Slick. To generate the code from a running up-to-date database you can run the sbt task from the project root:
 ```bash
 env SBT_OPTS="-Dconfig.file={path to custom config file}" && sbt "genSchema"
 ```
+Look at the task output to know where the file has been generated.
 
 ### Running in production
 
@@ -163,7 +165,9 @@ See 'Custom Configurations' section for information about custom config files.
 
 ## How to use Conseil
 
-For a detailed description of the offered features look at the [Usage Page](doc/use-conseil.md)
+After launching both Lorre and Conseil process you will be able to query the system for information on the blockchain and to execute operations.
+
+An intro tutorial is available [here](https://github.com/Cryptonomic/Conseil/wiki/Tutorial:-Querying-for-Tezos-alphanet-data-using-the-v2-API)
 
 ## Local testing and development
 The application expects to access a postgres database instance to run: you can run one locally, as already described, or you can use a [Docker](https://docs.docker.com/get-started/) image to run it within a container.
@@ -178,15 +182,21 @@ To run the database, from the project root
 ```bash
 docker-compose up -d
 ```
-This will launch the db container and setup the schema as described by the file under `doc/conseil.sql`
+This will launch the db container and setup the schema as described by the file under `sql/conseil.sql`
 
 To stop the database
 ```bash
+docker-compose stop
+```
+This will stop container but will not remove the data. You can remove container and the data with
+```bash
+docker-compose rm
+```
+To stop the database and remove container
+```bash
 docker-compose down
 ```
-This will stop and remove the container, but will keep the db data in the `pgdata` project folder, hence you can restart the container without losing any information stored.
-
-To clean and restart the db from scratch, simply remove all `pgdata` content while the container is _not running_.
+This will stop and remove the container and the data stored.
 
 ### Unit Testing
 
@@ -202,9 +212,11 @@ apt install libpq5
 
 ## Custom Configurations
 
-Conseil uses [Typesafe Config](https://github.com/lightbend/config) for managing its configurations (including database access via [Slick](http://slick.lightbend.com/doc/3.2.0/database.html)). Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which "inherits" from the default `src/main/resources/reference.conf` for production or `src/main/resources/developer.conf` for local development.
+Conseil uses [Typesafe Config](https://github.com/lightbend/config) for managing its configurations (including database access via [Slick](http://slick.lightbend.com/doc/3.2.0/database.html)). Please ensure you become familiar with both configuration systems before deploying Conseil. It is advisable to run with a custom config file which will automatically "inherit" defaults from the `src/main/resources/reference.conf` for production or manually include `src/main/resources/developer.conf` for local development.
 
 In the latter case, parent configuration can be defined in the custom file using the `include` directive.
+
+You might usually want to override definitions for the subsystem you're actually running (i.e. `lorre` or `conseil`), and the `platforms` you're connecting to.
 
 ### In Production
 You can store the custom configuration anywhere and pass it to the runtime with the ` -Dconfig.file={path to custom config file}` command line option, as shown in the previous sections.
@@ -225,24 +237,27 @@ Here is an example showing a default local development configuration defining th
 include "developer"
 
 #database connection
-conseildb = {
-  dataSourceClass = "org.postgresql.ds.PGSimpleDataSource" #jdbc source
-  properties = {
-    databaseName = "conseil"
-    user = "redacted"
-    password = "redacted"
+conseil.db: {
+  dataSourceClass: "org.postgresql.ds.PGSimpleDataSource" #jdbc source
+  properties: {
+    databaseName: "conseil"
+    user: "redacted"
+    password: "redacted"
   }
   #please make sure you know what you're doing before changing these values
-  numThreads = 10
-  maxConnections = 10
+  numThreads: 10
+  maxConnections: 10
 }
 
+#you might want to simply re-use the same database for local development
+lorre.db: ${conseil.db}
+
 #available blockchain platforms
-platforms: {
-  tezos: {
+platforms {
+  tezos {
     #networks available on 'tezos'
-    alphanet : {
-      node: {
+    alphanet {
+      node {
         hostname: "localhost",
         port: 8732
         pathPrefix: ""
@@ -254,7 +269,7 @@ platforms: {
 
 The imported `developer.conf` resource will in turn provide a list of api-keys in the form
 ```coffee
-security.apiKeys.keys: [key1, key2, ...]
+conseil.security.apiKeys.keys: [key1, key2, ...]
 ```
 
 Such keys will be checked by the server when connecting via Http endpoints to Conseil, matching a required http-header with key `apiKey`.
@@ -262,7 +277,35 @@ Such keys will be checked by the server when connecting via Http endpoints to Co
 The production configuration can override the default without resorting to inclusion of the dev conf.
 
 ---
-For additional extra fine-grained configuration you can refer to [this appendix](doc/extra-custom-config.md)
+For additional extra fine-grained configuration you can refer to [this appendix](docs/extra-custom-config.md)
 
 ## Publishing the artifacts
-If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](doc/publishing.md)
+If you're a contributor and need to publish the artifacts on sonatype, you'll find instructions in the [publishing doc](docs/publishing.md)
+
+## Contribution
+If you want to contribute please read [practices we follow](CONTRIBUTION.md) in terms of organizing workflow with git.
+
+## Technology Stack
+
+This are the main libraries used throughout the project:
+
+* [Cats](https://typelevel.org/cats)
+  * fundamental support for functional programming development, providing all the basic blocks
+* [Typelevel Cats-Effect](https://typelevel.org/cats-effect)
+  * functional handling of "effects" based on type classes and the included `IO` type
+* [Akka-Http](https://doc.akka.io/docs/akka-http/current)
+  * used to provide client and server implementations for connecting to blockchain Rest APIs and to expose Conseil's own API
+* [Fs2 (functional streaming for scala)](https://fs2.io)
+  * used to collect concurrently multiple data elements and progressively process them inside
+* [Circe](https://circe.github.io/circe) and [Jackson](https://github.com/FasterXML/jackson-module-scala)
+  * we mostly employ Circe for the encoding/decoding of json, but some older parts still rely on Jackson
+* [Endpoints](http://julienrf.github.io/endpoints)
+  * used to describe our Rest Api and implement the OpenApi spec and Akka-http server from the same blueprint
+* [Lightbend Slick](https://scala-slick.org)
+  * we use this to define the database model, create and compose database queries, compose the asynchronous calls as needed
+* [Pureconfig](https://pureconfig.github.io)
+  * read configuration with early detection of expectations and type-safe modeling of the configured values
+* [Scopt](https://github.com/scopt/scopt)
+  * command line parsing of options/arguments
+* [Scalatest](http://www.scalatest.org) and [Scalamock](http://scalamock.org)
+  * unit testing and mock/stub/dummies

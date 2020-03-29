@@ -1,7 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
 import java.sql.Timestamp
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
 
 import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
@@ -9,6 +9,7 @@ import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, DelegatesR
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
+import monocle.Optional
 
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
@@ -37,7 +38,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of accounts with associated block data */
-  def generateAccounts(howMany: Int, blockHash: BlockHash, blockLevel: Int)(
+  def generateAccounts(
+      howMany: Int,
+      blockHash: BlockHash,
+      blockLevel: Int,
+      time: Instant = testReferenceTimestamp.toInstant
+  )(
       implicit randomSeed: RandomSeed
   ): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
@@ -47,16 +53,18 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val accounts = (1 to howMany).map { currentId =>
       AccountId(String valueOf currentId) ->
         Account(
-          manager = PublicKeyHash("manager"),
           balance = rnd.nextInt,
-          spendable = true,
-          delegate = AccountDelegate(setable = false, value = Some(PublicKeyHash("delegate-value"))),
+          counter = Some(currentId),
+          delegate = Some(Right(PublicKeyHash("delegate-value"))),
           script = Some(Contracts(Micheline("storage"), Micheline("script"))),
-          counter = currentId
+          manager = None,
+          spendable = None,
+          isBaker = None,
+          isActivated = None
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel)
+    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None)
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -84,11 +92,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
               delegated_contracts = List(ContractId(accountPkh)),
               delegated_balance = PositiveDecimal(rnd.nextInt()),
               deactivated = false,
-              grace_period = rnd.nextInt()
+              grace_period = rnd.nextInt(),
+              rolls = None
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel)
+    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -241,7 +250,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
         activeProposal = None,
         baker = Some(generateHash(10)),
         nonceHash = Some(generateHash(10)),
-        consumedGas = Some(0)
+        consumedGas = Some(0),
+        utcYear = 1970,
+        utcMonth = 1,
+        utcDay = 1,
+        utcTime = "00:00:00"
       )
 
     //we need somewhere to start with
@@ -316,7 +329,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
         blockLevel = block.level,
         timestamp = block.timestamp,
         level = Some(block.level),
-        internal = false
+        internal = false,
+        utcYear = 1970,
+        utcMonth = 1,
+        utcDay = 1,
+        utcTime = "00:00:00"
       )
     }
 
@@ -333,7 +350,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
           blockLevel = block.level,
           timestamp = new Timestamp(block.timestamp.getTime + index),
           level = Some(block.level),
-          internal = false
+          internal = false,
+          utcYear = 1970,
+          utcMonth = 1,
+          utcDay = 1,
+          utcTime = "00:00:00"
         )
     }
 
@@ -345,13 +366,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
       AccountsRow(
         accountId = String valueOf currentId,
         blockId = block.hash,
-        manager = "manager",
-        spendable = true,
-        delegateSetable = false,
-        delegateValue = None,
-        counter = 0,
-        script = None,
-        balance = 0
+        balance = 0,
+        counter = Some(0),
+        script = None
       )
     }.toList
 
@@ -466,6 +483,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       Endorsement(
         level = 182308,
         metadata = EndorsementMetadata(
+          slot = None,
           slots = List(29, 27, 20, 17),
           delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
           balance_updates = List(
@@ -535,7 +553,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleReveal =
       Reveal(
-        source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+        source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
         fee = PositiveDecimal(10000),
         counter = PositiveDecimal(1),
         gas_limit = PositiveDecimal(10000),
@@ -570,14 +588,15 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleTransaction =
       Transaction(
-        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
         fee = PositiveDecimal(1416),
         counter = PositiveDecimal(407940),
         gas_limit = PositiveDecimal(11475),
         storage_limit = PositiveDecimal(0),
         amount = PositiveDecimal(0),
         destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-        parameters = Some(Micheline("""{"string":"world"}""")),
+        parameters = Some(Left(Parameters(Micheline("""{"string":"world"}""")))),
+        parameters_micheline = None,
         metadata = ResultMetadata(
           balance_updates = List(
             BalanceUpdate(
@@ -604,7 +623,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             storage_size = Some(Decimal(46)),
             allocated_destination_contract = None,
             balance_updates = None,
-            big_map_diff = None,
+            big_map_diff = Some(List.empty),
             originated_contracts = None,
             paid_storage_size_diff = None,
             errors = None
@@ -614,12 +633,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleOrigination =
       Origination(
-        source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
         fee = PositiveDecimal(1441),
         counter = PositiveDecimal(407941),
         gas_limit = PositiveDecimal(11362),
         storage_limit = PositiveDecimal(323),
-        manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+        manager_pubkey = None,
         balance = PositiveDecimal(1000000),
         spendable = Some(false),
         delegatable = Some(false),
@@ -646,6 +665,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
           ),
           operation_result = OperationResult.Origination(
             status = "applied",
+            big_map_diff = Some(List.empty),
             balance_updates = Some(
               List(
                 BalanceUpdate(
@@ -693,7 +713,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleDelegation =
       Delegation(
-        source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+        source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
         fee = PositiveDecimal(1400),
         counter = PositiveDecimal(2),
         gas_limit = PositiveDecimal(10100),
@@ -730,7 +750,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       Ballot(
         ballot = Vote("yay"),
         proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
-        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+        source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+        period = Some(0)
       )
 
     val sampleProposals =
@@ -743,6 +764,101 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val sampleOperations =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
           DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
+
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Originations
+      */
+    def updateOperationsWithBigMapAllocation(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
+    ): List[Operation] => List[Operation] = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      //applies to the alloc diffs nested within originations
+      updateOperationsToBigMapDiff[Contract.BigMapAlloc](
+        diffGenerate,
+        selectOrigination composeLens originationResult composeOptional originationBigMapDiffs
+      )
+    }
+
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Transacions
+      */
+    def updateOperationsWithBigMapUpdate(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
+    ): List[Operation] => List[Operation] = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      //applies to the update diffs nested within transactions
+      updateOperationsToBigMapDiff[Contract.BigMapUpdate](
+        diffGenerate,
+        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      )
+    }
+
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Transactions
+      */
+    def updateOperationsWithBigMapCopy(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapCopy]
+    ): List[Operation] => List[Operation] = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      //applies to the update diffs nested within transactions
+      updateOperationsToBigMapDiff[Contract.BigMapCopy](
+        diffGenerate,
+        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      )
+    }
+
+    /** Converts operations in a list by selectively adding
+      * BigMapAlloc within it's results.
+      * The selection is made by passing a partial function that generates
+      * the allocation element only for certain operations.
+      * In this case the generation needs happen only for Transacions
+      */
+    def updateOperationsWithBigMapRemove(
+        diffGenerate: PartialFunction[Operation, Contract.BigMapRemove]
+    ): List[Operation] => List[Operation] = {
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+
+      //applies to the update diffs nested within transactions
+      updateOperationsToBigMapDiff[Contract.BigMapRemove](
+        diffGenerate,
+        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+      )
+    }
+
+    /* Scans a list of operations to apply a specific BigMapDiff in the
+     * results, of selected ones
+     * @param diffGenerate is a custom function that, based on the specific operation of interests
+     *        provides the BigMapDiff value to set in the operation results
+     * @param diffSetter is an optic `Optional` type which allows to directly inject
+     *        a value inside a deeply nested structure, corresponding to a specific operation type
+     * @return the updated operations
+     */
+    private def updateOperationsToBigMapDiff[Diff <: Contract.BigMapDiff](
+        diffGenerate: PartialFunction[Operation, Diff],
+        diffSetter: Optional[Operation, List[Contract.CompatBigMapDiff]]
+    )(operations: List[Operation]): List[Operation] =
+      operations.map { op =>
+        // applies the function to create a possible value to set on each individual operation
+        val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
+
+        //sets the diff value list in the optional field of the operation if there's something, or returns the unchanged operation
+        maybeDiff.fold(op) { diff =>
+          val diffFieldValue = Left(diff) //look at how CompatBigMapDiff is defined
+          diffSetter.modify(diffs => diffFieldValue :: diffs)(op)
+        }
+      }
 
   }
 

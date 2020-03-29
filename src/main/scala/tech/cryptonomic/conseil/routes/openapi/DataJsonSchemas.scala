@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, OperationG
 trait DataJsonSchemas extends generic.JsonSchemas {
 
   /** API field schema */
-  implicit val fieldSchema: JsonSchema[Field] //=
+  implicit val fieldSchema: JsonSchema[Field]
 
   implicit lazy val formattedFieldSchema: JsonSchema[FormattedField] =
     genericJsonSchema[FormattedField]
@@ -115,5 +115,9 @@ trait DataJsonSchemas extends generic.JsonSchemas {
   /** api operation results schema for accounts */
   implicit lazy val accountResultSchema: JsonSchema[AccountResult] =
     genericJsonSchema[AccountResult]
+
+  /** Snapshot schema */
+  implicit lazy val snapshotSchema: JsonSchema[Snapshot] =
+    genericJsonSchema[Snapshot]
 
 }

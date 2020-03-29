@@ -1,13 +1,13 @@
 package tech.cryptonomic.conseil.tezos
 
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
 
-import org.scalatest.{Matchers, OptionValues, WordSpec}
+import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 
-class TezosTypesTest extends WordSpec with Matchers with OptionValues {
+class TezosTypesTest extends WordSpec with Matchers with OptionValues with EitherValues {
 
   val sut = TezosTypes
 
@@ -51,20 +51,27 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
   "The Syntax import" should {
       "allow building Block-tagged generic data" in {
         import TezosTypes.Syntax._
-
+        val someTime = Some(Instant.ofEpochMilli(0))
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        content.taggedWithBlock(hash, level) shouldEqual BlockTagged(hash, level, content)
+        content.taggedWithBlock(hash, level, someTime, None) shouldEqual BlockTagged(
+          hash,
+          level,
+          someTime,
+          None,
+          content
+        )
       }
     }
 
   "The BlockTagged wrapper" should {
       "convert to a tuple" in {
+        val someTime = Some(Instant.ofEpochMilli(0))
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        BlockTagged(hash, level, content).asTuple shouldEqual (hash, level, content)
+        BlockTagged(hash, level, someTime, None, content).asTuple shouldEqual (hash, level, someTime, None, content)
       }
     }
 
@@ -105,19 +112,20 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
         number,
         number,
         number,
+        PublicKeyHash("_"),
         ContractId("_"),
-        ContractId("_"),
+        None,
         None,
         ResultMetadata(null, List.empty)
       )
       val origination = Origination(
         number,
         number,
-        ContractId("_"),
-        number,
-        number,
-        number,
         PublicKeyHash("_"),
+        number,
+        number,
+        number,
+        None,
         None,
         None,
         None,
@@ -127,7 +135,8 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
       "modify parameters with monocle's lenses" in {
         // given
-        val modifiedTransaction = transaction.copy(parameters = Some(Micheline("micheline script")))
+        val modifiedTransaction =
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script"), Some("default")))))
         val modifiedOperations = List(operationGroup.copy(contents = origination :: modifiedTransaction :: Nil))
 
         val block = Block(blockData, modifiedOperations, blockVotes)
@@ -140,7 +149,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Transaction =>
-            op.parameters.head.expression shouldEqual "MICHELINE SCRIPT"
+            op.parameters.head.left.value.value.expression shouldEqual "MICHELINE SCRIPT"
           case _ =>
         }
       }
@@ -194,15 +203,14 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "allow to read existing code within an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = PublicKeyHash("_"),
           balance = 0L,
-          spendable = false,
-          delegate = AccountDelegate(
-            setable = false,
-            value = None
-          ),
+          counter = Some(0),
+          delegate = None,
           script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
-          counter = 0
+          manager = None,
+          spendable = None,
+          isBaker = None,
+          isActivated = None
         )
 
         sut.scriptLens.getOption(account).value shouldBe "Some code here"
@@ -211,15 +219,14 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "read None if there's no script in an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = PublicKeyHash("_"),
           balance = 0L,
-          spendable = false,
-          delegate = AccountDelegate(
-            setable = false,
-            value = None
-          ),
+          counter = Some(0),
+          delegate = None,
           script = None,
-          counter = 0
+          manager = None,
+          spendable = None,
+          isBaker = None,
+          isActivated = None
         )
 
         sut.scriptLens.getOption(account) shouldBe 'empty
@@ -228,15 +235,14 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues {
       "allow to update an existing script within an account" in {
         val sut = TezosOptics.Accounts
         val account = Account(
-          manager = PublicKeyHash("_"),
           balance = 0L,
-          spendable = false,
-          delegate = AccountDelegate(
-            setable = false,
-            value = None
-          ),
+          counter = Some(0),
+          delegate = None,
           script = Some(Contracts(storage = Micheline("storage code"), code = Micheline("Some code here"))),
-          counter = 0
+          manager = None,
+          spendable = None,
+          isBaker = None,
+          isActivated = None
         )
 
         val updated = sut.scriptLens.modify(old => old + "; new code")(account)

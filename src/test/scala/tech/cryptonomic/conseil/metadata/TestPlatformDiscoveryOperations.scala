@@ -26,16 +26,15 @@ class TestPlatformDiscoveryOperations extends PlatformDiscoveryOperations {
     attributes = attributes :+ attribute
   }
 
-  override def getTableAttributes(tableName: String): Future[Option[List[Attribute]]] = this.synchronized {
-    Future.successful(Some(attributes.filter(_.entity == tableName)))
+  override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] = this.synchronized {
+    Future.successful(Some(attributes.filter(_.entity == entityPath.entity)))
   }
 
-  override def getTableAttributesWithoutUpdatingCache(tableName: String): Future[Option[List[Attribute]]] =
-    getTableAttributes(tableName)
+  override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
+    getTableAttributes(entityPath)
 
   override def listAttributeValues(
-      tableName: String,
-      column: String,
+      attributePath: AttributePath,
       withFilter: Option[String],
       attributesCacheConfig: Option[PlatformDiscoveryTypes.AttributeCacheConfiguration]
   ): Future[Either[List[DataTypes.AttributesValidationError], List[String]]] = ???

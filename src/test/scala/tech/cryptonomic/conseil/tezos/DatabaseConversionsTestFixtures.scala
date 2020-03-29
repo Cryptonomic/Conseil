@@ -6,6 +6,11 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 
 trait DBConversionsData {
 
+  val sampleOperationResultsErrors = List(
+    OperationResult.Error("""{"id":"error1", "kind":"permanent"}"""),
+    OperationResult.Error("""{"id":"error2", "kind":"temporary"}""")
+  )
+
   val sampleScriptedContract =
     Scripted.Contracts(
       code = Micheline(
@@ -18,6 +23,7 @@ trait DBConversionsData {
     Endorsement(
       level = 182308,
       metadata = EndorsementMetadata(
+        slot = None,
         slots = List(29, 27, 20, 17),
         delegate = PublicKeyHash("tz1fyvFH2pd3V9UEq5psqVokVBYkt7rHTKio"),
         balance_updates = List(
@@ -87,7 +93,7 @@ trait DBConversionsData {
 
   val sampleReveal =
     Reveal(
-      source = ContractId("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+      source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
       fee = PositiveDecimal(10000),
       counter = PositiveDecimal(1),
       gas_limit = PositiveDecimal(10000),
@@ -115,21 +121,22 @@ trait DBConversionsData {
         operation_result = OperationResult.Reveal(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
 
   val sampleTransaction =
     Transaction(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1416),
       counter = PositiveDecimal(407940),
       gas_limit = PositiveDecimal(11475),
       storage_limit = PositiveDecimal(0),
       amount = PositiveDecimal(0),
       destination = ContractId("KT1CkkM5tYe9xRMQMbnayaULGoGaeBUH2Riy"),
-      parameters = Some(Micheline("""{"string":"world"}""")),
+      parameters = Some(Left(Parameters(Micheline("""{"string":"world"}"""), Some("default")))),
+      parameters_micheline = None,
       metadata = ResultMetadata(
         balance_updates = List(
           BalanceUpdate(
@@ -159,19 +166,19 @@ trait DBConversionsData {
           big_map_diff = None,
           originated_contracts = None,
           paid_storage_size_diff = None,
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
 
   val sampleOrigination =
     Origination(
-      source = ContractId("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
       fee = PositiveDecimal(1441),
       counter = PositiveDecimal(407941),
       gas_limit = PositiveDecimal(11362),
       storage_limit = PositiveDecimal(323),
-      manager_pubkey = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+      manager_pubkey = None,
       balance = PositiveDecimal(1000000),
       spendable = Some(false),
       delegatable = Some(false),
@@ -198,6 +205,7 @@ trait DBConversionsData {
         ),
         operation_result = OperationResult.Origination(
           status = "applied",
+          big_map_diff = None,
           balance_updates = Some(
             List(
               BalanceUpdate(
@@ -240,14 +248,14 @@ trait DBConversionsData {
           consumed_gas = Some(Decimal(11262)),
           storage_size = Some(Decimal(46)),
           paid_storage_size_diff = Some(Decimal(46)),
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
 
   val sampleDelegation =
     Delegation(
-      source = ContractId("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
+      source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
       fee = PositiveDecimal(1400),
       counter = PositiveDecimal(2),
       gas_limit = PositiveDecimal(10100),
@@ -275,7 +283,7 @@ trait DBConversionsData {
         operation_result = OperationResult.Delegation(
           status = "applied",
           consumed_gas = Some(Decimal(10000)),
-          errors = None
+          errors = Some(sampleOperationResultsErrors)
         )
       )
     )
@@ -284,7 +292,8 @@ trait DBConversionsData {
     Ballot(
       ballot = Vote("yay"),
       proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
-      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72"))
+      source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
+      period = Some(0)
     )
 
   val sampleProposals =
