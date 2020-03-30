@@ -36,7 +36,8 @@ trait Tables {
     Operations.schema,
     OriginatedAccountMaps.schema,
     ProcessedChainEvents.schema,
-    RegisteredTokens.schema
+    RegisteredTokens.schema,
+    TokenBalances.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
@@ -2381,4 +2382,83 @@ trait Tables {
 
   /** Collection-like TableQuery object for table RegisteredTokens */
   lazy val RegisteredTokens = new TableQuery(tag => new RegisteredTokens(tag))
+
+  /** Entity class storing rows of table TokenBalances
+    *  @param tokenId Database column token_id SqlType(int4)
+    *  @param address Database column address SqlType(text)
+    *  @param balance Database column balance SqlType(numeric)
+    *  @param blockId Database column block_id SqlType(varchar)
+    *  @param blockLevel Database column block_level SqlType(numeric), Default(-1)
+    *  @param asof Database column asof SqlType(timestamp) */
+  case class TokenBalancesRow(
+      tokenId: Int,
+      address: String,
+      balance: scala.math.BigDecimal,
+      blockId: String,
+      blockLevel: scala.math.BigDecimal = scala.math.BigDecimal("-1"),
+      asof: java.sql.Timestamp
+  )
+
+  /** GetResult implicit for fetching TokenBalancesRow objects using plain SQL queries */
+  implicit def GetResultTokenBalancesRow(
+      implicit e0: GR[Int],
+      e1: GR[String],
+      e2: GR[scala.math.BigDecimal],
+      e3: GR[java.sql.Timestamp]
+  ): GR[TokenBalancesRow] = GR { prs =>
+    import prs._
+    TokenBalancesRow.tupled(
+      (<<[Int], <<[String], <<[scala.math.BigDecimal], <<[String], <<[scala.math.BigDecimal], <<[java.sql.Timestamp])
+    )
+  }
+
+  /** Table description of table token_balances. Objects of this class serve as prototypes for rows in queries. */
+  class TokenBalances(_tableTag: Tag)
+      extends profile.api.Table[TokenBalancesRow](_tableTag, Some("tezos"), "token_balances") {
+    def * =
+      (tokenId, address, balance, blockId, blockLevel, asof) <> (TokenBalancesRow.tupled, TokenBalancesRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(tokenId),
+          Rep.Some(address),
+          Rep.Some(balance),
+          Rep.Some(blockId),
+          Rep.Some(blockLevel),
+          Rep.Some(asof)
+        )
+      ).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column token_id SqlType(int4) */
+    val tokenId: Rep[Int] = column[Int]("token_id")
+
+    /** Database column address SqlType(text) */
+    val address: Rep[String] = column[String]("address")
+
+    /** Database column balance SqlType(numeric) */
+    val balance: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("balance")
+
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+
+    /** Database column block_level SqlType(numeric), Default(-1) */
+    val blockLevel: Rep[scala.math.BigDecimal] =
+      column[scala.math.BigDecimal]("block_level", O.Default(scala.math.BigDecimal("-1")))
+
+    /** Database column asof SqlType(timestamp) */
+    val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+
+    /** Primary key of TokenBalances (database name token_balances_pkey) */
+    val pk = primaryKey("token_balances_pkey", (tokenId, address, blockLevel))
+  }
+
+  /** Collection-like TableQuery object for table TokenBalances */
+  lazy val TokenBalances = new TableQuery(tag => new TokenBalances(tag))
 }

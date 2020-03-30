@@ -68,8 +68,10 @@ libraryDependencies ++= Seq(
   "com.github.scopt"             %% "scopt"                         % "4.0.0-RC2",
   "io.scalaland"                 %% "chimney"                       % "0.3.1",
   "com.madgag.spongycastle"      % "core"                           % "1.58.0.0",
-  "org.scorexfoundation"         %% "scrypto"                       % "2.0.0",
+  "org.scorexfoundation"         %% "scrypto"                       % "2.1.7",
+  "org.scorexfoundation"         %% "scorex-util"                   % "0.1.6",
   "com.muquit.libsodiumjna"      % "libsodium-jna"                  % "1.0.4" exclude ("org.slf4j", "slf4j-log4j12") exclude ("org.slf4j", "slf4j-api"),
+  "net.java.dev.jna"             % "jna"                            % "5.5.0", //see https://github.com/muquit/libsodium-jna/#update-your-projects-pomxml
   "com.github.alanverbner"       %% "bip39"                         % "0.1",
   "com.rklaehn"                  %% "radixtree"                     % "0.5.1",
   "com.nrinaudo"                 %% "kantan.csv-generic"            % kantanCsvVersion,

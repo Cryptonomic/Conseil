@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.tezos
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations._
-import tech.cryptonomic.conseil.util.Conversion
+import tech.cryptonomic.conseil.util.{Conversion, JsonUtil}
 import cats.{Id, Show}
 import cats.implicits._
 import java.sql.Timestamp
@@ -17,6 +17,7 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
 import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 object DatabaseConversions extends LazyLogging {
 
@@ -95,6 +96,26 @@ object DatabaseConversions extends LazyLogging {
       .lift(block)
       .map(_.level.voting_period)
 
+  /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
+    * in a form more amenable to processing
+    * @param block the block to inspect
+    * @return a Map holding for each group both external and internal operations' results
+    */
+  private def extractOperationsAlongWithInternalResults(
+      block: Block
+  ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
+    block.operationGroups.map { group =>
+      val internal = group.contents.flatMap { op =>
+        op match {
+          case r: Reveal => r.metadata.internal_operation_results.toList.flatten
+          case t: Transaction => t.metadata.internal_operation_results.toList.flatten
+          case o: Origination => o.metadata.internal_operation_results.toList.flatten
+          case d: Delegation => d.metadata.internal_operation_results.toList.flatten
+          case _ => List.empty
+        }
+      }
+      group -> (group.contents, internal)
+    }.toMap
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -688,7 +709,7 @@ object DatabaseConversions extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.OperationBalances._
 
     override def convert(from: Block) =
-      extractOperationsWithInternalResults(from).flatMap {
+      extractOperationsAlongWithInternalResults(from).flatMap {
         case (group, (operations, internalResults)) =>
           val mainOperationData = operations.map(
             op =>
@@ -699,31 +720,13 @@ object DatabaseConversions extends LazyLogging {
             val op = oop.convertTo[Operation]
             (from, group.hash, op)
               .convertTo[Tables.OperationsRow]
-              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op.convertToA[List, Tables.BalanceUpdatesRow]
+              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op
+              .convertToA[List, Tables.BalanceUpdatesRow]
           }
           mainOperationData ++ internalOperationData
       }.toList
 
   }
-
-  /* Utility extractor that collects, for a block, both operations and internal operations results, grouped
-   * in a from more amenable to processing
-   */
-  private def extractOperationsWithInternalResults(
-      block: Block
-  ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
-    block.operationGroups.map { group =>
-      val internal = group.contents.flatMap { op =>
-        op match {
-          case r: Reveal => r.metadata.internal_operation_results.toList.flatten
-          case t: Transaction => t.metadata.internal_operation_results.toList.flatten
-          case o: Origination => o.metadata.internal_operation_results.toList.flatten
-          case d: Delegation => d.metadata.internal_operation_results.toList.flatten
-          case _ => List.empty
-        }
-      }
-      group -> (group.contents, internal)
-    }.toMap
 
   implicit private val bigMapDiffToBigMapRow =
     new Conversion[Option, BlockBigMapDiff, Tables.BigMapsRow] {
@@ -841,7 +844,7 @@ object DatabaseConversions extends LazyLogging {
 
     override def convert(from: TezosTypes.Block): List[Tables.BigMapsRow] = {
 
-      val (ops, intOps) = extractOperationsWithInternalResults(from).values.unzip
+      val (ops, intOps) = extractOperationsAlongWithInternalResults(from).values.unzip
 
       val extractDiffsToRows = (originationResult: OperationResult.Origination) =>
         originationResult.big_map_diff.toList.flatten
@@ -875,7 +878,7 @@ object DatabaseConversions extends LazyLogging {
     def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     override def convert(from: TezosTypes.Block): List[Tables.BigMapContentsRow] = {
-      val (ops, intOps) = extractOperationsWithInternalResults(from).values.unzip
+      val (ops, intOps) = extractOperationsAlongWithInternalResults(from).values.unzip
 
       val extractDiffsToRows = (transactionResult: OperationResult.Transaction) =>
         transactionResult.big_map_diff.toList.flatten
@@ -909,7 +912,7 @@ object DatabaseConversions extends LazyLogging {
     def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     override def convert(from: TezosTypes.Block): List[Tables.OriginatedAccountMapsRow] = {
-      val (ops, intOps) = extractOperationsWithInternalResults(from).values.unzip
+      val (ops, intOps) = extractOperationsAlongWithInternalResults(from).values.unzip
 
       val extractDiffsToRows = (originationResult: OperationResult.Origination) =>
         for {
@@ -934,6 +937,93 @@ object DatabaseConversions extends LazyLogging {
         }
     }
   }
+
+  case class BlockTokenBalances(block: Block, tokenContractId: ContractId, accountId: AccountId, balance: BigInt)
+
+  implicit def blockToTokenBalanceUpdates(implicit tokenContracts: TokenContracts) =
+    new Conversion[List, Block, BlockTokenBalances] {
+      def convert(from: TezosTypes.Block): List[BlockTokenBalances] = {
+
+        //we'll use this to dig into the transaction results and reach for the updates
+        val extractDiffs = (transactionResult: OperationResult.Transaction) =>
+          transactionResult.big_map_diff
+            .fold(ifEmpty = List.empty[Contract.BigMapUpdate]) {
+              _.collect { case Left(diff: Contract.BigMapUpdate) => diff }
+            }
+
+        //we'll use this to get out any address-looking string from the transaction params
+        val extractAddresses = (transactionParams: Micheline) => {
+          transactionParams.expression match {
+            case JsonUtil.AccountIds(id, ids @ _*) =>
+              (id :: ids.toList).distinct.map(AccountId)
+            case _ =>
+              List.empty[AccountId]
+          }
+        }
+
+        //focus on the micheline value
+        val readParams: Option[ParametersCompatibility] => Option[Micheline] =
+          _ map {
+              case Left(Parameters(micheline, _)) => micheline
+              case Right(micheline) => micheline
+            }
+
+        val (ops, intOps) = extractOperationsAlongWithInternalResults(from).values.unzip
+
+        /* Extracted potential accounts from the transactions
+         * we'll use this as a directory to look for addresses involved in
+         * the token exchange operation
+         */
+        val addressesInvolved: Set[AccountId] =
+          (
+            ops.toList.flatten.collect {
+              case op: Transaction if tokenContracts.isKnownToken(op.destination) =>
+                readParams(op.parameters).toList.flatMap(extractAddresses)
+            } ++
+                intOps.toList.flatten.collect {
+                  case intOp: InternalOperationResults.Transaction if tokenContracts.isKnownToken(intOp.destination) =>
+                    readParams(intOp.parameters).toList.flatMap(extractAddresses)
+                }
+          ).combineAll.toSet
+
+        val contractUpdates: List[(ContractId, List[Contract.BigMapUpdate])] =
+          ops.toList.flatten.collect {
+            case op: Transaction if tokenContracts.isKnownToken(op.destination) =>
+              op.destination -> extractDiffs(op.metadata.operation_result)
+          } ++
+              intOps.toList.flatten.collect {
+                case intOp: InternalOperationResults.Transaction if tokenContracts.isKnownToken(intOp.destination) =>
+                  intOp.destination -> extractDiffs(intOp.result)
+              }
+
+        //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
+        val tokenTransactions: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
+          case (tokenId, updates) =>
+            val bigMapToTokenTransaction: Contract.BigMapUpdate => Option[TokenContracts.BalanceUpdate] =
+              tokenContracts.readBalance(tokenId)
+            val tokenUpdates = updates.map(bigMapToTokenTransaction).flattenOption
+            tokenId -> tokenUpdates
+        }
+
+        if (contractUpdates.nonEmpty) {
+          logger.info(
+            """A known token contract was invoked, converting to database rows
+              |Updates to big maps: {}
+              |Addresses involved in the transaction: {}
+              |Token balance changes to store: {}""".stripMargin,
+            contractUpdates,
+            addressesInvolved,
+            tokenTransactions
+          )
+        }
+
+        for {
+          (tokenId, balanceChanges) <- tokenTransactions
+          (scriptId, newBalance) <- balanceChanges
+          accountId <- addressesInvolved.find(TokenContracts.hashCheck(scriptId))
+        } yield BlockTokenBalances(from, tokenId, accountId, newBalance)
+      }
+    }
 
   implicit val blockAccountsAssociationToCheckpointRow =
     new Conversion[List, (BlockHash, Int, Option[Instant], Option[Int], List[AccountId]), Tables.AccountsCheckpointRow] {

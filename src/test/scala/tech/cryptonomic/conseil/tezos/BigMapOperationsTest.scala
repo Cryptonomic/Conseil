@@ -14,13 +14,15 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Operation,
   OperationsGroup,
   Origination,
+  Parameters,
   ScriptId,
   Transaction
 }
-import tech.cryptonomic.conseil.tezos.Tables.BigMapContentsRow
-import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
+import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
-import tech.cryptonomic.conseil.tezos.Tables.OriginatedAccountMapsRow
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.TezosTypes.ContractId
+import java.sql.Timestamp
 
 class BigMapOperationsTest
     extends WordSpec
@@ -157,6 +159,7 @@ class BigMapOperationsTest
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
+        implicit val noTokenContract = TokenContracts.fromTokens(List.empty)
         val writeAndGetRows = sut.saveContractOrigin(blockToSave :: Nil) andThen Tables.OriginatedAccountMaps.result
 
         val accounts = dbHandler.run(writeAndGetRows.transactionally).futureValue
@@ -175,6 +178,93 @@ class BigMapOperationsTest
               bigMapId = BigDecimal(1),
               accountId = id
             )
+        )
+
+      }
+
+      "save token balance updates for corresponding big map updates on transactions to a token contract" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val tokenAddress = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val tokenMap = 1
+        //this should match with the key data in the big map diff, after being encoded correctly
+        val targetAccount = "tz1b2icJC4E7Y2ED1xsZXuqYpF7cxHDtduuP"
+
+        //use combinators defined in the fixtures to update big_map_diff values and more within lists of operations
+        val updateMap: ListTransf[Operation] = Operations.updateOperationsWithBigMapUpdate {
+          case (_: Transaction) =>
+            Contract.BigMapUpdate(
+              action = "update",
+              big_map = Decimal(tokenMap),
+              key = Micheline("""{"bytes":"0000a8d45bdc966ddaaac83188a1e1c1fde2a3e05e5c"}"""),
+              key_hash = ScriptId("exprvKTBQDAyXTMRc36TsLBsj9y5GXo1PD529MfF8zDV1pVzNNgehs"),
+              value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
+            )
+        }
+
+        //we're gonna direct any sample transaction to the token contract, referring to a test account
+        val updateTransactionDestination: ListTransf[Operation] = Operations.modifyTransactions {
+          case transaction =>
+            transaction.copy(
+              destination = tokenAddress,
+              //we only need the address, as a valid json string, to be in the param string
+              parameters = Some(Left(Parameters(Micheline(s""""$targetAccount""""))))
+            )
+        }
+
+        //we need this to be referred as a FK from the content record
+        val initialBigMap = BigMapsRow(
+          bigMapId = BigDecimal(tokenMap),
+          keyType = Some("address"),
+          valueType = Some("pair (nat :balance) (map :approvals (address :spender) (nat :value))")
+        )
+
+        val block = generateSingleBlock(1, testReferenceDateTime)
+        val sampleOperations = generateOperationGroup(block, generateOperations = true)
+        val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
+            contents = (updateTransactionDestination andThen updateMap)(sampleOperations.contents)
+          ) :: Nil
+
+        val blockToSave = block.copy(operationGroups = operationsWithDiffs)
+
+        //prepare the token registry
+
+        val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id)
+
+        implicit val fa12Tokens = TokenContracts.fromTokens(List(tokenAddress -> "FA1.2"))
+        fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))
+
+        val bmu = Contract.BigMapUpdate(
+          action = "update",
+          big_map = Decimal(tokenMap),
+          key = Micheline("""{"bytes":"0000a8d45bdc966ddaaac83188a1e1c1fde2a3e05e5c"}"""),
+          key_hash = ScriptId("exprvKTBQDAyXTMRc36TsLBsj9y5GXo1PD529MfF8zDV1pVzNNgehs"),
+          value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
+        )
+        logger.info("*** testing if balance reads: {}", fa12Tokens.readBalance(tokenAddress)(bmu))
+        //when
+        val writeAndGetRows = for {
+          _ <- Tables.RegisteredTokens += registeredToken
+          _ <- Tables.BigMaps += initialBigMap
+          _ <- sut.updateTokenBalances(blockToSave :: Nil)
+          contents <- Tables.TokenBalances.result
+        } yield contents
+
+        val tokenUpdates = dbHandler.run(writeAndGetRows).futureValue
+
+        //then
+        tokenUpdates should have size 1
+
+        tokenUpdates(0) should matchTo(
+          TokenBalancesRow(
+            tokenId = registeredToken.id,
+            address = targetAccount,
+            balance = BigDecimal(50),
+            blockId = blockToSave.data.hash.value,
+            blockLevel = blockToSave.data.header.level,
+            asof = Timestamp.from(blockToSave.data.header.timestamp.toInstant)
+          )
         )
 
       }

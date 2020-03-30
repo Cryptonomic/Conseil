@@ -9,6 +9,7 @@ import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 class ApiOperationsTest
     extends WordSpec
@@ -22,6 +23,8 @@ class ApiOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "ApiOperationsTest" should {
+      implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
+
       val sut = new ApiOperations {
         override lazy val dbReadHandle = dbHandler
       }
