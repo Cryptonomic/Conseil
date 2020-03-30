@@ -106,7 +106,6 @@ object Conseil
 
       lazy val transformation = new UnitTransformation(metadataOverrides)
       lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
-      lazy val routeUtil = new RouteUtil()
 
 
     lazy val tezosPlatformDiscoveryOperations =
@@ -152,6 +151,8 @@ object Conseil
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
     lazy val data = Data(metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
+    implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
+    lazy val routeUtil = new RouteUtil
 
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
       apiKeyTuple =>
@@ -184,7 +185,7 @@ object Conseil
           implicit val correlationId: UUID = UUID.randomUUID()
           handleExceptions(loggingExceptionHandler) {
             extractClientIP { ip =>
-              recordResponseValues(ip)(materializer, correlationId) {
+              recordResponseValues(ip)(mat, correlationId) {
                 timeoutHandler {
                   concat(
                     validateApiKey { _ =>
@@ -209,14 +210,14 @@ object Conseil
               }
             }
           }
+        }
       }
     )
 
     val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
     displayInfo(server)
     if (verbose.on) displayConfiguration(platforms)
+        bindingFuture
 
-    bindingFuture
   }
-
 }
