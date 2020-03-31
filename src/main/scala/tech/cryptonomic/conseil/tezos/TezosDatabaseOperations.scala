@@ -553,25 +553,6 @@ object TezosDatabaseOperations extends LazyLogging {
       }
 
   /** Gets ballot operations for given level */
-  def getBallotOperationsCountForLevel(level: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
-    Tables.Operations
-      .filter(op => op.kind === "ballot" && op.level === level)
-      .groupBy(_.ballot)
-      .map {
-        case (vote, ops) => vote -> ops.length
-      }
-      .result
-      .map { res =>
-        val (yaysCount, naysCount, passesCount) = res.foldLeft(0, 0, 0) {
-          case ((_, nays, passes), (Some("yay"), count)) => (count, nays, passes)
-          case ((yays, _, passes), (Some("nay"), count)) => (yays, count, passes)
-          case ((yays, nays, _), (Some("pass"), count)) => (yays, nays, count)
-          case (acc, _) => acc
-        }
-        Voting.BallotCounts(yaysCount, naysCount, passesCount)
-      }
-
-  /** Gets ballot operations for given level */
   def getBallotOperationsForLevel(level: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.level === level)
