@@ -159,7 +159,7 @@ class BigMapOperationsTest
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
-        implicit val noTokenContract = TokenContracts.fromTokens(List.empty)
+        implicit val noTokenContract = TokenContracts.fromConfig(List.empty)
         val writeAndGetRows = sut.saveContractOrigin(blockToSave :: Nil) andThen Tables.OriginatedAccountMaps.result
 
         val accounts = dbHandler.run(writeAndGetRows.transactionally).futureValue
@@ -232,7 +232,7 @@ class BigMapOperationsTest
 
         val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id)
 
-        implicit val fa12Tokens = TokenContracts.fromTokens(List(tokenAddress -> "FA1.2"))
+        implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "FA1.2"))
         fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))
 
         val bmu = Contract.BigMapUpdate(

@@ -52,7 +52,7 @@ class TezosPlatformDiscoveryOperationsTest
   }
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
-  implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
+  implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
 
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)

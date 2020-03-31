@@ -23,7 +23,7 @@ class ApiOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "ApiOperationsTest" should {
-      implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
+      implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
 
       val sut = new ApiOperations {
         override lazy val dbReadHandle = dbHandler

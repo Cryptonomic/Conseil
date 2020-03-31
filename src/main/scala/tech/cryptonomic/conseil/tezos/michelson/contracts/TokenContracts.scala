@@ -107,7 +107,7 @@ object TokenContracts extends LazyLogging {
     *
     * @param knownTokens the pair of contract and standard used, the latter as a String
     */
-  def fromTokens(knownTokens: List[(ContractId, String)]): TokenContracts = {
+  def fromConfig(knownTokens: List[(ContractId, String)]): TokenContracts = {
     logger.info("Creating a token registry from the following values: {}", knownTokens.map {
       case (cid, std) => cid.id -> std
     }.mkString(","))

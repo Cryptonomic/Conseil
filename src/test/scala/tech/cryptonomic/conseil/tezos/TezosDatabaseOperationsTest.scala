@@ -40,7 +40,7 @@ class TezosDatabaseOperationsTest
 
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
-      implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
+      implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
 
       val sut = TezosDatabaseOperations
       val feesToConsider = 1000
