@@ -98,6 +98,12 @@ yay_rolls numeric,
 nay_rolls numeric,
 pass_rolls numeric,
 total_rolls numeric,
+block_yay_count integer,
+block_nay_count integer,
+block_pass_count integer,
+block_yay_rolls numeric,
+block_nay_rolls numeric,
+block_pass_rolls numeric,
 PRIMARY KEY (block_hash, proposal_hash)
 );
 
