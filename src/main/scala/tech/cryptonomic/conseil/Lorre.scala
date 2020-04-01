@@ -129,8 +129,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         logger.info(s"Got ${erResults.size} endorsing rights")
         db.run(TezosDb.updateEndorsingRightsTimestamp(erResults.toList))
       }
-      (br, er).mapN { case (bb, ee) =>
-        logger.info("Updated {} baking rights and {} endorsing rights rows", bb.sum, ee.sum)
+      (br, er).mapN {
+        case (bb, ee) =>
+          logger.info("Updated {} baking rights and {} endorsing rights rows", bb.sum, ee.sum)
       }
     }
   }

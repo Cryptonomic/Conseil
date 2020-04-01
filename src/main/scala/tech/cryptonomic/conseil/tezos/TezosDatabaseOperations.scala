@@ -463,7 +463,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Updates timestamps in the baking_rights table
     * @param bakingRights baking rights to be updated
     */
-  def updateBakingRightsTimestamp(bakingRights: List[BakingRights]): DBIO[List[Int]] = {
+  def updateBakingRightsTimestamp(bakingRights: List[BakingRights]): DBIO[List[Int]] =
     DBIO.sequence {
       bakingRights.map { upd =>
         Tables.BakingRights
@@ -472,13 +472,12 @@ object TezosDatabaseOperations extends LazyLogging {
           .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
       }
     }
-  }
 
   /**
     * Updates timestamps in the endorsing_rights table
     * @param endorsingRights endorsing rights to be updated
     */
-  def updateEndorsingRightsTimestamp(endorsingRights: List[EndorsingRights]): DBIO[List[Int]] = {
+  def updateEndorsingRightsTimestamp(endorsingRights: List[EndorsingRights]): DBIO[List[Int]] =
     DBIO.sequence {
       endorsingRights.map { upd =>
         Tables.EndorsingRights
@@ -487,7 +486,6 @@ object TezosDatabaseOperations extends LazyLogging {
           .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
       }
     }
-  }
 
   /**
     * Writes baking rights to the database
