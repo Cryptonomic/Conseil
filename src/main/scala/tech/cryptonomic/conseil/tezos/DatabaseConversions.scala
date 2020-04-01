@@ -943,6 +943,7 @@ object DatabaseConversions extends LazyLogging {
   implicit def blockToTokenBalanceUpdates(implicit tokenContracts: TokenContracts) =
     new Conversion[List, Block, BlockTokenBalances] {
       def convert(from: TezosTypes.Block): List[BlockTokenBalances] = {
+        import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 
         def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
