@@ -50,6 +50,7 @@ object PlatformDiscoveryTypes {
       valueMap: Option[Map[String, String]] = None,
       scale: Option[Int] = None,
       reference: Option[Map[String, String]] = None,
+      cacheConfig: Option[AttributeCacheConfiguration] = None,
       displayPriority: Option[Int] = None,
       displayOrder: Option[Int] = None,
       sufficientForQuery: Option[Boolean] = None,

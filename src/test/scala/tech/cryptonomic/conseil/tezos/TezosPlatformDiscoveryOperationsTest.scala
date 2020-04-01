@@ -206,7 +206,7 @@ class TezosPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "operations"
             ),
-            Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("kind", "Kind", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
@@ -269,7 +269,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
             Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
-            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.UniqueKey, "operations"),
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),

@@ -22,6 +22,10 @@ trait PlatformDiscoveryJsonSchemas extends generic.JsonSchemas {
   implicit lazy val attributeSchema: JsonSchema[Attribute] =
     genericJsonSchema[Attribute]
 
+  /** Attribute JSON schema */
+  implicit lazy val attributeCacheConfigSchema: JsonSchema[AttributeCacheConfiguration] =
+    genericJsonSchema[AttributeCacheConfiguration]
+
   /** Data type JSON schema */
   implicit lazy val dataTypeSchema: JsonSchema[DataType.Value] =
     enumeration(DataType.values.toSeq)(_.toString)
