@@ -111,6 +111,30 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     writeFutureRights()
   )
 
+  /** Updates timestamps in the baking/endorsing rights tables */
+  def updateRightsTimestamps(): Future[Unit] = {
+    import cats.implicits._
+    val blockHead = tezosNodeOperator.getBareBlockHead()
+
+    blockHead.flatMap { blockData =>
+      val headLevel = blockData.header.level
+      val blockLevelsToUpdate = List.range(headLevel + 1, headLevel + lorreConf.blockRightsFetching.updateSize)
+      val br = tezosNodeOperator.getBatchBakingRightsByLevels(blockLevelsToUpdate).flatMap { bakingRightsResult =>
+        val brResults = bakingRightsResult.values.flatten
+        logger.info(s"Got ${brResults.size} baking rights")
+        db.run(TezosDb.updateBakingRightsTimestamp(brResults.toList))
+      }
+      val er = tezosNodeOperator.getBatchEndorsingRightsByLevel(blockLevelsToUpdate).flatMap { endorsingRightsResult =>
+        val erResults = endorsingRightsResult.values.flatten
+        logger.info(s"Got ${erResults.size} endorsing rights")
+        db.run(TezosDb.updateEndorsingRightsTimestamp(erResults.toList))
+      }
+      (br, er).mapN { case (bb, ee) =>
+        logger.info("Updated {} baking rights and {} endorsing rights rows", bb.sum, ee.sum)
+      }
+    }
+  }
+
   /** Fetches future baking and endorsing rights to insert it into the DB */
   def writeFutureRights(): Unit = {
     val berLogger = LoggerFactory.getLogger("RightsFetcher")
@@ -216,6 +240,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
+      _ <- updateRightsTimestamps
     } yield Some(nextRefreshes)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
