@@ -6,8 +6,17 @@ import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.{ContractId, InternalOperationResults, Origination, Transaction}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{
+  AccountId,
+  ContractId,
+  InternalOperationResults,
+  Micheline,
+  Origination,
+  Transaction
+}
+import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -259,29 +268,62 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       blocks: List[Block]
   )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
+    import TezosOptics.Contracts.{extractAddressesFromExpression, parametersExpresssion}
+
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
 
     //we first extract all data available from the blocks themselves, as necessary to make a proper balance entry
-    val balanceData = if (logger.underlying.isDebugEnabled()) {
-      val balanceMap = blocks.map(b => b.data.hash.value -> b.convertToA[List, DatabaseConversions.BlockTokenBalances])
-      balanceMap.foreach {
-        case (hash, balances) if balances.nonEmpty =>
-          logger.debug(
-            "For block hash {}, I'm about to extract the following token balance updates from big maps: \n\t{}",
-            hash.value,
-            balances.mkString(", ")
-          )
-        case _ =>
+    val tokenUpdates = blocks.flatMap { b =>
+      val transactions = extractAppliedTransactions(b).filter {
+        case Left(op) => tokenContracts.isKnownToken(op.destination)
+        case Right(op) => tokenContracts.isKnownToken(op.destination)
       }
-      balanceMap.map(_._2).flatten
-    } else blocks.flatMap(_.convertToA[List, DatabaseConversions.BlockTokenBalances])
+
+      //collect the addresses in the transactions' params
+      val addressesInvolved: Set[AccountId] = transactions.map {
+        case Left(op) => op.parameters
+        case Right(op) => op.parameters
+      }.flattenOption
+        .map(parametersExpresssion.get)
+        .flatMap(extractAddressesFromExpression)
+        .toSet
+
+      //now extract relevant diffs for each destination
+      val updates: Map[ContractId, List[BigMapUpdate]] = transactions.map {
+        case Left(op) => op.destination -> op.metadata.operation_result.big_map_diff
+        case Right(op) => op.destination -> op.result.big_map_diff
+      }.toMap
+        .mapValues(
+          optionalDiffs =>
+            optionalDiffs.toList.flatMap(keepLatestDiffsFormat).collect {
+              case diff: Contract.BigMapUpdate => diff
+            }
+        )
+
+      if (logger.underlying.isDebugEnabled()) {
+        logger.debug(
+          "For block hash {}, I'm about to extract the token balance updates from the following big maps: \n{}",
+          b.data.hash.value,
+          updates.map {
+            case (tokenId, updates) =>
+              val updateString = updates.mkString("\t", "\n\t", "\n")
+              s"Token ${tokenId.id}:\n $updateString"
+          }.mkString("\n")
+        )
+      }
+
+      //convert packed data
+      DatabaseConversions
+        .TokenUpdatesInput(b, updates, addressesInvolved)
+        .convertToA[List, DatabaseConversions.TokenUpdate]
+    }
 
     //now we need to check on the token registry for matching contracts, to get a valid token-id as defined on the db
-    val rowOptions = balanceData.map { data =>
-      val blockData = data.block.data
+    val rowOptions = tokenUpdates.map { tokenUpdate =>
+      val blockData = tokenUpdate.block.data
 
       Tables.RegisteredTokens
-        .filter(_.accountId === data.tokenContractId.id)
+        .filter(_.accountId === tokenUpdate.tokenContractId.id)
         .map(_.id)
         .result
         .map { results =>
@@ -289,8 +331,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
             tokenId =>
               Tables.TokenBalancesRow(
                 tokenId,
-                address = data.accountId.id,
-                balance = BigDecimal(data.balance),
+                address = tokenUpdate.accountId.id,
+                balance = BigDecimal(tokenUpdate.balance),
                 blockId = blockData.hash.value,
                 blockLevel = BigDecimal(blockData.header.level),
                 asof = toSql(blockData.header.timestamp)
@@ -327,9 +369,20 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
     val results =
       (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
-          (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Transaction => intOp.result })
+          (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
 
     results.filter(result => isApplied(result.status))
+  }
+
+  private def extractAppliedTransactions(block: TezosTypes.Block): List[Either[Transaction, InternalTransaction]] = {
+    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+    (ops.toList.flatten.collect {
+      case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
+    }) ++
+      (intOps.toList.flatten.collect {
+        case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
+      })
   }
 
   /* filter out pre-babylon big map diffs */

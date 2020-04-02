@@ -40,7 +40,7 @@ object TezosOptics {
    *
    */
 
-  import monocle.{Optional, Traversal}
+  import monocle.{Lens, Optional, Traversal}
   import monocle.macros.{GenLens, GenPrism}
 
   //optional lenses into the Either branches
@@ -160,6 +160,9 @@ object TezosOptics {
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
 
+    private val script = GenLens[Origination](_.script)
+    private val parameters = GenLens[Transaction](_.parameters)
+    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
   }
 
   object Accounts {
@@ -180,4 +183,32 @@ object TezosOptics {
     val storageLens = accountScript composePrism some composeLens storageCode composeLens expression
   }
 
+  object Contracts {
+    import tech.cryptonomic.conseil.util.JsonUtil
+
+    val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
+      case Left(value) => value.value
+      case Right(value) => value
+    } { micheline =>
+      {
+        case Left(value) => Left(value.copy(value = micheline))
+        case Right(_) => Right(micheline)
+      }
+    }
+
+    private val storage = GenLens[Scripted.Contracts](_.storage)
+    private val code = GenLens[Scripted.Contracts](_.code)
+
+    private val expression = GenLens[Micheline](_.expression)
+
+    //we'll use this to get out any address-looking string from the transaction params
+    val extractAddressesFromExpression = (micheline: Micheline) => {
+      micheline.expression match {
+        case JsonUtil.AccountIds(id, ids @ _*) =>
+          (id :: ids.toList).distinct.map(AccountId)
+        case _ =>
+          List.empty[AccountId]
+      }
+    }
+  }
 }
