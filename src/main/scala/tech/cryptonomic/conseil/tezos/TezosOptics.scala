@@ -62,6 +62,46 @@ object TezosOptics {
     val groupOperations =
       GenLens[OperationsGroup](_.contents) composeTraversal Traversal.fromTraverse[List, Operation]
 
+    /** An optional lens allowing to reach into balances for blocks' metadata */
+    val blockBalances: Optional[Block, List[BalanceUpdate]] =
+      blockData composeLens metadata composePrism metadataType composeLens metadataBalances
+
+    /** a function to set the header timestamp for a block, returning the modified block */
+    val setTimestamp: ZonedDateTime => Block => Block = blockData composeLens dataHeader composeLens headerTimestamp set _
+
+    /** a function to set metadata balance updates in a block, returning the modified block */
+    val setBalances: List[BalanceUpdate] => Block => Block = blockBalances set _
+
+    /** functions to operate on all big maps copy diffs within a block */
+    val readBigMapDiffCopy = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.operationBigMapDiffCopy
+
+    /** functions to operate on all big maps remove diffs within a block */
+    val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.operationBigMapDiffRemove
+
+    /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
+      * in a form more amenable to processing
+      * @param block the block to inspect
+      * @return a Map holding for each group both external and internal operations' results
+      */
+    def extractOperationsAlongWithInternalResults(
+        block: Block
+    ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
+      block.operationGroups.map { group =>
+        val internal = group.contents.flatMap { op =>
+          op match {
+            case r: Reveal => r.metadata.internal_operation_results.toList.flatten
+            case t: Transaction => t.metadata.internal_operation_results.toList.flatten
+            case o: Origination => o.metadata.internal_operation_results.toList.flatten
+            case d: Delegation => d.metadata.internal_operation_results.toList.flatten
+            case _ => List.empty
+          }
+        }
+        group -> (group.contents, internal)
+      }.toMap
+  }
+
+  object Operations {
+
     val selectOrigination = GenPrism[Operation, Origination]
     val originationResult = GenLens[Origination](_.metadata.operation_result)
     val originationBigMapDiffs =
@@ -120,19 +160,6 @@ object TezosOptics {
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
 
-    val readBigMapDiffCopy = blockOperationsGroup composeTraversal groupOperations composeTraversal operationBigMapDiffCopy
-
-    val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal operationBigMapDiffRemove
-
-    /** An optional lens allowing to reach into balances for blocks' metadata */
-    val blockBalances: Optional[Block, List[BalanceUpdate]] =
-      blockData composeLens metadata composePrism metadataType composeLens metadataBalances
-
-    /** a function to set the header timestamp for a block, returning the modified block */
-    val setTimestamp: ZonedDateTime => Block => Block = blockData composeLens dataHeader composeLens headerTimestamp set _
-
-    /** a function to set metadata balance updates in a block, returning the modified block */
-    val setBalances: List[BalanceUpdate] => Block => Block = blockBalances set _
   }
 
   object Accounts {

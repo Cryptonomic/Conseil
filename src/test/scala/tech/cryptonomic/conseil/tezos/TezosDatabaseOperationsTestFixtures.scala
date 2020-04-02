@@ -774,7 +774,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     def updateOperationsWithBigMapAllocation(
         diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
     ): List[Operation] => List[Operation] = {
-      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Operations._
 
       //applies to the alloc diffs nested within originations
       updateOperationsToBigMapDiff[Contract.BigMapAlloc](
@@ -792,7 +792,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     def updateOperationsWithBigMapUpdate(
         diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
     ): List[Operation] => List[Operation] = {
-      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapUpdate](
@@ -810,7 +810,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     def updateOperationsWithBigMapCopy(
         diffGenerate: PartialFunction[Operation, Contract.BigMapCopy]
     ): List[Operation] => List[Operation] = {
-      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapCopy](
@@ -828,7 +828,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     def updateOperationsWithBigMapRemove(
         diffGenerate: PartialFunction[Operation, Contract.BigMapRemove]
     ): List[Operation] => List[Operation] = {
-      import tech.cryptonomic.conseil.tezos.TezosOptics.Blocks._
+      import tech.cryptonomic.conseil.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapRemove](

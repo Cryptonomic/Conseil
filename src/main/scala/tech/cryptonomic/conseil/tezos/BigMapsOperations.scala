@@ -6,7 +6,8 @@ import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.ContractId
+import tech.cryptonomic.conseil.tezos.TezosTypes.{ContractId, InternalOperationResults, Origination, Transaction}
+import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -26,8 +27,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     */
   def copyContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Int] = {
     val copyDiffs = if (logger.underlying.isDebugEnabled()) {
-      val diffMap = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffCopy.getAll(b))
-      diffMap.foreach {
+      val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffCopy.getAll(b))
+      diffsPerBlock.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
           logger.debug(
             "For block hash {}, I'm about to copy the following big maps data: \n\t{}",
@@ -36,7 +37,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           )
         case _ =>
       }
-      diffMap.map(_._2).flatten
+      diffsPerBlock.map(_._2).flatten
     } else blocks.flatMap(TezosOptics.Blocks.readBigMapDiffCopy.getAll)
 
     //need to load the sources and copy them with a new destination id
@@ -72,8 +73,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   def removeMaps(blocks: List[Block]): DBIO[Unit] = {
 
     val removalDiffs = if (logger.underlying.isDebugEnabled()) {
-      val diffMap = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffRemove.getAll(b))
-      diffMap.foreach {
+      val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffRemove.getAll(b))
+      diffsPerBlock.foreach {
         case (hash, diffs) if diffs.nonEmpty =>
           logger.debug(
             "For block hash {}, I'm about to delete the big maps for ids: \n\t{}",
@@ -82,7 +83,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           )
         case _ =>
       }
-      diffMap.map(_._2).flatten
+      diffsPerBlock.map(_._2).flatten
     } else blocks.flatMap(TezosOptics.Blocks.readBigMapDiffRemove.getAll)
 
     val idsToRemove = removalDiffs.collect {
@@ -108,19 +109,33 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveMaps(blocks: List[Block]): DBIO[Option[Int]] = {
+
+    val diffsPerBlock = blocks.flatMap(
+      b =>
+        extractAppliedOriginationsResults(b)
+          .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
+          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+    )
+
     val maps = if (logger.underlying.isDebugEnabled()) {
-      val rowsMap = blocks.map(b => b.data.hash.value -> b.convertToA[List, BigMapsRow])
-      rowsMap.foreach {
-        case (hash, rows) if rows.nonEmpty =>
+      val rowsPerBlock = diffsPerBlock
+        .map(it => it.get._1 -> it.convertToA[Option, BigMapsRow])
+        .filterNot(_._2.isEmpty)
+        .groupBy { case (hash, _) => hash }
+        .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
+        .toMap
+
+      rowsPerBlock.foreach {
+        case (hash, rows) =>
           logger.debug(
             "For block hash {}, I'm about to add the following big maps: \n\t{}",
             hash.value,
             rows.mkString(", ")
           )
-        case _ =>
       }
-      rowsMap.map(_._2).flatten
-    } else blocks.flatMap(_.convertToA[List, BigMapsRow])
+
+      rowsPerBlock.map(_._2).flatten
+    } else diffsPerBlock.flatMap(_.convertToA[Option, BigMapsRow].toList)
 
     logger.info("{} big maps will be added to the db.", if (maps.nonEmpty) s"A total of ${maps.size}" else "No")
     Tables.BigMaps ++= maps
@@ -133,17 +148,29 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def upsertContent(blocks: List[Block]): DBIO[Option[Int]] = {
-    //only keep latest values from multiple blocks
-    val rowsMap = blocks.map(b => b.data.hash -> b.convertToA[List, BigMapContentsRow]).toMap
+
+    val diffsPerBlock = blocks.flatMap(
+      b =>
+        extractAppliedTransactionsResults(b)
+          .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
+          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+    )
+
+    val rowsPerBlock = diffsPerBlock
+      .map(it => it.get._1 -> it.convertToA[Option, BigMapContentsRow])
+      .filterNot(_._2.isEmpty)
+      .groupBy { case (hash, _) => hash }
+      .mapValues(entries => List.concat(entries.map(_._2.toList): _*))
+      .toMap
+
     if (logger.underlying.isDebugEnabled()) {
-      rowsMap.foreach {
-        case (hash, rows) if rows.nonEmpty =>
+      rowsPerBlock.foreach {
+        case (hash, rows) =>
           logger.debug(
             "For block hash {}, I'm about to update big map contents with the following data: \n\t{}",
             hash.value,
             rows.mkString(", ")
           )
-        case _ =>
       }
     }
 
@@ -155,11 +182,12 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case (collected, block) =>
           val seen = collected.keySet
           val rows = blocks
-            .flatMap(b => rowsMap.getOrElse(b.data.hash, List.empty))
+            .flatMap(b => rowsPerBlock.getOrElse(b.data.hash, List.empty))
             .filterNot(row => seen((row.bigMapId, row.key)))
           collected ++ rows.map(row => (row.bigMapId, row.key) -> row)
       }
       .values
+
     logger.info(
       "{} big map content entries will be added.",
       if (newContent.nonEmpty) s"A total of ${newContent.size}" else "No"
@@ -174,19 +202,35 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveContractOrigin(blocks: List[Block])(implicit tokenContracts: TokenContracts): DBIO[Option[Int]] = {
+    val diffsPerBlock = blocks.flatMap(
+      b =>
+        extractAppliedOriginationsResults(b).flatMap { results =>
+          for {
+            contractIds <- results.originated_contracts.toList
+            diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
+          } yield DatabaseConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
+        }
+    )
+
     val refs = if (logger.underlying.isDebugEnabled()) {
-      val rowsMap = blocks.map(b => b.data.hash.value -> b.convertToA[List, OriginatedAccountMapsRow])
-      rowsMap.foreach {
-        case (hash, rows) if rows.nonEmpty =>
+      val rowsPerBlock = diffsPerBlock
+        .map(it => it.get._1 -> it.convertToA[List, OriginatedAccountMapsRow])
+        .filterNot(_._2.isEmpty)
+        .groupBy { case (hash, _) => hash }
+        .mapValues(entries => List.concat(entries.map(_._2): _*))
+        .toMap
+
+      rowsPerBlock.foreach {
+        case (hash, rows) =>
           logger.debug(
             "For block hash {}, I'm about to add the following links from big maps to originated accounts: \n\t{}",
             hash.value,
             rows.mkString(", ")
           )
-        case _ =>
       }
-      rowsMap.map(_._2).flatten
-    } else blocks.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
+
+      rowsPerBlock.map(_._2).flatten.toList
+    } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
     //we might need to update the information registered about tokens
@@ -266,4 +310,32 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     }
   }
 
+  private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
+
+  private def extractAppliedOriginationsResults(block: TezosTypes.Block) = {
+    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+    val results =
+      (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
+          (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
+
+    results.filter(result => isApplied(result.status))
+  }
+
+  private def extractAppliedTransactionsResults(block: TezosTypes.Block) = {
+    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+    val results =
+      (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
+          (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Transaction => intOp.result })
+
+    results.filter(result => isApplied(result.status))
+  }
+
+  /* filter out pre-babylon big map diffs */
+  private def keepLatestDiffsFormat: List[Contract.CompatBigMapDiff] => List[Contract.BigMapDiff] =
+    compatibilityWrapper =>
+      compatibilityWrapper.collect {
+        case Left(diff) => diff
+      }
 }
