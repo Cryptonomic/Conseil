@@ -7,6 +7,7 @@ import monocle.{Lens, Traversal}
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
+
 import scala.util.Try
 
 /**
@@ -24,7 +25,6 @@ object TezosTypes {
 
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
-    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
 
     private val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
       case Left(value) => value.value
@@ -57,11 +57,10 @@ object TezosTypes {
           parameters composePrism some composeLens
           parametersExpresssion composeLens expression
 
-    val parametersMichelineLens: Traversal[Block, Option[String]] =
+    val transactionLens: Traversal[Block, Transaction] =
       operationGroups composeTraversal each composeLens
           operations composeTraversal each composePrism
-          transaction composeLens
-          parametersMicheline
+          transaction
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding

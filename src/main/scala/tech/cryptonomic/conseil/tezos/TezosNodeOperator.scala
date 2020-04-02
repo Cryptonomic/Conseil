@@ -647,9 +647,16 @@ class TezosNodeOperator(
 
     def parseMichelsonScripts: Block => Block = { block: Block =>
       implicit lazy val _ = logger
+      def rewriteParametersInTransactions(transaction: Transaction): Transaction = {
+        val expr = transaction.parameters.map {
+          case Left(value) => value.value.expression
+          case Right(value) => value.expression
+        }
+        transaction.copy(parameters_micheline = expr)
+      }
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
-      val setUnparsedMicheline = parametersMichelineLens.set(parametersLens.headOption(block))
+      val setUnparsedMicheline = transactionLens.modify(rewriteParametersInTransactions)
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
       (codeAlter compose storageAlter compose setUnparsedMicheline compose parametersAlter)(block)
