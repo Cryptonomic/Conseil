@@ -645,7 +645,7 @@ class TezosNodeOperator(
     val proposalsStateFetch =
       fetchMerge(currentQuorumFetcher, currentProposalFetcher)(CurrentVotes.apply)
 
-    def parseMichelsonScripts: Block => Block = { block: Block =>
+    def parseMichelsonScripts: Block => Block = {
       implicit lazy val _ = logger
       def rewriteParametersInTransactions(transaction: Transaction): Transaction = {
         val expr = transaction.parameters.map {
@@ -659,7 +659,7 @@ class TezosNodeOperator(
       val setUnparsedMicheline = transactionLens.modify(rewriteParametersInTransactions)
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
-      (codeAlter compose storageAlter compose setUnparsedMicheline compose parametersAlter)(block)
+      codeAlter compose storageAlter compose setUnparsedMicheline compose parametersAlter
     }
 
     def extractAccountIds(blockData: BlockData): List[AccountId] =
