@@ -10,7 +10,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   AccountId,
   ContractId,
   InternalOperationResults,
-  Micheline,
   Origination,
   Transaction
 }
