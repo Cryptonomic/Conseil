@@ -649,8 +649,8 @@ class TezosNodeOperator(
       implicit lazy val _ = logger
       def rewriteParametersInTransactions(transaction: Transaction): Transaction = {
         val expr = transaction.parameters.map {
-          case Left(Parameters(value, _)) => value.expression
-          case Right(value) => value.expression
+          case Left(Parameters(micheline, _)) => micheline.expression
+          case Right(micheline) => micheline.expression
         }
         transaction.copy(parameters_micheline = expr)
       }
