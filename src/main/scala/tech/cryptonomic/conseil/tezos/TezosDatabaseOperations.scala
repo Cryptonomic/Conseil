@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
 import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
@@ -457,6 +458,34 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }
   val berLogger = LoggerFactory.getLogger("RightsFetcher")
+
+  /**
+    * Updates timestamps in the baking_rights table
+    * @param bakingRights baking rights to be updated
+    */
+  def updateBakingRightsTimestamp(bakingRights: List[BakingRights]): DBIO[List[Int]] =
+    DBIO.sequence {
+      bakingRights.map { upd =>
+        Tables.BakingRights
+          .filter(er => er.delegate === upd.delegate && er.level === upd.level)
+          .map(_.estimatedTime)
+          .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
+      }
+    }
+
+  /**
+    * Updates timestamps in the endorsing_rights table
+    * @param endorsingRights endorsing rights to be updated
+    */
+  def updateEndorsingRightsTimestamp(endorsingRights: List[EndorsingRights]): DBIO[List[Int]] =
+    DBIO.sequence {
+      endorsingRights.map { upd =>
+        Tables.EndorsingRights
+          .filter(er => er.delegate === upd.delegate && er.level === upd.level)
+          .map(_.estimatedTime)
+          .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
+      }
+    }
 
   /**
     * Writes baking rights to the database
