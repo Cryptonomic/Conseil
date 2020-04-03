@@ -943,6 +943,9 @@ object DatabaseConversions extends LazyLogging {
   implicit def blockToTokenBalanceUpdates(implicit tokenContracts: TokenContracts) =
     new Conversion[List, Block, BlockTokenBalances] {
       def convert(from: TezosTypes.Block): List[BlockTokenBalances] = {
+        import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+
+        def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
         //we'll use this to dig into the transaction results and reach for the updates
         val extractDiffs = (transactionResult: OperationResult.Transaction) =>
@@ -988,11 +991,13 @@ object DatabaseConversions extends LazyLogging {
 
         val contractUpdates: List[(ContractId, List[Contract.BigMapUpdate])] =
           ops.toList.flatten.collect {
-            case op: Transaction if tokenContracts.isKnownToken(op.destination) =>
+            case op: Transaction
+                if tokenContracts.isKnownToken(op.destination) && isApplied(op.metadata.operation_result.status) =>
               op.destination -> extractDiffs(op.metadata.operation_result)
           } ++
               intOps.toList.flatten.collect {
-                case intOp: InternalOperationResults.Transaction if tokenContracts.isKnownToken(intOp.destination) =>
+                case intOp: InternalOperationResults.Transaction
+                    if tokenContracts.isKnownToken(intOp.destination) && isApplied(intOp.result.status) =>
                   intOp.destination -> extractDiffs(intOp.result)
               }
 
