@@ -22,6 +22,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.tezos.TezosOptics
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -212,7 +213,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param blocks the blocks containing the diffs
     * @return the count of records added, if available from the underlying db-engine
     */
-  def saveContractOrigin(blocks: List[Block])(implicit tokenContracts: TokenContracts): DBIO[Option[Int]] = {
+  def saveContractOrigin(blocks: List[Block]): DBIO[List[OriginatedAccountMapsRow]] = {
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedOriginationsResults(b).flatMap { results =>
@@ -244,17 +245,49 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
-    //we might need to update the information registered about tokens
-    updateTokens(refs, tokenContracts)
-    Tables.OriginatedAccountMaps ++= refs
+    //the returned DBIOAction will provide the rows just added
+    (Tables.OriginatedAccountMaps ++= refs) andThen DBIO.successful(refs)
   }
 
-  /* Updates information on the stored map, for accounts associated to a token contract */
-  private def updateTokens(contractsReferences: List[OriginatedAccountMapsRow], tokenContracts: TokenContracts) =
+  /** Updates the reference to the stored big map, for accounts associated to a token contract */
+  def initTokenMaps(
+      contractsReferences: List[OriginatedAccountMapsRow]
+  )(implicit tokenContracts: TokenContracts): Unit =
     contractsReferences.foreach {
       case OriginatedAccountMapsRow(mapId, accountId) if tokenContracts.isKnownToken(ContractId(accountId)) =>
         tokenContracts.setMapId(ContractId(accountId), mapId)
       case _ =>
+    }
+
+  /** Updates the reference to the stored big maps, for accounts associated to a name-service contract */
+  def initTNSMaps(
+      contractsReferences: List[OriginatedAccountMapsRow]
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContracts): DBIO[Unit] = {
+    //fetch the right maps
+    val mapsQueries: List[DBIO[Option[(String, BigMapsRow)]]] =
+      contractsReferences.collect {
+        case OriginatedAccountMapsRow(mapId, accountId) if tnsContracts.isKnownRegistrar(ContractId(accountId)) =>
+          Tables.BigMaps
+            .findBy(_.bigMapId)
+            .applied(mapId)
+            .map(accountId -> _) //track each map row with the originated account
+            .result
+            .headOption
+      }
+    //put together the values and record on the TNS
+    DBIO.sequence(mapsQueries).map(collectMapsByContract _ andThen setOnTNS)
+  }
+
+  /* Reorganize the input list to discard empty values and group them by first element, i.e. the contract id */
+  private def collectMapsByContract(ids: List[Option[(String, BigMapsRow)]]): Map[ContractId, List[BigMapsRow]] =
+    ids.flattenOption.groupBy {
+      case (contractId, row) => ContractId(contractId)
+    }.mapValues(values => values.map(_._2))
+
+  /* For each entry, tries to pass the values to the TNS object to initialize the map ids properly */
+  private def setOnTNS(maps: Map[ContractId, List[BigMapsRow]])(implicit tnsContracts: TNSContracts) =
+    maps.foreach {
+      case (contractId, rows) => tnsContracts.setMaps(contractId, rows)
     }
 
   /** Matches blocks' transactions to extract updated balance for any contract corresponding to a known

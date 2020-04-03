@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.tezos.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.DatabaseUtil
+import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
@@ -32,7 +32,7 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContracts, TokenContracts}
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -81,30 +81,51 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  import kantan.csv.generic._
-  import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
+  implicit val (tokens, tns) = initAnyCsvConfig()
 
-  /** Inits registered tokens at startup */
-  implicit val tokenContracts: TokenContracts = {
+  /* Reads csv resources to initialize db tables and smart contracts objects */
+  def initAnyCsvConfig(): (TokenContracts, TNSContracts) = {
+    import kantan.csv.generic._
+    import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
 
-    val futureTokenContracts =
-      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network, separator = '|').map {
-        case (tokenRows, _) =>
-          TokenContracts.fromConfig(
-            tokenRows.map {
-              case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
-                ContractId(accountId) -> standard
-            }
-          )
+    val tokenContracts: TokenContracts = {
 
-      }
+      val futureTokenContracts =
+        TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network, separator = '|').map {
+          case (tokenRows, _) =>
+            TokenContracts.fromConfig(
+              tokenRows.map {
+                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                  ContractId(accountId) -> standard
+              }
+            )
 
-    Await.result(futureTokenContracts, 5.seconds)
+        }
+
+      Await.result(futureTokenContracts, 5.seconds)
+    }
+
+    val tnsContracts: TNSContracts = {
+      import shapeless._
+
+      val tnsRegistrars = ConfigUtil.Csv
+        .readRowsFromCsv[(String, String), String :: String :: HNil](
+          this.getClass.getResource(s"/registered_tns/${tezosConf.network}.csv")
+        )
+        .map {
+          case (id, contractType) => ContractId(id) -> contractType
+        }
+
+      TNSContracts.fromConfig(tnsRegistrars)
+    }
+
+    /** Inits tables with values from CSV files */
+    TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
+    TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
+
+    //return the contracts definitions
+    (tokenContracts, tnsContracts)
   }
-
-  /** Inits tables with values from CSV files */
-  TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
-  TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(

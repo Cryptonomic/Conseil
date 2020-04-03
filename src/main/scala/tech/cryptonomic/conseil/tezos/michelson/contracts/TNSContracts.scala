@@ -15,6 +15,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
+import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
@@ -60,7 +61,7 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
     } yield name -> resolver
   }
 
-  /** Call this to store a big-map-ids associated with a TNS contract.
+  /** Call this to store big-map-ids associated with a TNS contract.
     * This is supposed to happen once the chain records a block originating
     * one of the contracts identified via [[isKnownTNS]].
     * This will be needed to identify the right map tracking TNS operation
@@ -77,7 +78,35 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
         reverseVar.put(BigMapId(reverseId))
     }
 
-    def setMaps(registrar: ContractId, maps: List[BigMapAlloc]): Unit = ???
+  /** Call this to store big-map-ids associated with a TNS contract.
+    * This is supposed to happen once the chain records a block originating
+    * one of the contracts identified via [[isKnownTNS]].
+    * Matter-of-factly the actual rows storing the map data
+    * for such contract will be expected as parameters.
+    *
+    * @param registrar the contract identifier
+    * @param maps all big maps stored for the registrar
+    */
+  def setMaps(registrar: ContractId, maps: List[BigMapsRow]): Unit = {
+    /* Currently we only match with a specific contract definition,
+     * therefore we know exactly how to identify the role of each map, by the key and value type
+     *
+     * We expect the reverse map to be a simple address to name mapping.
+     * Any other map (there should be exactly two) must then be the lookup, by exclusion.
+     */
+    val (reverseMaps, lookupMap) = maps.partition {
+      case BigMapsRow(id, keyType, valueType) =>
+        (keyType, valueType) match {
+          case (Some("address"), Some("string")) => true
+          case _ => false
+        }
+    }
+
+    (reverseMaps.headOption.map(_.bigMapId), lookupMap.headOption.map(_.bigMapId)).tupled.foreach {
+      case (reverseId, lookupId) => setMapIds(registrar, lookupId, reverseId)
+    }
+
+  }
 
 }
 

@@ -32,6 +32,8 @@ import slick.lifted.{AbstractTable, TableQuery}
 import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.util.ConfigUtil
+import tech.cryptonomic.conseil.tezos.Tables.OriginatedAccountMapsRow
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
 
 /**
   * Functions for writing Tezos data to a database.
@@ -95,7 +97,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks   Block with operations.
     * @return         Database action to execute.
     */
-  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Unit] = {
+  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import cats.data.Kleisli
     import cats.instances.list._
@@ -155,9 +157,20 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks the blocks containing the operations
     * @param ec the context to run async operations
     */
-  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Unit] = {
+  def saveBigMaps(
+      blocks: List[Block]
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Unit] = {
     import cats.implicits._
     import slickeffect.implicits._
+
+    /* We might have new information to store for originated smart contracts, like tokens and tns
+     * thus we use any newly found contract origination reference to maps and pass
+     * them to the proper contracts initialization code.
+     */
+    def performSmartContractsInitialization(insertAction: DBIO[List[OriginatedAccountMapsRow]]): DBIO[Unit] =
+      insertAction
+        .flatTap(bigMapOps.initTNSMaps)
+        .map(bigMapOps.initTokenMaps)
 
     logger.info("Writing big map differences to DB...")
 
@@ -174,7 +187,7 @@ object TezosDatabaseOperations extends LazyLogging {
     val operationSequence: List[List[Block] => DBIO[Unit]] = List(
       (bigMapOps.saveMaps _).rmap(_.void),
       (bigMapOps.upsertContent _).rmap(_.void),
-      (bigMapOps.saveContractOrigin _).rmap(_.void),
+      (bigMapOps.saveContractOrigin _).rmap(performSmartContractsInitialization),
       (bigMapOps.copyContent _).rmap(_.void),
       (bigMapOps.removeMaps _),
       (bigMapOps.updateTokenBalances _).rmap(_.void)
@@ -410,7 +423,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
       accountUpdates: List[BlockTagged[List[AccountId]]]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
