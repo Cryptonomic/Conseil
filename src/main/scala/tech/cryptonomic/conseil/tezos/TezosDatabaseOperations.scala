@@ -9,6 +9,7 @@ import tech.cryptonomic.conseil.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.generic.chain.DataTypes.{Query => _, _}
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.util.CollectionOps._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._

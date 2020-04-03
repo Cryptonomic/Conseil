@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.tezos.bigmaps
 
 import com.typesafe.scalalogging.LazyLogging
 import com.github.tminglei.slickpg.ExPostgresProfile
@@ -8,7 +8,10 @@ import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
   AccountId,
+  Block,
+  Contract,
   ContractId,
+  Decimal,
   InternalOperationResults,
   Origination,
   Transaction
@@ -16,16 +19,16 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
+import tech.cryptonomic.conseil.tezos.Tables
+import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
+import tech.cryptonomic.conseil.tezos.TezosOptics
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
   * @param profile is the actual profile needed to define database operations
   */
 case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) extends LazyLogging {
-  import TezosTypes.{Block, Contract, Decimal}
-  import Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
   import profile.api._
-  import DatabaseConversions._
 
   /** Create an action to find and copy big maps based on the diff contained in the blocks
     *
@@ -122,7 +125,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       b =>
         extractAppliedOriginationsResults(b)
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+          .map(diff => BigMapsConversions.BlockBigMapDiff(b.data.hash, diff))
     )
 
     val maps = if (logger.underlying.isDebugEnabled()) {
@@ -161,7 +164,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       b =>
         extractAppliedTransactionsResults(b)
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+          .map(diff => BigMapsConversions.BlockBigMapDiff(b.data.hash, diff))
     )
 
     val rowsPerBlock = diffsPerBlock
@@ -216,7 +219,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           for {
             contractIds <- results.originated_contracts.toList
             diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
-          } yield DatabaseConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
+          } yield BigMapsConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
         }
     )
 
@@ -312,9 +315,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       }
 
       //convert packed data
-      DatabaseConversions
+      BigMapsConversions
         .TokenUpdatesInput(b, updates, addressesInvolved)
-        .convertToA[List, DatabaseConversions.TokenUpdate]
+        .convertToA[List, BigMapsConversions.TokenUpdate]
     }
 
     //now we need to check on the token registry for matching contracts, to get a valid token-id as defined on the db
@@ -353,7 +356,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
   private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
-  private def extractAppliedOriginationsResults(block: TezosTypes.Block) = {
+  private def extractAppliedOriginationsResults(block: Block) = {
     val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
 
     val results =
@@ -363,7 +366,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     results.filter(result => isApplied(result.status))
   }
 
-  private def extractAppliedTransactionsResults(block: TezosTypes.Block) = {
+  private def extractAppliedTransactionsResults(block: Block) = {
     val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
 
     val results =
@@ -373,7 +376,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     results.filter(result => isApplied(result.status))
   }
 
-  private def extractAppliedTransactions(block: TezosTypes.Block): List[Either[Transaction, InternalTransaction]] = {
+  private def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] = {
     val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
 
     (ops.toList.flatten.collect {

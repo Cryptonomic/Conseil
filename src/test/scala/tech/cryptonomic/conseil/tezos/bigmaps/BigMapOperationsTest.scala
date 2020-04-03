@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.tezos.bigmaps
 
 import org.scalatest.Matchers
 import com.typesafe.scalalogging.LazyLogging
@@ -9,6 +9,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.util.RandomSeed
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Contract,
+  ContractId,
   Decimal,
   Micheline,
   Operation,
@@ -18,10 +19,12 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   ScriptId,
   Transaction
 }
+import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.ContractId
+import tech.cryptonomic.conseil.tezos.{InMemoryDatabase, TezosDataGeneration}
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.CustomPostgresProfile
 import java.sql.Timestamp
 
 class BigMapOperationsTest
@@ -39,7 +42,7 @@ class BigMapOperationsTest
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      val sut = BigMapsOperations(TezosDatabaseOperations.CustomPostgresProfile)
+      val sut = BigMapsOperations(CustomPostgresProfile)
 
       "save big map diffs allocations contained in a list of blocks" in {
         //given
