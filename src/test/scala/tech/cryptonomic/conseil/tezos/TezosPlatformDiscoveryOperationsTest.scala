@@ -28,7 +28,7 @@ import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContracts, TokenContracts}
 
 class TezosPlatformDiscoveryOperationsTest
     extends WordSpec
@@ -53,6 +53,7 @@ class TezosPlatformDiscoveryOperationsTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
   implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
+  implicit val noTNSContracts = TNSContracts.fromConfig(List.empty)
 
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
