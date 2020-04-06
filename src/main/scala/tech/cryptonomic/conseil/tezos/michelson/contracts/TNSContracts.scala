@@ -14,7 +14,6 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Transaction
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
 import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
 
 /** For each specific contract available we store a few
@@ -137,6 +136,7 @@ object TNSContracts extends LazyLogging {
   private def newToolbox(id: ContractId, contractType: String) =
     PartialFunction.condOpt(contractType) {
       //we're not actually selecting the logic, we assume a convention here, and that any id passed is valid.
+      //it's plausible that we might want to change this to only accept a named type for cryptonomic in-house contract type.
       case _ =>
         ContractToolbox(
           id,
@@ -194,9 +194,38 @@ object TNSContracts extends LazyLogging {
 
   /** Defines extraction operations based on micheline fields */
   private object MichelineOps {
+    import tech.cryptonomic.conseil.tezos.michelson.dto._
+    import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
 
-    /*TODO add docs... and implementation!*/
-    def parseNameRegistrationFromParameters(paramCode: Micheline): Option[(Name, AccountId)] = ???
+    /* Reads paramters for a registerName call, extracting the name mapping */
+    def parseNameRegistrationFromParameters(paramCode: Micheline): Option[(Name, AccountId)] = {
+
+      val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
+
+      parsed.left.foreach(
+        err =>
+          logger.error(
+            """Failed to parse michelson expression for TNS registration call.
+        | Parameters were: {}
+        | Error is {}""".stripMargin,
+            paramCode.expression,
+            err.getMessage()
+          )
+      )
+
+      parsed.toOption.collect {
+        case MichelsonSingleInstruction(
+            "Pair",
+            MichelsonIntConstant(duration) :: MichelsonSingleInstruction(
+                  "Pair",
+                  MichelsonStringConstant(name) :: MichelsonStringConstant(resover) :: _,
+                  _
+                ) :: _,
+            _
+            ) =>
+          (Name(name), AccountId(resover))
+      }
+    }
 
   }
 }
