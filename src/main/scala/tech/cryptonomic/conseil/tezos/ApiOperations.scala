@@ -25,8 +25,15 @@ object ApiOperations {
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
-    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
-    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ', '%', '"')
+    val escapeExtraCharacters = Set('%') // '"' character is already escaped
+    str
+      .filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+      .map {
+        case c if escapeExtraCharacters.contains(c) => "\\" ++ c.toString
+        case c => c.toString
+      }
+      .mkString("")
   }
 
   /** Sanitizes datePart aggregate function*/

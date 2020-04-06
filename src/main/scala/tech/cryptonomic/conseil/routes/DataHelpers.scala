@@ -97,7 +97,12 @@ trait DataHelpers extends Validation with server.Endpoints with server.JsonSchem
 
     override def decoder: Decoder[Any] =
       (c: HCursor) => {
-        Right(c.value)
+        // without this check strings are deserialized in double quotes for example "String" instead of String
+        if (c.value.isString) {
+          Right(c.value.asString.get)
+        } else {
+          Right(c.value)
+        }
       }
   }
 
