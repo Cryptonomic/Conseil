@@ -1,12 +1,53 @@
+import sbtbuildinfo.BuildInfoKey._
+
 name := "Conseil"
-scalaVersion := "2.12.10"
+
+ThisBuild / scalaVersion := "2.12.10"
+ThisBuild / parallelExecution in Test := false
+
+ThisBuild / scapegoatVersion := "1.3.8"
+ThisBuild / scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/common/tezos/Tables.scala")
+
+ThisBuild / scalacOptions ++= ScalacOptions.common
 
 lazy val conseil = (project in file("."))
-  .configs(IntegrationTest)
-  .settings(
-    Defaults.itSettings
-  )
+  .aggregate(common, api, lorre)
 
+lazy val common = (project in file("conseil-common"))
+  .settings(name := "conseil-common")
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .settings(
+    //TODO Probably API and Lorre should be BuildInfo structure split across both of these modules
+    // Currently name is HardCoded
+    buildInfoKeys := Seq[BuildInfoKey](
+          BuildInfoKey.of(("name", "Conseil")),
+          version,
+          scalaVersion,
+          sbtVersion,
+          git.gitHeadCommit,
+          git.gitCurrentTags
+        ),
+    buildInfoPackage := "tech.cryptonomic.conseil"
+  )
+  .settings(
+    scalacOptions += "-P:silencer:pathFilters=common/src/main/scala/tech/cryptonomic/conseil/common/tezos/Tables.scala"
+  )
+  .enablePlugins(BuildInfoPlugin)
+
+lazy val api = (project in file("conseil-api"))
+  .settings(name := "conseil-api")
+  .settings(Defaults.itSettings)
+  .configs(IntegrationTest)
+  .dependsOn(common % "compile->test")
+
+lazy val lorre = (project in file("conseil-lorre"))
+  .settings(name := "conseil-lorre")
+  .settings(Defaults.itSettings)
+  .configs(IntegrationTest)
+  .dependsOn(common)
+
+//TODO Split these dependencies better, once the first pull request with splitting will be merged
 val akkaVersion = "2.5.21"
 val akkaHttpVersion = "10.1.8"
 val akkaHttpJsonVersion = "1.25.2"
@@ -19,16 +60,12 @@ val http4sVersion = "0.20.10"
 val silencerVersion = "1.4.4"
 val kantanCsvVersion = "0.6.0"
 
-scapegoatVersion in ThisBuild := "1.3.8"
-parallelExecution in Test := false
-scapegoatIgnoredFiles := Seq(".*/tech/cryptonomic/conseil/tezos/Tables.scala")
-
-resolvers ++= Seq(
+common / resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"),
   Resolver.sonatypeRepo("snapshots")
 )
 
-libraryDependencies ++= Seq(
+common / libraryDependencies ++= Seq(
   "ch.qos.logback"               % "logback-classic"                % "1.2.3",
   "net.logstash.logback"         % "logstash-logback-encoder"       % "5.3",
   "com.typesafe"                 % "config"                         % "1.3.3",
@@ -75,6 +112,7 @@ libraryDependencies ++= Seq(
   "net.java.dev.jna"             % "jna"                            % "5.5.0", //see https://github.com/muquit/libsodium-jna/#update-your-projects-pomxml
   "com.github.alanverbner"       %% "bip39"                         % "0.1",
   "com.rklaehn"                  %% "radixtree"                     % "0.5.1",
+  "fr.acinq"                     %% "bitcoin-lib"                   % "0.9.18-SNAPSHOT",
   "com.nrinaudo"                 %% "kantan.csv-generic"            % kantanCsvVersion,
   "com.nrinaudo"                 %% "kantan.csv-java8"              % kantanCsvVersion,
   "com.typesafe.akka"            %% "akka-testkit"                  % akkaVersion % Test exclude ("com.typesafe", "config"),
@@ -91,14 +129,24 @@ libraryDependencies ++= Seq(
   "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
 )
 
-excludeDependencies ++= Seq(
+api / libraryDependencies ++= Seq(
+  "org.scalatest"     %% "scalatest"         % "3.0.5"         % "it, test",
+  "com.typesafe.akka" %% "akka-testkit"      % akkaVersion     % Test exclude ("com.typesafe", "config"),
+  "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
+  "org.scalamock"     %% "scalamock"         % "4.1.0"         % "it, test"
+)
+
+lorre / libraryDependencies ++= Seq(
+  compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+  "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+)
+
+common / excludeDependencies ++= Seq(
   "org.consensusresearch" %% "scrypto"
 )
 
 assemblyOutputPath in assembly := file("/tmp/conseil.jar")
 
-scalacOptions ++= ScalacOptions.common
-scalacOptions += "-P:silencer:pathFilters=src/main/scala/tech/cryptonomic/conseil/tezos/Tables.scala"
 import complete.DefaultParsers._
 
 lazy val runConseil = inputKey[Unit]("A conseil run task.")
@@ -106,7 +154,7 @@ fork in runConseil := true
 javaOptions in runConseil ++= Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runConseil := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed
-  runInputTask(Runtime, "tech.cryptonomic.conseil.Conseil", args: _*).toTask("")
+  runInputTask(Runtime, "tech.cryptonomic.conseil.api.Conseil", args: _*).toTask("")
 }.evaluated
 
 lazy val runLorre = inputKey[Unit]("A lorre run task.")
@@ -114,8 +162,8 @@ fork in runLorre := true
 javaOptions ++= Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
 runLorre := Def.inputTaskDyn {
   val args = spaceDelimited("").parsed
-  runInputTask(Runtime, "tech.cryptonomic.conseil.Lorre", args: _*).toTask("")
+  runInputTask(Runtime, "tech.cryptonomic.conseil.lorre.Lorre", args: _*).toTask("")
 }.evaluated
 
 lazy val genSchema = taskKey[Unit]("A schema generating task.")
-fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.scripts.GenSchema")
+fullRunTask(genSchema, Runtime, "tech.cryptonomic.conseil.lorre.scripts.GenSchema")

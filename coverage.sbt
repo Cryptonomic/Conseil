@@ -3,9 +3,9 @@ coverageExcludedPackages := Seq(
   ".*\\.tezos.Tables",
   ".*\\.Lorre",
   ".*\\.Conseil",
-  ".*config\\.LorreAppConfig",
-  ".*config\\.ConseilAppConfig",
+  ".*\\.LorreAppConfig",
+  ".*\\.ConseilAppConfig",
   ".*config\\.Security",
-  "tech\\.cryptonomic\\.conseil\\.io.*",
-  "tech\\.cryptonomic\\.conseil\\.scripts.*"
+  "tech\\.cryptonomic\\.conseil\\.common\\.io.*",
+  "tech\\.cryptonomic\\.conseil\\.common\\.scripts.*"
 ).mkString(";")
