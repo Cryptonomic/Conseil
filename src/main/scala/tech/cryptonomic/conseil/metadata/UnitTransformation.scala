@@ -94,6 +94,7 @@ class UnitTransformation(overrides: MetadataConfiguration) extends LazyLogging {
         dataType = overrideAttribute.flatMap(_.dataType).map(mapType).getOrElse(attribute.dataType),
         valueMap = overrideAttribute.flatMap(_.valueMap).filter(_.nonEmpty),
         reference = overrideAttribute.flatMap(_.reference).filter(_.nonEmpty),
+        cacheConfig = overrideAttribute.flatMap(_.cacheConfig),
         displayPriority = overrideAttribute.flatMap(_.displayPriority),
         displayOrder = overrideAttribute.flatMap(_.displayOrder),
         currencySymbol = overrideAttribute.flatMap(_.currencySymbol),
