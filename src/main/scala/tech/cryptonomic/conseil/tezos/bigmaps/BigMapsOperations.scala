@@ -6,18 +6,7 @@ import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  AccountId,
-  Block,
-  Contract,
-  ContractId,
-  Decimal,
-  InternalOperationResults,
-  Origination,
-  Transaction
-}
-import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
-import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
@@ -121,6 +110,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveMaps(blocks: List[Block]): DBIO[Option[Int]] = {
+    import TezosOptics.Operations.extractAppliedOriginationsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
@@ -160,6 +150,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def upsertContent(blocks: List[Block]): DBIO[Option[Int]] = {
+    import TezosOptics.Operations.extractAppliedTransactionsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
@@ -214,6 +205,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveContractOrigin(blocks: List[Block]): DBIO[List[OriginatedAccountMapsRow]] = {
+    import TezosOptics.Operations.extractAppliedOriginationsResults
+
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedOriginationsResults(b).flatMap { results =>
@@ -303,6 +296,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       blocks: List[Block]
   )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
+    import TezosOptics.Operations.extractAppliedTransactions
     import TezosOptics.Contracts.{extractAddressesFromExpression, parametersExpresssion}
 
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
@@ -385,39 +379,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
       Tables.TokenBalances ++= validBalances
     }
-  }
-
-  private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
-
-  private def extractAppliedOriginationsResults(block: Block) = {
-    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-    val results =
-      (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
-          (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
-
-    results.filter(result => isApplied(result.status))
-  }
-
-  private def extractAppliedTransactionsResults(block: Block) = {
-    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-    val results =
-      (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
-          (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
-
-    results.filter(result => isApplied(result.status))
-  }
-
-  private def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] = {
-    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-    (ops.toList.flatten.collect {
-      case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
-    }) ++
-      (intOps.toList.flatten.collect {
-        case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
-      })
   }
 
   /* filter out pre-babylon big map diffs */
