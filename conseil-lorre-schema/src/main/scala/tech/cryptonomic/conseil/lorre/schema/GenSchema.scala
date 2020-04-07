@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.lorre.scripts
+package tech.cryptonomic.conseil.lorre.schema
 
 import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping}
 import pureconfig.generic.auto._
@@ -20,7 +20,7 @@ object GenSchema extends App {
     lazy val url = s"jdbc:postgresql://localhost/${databaseName}"
     lazy val jdbcDriver = "org.postgresql.Driver"
     lazy val slickProfile = "slick.jdbc.PostgresProfile"
-    lazy val `package` = "tech.cryptonomic.conseil.tezos"
+    lazy val `package` = "tech.cryptonomic.conseil.common.tezos"
     lazy val dest = "/tmp/slick"
   }
 
