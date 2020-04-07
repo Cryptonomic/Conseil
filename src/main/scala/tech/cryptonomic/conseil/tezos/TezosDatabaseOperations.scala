@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import java.sql.Timestamp
 import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
@@ -13,7 +14,8 @@ import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.util.DatabaseUtil.QueryBuilder._
 import tech.cryptonomic.conseil.util.MathUtil.{mean, stdev}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
@@ -27,6 +29,8 @@ import com.github.tminglei.slickpg.ExPostgresProfile
 import slick.lifted.{AbstractTable, TableQuery}
 
 import scala.collection.immutable.Queue
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.util.ConfigUtil
 
 /**
   * Functions for writing Tezos data to a database.
@@ -90,7 +94,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks   Block with operations.
     * @return         Database action to execute.
     */
-  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import cats.data.Kleisli
     import cats.instances.list._
@@ -150,7 +154,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks the blocks containing the operations
     * @param ec the context to run async operations
     */
-  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Unit] = {
+  def saveBigMaps(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Unit] = {
     import cats.implicits._
     import slickeffect.implicits._
 
@@ -171,7 +175,8 @@ object TezosDatabaseOperations extends LazyLogging {
       (bigMapOps.upsertContent _).rmap(_.void),
       (bigMapOps.saveContractOrigin _).rmap(_.void),
       (bigMapOps.copyContent _).rmap(_.void),
-      (bigMapOps.removeMaps _)
+      (bigMapOps.removeMaps _),
+      (bigMapOps.updateTokenBalances _).rmap(_.void)
     )
 
     operationSequence
@@ -404,7 +409,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
       accountUpdates: List[BlockTagged[List[AccountId]]]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
@@ -453,6 +458,34 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.EndorsingRights.insertOrUpdateAll(transformationResult.flatten)
   }
   val berLogger = LoggerFactory.getLogger("RightsFetcher")
+
+  /**
+    * Updates timestamps in the baking_rights table
+    * @param bakingRights baking rights to be updated
+    */
+  def updateBakingRightsTimestamp(bakingRights: List[BakingRights]): DBIO[List[Int]] =
+    DBIO.sequence {
+      bakingRights.map { upd =>
+        Tables.BakingRights
+          .filter(er => er.delegate === upd.delegate && er.level === upd.level)
+          .map(_.estimatedTime)
+          .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
+      }
+    }
+
+  /**
+    * Updates timestamps in the endorsing_rights table
+    * @param endorsingRights endorsing rights to be updated
+    */
+  def updateEndorsingRightsTimestamp(endorsingRights: List[EndorsingRights]): DBIO[List[Int]] =
+    DBIO.sequence {
+      endorsingRights.map { upd =>
+        Tables.EndorsingRights
+          .filter(er => er.delegate === upd.delegate && er.level === upd.level)
+          .map(_.estimatedTime)
+          .update(upd.estimated_time.map(datetime => Timestamp.from(datetime.toInstant)))
+      }
+    }
 
   /**
     * Writes baking rights to the database
@@ -537,6 +570,25 @@ object TezosDatabaseOperations extends LazyLogging {
   def getBallotOperationsForCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
     Tables.Operations
       .filter(op => op.kind === "ballot" && op.cycle === cycle)
+      .groupBy(_.ballot)
+      .map {
+        case (vote, ops) => vote -> ops.length
+      }
+      .result
+      .map { res =>
+        val (yaysCount, naysCount, passesCount) = res.foldLeft(0, 0, 0) {
+          case ((_, nays, passes), (Some("yay"), count)) => (count, nays, passes)
+          case ((yays, _, passes), (Some("nay"), count)) => (yays, count, passes)
+          case ((yays, nays, _), (Some("pass"), count)) => (yays, nays, count)
+          case (acc, _) => acc
+        }
+        Voting.BallotCounts(yaysCount, naysCount, passesCount)
+      }
+
+  /** Gets ballot operations for given level */
+  def getBallotOperationsForLevel(level: Int)(implicit ec: ExecutionContext): DBIO[Voting.BallotCounts] =
+    Tables.Operations
+      .filter(op => op.kind === "ballot" && op.level === level)
       .groupBy(_.ballot)
       .map {
         case (vote, ops) => vote -> ops.length
@@ -768,6 +820,32 @@ object TezosDatabaseOperations extends LazyLogging {
       case true => DBIO.successful(Some(0))
       case false => table ++= rows
     }
+
+  import shapeless._
+  import shapeless.ops.hlist._
+
+  import kantan.csv._
+
+  /** Reads and inserts CSV file to the database for the given table */
+  def initTableFromCsv[A <: AbstractTable[_], H <: HList](
+      db: Database,
+      table: TableQuery[A],
+      network: String,
+      separator: Char = ','
+  )(
+      implicit hd: HeaderDecoder[A#TableElementType],
+      g: Generic.Aux[A#TableElementType, H],
+      m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
+      ec: ExecutionContext
+  ): Future[(List[A#TableElementType], Option[Int])] = {
+    val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
+    db.run(insertWhenEmpty(table, rows))
+      .andThen {
+        case Success(_) => logger.info("Written {} {} rows", rows.size, table.baseTableRow.tableName)
+        case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
+      }
+      .map(rows -> _)
+  }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

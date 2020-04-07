@@ -72,7 +72,8 @@ final case class BakingAndEndorsingRights(
     interval: FiniteDuration,
     cyclesToFetch: Int,
     cycleSize: Int,
-    fetchSize: Int
+    fetchSize: Int,
+    updateSize: Int
 )
 
 /** used to pattern match on natural numbers */

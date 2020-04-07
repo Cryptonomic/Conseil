@@ -98,6 +98,12 @@ yay_rolls numeric,
 nay_rolls numeric,
 pass_rolls numeric,
 total_rolls numeric,
+block_yay_count integer,
+block_nay_count integer,
+block_pass_count integer,
+block_yay_rolls numeric,
+block_nay_rolls numeric,
+block_pass_rolls numeric,
 PRIMARY KEY (block_hash, proposal_hash)
 );
 
@@ -121,6 +127,16 @@ CREATE TABLE tezos.registered_tokens (
     name text NOT NULL,
     standard text NOT NULL,
     account_id text NOT NULL
+);
+
+CREATE TABLE tezos.token_balances (
+    token_id integer,
+    address text NOT NULL,
+    balance numeric NOT NULL,
+    block_id character varying NOT NULL,
+    block_level numeric DEFAULT '-1'::integer NOT NULL,
+    asof timestamp without time zone NOT NULL,
+    PRIMARY KEY (token_id, address, block_level)
 );
 
 

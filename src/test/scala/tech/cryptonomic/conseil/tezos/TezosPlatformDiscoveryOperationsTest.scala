@@ -28,6 +28,7 @@ import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 class TezosPlatformDiscoveryOperationsTest
     extends WordSpec
@@ -50,6 +51,8 @@ class TezosPlatformDiscoveryOperationsTest
     override def runQuery[A](action: dbio.DBIO[A]) = dbHandler.run(action)
   }
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
+
+  implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
 
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
@@ -203,7 +206,7 @@ class TezosPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "operations"
             ),
-            Attribute("kind", "Kind", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute("kind", "Kind", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("level", "Level", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("delegate", "Delegate", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("slots", "Slots", DataType.String, None, KeyType.NonKey, "operations"),
@@ -219,7 +222,14 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("amount", "Amount", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute("destination", "Destination", DataType.String, None, KeyType.UniqueKey, "operations"),
             Attribute("parameters", "Parameters", DataType.String, None, KeyType.NonKey, "operations"),
-            Attribute("parameters_micheline", "Parameters micheline", DataType.String, None, KeyType.NonKey, "operations"),
+            Attribute(
+              "parameters_micheline",
+              "Parameters micheline",
+              DataType.String,
+              None,
+              KeyType.NonKey,
+              "operations"
+            ),
             Attribute(
               "parameters_entrypoints",
               "Parameters entrypoints",
@@ -259,7 +269,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("internal", "Internal", DataType.Boolean, None, KeyType.NonKey, "operations"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.UniqueKey, "operations"),
             Attribute("proposal", "Proposal", DataType.String, None, KeyType.NonKey, "operations"),
-            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "operations"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.UniqueKey, "operations"),
             Attribute("branch", "Branch", DataType.String, None, KeyType.NonKey, "operations"),
             Attribute("number_of_slots", "Number of slots", DataType.Int, None, KeyType.NonKey, "operations"),
             Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "operations"),

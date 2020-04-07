@@ -1,17 +1,12 @@
 package tech.cryptonomic.conseil
 
-import java.sql.Timestamp
-import java.time.Instant
-
 import akka.actor.ActorSystem
 import akka.Done
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
-import kantan.codecs.strings.StringDecoder
 import org.slf4j.LoggerFactory
-import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.tezos.{
   ApiOperations,
   DatabaseConversions,
@@ -26,11 +21,9 @@ import tech.cryptonomic.conseil.tezos.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
+import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config._
-import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.insertWhenEmpty
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
-import java.time.format.DateTimeFormatter
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -39,6 +32,7 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -87,43 +81,60 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  /** Inits tables with values from CSV files */
-  import kantan.csv._
   import kantan.csv.generic._
+  import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
 
-  implicit val timestampDecoder: CellDecoder[java.sql.Timestamp] = (e: String) => {
-    val format = DateTimeFormatter.ofPattern("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)")
-    StringDecoder
-      .makeSafe("Instant")(s => Instant.from(format.parse(s)))(e)
-      .map(Timestamp.from)
-      .left
-      .map(x => DecodeError.TypeError(x.message))
+  /** Inits registered tokens at startup */
+  implicit val tokenContracts: TokenContracts = {
+
+    val futureTokenContracts =
+      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network, separator = '|').map {
+        case (tokenRows, _) =>
+          TokenContracts.fromTokens(
+            tokenRows.map {
+              case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                ContractId(accountId) -> standard
+            }
+          )
+
+      }
+
+    Await.result(futureTokenContracts, 5.seconds)
   }
 
-  initTableFromCsv(Tables.RegisteredTokens, tezosConf.network, separator = '|')
-  initTableFromCsv(Tables.KnownAddresses, tezosConf.network)
-  initTableFromCsv(Tables.BakerRegistry, tezosConf.network)
-
-  import shapeless._
-  import shapeless.ops.hlist._
-
-  /** Reads and inserts CSV file to the database for the given table */
-  def initTableFromCsv[A <: AbstractTable[_], H <: HList](table: TableQuery[A], network: String, separator: Char = ',')(
-      implicit hd: HeaderDecoder[A#TableElementType],
-      g: Generic.Aux[A#TableElementType, H],
-      m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H]
-  ): Future[Option[Int]] = {
-    val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
-    db.run(insertWhenEmpty(table, rows)) andThen {
-      case Success(_) => logger.info(s"Written ${rows.size} ${table.baseTableRow.tableName} rows")
-      case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
-    }
-  }
+  /** Inits tables with values from CSV files */
+  TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
+  TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
     writeFutureRights()
   )
+
+  /** Updates timestamps in the baking/endorsing rights tables */
+  def updateRightsTimestamps(): Future[Unit] = {
+    import cats.implicits._
+    val blockHead = tezosNodeOperator.getBareBlockHead()
+
+    blockHead.flatMap { blockData =>
+      val headLevel = blockData.header.level
+      val blockLevelsToUpdate = List.range(headLevel + 1, headLevel + lorreConf.blockRightsFetching.updateSize)
+      val br = tezosNodeOperator.getBatchBakingRightsByLevels(blockLevelsToUpdate).flatMap { bakingRightsResult =>
+        val brResults = bakingRightsResult.values.flatten
+        logger.info(s"Got ${brResults.size} baking rights")
+        db.run(TezosDb.updateBakingRightsTimestamp(brResults.toList))
+      }
+      val er = tezosNodeOperator.getBatchEndorsingRightsByLevel(blockLevelsToUpdate).flatMap { endorsingRightsResult =>
+        val erResults = endorsingRightsResult.values.flatten
+        logger.info(s"Got ${erResults.size} endorsing rights")
+        db.run(TezosDb.updateEndorsingRightsTimestamp(erResults.toList))
+      }
+      (br, er).mapN {
+        case (bb, ee) =>
+          logger.info("Updated {} baking rights and {} endorsing rights rows", bb.sum, ee.sum)
+      }
+    }
+  }
 
   /** Fetches future baking and endorsing rights to insert it into the DB */
   def writeFutureRights(): Unit = {
@@ -230,6 +241,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
+      _ <- updateRightsTimestamps
     } yield Some(nextRefreshes)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
@@ -395,17 +407,22 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks.map(_.data))
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
         blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
-        ballotCounts <- Future.traverse(blocksWithProposals) { block =>
+        ballotCountsPerCycle <- Future.traverse(blocksWithProposals) { block =>
           db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).level.cycle))
+            .map(block -> _)
+        }
+        ballotCountsPerLevel <- Future.traverse(blocksWithProposals) { block =>
+          db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
             .map(block -> _)
         }
         ballots <- tezosNodeOperator.getVotes(blocksWithProposals)
         governanceRows = groupGovernanceDataByBlock(
           blocksWithProposals,
           proposals.toMap,
-          listings.toMap,
+          listings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
           ballots.toMap,
-          ballotCounts.toMap
+          ballotCountsPerCycle.toMap,
+          ballotCountsPerLevel.toMap
         ).map(_.convertTo[Tables.GovernanceRow])
         _ <- db.run(TezosDb.insertGovernance(governanceRows))
       } yield ()
@@ -415,17 +432,29 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
-        listings: Map[Block, List[Voting.BakerRolls]],
+        listings: Map[Int, List[Voting.BakerRolls]],
         ballots: Map[Block, List[Voting.Ballot]],
-        ballotCounts: Map[Block, Voting.BallotCounts]
+        ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
+        ballotCountsPerLevel: Map[Block, Voting.BallotCounts]
     ): List[
-      (BlockData, Option[ProtocolId], List[Voting.BakerRolls], List[Voting.Ballot], Option[Voting.BallotCounts])
+      (
+          BlockData,
+          Option[ProtocolId],
+          List[Voting.BakerRolls],
+          List[Voting.BakerRolls],
+          List[Voting.Ballot],
+          Option[Voting.BallotCounts],
+          Option[Voting.BallotCounts]
+      )
     ] = blocks.map { block =>
       val proposal = proposals.get(block.data.hash).flatten
-      val listing = listings.get(block).toList.flatten
+      val listing = listings.get(block.data.header.level).toList.flatten
+      val prevListings = listings.get(block.data.header.level - 1).toList.flatten
+      val listingByBlock = listing.diff(prevListings)
       val ballot = ballots.get(block).toList.flatten
-      val ballotCount = ballotCounts.get(block)
-      (block.data, proposal, listing, ballot, ballotCount)
+      val ballotCountPerCycle = ballotCountsPerCycle.get(block)
+      val ballotCountPerLevel = ballotCountsPerLevel.get(block)
+      (block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel)
     }
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
