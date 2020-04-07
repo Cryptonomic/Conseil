@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.tezos
 
+import scala.util.Try
 import com.typesafe.scalalogging.LazyLogging
 import cats.{Id, Show}
 import cats.implicits._
@@ -14,6 +15,7 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
 
 object DatabaseConversions extends LazyLogging {
 
@@ -681,22 +683,25 @@ object DatabaseConversions extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.OperationBalances._
 
     override def convert(from: Block) =
-      TezosOptics.Blocks.extractOperationsAlongWithInternalResults(from).flatMap {
-        case (group, (operations, internalResults)) =>
-          val mainOperationData = operations.map(
-            op =>
-              (from, group.hash, op).convertTo[Tables.OperationsRow] ->
-                  op.convertToA[List, Tables.BalanceUpdatesRow]
-          )
-          val internalOperationData = internalResults.map { oop =>
-            val op = oop.convertTo[Operation]
-            (from, group.hash, op)
-              .convertTo[Tables.OperationsRow]
-              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op
-              .convertToA[List, Tables.BalanceUpdatesRow]
-          }
-          mainOperationData ++ internalOperationData
-      }.toList
+      TezosOptics.Blocks
+        .extractOperationsAlongWithInternalResults(from)
+        .flatMap {
+          case (group, (operations, internalResults)) =>
+            val mainOperationData = operations.map(
+              op =>
+                (from, group.hash, op).convertTo[Tables.OperationsRow] ->
+                    op.convertToA[List, Tables.BalanceUpdatesRow]
+            )
+            val internalOperationData = internalResults.map { oop =>
+              val op = oop.convertTo[Operation]
+              (from, group.hash, op)
+                .convertTo[Tables.OperationsRow]
+                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op
+                .convertToA[List, Tables.BalanceUpdatesRow]
+            }
+            mainOperationData ++ internalOperationData
+        }
+        .toList
 
   }
 
@@ -883,6 +888,21 @@ object DatabaseConversions extends LazyLogging {
                 (yays, nays, passes)
             }
         }
+    }
+
+  implicit val tnsNameRecordToRow =
+    new Conversion[Id, TNSContracts.NameRecord, Tables.TezosNamesRow] {
+      def convert(from: TNSContracts.NameRecord): cats.Id[Tables.TezosNamesRow] = {
+        val registrationTimestamp = Try(java.time.ZonedDateTime.parse(from.registeredAt)).toOption.map(toSql)
+        Tables.TezosNamesRow(
+          name = from.name,
+          owner = Some(from.owner.trim).filter(_.nonEmpty),
+          resolver = Some(from.resolver),
+          registeredAt = registrationTimestamp,
+          registrationPeriod = Try(from.registrationPeriod.toInt).toOption,
+          modified = Try(from.updated.toLowerCase.trim.toBoolean).toOption
+        )
+      }
     }
 
 }

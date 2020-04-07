@@ -33,6 +33,7 @@ import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContracts, TokenContracts}
+import tech.cryptonomic.conseil.tezos.app.TezosNamesOperations
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -126,6 +127,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     //return the contracts definitions
     (tokenContracts, tnsContracts)
   }
+
+  //build operations on tns based on the implicit contracts defined before
+  val tnsOperations = new TezosNamesOperations(tns, tezosNodeOperator)
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
@@ -405,6 +409,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
+        _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
         votingData <- processVotesForBlocks(results.map { case (block, _) => block })
         rollsData = votingData.map {
           case (block, rolls) => block.data.hash -> rolls

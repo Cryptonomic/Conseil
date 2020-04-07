@@ -15,6 +15,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
+import tech.cryptonomic.conseil.tezos.TezosTypes.ScriptId
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
@@ -38,9 +39,9 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
     * expected big maps being used.
     *
     * @param transaction accepts either a transaction or internal transaction
-    * @return a name resolver, if any was correctly registered by the operation
+    * @return a name resolver data, if any was correctly registered by the operation
     */
-  def readLookupMapping(transaction: Either[Transaction, InternalTransaction]): Option[(Name, AccountId)] = {
+  def readLookupMapReference(transaction: Either[Transaction, InternalTransaction]): Option[LookupMapReference] = {
     //the data shape is roughly the same, so we can extract common pieces easily
     val (parameters, destination, mapDiff) =
       transaction
@@ -50,15 +51,35 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
         )
         .merge
 
+    /* this is a rough outline
+     * we take only meaningful maps and check the ids, against the lookup maps for the contract
+     * then we extract data both from parameters and big map diffs to create a
+     * return object with all needed references to eventually
+     * read all the tns info from the tezos node.
+     */
     for {
-      ContractToolbox(_, lookupId, reverseId, readMapping) <- registry.find(_.id == destination)
-      updatedMaps <- mapDiff.map(collectUpdatedMapIds)
-      if mapIdsMatchAny(lookupId, updatedMaps, destination) && mapIdsMatchAny(reverseId, updatedMaps, destination)
+      ContractToolbox(_, lookupId, reverseId, readMapping, _) <- registry.find(_.id == destination)
+      updateMaps <- mapDiff.map(collectUpdateMaps)
+      if allRegisteredIdsUpdated(Set(lookupId, reverseId), updateMaps.keySet, destination)
       operationParams <- parameters
       params <- operationParams.swap.toOption
       (name, resolver) <- readMapping(params)
-    } yield name -> resolver
+      id <- reverseId.get(timeout = 0L)
+      (key, keyHash) <- updateMaps.get(id)
+    } yield LookupMapReference(destination, name, resolver, id, keyHash)
   }
+
+  /** Extracts any available data for a TNS entry for the specific contract
+    *
+    * @param registrar the id of the smart contract
+    * @param content a json string representing the micheline content of a specific lookup map
+    * @return the name record if both the contract was found and the content was well-formed
+    */
+  def readLookupMapContent(registrar: ContractId, content: String): Option[NameRecord] =
+    for {
+      ContractToolbox(_, _, _, _, readContent) <- registry.find(_.id == registrar)
+      record <- readContent(content)
+    } yield record
 
   /** Call this to store big-map-ids associated with a TNS contract.
     * This is supposed to happen once the chain records a block originating
@@ -72,7 +93,7 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
     */
   def setMapIds(registrar: ContractId, lookupId: BigDecimal, reverseId: BigDecimal): Unit =
     registry.find(_.id == registrar).foreach {
-      case ContractToolbox(_, lookupVar, reverseVar, _) =>
+      case ContractToolbox(_, lookupVar, reverseVar, _, _) =>
         lookupVar.put(BigMapId(lookupId))
         reverseVar.put(BigMapId(reverseId))
     }
@@ -93,7 +114,7 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
      * We expect the reverse map to be a simple address to name mapping.
      * Any other map (there should be exactly two) must then be the lookup, by exclusion.
      */
-    val (reverseMaps, lookupMap) = maps.partition {
+    val (reverseMaps, lookupMaps) = maps.partition {
       case BigMapsRow(id, keyType, valueType) =>
         (keyType, valueType) match {
           case (Some("address"), Some("string")) => true
@@ -101,7 +122,7 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
         }
     }
 
-    (reverseMaps.headOption.map(_.bigMapId), lookupMap.headOption.map(_.bigMapId)).tupled.foreach {
+    (reverseMaps.headOption.map(_.bigMapId), lookupMaps.headOption.map(_.bigMapId)).tupled.foreach {
       case (reverseId, lookupId) => setMapIds(registrar, lookupId, reverseId)
     }
 
@@ -117,16 +138,53 @@ object TNSContracts extends LazyLogging {
   /** typed wrapper to clarify the meaning of the name string */
   case class Name(value: String) extends AnyVal
 
+  /** Wraps the data extracted to identify lookup information on a stored big map
+    * @param contractId the smart contract reference
+    * @param lookupName name to lookup for
+    * @param resolver the resolved account address
+    * @param mapId the map holding the tns registration info
+    * @param mapKeyHash the hashed key for the tns info in the big map
+    */
+  case class LookupMapReference(
+      contractId: ContractId,
+      lookupName: Name,
+      resolver: AccountId,
+      mapId: BigMapId,
+      mapKeyHash: ScriptId
+  )
+
+  /** Contains all data available from a tns entry
+    *
+    * @param name the registered name
+    * @param updated a boolean flag indicating if the entry was modified
+    * @param resolver the account address referred to by the name
+    * @param registeredAt ISO timestamp of the registration moment
+    * @param registrationPeriod chain period of the registration
+    * @param owner an account address corresponding to the name record owner
+    */
+  case class NameRecord(
+      name: String,
+      updated: String,
+      resolver: String,
+      registeredAt: String,
+      registrationPeriod: String,
+      owner: String
+  )
+
   /** Extracts relevant data to query the node about all details regarding the naming entry
     *  The tuple values collects: registered name, corresponding account address
     */
   type LookupMappingReader = Parameters => Option[(Name, AccountId)]
 
+  /** Extracts a TNS entry from a json micheline description, according to the contract */
+  type NameRecordReader = String => Option[NameRecord]
+
   private case class ContractToolbox(
       id: ContractId,
       lookupMapId: SyncVar[BigMapId] = new SyncVar(),
       reverseMapId: SyncVar[BigMapId] = new SyncVar(),
-      lookupReader: LookupMappingReader
+      lookupReader: LookupMappingReader,
+      recordReader: NameRecordReader
   )
 
   //we sort toolboxes by the contract id
@@ -144,7 +202,8 @@ object TNSContracts extends LazyLogging {
             for {
               ep <- params.entrypoint if ep == "registerName"
               nameMapping <- MichelineOps.parseNameRegistrationFromParameters(params.value)
-            } yield nameMapping
+            } yield nameMapping,
+          recordReader = MichelineOps.parseReverseLookupContent
         )
     }
 
@@ -169,13 +228,14 @@ object TNSContracts extends LazyLogging {
     new TNSContracts(TreeSet(toolboxes: _*))
   }
 
-  /** Will check if the id registered, possibly not yet set, matches with any of the values referred from the update */
-  private def mapIdsMatchAny(
-      registeredId: SyncVar[BigMapId],
-      updateIds: List[BigMapId],
+  /** Will check if all registered ids, possibly not yet set, match with any of the values referred from the update */
+  private def allRegisteredIdsUpdated(
+      registeredIds: Set[SyncVar[BigMapId]],
+      updateIds: Set[BigMapId],
       registrar: ContractId
   ): Boolean = {
-    if (!registeredId.isSet)
+    val valuesAvailable = registeredIds.forall(_.isSet)
+    if (!valuesAvailable)
       logger.error(
         """A name registration was found where one of the maps for [reverse] lookup is not yet identified from contract origination
           | map_ids: {}
@@ -183,14 +243,14 @@ object TNSContracts extends LazyLogging {
         updateIds.mkString(","),
         registrar
       )
-    registeredId.isSet && updateIds.contains(registeredId.get.id)
+    valuesAvailable && registeredIds.forall(id => updateIds.contains(id.get))
   }
 
   /** Will extract all updated map ids from a list of diffs */
-  private def collectUpdatedMapIds(diffs: List[Contract.CompatBigMapDiff]): List[BigMapId] =
+  private def collectUpdateMaps(diffs: List[Contract.CompatBigMapDiff]): Map[BigMapId, (Micheline, ScriptId)] =
     diffs.collect {
-      case Left(Contract.BigMapUpdate("update", _, _, Decimal(mapId), _)) => BigMapId(mapId)
-    }
+      case Left(Contract.BigMapUpdate("update", key, keyHash, Decimal(mapId), _)) => BigMapId(mapId) -> (key, keyHash)
+    }.toMap
 
   /** Defines extraction operations based on micheline fields */
   private object MichelineOps {
@@ -206,8 +266,8 @@ object TNSContracts extends LazyLogging {
         err =>
           logger.error(
             """Failed to parse michelson expression for TNS registration call.
-        | Parameters were: {}
-        | Error is {}""".stripMargin,
+              | Parameters were: {}
+              | Error is {}""".stripMargin,
             paramCode.expression,
             err.getMessage()
           )
@@ -227,5 +287,52 @@ object TNSContracts extends LazyLogging {
       }
     }
 
+    /** Given a correctly formatted json string parse
+      * it as a reverse lookup big map entry, according to the
+      * specific structure of cryptnomic tns smart contract
+      *
+      * @param micheline a valid json string, representing the map content
+      * @return the values extracted from the micheline structure
+      */
+    def parseReverseLookupContent(micheline: String): Option[NameRecord] = {
+
+      val parsed = JsonParser.parse[MichelsonInstruction](micheline)
+
+      parsed.left.foreach(
+        err =>
+          logger.error(
+            """Failed to parse michelson expression for TNS map entry.
+              | Content was: {}
+              | Error is {}""".stripMargin,
+            micheline,
+            err.getMessage()
+          )
+      )
+
+      parsed.toOption.collect {
+
+        // format: off
+        case MichelsonSingleInstruction("Pair",
+            MichelsonType("Pair",
+                MichelsonType(updated, _, _) ::
+                MichelsonType("Pair",
+                    MichelsonStringConstant(name) :: MichelsonStringConstant(owner) :: _,
+                _) ::
+                _,
+            _) ::
+            MichelsonType("Pair",
+                MichelsonStringConstant(registeredAt) ::
+                MichelsonType("Pair",
+                    MichelsonIntConstant(registrationPeriod) :: MichelsonStringConstant(resolver) :: _,
+                _) ::
+                _ ,
+            _) ::
+            _,
+        _) => NameRecord(name, updated, resolver, registeredAt, registrationPeriod, owner)
+        // format: on
+
+      }
+
+    }
   }
 }

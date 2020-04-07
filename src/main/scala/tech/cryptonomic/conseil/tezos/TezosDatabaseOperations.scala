@@ -97,7 +97,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param blocks   Block with operations.
     * @return         Database action to execute.
     */
-  def writeBlocks(blocks: List[Block])(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Unit] = {
+  def writeBlocks(
+      blocks: List[Block]
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import cats.data.Kleisli
     import cats.instances.list._
@@ -522,6 +524,12 @@ object TezosDatabaseOperations extends LazyLogging {
   def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
     logger.info("Writing {} governance rows into database...", governance.size)
     Tables.Governance ++= governance
+  }
+
+  def upsertTezosNames(names: List[TNSContracts.NameRecord]): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+    logger.info("Upserting {} tezos names rows into the database...")
+    Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 
   /**
