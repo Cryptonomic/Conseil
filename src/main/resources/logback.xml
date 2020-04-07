@@ -11,34 +11,23 @@
         </encoder>
     </appender>
 
-
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="STDOUT" />
     </appender>
 
-    <logger name="ASYNC_LOGGER" level="INFO" additivity="false">
-        <appender name="ASYNC_LOGSTASH" class="net.logstash.logback.appender.LoggingEventAsyncDisruptorAppender">
-            <appender class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-                <destination>localhost:5000</destination>
-                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                    <customFields>{"appName":"conseil","appEnv":"dev"}</customFields>
-                </encoder>
-                <!--<ssl>-->
-                    <!--<trustStore>-->
-                        <!--<location>classpath:/spinner2.jks</location>-->
-                        <!--<password>conseilpass</password>-->
-                    <!--</trustStore>-->
-                <!--</ssl>-->
-            </appender>
-        </appender>
-    </logger>
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${JSON_LOGGING_LEVEL:-OFF}</level>
+        </filter>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
 
     <logger name="com.base22" level="TRACE"/>
     <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-OFF}"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />
-        <appender-ref ref="ASYNC_LOGSTASH" />
+        <appender-ref ref="JSON" />
     </root>
 
 </configuration>
