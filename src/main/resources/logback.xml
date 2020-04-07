@@ -12,6 +12,9 @@
     </appender>
 
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${ASYNC_LOGGING_LEVEL:-INFO}</level>
+        </filter>
         <appender-ref ref="STDOUT" />
     </appender>
 
