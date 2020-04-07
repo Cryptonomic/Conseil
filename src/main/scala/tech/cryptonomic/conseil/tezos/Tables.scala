@@ -37,6 +37,7 @@ trait Tables {
     OriginatedAccountMaps.schema,
     ProcessedChainEvents.schema,
     RegisteredTokens.schema,
+    TezosNames.schema,
     TokenBalances.schema
   ).reduceLeft(_ ++ _)
   @deprecated("Use .schema instead of .ddl", "3.0")
@@ -2444,6 +2445,74 @@ trait Tables {
 
   /** Collection-like TableQuery object for table RegisteredTokens */
   lazy val RegisteredTokens = new TableQuery(tag => new RegisteredTokens(tag))
+
+  /** Entity class storing rows of table TezosNames
+    *  @param name Database column name SqlType(varchar), PrimaryKey
+    *  @param owner Database column owner SqlType(varchar), Default(None)
+    *  @param resolver Database column resolver SqlType(varchar), Default(None)
+    *  @param registeredAt Database column registered_at SqlType(timestamp), Default(None)
+    *  @param registrationPeriod Database column registration_period SqlType(int4), Default(None)
+    *  @param modified Database column modified SqlType(bool), Default(None) */
+  case class TezosNamesRow(
+      name: String,
+      owner: Option[String] = None,
+      resolver: Option[String] = None,
+      registeredAt: Option[java.sql.Timestamp] = None,
+      registrationPeriod: Option[Int] = None,
+      modified: Option[Boolean] = None
+  )
+
+  /** GetResult implicit for fetching TezosNamesRow objects using plain SQL queries */
+  implicit def GetResultTezosNamesRow(
+      implicit e0: GR[String],
+      e1: GR[Option[String]],
+      e2: GR[Option[java.sql.Timestamp]],
+      e3: GR[Option[Int]],
+      e4: GR[Option[Boolean]]
+  ): GR[TezosNamesRow] = GR { prs =>
+    import prs._
+    TezosNamesRow.tupled((<<[String], <<?[String], <<?[String], <<?[java.sql.Timestamp], <<?[Int], <<?[Boolean]))
+  }
+
+  /** Table description of table tezos_names. Objects of this class serve as prototypes for rows in queries. */
+  class TezosNames(_tableTag: Tag) extends profile.api.Table[TezosNamesRow](_tableTag, Some("tezos"), "tezos_names") {
+    def * =
+      (name, owner, resolver, registeredAt, registrationPeriod, modified) <> (TezosNamesRow.tupled, TezosNamesRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      ((Rep.Some(name), owner, resolver, registeredAt, registrationPeriod, modified)).shaped.<>({ r =>
+        import r._; _1.map(_ => TezosNamesRow.tupled((_1.get, _2, _3, _4, _5, _6)))
+      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column name SqlType(varchar), PrimaryKey */
+    val name: Rep[String] = column[String]("name", O.PrimaryKey)
+
+    /** Database column owner SqlType(varchar), Default(None) */
+    val owner: Rep[Option[String]] = column[Option[String]]("owner", O.Default(None))
+
+    /** Database column resolver SqlType(varchar), Default(None) */
+    val resolver: Rep[Option[String]] = column[Option[String]]("resolver", O.Default(None))
+
+    /** Database column registered_at SqlType(timestamp), Default(None) */
+    val registeredAt: Rep[Option[java.sql.Timestamp]] =
+      column[Option[java.sql.Timestamp]]("registered_at", O.Default(None))
+
+    /** Database column registration_period SqlType(int4), Default(None) */
+    val registrationPeriod: Rep[Option[Int]] = column[Option[Int]]("registration_period", O.Default(None))
+
+    /** Database column modified SqlType(bool), Default(None) */
+    val modified: Rep[Option[Boolean]] = column[Option[Boolean]]("modified", O.Default(None))
+
+    /** Index over (owner) (database name tezos_names_owner_idx) */
+    val index1 = index("tezos_names_owner_idx", owner)
+
+    /** Index over (resolver) (database name tezos_names_resolver_idx) */
+    val index2 = index("tezos_names_resolver_idx", resolver)
+  }
+
+  /** Collection-like TableQuery object for table TezosNames */
+  lazy val TezosNames = new TableQuery(tag => new TezosNames(tag))
 
   /** Entity class storing rows of table TokenBalances
     *  @param tokenId Database column token_id SqlType(int4)
