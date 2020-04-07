@@ -104,9 +104,8 @@ object Conseil
     implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
     val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
 
-      lazy val transformation = new UnitTransformation(metadataOverrides)
-      lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
-
+    lazy val transformation = new UnitTransformation(metadataOverrides)
+    lazy val cacheOverrides = new AttributeValuesCacheConfiguration(metadataOverrides)
 
     lazy val tezosPlatformDiscoveryOperations =
       TezosPlatformDiscoveryOperations(
@@ -184,30 +183,31 @@ object Conseil
         enableCORS {
           implicit val correlationId: UUID = UUID.randomUUID()
           handleExceptions(loggingExceptionHandler) {
-            extractClientIP { ip =>
-              recordResponseValues(ip)(mat, correlationId) {
-                timeoutHandler {
-                  concat(
-                    validateApiKey { _ =>
-                      concat(
-                        logRequest("Conseil", Logging.DebugLevel) {
-                          AppInfo.route
-                        },
-                        logRequest("Metadata Route", Logging.DebugLevel) {
-                          platformDiscovery.route
-                        },
-                        logRequest("Data Route", Logging.DebugLevel) {
-                          data.getRoute ~ data.postRoute
-                        }
-                      )
-                    },
-                    options {
-                      // Support for CORS pre-flight checks.
-                      complete("Supported methods : GET and POST.")
-                    }
-                  )
+            extractClientIP {
+              ip =>
+                recordResponseValues(ip)(mat, correlationId) {
+                  timeoutHandler {
+                    concat(
+                      validateApiKey { _ =>
+                        concat(
+                          logRequest("Conseil", Logging.DebugLevel) {
+                            AppInfo.route
+                          },
+                          logRequest("Metadata Route", Logging.DebugLevel) {
+                            platformDiscovery.route
+                          },
+                          logRequest("Data Route", Logging.DebugLevel) {
+                            data.getRoute ~ data.postRoute
+                          }
+                        )
+                      },
+                      options {
+                        // Support for CORS pre-flight checks.
+                        complete("Supported methods : GET and POST.")
+                      }
+                    )
+                  }
                 }
-              }
             }
           }
         }
@@ -217,7 +217,7 @@ object Conseil
     val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
     displayInfo(server)
     if (verbose.on) displayConfiguration(platforms)
-        bindingFuture
+    bindingFuture
 
   }
 }

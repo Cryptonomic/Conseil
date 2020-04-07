@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.util
 
-
 import java.util.UUID
 
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
@@ -11,19 +10,19 @@ import akka.http.scaladsl.server.{Directive, ExceptionHandler, RequestContext, R
 import akka.stream.Materializer
 import cats.effect.concurrent.MVar
 import cats.effect.{Concurrent, IO}
-import org.slf4j.{LoggerFactory, MDC}
+import com.typesafe.scalalogging.LazyLogging
+import org.slf4j.MDC
 
+class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
 
-class RouteUtil(implicit concurrent: Concurrent[IO]) {
-
-  private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] = MVar.of[IO, Map[UUID, RequestValues]](Map.empty[UUID, RequestValues]).unsafeRunSync()
-  /** Async logger */
-  private val asyncLogger = LoggerFactory.getLogger("ASYNC_LOGGER")
+  private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] =
+    MVar.of[IO, Map[UUID, RequestValues]](Map.empty[UUID, RequestValues]).unsafeRunSync()
 
   /** Directive adding recorded values to the MDC */
-  def recordResponseValues(ip: RemoteAddress)(implicit materializer: Materializer, correlationId: UUID): Directive[Unit] =
+  def recordResponseValues(
+      ip: RemoteAddress
+  )(implicit materializer: Materializer, correlationId: UUID): Directive[Unit] =
     BasicDirectives.extractRequestContext.flatMap { ctx =>
-
       (for {
         requestMap <- requestInfoMap.take
         value = RequestValues.fromCtxAndIp(ctx, ip)
@@ -44,7 +43,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
   def loggingExceptionHandler(implicit correlationId: UUID): ExceptionHandler =
     ExceptionHandler {
       case e: Throwable =>
-        val response =  HttpResponse(InternalServerError)
+        val response = HttpResponse(InternalServerError)
 
         (for {
           requestMap <- requestInfoMap.take
@@ -54,7 +53,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
         complete(response)
     }
 
-  def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route = {
+  def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route =
     withRequestTimeoutResponse { _ =>
       val response = HttpResponse(StatusCodes.ServiceUnavailable, entity = HttpEntity("Request timeout"))
       (for {
@@ -63,16 +62,15 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
       } yield requestMap(correlationId).logResponse(response)).unsafeRunAsyncAndForget()
       response
     }(route)
-  }
 
   case class RequestValues(
-    httpMethod: String,
-    requestBody: String,
-    clientIp: String,
-    path: String,
-    apiVersion: String,
-    apiKey: String,
-    startTime: Long
+      httpMethod: String,
+      requestBody: String,
+      clientIp: String,
+      path: String,
+      apiVersion: String,
+      apiKey: String,
+      startTime: Long
   ) {
     def logResponse(response: HttpResponse): Unit = {
       MDC.put("httpMethod", httpMethod)
@@ -84,8 +82,8 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) {
       val requestEndTime = System.currentTimeMillis()
       val responseTime = requestEndTime - startTime
       MDC.put("responseTime", responseTime.toString)
-      MDC.put("responseCode", response.status.value)
-      asyncLogger.info("HTTP request")
+      MDC.put("responseCode", response.status.intValue().toString)
+      logger.info("HTTP request")
       MDC.clear()
     }
 
