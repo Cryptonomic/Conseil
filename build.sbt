@@ -18,6 +18,7 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
+  .disableAssembly()
   .aggregate(common, api, lorre)
 
 lazy val common = (project in file("conseil-common"))
@@ -46,6 +47,7 @@ lazy val api = (project in file("conseil-api"))
     description = "A run application Task.",
     javaExtras = Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
+  .enableAssembly()
   .dependsOn(common % "compile->test")
 
 lazy val lorre = (project in file("conseil-lorre"))
@@ -64,7 +66,10 @@ lazy val lorre = (project in file("conseil-lorre"))
   .dependsOn(common)
 
 lazy val lorreSchema = (project in file("conseil-lorre-schema"))
-  .settings(name := "conseil-lorre-schema", mainClass := Some("tech.cryptonomic.conseil.lorre.schema.GenSchema"))
+  .settings(
+    name := "conseil-lorre-schema",
+    mainClass := Some("tech.cryptonomic.conseil.lorre.schema.GenSchema")
+  )
   .addRunCommand(description = "A run schema generating Task.")
   .enableAssembly()
   .dependsOn(common)

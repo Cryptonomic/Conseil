@@ -1,7 +1,7 @@
 version: "3.1"
 
 services:
-  conseil:
+  conseil-api:
     image: cryptonomictech/conseil:latest
     ports:
       - 80:80
@@ -28,13 +28,13 @@ services:
       XTZ_Host: tezos-staging.cryptonomic-infra.tech
       XTZ_Port: 443
       XTZ_Network: mainnet
-    entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil"]
+    entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil-api"]
     volumes:
       - "conseil-sql:/root/sql/"
     networks:
       - conseil-net
 
-  lorre:
+  conseil-lorre:
     image: cryptonomictech/conseil:latest
     environment:
       DB_Host: conseil-postgres
@@ -46,7 +46,7 @@ services:
       XTZ_Host: tezos-staging.cryptonomic-infra.tech
       XTZ_Port: 443
       XTZ_Network: mainnet
-    command: lorre
+    command: conseil-lorre
     depends_on:
       - conseil-postgres
     networks:
