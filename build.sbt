@@ -74,6 +74,6 @@ lazy val lorreSchema = (project in file("conseil-lorre-schema"))
   .enableAssembly()
   .dependsOn(common)
 
-addCommandAlias("runConseil", "; api/runTask")
+addCommandAlias("runApi", "; api/runTask")
 addCommandAlias("runLorre", "; lorre/runTask")
-addCommandAlias("runLorreSchema", "; lorre-schema/runTask")
+addCommandAlias("runLorreSchema", "; lorreSchema/runTask")
