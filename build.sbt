@@ -25,7 +25,12 @@ lazy val common = (project in file("conseil-common"))
   .settings(
     name := "conseil-common",
     libraryDependencies ++= Dependencies.conseilCommonInclude,
-    excludeDependencies ++= Dependencies.conseilCommonExclude
+    excludeDependencies ++= Dependencies.conseilCommonExclude,
+    coverageExcludedPackages := Seq(
+      "tech.cryptonomic.conseil.common.io.*",
+      "tech.cryptonomic.conseil.common.tezos.Tables",
+      "tech.cryptonomic.conseil.common.config.Security",
+    ).mkString(";")
   )
   .settings(Defaults.itSettings)
   .settings(
@@ -39,7 +44,12 @@ lazy val api = (project in file("conseil-api"))
   .settings(
     name := "conseil-api",
     mainClass := Some("tech.cryptonomic.conseil.api.Conseil"),
-    libraryDependencies ++= Dependencies.conseilApiInclude
+    libraryDependencies ++= Dependencies.conseilApiInclude,
+    coverageExcludedPackages := Seq(
+      "<empty>",
+      ".*\\.Conseil",
+      ".*\\.ConseilAppConfig",
+    ).mkString(";")
   )
   .settings(Defaults.itSettings)
   .configs(IntegrationTest)
@@ -54,7 +64,12 @@ lazy val lorre = (project in file("conseil-lorre"))
   .settings(
     name := "conseil-lorre",
     mainClass := Some("tech.cryptonomic.conseil.lorre.Lorre"),
-    libraryDependencies ++= Dependencies.conseilLorreInclude
+    libraryDependencies ++= Dependencies.conseilLorreInclude,
+    coverageExcludedPackages := Seq(
+      "<empty>",
+      ".*\\.Lorre",
+      ".*\\.LorreAppConfig",
+    ).mkString(";")
   )
   .settings(Defaults.itSettings)
   .configs(IntegrationTest)
