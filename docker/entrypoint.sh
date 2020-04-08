@@ -41,10 +41,12 @@ else
     echo "Using config file: $CONFIG"
 fi
 
-if [ $1 = "conseil" ]; then
-      java -Dconfig.file=$CONFIG -cp /root/conseil.jar tech.cryptonomic.conseil.Conseil
+cat $CONFIG
+
+if [ $1 = "conseil-api" ]; then
+  java -Dconfig.file=$CONFIG -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil
 fi
 
-if [ $1 = "lorre" ]; then
-   java -Dconfig.file=$CONFIG -cp /root/conseil.jar tech.cryptonomic.conseil.Lorre $XTZNET
+if [ $1 = "conseil-lorre" ]; then
+  java -Dconfig.file=$CONFIG -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.lorre.Lorre $XTZNET
 fi

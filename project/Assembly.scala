@@ -11,7 +11,8 @@ object Assembly {
       project
         .settings(
           mainClass in assembly := mainClass.value,
-          assemblyOutputPath in assembly := file(s"/tmp/${name.value}.jar")
+          assemblyOutputPath in assembly := file(s"/tmp/${name.value}.jar"),
+          test in assembly := {}
         )
         .enablePlugins(AssemblyPlugin)
 
