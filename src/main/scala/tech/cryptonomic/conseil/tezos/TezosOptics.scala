@@ -40,7 +40,7 @@ object TezosOptics {
    *
    */
 
-  import monocle.{Optional, Traversal}
+  import monocle.{Lens, Optional, Traversal}
   import monocle.macros.{GenLens, GenPrism}
 
   //optional lenses into the Either branches
@@ -61,6 +61,46 @@ object TezosOptics {
       GenLens[Block](_.operationGroups) composeTraversal Traversal.fromTraverse[List, OperationsGroup]
     val groupOperations =
       GenLens[OperationsGroup](_.contents) composeTraversal Traversal.fromTraverse[List, Operation]
+
+    /** An optional lens allowing to reach into balances for blocks' metadata */
+    val blockBalances: Optional[Block, List[BalanceUpdate]] =
+      blockData composeLens metadata composePrism metadataType composeLens metadataBalances
+
+    /** a function to set the header timestamp for a block, returning the modified block */
+    val setTimestamp: ZonedDateTime => Block => Block = blockData composeLens dataHeader composeLens headerTimestamp set _
+
+    /** a function to set metadata balance updates in a block, returning the modified block */
+    val setBalances: List[BalanceUpdate] => Block => Block = blockBalances set _
+
+    /** functions to operate on all big maps copy diffs within a block */
+    val readBigMapDiffCopy = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.operationBigMapDiffCopy
+
+    /** functions to operate on all big maps remove diffs within a block */
+    val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.operationBigMapDiffRemove
+
+    /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
+      * in a form more amenable to processing
+      * @param block the block to inspect
+      * @return a Map holding for each group both external and internal operations' results
+      */
+    def extractOperationsAlongWithInternalResults(
+        block: Block
+    ): Map[OperationsGroup, (List[Operation], List[InternalOperationResults.InternalOperationResult])] =
+      block.operationGroups.map { group =>
+        val internal = group.contents.flatMap { op =>
+          op match {
+            case r: Reveal => r.metadata.internal_operation_results.toList.flatten
+            case t: Transaction => t.metadata.internal_operation_results.toList.flatten
+            case o: Origination => o.metadata.internal_operation_results.toList.flatten
+            case d: Delegation => d.metadata.internal_operation_results.toList.flatten
+            case _ => List.empty
+          }
+        }
+        group -> (group.contents, internal)
+      }.toMap
+  }
+
+  object Operations {
 
     val selectOrigination = GenPrism[Operation, Origination]
     val originationResult = GenLens[Origination](_.metadata.operation_result)
@@ -120,19 +160,9 @@ object TezosOptics {
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
 
-    val readBigMapDiffCopy = blockOperationsGroup composeTraversal groupOperations composeTraversal operationBigMapDiffCopy
-
-    val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal operationBigMapDiffRemove
-
-    /** An optional lens allowing to reach into balances for blocks' metadata */
-    val blockBalances: Optional[Block, List[BalanceUpdate]] =
-      blockData composeLens metadata composePrism metadataType composeLens metadataBalances
-
-    /** a function to set the header timestamp for a block, returning the modified block */
-    val setTimestamp: ZonedDateTime => Block => Block = blockData composeLens dataHeader composeLens headerTimestamp set _
-
-    /** a function to set metadata balance updates in a block, returning the modified block */
-    val setBalances: List[BalanceUpdate] => Block => Block = blockBalances set _
+    private val script = GenLens[Origination](_.script)
+    private val parameters = GenLens[Transaction](_.parameters)
+    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
   }
 
   object Accounts {
@@ -153,4 +183,32 @@ object TezosOptics {
     val storageLens = accountScript composePrism some composeLens storageCode composeLens expression
   }
 
+  object Contracts {
+    import tech.cryptonomic.conseil.util.JsonUtil
+
+    val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
+      case Left(value) => value.value
+      case Right(value) => value
+    } { micheline =>
+      {
+        case Left(value) => Left(value.copy(value = micheline))
+        case Right(_) => Right(micheline)
+      }
+    }
+
+    private val storage = GenLens[Scripted.Contracts](_.storage)
+    private val code = GenLens[Scripted.Contracts](_.code)
+
+    private val expression = GenLens[Micheline](_.expression)
+
+    //we'll use this to get out any address-looking string from the transaction params
+    val extractAddressesFromExpression = (micheline: Micheline) => {
+      micheline.expression match {
+        case JsonUtil.AccountIds(id, ids @ _*) =>
+          (id :: ids.toList).distinct.map(AccountId)
+        case _ =>
+          List.empty[AccountId]
+      }
+    }
+  }
 }
