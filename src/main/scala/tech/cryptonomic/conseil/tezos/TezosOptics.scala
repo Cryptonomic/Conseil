@@ -162,11 +162,6 @@ object TezosOptics {
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
 
-    //planned for reuse
-    private val script = GenLens[Origination](_.script)
-    private val parameters = GenLens[Transaction](_.parameters)
-    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
-
     private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     def extractAppliedOriginationsResults(block: Block) = {

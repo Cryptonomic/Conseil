@@ -220,7 +220,7 @@ object ConfigUtil {
         hd: HeaderDecoder[T#TableElementType],
         g: Generic.Aux[T#TableElementType, H],
         m: Mapper.Aux[Trimmer.type, H, H]
-    ): List[T#TableElementType] =
+    ): Option[List[T#TableElementType]] =
       readRowsFromCsv[T#TableElementType, H](
         csvSource = getClass.getResource(s"/${table.baseTableRow.tableName}/$network.csv"),
         separator
@@ -265,7 +265,7 @@ object ConfigUtil {
         hd: HeaderDecoder[Row],
         g: Generic.Aux[Row, H],
         m: Mapper.Aux[Trimmer.type, H, H]
-    ): List[Row] = {
+    ): Option[List[Row]] = {
       import kantan.csv._
       import kantan.csv.ops._
 
@@ -276,20 +276,24 @@ object ConfigUtil {
         g.from(trimmed)
       }
 
-      val reader: CsvReader[ReadResult[Row]] =
-        csvSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
+      Option(csvSource).map {
+        validSource =>
 
-      // separates List[Either[L, R]] into List[L] and List[R]
-      val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row]))(
-        (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
-      )
+        val reader: CsvReader[ReadResult[Row]] =
+          validSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
 
-      if (errors.nonEmpty) {
-        val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
-        logger.error("Error while reading registered source file {}: {}", csvSource.toExternalForm(), messages)
+        // separates List[Either[L, R]] into List[L] and List[R]
+        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row]))(
+          (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
+        )
+
+        if (errors.nonEmpty) {
+          val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
+          logger.error("Error while reading registered source file {}: {}", csvSource.toExternalForm(), messages)
+        }
+
+        rows
       }
-
-      rows
     }
 
   }

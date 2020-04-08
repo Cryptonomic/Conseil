@@ -859,15 +859,19 @@ object TezosDatabaseOperations extends LazyLogging {
       g: Generic.Aux[A#TableElementType, H],
       m: Mapper.Aux[ConfigUtil.Csv.Trimmer.type, H, H],
       ec: ExecutionContext
-  ): Future[(List[A#TableElementType], Option[Int])] = {
-    val rows = ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator)
-    db.run(insertWhenEmpty(table, rows))
-      .andThen {
-        case Success(_) => logger.info("Written {} {} rows", rows.size, table.baseTableRow.tableName)
-        case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
-      }
-      .map(rows -> _)
-  }
+  ): Future[(List[A#TableElementType], Option[Int])] =
+    ConfigUtil.Csv.readTableRowsFromCsv(table, network, separator) match {
+      case Some(rows) =>
+        db.run(insertWhenEmpty(table, rows))
+          .andThen {
+            case Success(_) => logger.info("Written {} {} rows", rows.size, table.baseTableRow.tableName)
+            case Failure(e) => logger.error(s"Could not fill ${table.baseTableRow.tableName} table", e)
+          }
+          .map(rows -> _)
+      case None =>
+        logger.warn("No csv configuration found to initialize table {} for {}.", table.baseTableRow.tableName, network)
+        Future.successful(List.empty -> None)
+    }
 
   /** Prefix for the table queries */
   private val tablePrefix = "tezos"

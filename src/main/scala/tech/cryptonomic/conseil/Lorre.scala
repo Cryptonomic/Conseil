@@ -112,10 +112,15 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val tnsRegistrars = ConfigUtil.Csv
         .readRowsFromCsv[(String, String), String :: String :: HNil](
           this.getClass.getResource(s"/registered_tns/${tezosConf.network}.csv")
-        )
-        .map {
-          case (id, contractType) => ContractId(id) -> contractType
-        }
+        ) match {
+        case Some(rows) =>
+          rows.map {
+            case (id, contractType) => ContractId(id) -> contractType
+          }
+        case None =>
+          logger.warn("No csv configuration found to initialize TNS for {}.", tezosConf.network)
+          List.empty
+      }
 
       TNSContracts.fromConfig(tnsRegistrars)
     }
