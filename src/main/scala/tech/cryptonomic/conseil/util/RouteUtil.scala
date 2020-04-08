@@ -13,6 +13,7 @@ import cats.effect.{Concurrent, IO}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.MDC
 
+/** Utility class for recording responses */
 class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
 
   private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] =
@@ -53,6 +54,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
         complete(response)
     }
 
+  /** Providing handling of the requests that timed out */
   def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route =
     withRequestTimeoutResponse { _ =>
       val response = HttpResponse(StatusCodes.ServiceUnavailable, entity = HttpEntity("Request timeout"))
@@ -63,6 +65,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
       response
     }(route)
 
+  /** Representation of request things to log */
   case class RequestValues(
       httpMethod: String,
       requestBody: String,
@@ -72,6 +75,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
       apiKey: String,
       startTime: Long
   ) {
+    /** Logging response with MDC */
     def logResponse(response: HttpResponse): Unit = {
       MDC.put("httpMethod", httpMethod)
       MDC.put("requestBody", requestBody)
@@ -89,7 +93,9 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
 
   }
 
+  /** Companion object for RequestValues */
   object RequestValues {
+    /** Extracts Request values from request context and ip address */
     def fromCtxAndIp(ctx: RequestContext, ip: RemoteAddress)(implicit materializer: Materializer): RequestValues = {
       import scala.concurrent.duration._
       RequestValues(
