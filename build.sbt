@@ -27,10 +27,10 @@ lazy val common = (project in file("conseil-common"))
     libraryDependencies ++= Dependencies.conseilCommonInclude,
     excludeDependencies ++= Dependencies.conseilCommonExclude,
     coverageExcludedPackages := Seq(
-      "tech.cryptonomic.conseil.common.io.*",
-      "tech.cryptonomic.conseil.common.tezos.Tables",
-      "tech.cryptonomic.conseil.common.config.Security",
-    ).mkString(";")
+          "tech.cryptonomic.conseil.common.io.*",
+          "tech.cryptonomic.conseil.common.tezos.Tables",
+          "tech.cryptonomic.conseil.common.config.Security"
+        ).mkString(";")
   )
   .settings(Defaults.itSettings)
   .settings(
@@ -46,10 +46,10 @@ lazy val api = (project in file("conseil-api"))
     mainClass := Some("tech.cryptonomic.conseil.api.Conseil"),
     libraryDependencies ++= Dependencies.conseilApiInclude,
     coverageExcludedPackages := Seq(
-      "<empty>",
-      ".*\\.Conseil",
-      ".*\\.ConseilAppConfig",
-    ).mkString(";")
+          "<empty>",
+          ".*\\.Conseil",
+          ".*\\.ConseilAppConfig"
+        ).mkString(";")
   )
   .settings(Defaults.itSettings)
   .configs(IntegrationTest)
@@ -66,10 +66,10 @@ lazy val lorre = (project in file("conseil-lorre"))
     mainClass := Some("tech.cryptonomic.conseil.lorre.Lorre"),
     libraryDependencies ++= Dependencies.conseilLorreInclude,
     coverageExcludedPackages := Seq(
-      "<empty>",
-      ".*\\.Lorre",
-      ".*\\.LorreAppConfig",
-    ).mkString(";")
+          "<empty>",
+          ".*\\.Lorre",
+          ".*\\.LorreAppConfig"
+        ).mkString(";")
   )
   .settings(Defaults.itSettings)
   .configs(IntegrationTest)
@@ -89,6 +89,16 @@ lazy val lorreSchema = (project in file("conseil-lorre-schema"))
   .enableAssembly()
   .dependsOn(common)
 
+lazy val smokeTests = (project in file("conseil-smoke-tests"))
+  .settings(
+    name := "conseil-smoke-tests",
+    mainClass := Some("tech.cryptonomic.conseil.smoke.tests.RegressionRun"),
+    libraryDependencies ++= Dependencies.conseilSmokeTestsInclude
+  )
+  .addRunCommand(description = "A run smoke tests Task.")
+  .disableAssembly()
+
 addCommandAlias("runApi", "; api/runTask")
 addCommandAlias("runLorre", "; lorre/runTask")
 addCommandAlias("runLorreSchema", "; lorreSchema/runTask")
+addCommandAlias("runSmokeTests", "; smokeTests/runTask")
