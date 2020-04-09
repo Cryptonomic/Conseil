@@ -6,8 +6,8 @@
 Conseil is an indexer and API for blockchains, currently focused on the [Tezos](https://tezos.com/), which allows you to seamlessly run complex queries against blockchain data. It is written in the functional style in the [Scala](https://scala-lang.org/) programming language. This project forms an essential part of the [Cryptonomic stack](https://cryptonomic.tech/developers.html).
 
 Conseil consists of two processes:
-- Lorre, which indexes the blockchain by downloading data from blockchain nodes and storing it in databases.
-- Conseil, which provides an API into the blockchain data index by Lorre in databases.
+- Lorre, which can index the blockchain by downloading data from a blockchain node and storing it in a database.
+- Conseil, which provides an API into the blockchain data indexed by Lorre.
 
 [Arronax](https://arronax.io/) provides a convenient user interface for querying Conseil data.
 
