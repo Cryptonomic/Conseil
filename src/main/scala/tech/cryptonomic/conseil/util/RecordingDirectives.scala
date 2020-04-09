@@ -3,10 +3,10 @@ package tech.cryptonomic.conseil.util
 import java.util.UUID
 
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
-import akka.http.scaladsl.model.{HttpEntity, HttpResponse, RemoteAddress, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.BasicDirectives
-import akka.http.scaladsl.server.{Directive, ExceptionHandler, RequestContext, Route}
+import akka.http.scaladsl.server.{Directive, ExceptionHandler, Route}
 import akka.stream.Materializer
 import cats.effect.concurrent.MVar
 import cats.effect.{Concurrent, IO}
@@ -14,27 +14,36 @@ import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.MDC
 
 /** Utility class for recording responses */
-class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
+class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends LazyLogging {
 
+  type RequestMap = Map[UUID, RequestValues]
   private val requestInfoMap: MVar[IO, Map[UUID, RequestValues]] =
-    MVar.of[IO, Map[UUID, RequestValues]](Map.empty[UUID, RequestValues]).unsafeRunSync()
+    MVar.of[IO, RequestMap](Map.empty[UUID, RequestValues]).unsafeRunSync()
+
+  private def requestMapModify[A](modify: RequestMap => RequestMap)(useValues: RequestValues => A)(implicit correlationId: UUID) = for {
+    map <- requestInfoMap.take
+    _   <- requestInfoMap.put(modify(map))
+  } yield useValues(map(correlationId))
 
   /** Directive adding recorded values to the MDC */
   def recordResponseValues(
       ip: RemoteAddress
   )(implicit materializer: Materializer, correlationId: UUID): Directive[Unit] =
-    BasicDirectives.extractRequestContext.flatMap { ctx =>
+    BasicDirectives.extractRequest.flatMap { request =>
       (for {
         requestMap <- requestInfoMap.take
-        value = RequestValues.fromCtxAndIp(ctx, ip)
+        value = RequestValues.fromHttpRequestAndIp(request, ip)
         _ <- requestInfoMap.put(requestMap.updated(correlationId, value))
       } yield ()).unsafeRunSync()
 
+      requestMapModify(map => map.updated(correlationId, RequestValues.fromHttpRequestAndIp(request, ip)))(_ => ()).unsafeRunSync()
+
       val response = BasicDirectives.mapResponse { resp =>
-        (for {
-          requestMap <- requestInfoMap.take
-          _ <- requestInfoMap.put(requestMap.filterNot(_._1 == correlationId))
-        } yield requestMap(correlationId).logResponse(resp)).unsafeRunAsyncAndForget()
+        requestMapModify(
+          modify = _.filterNot(_._1 == correlationId)
+        ){ values =>
+          values.logResponse(resp)
+        }.unsafeRunAsyncAndForget()
         resp
       }
       response
@@ -46,11 +55,11 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
       case e: Throwable =>
         val response = HttpResponse(InternalServerError)
 
-        (for {
-          requestMap <- requestInfoMap.take
-          _ <- requestInfoMap.put(requestMap.filterNot(_._1 == correlationId))
-        } yield requestMap(correlationId).logResponse(response)).unsafeRunAsyncAndForget()
-        e.printStackTrace()
+        requestMapModify(
+          modify = _.filterNot(_._1 == correlationId)
+        ){ values =>
+          values.logResponse(response)
+        }.unsafeRunAsyncAndForget()
         complete(response)
     }
 
@@ -58,10 +67,11 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
   def timeoutHandler(route: => Route)(implicit correlationId: UUID): Route =
     withRequestTimeoutResponse { _ =>
       val response = HttpResponse(StatusCodes.ServiceUnavailable, entity = HttpEntity("Request timeout"))
-      (for {
-        requestMap <- requestInfoMap.take
-        _ <- requestInfoMap.put(requestMap.filterNot(_._1 == correlationId))
-      } yield requestMap(correlationId).logResponse(response)).unsafeRunAsyncAndForget()
+      requestMapModify(
+        modify = _.filterNot(_._1 == correlationId)
+      ){ values =>
+          values.logResponse(response)
+      }.unsafeRunAsyncAndForget()
       response
     }(route)
 
@@ -83,7 +93,7 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
       MDC.put("path", path)
       MDC.put("apiVersion", apiVersion)
       MDC.put("apiKey", apiKey)
-      val requestEndTime = System.currentTimeMillis()
+      val requestEndTime = System.nanoTime()
       val responseTime = requestEndTime - startTime
       MDC.put("responseTime", responseTime.toString)
       MDC.put("responseCode", response.status.intValue().toString)
@@ -96,16 +106,16 @@ class RouteUtil(implicit concurrent: Concurrent[IO]) extends LazyLogging {
   /** Companion object for RequestValues */
   object RequestValues {
     /** Extracts Request values from request context and ip address */
-    def fromCtxAndIp(ctx: RequestContext, ip: RemoteAddress)(implicit materializer: Materializer): RequestValues = {
+    def fromHttpRequestAndIp(request: HttpRequest, ip: RemoteAddress)(implicit materializer: Materializer): RequestValues = {
       import scala.concurrent.duration._
       RequestValues(
-        httpMethod = ctx.request.method.value,
-        requestBody = ctx.request.entity.toStrict(1000.millis).value.get.get.data.utf8String,
+        httpMethod = request.method.value,
+        requestBody = request.entity.toStrict(1000.millis).value.get.get.data.utf8String,
         clientIp = ip.toOption.map(_.toString).getOrElse("unknown"),
-        path = ctx.request.uri.path.toString(),
-        apiVersion = if (ctx.request.uri.path.toString().startsWith("/v2")) "v2" else "v1",
-        apiKey = ctx.request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""),
-        startTime = System.currentTimeMillis()
+        path = request.uri.path.toString(),
+        apiVersion = if (request.uri.path.toString().startsWith("/v2")) "v2" else "v1",
+        apiKey = request.headers.find(_.is("apikey")).map(_.value()).getOrElse(""),
+        startTime = System.nanoTime()
       )
     }
   }

@@ -29,7 +29,7 @@ import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
-import tech.cryptonomic.conseil.util.RouteUtil
+import tech.cryptonomic.conseil.util.RecordingDirectives
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
@@ -151,7 +151,7 @@ object Conseil
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
     lazy val data = Data(metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
     implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
-    lazy val routeUtil = new RouteUtil
+    lazy val routeUtil = new RecordingDirectives
 
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
       apiKeyTuple =>
