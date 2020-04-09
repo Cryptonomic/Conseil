@@ -71,9 +71,6 @@ object Dependencies {
     "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
     "org.testcontainers"           % "postgresql"                     % "1.12.3" % "it, test",
     "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % "it, test",
-    "org.http4s"                   %% "http4s-blaze-client"           % http4sVersion % IntegrationTest,
-    "org.http4s"                   %% "http4s-dsl"                    % http4sVersion % IntegrationTest,
-    "org.http4s"                   %% "http4s-circe"                  % http4sVersion % IntegrationTest,
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )
@@ -92,6 +89,15 @@ object Dependencies {
   val conseilLorreInclude = Seq(
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+  )
+
+  val conseilSmokeTestsInclude = Seq(
+    "org.typelevel" %% "cats-core"           % catsVersion,
+    "org.http4s"    %% "http4s-blaze-client" % http4sVersion,
+    "org.http4s"    %% "http4s-dsl"          % http4sVersion,
+    "org.http4s"    %% "http4s-circe"        % http4sVersion,
+    "io.circe"      %% "circe-core"          % circeVersion,
+    "io.circe"      %% "circe-parser"        % circeVersion
   )
 
 }
