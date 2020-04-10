@@ -18,7 +18,6 @@ COPY --chown=builduser:builduser ./conseil-common/src /src/conseil-common/src
 COPY --chown=builduser:builduser ./conseil-api/src /src/conseil-api/src
 COPY --chown=builduser:builduser ./conseil-lorre/src /src/conseil-lorre/src
 COPY --chown=builduser:builduser ./build.sbt /src
-COPY --chown=builduser:builduser ./coverage.sbt /src
 COPY --chown=builduser:builduser ./publishing.sbt /src
 WORKDIR /src
 RUN sbt clean assembly -J-Xss32m
