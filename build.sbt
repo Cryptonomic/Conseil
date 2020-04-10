@@ -19,7 +19,7 @@ ThisBuild / resolvers ++= Seq(
 
 lazy val conseil = (project in file("."))
   .disableAssembly()
-  .aggregate(common, api, lorre)
+  .aggregate(common, api, lorre, lorreSchema, smokeTests)
 
 lazy val common = (project in file("conseil-common"))
   .settings(
