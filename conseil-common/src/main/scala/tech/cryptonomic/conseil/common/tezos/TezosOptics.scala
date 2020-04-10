@@ -234,7 +234,7 @@ object TezosOptics {
   }
 
   object Contracts {
-    import tech.cryptonomic.conseil.util.JsonUtil
+    import tech.cryptonomic.conseil.common.util.JsonUtil
 
     val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
       case Left(value) => value.value
