@@ -41,8 +41,6 @@ else
     echo "Using config file: $CONFIG"
 fi
 
-cat $CONFIG
-
 if [ $1 = "conseil-api" ]; then
   java -Dconfig.file=$CONFIG -cp /root/conseil-api.jar tech.cryptonomic.conseil.api.Conseil
 fi
