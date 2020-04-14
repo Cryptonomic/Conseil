@@ -528,7 +528,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   def upsertTezosNames(names: List[TNSContracts.NameRecord]): DBIO[Option[Int]] = {
     import CustomPostgresProfile.api._
-    logger.info("Upserting {} tezos names rows into the database...")
+    logger.info("Upserting {} tezos names rows into the database...", names.size)
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
 

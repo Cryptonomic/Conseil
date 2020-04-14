@@ -682,9 +682,7 @@ class TezosNodeOperator(
       ].run(blockHashes)
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
-      val operationalDataMap = fetchedOperationsWithAccounts.map {
-        case (hash, (ops, accounts)) => (hash, (ops, accounts))
-      }.toMap
+      val operationalDataMap = fetchedOperationsWithAccounts.toMap
       val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>

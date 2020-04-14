@@ -276,9 +276,7 @@ object ConfigUtil {
         g.from(trimmed)
       }
 
-      Option(csvSource).map {
-        validSource =>
-
+      Option(csvSource).map { validSource =>
         val reader: CsvReader[ReadResult[Row]] =
           validSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
 

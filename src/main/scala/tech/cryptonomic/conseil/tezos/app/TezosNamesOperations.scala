@@ -61,12 +61,13 @@ class TezosNamesOperations(tnsContracts: TNSContracts, node: TezosNodeOperator) 
     mapReferences =>
       mapReferences.toList.traverse {
         case (block, references) =>
-          logger.info(
-            "About to fetch big map contents to find TNS name registrations for block {} at level {} and the following references:\n {}",
-            block.data.hash.value,
-            block.data.header.level,
-            references.map(_.show).mkString("\n")
-          )
+          if (references.nonEmpty)
+            logger.info(
+              "About to fetch big map contents to find TNS name registrations for block {} at level {} and the following references:\n {}",
+              block.data.hash.value,
+              block.data.header.level,
+              references.map(_.show).mkString("\n")
+            )
           references.traverse { ref =>
             node.getBigMapContents(block.data.hash, ref.mapId.id, ref.mapKeyHash).map(ref -> _)
           }

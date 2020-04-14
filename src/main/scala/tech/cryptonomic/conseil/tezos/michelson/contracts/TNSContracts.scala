@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
 import tech.cryptonomic.conseil.tezos.TezosTypes.ScriptId
+import com.typesafe.scalalogging.Logger
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
@@ -64,7 +65,7 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
       operationParams <- parameters
       params <- operationParams.swap.toOption
       (name, resolver) <- readMapping(params)
-      id <- reverseId.get(timeout = 0L)
+      id <- lookupId.get(timeout = 0L)
       (key, keyHash) <- updateMaps.get(id)
     } yield LookupMapReference(destination, name, resolver, id, keyHash)
   }
@@ -96,6 +97,12 @@ class TNSContracts(private val registry: Set[TNSContracts.ContractToolbox]) {
       case ContractToolbox(_, lookupVar, reverseVar, _, _) =>
         lookupVar.put(BigMapId(lookupId))
         reverseVar.put(BigMapId(reverseId))
+        Logger[TNSContracts.type].info(
+          "Registered big map references for the TNS contract {}. Lookup id {}, reverse lookup id {}.",
+          registrar.id,
+          lookupId,
+          reverseId
+        )
     }
 
   /** Call this to store big-map-ids associated with a TNS contract.
@@ -263,7 +270,7 @@ object TNSContracts extends LazyLogging {
     val check = valuesAvailable && registeredIds.forall(id => updateIds.contains(id.get))
     logger.whenDebugEnabled(
       logger.debug(
-        "Checking updated map ids {}, upon a call to the tns contract {}. Ids matching? {}",
+        "Checking updated map ids {}, upon a call to the TNS Contract {}. Ids matching? {}",
         updateIds.mkString("{", ",", "}"),
         registrar.id,
         check
@@ -283,45 +290,33 @@ object TNSContracts extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.michelson.dto._
     import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
 
+    /* This is the expression matcher we expect for the valid call parameters
+     * in michelson format.
+     * We're interested in the inner Pair, containing name and resolver.
+     */
+    private val MichelsonParamExpr = """^Pair \d+ \(Pair\s+"(.+)"\s+"(.+)"\)$""".r
+
     /* Reads paramters for a registerName call, extracting the name mapping */
     def parseNameRegistrationFromParameters(paramCode: Micheline): Option[(Name, AccountId)] = {
 
       logger.info("Parsing parameters for TNS maps identification")
-      val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
-      parsed.left.foreach(
-        err =>
-          logger.error(
-            """Failed to parse michelson expression for TNS registration call.
-              | Parameters were: {}
-              | Error is {}""".stripMargin,
-            paramCode.expression,
-            err.getMessage()
+      //actually the parameters are already parsed and rendered as concrete michelson syntax
+      val michelson = paramCode.expression.trim
+
+      if (michelson.isEmpty) None
+      else {
+        //we profit from scala natively-provided pattern matching on regex to extract named groups
+        val extracted = MichelsonParamExpr.findFirstIn(michelson).map {
+          case MichelsonParamExpr(name, resolver) => (Name(name), AccountId(resolver))
+        }
+        if (extracted.isEmpty)
+          logger.warn(
+            "The TNS call parameters didn't conform to the expected shape for the contract. Michelson code was {}",
+            paramCode.expression
           )
-      )
-
-      /* This is the currently expected parse result for a valid tns call parameters
-       * The parser seems not to handle list recursion of types with the same details
-       * therefore we have generic MichelsonType entries, which doesn't really fit
-       */
-      val extracted = parsed.toOption.collect {
-        // format: off
-        case MichelsonSingleInstruction("Pair",
-          MichelsonIntConstant(duration) ::
-          MichelsonType("Pair",
-            MichelsonStringConstant(name) :: MichelsonStringConstant(resover) :: _,
-            _) ::
-            _,
-        _) => (Name(name), AccountId(resover))
-        // format: on
+        extracted
       }
-      if (extracted.isEmpty)
-        logger.warn(
-          "The TNS call parameters didn't conform to the expected shape for the contract. Micheline was {}, which parses to {}",
-          paramCode.expression,
-          parsed
-        )
-      extracted
     }
 
     /** Given a correctly formatted json string parse

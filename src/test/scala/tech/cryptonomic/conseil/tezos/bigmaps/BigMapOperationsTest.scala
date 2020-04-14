@@ -1,7 +1,6 @@
 package tech.cryptonomic.conseil.tezos.bigmaps
 
 import org.scalatest.Matchers
-import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
@@ -33,7 +32,6 @@ class BigMapOperationsTest
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
-    with LazyLogging
     with IntegrationPatience {
 
   "The big-maps operations" should {
@@ -238,14 +236,6 @@ class BigMapOperationsTest
         implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "FA1.2"))
         fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))
 
-        val bmu = Contract.BigMapUpdate(
-          action = "update",
-          big_map = Decimal(tokenMap),
-          key = Micheline("""{"bytes":"0000a8d45bdc966ddaaac83188a1e1c1fde2a3e05e5c"}"""),
-          key_hash = ScriptId("exprvKTBQDAyXTMRc36TsLBsj9y5GXo1PD529MfF8zDV1pVzNNgehs"),
-          value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
-        )
-        logger.info("*** testing if balance reads: {}", fa12Tokens.readBalance(tokenAddress)(bmu))
         //when
         val writeAndGetRows = for {
           _ <- Tables.RegisteredTokens += registeredToken

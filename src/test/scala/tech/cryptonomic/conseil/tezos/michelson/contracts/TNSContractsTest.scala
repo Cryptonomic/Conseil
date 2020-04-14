@@ -40,8 +40,8 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
             contractId = tnsContractId,
             lookupName = TNSContracts.Name("me want tacos"),
             resolver = AccountId("tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"),
-            mapId = TNSContracts.BigMapId(reverseLookupId),
-            mapKeyHash = ScriptId("expruLf2K5ap9bVwXghNUTWetgqC83FZBRgcomVtTVtKtCSuZy8B4S")
+            mapId = TNSContracts.BigMapId(lookupId),
+            mapKeyHash = ScriptId("exprvT4zX5M2nUKv2msyEeRTQx6zYoMh6rpnpWeDJhEranRRt8Hea9")
           )
         )
       }
@@ -83,18 +83,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
       "fail to read a valid lookup map reference if a transaction is passed with non-compliant parameters" in {
         //given
         val parameters = Parameters(
-          Micheline("""
-                  |{
-                  |  "prim": "Pair",
-                  |  "args": [
-                  |    {
-                  |      "int": "6000"
-                  |    },
-                  |    {
-                  |      "string": "me want tacos"
-                  |    }
-                  |  ]
-                  |}""".stripMargin),
+          Micheline("""Pair 6000 "me want chili""""),
           entrypoint = Some("registerName")
         )
 
@@ -232,26 +221,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
     )
 
     val parameters = Parameters(
-      Micheline("""
-                  |{
-                  |  "prim": "Pair",
-                  |  "args": [
-                  |    {
-                  |      "int": "6000"
-                  |    },
-                  |    {
-                  |      "prim": "Pair",
-                  |      "args": [
-                  |        {
-                  |          "string": "me want tacos"
-                  |        },
-                  |        {
-                  |          "string": "tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"
-                  |        }
-                  |      ]
-                  |    }
-                  |  ]
-                  |}""".stripMargin),
+      Micheline("""Pair 6000 (Pair "me want tacos" "tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m")"""),
       entrypoint = Some("registerName")
     )
 
