@@ -114,7 +114,7 @@ object DatabaseConversions extends LazyLogging {
         }
 
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, timestamp, cycle, accounts) = from
+        val BlockTagged(hash, level, timestamp, cycle, period, accounts) = from
         accounts.map {
           case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker, isActivated)) =>
             Tables.AccountsRow(
@@ -686,22 +686,25 @@ object DatabaseConversions extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.OperationBalances._
 
     override def convert(from: Block) =
-      TezosOptics.Blocks.extractOperationsAlongWithInternalResults(from).flatMap {
-        case (group, (operations, internalResults)) =>
-          val mainOperationData = operations.map(
-            op =>
-              (from, group.hash, op).convertTo[Tables.OperationsRow] ->
-                  op.convertToA[List, Tables.BalanceUpdatesRow]
-          )
-          val internalOperationData = internalResults.map { oop =>
-            val op = oop.convertTo[Operation]
-            (from, group.hash, op)
-              .convertTo[Tables.OperationsRow]
-              .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op
-              .convertToA[List, Tables.BalanceUpdatesRow]
-          }
-          mainOperationData ++ internalOperationData
-      }.toList
+      TezosOptics.Blocks
+        .extractOperationsAlongWithInternalResults(from)
+        .flatMap {
+          case (group, (operations, internalResults)) =>
+            val mainOperationData = operations.map(
+              op =>
+                (from, group.hash, op).convertTo[Tables.OperationsRow] ->
+                    op.convertToA[List, Tables.BalanceUpdatesRow]
+            )
+            val internalOperationData = internalResults.map { oop =>
+              val op = oop.convertTo[Operation]
+              (from, group.hash, op)
+                .convertTo[Tables.OperationsRow]
+                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op
+                .convertToA[List, Tables.BalanceUpdatesRow]
+            }
+            mainOperationData ++ internalOperationData
+        }
+        .toList
 
   }
 
@@ -874,13 +877,13 @@ object DatabaseConversions extends LazyLogging {
     new Conversion[
       List,
       (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash]),
-      Tables.DelegatesCheckpointRow
+      Tables.BakersCheckpointRow
     ] {
       override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])) = {
         val (blockHash, blockLevel, _, _, pkhs) = from
         pkhs.map(
           keyHash =>
-            Tables.DelegatesCheckpointRow(
+            Tables.BakersCheckpointRow(
               delegatePkh = keyHash.value,
               blockId = blockHash.value,
               blockLevel = blockLevel
@@ -890,23 +893,26 @@ object DatabaseConversions extends LazyLogging {
 
     }
 
-  implicit val delegateToRow = new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate), Tables.DelegatesRow] {
-    override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate)) = {
-      val (blockHash, blockLevel, keyHash, delegate) = from
-      Tables.DelegatesRow(
-        pkh = keyHash.value,
-        blockId = blockHash.value,
-        balance = extractBigDecimal(delegate.balance),
-        frozenBalance = extractBigDecimal(delegate.frozen_balance),
-        stakingBalance = extractBigDecimal(delegate.staking_balance),
-        delegatedBalance = extractBigDecimal(delegate.delegated_balance),
-        rolls = delegate.rolls.getOrElse(0),
-        deactivated = delegate.deactivated,
-        gracePeriod = delegate.grace_period,
-        blockLevel = blockLevel
-      )
+  implicit val delegateToRow =
+    new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int]), Tables.BakersRow] {
+      override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int])) = {
+        val (blockHash, blockLevel, keyHash, delegate, cycle, period) = from
+        Tables.BakersRow(
+          pkh = keyHash.value,
+          blockId = blockHash.value,
+          balance = extractBigDecimal(delegate.balance),
+          frozenBalance = extractBigDecimal(delegate.frozen_balance),
+          stakingBalance = extractBigDecimal(delegate.staking_balance),
+          delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+          rolls = delegate.rolls.getOrElse(0),
+          deactivated = delegate.deactivated,
+          gracePeriod = delegate.grace_period,
+          blockLevel = blockLevel,
+          cycle = cycle,
+          period = period
+        )
+      }
     }
-  }
 
   implicit val bakingRightsToRows =
     new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {

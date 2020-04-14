@@ -5,7 +5,7 @@ import java.time.{Instant, ZonedDateTime}
 
 import scala.util.Random
 import tech.cryptonomic.conseil.util.{RandomGenerationKit, RandomSeed}
-import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BlocksRow, DelegatesRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.tezos.Tables.{AccountsRow, BakersRow, BlocksRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.tezos.TezosTypes.Scripted.Contracts
@@ -64,7 +64,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None)
+    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None, None)
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -97,7 +97,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None)
+    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None, None)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -375,7 +375,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of delegate rows for some block */
-  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[DelegatesRow] = {
+  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[BakersRow] = {
     require(
       howMany > 0,
       "the test can only generate a positive number of delegates, you asked for a non positive value"
@@ -385,7 +385,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
     List.fill(howMany) {
-      DelegatesRow(
+      BakersRow(
         blockId = block.hash,
         pkh = generateHash(10),
         balance = Some(0),
