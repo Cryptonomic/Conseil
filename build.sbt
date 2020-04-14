@@ -27,6 +27,7 @@ lazy val common = (project in file("conseil-common"))
     libraryDependencies ++= Dependencies.conseilCommonInclude,
     excludeDependencies ++= Dependencies.conseilCommonExclude,
     coverageExcludedPackages := Seq(
+          "<empty>",
           "tech.cryptonomic.conseil.common.io.*",
           "tech.cryptonomic.conseil.common.tezos.Tables",
           "tech.cryptonomic.conseil.common.config.Security"
@@ -93,7 +94,12 @@ lazy val smokeTests = (project in file("conseil-smoke-tests"))
   .settings(
     name := "conseil-smoke-tests",
     mainClass := Some("tech.cryptonomic.conseil.smoke.tests.RegressionRun"),
-    libraryDependencies ++= Dependencies.conseilSmokeTestsInclude
+    libraryDependencies ++= Dependencies.conseilSmokeTestsInclude,
+    coverageExcludedPackages := Seq(
+          "<empty>",
+          ".*\\.EndpointClient",
+          ".*\\.RegressionRun"
+        ).mkString(";")
   )
   .addRunCommand(description = "A run smoke tests Task.")
   .disableAssembly()
