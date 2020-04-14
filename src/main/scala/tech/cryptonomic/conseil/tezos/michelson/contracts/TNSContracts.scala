@@ -138,6 +138,16 @@ object TNSContracts extends LazyLogging {
   /** typed wrapper to clarify the meaning of the name string */
   case class Name(value: String) extends AnyVal
 
+  /** Configuration entry to create a registrar definition.
+    * faithfully maps the csv file entry
+    */
+  case class ConfigRecord(
+      id: Int,
+      name: String,
+      contractType: String,
+      accountId: String
+  )
+
   /** Wraps the data extracted to identify lookup information on a stored big map
     * @param contractId the smart contract reference
     * @param lookupName name to lookup for
@@ -179,6 +189,15 @@ object TNSContracts extends LazyLogging {
   /** Extracts a TNS entry from a json micheline description, according to the contract */
   type NameRecordReader = String => Option[NameRecord]
 
+  /** Collects operations and data to custom handle different smart contracts
+    * for tns handling
+    *
+    * @param id the contract address
+    * @param lookupMapId where the lookup values are stored, using the registered name as key
+    * @param reverseMapId the reverse lookup, where the key is the resolved address
+    * @param lookupReader can interpret data on the tns call from the transaction's parameters
+    * @param recordReader can parse a micheline string, or any json, in all data for a name record
+    */
   private case class ContractToolbox(
       id: ContractId,
       lookupMapId: SyncVar[BigMapId] = new SyncVar(),
@@ -200,7 +219,7 @@ object TNSContracts extends LazyLogging {
           id,
           lookupReader = params =>
             for {
-              ep <- params.entrypoint if ep == "registerName"
+              ep <- params.entrypoint if ep.trim == "registerName"
               nameMapping <- MichelineOps.parseNameRegistrationFromParameters(params.value)
             } yield nameMapping,
           recordReader = MichelineOps.parseReverseLookupContent
@@ -211,13 +230,11 @@ object TNSContracts extends LazyLogging {
     *
     * @param knownRegistrars the pair of id and type of contract used, the latter as a String
     */
-  def fromConfig(knownRegistrars: List[(ContractId, String)]): TNSContracts = {
-    logger.info("Creating a TNS registry from the following values: {}", knownRegistrars.map {
-      case (cid, contractType) => cid.id -> contractType
-    }.mkString(","))
+  def fromConfig(knownRegistrars: List[ConfigRecord]): TNSContracts = {
+    logger.info("Creating a TNS registry from the following values: {}", knownRegistrars.mkString(","))
 
     val toolboxes = knownRegistrars.flatMap {
-      case (cid, contractType) => newToolbox(cid, contractType)
+      case ConfigRecord(_, _, contractType, cid) => newToolbox(ContractId(cid), contractType)
     }
 
     logger.info(
@@ -243,7 +260,16 @@ object TNSContracts extends LazyLogging {
         updateIds.mkString(","),
         registrar
       )
-    valuesAvailable && registeredIds.forall(id => updateIds.contains(id.get))
+    val check = valuesAvailable && registeredIds.forall(id => updateIds.contains(id.get))
+    logger.whenDebugEnabled(
+      logger.debug(
+        "Checking updated map ids {}, upon a call to the tns contract {}. Ids matching? {}",
+        updateIds.mkString("{", ",", "}"),
+        registrar.id,
+        check
+      )
+    )
+    check
   }
 
   /** Will extract all updated map ids from a list of diffs */
@@ -260,6 +286,7 @@ object TNSContracts extends LazyLogging {
     /* Reads paramters for a registerName call, extracting the name mapping */
     def parseNameRegistrationFromParameters(paramCode: Micheline): Option[(Name, AccountId)] = {
 
+      logger.info("Parsing parameters for TNS maps identification")
       val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
       parsed.left.foreach(
@@ -273,18 +300,28 @@ object TNSContracts extends LazyLogging {
           )
       )
 
-      parsed.toOption.collect {
-        case MichelsonSingleInstruction(
-            "Pair",
-            MichelsonIntConstant(duration) :: MichelsonSingleInstruction(
-                  "Pair",
-                  MichelsonStringConstant(name) :: MichelsonStringConstant(resover) :: _,
-                  _
-                ) :: _,
-            _
-            ) =>
-          (Name(name), AccountId(resover))
+      /* This is the currently expected parse result for a valid tns call parameters
+       * The parser seems not to handle list recursion of types with the same details
+       * therefore we have generic MichelsonType entries, which doesn't really fit
+       */
+      val extracted = parsed.toOption.collect {
+        // format: off
+        case MichelsonSingleInstruction("Pair",
+          MichelsonIntConstant(duration) ::
+          MichelsonType("Pair",
+            MichelsonStringConstant(name) :: MichelsonStringConstant(resover) :: _,
+            _) ::
+            _,
+        _) => (Name(name), AccountId(resover))
+        // format: on
       }
+      if (extracted.isEmpty)
+        logger.warn(
+          "The TNS call parameters didn't conform to the expected shape for the contract. Micheline was {}, which parses to {}",
+          paramCode.expression,
+          parsed
+        )
+      extracted
     }
 
     /** Given a correctly formatted json string parse

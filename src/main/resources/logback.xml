@@ -17,7 +17,8 @@
     </appender>
 
     <logger name="com.base22" level="TRACE"/>
-    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-OFF}"/>
+    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-INFO}"/>
+    <logger name="tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts" level="${LORRE_TNS_LOG_LEVEL:-INFO}"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC" />

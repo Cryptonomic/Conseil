@@ -17,6 +17,10 @@ import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.util.Conversion
 import com.typesafe.scalalogging.Logger
 
+/** Collects specific [[Conversion]] instances to implicitly convert between
+  * big-map related entries and things to be used when saving such data
+  * on the database.
+  */
 object BigMapsConversions extends LazyLogging {
 
   // Simplify understanding in parts of the code

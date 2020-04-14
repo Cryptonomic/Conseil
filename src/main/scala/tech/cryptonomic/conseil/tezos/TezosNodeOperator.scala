@@ -703,7 +703,7 @@ class TezosNodeOperator(
     * @param mapKeyHash we need to use a hashed b58check representation of the key to find the value
     * @return async json value of the content if all went correct
     */
-  def getBigMapContent(hash: BlockHash, mapId: BigDecimal, mapKeyHash: ScriptId): Future[JS] =
+  def getBigMapContents(hash: BlockHash, mapId: BigDecimal, mapKeyHash: ScriptId): Future[JS] =
     node
       .runAsyncGetQuery(network, s"blocks/${hash.value}/context/big_maps/$mapId/${mapKeyHash.value}")
       .flatMap(result => Future.fromTry(JS.wrapString(JS.sanitize(result))))

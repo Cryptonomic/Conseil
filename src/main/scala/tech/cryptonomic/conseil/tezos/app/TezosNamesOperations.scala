@@ -68,7 +68,7 @@ class TezosNamesOperations(tnsContracts: TNSContracts, node: TezosNodeOperator) 
             references.map(_.show).mkString("\n")
           )
           references.traverse { ref =>
-            node.getBigMapContent(block.data.hash, ref.mapId.id, ref.mapKeyHash).map(ref -> _)
+            node.getBigMapContents(block.data.hash, ref.mapId.id, ref.mapKeyHash).map(ref -> _)
           }
 
       }.map(_.flatten)
@@ -76,7 +76,7 @@ class TezosNamesOperations(tnsContracts: TNSContracts, node: TezosNodeOperator) 
   /* gets structured data that reference big maps from the right tns transactions
    * the maps will contain the resulting name records
    */
-  private def extractNameMapsReferences: List[Block] => Map[Block, List[LookupMapReference]] =
+  private val extractNameMapsReferences: List[Block] => Map[Block, List[LookupMapReference]] =
     blocks =>
       blocks.map { b =>
         val refs = extractAppliedTransactions(b).filter {

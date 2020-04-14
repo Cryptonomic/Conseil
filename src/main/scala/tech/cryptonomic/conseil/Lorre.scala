@@ -34,6 +34,7 @@ import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
 import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContracts, TokenContracts}
 import tech.cryptonomic.conseil.tezos.app.TezosNamesOperations
+import cats.Foldable
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -91,7 +92,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     val tokenContracts: TokenContracts = {
 
-      val futureTokenContracts =
+      val tokenContractsFuture =
         TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network, separator = '|').map {
           case (tokenRows, _) =>
             TokenContracts.fromConfig(
@@ -103,26 +104,24 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
         }
 
-      Await.result(futureTokenContracts, 5.seconds)
+      Await.result(tokenContractsFuture, 5.seconds)
     }
 
     val tnsContracts: TNSContracts = {
       import shapeless._
 
-      val tnsRegistrars = ConfigUtil.Csv
-        .readRowsFromCsv[(String, String), String :: String :: HNil](
-          this.getClass.getResource(s"/registered_tns/${tezosConf.network}.csv")
-        ) match {
-        case Some(rows) =>
-          rows.map {
-            case (id, contractType) => ContractId(id) -> contractType
-          }
-        case None =>
-          logger.warn("No csv configuration found to initialize TNS for {}.", tezosConf.network)
-          List.empty
-      }
+      //use shapeless to derive the generic HList shape for this class, available as .Repr field
+      val genericConfigRecord = Generic[TNSContracts.ConfigRecord]
 
-      TNSContracts.fromConfig(tnsRegistrars)
+      val tnsRegistrars = ConfigUtil.Csv
+        .readRowsFromCsv[TNSContracts.ConfigRecord, genericConfigRecord.Repr](
+          this.getClass.getResource(s"/registered_tns/${tezosConf.network}.csv")
+        )
+
+      if (tnsRegistrars.isEmpty)
+        logger.warn("No csv configuration found to initialize TNS for {}.", tezosConf.network)
+
+      TNSContracts.fromConfig(tnsRegistrars.getOrElse(List.empty))
     }
 
     /** Inits tables with values from CSV files */
