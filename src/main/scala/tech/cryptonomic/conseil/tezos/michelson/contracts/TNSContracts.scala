@@ -346,8 +346,11 @@ object TNSContracts extends LazyLogging {
           )
       )
 
-      parsed.toOption.collect {
-
+      /* This is the currently expected parse result for a valid tns reverse-lookup map content
+       * The parser seems not to handle list recursion of types with the same details
+       * therefore we have generic MichelsonType entries, which doesn't really fit
+       */
+      val extracted = parsed.toOption.collect {
         // format: off
         case MichelsonSingleInstruction("Pair",
             MichelsonType("Pair",
@@ -367,8 +370,15 @@ object TNSContracts extends LazyLogging {
             _,
         _) => NameRecord(name, updated, resolver, registeredAt, registrationPeriod, owner)
         // format: on
-
       }
+
+      if (extracted.isEmpty)
+        logger.warn(
+          "The TNS map reverse-lookup content didn't conform to the expected shape for the contract. Micheline was {}, which parses to {}",
+          micheline,
+          parsed
+        )
+      extracted
 
     }
   }
