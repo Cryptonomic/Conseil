@@ -89,16 +89,23 @@ object ConfigUtil {
       ConfigReader[ConfigObject].emap { obj =>
         //applies convention to uses CamelCase when reading config fields
         @silent("local method hint in value")
-        implicit def hint = ProductHint[TezosNodeConfiguration](ConfigFieldMapping(CamelCase, CamelCase))
+        implicit def hint[T: ConfigReader] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
         val availableNetworks = obj.keySet.asScala
+        val config = obj.toConfig()
         val parsed: mutable.Set[Either[FailureReason, TezosConfiguration]] = availableNetworks.map { network =>
-          //try to read the node subconfig as an Either, might be missing or fail to be an object
-          Try(obj.toConfig.getObject(s"$network.node")).toEither.left
-            .map(ExceptionThrown)
-            .flatMap(readAndFailWithFailureReason[TezosNodeConfiguration])
-            //creates the whole config entry
-            .map(TezosConfiguration(network, _))
+          //try to read the node and tns subconfigs as an Either, might be missing or fail to be an object
+          def findObject[T: ConfigReader](readValue: => ConfigValue) =
+            Try(readValue).toEither.left.map(ExceptionThrown).flatMap(readAndFailWithFailureReason[T])
+
+          val (nodePath, tnsPath) = (s"$network.node", s"$network.tns")
+          //create the whole config entry
+          for {
+            node <- findObject[TezosNodeConfiguration](config.getObject(nodePath))
+            tns <- if (!config.hasPath(tnsPath)) Right(Option.empty[TNSContractConfiguration])
+            else findObject[TNSContractConfiguration](config.getObject(tnsPath)).map(Some(_))
+          } yield TezosConfiguration(network, node, tns)
+
         }
         foldReadResults(parsed) {
           _.toList

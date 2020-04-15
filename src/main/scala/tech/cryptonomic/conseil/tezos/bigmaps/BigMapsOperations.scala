@@ -11,7 +11,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.tezos.TezosOptics
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -255,7 +255,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   /** Updates the reference to the stored big maps, for accounts associated to a name-service contract */
   def initTNSMaps(
       contractsReferences: List[OriginatedAccountMapsRow]
-  )(implicit ec: ExecutionContext, tnsContracts: TNSContracts): DBIO[Unit] = {
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Unit] = {
     //fetch the right maps
     val mapsQueries: List[DBIO[Option[(String, BigMapsRow)]]] =
       contractsReferences.collect {
@@ -278,7 +278,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     }.mapValues(values => values.map(_._2))
 
   /* For each entry, tries to pass the values to the TNS object to initialize the map ids properly */
-  private def setOnTNS(maps: Map[ContractId, List[BigMapsRow]])(implicit tnsContracts: TNSContracts) =
+  private def setOnTNS(maps: Map[ContractId, List[BigMapsRow]])(implicit tnsContracts: TNSContract) =
     maps.foreach {
       case (contractId, rows) => tnsContracts.setMaps(contractId, rows)
     }

@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
 
 object DatabaseConversions extends LazyLogging {
 
@@ -891,8 +891,8 @@ object DatabaseConversions extends LazyLogging {
     }
 
   implicit val tnsNameRecordToRow =
-    new Conversion[Id, TNSContracts.NameRecord, Tables.TezosNamesRow] {
-      def convert(from: TNSContracts.NameRecord): cats.Id[Tables.TezosNamesRow] = {
+    new Conversion[Id, TNSContract.NameRecord, Tables.TezosNamesRow] {
+      def convert(from: TNSContract.NameRecord): cats.Id[Tables.TezosNamesRow] = {
         val registrationTimestamp = Try(java.time.ZonedDateTime.parse(from.registeredAt)).toOption.map(toSql)
         Tables.TezosNamesRow(
           name = from.name,

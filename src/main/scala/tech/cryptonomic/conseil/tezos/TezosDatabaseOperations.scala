@@ -33,7 +33,7 @@ import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.util.ConfigUtil
 import tech.cryptonomic.conseil.tezos.Tables.OriginatedAccountMapsRow
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
 
 /**
   * Functions for writing Tezos data to a database.
@@ -99,7 +99,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeBlocks(
       blocks: List[Block]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Unit] = {
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Unit] = {
     // Kleisli is a Function with effects, Kleisli[F, A, B] ~= A => F[B]
     import cats.data.Kleisli
     import cats.instances.list._
@@ -161,7 +161,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def saveBigMaps(
       blocks: List[Block]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Unit] = {
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Unit] = {
     import cats.implicits._
     import slickeffect.implicits._
 
@@ -425,7 +425,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeBlocksAndCheckpointAccounts(
       blocks: List[Block],
       accountUpdates: List[BlockTagged[List[AccountId]]]
-  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContracts): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext, tokenContracts: TokenContracts, tnsContracts: TNSContract): DBIO[Option[Int]] = {
     logger.info("Writing blocks and account checkpoints to the DB...")
     //sequence both operations in a single transaction
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
@@ -526,7 +526,7 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Governance ++= governance
   }
 
-  def upsertTezosNames(names: List[TNSContracts.NameRecord]): DBIO[Option[Int]] = {
+  def upsertTezosNames(names: List[TNSContract.NameRecord]): DBIO[Option[Int]] = {
     import CustomPostgresProfile.api._
     logger.info("Upserting {} tezos names rows into the database...", names.size)
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))

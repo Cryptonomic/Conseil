@@ -7,8 +7,8 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator
 import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, ContractId, ScriptId}
 import tech.cryptonomic.conseil.tezos.TezosOptics.Operations.extractAppliedTransactions
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts.{BigMapId, LookupMapReference, Name, NameRecord}
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract.{BigMapId, LookupMapReference, Name, NameRecord}
 import slick.dbio.DBIO
 import cats.implicits._
 import cats.Show
@@ -18,7 +18,7 @@ import cats.Show
   * @param tnsContracts custom definitions for the tns
   * @param node an operator to access data on chain node
   */
-class TezosNamesOperations(tnsContracts: TNSContracts, node: TezosNodeOperator) extends LazyLogging {
+class TezosNamesOperations(tnsContracts: TNSContract, node: TezosNodeOperator) extends LazyLogging {
   implicit val showLookupReferences: Show[LookupMapReference] = Show.show {
     case LookupMapReference(
         ContractId(contractId),

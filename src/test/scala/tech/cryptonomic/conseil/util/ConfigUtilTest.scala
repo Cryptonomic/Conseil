@@ -139,7 +139,8 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues with Optio
         platforms.values.flatten should contain only (
           TezosConfiguration(
             "alphanet",
-            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http")
+            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http"),
+            None
           ),
           TezosConfiguration(
             "alphanet-staging",
@@ -148,7 +149,8 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues with Optio
               port = 8732,
               protocol = "https",
               pathPrefix = "tezos/alphanet/"
-            )
+            ),
+            None
           )
         )
 
@@ -186,9 +188,49 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues with Optio
         platforms.values.flatten should contain only (
           TezosConfiguration(
             "alphanet",
-            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http")
+            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http"),
+            None
           ),
           UnknownPlatformConfiguration("some-network")
+        )
+
+      }
+
+      "extract a configuration map that includes a known TNS contract" in {
+        import Platforms._
+        import tech.cryptonomic.conseil.util.ConfigUtil.Pureconfig._
+
+        val cfg = ConfigFactory.parseString("""
+          | platforms.tezos : {
+          |  alphanet: {
+          |    node: {
+          |      protocol: "http",
+          |      hostname: "localhost",
+          |      port: 8732
+          |      pathPrefix: ""
+          |    },
+          |    tns: {
+          |      name: "Cryptonomic TNS",
+          |      contractType: "TNS",
+          |      accountId: "KT1tns"
+          |    }
+          |  }
+          | }
+        """.stripMargin)
+
+        val typedConfig = pureconfig.loadConfig[PlatformsConfiguration](conf = cfg, namespace = "platforms")
+        typedConfig shouldBe 'right
+
+        val Right(PlatformsConfiguration(platforms)) = typedConfig
+
+        platforms.keys should contain only (Tezos)
+
+        platforms.values.flatten should contain only (
+          TezosConfiguration(
+            "alphanet",
+            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http"),
+            Some(TNSContractConfiguration("Cryptonomic TNS", "TNS", "KT1tns"))
+          )
         )
 
       }

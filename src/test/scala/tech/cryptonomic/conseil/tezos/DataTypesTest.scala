@@ -32,7 +32,7 @@ class DataTypesTest
       PlatformsConfiguration(
         Map(
           Platforms.Tezos -> List(
-                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"))
+                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"), None)
               )
         )
       ),

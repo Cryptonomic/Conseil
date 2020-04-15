@@ -3,6 +3,7 @@ package tech.cryptonomic.conseil.tezos.michelson.contracts
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
+  AccountId,
   Contract,
   ContractId,
   Decimal,
@@ -16,19 +17,17 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Transaction
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.CompatBigMapDiff
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts.LookupMapReference
-import tech.cryptonomic.conseil.tezos.TezosTypes.AccountId
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract.LookupMapReference
 
 class TNSContractsTest extends WordSpec with Matchers with OptionValues {
 
-  "The TNS Contracts operations for a known contract" should {
+  "The TNS Contract operations for a known configured contract" should {
 
       "read a valid lookup map reference if a transaction is passed with valid data" in {
         //given
 
         //register the tns
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
         //set the proper map ids
         sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
 
@@ -38,9 +37,9 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         lookupReferenceResults should matchTo(
           LookupMapReference(
             contractId = tnsContractId,
-            lookupName = TNSContracts.Name("me want tacos"),
+            lookupName = TNSContract.Name("me want tacos"),
             resolver = AccountId("tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m"),
-            mapId = TNSContracts.BigMapId(lookupId),
+            mapId = TNSContract.BigMapId(lookupId),
             mapKeyHash = ScriptId("exprvT4zX5M2nUKv2msyEeRTQx6zYoMh6rpnpWeDJhEranRRt8Hea9")
           )
         )
@@ -50,8 +49,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         //given
 
         //register the tns
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
         //set the differing map ids
         sut.setMapIds(tnsContractId, lookupId + 1, reverseLookupId)
 
@@ -68,8 +66,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         val transaction = ValidTransactionData.transaction.copy(destination = ContractId("not me"))
 
         //register the tns
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
         //set the proper map ids
         sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
 
@@ -90,8 +87,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         val transaction = ValidTransactionData.transaction.copy(parameters = Some(Left(parameters)))
 
         //register the tns
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
         //set the proper map ids
         sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
 
@@ -109,8 +105,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         val transaction = ValidTransactionData.transaction.copy(parameters = Some(Left(parameters)))
 
         //register the tns
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
         //set the proper map ids
         sut.setMapIds(tnsContractId, lookupId, reverseLookupId)
 
@@ -125,15 +120,14 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         //given
 
         //register the tns, no check on the registered map ids is necessary
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
 
         //when
         val lookupContentResult =
           sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent).value
 
         lookupContentResult should matchTo(
-          TNSContracts.NameRecord(
+          TNSContract.NameRecord(
             name = "me want tacos",
             updated = "False",
             resolver = "tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m",
@@ -149,8 +143,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
         //given
 
         //register the tns, no check on the registered map ids is necessary
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
 
         //when
         val lookupContentResult =
@@ -176,8 +169,7 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
             |}""".stripMargin
 
         //register the tns, no check on the registered map ids is necessary
-        val tns = TNSContracts.ConfigRecord(1, "Test TNS", "TNS", tnsContractId.id)
-        val sut = TNSContracts.fromConfig(List(tns))
+        val sut = new TNSContract.ConfiguredContract(tnsContractId)
 
         //when
         val lookupContentResult =
@@ -187,6 +179,17 @@ class TNSContractsTest extends WordSpec with Matchers with OptionValues {
 
       }
 
+      "return negative results if using the fallback contract" in {
+        val sut = TNSContract.noContract
+
+        sut.isKnownRegistrar(tnsContractId) shouldBe false
+
+        val referenceResult = sut.readLookupMapReference(Left(ValidTransactionData.transaction))
+        referenceResult shouldBe empty
+
+        val contentResult = sut.readLookupMapContent(tnsContractId, ValidTransactionData.reverseLookupMapContent)
+        contentResult shouldBe empty
+      }
     }
 
   //values sampled from a real carthage use-case

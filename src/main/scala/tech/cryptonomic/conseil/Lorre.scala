@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.tezos.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.{ConfigUtil, DatabaseUtil}
+import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config._
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 
@@ -32,9 +32,8 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
-import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContracts, TokenContracts}
+import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.tezos.app.TezosNamesOperations
-import cats.Foldable
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -83,10 +82,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  implicit val (tokens, tns) = initAnyCsvConfig()
+  implicit val tokens = initAnyCsvConfig()
 
   /* Reads csv resources to initialize db tables and smart contracts objects */
-  def initAnyCsvConfig(): (TokenContracts, TNSContracts) = {
+  def initAnyCsvConfig(): TokenContracts = {
     import kantan.csv.generic._
     import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
 
@@ -107,30 +106,22 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       Await.result(tokenContractsFuture, 5.seconds)
     }
 
-    val tnsContracts: TNSContracts = {
-      import shapeless._
-
-      //use shapeless to derive the generic HList shape for this class, available as .Repr field
-      val genericConfigRecord = Generic[TNSContracts.ConfigRecord]
-
-      val tnsRegistrars = ConfigUtil.Csv
-        .readRowsFromCsv[TNSContracts.ConfigRecord, genericConfigRecord.Repr](
-          this.getClass.getResource(s"/registered_tns/${tezosConf.network}.csv")
-        )
-
-      if (tnsRegistrars.isEmpty)
-        logger.warn("No csv configuration found to initialize TNS for {}.", tezosConf.network)
-
-      TNSContracts.fromConfig(tnsRegistrars.getOrElse(List.empty))
-    }
-
     /** Inits tables with values from CSV files */
     TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
     TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
 
     //return the contracts definitions
-    (tokenContracts, tnsContracts)
+    tokenContracts
   }
+
+  implicit val tns: TNSContract =
+    tezosConf.tns match {
+      case None =>
+        logger.warn("No configuration found to initialize TNS for {}.", tezosConf.network)
+        TNSContract.noContract
+      case Some(conf) =>
+        TNSContract.fromConfig(conf)
+    }
 
   //build operations on tns based on the implicit contracts defined before
   val tnsOperations = new TezosNamesOperations(tns, tezosNodeOperator)

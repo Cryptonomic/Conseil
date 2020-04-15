@@ -28,7 +28,7 @@ import tech.cryptonomic.conseil.util.{ConfigUtil, RandomSeed}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContracts, TokenContracts}
+import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContract, TokenContracts}
 
 class TezosPlatformDiscoveryOperationsTest
     extends WordSpec
@@ -53,7 +53,7 @@ class TezosPlatformDiscoveryOperationsTest
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
   implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
-  implicit val noTNSContracts = TNSContracts.fromConfig(List.empty)
+  implicit val noTNSContracts = TNSContract.noContract
 
   val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration = new MetadataConfiguration(Map.empty)
@@ -73,7 +73,8 @@ class TezosPlatformDiscoveryOperationsTest
             Tezos -> List(
                   TezosConfiguration(
                     "alphanet",
-                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
+                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+                    None
                   )
                 )
           )
@@ -88,7 +89,8 @@ class TezosPlatformDiscoveryOperationsTest
             Tezos -> List(
                   TezosConfiguration(
                     "alphanet",
-                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
+                    TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+                    None
                   ),
                   TezosConfiguration(
                     "alphanet-staging",
@@ -97,7 +99,8 @@ class TezosPlatformDiscoveryOperationsTest
                       hostname = "nautilus.cryptonomic.tech",
                       port = 8732,
                       pathPrefix = "tezos/alphanet/"
-                    )
+                    ),
+                    None
                   )
                 )
           )
