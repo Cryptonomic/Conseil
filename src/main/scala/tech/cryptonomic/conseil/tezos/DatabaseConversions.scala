@@ -75,24 +75,6 @@ object DatabaseConversions extends LazyLogging {
     } yield concatenateToString(ids)
   }
 
-  //Note, cycle 0 starts at the level 2 block
-  def extractCycle(block: Block): Option[Int] =
-    discardGenesis
-      .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
-      .map(_.level.cycle) //this is Option[Int]
-
-  //Note, cycle 0 starts at the level 2 block
-  def extractCyclePosition(block: BlockMetadata): Option[Int] =
-    discardGenesis
-      .lift(block) //this returns an Option[BlockHeaderMetadata]
-      .map(_.level.cycle_position) //this is Option[Int]
-
-  //Note, cycle 0 starts at the level 2 block
-  def extractPeriod(block: BlockMetadata): Option[Int] =
-    discardGenesis
-      .lift(block)
-      .map(_.level.voting_period)
-
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -267,10 +249,10 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
+        cycle = TezosOptics.Blocks.extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
         numberOfSlots = Some(metadata.slots.length),
-        period = extractPeriod(block.data.metadata),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -291,8 +273,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -313,8 +295,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -341,8 +323,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -392,8 +374,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -447,8 +429,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -476,8 +458,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -500,9 +482,9 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block),
+        cycle = TezosOptics.Blocks.extractCycle(block),
         ballotPeriod = ballotPeriod,
-        period = extractPeriod(block.data.metadata),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -523,9 +505,9 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         proposal = proposals.map(x => concatenateToString(x)),
         source = source.map(_.id),
-        cycle = extractCycle(block),
+        cycle = TezosOptics.Blocks.extractCycle(block),
         ballotPeriod = ballotPeriod,
-        period = extractPeriod(block.data.metadata),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -550,8 +532,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,

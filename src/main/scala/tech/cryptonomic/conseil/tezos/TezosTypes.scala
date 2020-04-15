@@ -69,7 +69,7 @@ object TezosTypes {
     pattern.matcher(s).matches
   }
 
-  /** convenience alias to simplify declarations of block hash+level tuples */
+  /** convenience alias to simplify declarations of block hash+level+timestamp+cycle+period tuples */
   type BlockReference = (BlockHash, Int, Option[Instant], Option[Int], Option[Int])
 
   /** use to remove ambiguities about the meaning in voting proposals usage */

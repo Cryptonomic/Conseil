@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.tezos.{
   TezosErrors,
   TezosNodeInterface,
   TezosNodeOperator,
+  TezosOptics,
   TezosTypes,
   TezosDatabaseOperations => TezosDb
 }
@@ -155,7 +156,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         s"Current Tezos block head level: $headLevel DB stored baking rights level: $brLevel DB stored endorsing rights level: $erLevel"
       )
 
-      val length = DatabaseConversions
+      val length = TezosOptics.Blocks
         .extractCyclePosition(head.metadata)
         .map { cyclePosition =>
           // calculates amount of future rights levels to be fetched based on cycle_position, cycle_size and amount cycles to fetch
@@ -378,8 +379,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
                   block.data.hash,
                   block.data.header.level,
                   Some(block.data.header.timestamp.toInstant),
-                  DatabaseConversions.extractCycle(block),
-                  DatabaseConversions.extractPeriod(block.data.metadata)
+                  TezosOptics.Blocks.extractCycle(block),
+                  TezosOptics.Blocks.extractPeriod(block.data.metadata)
                 )
         }.unzip
 
@@ -626,7 +627,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
     val toBeFetched = keepMostRecent(sorted)
 
-    BakerssProcessor.process(toBeFetched)
+    BakersProcessor.process(toBeFetched)
   }
 
   /** Fetches and stores all bakers from the latest blocks still in the checkpoint */
@@ -638,7 +639,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           "I loaded all of {} checkpointed ids from the DB and will proceed to fetch updated bakers information from the chain",
           checkpoints.size
         )
-        BakerssProcessor.process(checkpoints, onlyProcessLatest = true)
+        BakersProcessor.process(checkpoints, onlyProcessLatest = true)
       } else {
         logger.info("No data to fetch from the bakers checkpoint")
         Future.successful(Done)
@@ -689,25 +690,25 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           taggedAccounts: Seq[BlockTagged[AccountsIndex]]
       ): (List[BlockTagged[AccountsIndex]], List[BlockTagged[DelegateKeys]]) = {
         val taggedList = taggedAccounts.toList
-        def extractDelegateKey(account: Account): Option[PublicKeyHash] =
+        def extractBakerKey(account: Account): Option[PublicKeyHash] =
           PartialFunction.condOpt(account.delegate) {
             case Some(Right(pkh)) => pkh
             case Some(Left(Protocol4Delegate(_, Some(pkh)))) => pkh
           }
-        val taggedDelegatesKeys = taggedList.map {
+        val taggedBakersKeys = taggedList.map {
           case BlockTagged(blockHash, blockLevel, timestamp, cycle, period, accountsMap) =>
             import TezosTypes.Syntax._
             val delegateKeys = accountsMap.values.toList
-              .mapFilter(extractDelegateKey)
+              .mapFilter(extractBakerKey)
 
             delegateKeys.taggedWithBlock(blockHash, blockLevel, timestamp, cycle, period)
         }
-        (taggedList, taggedDelegatesKeys)
+        (taggedList, taggedBakersKeys)
       }
 
       def processAccountsPage(
           taggedAccounts: List[BlockTagged[Map[AccountId, Account]]],
-          taggedDelegateKeys: List[BlockTagged[DelegateKeys]]
+          taggedBakerKeys: List[BlockTagged[DelegateKeys]]
       ): Future[(Option[Int], Option[Int], List[BlockTagged[DelegateKeys]])] = {
         // we fetch active delegates per block so we can filter out current active bakers
         // at this point in time and put the information about it in the separate row
@@ -724,10 +725,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         } yield inactiveBakerAccounts
 
         accountsWithHistoryFut.flatMap { accountsWithHistory =>
-          db.run(TezosDb.writeAccountsAndCheckpointBakers(accountsWithHistory, taggedDelegateKeys))
+          db.run(TezosDb.writeAccountsAndCheckpointBakers(accountsWithHistory, taggedBakerKeys))
             .map {
-              case (accountWrites, accountHistoryWrites, delegateCheckpoints) =>
-                (accountWrites, delegateCheckpoints, taggedDelegateKeys)
+              case (accountWrites, accountHistoryWrites, bakerCheckpoints) =>
+                (accountWrites, bakerCheckpoints, taggedBakerKeys)
             }
             .andThen(logWriteFailure)
         }
@@ -857,7 +858,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
   }
 
-  private object BakerssProcessor {
+  private object BakersProcessor {
 
     /* Fetches the data from the chain node and stores bakers into the data store.
      * @param ids a pre-filtered map of delegate hashes with latest block referring to them
