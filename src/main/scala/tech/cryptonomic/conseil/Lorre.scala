@@ -698,10 +698,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         val taggedBakersKeys = taggedList.map {
           case BlockTagged(blockHash, blockLevel, timestamp, cycle, period, accountsMap) =>
             import TezosTypes.Syntax._
-            val delegateKeys = accountsMap.values.toList
+            val bakerKeys = accountsMap.values.toList
               .mapFilter(extractBakerKey)
 
-            delegateKeys.taggedWithBlock(blockHash, blockLevel, timestamp, cycle, period)
+            bakerKeys.taggedWithBlock(blockHash, blockLevel, timestamp, cycle, period)
         }
         (taggedList, taggedBakersKeys)
       }
