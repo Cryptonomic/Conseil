@@ -11,7 +11,8 @@ import scala.util.{Failure, Success}
   * Helper classes and functions used for average fee calculations.
   */
 object FeeOperations extends LazyLogging {
-  // TODO: This was originally taken from Lorre.db, but we do not have access there.
+  // We are getting access to the same database instance, but it should not be a shared object in a long-run.
+  // After the splitting we should refactor this part.
   import tech.cryptonomic.conseil.common.util.DatabaseUtil.{lorreDb => db}
 
   private val operationKinds = List(
