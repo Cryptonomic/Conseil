@@ -79,13 +79,6 @@ object Dependencies {
     "org.consensusresearch" %% "scrypto"
   )
 
-  val conseilApiInclude = Seq(
-    "org.scalatest"     %% "scalatest"         % "3.0.5"         % "it, test",
-    "com.typesafe.akka" %% "akka-testkit"      % akkaVersion     % Test exclude ("com.typesafe", "config"),
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
-    "org.scalamock"     %% "scalamock"         % "4.1.0"         % "it, test"
-  )
-
   val conseilLorreInclude = Seq(
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
