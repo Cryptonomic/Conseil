@@ -36,7 +36,7 @@ trait LorreAppConfig {
       network: String = ""
   )
 
-  private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
+  private val argsParser = new OptionParser[ArgumentsConfig]("conseil-lorre") {
     arg[String]("network")
       .required()
       .action((x, c) => c.copy(network = x))
