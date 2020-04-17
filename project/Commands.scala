@@ -4,12 +4,12 @@ import sbt._
 object Commands {
 
   implicit class CommandOps(project: Project) {
-    def addRunCommand(description: String, javaExtras: Seq[String] = Seq.empty): Project = {
+    def addRunCommand(description: String, javaExtras: Seq[String] = Seq.empty, forkOnRun: Boolean = false): Project = {
       import complete.DefaultParsers._
 
       lazy val runTask = inputKey[Unit](description)
 
-      fork in runTask := false
+      fork in runTask := forkOnRun
       javaOptions in runTask ++= javaExtras
 
       project.settings(runTask := Def.inputTaskDyn {
