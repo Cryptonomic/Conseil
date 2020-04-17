@@ -18,7 +18,6 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
-  .disableAssembly()
   .aggregate(common, api, lorre, lorreSchema, smokeTests)
 
 lazy val common = (project in file("conseil-common"))
@@ -82,7 +81,10 @@ lazy val lorre = (project in file("conseil-lorre"))
   .dependsOn(common)
 
 lazy val lorreSchema = (project in file("conseil-lorre-schema"))
-  .settings(name := "conseil-lorre-schema")
+  .settings(
+    name := "conseil-lorre-schema",
+    mainClass := Some("tech.cryptonomic.conseil.lorre.schema.GenSchema")
+  )
   .addRunCommand(description = "A run schema generating Task.")
   .disableAssembly()
   .dependsOn(common)
