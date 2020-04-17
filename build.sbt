@@ -54,7 +54,7 @@ lazy val api = (project in file("conseil-api"))
   .settings(Defaults.itSettings)
   .configs(IntegrationTest)
   .addRunCommand(
-    description = "A run application Task.",
+    description = "Task to run the main Conseil API Server",
     javaExtras = Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
   .enableAssembly()
@@ -74,7 +74,7 @@ lazy val lorre = (project in file("conseil-lorre"))
   .settings(Defaults.itSettings)
   .configs(IntegrationTest)
   .addRunCommand(
-    description = "A run application Task.",
+    description = "Task to run the main Lorre indexing process for Tezos",
     javaExtras = Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
   .enableAssembly()
@@ -85,7 +85,7 @@ lazy val lorreSchema = (project in file("conseil-lorre-schema"))
     name := "conseil-lorre-schema",
     mainClass := Some("tech.cryptonomic.conseil.lorre.schema.GenSchema")
   )
-  .addRunCommand(description = "A run schema generating Task.")
+  .addRunCommand(description = "Task to generate the schema source files from db-schema")
   .disableAssembly()
   .dependsOn(common)
 
@@ -100,7 +100,7 @@ lazy val smokeTests = (project in file("conseil-smoke-tests"))
           ".*\\.RegressionRun"
         ).mkString(";")
   )
-  .addRunCommand(description = "A run smoke tests Task.")
+  .addRunCommand(description = "Task to run smoke tests locally")
   .disableAssembly()
 
 addCommandAlias("runApi", "; api/runTask")
