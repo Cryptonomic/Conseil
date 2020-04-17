@@ -82,12 +82,9 @@ lazy val lorre = (project in file("conseil-lorre"))
   .dependsOn(common)
 
 lazy val lorreSchema = (project in file("conseil-lorre-schema"))
-  .settings(
-    name := "conseil-lorre-schema",
-    mainClass := Some("tech.cryptonomic.conseil.lorre.schema.GenSchema")
-  )
+  .settings(name := "conseil-lorre-schema")
   .addRunCommand(description = "A run schema generating Task.")
-  .enableAssembly()
+  .disableAssembly()
   .dependsOn(common)
 
 lazy val smokeTests = (project in file("conseil-smoke-tests"))
