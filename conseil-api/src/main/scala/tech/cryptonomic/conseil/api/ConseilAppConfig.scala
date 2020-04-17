@@ -27,7 +27,7 @@ trait ConseilAppConfig {
   )
 
   /** Lazily reads all configuration upstart, will print all errors encountered during loading */
-  private val argsParser = new OptionParser[ArgumentsConfig]("conseil") {
+  private val argsParser = new OptionParser[ArgumentsConfig]("conseil-api") {
     opt[Unit]('v', "verbose")
       .action((_, c) => c.copy(verbose = true))
       .text("print additional configuration info when the application is launched")
