@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.Tables.BigMapsRow
+import tech.cryptonomic.conseil.util.OptionUtil.whenOpt
 import com.typesafe.scalalogging.Logger
 
 /** Extract information related to a specific contract shape.
@@ -173,8 +174,7 @@ object TNSContract extends LazyLogging {
        * return object with all needed references to eventually
        * read all the tns info from the tezos node.
        */
-      if (!isKnownRegistrar(destination)) Option.empty[LookupMapReference]
-      else
+      whenOpt(isKnownRegistrar(destination)) {
         for {
           updateMaps <- mapDiff.map(collectUpdateMaps)
           if allRegisteredIdsUpdated(Set(lookupMapId, reverseMapId), updateMaps.keySet, destination)
@@ -184,11 +184,11 @@ object TNSContract extends LazyLogging {
           id <- lookupMapId.get(timeout = 0L)
           (key, keyHash) <- updateMaps.get(id)
         } yield LookupMapReference(destination, name, resolver, id, keyHash)
+      }
     }
 
     override def readLookupMapContent(registrar: ContractId, content: String): Option[NameRecord] =
-      if (isKnownRegistrar(registrar)) MichelineOps.parseReverseLookupContent(content)
-      else Option.empty
+      whenOpt(isKnownRegistrar(registrar)) { MichelineOps.parseReverseLookupContent(content) }
 
     /** Call this to store big-map-ids associated with a TNS contract.
       * This is supposed to happen once the chain records a block originating
@@ -287,8 +287,7 @@ object TNSContract extends LazyLogging {
       //actually the parameters are already parsed and rendered as concrete michelson syntax
       val michelson = paramCode.expression.trim
 
-      if (michelson.isEmpty) None
-      else {
+      whenOpt(michelson.nonEmpty) {
         //we profit from scala natively-provided pattern matching on regex to extract named groups
         val extracted = MichelsonParamExpr.findFirstIn(michelson).map {
           case MichelsonParamExpr(name, resolver) => (Name(name), AccountId(resolver))
