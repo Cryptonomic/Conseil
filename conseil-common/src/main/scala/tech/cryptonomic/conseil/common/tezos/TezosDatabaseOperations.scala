@@ -800,7 +800,7 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.Operations.findBy(_.operationGroupHash)
 
   /** Computes the max level of blocks or [[defaultBlockLevel]] if no block exists */
-  private[tezos] def fetchMaxBlockLevel: DBIO[Int] =
+  def fetchMaxBlockLevel: DBIO[Int] =
     Tables.Blocks
       .map(_.level)
       .max

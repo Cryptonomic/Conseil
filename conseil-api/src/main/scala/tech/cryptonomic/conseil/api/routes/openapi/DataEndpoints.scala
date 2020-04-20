@@ -4,7 +4,7 @@ import endpoints.algebra
 import tech.cryptonomic.conseil.common.tezos.{Filter, Tables}
 import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.common.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
+import tech.cryptonomic.conseil.common.tezos.SqlOperations.{AccountResult, BlockResult, OperationGroupResult}
 
 /** Trait containing endpoints definition */
 trait DataEndpoints

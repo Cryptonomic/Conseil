@@ -44,6 +44,7 @@ lazy val api = (project in file("conseil-api"))
   .settings(
     name := "conseil-api",
     mainClass := Some("tech.cryptonomic.conseil.api.Conseil"),
+    libraryDependencies ++= Dependencies.conseilApiInclude,
     coverageExcludedPackages := Seq(
           "<empty>",
           ".*\\.Conseil",
@@ -77,7 +78,7 @@ lazy val lorre = (project in file("conseil-lorre"))
     javaExtras = Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
   .enableAssembly()
-  .dependsOn(common)
+  .dependsOn(common % "compile->test")
 
 lazy val schema = (project in file("conseil-schema"))
   .settings(

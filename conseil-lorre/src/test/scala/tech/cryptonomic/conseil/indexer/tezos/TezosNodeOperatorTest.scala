@@ -5,8 +5,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.common.config.BatchFetchConfiguration
-import tech.cryptonomic.conseil.common.tezos.{ApiOperations, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.indexer.LorreOperations
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,7 +32,7 @@ class TezosNodeOperatorTest
         .when("zeronet", "blocks/BLockGenesisGenesisGenesisGenesisGenesisb83baZgbyZe~")
         .returns(blockResponse)
 
-      val apiOps: ApiOperations = new ApiOperations
+      val apiOps: LorreOperations = new LorreOperations
       val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
 
       //when
@@ -83,7 +84,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: ApiOperations = new ApiOperations
+      val apiOps: LorreOperations = new LorreOperations
       val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
 
       //when
@@ -145,7 +146,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: ApiOperations = new ApiOperations
+      val apiOps: LorreOperations = new LorreOperations
       val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
 
       //when
@@ -206,7 +207,7 @@ class TezosNodeOperatorTest
             )
         )
 
-      val apiOps: ApiOperations = new ApiOperations
+      val apiOps: LorreOperations = new LorreOperations
       val nodeOp: TezosNodeOperator = new TezosNodeOperator(tezosRPCInterface, "zeronet", config, apiOps)
 
       //when

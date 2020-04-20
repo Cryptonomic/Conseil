@@ -208,8 +208,6 @@ class TezosPlatformDiscoveryOperations(
 
   /** Makes list of possible string values of the attributes
     *
-    * @param  tableName             name of the table from which we extract attributes
-    * @param  column                name of the attribute
     * @param  withFilter            optional parameter which can filter attributes
     * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
@@ -295,7 +293,7 @@ class TezosPlatformDiscoveryOperations(
     withFilter match {
       case Some(filter) =>
         metadataOperations.runQuery(
-          TezosDatabaseOperations.selectDistinctLike(tableName, column, ApiOperations.sanitizeForSql(filter))
+          TezosDatabaseOperations.selectDistinctLike(tableName, column, SqlOperations.sanitizeForSql(filter))
         )
       case None =>
         metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))

@@ -10,30 +10,24 @@ import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
-import cats.implicits._
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-import tech.cryptonomic.conseil.common.config.{
-  MetadataConfiguration,
-  NautilusCloudConfiguration,
-  Security,
-  ServerConfiguration,
-  VerboseOutput
-}
+import tech.cryptonomic.conseil.api.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.api.routes._
 import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.config.Security.SecurityApi
-import tech.cryptonomic.conseil.api.directives.EnableCORSDirectives
+import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.api.routes._
-import tech.cryptonomic.conseil.common.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.common.tezos.{MetadataCaching, TezosPlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.util.RecordingDirectives
+import tech.cryptonomic.conseil.common.util.Retry.retry
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
-import scala.util.{Failure, Success, Try}
-import tech.cryptonomic.conseil.common.util.Retry.retry
 import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
 
 object Conseil
     extends App
@@ -50,13 +44,13 @@ object Conseil
       implicit val system: ActorSystem = ActorSystem("conseil-system")
       implicit val materializer: ActorMaterializer = ActorMaterializer()
       implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-      lazy val api = new ApiOperations
+      lazy val ops = new ConseilOperations
 
       val retries = if (failFast.on) Some(0) else None
 
       val serverBinding =
         retry(maxRetry = retries, deadline = Some(server.startupDeadline fromNow))(
-          initServices(api, server, platforms, metadataOverrides, nautilusCloud).get
+          initServices(ops, server, platforms, metadataOverrides, nautilusCloud).get
         ).andThen {
           case Failure(error) =>
             logger.error(
@@ -65,7 +59,7 @@ object Conseil
             )
             Await.ready(system.terminate(), 10.seconds)
         }.flatMap(
-          runServer(_, api, server, platforms, metadataOverrides, securityApi, verbose)
+          runServer(_, ops, server, platforms, metadataOverrides, securityApi, verbose)
         )
 
       sys.addShutdownHook {
@@ -87,7 +81,7 @@ object Conseil
     * @return a metadata services object or a failed result
     */
   def initServices(
-      apiOperations: ApiOperations,
+      conseilOperations: ConseilOperations,
       server: ServerConfiguration,
       platforms: PlatformsConfiguration,
       metadataOverrides: MetadataConfiguration,
@@ -107,7 +101,7 @@ object Conseil
 
     lazy val tezosPlatformDiscoveryOperations =
       TezosPlatformDiscoveryOperations(
-        apiOperations,
+        conseilOperations,
         metadataCaching,
         cacheOverrides,
         server.cacheTTL,
@@ -136,18 +130,18 @@ object Conseil
     * @param verbose flag to state if the server should log a more detailed configuration setup upon startup
     */
   def runServer(
-      metadataService: MetadataService,
-      apiOperations: ApiOperations,
-      server: ServerConfiguration,
-      platforms: PlatformsConfiguration,
-      metadataOverrides: MetadataConfiguration,
-      securityApi: SecurityApi,
-      verbose: VerboseOutput
+                 metadataService: MetadataService,
+                 conseilOperations: ConseilOperations,
+                 server: ServerConfiguration,
+                 platforms: PlatformsConfiguration,
+                 metadataOverrides: MetadataConfiguration,
+                 securityApi: SecurityApi,
+                 verbose: VerboseOutput
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
-    lazy val data = Data(metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
+    lazy val data = Data(metadataService, server, metadataOverrides, conseilOperations)(tezosDispatcher)
     implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
     lazy val routeUtil = new RecordingDirectives
 

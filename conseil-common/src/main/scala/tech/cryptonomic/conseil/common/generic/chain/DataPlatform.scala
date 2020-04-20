@@ -1,14 +1,14 @@
 package tech.cryptonomic.conseil.common.generic.chain
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse}
-import tech.cryptonomic.conseil.common.tezos.ApiOperations
+import tech.cryptonomic.conseil.common.tezos.SqlOperations
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing default apply implementation */
 object DataPlatform {
-  def apply(apiOperations: ApiOperations, maxQueryResultSize: Int): DataPlatform =
-    new DataPlatform(Map("tezos" -> apiOperations), maxQueryResultSize)
+  def apply(sqlOperations: SqlOperations, maxQueryResultSize: Int): DataPlatform =
+    new DataPlatform(Map("tezos" -> sqlOperations), maxQueryResultSize)
 }
 
 /** Class for validating if query protocol exists for the given platform

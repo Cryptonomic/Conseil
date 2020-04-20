@@ -8,7 +8,6 @@ import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.common.tezos.{
-  ApiOperations,
   DatabaseConversions,
   FeeOperations,
   ShutdownComplete,
@@ -74,13 +73,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   sys.addShutdownHook(shutdown())
 
   lazy val db = DatabaseUtil.lorreDb
-  lazy val apiOperations = new ApiOperations
+  lazy val sqlOperations = new LorreOperations
 
   val tezosNodeOperator = new TezosNodeOperator(
     new TezosNodeInterface(tezosConf, callsConf, streamingClientConf),
     tezosConf.network,
     batchingConf,
-    apiOperations
+    sqlOperations
   )
 
   implicit val tokens = initAnyCsvConfig()
@@ -166,8 +165,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     implicit val mat = ActorMaterializer()
     berLogger.info("Fetching future baking and endorsing rights")
     val blockHead = tezosNodeOperator.getBareBlockHead()
-    val brLevelFut = apiOperations.fetchMaxBakingRightsLevel()
-    val erLevelFut = apiOperations.fetchMaxEndorsingRightsLevel()
+    val brLevelFut = sqlOperations.fetchMaxBakingRightsLevel()
+    val erLevelFut = sqlOperations.fetchMaxEndorsingRightsLevel()
 
     (blockHead, brLevelFut, erLevelFut).mapN { (head, brLevel, erLevel) =>
       val headLevel = head.header.level
@@ -309,7 +308,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   private def processAccountRefreshes(events: AccountUpdatesEvents): Future[AccountUpdatesEvents] =
     if (events.nonEmpty) {
       for {
-        storedHead <- apiOperations.fetchMaxLevel
+        storedHead <- sqlOperations.fetchMaxLevel
         updated <- if (events.exists(_._1 <= storedHead)) {
           val (past, toCome) = events.partition(_._1 <= storedHead)
           val (levels, selectors) = past.unzip
@@ -317,7 +316,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             "A block was reached that requires an update of account data as specified in the configuration file. A full refresh is now underway. Relevant block levels: {}",
             levels.mkString(", ")
           )
-          apiOperations.fetchBlockAtLevel(levels.max).flatMap {
+          sqlOperations.fetchBlockAtLevel(levels.max).flatMap {
             case Some(referenceBlockForRefresh) =>
               val (hashRef, levelRef, timestamp, cycle) =
                 (
