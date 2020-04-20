@@ -80,6 +80,8 @@ object Dependencies {
   )
 
   val conseilLorreInclude = Seq(
+    "org.scalatest" %% "scalatest" % "3.0.5" % "it, test",
+    "org.scalamock" %% "scalamock" % "4.1.0" % "it, test",
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )

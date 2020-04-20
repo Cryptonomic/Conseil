@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.indexer.tezos
 
 object TezosResponseBuilder {
 

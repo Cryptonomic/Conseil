@@ -1,6 +1,6 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.indexer.tezos
 
-import TezosTypes._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 
 /* defines example tezos json definitions of delegates and related contracts with the typed counterparts used in the tests */

@@ -15,8 +15,7 @@ import monocle.Getter
 import io.scalaland.chimney.dsl._
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.tezos
-import tech.cryptonomic.conseil.common.tezos.TezosNodeOperator.FetchRights
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, Contract, EndorsingRights, FetchRights}
 import tech.cryptonomic.conseil.common.tezos.FeeOperations._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.Vote

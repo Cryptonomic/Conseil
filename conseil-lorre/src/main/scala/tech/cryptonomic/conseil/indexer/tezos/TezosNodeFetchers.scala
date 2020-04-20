@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.indexer.tezos
 
 import cats._
 import cats.data.Kleisli
@@ -8,16 +8,16 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher
 import tech.cryptonomic.conseil.common.util.JsonUtil
-import tech.cryptonomic.conseil.common.util.JsonUtil.{adaptManagerPubkeyField, JsonString}
+import tech.cryptonomic.conseil.common.util.JsonUtil.{JsonString, adaptManagerPubkeyField}
 import tech.cryptonomic.conseil.common.util.CollectionOps._
-import TezosTypes._
 import org.slf4j.LoggerFactory
-import tech.cryptonomic.conseil.common.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.common.tezos.TezosRPCInterface
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BakingRights, Block, BlockData, BlockHash, Delegate, EndorsingRights, FetchRights, OperationsGroup, ProposalSupporters, ProtocolId, PublicKeyHash, Voting}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BallotCounts
 
 /** Defines intances of `DataFetcher` for block-related data */
 trait BlocksDataFetchers {
-  //we require the cabability to log
+  //we require the capability to log
   self: LazyLogging =>
   import cats.instances.future._
   import cats.syntax.applicativeError._

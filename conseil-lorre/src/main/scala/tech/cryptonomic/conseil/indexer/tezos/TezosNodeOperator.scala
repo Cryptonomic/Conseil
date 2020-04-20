@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.indexer.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
@@ -12,8 +12,8 @@ import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction
 import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-import tech.cryptonomic.conseil.common.tezos.TezosNodeOperator.FetchRights
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights}
+import tech.cryptonomic.conseil.common.tezos.{ApiOperations, TezosRPCInterface}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -36,14 +36,6 @@ object TezosNodeOperator {
     * @param operationGroupID Operation group ID
     */
   final case class OperationResult(results: AppliedOperation, operationGroupID: String)
-
-  /**
-    * Information for fetching baking/endorsing rights
-    * @param cycle            block cycle
-    * @param governancePeriod governance period
-    * @param blockHash        hash of a block
-    */
-  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[BlockHash])
 
   /**
     * Given a contiguous valus range, creates sub-ranges of max the given size
@@ -227,7 +219,7 @@ class TezosNodeOperator(
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import TezosOptics.Accounts.{scriptLens, storageLens}
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{scriptLens, storageLens}
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
     implicit val fetcherInstance = accountFetcher(blockHash)
@@ -257,7 +249,7 @@ class TezosNodeOperator(
     * @return         Accounts with their corresponding block data
     */
   def getAccountsForBlocks(accountsBlocksIndex: Map[AccountId, BlockReference]): PaginatedAccountResults = {
-    import TezosTypes.Syntax._
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 
     val reverseIndex =
       accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle, period)) => blockHash }
@@ -411,7 +403,7 @@ class TezosNodeOperator(
 
   //move it to the node operator
   def getBakersForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
-    import TezosTypes.Syntax._
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.Syntax._
 
     val reverseIndex =
       keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle, period)) => blockHash }
