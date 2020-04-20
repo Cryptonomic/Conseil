@@ -21,7 +21,6 @@ import tech.cryptonomic.conseil.common.tezos.{
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.common.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.tezos.TezosNodeOperator.{FetchRights, LazyPages}
@@ -39,7 +38,7 @@ import tech.cryptonomic.conseil.common.tezos.app.TezosNamesOperations
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig with LorreOutput {
+object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig with LorreMainOutput {
 
   type AccountUpdatesEvents = SortedSet[(Int, ChainEvent.AccountIdPattern)]
 
