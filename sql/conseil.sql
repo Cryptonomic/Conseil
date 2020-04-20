@@ -125,7 +125,7 @@ CREATE TABLE tezos.processed_chain_events (
 CREATE TABLE tezos.registered_tokens (
     id integer PRIMARY KEY,
     name text NOT NULL,
-    standard text NOT NULL,
+    contract_type text NOT NULL,
     account_id text NOT NULL
 );
 
