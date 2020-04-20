@@ -10,6 +10,6 @@ trait TezosErrors {
   case class AccountsProcessingFailed(message: String, cause: Throwable) extends java.lang.RuntimeException
 
   /** Something went wrong during handling of Delegates */
-  case class DelegatesProcessingFailed(message: String, cause: Throwable) extends java.lang.RuntimeException
+  case class BakersProcessingFailed(message: String, cause: Throwable) extends java.lang.RuntimeException
 
 }

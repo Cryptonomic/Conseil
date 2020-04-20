@@ -260,7 +260,7 @@ class TezosNodeOperator(
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle)) => blockHash }
+      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle, period)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -277,7 +277,8 @@ class TezosNodeOperator(
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level, timestamp, cycle), accounts) => accounts.taggedWithBlock(hash, level, timestamp, cycle)
+        case ((hash, level, timestamp, cycle, period), accounts) =>
+          accounts.taggedWithBlock(hash, level, timestamp, cycle, period)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -387,7 +388,7 @@ class TezosNodeOperator(
   }
 
   /** Fetches active delegates from node */
-  def fetchActiveDelegates(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
+  def fetchActiveBakers(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
@@ -409,11 +410,11 @@ class TezosNodeOperator(
   }
 
   //move it to the node operator
-  def getDelegatesForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
+  def getBakersForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle)) => blockHash }
+      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle, period)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -430,7 +431,8 @@ class TezosNodeOperator(
       data.groupBy {
         case (pkh, _) => keysBlocksIndex(pkh)
       }.map {
-        case ((hash, level, timestamp, cycle), delegates) => delegates.taggedWithBlock(hash, level, timestamp, cycle)
+        case ((hash, level, timestamp, cycle, period), delegates) =>
+          delegates.taggedWithBlock(hash, level, timestamp, cycle, period)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks

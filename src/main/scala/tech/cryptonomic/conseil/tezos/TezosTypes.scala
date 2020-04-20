@@ -69,8 +69,8 @@ object TezosTypes {
     pattern.matcher(s).matches
   }
 
-  /** convenience alias to simplify declarations of block hash+level tuples */
-  type BlockReference = (BlockHash, Int, Option[Instant], Option[Int])
+  /** convenience alias to simplify declarations of block hash+level+timestamp+cycle+period tuples */
+  type BlockReference = (BlockHash, Int, Option[Instant], Option[Int], Option[Int])
 
   /** use to remove ambiguities about the meaning in voting proposals usage */
   type ProposalSupporters = Int
@@ -499,6 +499,7 @@ object TezosTypes {
       blockLevel: Int,
       timestamp: Option[Instant],
       cycle: Option[Int],
+      period: Option[Int],
       content: T
   ) {
     val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
@@ -614,9 +615,10 @@ object TezosTypes {
           hash: BlockHash,
           level: Int,
           timestamp: Option[Instant] = None,
-          cycle: Option[Int]
+          cycle: Option[Int],
+          period: Option[Int]
       ): BlockTagged[T] =
-        BlockTagged(hash, level, timestamp, cycle, content)
+        BlockTagged(hash, level, timestamp, cycle, period, content)
     }
 
   }
