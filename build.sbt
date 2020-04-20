@@ -18,7 +18,7 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
-  .aggregate(common, api, lorre, lorreSchema, smokeTests)
+  .aggregate(common, api, lorre, schema, smokeTests)
 
 lazy val common = (project in file("conseil-common"))
   .settings(
@@ -80,10 +80,10 @@ lazy val lorre = (project in file("conseil-lorre"))
   .enableAssembly()
   .dependsOn(common)
 
-lazy val lorreSchema = (project in file("conseil-lorre-schema"))
+lazy val schema = (project in file("conseil-schema"))
   .settings(
-    name := "conseil-lorre-schema",
-    mainClass := Some("tech.cryptonomic.conseil.lorre.schema.GenSchema")
+    name := "conseil-schema",
+    mainClass := Some("tech.cryptonomic.conseil.schema.GenSchema")
   )
   .addRunCommand(description = "Task to generate the schema source files from db-schema")
   .disableAssembly()
