@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.lorre
+package tech.cryptonomic.conseil.indexer
 
 import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.common.config._

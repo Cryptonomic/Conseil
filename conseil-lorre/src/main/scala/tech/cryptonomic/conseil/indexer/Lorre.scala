@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.lorre
+package tech.cryptonomic.conseil.indexer
 
 import akka.actor.ActorSystem
 import akka.Done
