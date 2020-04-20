@@ -89,7 +89,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   implicit val tokenContracts: TokenContracts = {
 
     val futureTokenContracts =
-      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network, separator = '|').map {
+      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network).map {
         case (tokenRows, _) =>
           TokenContracts.fromTokens(
             tokenRows.map {
