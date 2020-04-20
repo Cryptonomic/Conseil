@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.lorre.schema
+package tech.cryptonomic.conseil.schema
 
 import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping}
 import pureconfig.generic.auto._
