@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.lorre
+package tech.cryptonomic.conseil.indexer
 
 import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil.BuildInfo
