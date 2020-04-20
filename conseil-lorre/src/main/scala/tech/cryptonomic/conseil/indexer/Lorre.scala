@@ -23,7 +23,8 @@ import tech.cryptonomic.conseil.common.tezos.{
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.common.config._
-import tech.cryptonomic.conseil.common.tezos.TezosNodeOperator.{FetchRights, LazyPages}
+import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator
+import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 
 import scala.concurrent.duration._
 import scala.annotation.tailrec
@@ -31,7 +32,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockHash, FetchRights}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.app.TezosNamesOperations
 

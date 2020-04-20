@@ -22,7 +22,7 @@ import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.common.tezos.Tables.GovernanceRow
-import tech.cryptonomic.conseil.common.tezos.TezosNodeOperator.FetchRights
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.FetchRights
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
 import slick.jdbc.JdbcCapabilities

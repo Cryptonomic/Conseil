@@ -1,12 +1,11 @@
 package tech.cryptonomic.conseil.common.tezos
 
-import java.time.Instant
-import java.time.ZonedDateTime
+import java.time.{Instant, ZonedDateTime}
 
-import monocle.{Lens, Traversal}
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
+import monocle.{Lens, Traversal}
 
 import scala.util.Try
 
@@ -643,5 +642,13 @@ object TezosTypes {
       governancePeriod: Option[Int],
       endorsedBlock: Option[Int]
   )
+
+  /**
+    * Information for fetching baking/endorsing rights
+    * @param cycle            block cycle
+    * @param governancePeriod governance period
+    * @param blockHash        hash of a block
+    */
+  final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[BlockHash])
 
 }
