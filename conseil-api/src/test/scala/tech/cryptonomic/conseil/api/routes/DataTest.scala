@@ -6,13 +6,13 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import tech.cryptonomic.conseil.api.ConseilOperations
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.generic.chain.{DataOperations, DataPlatform}
 import tech.cryptonomic.conseil.common.metadata.{AttributeValuesCacheConfiguration, MetadataService, TestPlatformDiscoveryOperations, TransparentUnitTransformation}
-import tech.cryptonomic.conseil.common.tezos.ApiOperations
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -155,7 +155,7 @@ class DataTest
       cacheOverrides,
       platformDiscoveryOperations
     )
-  val apiOps: ApiOperations = new ApiOperations
+  val apiOps: ConseilOperations = new ConseilOperations
 
   val postRoute: Route = new Data(fakeQPP, metadataService, metadataConf, apiOps).postRoute
 

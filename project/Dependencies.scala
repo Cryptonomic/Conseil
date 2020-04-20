@@ -75,6 +75,11 @@ object Dependencies {
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )
 
+  val conseilApiInclude = Seq(
+    compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+    "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+  )
+
   val conseilCommonExclude = Seq(
     "org.consensusresearch" %% "scrypto"
   )

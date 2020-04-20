@@ -1,19 +1,18 @@
 package tech.cryptonomic.conseil.indexer.tezos
 
-import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
-import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
-import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
-import tech.cryptonomic.conseil.common.config.{BatchFetchConfiguration, SodiumConfiguration}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
-import tech.cryptonomic.conseil.common.tezos.michelson.JsonToMichelson.toMichelsonScript
-import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 import cats.instances.future._
 import cats.syntax.applicative._
+import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-import tech.cryptonomic.conseil.common.tezos.ApiOperations
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
+import tech.cryptonomic.conseil.common.tezos.michelson.JsonToMichelson.toMichelsonScript
+import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
+import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
+import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
+import tech.cryptonomic.conseil.indexer.LorreOperations
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -65,7 +64,7 @@ class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
     batchConf: BatchFetchConfiguration,
-    apiOperations: ApiOperations
+    sqlOperations: LorreOperations
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
@@ -566,7 +565,7 @@ class TezosNodeOperator(
     */
   def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- apiOperations.fetchMaxLevel
+      maxLevel <- sqlOperations.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -722,7 +721,7 @@ class TezosNodeSenderOperator(
     network: String,
     batchConf: BatchFetchConfiguration,
     sodiumConf: SodiumConfiguration,
-    apiOperations: ApiOperations
+    apiOperations: LorreOperations
 )(implicit executionContext: ExecutionContext)
     extends TezosNodeOperator(node, network, batchConf, apiOperations)
     with LazyLogging {
@@ -752,45 +751,6 @@ class TezosNodeSenderOperator(
         )
         revealMap :: operations
     }
-
-  /*/**
-   * Forge an operation group using the Tezos RPC client.
-   * @param blockHead  The block head
-   * @param account    The sender's account
-   * @param operations The operations being forged as part of this operation group
-   * @param keyStore   Key pair along with public key hash
-   * @param fee        Fee to be paid
-   * @return           Forged operation bytes (as a hex string)
-   */
-  def forgeOperations(
-      blockHead: Block,
-      account: Account,
-      operations: List[AnyMap],
-      keyStore: KeyStore,
-      fee: Option[Float]
-  ): Future[String] = {
-    val payload: AnyMap = fee match {
-      case Some(feeAmt) =>
-        Map(
-          "branch" -> blockHead.data.hash,
-          "source" -> keyStore.publicKeyHash,
-          "operations" -> operations,
-          "counter" -> (account.counter + 1),
-          "fee" -> feeAmt,
-          "kind" -> "manager",
-          "gas_limit" -> "120",
-          "storage_limit" -> 0
-        )
-      case None =>
-        Map(
-          "branch" -> blockHead.data.header.predecessor,
-          "operations" -> operations
-        )
-    }
-    node
-      .runAsyncPostQuery(network, "/blocks/head/proto/helpers/forge/operations", Some(JsonUtil.toJson(payload)))
-      .map(json => fromJson[ForgedOperation](json).operation)
-  }*/
 
   /**
     * Signs a forged operation
@@ -859,101 +819,6 @@ class TezosNodeSenderOperator(
       .runAsyncPostQuery(network, "/inject_operation", Some(JsonUtil.toJson(payload)))
       .map(result => fromJson[InjectedOperation](result).injectedOperation)
   }
-
-  /*/**
-   * Master function for creating and sending all supported types of operations.
-   * @param operations The operations to create and send
-   * @param keyStore   Key pair along with public key hash
-   * @param fee        The fee to use
-   * @return           The ID of the created operation group
-   */
-  def sendOperation(
-      operations: List[Map[String, Any]],
-      keyStore: KeyStore,
-      fee: Option[Float]
-  ): Future[OperationResult] =
-    for {
-      blockHead <- getBlockHead()
-      accountId = AccountId(keyStore.publicKeyHash)
-      account <- getAccountForBlock(blockHeadHash, accountId)
-      accountManager <- getAccountManagerForBlock(blockHeadHash, accountId)
-      operationsWithKeyReveal = handleKeyRevealForOperations(operations, accountManager, keyStore)
-      forgedOperationGroup <- forgeOperations(blockHead, account, operationsWithKeyReveal, keyStore, fee)
-      signedOpGroup <- Future.fromTry(signOperationGroup(forgedOperationGroup, keyStore))
-      operationGroupHash <- Future.fromTry(computeOperationHash(signedOpGroup))
-      appliedOp <- applyOperation(blockHead, operationGroupHash, forgedOperationGroup, signedOpGroup)
-      operation <- injectOperation(signedOpGroup)
-    } yield OperationResult(appliedOp, operation)*/
-
-  /*/**
-   * Creates and sends a transaction operation.
-   * @param keyStore   Key pair along with public key hash
-   * @param to         Destination public key hash
-   * @param amount     Amount to send
-   * @param fee        Fee to use
-   * @return           The ID of the created operation group
-   */
-  def sendTransactionOperation(
-      keyStore: KeyStore,
-      to: String,
-      amount: Float,
-      fee: Float
-  ): Future[OperationResult] = {
-    val transactionMap: Map[String, Any] = Map(
-      "kind" -> "transaction",
-      "amount" -> amount,
-      "destination" -> to,
-      "parameters" -> MichelsonExpression("Unit", List[String]())
-    )
-    val operations = transactionMap :: Nil
-    sendOperation(operations, keyStore, Some(fee))
-  }*/
-
-  /*/**
-   * Creates and sends a delegation operation.
-   * @param keyStore Key pair along with public key hash
-   * @param delegate Account ID to delegate to
-   * @param fee      Operation fee
-   * @return
-   */
-  def sendDelegationOperation(keyStore: KeyStore, delegate: String, fee: Float): Future[OperationResult] = {
-    val transactionMap: Map[String, Any] = Map(
-      "kind" -> "delegation",
-      "delegate" -> delegate
-    )
-    val operations = transactionMap :: Nil
-    sendOperation(operations, keyStore, Some(fee))
-  }*/
-
-  /*/**
-   * Creates and sends an origination operation.
-   * @param keyStore     Key pair along with public key hash
-   * @param amount       Initial funding amount of new account
-   * @param delegate     Account ID to delegate to, blank if none
-   * @param spendable    Is account spendable?
-   * @param delegatable  Is account delegatable?
-   * @param fee          Operation fee
-   * @return
-   */
-  def sendOriginationOperation(
-      keyStore: KeyStore,
-      amount: Float,
-      delegate: String,
-      spendable: Boolean,
-      delegatable: Boolean,
-      fee: Float
-  ): Future[OperationResult] = {
-    val transactionMap: Map[String, Any] = Map(
-      "kind" -> "origination",
-      "balance" -> amount,
-      "managerPubkey" -> keyStore.publicKeyHash,
-      "spendable" -> spendable,
-      "delegatable" -> delegatable,
-      "delegate" -> delegate
-    )
-    val operations = transactionMap :: Nil
-    sendOperation(operations, keyStore, Some(fee))
-  }*/
 
   /**
     * Creates a new Tezos identity.

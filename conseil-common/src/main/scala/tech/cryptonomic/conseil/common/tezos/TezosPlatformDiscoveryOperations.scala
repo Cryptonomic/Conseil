@@ -295,7 +295,7 @@ class TezosPlatformDiscoveryOperations(
     withFilter match {
       case Some(filter) =>
         metadataOperations.runQuery(
-          TezosDatabaseOperations.selectDistinctLike(tableName, column, ApiOperations.sanitizeForSql(filter))
+          TezosDatabaseOperations.selectDistinctLike(tableName, column, SqlOperations.sanitizeForSql(filter))
         )
       case None =>
         metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))

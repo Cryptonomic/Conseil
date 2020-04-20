@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.api.routes.openapi
 import endpoints.generic
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.common.tezos.ApiOperations.{AccountResult, BlockResult, OperationGroupResult}
+import tech.cryptonomic.conseil.common.tezos.SqlOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, OperationGroupsRow, OperationsRow}
 
 /** Trait containing Data endpoints JSON schemas */

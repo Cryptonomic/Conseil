@@ -3,12 +3,12 @@ package tech.cryptonomic.conseil.api.routes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.api.ConseilOperations
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, ServerConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.DataPlatform
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
-import tech.cryptonomic.conseil.common.tezos.ApiOperations
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,15 +19,15 @@ object Data {
       metadataService: MetadataService,
       server: ServerConfiguration,
       metadataConfiguration: MetadataConfiguration,
-      apiOperations: ApiOperations
+      conseilOperations: ConseilOperations
   )(
       implicit ec: ExecutionContext
   ): Data =
     new Data(
-      DataPlatform(apiOperations, server.maxQueryResultSize),
+      DataPlatform(conseilOperations, server.maxQueryResultSize),
       metadataService,
       metadataConfiguration: MetadataConfiguration,
-      apiOperations: ApiOperations
+      conseilOperations: ConseilOperations
     )
 }
 
@@ -41,7 +41,7 @@ class Data(
     queryProtocolPlatform: DataPlatform,
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,
-    apiOperations: ApiOperations
+    conseilOperations: ConseilOperations
 )(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
@@ -84,7 +84,7 @@ class Data(
   val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
     case (platform, network, _) =>
       platformNetworkValidation(platform, network) {
-        apiOperations.fetchLatestBlock()
+        conseilOperations.fetchLatestBlock()
       }
   }
 
@@ -92,7 +92,7 @@ class Data(
   val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
     case ((platform, network, hash), _) =>
       platformNetworkValidation(platform, network) {
-        apiOperations.fetchBlock(BlockHash(hash))
+        conseilOperations.fetchBlock(BlockHash(hash))
       }
   }
 
@@ -108,7 +108,7 @@ class Data(
   val accountByIdRoute: Route = accountByIdEndpoint.implementedByAsync {
     case ((platform, network, accountId), _) =>
       platformNetworkValidation(platform, network) {
-        apiOperations.fetchAccount(AccountId(accountId))
+        conseilOperations.fetchAccount(AccountId(accountId))
       }
   }
 
@@ -124,7 +124,7 @@ class Data(
   val operationGroupByIdRoute: Route = operationGroupByIdEndpoint.implementedByAsync {
     case ((platform, network, operationGroupId), _) =>
       platformNetworkValidation(platform, network) {
-        apiOperations.fetchOperationGroup(operationGroupId)
+        conseilOperations.fetchOperationGroup(operationGroupId)
       }
   }
 
