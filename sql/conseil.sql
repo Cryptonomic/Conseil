@@ -438,6 +438,7 @@ CREATE TABLE tezos.big_map_contents (
     big_map_id numeric NOT NULL,
     key character varying,
     key_hash character varying,
+    operation_group_id character varying,
     value character varying,
     PRIMARY KEY (big_map_id, key)
 );

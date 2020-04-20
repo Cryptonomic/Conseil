@@ -879,11 +879,13 @@ trait Tables {
     *  @param bigMapId Database column big_map_id SqlType(numeric)
     *  @param key Database column key SqlType(varchar)
     *  @param keyHash Database column key_hash SqlType(varchar), Default(None)
+    *  @param operationGroupId Database column operation_group_id SqlType(varchar), Default(None)
     *  @param value Database column value SqlType(varchar), Default(None) */
   case class BigMapContentsRow(
       bigMapId: scala.math.BigDecimal,
       key: String,
       keyHash: Option[String] = None,
+      operationGroupId: Option[String] = None,
       value: Option[String] = None
   )
 
@@ -894,18 +896,18 @@ trait Tables {
       e2: GR[Option[String]]
   ): GR[BigMapContentsRow] = GR { prs =>
     import prs._
-    BigMapContentsRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String], <<?[String]))
+    BigMapContentsRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String], <<?[String], <<?[String]))
   }
 
   /** Table description of table big_map_contents. Objects of this class serve as prototypes for rows in queries. */
   class BigMapContents(_tableTag: Tag)
       extends profile.api.Table[BigMapContentsRow](_tableTag, Some("tezos"), "big_map_contents") {
-    def * = (bigMapId, key, keyHash, value) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
+    def * = (bigMapId, key, keyHash, operationGroupId, value) <> (BigMapContentsRow.tupled, BigMapContentsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(bigMapId), Rep.Some(key), keyHash, value)).shaped.<>({ r =>
-        import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4)))
+      ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value)).shaped.<>({ r =>
+        import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column big_map_id SqlType(numeric) */
@@ -916,6 +918,9 @@ trait Tables {
 
     /** Database column key_hash SqlType(varchar), Default(None) */
     val keyHash: Rep[Option[String]] = column[Option[String]]("key_hash", O.Default(None))
+
+    /** Database column operation_group_id SqlType(varchar), Default(None) */
+    val operationGroupId: Rep[Option[String]] = column[Option[String]]("operation_group_id", O.Default(None))
 
     /** Database column value SqlType(varchar), Default(None) */
     val value: Rep[Option[String]] = column[Option[String]]("value", O.Default(None))

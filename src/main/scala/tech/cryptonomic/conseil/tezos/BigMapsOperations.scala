@@ -2,17 +2,12 @@ package tech.cryptonomic.conseil.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import com.github.tminglei.slickpg.ExPostgresProfile
+
 import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  AccountId,
-  ContractId,
-  InternalOperationResults,
-  Origination,
-  Transaction
-}
+import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
 import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
@@ -53,7 +48,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
         Tables.BigMapContents
           .filter(_.bigMapId === sourceId)
-          .map(it => (destinationId, it.key, it.keyHash, it.value))
+          .map(it => (destinationId, it.key, it.keyHash, it.operationGroupId, it.value))
           .result
           .map(rows => rows.map(BigMapContentsRow.tupled).toList)
     }
@@ -122,7 +117,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       b =>
         extractAppliedOriginationsResults(b)
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+          .map(
+            diff =>
+              DatabaseConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
+          )
     )
 
     val maps = if (logger.underlying.isDebugEnabled()) {
@@ -161,7 +159,10 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       b =>
         extractAppliedTransactionsResults(b)
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+          .map(
+            diff =>
+              DatabaseConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
+          )
     )
 
     val rowsPerBlock = diffsPerBlock
