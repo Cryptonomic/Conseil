@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction
 import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-import tech.cryptonomic.conseil.common.tezos.{ApiOperations, TezosRPCInterface}
+import tech.cryptonomic.conseil.common.tezos.ApiOperations
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights}
 
 import scala.concurrent.{ExecutionContext, Future}

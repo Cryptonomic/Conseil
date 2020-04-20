@@ -5,7 +5,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
 import tech.cryptonomic.conseil.common.config.BatchFetchConfiguration
-import tech.cryptonomic.conseil.common.tezos.{ApiOperations, TezosRPCInterface, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.{ApiOperations, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
 
 import scala.concurrent.duration._
