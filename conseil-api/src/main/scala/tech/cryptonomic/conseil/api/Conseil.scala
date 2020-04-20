@@ -24,7 +24,6 @@ import tech.cryptonomic.conseil.common.config.{
 import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.config.Security.SecurityApi
 import tech.cryptonomic.conseil.api.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.common.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.common.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.api.routes._
 import tech.cryptonomic.conseil.common.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
@@ -42,7 +41,7 @@ object Conseil
     with EnableCORSDirectives
     with ConseilAppConfig
     with FailFastCirceSupport
-    with ConseilOutput {
+    with ConseilMainOutput {
 
   loadApplicationConfiguration(args) match {
     case Left(errors) =>
