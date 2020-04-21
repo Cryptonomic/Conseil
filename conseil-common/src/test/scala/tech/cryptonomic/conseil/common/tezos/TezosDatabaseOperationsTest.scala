@@ -27,7 +27,6 @@ import scala.util.Random
 
 class TezosDatabaseOperationsTest
     extends WordSpec
-    with MockFactory
     with TezosDataGeneration
     with InMemoryDatabase
     with Matchers
