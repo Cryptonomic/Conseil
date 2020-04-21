@@ -125,7 +125,7 @@ CREATE TABLE tezos.processed_chain_events (
 CREATE TABLE tezos.registered_tokens (
     id integer PRIMARY KEY,
     name text NOT NULL,
-    standard text NOT NULL,
+    contract_type text NOT NULL,
     account_id text NOT NULL
 );
 
@@ -295,7 +295,7 @@ CREATE TABLE tezos.blocks (
 -- Name: delegates; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE tezos.delegates (
+CREATE TABLE tezos.bakers (
     pkh character varying NOT NULL,
     block_id character varying NOT NULL,
     balance numeric,
@@ -305,18 +305,22 @@ CREATE TABLE tezos.delegates (
     rolls integer DEFAULT 0 NOT NULL,
     deactivated boolean NOT NULL,
     grace_period integer NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL
+    block_level integer DEFAULT '-1'::integer NOT NULL,
+    cycle integer,
+    period integer
 );
 
 
 --
--- Name: delegates_checkpoint; Type: TABLE; Schema: tezos; Owner: -
+-- Name: bakers_checkpoint; Type: TABLE; Schema: tezos; Owner: -
 --
 
-CREATE TABLE tezos.delegates_checkpoint (
+CREATE TABLE tezos.bakers_checkpoint (
     delegate_pkh character varying NOT NULL,
     block_id character varying NOT NULL,
-    block_level integer DEFAULT '-1'::integer NOT NULL
+    block_level integer DEFAULT '-1'::integer NOT NULL,
+    cycle integer,
+    period integer
 );
 
 
@@ -516,11 +520,11 @@ ALTER TABLE ONLY tezos.blocks
 
 
 --
--- Name: delegates delegates_pkey; Type: CONSTRAINT; Schema: tezos; Owner: -
+-- Name: bakers bakers_pkey; Type: CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY tezos.delegates
-    ADD CONSTRAINT delegates_pkey PRIMARY KEY (pkh);
+ALTER TABLE ONLY tezos.bakers
+    ADD CONSTRAINT bakers_pkey PRIMARY KEY (pkh);
 
 
 --
@@ -628,7 +632,7 @@ CREATE INDEX ix_blocks_level ON tezos.blocks USING btree (level);
 -- Name: ix_delegates_checkpoint_block_level; Type: INDEX; Schema: tezos; Owner: -
 --
 
-CREATE INDEX ix_delegates_checkpoint_block_level ON tezos.delegates_checkpoint USING btree (block_level);
+CREATE INDEX ix_bakers_checkpoint_block_level ON tezos.bakers_checkpoint USING btree (block_level);
 
 
 --
@@ -699,16 +703,16 @@ ALTER TABLE ONLY tezos.operation_groups
 -- Name: delegates_checkpoint delegate_checkpoint_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY tezos.delegates_checkpoint
-    ADD CONSTRAINT delegate_checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+ALTER TABLE ONLY tezos.bakers_checkpoint
+    ADD CONSTRAINT baker_checkpoint_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
 
 
 --
 -- Name: delegates delegates_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -
 --
 
-ALTER TABLE ONLY tezos.delegates
-    ADD CONSTRAINT delegates_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
+ALTER TABLE ONLY tezos.bakers
+    ADD CONSTRAINT bakers_block_id_fkey FOREIGN KEY (block_id) REFERENCES tezos.blocks(hash);
 
 
 --

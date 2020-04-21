@@ -219,11 +219,11 @@ object TezosDatabaseOperations extends LazyLogging {
     * @param delegatesKeyHashes will have block information, paired with corresponding hashes to store
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
-  def writeDelegatesCheckpoint(
+  def writeBakersCheckpoint(
       delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])]
   ): DBIO[Option[Int]] = {
     logger.info(s"""Writing ${delegatesKeyHashes.map(_._5).map(_.length).sum} delegate checkpoints to DB...""")
-    Tables.DelegatesCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.DelegatesCheckpointRow])
+    Tables.BakersCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.BakersCheckpointRow])
   }
 
   /** Removes data from a accounts checkpoint table */
@@ -245,19 +245,19 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /** Removes data from a delegates checkpoint table */
-  def cleanDelegatesCheckpoint(
+  def cleanBakersCheckpoint(
       pkhs: Option[Set[PublicKeyHash]] = None
   )(implicit ec: ExecutionContext): DBIO[Int] = {
     logger.info("""Cleaning the delegate checkpoints table..""")
     cleanCheckpoint[
       PublicKeyHash,
-      Tables.DelegatesCheckpointRow,
-      Tables.DelegatesCheckpoint,
-      TableQuery[Tables.DelegatesCheckpoint]
+      Tables.BakersCheckpointRow,
+      Tables.BakersCheckpoint,
+      TableQuery[Tables.BakersCheckpoint]
     ](
       selection = pkhs,
-      tableQuery = Tables.DelegatesCheckpoint,
-      tableTotal = getDelegatesCheckpointSize(),
+      tableQuery = Tables.BakersCheckpoint,
+      tableTotal = getBakersCheckpointSize(),
       applySelection = (checkpoint, keySet) => checkpoint.filter(_.delegatePkh inSet keySet.map(_.value))
     )
   }
@@ -357,10 +357,10 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
-    * @return the number of distinct accounts present in the checkpoint table
+    * @return the number of distinct bakers present in the checkpoint table
     */
-  def getDelegatesCheckpointSize(): DBIO[Int] =
-    Tables.DelegatesCheckpoint.distinctOn(_.delegatePkh).length.result
+  def getBakersCheckpointSize(): DBIO[Int] =
+    Tables.BakersCheckpoint.distinctOn(_.delegatePkh).length.result
 
   /**
     * Reads the account ids in the checkpoint table,
@@ -378,7 +378,7 @@ object TezosDatabaseOperations extends LazyLogging {
         val key = AccountId(row.accountId)
         val time = row.asof.toInstant
         if (collected.contains(key)) collected
-        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time), row.cycle))
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, Some(time), row.cycle, None))
       }
 
     logger.info("Getting the latest accounts from checkpoints in the DB...")
@@ -394,23 +394,23 @@ object TezosDatabaseOperations extends LazyLogging {
     * sorted by decreasing block-level
     * @return a database action that loads the list of relevant rows
     */
-  def getLatestDelegatesFromCheckpoint(implicit ex: ExecutionContext): DBIO[Map[PublicKeyHash, BlockReference]] = {
+  def getLatestBakersFromCheckpoint(implicit ex: ExecutionContext): DBIO[Map[PublicKeyHash, BlockReference]] = {
     /* Given a sorted sequence of checkpoint rows whose reference level is decreasing,
      * collects them in a map, skipping keys already added
      * This prevents duplicate entry keys and keeps the highest level referenced, using an in-memory algorithm
      * We can think of optimizing this later, we're now optimizing on db queries
      */
     def keepLatestDelegatesKeys(
-        checkpoints: Seq[Tables.DelegatesCheckpointRow]
+        checkpoints: Seq[Tables.BakersCheckpointRow]
     ): Map[PublicKeyHash, BlockReference] =
       checkpoints.foldLeft(Map.empty[PublicKeyHash, BlockReference]) { (collected, row) =>
         val key = PublicKeyHash(row.delegatePkh)
         if (collected.contains(key)) collected
-        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, None, None))
+        else collected + (key -> (BlockHash(row.blockId), row.blockLevel, None, row.cycle, row.period))
       }
 
-    logger.info("Getting the latest delegates from checkpoints in the DB...")
-    Tables.DelegatesCheckpoint
+    logger.info("Getting the latest bakers from checkpoints in the DB...")
+    Tables.BakersCheckpoint
       .sortBy(_.blockLevel.desc)
       .result
       .map(keepLatestDelegatesKeys)
@@ -533,14 +533,14 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   /**
-    * Writes accounts to the database and record the keys (hashes) to later save complete delegates information relative to each block
+    * Writes accounts to the database and record the keys (hashes) to later save complete bakers information relative to each block
     * @param accounts the full accounts' data with account rows of inactive bakers
-    * @param delegatesKeyHashes for each block reference a list of pkh of delegates that were involved with the block
+    * @param bakersKeyHashes for each block reference a list of pkh of bakers that were involved with the block
     * @return a database action that stores both arguments and return a tuple of the row counts inserted
     */
-  def writeAccountsAndCheckpointDelegates(
+  def writeAccountsAndCheckpointBakers(
       accounts: List[(BlockTagged[Map[AccountId, Account]], List[Tables.AccountsRow])],
-      delegatesKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
+      bakersKeyHashes: List[BlockTagged[List[PublicKeyHash]]]
   )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int], Option[Int])] = {
     import slickeffect.implicits._
 
@@ -551,41 +551,41 @@ object TezosDatabaseOperations extends LazyLogging {
       .tuple3(
         writeAccounts(accounts.map(_._1)),
         writeAccountsHistory(accounts),
-        writeDelegatesCheckpoint(delegatesKeyHashes.map(_.asTuple))
+        writeBakersCheckpoint(bakersKeyHashes.map(_.asTuple))
       )
       .transactionally
   }
 
   /**
-    * Writes delegates to the database and gets the delegated accounts' keys to copy the accounts data
+    * Writes bakers to the database and gets the delegated accounts' keys to copy the accounts data
     * as delegated contracts on the db, as a secondary copy
-    * @param delegates the full delegates' data
+    * @param bakers the full delegates' data
     * @return a database action that stores delegates and returns the number of saved rows
     */
-  def writeDelegatesAndCopyContracts(
-      delegates: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
+  def writeBakersAndCopyContracts(
+      bakers: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   ): DBIO[Option[Int]] = {
     import CustomPostgresProfile.api._
 
-    val keepMostRecent = (rows: List[Tables.DelegatesRow]) =>
+    val keepMostRecent = (rows: List[Tables.BakersRow]) =>
       rows
         .sortBy(_.blockLevel)(Ordering[Int].reverse)
-        .foldLeft((Queue.empty[Tables.DelegatesRow], Set.empty[String])) { (accumulator, row) =>
+        .foldLeft((Queue.empty[Tables.BakersRow], Set.empty[String])) { (accumulator, row) =>
           val (queued, index) = accumulator
           if (index(row.pkh)) accumulator else (queued :+ row, index + row.pkh)
         }
         ._1
 
-    logger.info("Writing delegates to DB and copying contracts to delegates contracts table...")
+    logger.info("Writing bakers to DB and copying contracts to bakers table...")
 
-    val rows = delegates.flatMap {
-      case BlockTagged(blockHash, blockLevel, timestamp, cycle, delegateMap) =>
+    val rows = bakers.flatMap {
+      case BlockTagged(blockHash, blockLevel, timestamp, cycle, period, delegateMap) =>
         delegateMap.map {
           case (pkh, delegate) =>
-            (blockHash, blockLevel, pkh, delegate).convertTo[Tables.DelegatesRow]
+            (blockHash, blockLevel, pkh, delegate, cycle, period).convertTo[Tables.BakersRow]
         }
     }
-    (keepMostRecent andThen Tables.Delegates.insertOrUpdateAll)(rows)
+    (keepMostRecent andThen Tables.Bakers.insertOrUpdateAll)(rows)
   }
 
   /** Gets ballot operations for given cycle */
@@ -635,7 +635,7 @@ object TezosDatabaseOperations extends LazyLogging {
 
   /** Fetch the latest block level available for each delegate pkh stored */
   def getLevelsForDelegates(ids: Set[PublicKeyHash]): DBIO[Seq[(String, Int)]] =
-    Tables.Delegates
+    Tables.Bakers
       .map(table => (table.pkh, table.blockLevel))
       .filter(_._1 inSet ids.map(_.value))
       .result
@@ -684,7 +684,7 @@ object TezosDatabaseOperations extends LazyLogging {
   )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
     DBIO.sequence {
       hashes.map { hash =>
-        Tables.Delegates
+        Tables.Bakers
           .filter(_.pkh === hash.value)
           .result
           .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)

@@ -1,2 +1,2 @@
-id|name|standard|account_id
-1 | USDTez | FA1.2 | tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9
+id| name  | contract_type| account_id
+1 | USDTez| FA1.2        | tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9

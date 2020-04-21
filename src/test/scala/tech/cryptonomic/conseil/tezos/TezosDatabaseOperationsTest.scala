@@ -537,8 +537,8 @@ class TezosDatabaseOperationsTest
         val writeAndGetRows = for {
           _ <- Tables.Blocks += block
           _ <- Tables.Accounts ++= delegatedAccounts
-          written <- sut.writeDelegatesAndCopyContracts(List(delegatesInfo))
-          delegatesRows <- Tables.Delegates.result
+          written <- sut.writeBakersAndCopyContracts(List(delegatesInfo))
+          delegatesRows <- Tables.Bakers.result
         } yield (written, delegatesRows)
 
         val (stored, dbDelegates) = dbHandler.run(writeAndGetRows.transactionally).futureValue
@@ -587,7 +587,7 @@ class TezosDatabaseOperationsTest
           blockLevel = 1
         )
 
-        val resultFuture = dbHandler.run(sut.writeDelegatesAndCopyContracts(List(delegatesInfo)))
+        val resultFuture = dbHandler.run(sut.writeBakersAndCopyContracts(List(delegatesInfo)))
 
         whenReady(resultFuture.failed) {
           _ shouldBe a[java.sql.SQLException]
@@ -607,7 +607,7 @@ class TezosDatabaseOperationsTest
           DBIO.seq(
             Tables.Blocks ++= blocks,
             Tables.Accounts += account,
-            Tables.Delegates += delegate
+            Tables.Bakers += delegate
           )
 
         dbHandler.run(populate).isReadyWithin(5 seconds) shouldBe true
@@ -631,8 +631,8 @@ class TezosDatabaseOperationsTest
 
         //do the updates
         val writeUpdatedAndGetRows = for {
-          written <- sut.writeDelegatesAndCopyContracts(List(updatedDelegates))
-          rows <- Tables.Delegates.result
+          written <- sut.writeBakersAndCopyContracts(List(updatedDelegates))
+          rows <- Tables.Bakers.result
         } yield (written, rows)
 
         val (updates, dbDelegates) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
@@ -698,8 +698,8 @@ class TezosDatabaseOperationsTest
         //store and write
         val populateAndFetch = for {
           _ <- Tables.Blocks ++= blocks
-          written <- sut.writeDelegatesCheckpoint(keys)
-          rows <- Tables.DelegatesCheckpoint.result
+          written <- sut.writeBakersCheckpoint(keys)
+          rows <- Tables.BakersCheckpoint.result
         } yield (written, rows)
 
         val (stored, checkpointRows) = dbHandler.run(populateAndFetch).futureValue
@@ -735,21 +735,21 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
+          Tables.BakersCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
+          Tables.BakersCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
+          Tables.BakersCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
+          Tables.BakersCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
+          Tables.BakersCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
+          Tables.BakersCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
         )
 
         val populateAndTest = for {
-          stored <- Tables.DelegatesCheckpoint ++= checkpointRows
-          cleaned <- sut.cleanDelegatesCheckpoint()
-          rows <- Tables.DelegatesCheckpoint.result
+          stored <- Tables.BakersCheckpoint ++= checkpointRows
+          cleaned <- sut.cleanBakersCheckpoint()
+          rows <- Tables.BakersCheckpoint.result
         } yield (stored, cleaned, rows)
 
         val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -772,15 +772,15 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
+          Tables.BakersCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
+          Tables.BakersCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
+          Tables.BakersCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
+          Tables.BakersCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
+          Tables.BakersCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
+          Tables.BakersCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
         )
 
         val inSelection = Set(delegateKeyHashes(1), delegateKeyHashes(2), delegateKeyHashes(3), delegateKeyHashes(4))
@@ -790,9 +790,9 @@ class TezosDatabaseOperationsTest
         val expected = checkpointRows.filterNot(row => inSelection(row.delegatePkh))
 
         val populateAndTest = for {
-          stored <- Tables.DelegatesCheckpoint ++= checkpointRows
-          cleaned <- sut.cleanDelegatesCheckpoint(Some(selection))
-          rows <- Tables.DelegatesCheckpoint.result
+          stored <- Tables.BakersCheckpoint ++= checkpointRows
+          cleaned <- sut.cleanBakersCheckpoint(Some(selection))
+          rows <- Tables.BakersCheckpoint.result
         } yield (stored, cleaned, rows)
 
         val (initialCount, deletes, survivors) = dbHandler.run(populateAndTest.transactionally).futureValue
@@ -827,7 +827,7 @@ class TezosDatabaseOperationsTest
         )
 
         def entry(accountAtIndex: Int, atLevel: Int, time: Timestamp) =
-          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None)
+          AccountId(accountIds(accountAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, Some(time.toInstant), None, None)
 
         //expecting only the following to remain
         val expected =
@@ -865,19 +865,19 @@ class TezosDatabaseOperationsTest
 
         //create test data:
         val checkpointRows = Array(
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
-          Tables.DelegatesCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
+          Tables.BakersCheckpointRow(delegateKeyHashes(1), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(2), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(3), blockIds(1), blockLevel = 1),
+          Tables.BakersCheckpointRow(delegateKeyHashes(4), blockIds(2), blockLevel = 2),
+          Tables.BakersCheckpointRow(delegateKeyHashes(5), blockIds(2), blockLevel = 2),
+          Tables.BakersCheckpointRow(delegateKeyHashes(2), blockIds(3), blockLevel = 3),
+          Tables.BakersCheckpointRow(delegateKeyHashes(3), blockIds(4), blockLevel = 4),
+          Tables.BakersCheckpointRow(delegateKeyHashes(5), blockIds(4), blockLevel = 4),
+          Tables.BakersCheckpointRow(delegateKeyHashes(6), blockIds(5), blockLevel = 5)
         )
 
         def entry(delegateAtIndex: Int, atLevel: Int) =
-          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None, None)
+          PublicKeyHash(delegateKeyHashes(delegateAtIndex)) -> (BlockHash(blockIds(atLevel)), atLevel, None, None, None)
 
         //expecting only the following to remain
         val expected =
@@ -891,8 +891,8 @@ class TezosDatabaseOperationsTest
           )
 
         val populateAndFetch = for {
-          stored <- Tables.DelegatesCheckpoint ++= checkpointRows
-          rows <- sut.getLatestDelegatesFromCheckpoint
+          stored <- Tables.BakersCheckpoint ++= checkpointRows
+          rows <- sut.getLatestBakersFromCheckpoint
         } yield (stored, rows)
 
         val (initialCount, latest) = dbHandler.run(populateAndFetch.transactionally).futureValue
@@ -3293,7 +3293,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt, cycleOpt) =>
+          case (hash, level, instantOpt, cycleOpt, periodOpt) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant
@@ -3309,14 +3309,14 @@ class TezosDatabaseOperationsTest
         val matchingId = AccountId("tz19alkdjf83aadkcl")
 
         val block = generateBlockRows(1, testReferenceTimestamp).head
-        val BlockTagged(hash, level, ts, cycle, accountsContent) =
+        val BlockTagged(hash, level, ts, cycle, period, accountsContent) =
           generateAccounts(expectedCount, BlockHash(block.hash), block.level)
         val updatedContent = accountsContent.map {
           case (AccountId(id), account) if id == "1" => (matchingId, account)
           case any => any
         }
 
-        val accountsInfo = BlockTagged(hash, level, ts, cycle, updatedContent)
+        val accountsInfo = BlockTagged(hash, level, ts, cycle, period, updatedContent)
 
         val populate =
           (Tables.Blocks += block) >>
@@ -3347,7 +3347,7 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
         forAll(checkpoint.values) {
-          case (hash, level, instantOpt, cycleOpt) =>
+          case (hash, level, instantOpt, cycleOpt, periodOpt) =>
             hash.value shouldEqual block.hash
             level shouldEqual block.level
             instantOpt.value shouldEqual block.timestamp.toInstant

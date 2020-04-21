@@ -304,18 +304,20 @@ class TezosPlatformDiscoveryOperationsTest
 
       "return list of attributes of delegates" in {
 
-        sut.getTableAttributes(EntityPath("delegates", networkPath)).futureValue.value.toSet should matchTo(
+        sut.getTableAttributes(EntityPath("bakers", networkPath)).futureValue.value.toSet should matchTo(
           Set(
-            Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "delegates"),
-            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "delegates"),
-            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-            Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-            Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-            Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "delegates"),
-            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "delegates"),
-            Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "delegates"),
-            Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "delegates"),
-            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "delegates")
+            Attribute("pkh", "Pkh", DataType.String, None, KeyType.UniqueKey, "bakers"),
+            Attribute("block_id", "Block id", DataType.String, None, KeyType.NonKey, "bakers"),
+            Attribute("balance", "Balance", DataType.Decimal, None, KeyType.NonKey, "bakers"),
+            Attribute("frozen_balance", "Frozen balance", DataType.Decimal, None, KeyType.NonKey, "bakers"),
+            Attribute("staking_balance", "Staking balance", DataType.Decimal, None, KeyType.NonKey, "bakers"),
+            Attribute("delegated_balance", "Delegated balance", DataType.Decimal, None, KeyType.NonKey, "bakers"),
+            Attribute("rolls", "Rolls", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute("deactivated", "Deactivated", DataType.Boolean, None, KeyType.NonKey, "bakers"),
+            Attribute("grace_period", "Grace period", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute("block_level", "Block level", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute("cycle", "Cycle", DataType.Int, None, KeyType.NonKey, "bakers"),
+            Attribute("period", "Period", DataType.Int, None, KeyType.NonKey, "bakers")
           )
         )
       }
@@ -395,8 +397,8 @@ class TezosPlatformDiscoveryOperationsTest
           )
 
         val accounts = List(
-          BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-1") -> account.copy())),
-          BlockTagged(basicBlocks.data.hash, 1, None, None, Map(AccountId("id-2") -> account.copy()))
+          BlockTagged(basicBlocks.data.hash, 1, None, None, None, Map(AccountId("id-1") -> account.copy())),
+          BlockTagged(basicBlocks.data.hash, 1, None, None, None, Map(AccountId("id-2") -> account.copy()))
         )
 
         metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
