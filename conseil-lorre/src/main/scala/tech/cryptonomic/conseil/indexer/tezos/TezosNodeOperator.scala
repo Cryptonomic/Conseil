@@ -64,7 +64,7 @@ class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
     batchConf: BatchFetchConfiguration,
-    sqlOperations: LorreOperations
+    lorreOperations: LorreOperations
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
@@ -218,8 +218,8 @@ class TezosNodeOperator(
   def getAccountsForBlock(accountIds: List[AccountId], blockHash: BlockHash): Future[Map[AccountId, Account]] = {
     import cats.instances.future._
     import cats.instances.list._
-    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{scriptLens, storageLens}
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{scriptLens, storageLens}
 
     implicit val fetcherInstance = accountFetcher(blockHash)
 
@@ -298,8 +298,8 @@ class TezosNodeOperator(
     * @return          The `Future` list of operations
     */
   def getAllOperationsForBlock(block: BlockData): Future[List[OperationsGroup]] = {
-    import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Operations._
+    import JsonDecoders.Circe.decodeLiftingTo
     import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 
     //parse json, and try to convert to objects, converting failures to a failed `Future`
@@ -491,8 +491,8 @@ class TezosNodeOperator(
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(hash: BlockHash, offset: Option[Offset] = None): Future[Block] = {
-    import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Blocks._
+    import JsonDecoders.Circe.decodeLiftingTo
 
     val offsetString = offset.map(_.toString).getOrElse("")
 
@@ -515,8 +515,8 @@ class TezosNodeOperator(
     * @return          the block data wrapped in a `Future`
     */
   def getBareBlock(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
-    import JsonDecoders.Circe.decodeLiftingTo
     import JsonDecoders.Circe.Blocks._
+    import JsonDecoders.Circe.decodeLiftingTo
 
     val offsetString = offset.map(_.toString).getOrElse("")
 
@@ -565,7 +565,7 @@ class TezosNodeOperator(
     */
   def getBlocksNotInDatabase(): Future[PaginatedBlocksResults] =
     for {
-      maxLevel <- sqlOperations.fetchMaxLevel
+      maxLevel <- lorreOperations.fetchMaxLevel
       blockHead <- getBlockHead()
       headLevel = blockHead.data.header.level
       headHash = blockHead.data.hash
@@ -710,12 +710,12 @@ class TezosNodeSenderOperator(
     network: String,
     batchConf: BatchFetchConfiguration,
     sodiumConf: SodiumConfiguration,
-    apiOperations: LorreOperations
+    lorreOperations: LorreOperations
 )(implicit executionContext: ExecutionContext)
-    extends TezosNodeOperator(node, network, batchConf, apiOperations)
+    extends TezosNodeOperator(node, network, batchConf, lorreOperations)
     with LazyLogging {
-  import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
   import TezosNodeOperator._
+  import com.muquit.libsodiumjna.{SodiumKeyPair, SodiumLibrary, SodiumUtils}
 
   /** Type representing Map[String, Any] */
   type AnyMap = Map[String, Any]
