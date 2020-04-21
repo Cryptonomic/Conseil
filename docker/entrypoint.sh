@@ -46,5 +46,5 @@ if [ $1 = "conseil-api" ]; then
 fi
 
 if [ $1 = "conseil-lorre" ]; then
-  java -Dconfig.file=$CONFIG -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.lorre.Lorre $XTZNET
+  java -Dconfig.file=$CONFIG -cp /root/conseil-lorre.jar tech.cryptonomic.conseil.indexer.Lorre $XTZNET
 fi

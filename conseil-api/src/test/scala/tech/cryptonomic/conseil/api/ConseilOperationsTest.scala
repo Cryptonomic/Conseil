@@ -10,8 +10,6 @@ import tech.cryptonomic.conseil.common.tezos.{InMemoryDatabase, TezosDataGenerat
 import tech.cryptonomic.conseil.common.util.RandomSeed
 
 import scala.concurrent.duration._
-import scala.concurrent.Await
-
 
 class ConseilOperationsTest
   extends WordSpec
@@ -50,10 +48,10 @@ class ConseilOperationsTest
           val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
 
       // when
-      val result = dbHandler.run(sut.latestBlockIO()).futureValue.get
+      val result = dbHandler.run(sut.latestBlockIO()).futureValue.value
 
       // then
       result.level shouldBe 5
@@ -81,11 +79,11 @@ class ConseilOperationsTest
           val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
       val input = generatedBlocks.head.operationGroups.head.hash
 
       // when
-      val result = sut.fetchOperationGroup(input.value).futureValue.get
+      val result = sut.fetchOperationGroup(input.value).futureValue.value
 
       // then
       result.operation_group.hash shouldBe input.value
@@ -124,11 +122,11 @@ class ConseilOperationsTest
           val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
       val input = basicBlocks.head.data.hash
 
       // when
-      val result = sut.fetchBlock(input).futureValue.get
+      val result = sut.fetchBlock(input).futureValue.value
 
       // then
       result.block.level shouldBe basicBlocks.head.data.header.level
@@ -155,11 +153,11 @@ class ConseilOperationsTest
       val accountsInfo = generateAccounts(expectedCount, block.data.hash, 1)
 
       val input = accountsInfo.content.head._1
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(List(block))), 5.seconds)
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeAccounts(List(accountsInfo))), 5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeBlocks(List(block))).isReadyWithin(15.seconds) shouldBe true
+      dbHandler.run(TezosDatabaseOperations.writeAccounts(List(accountsInfo))).isReadyWithin(15.seconds) shouldBe true
 
       // when
-      val result = sut.fetchAccount(input).futureValue.get
+      val result = sut.fetchAccount(input).futureValue.value
 
       // then
       result.account.accountId shouldBe input.id
@@ -215,10 +213,10 @@ class ConseilOperationsTest
           val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
           block.copy(operationGroups = List(group))
       }
-      Await.result(dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)), 5.seconds)
+      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
 
       // when
-      val result = sut.fetchLatestBlock().futureValue.get
+      val result = sut.fetchLatestBlock().futureValue.value
 
       // then
       result.level shouldBe 7

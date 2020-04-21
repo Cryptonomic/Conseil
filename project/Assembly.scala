@@ -1,7 +1,8 @@
 import sbt.Keys._
 import sbt._
 import sbtassembly.AssemblyKeys._
-import sbtassembly.AssemblyPlugin
+import sbtassembly.{AssemblyPlugin, MergeStrategy}
+import sbtassembly.Assembly.isConfigFile
 
 object Assembly {
 
@@ -12,7 +13,11 @@ object Assembly {
         .settings(
           mainClass in assembly := mainClass.value,
           assemblyOutputPath in assembly := file(s"/tmp/${name.value}.jar"),
-          test in assembly := {}
+          test in assembly := {},
+          assemblyMergeStrategy in assembly := {
+            case "application.conf" => MergeStrategy.concat
+            case x => (assemblyMergeStrategy in assembly).value(x)
+          }
         )
         .enablePlugins(AssemblyPlugin)
 

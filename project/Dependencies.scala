@@ -4,7 +4,7 @@ object Dependencies {
 
   private val akkaVersion = "2.5.21"
   private val akkaHttpVersion = "10.1.8"
-  private val akkaHttpJsonVersion = "1.25.2"
+  private val akkaHttpJsonVersion = "1.26.0"
   private val slickVersion = "3.3.0"
   private val catsVersion = "1.6.0"
   private val monocleVersion = "1.5.1-cats"
@@ -85,8 +85,6 @@ object Dependencies {
   )
 
   val conseilLorreInclude = Seq(
-    "org.scalatest" %% "scalatest" % "3.0.5" % "it, test",
-    "org.scalamock" %% "scalamock" % "4.1.0" % "it, test",
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )

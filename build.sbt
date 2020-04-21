@@ -63,7 +63,7 @@ lazy val api = (project in file("conseil-api"))
 lazy val lorre = (project in file("conseil-lorre"))
   .settings(
     name := "conseil-lorre",
-    mainClass := Some("tech.cryptonomic.conseil.lorre.Lorre"),
+    mainClass := Some("tech.cryptonomic.conseil.indexer.Lorre"),
     libraryDependencies ++= Dependencies.conseilLorreInclude,
     coverageExcludedPackages := Seq(
           "<empty>",
