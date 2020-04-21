@@ -130,13 +130,13 @@ object Conseil
     * @param verbose flag to state if the server should log a more detailed configuration setup upon startup
     */
   def runServer(
-                 metadataService: MetadataService,
-                 conseilOperations: ConseilOperations,
-                 server: ServerConfiguration,
-                 platforms: PlatformsConfiguration,
-                 metadataOverrides: MetadataConfiguration,
-                 securityApi: SecurityApi,
-                 verbose: VerboseOutput
+      metadataService: MetadataService,
+      conseilOperations: ConseilOperations,
+      server: ServerConfiguration,
+      platforms: PlatformsConfiguration,
+      metadataOverrides: MetadataConfiguration,
+      securityApi: SecurityApi,
+      verbose: VerboseOutput
   )(implicit executionContext: ExecutionContext, system: ActorSystem, mat: ActorMaterializer) = {
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
