@@ -84,7 +84,11 @@ object ConfigUtil {
       )
     }
 
-    /** pureconfig reader for lists of tezos configurations, i.e. one for each network */
+    /** pureconfig reader for lists of tezos configurations, i.e. one for each network.
+      * Take care: this will not load any TNS definition from the config file, since
+      * it's supposed to be used only to decode the "platforms" configuration section, which
+      * doesn't include the "tns" definition.
+      */
     implicit val tezosConfigurationsReader: ConfigReader[List[TezosConfiguration]] =
       ConfigReader[ConfigObject].emap { obj =>
         //applies convention to uses CamelCase when reading config fields
@@ -98,13 +102,9 @@ object ConfigUtil {
           def findObject[T: ConfigReader](readValue: => ConfigValue) =
             Try(readValue).toEither.left.map(ExceptionThrown).flatMap(readAndFailWithFailureReason[T])
 
-          val (nodePath, tnsPath) = (s"$network.node", s"$network.tns")
-          //create the whole config entry
-          for {
-            node <- findObject[TezosNodeConfiguration](config.getObject(nodePath))
-            tns <- if (!config.hasPath(tnsPath)) Right(Option.empty[TNSContractConfiguration])
-            else findObject[TNSContractConfiguration](config.getObject(tnsPath)).map(Some(_))
-          } yield TezosConfiguration(network, node, tns)
+          val path = s"$network.node"
+          findObject[TezosNodeConfiguration](config.getObject(path))
+            .map(node => TezosConfiguration(network, node, tns = None))
 
         }
         foldReadResults(parsed) {

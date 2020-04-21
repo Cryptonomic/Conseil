@@ -85,7 +85,7 @@ trait LorreAppConfig {
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
       node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
-      tns <- loadConfig[Option[TNSContractConfiguration]](namespace = s"platforms.tezos.$network.tns")
+      tns <- loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network")
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batchedFetches")
     } yield
