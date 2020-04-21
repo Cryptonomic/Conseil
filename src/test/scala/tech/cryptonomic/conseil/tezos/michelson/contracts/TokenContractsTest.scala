@@ -35,7 +35,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         )
 
         //register the token info
-        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 
@@ -74,7 +74,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         )
 
         //register the token info
-        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
 
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
@@ -106,7 +106,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         )
 
         //register the token info
-        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(1718))
 
@@ -144,7 +144,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         )
 
         //register the token info
-        val sut = TokenContracts.fromTokens(List(ledgerId -> "FA1.2"))
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
         //set the map id for the contract
         sut.setMapId(ledgerId, BigDecimal(mapId))
 

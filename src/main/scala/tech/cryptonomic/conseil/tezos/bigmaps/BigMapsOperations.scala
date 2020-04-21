@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.tezos.bigmaps
 
 import com.typesafe.scalalogging.LazyLogging
 import com.github.tminglei.slickpg.ExPostgresProfile
@@ -6,26 +6,19 @@ import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  AccountId,
-  ContractId,
-  InternalOperationResults,
-  Origination,
-  Transaction
-}
-import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
-import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
+import tech.cryptonomic.conseil.tezos.Tables
+import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
+import tech.cryptonomic.conseil.tezos.TezosOptics
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
   * @param profile is the actual profile needed to define database operations
   */
 case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) extends LazyLogging {
-  import TezosTypes.{Block, Contract, Decimal}
-  import Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
   import profile.api._
-  import DatabaseConversions._
 
   /** Create an action to find and copy big maps based on the diff contained in the blocks
     *
@@ -117,12 +110,13 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveMaps(blocks: List[Block]): DBIO[Option[Int]] = {
+    import TezosOptics.Operations.extractAppliedOriginationsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedOriginationsResults(b)
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+          .map(diff => BigMapsConversions.BlockBigMapDiff(b.data.hash, diff))
     )
 
     val maps = if (logger.underlying.isDebugEnabled()) {
@@ -156,12 +150,13 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def upsertContent(blocks: List[Block]): DBIO[Option[Int]] = {
+    import TezosOptics.Operations.extractAppliedTransactionsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedTransactionsResults(b)
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
-          .map(diff => DatabaseConversions.BlockBigMapDiff(b.data.hash, diff))
+          .map(diff => BigMapsConversions.BlockBigMapDiff(b.data.hash, diff))
     )
 
     val rowsPerBlock = diffsPerBlock
@@ -209,14 +204,16 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param blocks the blocks containing the diffs
     * @return the count of records added, if available from the underlying db-engine
     */
-  def saveContractOrigin(blocks: List[Block])(implicit tokenContracts: TokenContracts): DBIO[Option[Int]] = {
+  def saveContractOrigin(blocks: List[Block]): DBIO[List[OriginatedAccountMapsRow]] = {
+    import TezosOptics.Operations.extractAppliedOriginationsResults
+
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedOriginationsResults(b).flatMap { results =>
           for {
             contractIds <- results.originated_contracts.toList
             diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
-          } yield DatabaseConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
+          } yield BigMapsConversions.BlockContractIdsBigMapDiff((b.data.hash, contractIds, diff))
         }
     )
 
@@ -241,17 +238,49 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
-    //we might need to update the information registered about tokens
-    updateTokens(refs, tokenContracts)
-    Tables.OriginatedAccountMaps ++= refs
+    //the returned DBIOAction will provide the rows just added
+    (Tables.OriginatedAccountMaps ++= refs) andThen DBIO.successful(refs)
   }
 
-  /* Updates information on the stored map, for accounts associated to a token contract */
-  private def updateTokens(contractsReferences: List[OriginatedAccountMapsRow], tokenContracts: TokenContracts) =
+  /** Updates the reference to the stored big map, for accounts associated to a token contract */
+  def initTokenMaps(
+      contractsReferences: List[OriginatedAccountMapsRow]
+  )(implicit tokenContracts: TokenContracts): Unit =
     contractsReferences.foreach {
       case OriginatedAccountMapsRow(mapId, accountId) if tokenContracts.isKnownToken(ContractId(accountId)) =>
         tokenContracts.setMapId(ContractId(accountId), mapId)
       case _ =>
+    }
+
+  /** Updates the reference to the stored big maps, for accounts associated to a name-service contract */
+  def initTNSMaps(
+      contractsReferences: List[OriginatedAccountMapsRow]
+  )(implicit ec: ExecutionContext, tnsContracts: TNSContract): DBIO[Unit] = {
+    //fetch the right maps
+    val mapsQueries: List[DBIO[Option[(String, BigMapsRow)]]] =
+      contractsReferences.collect {
+        case OriginatedAccountMapsRow(mapId, accountId) if tnsContracts.isKnownRegistrar(ContractId(accountId)) =>
+          Tables.BigMaps
+            .findBy(_.bigMapId)
+            .applied(mapId)
+            .map(accountId -> _) //track each map row with the originated account
+            .result
+            .headOption
+      }
+    //put together the values and record on the TNS
+    DBIO.sequence(mapsQueries).map(collectMapsByContract _ andThen setOnTNS)
+  }
+
+  /* Reorganize the input list to discard empty values and group them by first element, i.e. the contract id */
+  private def collectMapsByContract(ids: List[Option[(String, BigMapsRow)]]): Map[ContractId, List[BigMapsRow]] =
+    ids.flattenOption.groupBy {
+      case (contractId, row) => ContractId(contractId)
+    }.mapValues(values => values.map(_._2))
+
+  /* For each entry, tries to pass the values to the TNS object to initialize the map ids properly */
+  private def setOnTNS(maps: Map[ContractId, List[BigMapsRow]])(implicit tnsContracts: TNSContract) =
+    maps.foreach {
+      case (contractId, rows) => tnsContracts.setMaps(contractId, rows)
     }
 
   /** Matches blocks' transactions to extract updated balance for any contract corresponding to a known
@@ -267,6 +296,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       blocks: List[Block]
   )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
+    import TezosOptics.Operations.extractAppliedTransactions
     import TezosOptics.Contracts.{extractAddressesFromExpression, parametersExpresssion}
 
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
@@ -312,9 +342,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       }
 
       //convert packed data
-      DatabaseConversions
+      BigMapsConversions
         .TokenUpdatesInput(b, updates, addressesInvolved)
-        .convertToA[List, DatabaseConversions.TokenUpdate]
+        .convertToA[List, BigMapsConversions.TokenUpdate]
     }
 
     //now we need to check on the token registry for matching contracts, to get a valid token-id as defined on the db
@@ -349,39 +379,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
       Tables.TokenBalances ++= validBalances
     }
-  }
-
-  private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
-
-  private def extractAppliedOriginationsResults(block: TezosTypes.Block) = {
-    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-    val results =
-      (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
-          (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
-
-    results.filter(result => isApplied(result.status))
-  }
-
-  private def extractAppliedTransactionsResults(block: TezosTypes.Block) = {
-    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-    val results =
-      (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
-          (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
-
-    results.filter(result => isApplied(result.status))
-  }
-
-  private def extractAppliedTransactions(block: TezosTypes.Block): List[Either[Transaction, InternalTransaction]] = {
-    val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-    (ops.toList.flatten.collect {
-      case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
-    }) ++
-      (intOps.toList.flatten.collect {
-        case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
-      })
   }
 
   /* filter out pre-babylon big map diffs */

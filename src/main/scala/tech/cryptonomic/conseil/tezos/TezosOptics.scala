@@ -119,6 +119,8 @@ object TezosOptics {
   }
 
   object Operations {
+    import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
+    import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 
     val selectOrigination = GenPrism[Operation, Origination]
     val originationResult = GenLens[Origination](_.metadata.operation_result)
@@ -178,9 +180,39 @@ object TezosOptics {
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
 
-    private val script = GenLens[Origination](_.script)
-    private val parameters = GenLens[Transaction](_.parameters)
-    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
+    private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
+
+    def extractAppliedOriginationsResults(block: Block) = {
+      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+      val results =
+        (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
+            (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
+
+      results.filter(result => isApplied(result.status))
+    }
+
+    def extractAppliedTransactionsResults(block: Block) = {
+      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+      val results =
+        (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
+            (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
+
+      results.filter(result => isApplied(result.status))
+    }
+
+    def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] = {
+      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+      (ops.toList.flatten.collect {
+        case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
+      }) ++
+        (intOps.toList.flatten.collect {
+          case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
+        })
+    }
+
   }
 
   object Accounts {

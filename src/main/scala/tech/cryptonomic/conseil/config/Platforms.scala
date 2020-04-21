@@ -49,13 +49,20 @@ object Platforms extends LazyLogging {
       chainEnv: String = "main"
   )
 
+  /** Defines chain-specific values to identify the TNS (Tezos Naming Service) smart contract */
+  final case class TNSContractConfiguration(name: String, contractType: String, accountId: String)
+
   /** generic trait for any platform configuration, where each instance corresponds to a network available on that chain */
   sealed trait PlatformConfiguration extends Product with Serializable {
     def network: String
   }
 
   /** collects all config related to a tezos network */
-  final case class TezosConfiguration(network: String, nodeConfig: TezosNodeConfiguration) extends PlatformConfiguration
+  final case class TezosConfiguration(
+      network: String,
+      nodeConfig: TezosNodeConfiguration,
+      tns: Option[TNSContractConfiguration]
+  ) extends PlatformConfiguration
 
   /** unexpected or yet to define platform */
   final case class UnknownPlatformConfiguration(network: String = "", depth: Depth = Newest)

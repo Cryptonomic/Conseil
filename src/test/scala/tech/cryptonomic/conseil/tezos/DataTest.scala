@@ -130,7 +130,8 @@ class DataTest
       Tezos -> List(
             TezosConfiguration(
               "alphanet",
-              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732)
+              TezosNodeConfiguration(protocol = "http", hostname = "localhost", port = 8732),
+              None
             )
           )
     )
@@ -151,7 +152,7 @@ class DataTest
       PlatformsConfiguration(
         Map(
           Platforms.Tezos -> List(
-                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"))
+                TezosConfiguration("alphanet", TezosNodeConfiguration("tezos-host", 123, "https://"), None)
               )
         )
       ),

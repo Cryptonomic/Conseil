@@ -32,7 +32,7 @@ class MetadataServiceTest
       PlatformsConfiguration(
         Map(
           Platforms.Tezos -> List(
-                TezosConfiguration("mainnet", TezosNodeConfiguration("tezos-host", 123, "https://"))
+                TezosConfiguration("mainnet", TezosNodeConfiguration("tezos-host", 123, "https://"), None)
               )
         )
       ),

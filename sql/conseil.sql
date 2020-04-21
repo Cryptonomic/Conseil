@@ -85,26 +85,26 @@ CREATE TABLE tezos.known_addresses (
 );
 
 CREATE TABLE tezos.governance (
-voting_period integer NOT NULL,
-voting_period_kind character varying NOT NULL,
-cycle integer,
-level integer,
-block_hash character varying NOT NULL,
-proposal_hash character varying NOT NULL,
-yay_count integer,
-nay_count integer,
-pass_count integer,
-yay_rolls numeric,
-nay_rolls numeric,
-pass_rolls numeric,
-total_rolls numeric,
-block_yay_count integer,
-block_nay_count integer,
-block_pass_count integer,
-block_yay_rolls numeric,
-block_nay_rolls numeric,
-block_pass_rolls numeric,
-PRIMARY KEY (block_hash, proposal_hash)
+    voting_period integer NOT NULL,
+    voting_period_kind character varying NOT NULL,
+    cycle integer,
+    level integer,
+    block_hash character varying NOT NULL,
+    proposal_hash character varying NOT NULL,
+    yay_count integer,
+    nay_count integer,
+    pass_count integer,
+    yay_rolls numeric,
+    nay_rolls numeric,
+    pass_rolls numeric,
+    total_rolls numeric,
+    block_yay_count integer,
+    block_nay_count integer,
+    block_pass_count integer,
+    block_yay_rolls numeric,
+    block_nay_rolls numeric,
+    block_pass_rolls numeric,
+    PRIMARY KEY (block_hash, proposal_hash)
 );
 
 CREATE INDEX governance_block_hash_idx ON tezos.governance USING btree (block_hash);
@@ -139,6 +139,17 @@ CREATE TABLE tezos.token_balances (
     PRIMARY KEY (token_id, address, block_level)
 );
 
+CREATE TABLE tezos.tezos_names (
+    name character varying PRIMARY KEY,
+    owner character varying,
+    resolver character varying,
+    registered_at timestamp,
+    registration_period integer,
+    modified boolean
+);
+
+CREATE INDEX tezos_names_resolver_idx ON tezos.tezos_names USING btree (resolver);
+CREATE INDEX tezos_names_owner_idx ON tezos.tezos_names USING btree (owner);
 
 --
 -- Name: accounts; Type: TABLE; Schema: tezos; Owner: -

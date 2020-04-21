@@ -169,7 +169,7 @@ object MainOutputs {
 
   /* custom display of each configuration type */
   private val showPlatformConfiguration: PartialFunction[PlatformConfiguration, String] = {
-    case TezosConfiguration(_, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv)) =>
+    case TezosConfiguration(_, TezosNodeConfiguration(host, port, protocol, prefix, chainEnv), _) =>
       s"node $protocol://$host:$port/$prefix/$chainEnv"
     case _ =>
       "a non-descript platform configuration"

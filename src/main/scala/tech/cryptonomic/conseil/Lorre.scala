@@ -33,7 +33,8 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContract, TokenContracts}
+import tech.cryptonomic.conseil.tezos.app.TezosNamesOperations
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
@@ -82,30 +83,49 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     apiOperations
   )
 
-  import kantan.csv.generic._
-  import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
+  implicit val tokens = initAnyCsvConfig()
 
-  /** Inits registered tokens at startup */
-  implicit val tokenContracts: TokenContracts = {
+  /* Reads csv resources to initialize db tables and smart contracts objects */
+  def initAnyCsvConfig(): TokenContracts = {
+    import kantan.csv.generic._
+    import tech.cryptonomic.conseil.util.ConfigUtil.Csv._
 
-    val futureTokenContracts =
-      TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network).map {
-        case (tokenRows, _) =>
-          TokenContracts.fromTokens(
-            tokenRows.map {
-              case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
-                ContractId(accountId) -> standard
-            }
-          )
+    val tokenContracts: TokenContracts = {
 
-      }
+      val tokenContractsFuture =
+        TezosDb.initTableFromCsv(db, Tables.RegisteredTokens, tezosConf.network).map {
+          case (tokenRows, _) =>
+            TokenContracts.fromConfig(
+              tokenRows.map {
+                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                  ContractId(accountId) -> standard
+              }
+            )
 
-    Await.result(futureTokenContracts, 5.seconds)
+        }
+
+      Await.result(tokenContractsFuture, 5.seconds)
+    }
+
+    /** Inits tables with values from CSV files */
+    TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
+    TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
+
+    //return the contracts definitions
+    tokenContracts
   }
 
-  /** Inits tables with values from CSV files */
-  TezosDb.initTableFromCsv(db, Tables.KnownAddresses, tezosConf.network)
-  TezosDb.initTableFromCsv(db, Tables.BakerRegistry, tezosConf.network)
+  implicit val tns: TNSContract =
+    tezosConf.tns match {
+      case None =>
+        logger.warn("No configuration found to initialize TNS for {}.", tezosConf.network)
+        TNSContract.noContract
+      case Some(conf) =>
+        TNSContract.fromConfig(conf)
+    }
+
+  //build operations on tns based on the implicit contracts defined before
+  val tnsOperations = new TezosNamesOperations(tns, tezosNodeOperator)
 
   /** Schedules method for fetching baking rights */
   system.scheduler.schedule(lorreConf.blockRightsFetching.initDelay, lorreConf.blockRightsFetching.interval)(
@@ -386,6 +406,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
+        _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
         votingData <- processVotesForBlocks(results.map { case (block, _) => block })
         rollsData = votingData.map {
           case (block, rolls) => block.data.hash -> rolls

@@ -84,21 +84,28 @@ object ConfigUtil {
       )
     }
 
-    /** pureconfig reader for lists of tezos configurations, i.e. one for each network */
+    /** pureconfig reader for lists of tezos configurations, i.e. one for each network.
+      * Take care: this will not load any TNS definition from the config file, since
+      * it's supposed to be used only to decode the "platforms" configuration section, which
+      * doesn't include the "tns" definition.
+      */
     implicit val tezosConfigurationsReader: ConfigReader[List[TezosConfiguration]] =
       ConfigReader[ConfigObject].emap { obj =>
         //applies convention to uses CamelCase when reading config fields
         @silent("local method hint in value")
-        implicit def hint = ProductHint[TezosNodeConfiguration](ConfigFieldMapping(CamelCase, CamelCase))
+        implicit def hint[T: ConfigReader] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
 
         val availableNetworks = obj.keySet.asScala
+        val config = obj.toConfig()
         val parsed: mutable.Set[Either[FailureReason, TezosConfiguration]] = availableNetworks.map { network =>
-          //try to read the node subconfig as an Either, might be missing or fail to be an object
-          Try(obj.toConfig.getObject(s"$network.node")).toEither.left
-            .map(ExceptionThrown)
-            .flatMap(readAndFailWithFailureReason[TezosNodeConfiguration])
-            //creates the whole config entry
-            .map(TezosConfiguration(network, _))
+          //try to read the node and tns subconfigs as an Either, might be missing or fail to be an object
+          def findObject[T: ConfigReader](readValue: => ConfigValue) =
+            Try(readValue).toEither.left.map(ExceptionThrown).flatMap(readAndFailWithFailureReason[T])
+
+          val path = s"$network.node"
+          findObject[TezosNodeConfiguration](config.getObject(path))
+            .map(node => TezosConfiguration(network, node, tns = None))
+
         }
         foldReadResults(parsed) {
           _.toList
@@ -220,7 +227,7 @@ object ConfigUtil {
         hd: HeaderDecoder[T#TableElementType],
         g: Generic.Aux[T#TableElementType, H],
         m: Mapper.Aux[Trimmer.type, H, H]
-    ): List[T#TableElementType] =
+    ): Option[List[T#TableElementType]] =
       readRowsFromCsv[T#TableElementType, H](
         csvSource = getClass.getResource(s"/${table.baseTableRow.tableName}/$network.csv"),
         separator
@@ -265,7 +272,7 @@ object ConfigUtil {
         hd: HeaderDecoder[Row],
         g: Generic.Aux[Row, H],
         m: Mapper.Aux[Trimmer.type, H, H]
-    ): List[Row] = {
+    ): Option[List[Row]] = {
       import kantan.csv._
       import kantan.csv.ops._
 
@@ -276,20 +283,22 @@ object ConfigUtil {
         g.from(trimmed)
       }
 
-      val reader: CsvReader[ReadResult[Row]] =
-        csvSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
+      Option(csvSource).map { validSource =>
+        val reader: CsvReader[ReadResult[Row]] =
+          validSource.asCsvReader[Row](rfc.withHeader.withCellSeparator(separator))
 
-      // separates List[Either[L, R]] into List[L] and List[R]
-      val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row]))(
-        (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
-      )
+        // separates List[Either[L, R]] into List[L] and List[R]
+        val (errors, rows) = reader.toList.foldRight((List.empty[ReadError], List.empty[Row]))(
+          (acc, pair) => acc.fold(l => (l :: pair._1, pair._2), r => (pair._1, trimStringFields(r) :: pair._2))
+        )
 
-      if (errors.nonEmpty) {
-        val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
-        logger.error("Error while reading registered source file {}: {}", csvSource.toExternalForm(), messages)
+        if (errors.nonEmpty) {
+          val messages = errors.map(_.getMessage).mkString("\n", "\n", "\n")
+          logger.error("Error while reading registered source file {}: {}", csvSource.toExternalForm(), messages)
+        }
+
+        rows
       }
-
-      rows
     }
 
   }
