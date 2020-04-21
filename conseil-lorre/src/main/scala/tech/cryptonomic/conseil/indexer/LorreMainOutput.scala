@@ -38,11 +38,11 @@ trait LorreMainOutput {
     * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
     */
   protected[this] def displayConfiguration[C <: PlatformConfiguration](
-                                                                        platform: BlockchainPlatform,
-                                                                        platformConf: C,
-                                                                        lorreConf: LorreConfiguration,
-                                                                        ignoreFailures: (String, Option[String])
-                                                                      ): Unit =
+      platform: BlockchainPlatform,
+      platformConf: C,
+      lorreConf: LorreConfiguration,
+      ignoreFailures: (String, Option[String])
+  ): Unit =
     logger.info(
       """
         | ==================================***==================================

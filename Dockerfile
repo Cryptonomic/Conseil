@@ -30,6 +30,7 @@ COPY --from=0 /tmp/conseil-api.jar conseil-api.jar
 COPY --from=0 /tmp/conseil-lorre.jar conseil-lorre.jar
 ADD ./conseil-api/src/main/resources/metadata/tezos.mainnet.conf /root/tezos.mainnet.conf
 ADD ./conseil-api/src/main/resources/metadata/tezos.babylonnet.conf /root/tezos.babylonnet.conf
+ADD ./conseil-api/src/main/resources/metadata/tezos.carthagenet.conf /root/tezos.carthagenet.conf
 ADD ./conseil-api/src/main/resources/metadata.conf /root/metadata.conf
 ADD ./docker/template.conf /root/template.conf
 ADD ./docker/entrypoint.sh /root/entrypoint.sh

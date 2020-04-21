@@ -5,10 +5,12 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.tezos.SqlOperations.{AccountResult, BlockResult, OperationGroupResult}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.common.tezos.{SqlOperations, Tables, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class ConseilOperations extends SqlOperations {
+  override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
 
   /**
     * Fetches the most recent block stored in the database.

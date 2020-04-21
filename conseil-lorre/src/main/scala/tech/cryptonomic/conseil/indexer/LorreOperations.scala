@@ -2,10 +2,12 @@ package tech.cryptonomic.conseil.indexer
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.tezos.{SqlOperations, Tables}
+import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class LorreOperations extends SqlOperations {
+  override lazy val dbReadHandle: Database = DatabaseUtil.lorreDb
 
   /**
     * Fetches the level of the most recent block stored in the database.

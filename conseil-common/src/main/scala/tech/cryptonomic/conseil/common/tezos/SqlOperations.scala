@@ -10,7 +10,6 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
   QueryResponse,
   SimpleField
 }
-import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -37,7 +36,8 @@ object SqlOperations {
   */
 trait SqlOperations extends DataOperations with MetadataOperations {
   import SqlOperations._
-  lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
+
+  def dbReadHandle: Database
 
   /**
     * @see `MetadataOperations#runQuery`

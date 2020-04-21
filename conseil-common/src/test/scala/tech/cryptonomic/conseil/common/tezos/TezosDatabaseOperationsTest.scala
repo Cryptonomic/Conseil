@@ -4,7 +4,6 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import com.typesafe.scalalogging.LazyLogging
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
@@ -2998,7 +2997,6 @@ class TezosDatabaseOperationsTest
       }
 
       "should aggregate with datePart aggregation" in {
-        val oneDay = Duration(1, DAYS).toMillis
         val feesTmp = List(
           FeesRow(0, 2, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
           FeesRow(0, 4, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
@@ -3038,7 +3036,6 @@ class TezosDatabaseOperationsTest
       }
 
       "should map date with datePart aggregation when it is only type of aggregation" in {
-        val oneDay = Duration(1, DAYS).toMillis
         val feesTmp = List(
           FeesRow(0, 1, 4, new Timestamp(100, 0, 1, 0, 0, 0, 0), "kind"),
           FeesRow(0, 2, 8, new Timestamp(100, 0, 2, 0, 0, 0, 0), "kind"),
