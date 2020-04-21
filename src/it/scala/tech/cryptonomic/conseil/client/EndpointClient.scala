@@ -17,11 +17,35 @@ import io.circe.{parser, Json}
 import cats.effect.IO
 import cats.syntax.all._
 import scala.io.Source
+import com.typesafe.config.ConfigFactory
+import scala.util.Try
+
+object DataEndpointsClientProbe {
+
+  /** Creates a valid client probe or fails trying
+    *
+    * @param configfile should point to a valid configuration for Lorre/Conseil
+    * @param syncNetwork can be a valid configuration entry for network to sync to
+    * @return a client to run regression tests
+    */
+  def apply(configfile: String, syncNetwork: Option[String] = None): IO[DataEndpointsClientProbe] =
+    IO(new DataEndpointsClientProbe(configfile, syncNetwork))
+
+}
 
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
   */
-object DataEndpointsClientProbe {
+class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[String]) {
+
+  //this is supposed to throw an error if there's anything wrong, and be catched by the companion smart constructor
+  private val apiKey = {
+    val key = Try(
+      ConfigFactory.load().getStringList("conseil.security.apiKeys.keys").get(0)
+    )
+    key.failed.foreach(_ => println("No apiKey found in configuration, I can't test conseil api without"))
+    key.get
+  }
 
   object Setup {
     implicit val ioShift = IO.contextShift(scala.concurrent.ExecutionContext.global)
@@ -29,14 +53,24 @@ object DataEndpointsClientProbe {
 
     /* We might wanna start with only 10k blocks */
     private def runLorre(network: String) =
-      Seq("sbt", s"runLorre -d 10000 -h BLc7tKfzia9hnaY1YTMS6RkDniQBoApM4EjKFRLucsuHbiy3eqt $network")
-    private val runConseil = Process(Seq("sbt", "runConseil -v"))
+      Process(
+        command = Seq("sbt", s"runLorre -v -d 10000 -h BLc7tKfzia9hnaY1YTMS6RkDniQBoApM4EjKFRLucsuHbiy3eqt $network"),
+        cwd = None,
+        extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
+      )
+    private val runConseil =
+      Process(
+        command = Seq("sbt", "runConseil -v"),
+        cwd = None,
+        extraEnv = ("SBT_OPTS" -> s"-Dconfig.file=$configfile")
+      )
     private def grepConseilPID(): String = (Seq("jps", "-m") #| Seq("grep", "runConseil")).!!.split(" ").head
     private def stopPid(pid: String) = Seq("kill", "-2", pid).!
 
-    private def syncData(network: String) = IO((runLorre(network).!).ensuring(_ == 0, "lorre failed to load correctly"))
+    private def syncData(network: String) =
+      IO((runLorre(network).!).ensuring(_ == 0, "lorre failed to load correctly"))
 
-    private def startConseil(syncNetwork: Option[String]): IO[Process] =
+    private def startConseil: IO[Process] =
       for {
         _ <- if (syncNetwork.nonEmpty) syncData(syncNetwork.get) else IO(0)
         proc <- IO(runConseil.run())
@@ -44,8 +78,8 @@ object DataEndpointsClientProbe {
         _ <- timer.sleep(30.seconds)
       } yield proc
 
-    def usingConseil[A](syncNetwork: Option[String] = None)(testBlock: => IO[A]) =
-      startConseil(syncNetwork).bracket(
+    def usingConseil[A](testBlock: => IO[A]) =
+      startConseil.bracket(
         use = _ => testBlock
       )(
         release = _ =>
@@ -65,19 +99,18 @@ object DataEndpointsClientProbe {
   private val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
   /** will run the regression suite against the given endpoints
+    * @param configfile the file path to the configuration file used to run the regressions
     * @param syncToNetwork if a network name is provided, a Lorre instance will load data to the local db from the specified network
     */
-  def runRegressionSuite(syncToNetwork: Option[String] = None): IO[Unit] =
-    Setup
-      .usingConseil(syncToNetwork) {
-        infoEndpoint *>
-          blockHeadEndpoint *>
-          groupingPredicatesQueryEndpoint
-      }
-      .flatMap {
-        case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
-        case Right(value) => IO(println(s"$GREEN Regression test passed: OK$RESET"))
-      }
+  def runRegressionSuite: IO[Unit] =
+    Setup.usingConseil {
+      infoEndpoint *>
+        blockHeadEndpoint *>
+        groupingPredicatesQueryEndpoint
+    }.flatMap {
+      case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
+      case Right(value) => IO(println(s"$GREEN Regression test passed: OK$RESET"))
+    }
 
   /** info */
   def infoEndpoint: IO[Either[Throwable, Json]] = {
@@ -95,7 +128,7 @@ object DataEndpointsClientProbe {
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", "hooman")
+        Header("apiKey", apiKey)
       )
       client.expect[Json](req).attempt.map {
         case Right(json) =>
@@ -153,7 +186,7 @@ object DataEndpointsClientProbe {
         endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", "hooman")
+        Header("apiKey", apiKey)
       )
       client.expect[Json](req).attempt.map {
         case Right(json) =>
@@ -190,7 +223,7 @@ object DataEndpointsClientProbe {
         uri = endpoint,
         `Content-Type`(MediaType.application.json),
         Accept(MediaType.application.json),
-        Header("apiKey", "hooman")
+        Header("apiKey", apiKey)
       )
       client.expect[Json](req).attempt.map {
         case Right(json) =>
