@@ -37,7 +37,7 @@ object DataEndpointsClientProbe {
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
   */
-class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[String]) {
+class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[String]) extends RegressionFixtures {
 
   /* We're currently assuming running on carthage up to a given level
    * we should eventually pass-in everything as a composite argument, like a csv?
@@ -207,15 +207,15 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
     }
   }
 
-  val groupingPredicatesQueryEndpoint = {
+  def groupingPredicatesQueryEndpoint: IO[Either[Throwable, Json]] = {
     val callBody = parser
-      .parse(Source.fromResource("groupingPredicatesQuery.body.json").mkString)
+      .parse(GroupingPredicatesQuery.requestJsonPayload)
       .ensuring(_.isRight)
       .right
       .get
 
     val expected = parser
-      .parse(Source.fromResource("groupingPredicatesQuery.response.json").mkString)
+      .parse(GroupingPredicatesQuery.responseJsonContent)
       .ensuring(_.isRight)
       .right
       .get
