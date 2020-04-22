@@ -18,7 +18,7 @@ ThisBuild / resolvers ++= Seq(
 )
 
 lazy val conseil = (project in file("."))
-  .aggregate(common, api, lorre, schema, smokeTests)
+  .aggregate(common, commonTestKit, api, lorre, schema, smokeTests)
 
 lazy val common = (project in file("conseil-common"))
   .settings(
@@ -32,12 +32,18 @@ lazy val common = (project in file("conseil-common"))
           "tech.cryptonomic.conseil.common.config.Security"
         ).mkString(";")
   )
-  .settings(Defaults.itSettings)
   .settings(
     scalacOptions += "-P:silencer:pathFilters=common/src/main/scala/tech/cryptonomic/conseil/common/tezos/Tables.scala"
   )
-  .configs(IntegrationTest)
   .enableBuildInfo()
+  .disableAssembly()
+  .dependsOn(commonTestKit % Test)
+
+lazy val commonTestKit = (project in file("conseil-common-testkit"))
+  .settings(
+    name := "conseil-common-testkit",
+    libraryDependencies ++= Dependencies.conseilCommonTestKitInclude
+  )
   .disableAssembly()
 
 lazy val api = (project in file("conseil-api"))
@@ -51,14 +57,12 @@ lazy val api = (project in file("conseil-api"))
           ".*\\.ConseilAppConfig"
         ).mkString(";")
   )
-  .settings(Defaults.itSettings)
-  .configs(IntegrationTest)
   .addRunCommand(
     description = "Task to run the main Conseil API Server",
     javaExtras = Seq("-Xms1024M", "-Xmx8192M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
   .enableAssembly()
-  .dependsOn(common % "compile->test")
+  .dependsOn(common, commonTestKit % Test)
 
 lazy val lorre = (project in file("conseil-lorre"))
   .settings(
@@ -71,14 +75,12 @@ lazy val lorre = (project in file("conseil-lorre"))
           ".*\\.LorreAppConfig"
         ).mkString(";")
   )
-  .settings(Defaults.itSettings)
-  .configs(IntegrationTest)
   .addRunCommand(
     description = "Task to run the main Lorre indexing process for Tezos",
     javaExtras = Seq("-Xmx512M", "-Xss1M", "-XX:+CMSClassUnloadingEnabled")
   )
   .enableAssembly()
-  .dependsOn(common % "compile->test")
+  .dependsOn(common, commonTestKit % Test)
 
 lazy val schema = (project in file("conseil-schema"))
   .settings(

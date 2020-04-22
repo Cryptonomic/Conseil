@@ -8,17 +8,12 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
+import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.common.tezos.Tables.{
-  AccountsHistoryRow,
-  AccountsRow,
-  BlocksRow,
-  FeesRow,
-  ProcessedChainEventsRow
-}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow, ProcessedChainEventsRow, profile}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.common.util.RandomSeed
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -28,6 +23,7 @@ class TezosDatabaseOperationsTest
     extends WordSpec
     with TezosDataGeneration
     with InMemoryDatabase
+    with TezosInMemoryDatabaseSetup
     with Matchers
     with ScalaFutures
     with OptionValues

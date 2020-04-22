@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata.{
   AttributeValuesCacheConfiguration,
   MetadataService,
-  TestPlatformDiscoveryOperations,
   UnitTransformation
 }
 import tech.cryptonomic.conseil.common.util.JsonUtil.toListOfMaps

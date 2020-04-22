@@ -4,10 +4,11 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, Predicate, Query}
+import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.common.tezos.{InMemoryDatabase, TezosDataGeneration, TezosDatabaseOperations}
-import tech.cryptonomic.conseil.common.util.RandomSeed
+import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
 
 import scala.concurrent.duration._
 
@@ -15,6 +16,7 @@ class ConseilOperationsTest
   extends WordSpec
     with Matchers
     with InMemoryDatabase
+    with TezosInMemoryDatabaseSetup
     with ScalaFutures
     with OptionValues
     with LazyLogging

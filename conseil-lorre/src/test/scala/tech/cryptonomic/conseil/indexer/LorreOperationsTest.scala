@@ -3,9 +3,11 @@ package tech.cryptonomic.conseil.indexer
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.common.tezos.{InMemoryDatabase, TezosDataGeneration, TezosDatabaseOperations}
-import tech.cryptonomic.conseil.common.util.RandomSeed
+import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
+import tech.cryptonomic.conseil.indexer.tezos.{TezosDataGeneration, TezosInMemoryDatabaseSetup}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -14,6 +16,7 @@ class LorreOperationsTest
   extends WordSpec
     with Matchers
     with InMemoryDatabase
+    with TezosInMemoryDatabaseSetup
     with ScalaFutures
     with OptionValues
     with LazyLogging

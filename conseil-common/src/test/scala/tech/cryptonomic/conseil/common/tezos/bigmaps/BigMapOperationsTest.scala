@@ -5,20 +5,7 @@ import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  Contract,
-  ContractId,
-  Decimal,
-  Micheline,
-  Operation,
-  OperationsGroup,
-  Origination,
-  Parameters,
-  ScriptId,
-  Transaction
-}
-import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Contract,ContractId, Decimal, Micheline, Operation, OperationsGroup, Origination, Parameters, ScriptId, Transaction}import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
@@ -26,10 +13,14 @@ import tech.cryptonomic.conseil.common.tezos.{InMemoryDatabase, TezosDataGenerat
 import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations.CustomPostgresProfile
 import java.sql.Timestamp
 
+import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
+
 class BigMapOperationsTest
     extends WordSpec
     with TezosDataGeneration
     with InMemoryDatabase
+    with TezosInMemoryDatabaseSetup
     with Matchers
     with ScalaFutures
     with IntegrationPatience {
