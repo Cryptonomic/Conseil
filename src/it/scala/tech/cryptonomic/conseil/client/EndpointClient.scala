@@ -19,6 +19,7 @@ import cats.syntax.all._
 import scala.io.Source
 import com.typesafe.config.ConfigFactory
 import scala.util.Try
+import cats.effect.Resource
 
 object DataEndpointsClientProbe {
 
@@ -38,6 +39,12 @@ object DataEndpointsClientProbe {
   */
 class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[String]) {
 
+  /* We're currently assuming running on carthage up to a given level
+   * we should eventually pass-in everything as a composite argument, like a csv?
+   */
+  private val referenceBlockHash = "BKosYnQbd4zhakKey6YdjyC96sZJ8K11yw8FJWbHAgfJ1yG4EFC" // block at level 5000
+  private val depth = "5000"
+
   //this is supposed to throw an error if there's anything wrong, and be catched by the companion smart constructor
   private val apiKey = {
     val key = Try(
@@ -54,7 +61,7 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
     /* We might wanna start with only 10k blocks */
     private def runLorre(network: String) =
       Process(
-        command = Seq("sbt", s"runLorre -v -d 10000 -h BLc7tKfzia9hnaY1YTMS6RkDniQBoApM4EjKFRLucsuHbiy3eqt $network"),
+        command = Seq("sbt", s"runLorre -v -d $depth -h $referenceBlockHash $network"),
         cwd = None,
         extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
       )
@@ -64,8 +71,6 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
         cwd = None,
         extraEnv = ("SBT_OPTS" -> s"-Dconfig.file=$configfile")
       )
-    private def grepConseilPID(): String = (Seq("jps", "-m") #| Seq("grep", "runConseil")).!!.split(" ").head
-    private def stopPid(pid: String) = Seq("kill", "-2", pid).!
 
     private def syncData(network: String) =
       IO((runLorre(network).!).ensuring(_ == 0, "lorre failed to load correctly"))
@@ -75,20 +80,13 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
         _ <- if (syncNetwork.nonEmpty) syncData(syncNetwork.get) else IO(0)
         proc <- IO(runConseil.run())
         _ <- IO(println("waiting for conseil to start"))
-        _ <- timer.sleep(30.seconds)
+        _ <- timer.sleep(15.seconds)
       } yield proc
 
-    def usingConseil[A](testBlock: => IO[A]) =
-      startConseil.bracket(
-        use = _ => testBlock
-      )(
-        release = _ =>
-          for {
-            pid <- IO(grepConseilPID())
-            _ <- IO(println(s"Stopping conseil at PID $pid"))
-            _ <- IO(stopPid(pid))
-          } yield ()
-      )
+    val conseilProcess = Resource.make(startConseil) { conseil =>
+      IO(println(s"Stopping conseil process $conseil")) *>
+        IO(conseil.destroy())
+    }
 
   }
 
@@ -103,17 +101,15 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
     * @param syncToNetwork if a network name is provided, a Lorre instance will load data to the local db from the specified network
     */
   def runRegressionSuite: IO[Unit] =
-    Setup.usingConseil {
-      infoEndpoint *>
-        blockHeadEndpoint *>
-        groupingPredicatesQueryEndpoint
+    Setup.conseilProcess.use { _ =>
+      infoEndpoint *> blockHeadEndpoint *> groupingPredicatesQueryEndpoint
     }.flatMap {
       case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
       case Right(value) => IO(println(s"$GREEN Regression test passed: OK$RESET"))
     }
 
   /** info */
-  def infoEndpoint: IO[Either[Throwable, Json]] = {
+  val infoEndpoint: IO[Either[Throwable, Json]] = {
 
     val expected =
       Json.obj(
@@ -130,50 +126,57 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
         Accept(MediaType.application.json),
         Header("apiKey", apiKey)
       )
-      client.expect[Json](req).attempt.map {
-        case Right(json) =>
-          Either.cond(
-            json \\ "application" == expected \\ "application" && (json \\ "version").nonEmpty,
-            right = json,
-            left = new Exception(
-              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+
+      IO(println("Running test on /info")) *>
+        client.expect[Json](req).attempt.map {
+          case Right(json) =>
+            Either.cond(
+              json \\ "application" == expected \\ "application" && (json \\ "version").nonEmpty,
+              right = json,
+              left = new Exception(
+                s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+              )
             )
-          )
-        case left => left
-      }
+          case left => left
+        }
     }
   }
 
   /** block head */
-  def blockHeadEndpoint: IO[Either[Throwable, Json]] = {
+  val blockHeadEndpoint: IO[Either[Throwable, Json]] = {
 
     val expected: Json = parser
       .parse(
-        """{
-    |  "baker": "tz3RDC3Jdn4j15J7bBHZd29EUee9gVB1CxD9",
-    |  "chainId": "NetXdQprcVkpaWU",
-    |  "consumedGas": 0,
-    |  "context": "CoUnq1qGxUtidFCdcaCWXEQdefFDSdBTpjnYVcrHJ1cKYqL6HLiA",
-    |  "expectedCommitment": false,
-    |  "fitness": "00,000000000004fff6",
-    |  "hash": "BLc7tKfzia9hnaY1YTMS6RkDniQBoApM4EjKFRLucsuHbiy3eqt",
-    |  "level": 10000,
-    |  "metaCycle": 2,
-    |  "metaCyclePosition": 1807,
-    |  "metaLevel": 10000,
-    |  "metaLevelPosition": 9999,
-    |  "metaVotingPeriod": 0,
-    |  "metaVotingPeriodPosition": 9999,
-    |  "operationsHash": "LLob71uMBRtLaKGj3sDJmAT7VEdGTtEoogrbFFnPjxXiYfDmUQrgr",
-    |  "periodKind": "proposal",
-    |  "predecessor": "BMG7bSzAh1is2896bUkK7RnUREqqN4BjcH4J7YgkFKcNHWNe4cM",
-    |  "priority": 0,
-    |  "proto": 1,
-    |  "protocol": "PtCJ7pwoxe8JasnHY8YonnLYjcVHmhiARPJvqcC6VfHT5s8k8sY",
-    |  "signature": "sigRg6mM8oEt5y7nzSwi34P3UEoNDYjHF2Nik9s2f7xFGzMbbgmVYrc3uXdAKPF3ayDLv7vaEN4U2ZeDC69EJp4keYphw9WQ",
-    |  "timestamp": 1530983187000,
-    |  "validationPass": 4
-    |}""".stripMargin
+        """ {
+          |  "level" : 5000,
+          |  "proto" : 1,
+          |  "predecessor" : "BLeaKFinHqxcpiU2azhRnp2bmfedTsJWTEP91EE2ArU2EHQp8gQ",
+          |  "timestamp" : 1575181381000,
+          |  "validationPass" : 4,
+          |  "fitness" : "01,0000000000001387",
+          |  "context" : "CoVb3qi8DzAqT7dxgtJvTdGCa3TyAyrEWksb3qnGBNmk9Nq9zaRB",
+          |  "signature" : "sigZHCzMRk5teWj5u9GhAc4CoKg8XTy4N7HbCMBthasEAsGs2qyzvjUDxSYNmaMmvtz5uGbSqBpQdcoKDz98hS15NjkWApy8",
+          |  "protocol" : "PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS",
+          |  "chainId" : "NetXjD3HPJJjmcd",
+          |  "hash" : "BKosYnQbd4zhakKey6YdjyC96sZJ8K11yw8FJWbHAgfJ1yG4EFC",
+          |  "operationsHash" : "LLoagDbF1dDEPWYrNw5HfPWHAY94MA75LZHbR8bgSHZ8EaTekif2p",
+          |  "periodKind" : "proposal",
+          |  "currentExpectedQuorum" : 5800,
+          |  "baker" : "tz1RomaiWJV3NFDZWTMVR2aEeHknsn3iF5Gi",
+          |  "consumedGas" : 0,
+          |  "metaLevel" : 5000,
+          |  "metaLevelPosition" : 4999,
+          |  "metaCycle" : 2,
+          |  "metaCyclePosition" : 903,
+          |  "metaVotingPeriod" : 2,
+          |  "metaVotingPeriodPosition" : 903,
+          |  "expectedCommitment" : false,
+          |  "priority" : 0,
+          |  "utcYear" : 2019,
+          |  "utcMonth" : 12,
+          |  "utcDay" : 1,
+          |  "utcTime" : "07:23:01"
+          |}""".stripMargin
       )
       .ensuring(_.isRight)
       .right
@@ -188,21 +191,23 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
         Accept(MediaType.application.json),
         Header("apiKey", apiKey)
       )
-      client.expect[Json](req).attempt.map {
-        case Right(json) =>
-          Either.cond(
-            json == expected,
-            right = json,
-            left = new Exception(
-              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+
+      IO(println("Running test on /v2/data/tezos/mainnet/blocks/head")) *>
+        client.expect[Json](req).attempt.map {
+          case Right(json) =>
+            Either.cond(
+              json == expected,
+              right = json,
+              left = new Exception(
+                s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+              )
             )
-          )
-        case left => left
-      }
+          case left => left
+        }
     }
   }
 
-  def groupingPredicatesQueryEndpoint = {
+  val groupingPredicatesQueryEndpoint = {
     val callBody = parser
       .parse(Source.fromResource("groupingPredicatesQuery.body.json").mkString)
       .ensuring(_.isRight)
@@ -225,17 +230,19 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
         Accept(MediaType.application.json),
         Header("apiKey", apiKey)
       )
-      client.expect[Json](req).attempt.map {
-        case Right(json) =>
-          Either.cond(
-            json == expected,
-            right = json,
-            left = new Exception(
-              s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+
+      IO(println("Running test on /v2/data/tezos/mainnet/operations for grouped predicates query")) *>
+        client.expect[Json](req).attempt.map {
+          case Right(json) =>
+            Either.cond(
+              json == expected,
+              right = json,
+              left = new Exception(
+                s"Failed to match on $endpoint: expected \n${expected.spaces2} \n but found \n ${json.spaces2}"
+              )
             )
-          )
-        case left => left
-      }
+          case left => left
+        }
     }
 
   }
