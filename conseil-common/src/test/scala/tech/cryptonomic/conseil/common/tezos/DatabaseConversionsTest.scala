@@ -5,9 +5,10 @@ import java.sql.Timestamp
 import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import org.scalatest.Inspectors._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
-import tech.cryptonomic.conseil.common.util.{Conversion, RandomSeed}
+import tech.cryptonomic.conseil.common.util.Conversion
 import Conversion.Syntax._
 import DatabaseConversions._
+import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 
 class DatabaseConversionsTest
     extends WordSpec

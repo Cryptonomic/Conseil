@@ -66,16 +66,11 @@ object Dependencies {
     "com.nrinaudo"                 %% "kantan.csv-java8"              % kantanCsvVersion,
     "com.typesafe.akka"            %% "akka-testkit"                  % akkaVersion % Test exclude ("com.typesafe", "config"),
     "com.typesafe.akka"            %% "akka-http-testkit"             % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
-    "org.scalatest"                %% "scalatest"                     % "3.0.5" % "it, test",
-    "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % "it, test",
-    "org.scalamock"                %% "scalamock"                     % "4.1.0" % "it, test",
-    "org.testcontainers"           % "postgresql"                     % "1.12.3" % "it, test",
-    "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % "it, test",
-    compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
-    "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
-  )
-
-  val conseilApiInclude = Seq(
+    "org.scalatest"                %% "scalatest"                     % "3.0.5" % Test,
+    "com.stephenn"                 %% "scalatest-json-jsonassert"     % "0.0.3" % Test,
+    "org.scalamock"                %% "scalamock"                     % "4.1.0" % Test,
+    "org.testcontainers"           % "postgresql"                     % "1.12.3" % Test,
+    "com.softwaremill.diffx"       %% "diffx-scalatest"               % "0.3.3" % Test,
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )
@@ -84,7 +79,25 @@ object Dependencies {
     "org.consensusresearch" %% "scrypto"
   )
 
+  val conseilCommonTestKitInclude = Seq(
+    "com.typesafe.slick" %% "slick"     % slickVersion exclude ("org.reactivestreams", "reactive-streams") exclude ("com.typesafe", "config") exclude ("org.slf4j", "slf4j-api"),
+    "com.typesafe"       % "config"     % "1.3.3",
+    "org.scalatest"      %% "scalatest" % "3.0.5",
+    "org.testcontainers" % "postgresql" % "1.12.3"
+  )
+
+  val conseilApiInclude = Seq(
+    "org.scalamock"     %% "scalamock"         % "4.1.0"         % Test,
+    "com.typesafe.akka" %% "akka-testkit"      % akkaVersion     % Test exclude ("com.typesafe", "config"),
+    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
+    "org.scalatest"     %% "scalatest"         % "3.0.5"         % Test,
+    compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
+    "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
+  )
+
   val conseilLorreInclude = Seq(
+    "org.scalamock" %% "scalamock" % "4.1.0" % Test,
+    "org.scalatest" %% "scalatest" % "3.0.5" % Test,
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )

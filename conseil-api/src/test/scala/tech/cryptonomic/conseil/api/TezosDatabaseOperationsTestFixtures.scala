@@ -1,16 +1,19 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.api
 
 import java.sql.Timestamp
 import java.time.{Instant, ZonedDateTime}
 
 import scala.util.Random
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BakersRow, BlocksRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, DelegatesRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 import monocle.Optional
 import tech.cryptonomic.conseil.common.testkit.util.{RandomGenerationKit, RandomSeed}
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}
 
+//TODO This class is a duplicate from conseil-common,
+// which will be updated once entire project will be split properly
 trait TezosDataGeneration extends RandomGenerationKit {
   import TezosTypes.Syntax._
   import TezosTypes.Voting.Vote
@@ -64,7 +67,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None, None)
+    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None)
   }
 
   /* randomly generates a number of delegates with associated block data */
@@ -97,7 +100,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
             )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None, None)
+    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -375,7 +378,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of delegate rows for some block */
-  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[BakersRow] = {
+  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[DelegatesRow] = {
     require(
       howMany > 0,
       "the test can only generate a positive number of delegates, you asked for a non positive value"
@@ -385,7 +388,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
     List.fill(howMany) {
-      BakersRow(
+      DelegatesRow(
         blockId = block.hash,
         pkh = generateHash(10),
         balance = Some(0),

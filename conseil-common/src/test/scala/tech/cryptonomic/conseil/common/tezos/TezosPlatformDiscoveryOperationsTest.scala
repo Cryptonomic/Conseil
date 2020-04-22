@@ -11,19 +11,18 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
-  HighCardinalityAttribute,
-  InvalidAttributeDataType,
-  InvalidAttributeFilterLength
-}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.common.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.metadata._
+import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
+import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.common.tezos.Tables.profile
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BlockTagged}
-import tech.cryptonomic.conseil.common.util.{ConfigUtil, RandomSeed}
+import tech.cryptonomic.conseil.common.util.ConfigUtil
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -33,6 +32,7 @@ import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, T
 class TezosPlatformDiscoveryOperationsTest
     extends WordSpec
     with InMemoryDatabase
+    with TezosInMemoryDatabaseSetup
     with MockFactory
     with Matchers
     with TezosDataGeneration

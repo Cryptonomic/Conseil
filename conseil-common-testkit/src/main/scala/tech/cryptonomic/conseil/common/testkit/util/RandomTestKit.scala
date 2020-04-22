@@ -1,7 +1,8 @@
-package tech.cryptonomic.conseil.common.util
+package tech.cryptonomic.conseil.common.testkit.util
 
 import java.sql.Timestamp
 import java.time.{LocalDate, ZoneOffset}
+
 import scala.util.Random
 
 /* use this to make random generation implicit but deterministic */

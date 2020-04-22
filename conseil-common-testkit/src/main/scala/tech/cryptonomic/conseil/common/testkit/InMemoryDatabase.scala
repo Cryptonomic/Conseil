@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.common.testkit
 
 import com.typesafe.config.ConfigFactory
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, TestSuite}
@@ -10,15 +10,13 @@ import scala.concurrent.duration._
 /**
   * Provides access to a test in-memory database initialized with conseil schema
   */
-trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
+trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with InMemoryDatabaseSetup {
   self: TestSuite =>
   import slick.jdbc.PostgresProfile.api._
 
   //#JavaThankYou
-  val dbInstance =
+  val dbInstance: PostgreSQLContainer[_] =
     new PostgreSQLContainer("postgres:11.6")
-      .asInstanceOf[PostgreSQLContainer[_]]
-      .withInitScript("in-memory-db/init-script.sql") //startup will prepare the schema
       .asInstanceOf[PostgreSQLContainer[_]]
       .withCommand("-c full_page_writes=off") //should improve performance for the tests
       .asInstanceOf[PostgreSQLContainer[_]]
@@ -26,10 +24,10 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
   dbInstance.start()
 
   /** how to name the database schema for the test */
-  protected val databaseName = dbInstance.getDatabaseName
+  protected val databaseName: String = dbInstance.getDatabaseName
 
   /** defines configuration for a randomly named embedded instance */
-  protected lazy val confString =
+  protected lazy val confString: String =
     s"""testdb = {
        |    url                 = "${dbInstance.getJdbcUrl}"
        |    connectionPool      = disabled
@@ -44,43 +42,15 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
 
   lazy val dbHandler: Database = Database.forConfig("testdb", config = ConfigFactory.parseString(confString))
 
-  //keep in mind that this is sorted to preserve key consistency
-  protected val allTables = Seq(
-    Tables.Blocks,
-    Tables.OperationGroups,
-    Tables.Operations,
-    Tables.BalanceUpdates,
-    Tables.Accounts,
-    Tables.Bakers,
-    Tables.Fees,
-    Tables.AccountsCheckpoint,
-    Tables.BakersCheckpoint,
-    Tables.AccountsHistory,
-    Tables.ProcessedChainEvents,
-    Tables.BigMaps,
-    Tables.BigMapContents,
-    Tables.OriginatedAccountMaps
-  )
-
-  protected val dbSchema = Tables.schema
-
-  /**
-    * calling deletes manually is needed to obviate the fact
-    * that TRUNCATE TABLE won't work correctly
-    * when there are table constraints
-    */
-  protected val truncateAll = DBIO.sequence(
-    allTables.reverse.map(_.delete)
-  )
-
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     dbInstance.start()
-    Await.result(dbHandler.run(dbSchema.create), 1.second)
+    Await.ready(dbHandler.run(initScript.create), 1.second)
+    Await.ready(dbHandler.run(DBIO.sequence(fixtures.map(_.create))), 1.second)
   }
 
   override protected def afterAll(): Unit = {
-    Await.ready(dbHandler.run(dbSchema.drop), 1.second)
+    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 1.second)
     dbHandler.close()
     dbInstance.stop()
     super.afterAll()
@@ -88,7 +58,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach {
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
-    Await.ready(dbHandler.run(truncateAll), 1.second)
+    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 1.second)
     ()
   }
 

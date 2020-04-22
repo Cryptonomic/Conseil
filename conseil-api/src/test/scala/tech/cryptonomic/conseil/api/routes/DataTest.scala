@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.generic.chain.{DataOperations, DataPlatform}
-import tech.cryptonomic.conseil.common.metadata.{AttributeValuesCacheConfiguration, MetadataService, TestPlatformDiscoveryOperations, TransparentUnitTransformation}
+import tech.cryptonomic.conseil.common.metadata.{AttributeValuesCacheConfiguration, MetadataService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
