@@ -340,6 +340,7 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("big_map_id", "Big map id", DataType.Decimal, None, KeyType.UniqueKey, "big_map_contents"),
             Attribute("key", "Key", DataType.String, None, KeyType.UniqueKey, "big_map_contents"),
             Attribute("key_hash", "Key hash", DataType.String, None, KeyType.NonKey, "big_map_contents"),
+            Attribute("operation_group_id", "Operation group id", DataType.String, None, KeyType.NonKey, "big_map_contents"),
             Attribute("value", "Value", DataType.String, None, KeyType.NonKey, "big_map_contents")
           )
         )
