@@ -1,9 +1,22 @@
 package tech.cryptonomic.conseil.common.tezos.michelson.contracts
 
 import cats.implicits._
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.config.Platforms.TNSContractConfiguration
-import tech.cryptonomic.conseil.common.tezos.TezosTypes._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
+  AccountId,
+  Contract,
+  ContractId,
+  Decimal,
+  Micheline,
+  Parameters,
+  ScriptId,
+  Transaction
+}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
+import tech.cryptonomic.conseil.common.tezos.Tables.BigMapsRow
+import tech.cryptonomic.conseil.common.util.OptionUtil.whenOpt
+import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.SyncVar
 
@@ -258,6 +271,8 @@ object TNSContract extends LazyLogging {
 
   /** Defines extraction operations based on micheline fields */
   private object MichelineOps {
+    import tech.cryptonomic.conseil.common.tezos.michelson.dto._
+    import tech.cryptonomic.conseil.common.tezos.michelson.parser.JsonParser
 
     /* This is the expression matcher we expect for the valid call parameters
      * in michelson format.

@@ -7,7 +7,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{OperationType, P
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
 
 import scala.concurrent.duration._
@@ -25,7 +25,8 @@ class ConseilOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "ConseilOperationsTest" should {
-    implicit val noTokenContracts: TokenContracts = TokenContracts.fromTokens(List.empty)
+    implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
+    implicit val noTNSContracts: TNSContract = TNSContract.noContract
 
     val sut = new ConseilOperations {
       override lazy val dbReadHandle = dbHandler

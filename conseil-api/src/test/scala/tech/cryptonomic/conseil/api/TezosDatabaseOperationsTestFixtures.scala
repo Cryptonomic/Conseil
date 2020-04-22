@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.{Instant, ZonedDateTime}
 
 import scala.util.Random
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, DelegatesRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BlocksRow, BakersRow, OperationGroupsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
@@ -42,13 +42,13 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* randomly generates a number of accounts with associated block data */
   def generateAccounts(
-      howMany: Int,
-      blockHash: BlockHash,
-      blockLevel: Int,
-      time: Instant = testReferenceTimestamp.toInstant
-  )(
-      implicit randomSeed: RandomSeed
-  ): BlockTagged[Map[AccountId, Account]] = {
+                        howMany: Int,
+                        blockHash: BlockHash,
+                        blockLevel: Int,
+                        time: Instant = testReferenceTimestamp.toInstant
+                      )(
+                        implicit randomSeed: RandomSeed
+                      ): BlockTagged[Map[AccountId, Account]] = {
     require(howMany > 0, "the test can generates a positive number of accounts, you asked for a non positive value")
 
     val rnd = new Random(randomSeed.seed)
@@ -67,12 +67,12 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
     }.toMap
 
-    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None)
+    accounts.taggedWithBlock(blockHash, blockLevel, Some(time), None, None)
   }
 
   /* randomly generates a number of delegates with associated block data */
   def generateDelegates(delegatedHashes: List[String], blockHash: BlockHash, blockLevel: Int)(
-      implicit randomSeed: RandomSeed
+    implicit randomSeed: RandomSeed
   ): BlockTagged[Map[PublicKeyHash, Delegate]] = {
     require(
       delegatedHashes.nonEmpty,
@@ -87,20 +87,20 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val delegates = delegatedHashes.zipWithIndex.map {
       case (accountPkh, counter) =>
         PublicKeyHash(generateHash(10)) ->
-            Delegate(
-              balance = PositiveDecimal(rnd.nextInt()),
-              frozen_balance = PositiveDecimal(rnd.nextInt()),
-              frozen_balance_by_cycle = List.empty,
-              staking_balance = PositiveDecimal(rnd.nextInt()),
-              delegated_contracts = List(ContractId(accountPkh)),
-              delegated_balance = PositiveDecimal(rnd.nextInt()),
-              deactivated = false,
-              grace_period = rnd.nextInt(),
-              rolls = None
-            )
+          Delegate(
+            balance = PositiveDecimal(rnd.nextInt()),
+            frozen_balance = PositiveDecimal(rnd.nextInt()),
+            frozen_balance_by_cycle = List.empty,
+            staking_balance = PositiveDecimal(rnd.nextInt()),
+            delegated_contracts = List(ContractId(accountPkh)),
+            delegated_balance = PositiveDecimal(rnd.nextInt()),
+            deactivated = false,
+            grace_period = rnd.nextInt(),
+            rolls = None
+          )
     }.toMap
 
-    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None)
+    delegates.taggedWithBlock(blockHash, blockLevel, Some(Instant.ofEpochSecond(0)), None, None)
   }
 
   /* randomly populate a number of blocks based on a level range */
@@ -183,10 +183,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
   def generateSingleBlock(
-      atLevel: Int,
-      atTime: ZonedDateTime,
-      balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty
-  )(implicit randomSeed: RandomSeed): Block = {
+                           atLevel: Int,
+                           atTime: ZonedDateTime,
+                           balanceUpdates: List[OperationMetadata.BalanceUpdate] = List.empty
+                         )(implicit randomSeed: RandomSeed): Block = {
     import TezosOptics.Blocks._
     import mouse.any._
 
@@ -276,7 +276,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create an operation group for each block passed in, using random values, with the requested copies of operations */
   def generateOperationGroup(block: Block, generateOperations: Boolean)(
-      implicit randomSeed: RandomSeed
+    implicit randomSeed: RandomSeed
   ): OperationsGroup = {
 
     //custom hash generator with predictable seed
@@ -294,8 +294,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create an empty operation group for each block passed in, using random values */
   def generateOperationGroupRows(
-      blocks: BlocksRow*
-  )(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
+                                  blocks: BlocksRow*
+                                )(implicit randomSeed: RandomSeed): List[Tables.OperationGroupsRow] = {
     require(blocks.nonEmpty, "the test won't generate any operation group without a block to start with")
 
     //custom hash generator with predictable seed
@@ -319,10 +319,10 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   /* create operations related to a specific group, with random data */
   def generateOperationsForGroup(
-      block: BlocksRow,
-      group: OperationGroupsRow,
-      howMany: Int = 3
-  ): List[Tables.OperationsRow] =
+                                  block: BlocksRow,
+                                  group: OperationGroupsRow,
+                                  howMany: Int = 3
+                                ): List[Tables.OperationsRow] =
     List.fill(howMany) {
       Tables.OperationsRow(
         kind = "operation-kind",
@@ -378,7 +378,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
   }
 
   /* randomly generates a number of delegate rows for some block */
-  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[DelegatesRow] = {
+  def generateDelegateRows(howMany: Int, block: BlocksRow)(implicit randomSeed: RandomSeed): List[BakersRow] = {
     require(
       howMany > 0,
       "the test can only generate a positive number of delegates, you asked for a non positive value"
@@ -388,7 +388,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val generateHash: Int => String = alphaNumericGenerator(new Random(randomSeed.seed))
 
     List.fill(howMany) {
-      DelegatesRow(
+      BakersRow(
         blockId = block.hash,
         pkh = generateHash(10),
         balance = Some(0),
@@ -766,7 +766,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
     val sampleOperations =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
-          DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
+        DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
 
     /** Converts operations in a list by selectively adding
       * BigMapAlloc within it's results.
@@ -775,8 +775,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       * In this case the generation needs happen only for Originations
       */
     def updateOperationsWithBigMapAllocation(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
-    ): List[Operation] => List[Operation] = {
+                                              diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
+                                            ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the alloc diffs nested within originations
@@ -793,8 +793,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       * In this case the generation needs happen only for Transacions
       */
     def updateOperationsWithBigMapUpdate(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
-    ): List[Operation] => List[Operation] = {
+                                          diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
+                                        ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
@@ -811,8 +811,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       * In this case the generation needs happen only for Transactions
       */
     def updateOperationsWithBigMapCopy(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapCopy]
-    ): List[Operation] => List[Operation] = {
+                                        diffGenerate: PartialFunction[Operation, Contract.BigMapCopy]
+                                      ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
@@ -829,8 +829,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       * In this case the generation needs happen only for Transacions
       */
     def updateOperationsWithBigMapRemove(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapRemove]
-    ): List[Operation] => List[Operation] = {
+                                          diffGenerate: PartialFunction[Operation, Contract.BigMapRemove]
+                                        ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
@@ -849,9 +849,9 @@ trait TezosDataGeneration extends RandomGenerationKit {
      * @return the updated operations
      */
     private def updateOperationsToBigMapDiff[Diff <: Contract.BigMapDiff](
-        diffGenerate: PartialFunction[Operation, Diff],
-        diffSetter: Optional[Operation, List[Contract.CompatBigMapDiff]]
-    )(operations: List[Operation]): List[Operation] =
+                                                                           diffGenerate: PartialFunction[Operation, Diff],
+                                                                           diffSetter: Optional[Operation, List[Contract.CompatBigMapDiff]]
+                                                                         )(operations: List[Operation]): List[Operation] =
       operations.map { op =>
         // applies the function to create a possible value to set on each individual operation
         val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
@@ -872,8 +872,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       * @return the transformed list
       */
     def modifyTransactions(
-        update: PartialFunction[Transaction, Transaction]
-    ): List[Operation] => List[Operation] = operations => {
+                            update: PartialFunction[Transaction, Transaction]
+                          ): List[Operation] => List[Operation] = operations => {
       operations.map {
         case op: Transaction => PartialFunction.condOpt(op)(update).getOrElse(op)
         case op => op

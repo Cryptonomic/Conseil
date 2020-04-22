@@ -10,11 +10,6 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   ParametersCompatibility
 }
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
-import tech.cryptonomic.conseil.common.tezos.michelson.dto.{
-  MichelsonInstruction,
-  MichelsonIntConstant,
-  MichelsonSingleInstruction
-}
 import cats.implicits._
 import scala.collection.immutable.TreeSet
 import scala.util.Try

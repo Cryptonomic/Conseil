@@ -125,8 +125,8 @@ object TezosOptics {
   }
 
   object Operations {
-    import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
-    import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.OperationResult.Status
 
     val selectOrigination = GenPrism[Operation, Origination]
     val originationResult = GenLens[Origination](_.metadata.operation_result)
@@ -242,7 +242,7 @@ object TezosOptics {
   object Contracts {
     import tech.cryptonomic.conseil.common.util.JsonUtil
 
-    val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
+    val parametersExpression = Lens[ParametersCompatibility, Micheline] {
       case Left(value) => value.value
       case Right(value) => value
     } { micheline =>
@@ -251,11 +251,6 @@ object TezosOptics {
         case Right(_) => Right(micheline)
       }
     }
-
-    private val storage = GenLens[Scripted.Contracts](_.storage)
-    private val code = GenLens[Scripted.Contracts](_.code)
-
-    private val expression = GenLens[Micheline](_.expression)
 
     //we'll use this to get out any address-looking string from the transaction params
     val extractAddressesFromExpression = (micheline: Micheline) => {
