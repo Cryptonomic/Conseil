@@ -10,7 +10,8 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Contract,
   ContractId,
   Decimal,
-  InvalidDecimal
+  InvalidDecimal,
+  OperationHash
 }
 import tech.cryptonomic.conseil.tezos.michelson
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
@@ -24,7 +25,7 @@ import com.typesafe.scalalogging.Logger
 object BigMapsConversions extends LazyLogging {
 
   // Simplify understanding in parts of the code
-  case class BlockBigMapDiff(get: (BlockHash, Contract.BigMapDiff)) extends AnyVal
+  case class BlockBigMapDiff(get: (BlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
   case class BlockContractIdsBigMapDiff(get: (BlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
 
   //input to collect token data to convert
@@ -46,7 +47,7 @@ object BigMapsConversions extends LazyLogging {
       implicit lazy val _: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
-        case (_, BigMapAlloc(_, Decimal(id), key_type, value_type)) =>
+        case (_, _, BigMapAlloc(_, Decimal(id), key_type, value_type)) =>
           Some(
             Tables.BigMapsRow(
               bigMapId = id,
@@ -54,7 +55,7 @@ object BigMapsConversions extends LazyLogging {
               valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression))
             )
           )
-        case (hash, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
+        case (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
           logger.warn(
             "A big_map_diff allocation hasn't been converted to a BigMap on db, because the map id '{}' is not a valid number. The block containing the Origination operation is {}",
             json,
@@ -83,16 +84,17 @@ object BigMapsConversions extends LazyLogging {
       implicit lazy val _: Logger = logger
 
       def convert(from: BlockBigMapDiff) = from.get match {
-        case (_, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
+        case (_, opGroupHash, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
           Some(
             Tables.BigMapContentsRow(
               bigMapId = id,
               key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
               keyHash = Some(keyHash.value),
+              operationGroupId = opGroupHash.map(_.value),
               value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)) //we're using instructions to represent data values
             )
           )
-        case (hash, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
+        case (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
           logger.warn(
             "A big_map_diff update hasn't been converted to a BigMapContent on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}",
             json,

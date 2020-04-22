@@ -7,7 +7,7 @@ import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal, OperationHash}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
@@ -119,7 +119,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
           .map(
             diff =>
-              DatabaseConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
+              BigMapsConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
           )
     )
 
@@ -162,7 +162,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           .flatMap(_.big_map_diff.toList.flatMap(keepLatestDiffsFormat))
           .map(
             diff =>
-              DatabaseConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
+              BigMapsConversions.BlockBigMapDiff(b.data.hash, b.data.header.operations_hash.map(OperationHash), diff)
           )
     )
 
