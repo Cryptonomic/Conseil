@@ -1,5 +1,7 @@
 package tech.cryptonomic.conseil
 
+import java.util.UUID
+
 import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.http.scaladsl.Http
@@ -27,6 +29,7 @@ import tech.cryptonomic.conseil.io.MainOutputs.ConseilOutput
 import tech.cryptonomic.conseil.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.routes._
 import tech.cryptonomic.conseil.tezos.{ApiOperations, MetadataCaching, TezosPlatformDiscoveryOperations}
+import tech.cryptonomic.conseil.util.RecordingDirectives
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
@@ -147,6 +150,8 @@ object Conseil
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
     lazy val data = Data(metadataService, server, metadataOverrides, apiOperations)(tezosDispatcher)
+    implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
+    lazy val routeUtil = new RecordingDirectives
 
     val validateApiKey: Directive[Tuple1[String]] = optionalHeaderValueByName("apikey").tflatMap[Tuple1[String]] {
       apiKeyTuple =>
@@ -163,7 +168,7 @@ object Conseil
             }))
         }
     }
-
+    import routeUtil._
     val route = concat(
       pathPrefix("docs") {
         pathEndOrSingleSlash {
@@ -176,25 +181,35 @@ object Conseil
       Docs.route,
       cors() {
         enableCORS {
-          concat(
-            validateApiKey { _ =>
-              concat(
-                logRequest("Conseil", Logging.DebugLevel) {
-                  AppInfo.route
-                },
-                logRequest("Metadata Route", Logging.DebugLevel) {
-                  platformDiscovery.route
-                },
-                logRequest("Data Route", Logging.DebugLevel) {
-                  data.getRoute ~ data.postRoute
+          implicit val correlationId: UUID = UUID.randomUUID()
+          handleExceptions(loggingExceptionHandler) {
+            extractClientIP {
+              ip =>
+                recordResponseValues(ip)(mat, correlationId) {
+                  timeoutHandler {
+                    concat(
+                      validateApiKey { _ =>
+                        concat(
+                          logRequest("Conseil", Logging.DebugLevel) {
+                            AppInfo.route
+                          },
+                          logRequest("Metadata Route", Logging.DebugLevel) {
+                            platformDiscovery.route
+                          },
+                          logRequest("Data Route", Logging.DebugLevel) {
+                            data.getRoute ~ data.postRoute
+                          }
+                        )
+                      },
+                      options {
+                        // Support for CORS pre-flight checks.
+                        complete("Supported methods : GET and POST.")
+                      }
+                    )
+                  }
                 }
-              )
-            },
-            options {
-              // Support for CORS pre-flight checks.
-              complete("Supported methods : GET and POST.")
             }
-          )
+          }
         }
       }
     )
@@ -202,8 +217,7 @@ object Conseil
     val bindingFuture = Http().bindAndHandle(route, server.hostname, server.port)
     displayInfo(server)
     if (verbose.on) displayConfiguration(platforms)
-
     bindingFuture
-  }
 
+  }
 }

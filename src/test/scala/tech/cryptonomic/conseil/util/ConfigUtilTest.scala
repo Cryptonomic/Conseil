@@ -1,12 +1,11 @@
 package tech.cryptonomic.conseil.config
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{EitherValues, Matchers, OptionValues, WordSpec}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.EitherValues
 import tech.cryptonomic.conseil.util.ConfigUtil
 import tech.cryptonomic.conseil.tezos.Tables
 
-class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
+class ConfigUtilTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
   "the config.Natural matcher" should {
 
@@ -140,7 +139,8 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
         platforms.values.flatten should contain only (
           TezosConfiguration(
             "alphanet",
-            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http")
+            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http"),
+            None
           ),
           TezosConfiguration(
             "alphanet-staging",
@@ -149,7 +149,8 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
               port = 8732,
               protocol = "https",
               pathPrefix = "tezos/alphanet/"
-            )
+            ),
+            None
           )
         )
 
@@ -187,7 +188,8 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
         platforms.values.flatten should contain only (
           TezosConfiguration(
             "alphanet",
-            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http")
+            TezosNodeConfiguration(hostname = "localhost", port = 8732, protocol = "http"),
+            None
           ),
           UnknownPlatformConfiguration("some-network")
         )
@@ -250,10 +252,12 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
         val genericRow = Generic[Tables.RegisteredTokensRow]
 
         val rows: List[Tables.RegisteredTokensRow] =
-          sut.readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
-            csvSource = getClass.getResource("/registered_tokens/testnet.csv"),
-            separator = '|'
-          )
+          sut
+            .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
+              csvSource = getClass.getResource("/registered_tokens/testnet.csv"),
+              separator = '|'
+            )
+            .value
 
         rows should have size 1
 
@@ -263,11 +267,13 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
       "use a database table to find the csv file and map to the corresponding rows for token contracts" in {
 
         val rows: List[Tables.RegisteredTokensRow] =
-          sut.readTableRowsFromCsv(
-            table = Tables.RegisteredTokens,
-            network = "testnet",
-            separator = '|'
-          )
+          sut
+            .readTableRowsFromCsv(
+              table = Tables.RegisteredTokens,
+              network = "testnet",
+              separator = '|'
+            )
+            .value
 
         rows should have size 1
 
@@ -276,7 +282,7 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
 
       "fail to read the csv data if the network doesn't have a matching config file" in {
 
-        val rows: List[Tables.RegisteredTokensRow] =
+        val rows: Option[List[Tables.RegisteredTokensRow]] =
           sut.readTableRowsFromCsv(table = Tables.RegisteredTokens, network = "nonsense")
 
         rows shouldBe empty
@@ -289,9 +295,11 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues {
         val genericRow = Generic[Tables.RegisteredTokensRow]
 
         val rows: List[Tables.RegisteredTokensRow] =
-          sut.readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
-            csvSource = getClass.getResource("/registered_tokens/testnet.csv")
-          )
+          sut
+            .readRowsFromCsv[Tables.RegisteredTokensRow, genericRow.Repr](
+              csvSource = getClass.getResource("/registered_tokens/testnet.csv")
+            )
+            .value
 
         rows shouldBe empty
 

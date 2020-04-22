@@ -2,11 +2,6 @@ package tech.cryptonomic.conseil.tezos.michelson.contracts
 
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, ScriptId}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Micheline
-import tech.cryptonomic.conseil.tezos.michelson.dto.{
-  MichelsonInstruction,
-  MichelsonIntConstant,
-  MichelsonSingleInstruction
-}
 import cats.implicits._
 import scala.collection.immutable.TreeSet
 import scala.util.Try
@@ -107,7 +102,7 @@ object TokenContracts extends LazyLogging {
     *
     * @param knownTokens the pair of contract and standard used, the latter as a String
     */
-  def fromTokens(knownTokens: List[(ContractId, String)]): TokenContracts = {
+  def fromConfig(knownTokens: List[(ContractId, String)]): TokenContracts = {
     logger.info("Creating a token registry from the following values: {}", knownTokens.map {
       case (cid, std) => cid.id -> std
     }.mkString(","))
@@ -184,19 +179,26 @@ object TokenContracts extends LazyLogging {
 
   /* Defines extraction operations based on micheline fields */
   private object MichelineOps {
+    import tech.cryptonomic.conseil.tezos.michelson.dto._
     import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
 
     /* reads a map value as a list with a balance as head */
     def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] = {
-      val parsedCode = JsonParser
-        .parse[MichelsonInstruction](mapCode.expression)
 
-      parsedCode.left.foreach(
-        err => logger.error("Failed to parse michelson expression for token balance extraction", err)
+      val parsed = JsonParser.parse[MichelsonInstruction](mapCode.expression)
+
+      parsed.left.foreach(
+        err =>
+          logger.error(
+            """Failed to parse michelson expression for token balance extraction.
+        | Code was: {}
+        | Error is {}""".stripMargin,
+            mapCode.expression,
+            err.getMessage()
+          )
       )
 
-      logger.info("Parsed code for {} is {}", mapCode, parsedCode.toOption)
-      parsedCode.toOption.collect {
+      parsed.toOption.collect {
         case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) => balance
       }.flatMap { balance =>
         Try(BigInt(balance)).toOption

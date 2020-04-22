@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.tezos
 
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import scala.util.Try
+import com.typesafe.scalalogging.LazyLogging
 import cats.{Id, Show}
 import cats.implicits._
 import java.sql.Timestamp
@@ -14,13 +15,9 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.FeeOperations._
 import tech.cryptonomic.conseil.tezos.TezosTypes._
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
 
 object DatabaseConversions extends LazyLogging {
-
-  // Simplify understanding in parts of the code
-  case class BlockBigMapDiff(get: (BlockHash, Option[OperationHash], Contract.BigMapDiff)) extends AnyVal
-  case class BlockContractIdsBigMapDiff(get: (BlockHash, List[ContractId], Contract.BigMapDiff)) extends AnyVal
 
   //adapts from the java timestamp to sql
   private def toSql(datetime: java.time.ZonedDateTime): Timestamp = Timestamp.from(datetime.toInstant)
@@ -75,24 +72,6 @@ object DatabaseConversions extends LazyLogging {
     } yield concatenateToString(ids)
   }
 
-  //Note, cycle 0 starts at the level 2 block
-  def extractCycle(block: Block): Option[Int] =
-    discardGenesis
-      .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
-      .map(_.level.cycle) //this is Option[Int]
-
-  //Note, cycle 0 starts at the level 2 block
-  def extractCyclePosition(block: BlockMetadata): Option[Int] =
-    discardGenesis
-      .lift(block) //this returns an Option[BlockHeaderMetadata]
-      .map(_.level.cycle_position) //this is Option[Int]
-
-  //Note, cycle 0 starts at the level 2 block
-  def extractPeriod(block: BlockMetadata): Option[Int] =
-    discardGenesis
-      .lift(block)
-      .map(_.level.voting_period)
-
   //implicit conversions to database row types
 
   implicit val averageFeesToFeeRow = new Conversion[Id, AverageFees, Tables.FeesRow] {
@@ -114,7 +93,7 @@ object DatabaseConversions extends LazyLogging {
         }
 
       override def convert(from: BlockTagged[Map[AccountId, Account]]) = {
-        val BlockTagged(hash, level, timestamp, cycle, accounts) = from
+        val BlockTagged(hash, level, timestamp, cycle, period, accounts) = from
         accounts.map {
           case (id, Account(balance, delegate, script, counter, manager, spendable, isBaker, isActivated)) =>
             Tables.AccountsRow(
@@ -267,10 +246,10 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
+        cycle = TezosOptics.Blocks.extractCycle(block),
         branch = block.operationGroups.find(h => h.hash == groupHash).map(_.branch.value),
         numberOfSlots = Some(metadata.slots.length),
-        period = extractPeriod(block.data.metadata),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -291,8 +270,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -313,8 +292,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -341,8 +320,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -392,8 +371,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -447,8 +426,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -476,8 +455,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         errors = extractResultErrorIds(metadata.operation_result.errors),
         utcYear = year,
         utcMonth = month,
@@ -500,9 +479,9 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         proposal = proposal,
         source = source.map(_.id),
-        cycle = extractCycle(block),
+        cycle = TezosOptics.Blocks.extractCycle(block),
         ballotPeriod = ballotPeriod,
-        period = extractPeriod(block.data.metadata),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -523,9 +502,9 @@ object DatabaseConversions extends LazyLogging {
         internal = false,
         proposal = proposals.map(x => concatenateToString(x)),
         source = source.map(_.id),
-        cycle = extractCycle(block),
+        cycle = TezosOptics.Blocks.extractCycle(block),
         ballotPeriod = ballotPeriod,
-        period = extractPeriod(block.data.metadata),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -550,8 +529,8 @@ object DatabaseConversions extends LazyLogging {
         blockLevel = block.data.header.level,
         timestamp = toSql(block.data.header.timestamp),
         internal = false,
-        cycle = extractCycle(block),
-        period = extractPeriod(block.data.metadata),
+        cycle = TezosOptics.Blocks.extractCycle(block),
+        period = TezosOptics.Blocks.extractPeriod(block.data.metadata),
         utcYear = year,
         utcMonth = month,
         utcDay = day,
@@ -708,154 +687,6 @@ object DatabaseConversions extends LazyLogging {
 
   }
 
-  implicit val bigMapDiffToBigMapRow =
-    new Conversion[Option, BlockBigMapDiff, Tables.BigMapsRow] {
-      import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
-      import michelson.dto.MichelsonExpression
-      import michelson.JsonToMichelson.toMichelsonScript
-      import michelson.parser.JsonParser._
-      //needed to call the michelson conversion
-      implicit lazy val _: Logger = logger
-
-      def convert(from: BlockBigMapDiff) = from.get match {
-        case (_, _, BigMapAlloc(_, Decimal(id), key_type, value_type)) =>
-          Some(
-            Tables.BigMapsRow(
-              bigMapId = id,
-              keyType = Some(toMichelsonScript[MichelsonExpression](key_type.expression)),
-              valueType = Some(toMichelsonScript[MichelsonExpression](value_type.expression))
-            )
-          )
-        case (hash, _, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
-          logger.warn(
-            "A big_map_diff allocation hasn't been converted to a BigMap on db, because the map id '{}' is not a valid number. The block containing the Origination operation is {}",
-            json,
-            hash.value
-          )
-          None
-        case diff =>
-          logger.warn(
-            "A big_map_diff result will be ignored by the allocation conversion to BigMap on db, because the diff action is not supported: {}",
-            from.get._2
-          )
-          None
-      }
-    }
-
-  /* This will only convert big map updates actually, as the other types of
-   * operations are handled differently
-   */
-  implicit val bigMapDiffToBigMapContentsRow =
-    new Conversion[Option, BlockBigMapDiff, Tables.BigMapContentsRow] {
-      import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
-      import michelson.dto.MichelsonInstruction
-      import michelson.JsonToMichelson.toMichelsonScript
-      import michelson.parser.JsonParser._
-      //needed to call the michelson conversion
-      implicit lazy val _: Logger = logger
-
-      def convert(from: BlockBigMapDiff) = from.get match {
-        case (_, opGroupHash, BigMapUpdate(_, key, keyHash, Decimal(id), value)) =>
-          Some(
-            Tables.BigMapContentsRow(
-              bigMapId = id,
-              key = toMichelsonScript[MichelsonInstruction](key.expression), //we're using instructions to represent data values
-              keyHash = Some(keyHash.value),
-              operationGroupId = opGroupHash.map(_.value),
-              value = value.map(it => toMichelsonScript[MichelsonInstruction](it.expression)) //we're using instructions to represent data values
-            )
-          )
-        case (hash, _, BigMapUpdate(_, _, _, InvalidDecimal(json), _)) =>
-          logger.warn(
-            "A big_map_diff update hasn't been converted to a BigMapContent on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}",
-            json,
-            hash.value
-          )
-          None
-        case diff =>
-          logger.warn(
-            "A big_map_diff result will be ignored by the update conversion to BigMapContent on db, because the diff action is not supported: {}",
-            from.get._2
-          )
-          None
-      }
-    }
-
-  implicit val bigMapDiffToBigMapOriginatedContracts =
-    new Conversion[List, BlockContractIdsBigMapDiff, Tables.OriginatedAccountMapsRow] {
-      import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapAlloc
-      implicit lazy val _ = logger
-
-      def convert(from: BlockContractIdsBigMapDiff) = from.get match {
-        case (_, ids, BigMapAlloc(_, Decimal(id), _, _)) =>
-          ids.map(
-            contractId =>
-              Tables.OriginatedAccountMapsRow(
-                bigMapId = id,
-                accountId = contractId.id
-              )
-          )
-        case (hash, ids, BigMapAlloc(_, InvalidDecimal(json), _, _)) =>
-          logger.warn(
-            "A big_map_diff allocation hasn't been converted to a relation for OriginatedAccounts to BigMap on db, because the map id '{}' is not a valid number. The block containing the Transation operation is {}, involving accounts {}",
-            json,
-            ids.mkString(", "),
-            hash.value
-          )
-          List.empty
-        case diff =>
-          logger.warn(
-            "A big_map_diff result will be ignored and not be converted to a relation for OriginatedAccounts to BigMap on db, because the diff action is not supported: {}",
-            from.get._2
-          )
-          List.empty
-      }
-    }
-
-  //input to collect token data to convert
-  case class TokenUpdatesInput(
-      block: Block,
-      contractUpdates: Map[ContractId, List[Contract.BigMapUpdate]],
-      addresses: Set[AccountId]
-  )
-  //output to token data converted
-  case class TokenUpdate(block: Block, tokenContractId: ContractId, accountId: AccountId, balance: BigInt)
-
-  implicit def contractsToTokenBalanceUpdates(implicit tokenContracts: TokenContracts) =
-    new Conversion[List, TokenUpdatesInput, TokenUpdate] {
-      def convert(from: TokenUpdatesInput): List[TokenUpdate] = {
-        val TokenUpdatesInput(block, contractUpdates, addressesInvolved) = from
-
-        //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-        val tokenTransactions: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
-          case (tokenId, updates) =>
-            val bigMapToTokenTransaction: Contract.BigMapUpdate => Option[TokenContracts.BalanceUpdate] =
-              tokenContracts.readBalance(tokenId)
-            val tokenUpdates = updates.map(bigMapToTokenTransaction).flattenOption
-            tokenId -> tokenUpdates
-        }.toList
-
-        if (contractUpdates.nonEmpty) {
-          logger.info(
-            """A known token contract was invoked, I will convert updates to database rows
-              |Updates to big maps: {}
-              |Addresses involved in the transaction: {}
-              |Token balance changes to store: {}""".stripMargin,
-            contractUpdates,
-            addressesInvolved,
-            tokenTransactions
-          )
-        }
-
-        for {
-          (tokenId, balanceChanges) <- tokenTransactions
-          (scriptId, newBalance) <- balanceChanges
-          accountId <- addressesInvolved.find(TokenContracts.hashCheck(scriptId))
-        } yield TokenUpdate(block, tokenId, accountId, newBalance)
-
-      }
-    }
-
   implicit val blockAccountsAssociationToCheckpointRow =
     new Conversion[List, (BlockHash, Int, Option[Instant], Option[Int], List[AccountId]), Tables.AccountsCheckpointRow] {
       override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[AccountId])) = {
@@ -878,13 +709,13 @@ object DatabaseConversions extends LazyLogging {
     new Conversion[
       List,
       (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash]),
-      Tables.DelegatesCheckpointRow
+      Tables.BakersCheckpointRow
     ] {
       override def convert(from: (BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])) = {
         val (blockHash, blockLevel, _, _, pkhs) = from
         pkhs.map(
           keyHash =>
-            Tables.DelegatesCheckpointRow(
+            Tables.BakersCheckpointRow(
               delegatePkh = keyHash.value,
               blockId = blockHash.value,
               blockLevel = blockLevel
@@ -894,23 +725,26 @@ object DatabaseConversions extends LazyLogging {
 
     }
 
-  implicit val delegateToRow = new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate), Tables.DelegatesRow] {
-    override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate)) = {
-      val (blockHash, blockLevel, keyHash, delegate) = from
-      Tables.DelegatesRow(
-        pkh = keyHash.value,
-        blockId = blockHash.value,
-        balance = extractBigDecimal(delegate.balance),
-        frozenBalance = extractBigDecimal(delegate.frozen_balance),
-        stakingBalance = extractBigDecimal(delegate.staking_balance),
-        delegatedBalance = extractBigDecimal(delegate.delegated_balance),
-        rolls = delegate.rolls.getOrElse(0),
-        deactivated = delegate.deactivated,
-        gracePeriod = delegate.grace_period,
-        blockLevel = blockLevel
-      )
+  implicit val delegateToRow =
+    new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int]), Tables.BakersRow] {
+      override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int])) = {
+        val (blockHash, blockLevel, keyHash, delegate, cycle, period) = from
+        Tables.BakersRow(
+          pkh = keyHash.value,
+          blockId = blockHash.value,
+          balance = extractBigDecimal(delegate.balance),
+          frozenBalance = extractBigDecimal(delegate.frozen_balance),
+          stakingBalance = extractBigDecimal(delegate.staking_balance),
+          delegatedBalance = extractBigDecimal(delegate.delegated_balance),
+          rolls = delegate.rolls.getOrElse(0),
+          deactivated = delegate.deactivated,
+          gracePeriod = delegate.grace_period,
+          blockLevel = blockLevel,
+          cycle = cycle,
+          period = period
+        )
+      }
     }
-  }
 
   implicit val bakingRightsToRows =
     new Conversion[Id, (FetchRights, BakingRights), Tables.BakingRightsRow] {
@@ -1039,6 +873,21 @@ object DatabaseConversions extends LazyLogging {
                 (yays, nays, passes)
             }
         }
+    }
+
+  implicit val tnsNameRecordToRow =
+    new Conversion[Id, TNSContract.NameRecord, Tables.TezosNamesRow] {
+      def convert(from: TNSContract.NameRecord): cats.Id[Tables.TezosNamesRow] = {
+        val registrationTimestamp = Try(java.time.ZonedDateTime.parse(from.registeredAt)).toOption.map(toSql)
+        Tables.TezosNamesRow(
+          name = from.name,
+          owner = Some(from.owner.trim).filter(_.nonEmpty),
+          resolver = Some(from.resolver),
+          registeredAt = registrationTimestamp,
+          registrationPeriod = Try(from.registrationPeriod.toInt).toOption,
+          modified = Try(from.updated.toLowerCase.trim.toBoolean).toOption
+        )
+      }
     }
 
 }

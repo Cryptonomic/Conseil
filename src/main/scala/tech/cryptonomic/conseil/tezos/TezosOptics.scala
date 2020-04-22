@@ -98,9 +98,29 @@ object TezosOptics {
         }
         group -> (group.contents, internal)
       }.toMap
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractCycle(block: Block): Option[Int] =
+      discardGenesis
+        .lift(block.data.metadata) //this returns an Option[BlockHeaderMetadata]
+        .map(_.level.cycle) //this is Option[Int]
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractCyclePosition(block: BlockMetadata): Option[Int] =
+      discardGenesis
+        .lift(block) //this returns an Option[BlockHeaderMetadata]
+        .map(_.level.cycle_position) //this is Option[Int]
+
+    //Note, cycle 0 starts at the level 2 block
+    def extractPeriod(block: BlockMetadata): Option[Int] =
+      discardGenesis
+        .lift(block)
+        .map(_.level.voting_period)
   }
 
   object Operations {
+    import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
+    import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 
     val selectOrigination = GenPrism[Operation, Origination]
     val originationResult = GenLens[Origination](_.metadata.operation_result)
@@ -160,9 +180,39 @@ object TezosOptics {
           transactionBigMapDiffs composeTraversal
           (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
 
-    private val script = GenLens[Origination](_.script)
-    private val parameters = GenLens[Transaction](_.parameters)
-    private val parametersMicheline = GenLens[Transaction](_.parameters_micheline)
+    private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
+
+    def extractAppliedOriginationsResults(block: Block) = {
+      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+      val results =
+        (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
+            (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
+
+      results.filter(result => isApplied(result.status))
+    }
+
+    def extractAppliedTransactionsResults(block: Block) = {
+      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+      val results =
+        (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
+            (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
+
+      results.filter(result => isApplied(result.status))
+    }
+
+    def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] = {
+      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+
+      (ops.toList.flatten.collect {
+        case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
+      }) ++
+        (intOps.toList.flatten.collect {
+          case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
+        })
+    }
+
   }
 
   object Accounts {

@@ -9,7 +9,7 @@ import tech.cryptonomic.conseil.util.RandomSeed
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContract, TokenContracts}
 
 class ApiOperationsTest
     extends WordSpec
@@ -23,7 +23,8 @@ class ApiOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "ApiOperationsTest" should {
-      implicit val noTokenContracts = TokenContracts.fromTokens(List.empty)
+      implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
+      implicit val noTNSContracts = TNSContract.noContract
 
       val sut = new ApiOperations {
         override lazy val dbReadHandle = dbHandler
@@ -104,13 +105,24 @@ class ApiOperationsTest
 
       "sanitizeForSql alphanumeric string with unsupported characters" in {
         // given
-        val input = ";xyz$%*)("
+        val input = ";xyz$*)("
 
         // when
         val result = ApiOperations.sanitizeForSql(input)
 
         // then
-        result shouldBe "xyz"
+        result shouldBe "xyz)("
+      }
+
+      "sanitizeForSql and escape characters for SQL" in {
+        // given
+        val input = "\";xyz$%*)("
+
+        // when
+        val result = ApiOperations.sanitizeForSql(input)
+
+        // then
+        result shouldBe "\"xyz\\%)("
       }
 
       "fetchOperationGroup when DB is empty" in {

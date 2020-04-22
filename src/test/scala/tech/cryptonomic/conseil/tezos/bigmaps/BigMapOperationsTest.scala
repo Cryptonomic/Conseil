@@ -1,7 +1,6 @@
-package tech.cryptonomic.conseil.tezos
+package tech.cryptonomic.conseil.tezos.bigmaps
 
 import org.scalatest.Matchers
-import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
@@ -9,6 +8,7 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.util.RandomSeed
 import tech.cryptonomic.conseil.tezos.TezosTypes.{
   Contract,
+  ContractId,
   Decimal,
   Micheline,
   Operation,
@@ -18,10 +18,12 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   ScriptId,
   Transaction
 }
+import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.ContractId
+import tech.cryptonomic.conseil.tezos.{InMemoryDatabase, TezosDataGeneration}
+import tech.cryptonomic.conseil.tezos.TezosDatabaseOperations.CustomPostgresProfile
 import java.sql.Timestamp
 
 class BigMapOperationsTest
@@ -30,7 +32,6 @@ class BigMapOperationsTest
     with InMemoryDatabase
     with Matchers
     with ScalaFutures
-    with LazyLogging
     with IntegrationPatience {
 
   "The big-maps operations" should {
@@ -39,7 +40,7 @@ class BigMapOperationsTest
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      val sut = BigMapsOperations(TezosDatabaseOperations.CustomPostgresProfile)
+      val sut = BigMapsOperations(CustomPostgresProfile)
 
       "save big map diffs allocations contained in a list of blocks" in {
         //given
@@ -159,7 +160,7 @@ class BigMapOperationsTest
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
-        implicit val noTokenContract = TokenContracts.fromTokens(List.empty)
+        implicit val noTokenContract = TokenContracts.fromConfig(List.empty)
         val writeAndGetRows = sut.saveContractOrigin(blockToSave :: Nil) andThen Tables.OriginatedAccountMaps.result
 
         val accounts = dbHandler.run(writeAndGetRows.transactionally).futureValue
@@ -232,17 +233,9 @@ class BigMapOperationsTest
 
         val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id)
 
-        implicit val fa12Tokens = TokenContracts.fromTokens(List(tokenAddress -> "FA1.2"))
+        implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "FA1.2"))
         fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))
 
-        val bmu = Contract.BigMapUpdate(
-          action = "update",
-          big_map = Decimal(tokenMap),
-          key = Micheline("""{"bytes":"0000a8d45bdc966ddaaac83188a1e1c1fde2a3e05e5c"}"""),
-          key_hash = ScriptId("exprvKTBQDAyXTMRc36TsLBsj9y5GXo1PD529MfF8zDV1pVzNNgehs"),
-          value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
-        )
-        logger.info("*** testing if balance reads: {}", fa12Tokens.readBalance(tokenAddress)(bmu))
         //when
         val writeAndGetRows = for {
           _ <- Tables.RegisteredTokens += registeredToken

@@ -13,7 +13,6 @@ import cats.instances.future._
 import cats.syntax.applicative._
 import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
-import tech.cryptonomic.conseil.tezos.TezosTypes.{BakingRights, EndorsingRights}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
@@ -260,7 +259,7 @@ class TezosNodeOperator(
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle)) => blockHash }
+      accountsBlocksIndex.groupBy { case (id, (blockHash, level, timestamp, cycle, period)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -277,7 +276,8 @@ class TezosNodeOperator(
       data.groupBy {
         case (id, _) => accountsBlocksIndex(id)
       }.map {
-        case ((hash, level, timestamp, cycle), accounts) => accounts.taggedWithBlock(hash, level, timestamp, cycle)
+        case ((hash, level, timestamp, cycle, period), accounts) =>
+          accounts.taggedWithBlock(hash, level, timestamp, cycle, period)
       }.toList
 
     //fetch accounts by requested ids and group them together with corresponding blocks
@@ -387,7 +387,7 @@ class TezosNodeOperator(
   }
 
   /** Fetches active delegates from node */
-  def fetchActiveDelegates(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
+  def fetchActiveBakers(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.generic.chain.DataFetcher.fetch
@@ -409,11 +409,11 @@ class TezosNodeOperator(
   }
 
   //move it to the node operator
-  def getDelegatesForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
+  def getBakersForBlocks(keysBlocksIndex: Map[PublicKeyHash, BlockReference]): PaginatedDelegateResults = {
     import TezosTypes.Syntax._
 
     val reverseIndex =
-      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle)) => blockHash }
+      keysBlocksIndex.groupBy { case (pkh, (blockHash, level, timestamp, cycle, period)) => blockHash }
         .mapValues(_.keySet)
         .toMap
 
@@ -430,7 +430,8 @@ class TezosNodeOperator(
       data.groupBy {
         case (pkh, _) => keysBlocksIndex(pkh)
       }.map {
-        case ((hash, level, timestamp, cycle), delegates) => delegates.taggedWithBlock(hash, level, timestamp, cycle)
+        case ((hash, level, timestamp, cycle, period), delegates) =>
+          delegates.taggedWithBlock(hash, level, timestamp, cycle, period)
       }.toList
 
     //fetch delegates by requested pkh and group them together with corresponding blocks
@@ -683,9 +684,7 @@ class TezosNodeOperator(
       ].run(blockHashes)
       proposalsState <- proposalsStateFetch.run(blockHashes)
     } yield {
-      val operationalDataMap = fetchedOperationsWithAccounts.map {
-        case (hash, (ops, accounts)) => (hash, (ops, accounts))
-      }.toMap
+      val operationalDataMap = fetchedOperationsWithAccounts.toMap
       val proposalsMap = proposalsState.toMap
       fetchedBlocksData.map {
         case (offset, md) =>
@@ -695,6 +694,19 @@ class TezosNodeOperator(
       }
     }
   }
+
+  /** Gets map contents from the chain, using a generic Json representation, since we don't know
+    * exactly what is stored there, if anything
+    *
+    * @param hash the block reference to look inside the map
+    * @param mapId which map
+    * @param mapKeyHash we need to use a hashed b58check representation of the key to find the value
+    * @return async json value of the content if all went correct
+    */
+  def getBigMapContents(hash: BlockHash, mapId: BigDecimal, mapKeyHash: ScriptId): Future[JS] =
+    node
+      .runAsyncGetQuery(network, s"blocks/${hash.value}/context/big_maps/$mapId/${mapKeyHash.value}")
+      .flatMap(result => Future.fromTry(JS.wrapString(JS.sanitize(result))))
 
 }
 
