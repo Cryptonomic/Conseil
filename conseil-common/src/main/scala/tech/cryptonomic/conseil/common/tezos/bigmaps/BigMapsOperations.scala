@@ -304,7 +304,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
     import TezosOptics.Operations.extractAppliedTransactions
-    import TezosOptics.Contracts.{extractAddressesFromExpression, parametersExpresssion}
+    import TezosOptics.Contracts.{extractAddressesFromExpression, parametersExpression}
 
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
 
@@ -320,7 +320,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case Left(op) => op.parameters
         case Right(op) => op.parameters
       }.flattenOption
-        .map(parametersExpresssion.get)
+        .map(parametersExpression.get)
         .flatMap(extractAddressesFromExpression)
         .toSet
 

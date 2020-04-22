@@ -29,13 +29,24 @@ class SqlOperationsTest extends WordSpec with Matchers {
 
       "sanitizeForSql alphanumeric string with unsupported characters" in {
         // given
-        val input = ";xyz$%*)("
+        val input = ";xyz$*)("
 
         // when
         val result = SqlOperations.sanitizeForSql(input)
 
         // then
-        result shouldBe "xyz"
+        result shouldBe "xyz)("
+      }
+
+      "sanitizeForSql and escape characters for SQL" in {
+        // given
+        val input = "\";xyz$%*)("
+
+        // when
+        val result = SqlOperations.sanitizeForSql(input)
+
+        // then
+        result shouldBe "\"xyz\\%)("
       }
 
       "sanitizeDatePartAggregation and leave all valid characters" in {

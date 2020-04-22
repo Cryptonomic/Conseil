@@ -10,11 +10,8 @@ import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.common.tezos.{
   DatabaseConversions,
   FeeOperations,
-  ShutdownComplete,
   Tables,
   TezosErrors,
-  TezosNodeInterface,
-  TezosNodeOperator,
   TezosOptics,
   TezosTypes,
   TezosDatabaseOperations => TezosDb
@@ -33,7 +30,7 @@ import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockHash, FetchRights}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.app.TezosNamesOperations
+import tech.cryptonomic.conseil.indexer.tezos.app.TezosNamesOperations
 
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.

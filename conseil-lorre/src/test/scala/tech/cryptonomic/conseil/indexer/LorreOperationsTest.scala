@@ -5,7 +5,7 @@ import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
 import tech.cryptonomic.conseil.indexer.tezos.{TezosDataGeneration, TezosInMemoryDatabaseSetup}
 
@@ -25,7 +25,8 @@ class LorreOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "LorreOperationsTest" should {
-    implicit val noTokenContracts: TokenContracts = TokenContracts.fromTokens(List.empty)
+    implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
+    implicit val noTNSContracts: TNSContract = TNSContract.noContract
 
     val sut = new LorreOperations {
       override lazy val dbReadHandle = dbHandler

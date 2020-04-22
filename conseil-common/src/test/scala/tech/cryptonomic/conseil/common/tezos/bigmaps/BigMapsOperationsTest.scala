@@ -5,18 +5,20 @@ import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.WordSpec
 import org.scalatest.concurrent.ScalaFutures
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Contract,ContractId, Decimal, Micheline, Operation, OperationsGroup, Origination, Parameters, ScriptId, Transaction}import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.TezosInMemoryDatabaseSetup
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Contract, ContractId, Decimal, Micheline, Operation, OperationsGroup, Origination, Parameters, ScriptId, Transaction}
+import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.common.tezos.{InMemoryDatabase, TezosDataGeneration}
+import tech.cryptonomic.conseil.common.tezos.TezosDataGeneration
 import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations.CustomPostgresProfile
 import java.sql.Timestamp
 
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 
-class BigMapOperationsTest
+class BigMapsOperationsTest
     extends WordSpec
     with TezosDataGeneration
     with InMemoryDatabase
@@ -151,7 +153,6 @@ class BigMapOperationsTest
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
         //when
-        implicit val noTokenContract = TokenContracts.fromConfig(List.empty)
         val writeAndGetRows = sut.saveContractOrigin(blockToSave :: Nil) andThen Tables.OriginatedAccountMaps.result
 
         val accounts = dbHandler.run(writeAndGetRows.transactionally).futureValue

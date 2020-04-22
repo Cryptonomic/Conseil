@@ -20,8 +20,11 @@ object SqlOperations {
 
   /** Sanitizes string to be viable to paste into plain SQL */
   def sanitizeForSql(str: String): String = {
-    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ')
-    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c))
+    val supportedCharacters = Set('_', '.', '+', ':', '-', ' ', '%', '"', '(', ')')
+    str.filter(c => c.isLetterOrDigit || supportedCharacters.contains(c)).flatMap {
+      case '%' => """\%"""
+      case c => c.toString
+    }
   }
 
   /** Sanitizes datePart aggregate function*/

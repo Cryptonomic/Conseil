@@ -17,6 +17,7 @@ object Dependencies {
   //TODO Split these dependencies into smaller pieces (logical one)
   val conseilCommonInclude = Seq(
     "ch.qos.logback"               % "logback-classic"                % "1.2.3",
+    "net.logstash.logback"         % "logstash-logback-encoder"       % "5.3",
     "com.typesafe"                 % "config"                         % "1.3.3",
     "com.typesafe.scala-logging"   %% "scala-logging"                 % "3.7.2",
     "com.typesafe.akka"            %% "akka-actor"                    % akkaVersion exclude ("com.typesafe", "config"),

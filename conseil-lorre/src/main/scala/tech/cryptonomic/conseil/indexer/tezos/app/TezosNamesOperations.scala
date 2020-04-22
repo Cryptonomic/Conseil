@@ -1,20 +1,16 @@
-package tech.cryptonomic.conseil.common.tezos.app
+package tech.cryptonomic.conseil.indexer.tezos.app
 
 import cats.Show
 import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
-import tech.cryptonomic.conseil.common.tezos.{TezosDatabaseOperations, TezosNodeOperator}
+import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
 import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations.extractAppliedTransactions
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, ContractId, ScriptId}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract.{
-  BigMapId,
-  LookupMapReference,
-  Name,
-  NameRecord
-}
+import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract.{BigMapId, LookupMapReference, Name, NameRecord}
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
+import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator
 
 import scala.concurrent.{ExecutionContext, Future}
 

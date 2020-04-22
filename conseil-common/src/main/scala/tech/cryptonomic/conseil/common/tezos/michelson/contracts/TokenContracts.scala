@@ -2,11 +2,6 @@ package tech.cryptonomic.conseil.common.tezos.michelson.contracts
 
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, ScriptId}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Micheline
-import tech.cryptonomic.conseil.common.tezos.michelson.dto.{
-  MichelsonInstruction,
-  MichelsonIntConstant,
-  MichelsonSingleInstruction
-}
 import cats.implicits._
 import scala.collection.immutable.TreeSet
 import scala.util.Try

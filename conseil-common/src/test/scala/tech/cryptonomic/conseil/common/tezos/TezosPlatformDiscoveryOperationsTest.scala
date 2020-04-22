@@ -20,7 +20,6 @@ import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
-import tech.cryptonomic.conseil.common.tezos.Tables.profile
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BlockTagged}
 import tech.cryptonomic.conseil.common.util.ConfigUtil
 
