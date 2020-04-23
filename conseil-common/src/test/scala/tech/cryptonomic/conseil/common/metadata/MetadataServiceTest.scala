@@ -38,7 +38,7 @@ class MetadataServiceTest
       ),
       new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
       cacheOverrides,
-      platformDiscoveryOperations
+      Map("tezos" -> platformDiscoveryOperations)
     )
 
   "The metadata service" should {

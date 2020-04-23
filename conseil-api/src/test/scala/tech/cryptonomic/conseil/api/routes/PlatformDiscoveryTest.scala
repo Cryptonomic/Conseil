@@ -36,7 +36,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
             ),
             new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
             cacheOverrides,
-            tezosPlatformDiscoveryOperations
+            Map("tezos" -> tezosPlatformDiscoveryOperations)
           )
         ).route
 

@@ -14,7 +14,6 @@ import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import com.typesafe.scalalogging.LazyLogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import tech.cryptonomic.conseil.api.directives.EnableCORSDirectives
-import tech.cryptonomic.conseil.api.routes._
 import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.config.Security.SecurityApi
 import tech.cryptonomic.conseil.common.config._
@@ -118,8 +117,12 @@ object Conseil
       case Success(_) => logger.info("Pre-caching attributes successful!")
     }
 
+    val platformDiscoveryOperations = Map(
+      Platforms.Tezos.name -> tezosPlatformDiscoveryOperations
+    )
+
     // this val is not lazy to force to fetch metadata and trigger logging at the start of the application
-    Try(new MetadataService(platforms, transformation, cacheOverrides, tezosPlatformDiscoveryOperations))
+    Try(new MetadataService(platforms, transformation, cacheOverrides, platformDiscoveryOperations))
   }
 
   /** Starts the web server

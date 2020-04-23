@@ -153,7 +153,7 @@ class DataTest
       ),
       TransparentUnitTransformation,
       cacheOverrides,
-      platformDiscoveryOperations
+      Map("tezos" -> platformDiscoveryOperations)
     )
   val conseilOps: ConseilOperations = new ConseilOperations
 
