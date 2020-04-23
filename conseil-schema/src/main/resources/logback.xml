@@ -11,10 +11,6 @@
         </encoder>
     </appender>
 
-    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-    </appender>
-
     <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>${ASYNC_LOG_LEVEL:-INFO}</level>
@@ -22,16 +18,8 @@
         <appender-ref ref="STDOUT" />
     </appender>
 
-    <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>${JSON_LOG_LEVEL:-OFF}</level>
-        </filter>
-        <appender-ref ref="JSON" />
-    </appender>
-
     <root level="INFO">
         <appender-ref ref="ASYNC" />
-        <appender-ref ref="ASYNC_JSON" />
     </root>
 
 </configuration>

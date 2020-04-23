@@ -107,5 +107,5 @@ lazy val smokeTests = (project in file("conseil-smoke-tests"))
 
 addCommandAlias("runApi", "; api/runTask")
 addCommandAlias("runLorre", "; lorre/runTask")
-addCommandAlias("runLorreSchema", "; lorreSchema/runTask")
+addCommandAlias("runSchema", "; schema/runTask")
 addCommandAlias("runSmokeTests", "; smokeTests/runTask")
