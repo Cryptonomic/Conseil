@@ -2,14 +2,22 @@ package tech.cryptonomic.conseil.api
 
 import com.github.ghik.silencer.silent
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.common.tezos.SqlOperations.{AccountResult, BlockResult, OperationGroupResult}
+import tech.cryptonomic.conseil.common.sql.postgres.PostgresDataOperations
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.common.tezos.{SqlOperations, Tables, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ConseilOperations extends SqlOperations {
+object ConseilOperations {
+  case class BlockResult(block: Tables.BlocksRow, operation_groups: Seq[Tables.OperationGroupsRow])
+  case class OperationGroupResult(operation_group: Tables.OperationGroupsRow, operations: Seq[Tables.OperationsRow])
+  case class AccountResult(account: Tables.AccountsRow)
+}
+
+class ConseilOperations extends PostgresDataOperations {
+  import ConseilOperations._
+
   override lazy val dbReadHandle: Database = DatabaseUtil.conseilDb
 
   /**

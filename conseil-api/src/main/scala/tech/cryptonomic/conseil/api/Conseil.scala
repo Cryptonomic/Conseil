@@ -144,7 +144,7 @@ object Conseil
     val tezosDispatcher = system.dispatchers.lookup("akka.tezos-dispatcher")
 
     lazy val platformDiscovery = PlatformDiscovery(metadataService)
-    lazy val data = Data(metadataService, server, metadataOverrides, conseilOperations)(tezosDispatcher)
+    lazy val data = Data(metadataService, metadataOverrides, conseilOperations, server.maxQueryResultSize)(tezosDispatcher)
     implicit val contextShift: ContextShift[IO] = IO.contextShift(executionContext)
     lazy val routeUtil = new RecordingDirectives
 

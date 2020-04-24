@@ -4,8 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.ConseilOperations
-import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, ServerConfiguration}
-import tech.cryptonomic.conseil.common.generic.chain.DataPlatform
+import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
 import tech.cryptonomic.conseil.common.metadata.{EntityPath, MetadataService, NetworkPath, PlatformPath}
@@ -13,35 +12,15 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/** Companion object providing apply implementation */
-object Data {
-  def apply(
-      metadataService: MetadataService,
-      server: ServerConfiguration,
-      metadataConfiguration: MetadataConfiguration,
-      conseilOperations: ConseilOperations
-  )(
-      implicit ec: ExecutionContext
-  ): Data =
-    new Data(
-      DataPlatform(conseilOperations, server.maxQueryResultSize),
-      metadataService,
-      metadataConfiguration: MetadataConfiguration,
-      conseilOperations: ConseilOperations
-    )
-}
-
 /**
   * Platform discovery routes.
-  *
-  * @param queryProtocolPlatform QueryProtocolPlatform object which checks if platform exists and executes query
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-class Data(
-    queryProtocolPlatform: DataPlatform,
+case class Data(
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,
-    conseilOperations: ConseilOperations
+    conseilOperations: ConseilOperations,
+    maxQueryResultSize: Int
 )(
     implicit apiExecutionContext: ExecutionContext
 ) extends LazyLogging
@@ -57,18 +36,17 @@ class Data(
       val path = EntityPath(entity, NetworkPath(network, PlatformPath(platform)))
 
       pathValidation(path) {
-        apiQuery.validate(path, metadataService, metadataConfiguration).flatMap { validationResult =>
-          validationResult.map { validQuery =>
-            queryProtocolPlatform.queryWithPredicates(platform, entity, validQuery).map { queryResponseOpt =>
-              queryResponseOpt.map { queryResponses =>
-                QueryResponseWithOutput(
-                  queryResponses,
-                  validQuery.output
-                )
+        apiQuery
+          .validate(path, metadataService, metadataConfiguration)
+          .flatMap { validationResult =>
+            validationResult.map { validQuery =>
+              conseilOperations.queryWithPredicates(platform, entity, validQuery.adjustLimit(maxQueryResultSize)).map {
+                queryResponses =>
+                  QueryResponseWithOutput(queryResponses, validQuery.output)
               }
-            }
-          }.left.map(Future.successful).bisequence.map(eitherOptionOps)
-        }
+            }.left.map(Future.successful).bisequence
+          }
+          .map(Some(_))
       }
   }
 
@@ -76,7 +54,9 @@ class Data(
   val blocksRoute: Route = blocksEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        queryProtocolPlatform.queryWithPredicates(platform, "blocks", filter.toQuery)
+        conseilOperations
+          .queryWithPredicates(platform, "blocks", filter.toQuery.adjustLimit(maxQueryResultSize))
+          .map(Option(_))
       }
   }
 
@@ -100,7 +80,9 @@ class Data(
   val accountsRoute: Route = accountsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        queryProtocolPlatform.queryWithPredicates(platform, "accounts", filter.toQuery)
+        conseilOperations
+          .queryWithPredicates(platform, "accounts", filter.toQuery.adjustLimit(maxQueryResultSize))
+          .map(Some(_))
       }
   }
 
@@ -116,7 +98,9 @@ class Data(
   val operationGroupsRoute: Route = operationGroupsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        queryProtocolPlatform.queryWithPredicates(platform, "operation_groups", filter.toQuery)
+        conseilOperations
+          .queryWithPredicates(platform, "operation_groups", filter.toQuery.adjustLimit(maxQueryResultSize))
+          .map(Some(_))
       }
   }
 
@@ -131,13 +115,10 @@ class Data(
   /** V2 Route implementation for average fees endpoint */
   val avgFeesRoute: Route = avgFeesEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
-      //to simplify working on Future[Option[Somedata]]
-      import cats.data.OptionT
       platformNetworkValidation(platform, network) {
-        (for {
-          queryResponses <- OptionT(queryProtocolPlatform.queryWithPredicates(platform, "fees", filter.toQuery))
-          first <- OptionT.fromOption[Future](queryResponses.headOption)
-        } yield first).value
+        conseilOperations
+          .queryWithPredicates(platform, "fees", filter.toQuery.adjustLimit(maxQueryResultSize))
+          .map(_.headOption)
       }
   }
 
@@ -145,7 +126,9 @@ class Data(
   val operationsRoute: Route = operationsEndpoint.implementedByAsync {
     case ((platform, network, filter), _) =>
       platformNetworkValidation(platform, network) {
-        queryProtocolPlatform.queryWithPredicates(platform, "operations", filter.toQuery)
+        conseilOperations
+          .queryWithPredicates(platform, "operations", filter.toQuery.adjustLimit(maxQueryResultSize))
+          .map(Some(_))
       }
   }
 

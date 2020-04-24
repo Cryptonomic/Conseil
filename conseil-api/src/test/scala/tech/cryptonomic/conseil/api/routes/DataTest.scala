@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
@@ -11,7 +11,6 @@ import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
-import tech.cryptonomic.conseil.common.generic.chain.{DataOperations, DataPlatform}
 import tech.cryptonomic.conseil.common.metadata.{AttributeValuesCacheConfiguration, MetadataService}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -112,14 +111,13 @@ class DataTest
     )
   )
 
-  val fakeQPO: DataOperations = new DataOperations {
-    override def queryWithPredicates(tableName: String, query: Query)(
+  private val conseilOps: ConseilOperations = new ConseilOperations {
+    override def queryWithPredicates(prefix: String, tableName: String, query: Query)(
         implicit ec: ExecutionContext
     ): Future[List[QueryResponse]] =
       Future.successful(responseAsMap)
   }
 
-  val fakeQPP: DataPlatform = new DataPlatform(Map("tezos" -> fakeQPO), 1000)
   val cfg = PlatformsConfiguration(
     platforms = Map(
       Tezos -> List(
@@ -134,7 +132,7 @@ class DataTest
 
   val testEntity = Entity("accounts", "Test Entity", 0)
 
-  var platformDiscoveryOperations = new TestPlatformDiscoveryOperations
+  val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
   platformDiscoveryOperations.addEntity(testEntity)
   accountAttributes.foreach(platformDiscoveryOperations.addAttribute)
 
@@ -155,11 +153,10 @@ class DataTest
       cacheOverrides,
       Map("tezos" -> platformDiscoveryOperations)
     )
-  val conseilOps: ConseilOperations = new ConseilOperations
 
-  val postRoute: Route = new Data(fakeQPP, metadataService, metadataConf, conseilOps).postRoute
+  val postRoute: Route = Data(metadataService, metadataConf, conseilOps, 1000).postRoute
 
-  val getRoute: Route = new Data(fakeQPP, metadataService, metadataConf, conseilOps).getRoute
+  val getRoute: Route = Data(metadataService, metadataConf, conseilOps, 1000).getRoute
 
   "Query protocol" should {
 

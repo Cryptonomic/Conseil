@@ -1,16 +1,16 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.common.sql
 
 import org.scalatest.{Matchers, WordSpec}
 
-class SqlOperationsTest extends WordSpec with Matchers {
+class SqlSanitizerTest extends WordSpec with Matchers {
 
-  "SqlOperationsTest" should {
+  "SqlSanitizerTest" should {
       "sanitizeForSql alphanumeric string" in {
         // given
         val input = "xyz123"
 
         // when
-        val result = SqlOperations.sanitizeForSql(input)
+        val result = Sanitizer.sanitizeForSql(input)
 
         // then
         result shouldBe "xyz123"
@@ -21,7 +21,7 @@ class SqlOperationsTest extends WordSpec with Matchers {
         val input = "xyz+123_abc: pqr"
 
         // when
-        val result = SqlOperations.sanitizeForSql(input)
+        val result = Sanitizer.sanitizeForSql(input)
 
         // then
         result shouldBe "xyz+123_abc: pqr"
@@ -32,7 +32,7 @@ class SqlOperationsTest extends WordSpec with Matchers {
         val input = ";xyz$*)("
 
         // when
-        val result = SqlOperations.sanitizeForSql(input)
+        val result = Sanitizer.sanitizeForSql(input)
 
         // then
         result shouldBe "xyz)("
@@ -43,7 +43,7 @@ class SqlOperationsTest extends WordSpec with Matchers {
         val input = "\";xyz$%*)("
 
         // when
-        val result = SqlOperations.sanitizeForSql(input)
+        val result = Sanitizer.sanitizeForSql(input)
 
         // then
         result shouldBe "\"xyz\\%)("
@@ -54,7 +54,7 @@ class SqlOperationsTest extends WordSpec with Matchers {
         val input = "DD-MM-YYYY"
 
         // when
-        val result = SqlOperations.sanitizeDatePartAggregation(input)
+        val result = Sanitizer.sanitizeDatePartAggregation(input)
 
         // then
         result shouldBe "DD-MM-YYYY"
@@ -65,7 +65,7 @@ class SqlOperationsTest extends WordSpec with Matchers {
         val input = "xyz "
 
         // when
-        val result = SqlOperations.sanitizeDatePartAggregation(input)
+        val result = Sanitizer.sanitizeDatePartAggregation(input)
 
         // then
         result shouldBe ""

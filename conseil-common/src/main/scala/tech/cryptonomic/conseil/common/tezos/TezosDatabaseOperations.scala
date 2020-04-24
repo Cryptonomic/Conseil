@@ -6,13 +6,12 @@ import java.time.Instant
 import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _, _}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
 import tech.cryptonomic.conseil.common.tezos.FeeOperations._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.common.util.CollectionOps._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
-import tech.cryptonomic.conseil.common.util.DatabaseUtil.QueryBuilder._
 import tech.cryptonomic.conseil.common.util.MathUtil.{mean, stdev}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,14 +19,12 @@ import scala.util.{Failure, Success}
 import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.OutputType.OutputType
 import tech.cryptonomic.conseil.common.tezos.Tables.GovernanceRow
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.FetchRights
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
-import slick.basic.Capability
-import slick.jdbc.JdbcCapabilities
-import com.github.tminglei.slickpg.ExPostgresProfile
 import slick.lifted.{AbstractTable, TableQuery}
+import tech.cryptonomic.conseil.common.sql.postgres.PostgresProfileExtension
+import tech.cryptonomic.conseil.common.sql.postgres.PostgresDatabaseOperations
 
 import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
@@ -38,10 +35,10 @@ import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
 /**
   * Functions for writing Tezos data to a database.
   */
-object TezosDatabaseOperations extends LazyLogging {
-
+object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with LazyLogging {
   import DatabaseConversions._
-  val bigMapOps = BigMapsOperations(CustomPostgresProfile)
+
+  private val bigMapOps = BigMapsOperations(PostgresProfileExtension)
 
   /**
     * Writes computed fees averages to a database.
@@ -63,7 +60,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeAccounts(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   ): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
+    import PostgresProfileExtension.api._
 
     val keepMostRecent = (rows: List[Tables.AccountsRow]) =>
       rows
@@ -431,15 +428,6 @@ object TezosDatabaseOperations extends LazyLogging {
     (writeBlocks(blocks) andThen writeAccountsCheckpoint(accountUpdates.map(_.asTuple))).transactionally
   }
 
-  /** Custom postgres profile for enabling `insertOrUpdateAll` */
-  trait CustomPostgresProfile extends ExPostgresProfile {
-    // Add back `capabilities.insertOrUpdate` to enable native `upsert` support; for postgres 9.5+
-    override protected def computeCapabilities: Set[Capability] =
-      super.computeCapabilities + JdbcCapabilities.insertOrUpdate
-  }
-
-  object CustomPostgresProfile extends CustomPostgresProfile
-
   /**
     * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
@@ -447,7 +435,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def upsertBakingRights(
       bakingRightsMap: Map[FetchRights, List[BakingRights]]
   ): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
+    import PostgresProfileExtension.api._
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
       (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
@@ -464,7 +452,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def upsertEndorsingRights(
       endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
   ): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
+    import PostgresProfileExtension.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
       (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
@@ -527,7 +515,7 @@ object TezosDatabaseOperations extends LazyLogging {
   }
 
   def upsertTezosNames(names: List[TNSContract.NameRecord]): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
+    import PostgresProfileExtension.api._
     logger.info("Upserting {} tezos names rows into the database...", names.size)
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
@@ -565,7 +553,7 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeBakersAndCopyContracts(
       bakers: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   ): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
+    import PostgresProfileExtension.api._
 
     val keepMostRecent = (rows: List[Tables.BakersRow]) =>
       rows
@@ -829,20 +817,6 @@ object TezosDatabaseOperations extends LazyLogging {
   def writeProcessedEventsLevels(eventType: String, levels: List[BigDecimal]): DBIO[Option[Int]] =
     Tables.ProcessedChainEvents ++= levels.map(Tables.ProcessedChainEventsRow(_, eventType))
 
-  /** Inserts to the table if table is empty
-    * @param table slick TableQuery[_] to which we want to insert
-    * @param rows rows to be added
-    * @return the number of entries saved
-    */
-  def insertWhenEmpty[A <: AbstractTable[_]](
-      table: TableQuery[A],
-      rows: List[A#TableElementType]
-  )(implicit ec: ExecutionContext): DBIO[Option[Int]] =
-    table.exists.result.flatMap {
-      case true => DBIO.successful(Some(0))
-      case false => table ++= rows
-    }
-
   import shapeless._
   import shapeless.ops.hlist._
 
@@ -872,97 +846,5 @@ object TezosDatabaseOperations extends LazyLogging {
         logger.warn("No csv configuration found to initialize table {} for {}.", table.baseTableRow.tableName, network)
         Future.successful(List.empty -> None)
     }
-
-  /** Prefix for the table queries */
-  private val tablePrefix = "tezos"
-
-  /**
-    * Counts number of rows in the given table
-    * @param table  slick table
-    * @return       amount of rows in the table
-    */
-  def countRows(table: String)(implicit ec: ExecutionContext): DBIO[Int] =
-    sql"""SELECT reltuples FROM pg_class WHERE relname = $table""".as[Int].map(_.head)
-
-  /**
-    * Counts number of distinct elements by given table and column
-    * THIS METHOD IS VULNERABLE TO SQL INJECTION
-    * @param table  name of the table
-    * @param column name of the column
-    * @return       amount of distinct elements in given column
-    */
-  def countDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[Int] =
-    sql"""SELECT COUNT(*) FROM (SELECT DISTINCT #$column FROM #${tablePrefix + "." + table}) AS temp"""
-      .as[Int]
-      .map(_.head)
-
-  /**
-    * Selects distinct elements by given table and column
-    * THIS METHOD IS VULNERABLE TO SQL INJECTION
-    * @param table  name of the table
-    * @param column name of the column
-    * @return       distinct elements in given column as a list
-    */
-  def selectDistinct(table: String, column: String)(implicit ec: ExecutionContext): DBIO[List[String]] =
-    sql"""SELECT DISTINCT #$column::VARCHAR FROM #${tablePrefix + "." + table} WHERE #$column IS NOT NULL"""
-      .as[String]
-      .map(_.toList)
-
-  /**
-    * Selects distinct elements by given table and column with filter
-    * THIS METHOD IS VULNERABLE TO SQL INJECTION
-    * @param table          name of the table
-    * @param column         name of the column
-    * @param matchingString string which is being matched
-    * @return               distinct elements in given column as a list
-    */
-  def selectDistinctLike(table: String, column: String, matchingString: String)(
-      implicit ec: ExecutionContext
-  ): DBIO[List[String]] =
-    sql"""SELECT DISTINCT #$column::VARCHAR FROM #${tablePrefix + "." + table} WHERE #$column LIKE '%#$matchingString%' AND #$column IS NOT NULL"""
-      .as[String]
-      .map(_.toList)
-
-  /**
-    * Selects elements filtered by the predicates
-    * THIS METHOD IS VULNERABLE TO SQL INJECTION
-    * @param table          name of the table
-    * @param columns        list of column names
-    * @param predicates     list of predicates for query to be filtered with
-    * @param ordering       list of ordering conditions for the query
-    * @param aggregation    optional aggregation
-    * @param limit          max number of rows fetched
-    * @return               list of map of [string, any], which represents list of rows as a map of column name to value
-    */
-  def selectWithPredicates(
-      table: String,
-      columns: List[Field],
-      predicates: List[Predicate],
-      ordering: List[QueryOrdering],
-      aggregation: List[Aggregation],
-      temporalPartition: Option[String],
-      snapshot: Option[Snapshot],
-      outputType: OutputType,
-      limit: Int
-  )(implicit ec: ExecutionContext): DBIO[List[QueryResponse]] = {
-    val tableWithPrefix = tablePrefix + "." + table
-    val q = (temporalPartition, snapshot) match {
-      case (Some(tempPartition), Some(snap)) =>
-        makeTemporalQuery(tableWithPrefix, columns, predicates, aggregation, ordering, tempPartition, snap, limit)
-      case _ =>
-        makeQuery(tableWithPrefix, columns, aggregation)
-          .addPredicates(predicates)
-          .addGroupBy(aggregation, columns)
-          .addHaving(aggregation)
-          .addOrdering(ordering)
-          .addLimit(limit)
-    }
-
-    if (outputType == OutputType.sql) {
-      DBIO.successful(List(Map("sql" -> Some(q.queryParts.mkString("")))))
-    } else {
-      q.as[QueryResponse].map(_.toList)
-    }
-  }
 
 }

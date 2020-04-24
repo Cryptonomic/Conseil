@@ -245,6 +245,10 @@ object DataTypes {
   /** Formatted field with format description */
   case class FormattedField(field: String, function: FormatType, format: String) extends Field
 
+  object Query {
+    val empty: Query = Query()
+  }
+
   /** Class representing query */
   case class Query(
       fields: List[Field] = List.empty,
@@ -255,7 +259,9 @@ object DataTypes {
       aggregation: List[Aggregation] = List.empty,
       temporalPartition: Option[String] = None,
       snapshot: Option[Snapshot] = None
-  )
+  ) {
+    def adjustLimit(value: Int): Query = copy(limit = Math.min(limit, value))
+  }
 
   /** Class representing predicate used in aggregation */
   case class AggregationPredicate(
@@ -328,8 +334,8 @@ object DataTypes {
       entity: EntityPath,
       metadataConfiguration: MetadataConfiguration
   ): List[InvalidSnapshotField] = {
-    import cats.instances.option._
     import cats.instances.list._
+    import cats.instances.option._
 
     query.snapshot.foldMap { snapshot =>
       metadataConfiguration.entity(entity).flatMap { entityCfg =>
