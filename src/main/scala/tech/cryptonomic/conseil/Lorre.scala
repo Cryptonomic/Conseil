@@ -427,7 +427,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
       for {
-        proposals: List[(BlockHash, Option[ProtocolId])] <- tezosNodeOperator.getProposals(blocks.map(_.data))
+        proposals <- tezosNodeOperator.getProposals(blocks.map(_.data))
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
         blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
         ballotCountsPerCycle <- Future.traverse(blocksWithProposals) { block =>
@@ -438,6 +438,10 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
             .map(block -> _)
         }
+        proposalHashes <- Future.traverse(blocks) { block =>
+          db.run(TezosDb.getProposalOperationHashesByCycle(TezosTypes.discardGenesis(block.data.metadata).level.cycle))
+            .map(block -> _)
+        }
         ballots <- tezosNodeOperator.getVotes(blocksWithProposals)
         governanceRows = groupGovernanceDataByBlock(
           blocksWithProposals,
@@ -445,7 +449,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           listings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
           ballots.toMap,
           ballotCountsPerCycle.toMap,
-          ballotCountsPerLevel.toMap
+          ballotCountsPerLevel.toMap,
+          proposalHashes.toMap
         ).map(_.convertTo[Tables.GovernanceRow])
         _ <- db.run(TezosDb.insertGovernance(governanceRows))
       } yield ()
@@ -458,7 +463,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         listings: Map[Int, List[Voting.BakerRolls]],
         ballots: Map[Block, List[Voting.Ballot]],
         ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
-        ballotCountsPerLevel: Map[Block, Voting.BallotCounts]
+        ballotCountsPerLevel: Map[Block, Voting.BallotCounts],
+        proposalHashes: Map[Block, List[String]]
     ): List[
       (
           BlockData,
@@ -469,7 +475,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           Option[Voting.BallotCounts],
           Option[Voting.BallotCounts]
       )
-    ] = blocks.map { block =>
+    ] = blocks.flatMap { block =>
       val proposal = proposals.get(block.data.hash).flatten
       val listing = listings.get(block.data.header.level).toList.flatten
       val prevListings = listings.get(block.data.header.level - 1).toList.flatten
@@ -477,7 +483,20 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val ballot = ballots.get(block).toList.flatten
       val ballotCountPerCycle = ballotCountsPerCycle.get(block)
       val ballotCountPerLevel = ballotCountsPerLevel.get(block)
-      (block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel)
+      val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
+
+      List((block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel)) ++
+        proposalHashesForBlock.map { proposalHash =>
+          (
+            block.data,
+            Some(ProtocolId(proposalHash)),
+            listing,
+            listingByBlock,
+            ballot,
+            Some(Voting.BallotCounts(proposalHashesForBlock.size, 0, 0)),
+            ballotCountPerLevel
+          )
+        }
     }
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {

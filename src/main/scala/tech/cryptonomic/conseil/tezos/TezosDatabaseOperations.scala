@@ -626,6 +626,19 @@ object TezosDatabaseOperations extends LazyLogging {
         Voting.BallotCounts(yaysCount, naysCount, passesCount)
       }
 
+  /** Gets proposal hashes from operations table for given cycle */
+  def getProposalOperationHashesByCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[List[String]] =
+    Tables.Operations
+      .filter(op => op.kind === "proposals" && op.cycle === cycle)
+      .map(_.proposal)
+      .distinct
+      .result
+      .map(_.toList.flatMap(_.toList.flatMap(expandStringArray)))
+
+  /** Helper method for expanding array storred as a string to list */
+  private def expandStringArray(arr: String): List[String] =
+    arr.trim.stripPrefix("[").stripSuffix("]").split(',').toList
+
   /** Fetch the latest block level available for each account id stored */
   def getLevelsForAccounts(ids: Set[AccountId]): DBIO[Seq[(String, BigDecimal)]] =
     Tables.Accounts
