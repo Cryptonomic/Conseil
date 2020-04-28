@@ -505,6 +505,19 @@ object TezosTypes {
     val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
   }
 
+  object BlockTagged {
+    def fromBlockData[T](block: BlockData, content: T): BlockTagged[T] = {
+      BlockTagged(
+        block.hash,
+        block.header.level,
+        Some(block.header.timestamp.toInstant),
+        TezosOptics.Blocks.extractCycle(block),
+        TezosOptics.Blocks.extractPeriod(block.metadata),
+        content
+      )
+    }
+  }
+
   final case class Delegate(
       balance: PositiveBigNumber,
       frozen_balance: PositiveBigNumber,
