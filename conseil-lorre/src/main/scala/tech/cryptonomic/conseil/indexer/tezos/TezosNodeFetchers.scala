@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BallotCounts
 
 /** Defines intances of `DataFetcher` for block-related data */
-trait BlocksDataFetchers {
+private[tezos] trait TezosBlocksDataFetchers {
   //we require the capability to log
   self: LazyLogging =>
   import cats.instances.future._

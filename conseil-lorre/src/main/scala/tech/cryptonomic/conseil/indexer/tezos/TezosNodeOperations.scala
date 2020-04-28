@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.indexer
+package tech.cryptonomic.conseil.indexer.tezos
 
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.postgres.PostgresMetadataOperations
@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Functionality for fetching data from the Conseil database specific only for conseil-lorre module.
   */
-class LorreOperations extends PostgresMetadataOperations {
+private[tezos] class TezosNodeOperations extends PostgresMetadataOperations {
   override lazy val dbReadHandle: Database = DatabaseUtil.lorreDb
 
   /**

@@ -16,6 +16,7 @@ services:
       #  XTZHOST=${XTZ_Host:=node}
       #  XTZPREFIX=${XTZ_Prefix:=}
       #  XTZPORT=${XTZ_Port:=8732}
+      #  XTZPLATFORM=${XTZ_Platform:=tezos}
       #  XTZNET=${XTZ_Network:=mainnet}
       #  APIPORT=${API_PORT:=80}
       #  APIKEY=${API_KEY:=conseil}
@@ -27,6 +28,7 @@ services:
       XTZ_Scheme: https
       XTZ_Host: tezos-staging.cryptonomic-infra.tech
       XTZ_Port: 443
+      XTX_Platform: tezos
       XTZ_Network: mainnet
     entrypoint: ["/root/wait-for.sh", "conseil-postgres:5432", "-t", "120", "--", "/root/entrypoint.sh", "conseil-api"]
     volumes:
@@ -45,6 +47,7 @@ services:
       XTZ_Scheme: https
       XTZ_Host: tezos-staging.cryptonomic-infra.tech
       XTZ_Port: 443
+      XTX_Platform: tezos
       XTZ_Network: mainnet
     command: conseil-lorre
     depends_on:

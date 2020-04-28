@@ -1,18 +1,17 @@
-package tech.cryptonomic.conseil.indexer
+package tech.cryptonomic.conseil.indexer.tezos
 
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.{Matchers, OptionValues, WordSpec}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
-import tech.cryptonomic.conseil.indexer.tezos.{TezosDataGeneration, TezosInMemoryDatabaseSetup}
+import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class LorreOperationsTest
+class TezosNodeOperationsTest
   extends WordSpec
     with Matchers
     with InMemoryDatabase
@@ -24,11 +23,11 @@ class LorreOperationsTest
     with TezosDataGeneration {
 
   import scala.concurrent.ExecutionContext.Implicits.global
-  "LorreOperationsTest" should {
+  "TezosNodeOperations" should {
     implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
     implicit val noTNSContracts: TNSContract = TNSContract.noContract
 
-    val sut = new LorreOperations {
+    val sut = new TezosNodeOperations {
       override lazy val dbReadHandle = dbHandler
     }
 

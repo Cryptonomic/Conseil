@@ -2,9 +2,9 @@ package tech.cryptonomic.conseil.indexer
 
 import com.github.ghik.silencer.silent
 import tech.cryptonomic.conseil.common.config._
-import tech.cryptonomic.conseil.common.config.Platforms._
-import tech.cryptonomic.conseil.common.util.ConfigUtil.Pureconfig.loadAkkaStreamingClientConfig
-import pureconfig.{loadConfig, CamelCase, ConfigFieldMapping, ConfigReader}
+import tech.cryptonomic.conseil.common.config.Platforms.PlatformConfiguration
+import tech.cryptonomic.conseil.common.util.ConfigUtil.Pureconfig.{loadAkkaStreamingClientConfig, loadPlatformConfiguration}
+import pureconfig.{CamelCase, ConfigFieldMapping, ConfigReader, loadConfig}
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.generic.{EnumCoproductHint, ProductHint}
 import pureconfig.generic.auto._
@@ -15,8 +15,6 @@ import pureconfig.generic.FieldCoproductHint
 /** wraps all configuration needed to run Lorre */
 trait LorreAppConfig {
   import LorreAppConfig._
-
-  final val LORRE_FAILURE_IGNORE_VAR = "LORRE_FAILURE_IGNORE"
 
   /* used by scopt to parse the depth object */
   implicit private val depthRead: Read[Option[Depth]] = Read.reads {
@@ -33,10 +31,16 @@ trait LorreAppConfig {
       depth: Depth = Newest,
       verbose: Boolean = false,
       headHash: Option[BlockHash] = None,
+      platform: String = "",
       network: String = ""
   )
 
-  private val argsParser = new OptionParser[ArgumentsConfig]("conseil-lorre") {
+  private val argsParser = new OptionParser[ArgumentsConfig]("lorre") {
+    arg[String]("platform")
+      .required()
+      .action((x, c) => c.copy(platform = x))
+      .text("which platform to use")
+
     arg[String]("network")
       .required()
       .action((x, c) => c.copy(network = x))
@@ -47,7 +51,7 @@ trait LorreAppConfig {
       .text("from which block to start. Default to actual head")
 
     opt[Option[Depth]]('d', "depth").validate {
-      case Some(depth) => success
+      case Some(_) => success
       case None => failure("I failed to parse a valid depth from the arguments")
     }.action((depth, c) => c.copy(depth = depth.get))
       .text(
@@ -76,23 +80,22 @@ trait LorreAppConfig {
     @silent("local val depthHint in method loadApplicationConfiguration is never used")
     implicit val depthHint: EnumCoproductHint[Depth] = new EnumCoproductHint[Depth]
     @silent("local val chainEventHint in method loadApplicationConfiguration is never used")
-    implicit val chainEventHint = new FieldCoproductHint[ChainEvent]("type") {
+    implicit val chainEventHint: FieldCoproductHint[ChainEvent] = new FieldCoproductHint[ChainEvent]("type") {
       override def fieldValue(name: String): String = name.head.toLower +: name.tail
     }
 
     val loadedConf = for {
       args <- readArgs(commandLineArgs)
-      ArgumentsConfig(depth, verbose, headHash, network) = args
+      ArgumentsConfig(depth, verbose, headHash, platform, network) = args
       lorre <- loadConfig[LorreConfiguration](namespace = "lorre").map(_.copy(depth = depth, headHash = headHash))
       nodeRequests <- loadConfig[NetworkCallsConfiguration]("lorre")
-      node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.tezos.$network.node")
-      tns <- loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network")
+      platform <- loadPlatformConfiguration(platform, network)
       streamingClient <- loadAkkaStreamingClientConfig(namespace = "akka.tezos-streaming-client")
       fetching <- loadConfig[BatchFetchConfiguration](namespace = "lorre.batchedFetches")
     } yield
       CombinedConfiguration(
         lorre,
-        TezosConfiguration(network, node, tns),
+        platform,
         nodeRequests,
         streamingClient,
         fetching,
@@ -110,10 +113,12 @@ trait LorreAppConfig {
 
 object LorreAppConfig {
 
+  final val LORRE_FAILURE_IGNORE_VAR = "LORRE_FAILURE_IGNORE"
+
   /** Collects all different aspects involved for Lorre */
   final case class CombinedConfiguration(
       lorre: LorreConfiguration,
-      tezos: TezosConfiguration,
+      platform: PlatformConfiguration,
       nodeRequests: NetworkCallsConfiguration,
       streamingClientPool: HttpStreamingConfiguration,
       batching: BatchFetchConfiguration,
