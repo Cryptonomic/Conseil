@@ -464,7 +464,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         ballots: Map[Block, List[Voting.Ballot]],
         ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
         ballotCountsPerLevel: Map[Block, Voting.BallotCounts],
-        proposalHashes: Map[Block, List[String]]
+        proposalHashes: Map[Block, Map[String, Int]]
     ): List[
       (
           BlockData,
@@ -485,17 +485,18 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val ballotCountPerLevel = ballotCountsPerLevel.get(block)
       val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
 
-      List((block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel)) ++
-        proposalHashesForBlock.map { proposalHash =>
-          (
-            block.data,
-            Some(ProtocolId(proposalHash)),
-            listing,
-            listingByBlock,
-            ballot,
-            Some(Voting.BallotCounts(proposalHashesForBlock.size, 0, 0)),
-            ballotCountPerLevel
-          )
+      (block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel) ::
+        proposalHashesForBlock.map {
+          case (proposalHash, count) =>
+            (
+              block.data,
+              Some(ProtocolId(proposalHash)),
+              listing,
+              listingByBlock,
+              ballot,
+              Some(Voting.BallotCounts(count, 0, 0)),
+              ballotCountPerLevel
+            )
         }
     }
 

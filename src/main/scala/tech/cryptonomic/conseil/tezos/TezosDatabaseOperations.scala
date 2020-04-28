@@ -627,13 +627,19 @@ object TezosDatabaseOperations extends LazyLogging {
       }
 
   /** Gets proposal hashes from operations table for given cycle */
-  def getProposalOperationHashesByCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[List[String]] =
+  def getProposalOperationHashesByCycle(cycle: Int)(implicit ec: ExecutionContext): DBIO[Map[String, Int]] =
     Tables.Operations
       .filter(op => op.kind === "proposals" && op.cycle === cycle)
       .map(_.proposal)
-      .distinct
       .result
-      .map(_.toList.flatMap(_.toList.flatMap(expandStringArray)))
+      .map {
+        _.toList
+          .flatMap(_.toList.flatMap(expandStringArray))
+          .groupBy(hash => hash)
+          .map {
+            case (hash, list) => hash -> list.length
+          }
+      }
 
   /** Helper method for expanding array storred as a string to list */
   private def expandStringArray(arr: String): List[String] =
