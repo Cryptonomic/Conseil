@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.tezos.michelson.contracts
 
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, ScriptId}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Micheline
 import cats.implicits._
 import scala.collection.immutable.TreeSet
@@ -8,7 +8,6 @@ import scala.util.Try
 import scala.concurrent.SyncVar
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.CryptoUtil
-import scala.util.Failure
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
