@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.indexer.tezos.app
+package tech.cryptonomic.conseil.indexer.tezos
 
 import cats.Show
 import cats.implicits._
@@ -15,7 +15,6 @@ import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract.{
   NameRecord
 }
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
-import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -24,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param tnsContracts custom definitions for the tns
   * @param node an operator to access data on chain node
   */
-class TezosNamesOperations(tnsContracts: TNSContract, node: TezosNodeOperator) extends LazyLogging {
+private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: TezosNodeOperator) extends LazyLogging {
   implicit val showLookupReferences: Show[LookupMapReference] = Show.show {
     case LookupMapReference(
         ContractId(contractId),

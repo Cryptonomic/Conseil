@@ -3,11 +3,11 @@ package tech.cryptonomic.conseil.common.util
 import com.github.ghik.silencer.silent
 import com.typesafe.config._
 import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.config.HttpStreamingConfiguration
+import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 import scala.util.Try
-import tech.cryptonomic.conseil.common.config.Platforms._
-import tech.cryptonomic.conseil.common.config.HttpStreamingConfiguration
 
 object ConfigUtil {
 
@@ -138,6 +138,21 @@ object ConfigUtil {
           PlatformsConfiguration(platformEntries.toMap)
         }
       }
+
+    def loadPlatformConfiguration(
+        platform: String,
+        network: String
+    ): Either[ConfigReaderFailures, PlatformConfiguration] = {
+      import pureconfig.loadConfig
+      BlockchainPlatform.fromString(platform) match {
+        case Tezos =>
+          for {
+            node <- loadConfig[TezosNodeConfiguration](namespace = s"platforms.$platform.$network.node")
+            tns <- loadConfig[Option[TNSContractConfiguration]](namespace = s"tns.$network")
+          } yield TezosConfiguration(network, node, tns)
+        case UnknownPlatform(_) => Right(UnknownPlatformConfiguration(network))
+      }
+    }
 
     /**
       * Reads a specific entry in the configuration file, to create a valid akka-http client host-pool configuration

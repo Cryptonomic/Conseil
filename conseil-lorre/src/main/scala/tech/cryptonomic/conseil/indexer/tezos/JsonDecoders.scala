@@ -8,7 +8,7 @@ import tech.cryptonomic.conseil.common.util.JsonUtil.CirceCommonDecoders.decodeU
 import scala.util.Try
 
 /** This expose decoders for json conversions */
-object JsonDecoders {
+private[tezos] object JsonDecoders {
 
   @silent("private val conf in object ")
   /** Circe-specific definitions as implicits */

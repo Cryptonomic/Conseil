@@ -11,18 +11,16 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 import tech.cryptonomic.conseil.common.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
+import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Try}
 import scala.util.control.NoStackTrace
 
-trait ShutdownComplete
-object ShutdownComplete extends ShutdownComplete
-
 /**
   * Interface into the Tezos blockchain.
   */
-trait TezosRPCInterface {
+private[tezos] trait TezosRPCInterface {
 
   /**
     * Runs all needed RPC calls against the configured Tezos node using HTTP GET
@@ -30,7 +28,7 @@ trait TezosRPCInterface {
     * @param ids  correlation ids for each request to send
     * @param mapToCommand  extract a tezos command (uri fragment) from the id
     * @param concurrencyLevel the concurrency in processing the responses
-    * @param ID a type that will be used to correlate each request with the response
+    * @tparam ID a type that will be used to correlate each request with the response
     * @return pairing of the correlation id with the string http response content
     */
   def runBatchedGetQuery[ID](
@@ -81,7 +79,7 @@ trait TezosRPCInterface {
 /**
   * Concrete implementation of the above.
   */
-class TezosNodeInterface(
+private[tezos] class TezosNodeInterface(
     config: TezosConfiguration,
     requestConfig: NetworkCallsConfiguration,
     streamingConfig: HttpStreamingConfiguration
@@ -93,7 +91,7 @@ class TezosNodeInterface(
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   private[this] val rejectingCalls = new java.util.concurrent.atomic.AtomicBoolean(false)
-  private[this] lazy val rejected = new Failure(
+  private[this] lazy val rejected = Failure(
     new IllegalStateException("Tezos node requests will no longer be accepted.") with NoStackTrace
   )
 
@@ -141,7 +139,7 @@ class TezosNodeInterface(
     for {
       response <- Http(system).singleRequest(request)
       strict <- response.entity.toStrict(requestConfig.GETResponseEntityTimeout)
-    } yield (JsonString sanitize strict.data.utf8String)
+    } yield JsonString sanitize strict.data.utf8String
 
   }
 
@@ -218,11 +216,10 @@ class TezosNodeInterface(
     * Creates a stream that will produce http response content for the
     * list of commands.
     *
-    * @param network  Which Tezos network to go against
     * @param ids  correlation ids for each request to send
     * @param mapToCommand  extract a tezos command (uri fragment) from the id
     * @param concurrencyLevel the concurrency in processing the responses
-    * @param ID a type that will be used to correlate each request with the response
+    * @tparam CID a type that will be used to correlate each request with the response
     * @return A stream source whose elements will be the response string, tupled with the correlation id,
     *         used to match with the corresponding request
     */
@@ -238,10 +235,9 @@ class TezosNodeInterface(
     val uris = Source(ids.map(id => (convertIdToUrl(id), id)))
 
     val toRequest: ((String, CID)) => (HttpRequest, CID) = {
-      case (url, id) => {
+      case (url, id) =>
         logger.debug("Will query: " + url)
         (HttpRequest(uri = Uri(url)), id)
-      }
     }
 
     uris

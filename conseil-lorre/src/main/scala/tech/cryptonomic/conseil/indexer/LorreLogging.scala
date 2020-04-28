@@ -6,16 +6,38 @@ import tech.cryptonomic.conseil.common.config.LorreConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, PlatformConfiguration}
 import tech.cryptonomic.conseil.common.io.MainOutputs.{showDatabaseConfiguration, showPlatformConfiguration}
 
-/** Defines what to print when starting Lorre */
-trait LorreMainOutput {
+import scala.concurrent.duration.{Duration, NANOSECONDS}
 
-  /** we need to have a logger */
-  protected[this] def logger: Logger
+trait LorreLogging {
+
+  protected def logger: Logger
+
+  /** Keeps track of time passed between different partial checkpoints of some entity processing
+    * Designed to be partially applied to set properties of the whole process once, and then only compute partial completion
+    *
+    * @param entityName a string that will be logged to identify what kind of resource is being processed
+    * @param totalToProcess how many entities there were in the first place
+    * @param processStartNanos a nano-time from jvm monotonic time, used to identify when the whole processing operation began
+    * @param processed how many entities were processed at the current checkpoint
+    */
+  def logProcessingProgress(entityName: String, totalToProcess: Int, processStartNanos: Long)(
+      processed: Int
+  ): Unit = {
+    val elapsed = System.nanoTime() - processStartNanos
+    val progress = processed.toDouble / totalToProcess
+    logger.info("================================== Progress Report ==================================")
+    logger.info("Completed processing {}% of total requested {}s", "%.2f".format(progress * 100), entityName)
+
+    val etaMins = Duration(scala.math.ceil(elapsed / progress) - elapsed, NANOSECONDS).toMinutes
+    if (processed < totalToProcess && etaMins > 1) logger.info("Estimated time to finish is around {} minutes", etaMins)
+    logger.info("=====================================================================================")
+  }
 
   /** Shows the main application info
-    * @param platformConf custom configuration for the used chain
+    * @param platform the platform indexer is running for
+    * @param network the network indexer is running for
     */
-  protected[this] def displayInfo(platformConf: PlatformConfiguration) =
+  def displayInfo(platform: String, network: String): Unit =
     logger.info(
       """
         | ==================================***==================================
@@ -23,12 +45,13 @@ trait LorreMainOutput {
         |  {}
         | ==================================***==================================
         |
-        |  About to start processing data on the {} network
+        |  About to start processing data on the {} network for {}
         |
         |""".stripMargin,
       BuildInfo.version,
       BuildInfo.gitHeadCommit.fold("")(hash => s"[commit-hash: ${hash.take(7)}]"),
-      platformConf.network
+      network,
+      platform
     )
 
   /** Shows details on the current configuration
@@ -37,7 +60,7 @@ trait LorreMainOutput {
     * @param ignoreFailures env-var name and value read to describe behaviour on common application failure
     * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
     */
-  protected[this] def displayConfiguration[C <: PlatformConfiguration](
+  def displayConfiguration[C <: PlatformConfiguration](
       platform: BlockchainPlatform,
       platformConf: C,
       lorreConf: LorreConfiguration,
