@@ -134,22 +134,6 @@ object TokenContracts extends LazyLogging {
 
   /** Defines enc-dec operation used for token big maps */
   object Codecs {
-    import scorex.util.encode.{Base16 => Hex}
-    import scorex.crypto.hash.{Blake2b256 => Blake}
-
-    /** Complete sequence to compute key_hash from a tz#|KT1... account address */
-    def computeKeyHash(address: AccountId): Try[String] =
-      for {
-        packed <- CryptoUtil.packAddress(address.id)
-        binary <- Hex.decode(packed)
-        hashed <- encodeBigMapKey(binary)
-      } yield hashed
-
-    /** Takes the bytes for a map key and creates the key-hash */
-    def encodeBigMapKey(bytes: Array[Byte]): Try[String] = {
-      val hashed = Blake.hash(bytes).toSeq
-      CryptoUtil.base58CheckEncode(hashed, "expr")
-    }
 
     /** Tries to read the map id as an hex bytestring, and convert it to a valid account id */
     def decodeBigMapKey(hexEncoded: String): Option[AccountId] = {
