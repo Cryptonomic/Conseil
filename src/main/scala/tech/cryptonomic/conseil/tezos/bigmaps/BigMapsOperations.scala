@@ -304,7 +304,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
   )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
     import TezosOptics.Operations.extractAppliedTransactions
-    import TezosOptics.Contracts.{extractAddressesFromExpression, parametersExpresssion}
 
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
 
@@ -314,15 +313,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case Left(op) => tokenContracts.isKnownToken(op.destination)
         case Right(op) => tokenContracts.isKnownToken(op.destination)
       }
-
-      //collect the addresses in the transactions' params
-      val addressesInvolved: Set[AccountId] = transactions.map {
-        case Left(op) => op.parameters
-        case Right(op) => op.parameters
-      }.flattenOption
-        .map(parametersExpresssion.get)
-        .flatMap(extractAddressesFromExpression)
-        .toSet
 
       //now extract relevant diffs for each destination
       val updates: Map[ContractId, List[BigMapUpdate]] = transactions.map {
@@ -350,7 +340,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
 
       //convert packed data
       BigMapsConversions
-        .TokenUpdatesInput(b, updates, addressesInvolved)
+        .TokenUpdatesInput(b, updates)
         .convertToA[List, BigMapsConversions.TokenUpdate]
     }
 

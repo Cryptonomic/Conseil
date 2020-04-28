@@ -8,6 +8,7 @@ import scala.util.Try
 import scala.concurrent.SyncVar
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.CryptoUtil
+import scala.util.Failure
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
@@ -56,8 +57,8 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
 /** Collects custom token contracts structures and operations */
 object TokenContracts extends LazyLogging {
 
-  /** a key hash paired with a balance */
-  type BalanceUpdate = (ScriptId, BigInt)
+  /** a key address paired with a balance */
+  type BalanceUpdate = (AccountId, BigInt)
 
   /** typed wrapper to clarify the meaning of the numerical id */
   case class BigMapId(id: BigDecimal) extends AnyVal
@@ -92,9 +93,11 @@ object TokenContracts extends LazyLogging {
           // wrt. any potential account hash, which must be done somewhere else
           balanceReader = update =>
             for {
+              key <- MichelineOps.parseBytes(update.key)
+              account <- Codecs.decodeBigMapKey(key)
               code <- update.value
               balance <- MichelineOps.parseBalanceFromMap(code)
-            } yield update.key_hash -> balance
+            } yield account -> balance
         )
     }
 
@@ -129,33 +132,6 @@ object TokenContracts extends LazyLogging {
     registeredId.isSet && registeredId.get.id == updateId
   }
 
-  /* Given the key hash stored in the big map and an account, checks if the
-   * two match, after encoding the account address first.
-   *
-   * @param keyHash a b58check script hash, corresponding to a map key in bytes
-   * @param accountReference the address we expect to match
-   * @return true if encoding the address and the key gives the same result
-   */
-  def hashCheck(keyHash: ScriptId)(accountReference: AccountId): Boolean = {
-    val check = Codecs.computeKeyHash(accountReference)
-
-    check.failed.foreach(
-      err =>
-        logger.error(
-          "I couldn't check big maps token updates. Failure to check hash encoding of the expected account against the map key",
-          err
-        )
-    )
-
-    logger.debug(
-      "checking key hash {} against computed hash for account {}, which is {}",
-      keyHash,
-      accountReference,
-      check
-    )
-    check.exists(_ == keyHash.value)
-  }
-
   /** Defines enc-dec operation used for token big maps */
   object Codecs {
     import scorex.util.encode.{Base16 => Hex}
@@ -175,12 +151,26 @@ object TokenContracts extends LazyLogging {
       CryptoUtil.base58CheckEncode(hashed, "expr")
     }
 
+    /** Tries to read the map id as an hex bytestring, and convert it to a valid account id */
+    def decodeBigMapKey(hexEncoded: String): Option[AccountId] = {
+      val id = CryptoUtil.readAddress(hexEncoded.trim()).map(AccountId)
+      id.failed.foreach(
+        err => logger.error("I failed to match a big map key as a proper account address", err)
+      )
+      id.toOption
+    }
   }
 
   /* Defines extraction operations based on micheline fields */
   private object MichelineOps {
     import tech.cryptonomic.conseil.tezos.michelson.dto._
     import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
+
+    /* extracts a bytes value as a string if it corresponds to the micheline argument */
+    def parseBytes(code: Micheline): Option[String] =
+      JsonParser.parse[MichelsonInstruction](code.expression).toOption.collect {
+        case MichelsonBytesConstant(bytes) => bytes
+      }
 
     /* reads a map value as a list with a balance as head */
     def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] = {

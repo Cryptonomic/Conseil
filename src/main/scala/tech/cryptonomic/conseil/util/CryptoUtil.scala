@@ -4,6 +4,7 @@ import fr.acinq.bitcoin.Base58Check
 import scorex.util.encode.{Base16 => Hex}
 
 import scala.util.Try
+import scala.util.Failure
 
 /**
   * Utility function for common cryptographic operations.
@@ -54,7 +55,9 @@ object CryptoUtil {
       decodedBytes.drop(charsToSlice)
     }
 
-  /** Decodes the account b58-check address as an hexadecimal bytestring */
+  /** Decodes the account b58-check address as an hexadecimal bytestring
+    * It's almost the inverse of [[unpackAddress]]
+    */
   def packAddress(b58Address: String): Try[String] = {
 
     def dataLength(num: Long) = ("0000000" + num.toHexString).takeRight(8)
@@ -72,5 +75,45 @@ object CryptoUtil {
       val wrapped = wrap(Hex.encode(bytes.toArray))
       s"050a${dataLength(wrapped.length / 2)}$wrapped"
     }
+  }
+
+  //used as hints to identify hex-encoded account address types
+  private val tz1 = "0000".r
+  private val tz2 = "0001".r
+  private val tz3 = "0002".r
+  private val kt1 = "01.{2}".r
+
+  /** Encodes the hexadecimal bytestring to a b58-check account address
+    * It's almost the inverse of [[packAddress]]
+    */
+  def readAddress(hexEncoded: String): Try[String] = {
+    val (hint, content) = hexEncoded.length() match {
+      case 42 =>
+        val hint = "00" + hexEncoded.take(2)
+        val content = hexEncoded.drop(2)
+        hint -> content
+      case 44 =>
+        val hint = hexEncoded.take(4)
+        val content = hint match {
+          case kt1() => hexEncoded.drop(2).take(40)
+          case _ => hexEncoded.drop(4)
+        }
+        hint -> content
+    }
+    for {
+      hexContent <- Hex.decode(content)
+      address <- hint match {
+        case tz1() =>
+          CryptoUtil.base58CheckEncode(hexContent, "tz1")
+        case tz2() =>
+          CryptoUtil.base58CheckEncode(hexContent, "tz2")
+        case tz3() =>
+          CryptoUtil.base58CheckEncode(hexContent, "tz3")
+        case kt1() =>
+          CryptoUtil.base58CheckEncode(hexContent, "kt1")
+        case _ =>
+          Failure(new IllegalArgumentException(s"No address can be decoded from the hex string '$hexEncoded'"))
+      }
+    } yield address
   }
 }
