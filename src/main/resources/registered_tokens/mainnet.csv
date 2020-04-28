@@ -1,2 +1,2 @@
-id, name       , contract_type, account_id
-1 , Stacker DAO, FA1.2        , KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv
+id, name      , contract_type  , account_id
+1 , Staker DAO, FA1.2-StakerDao, KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv
