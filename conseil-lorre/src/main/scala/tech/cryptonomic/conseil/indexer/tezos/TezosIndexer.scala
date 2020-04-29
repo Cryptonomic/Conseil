@@ -13,9 +13,11 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockHash, FetchRights,
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.{DatabaseConversions, FeeOperations, Tables, TezosOptics, TezosTypes, TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
-import tech.cryptonomic.conseil.indexer.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
-import tech.cryptonomic.conseil.indexer.{LorreIndexer, LorreLogging}
+import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
+import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
+import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, Custom, Everything, HttpStreamingConfiguration, LorreConfiguration, NetworkCallsConfiguration, Newest}
+import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 
@@ -34,11 +36,11 @@ class TezosIndexer(
     batchingConf: BatchFetchConfiguration
 ) extends LazyLogging
     with LorreIndexer
-    with LorreLogging {
+    with LorreProgressLogging {
 
-  private implicit val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
-  private implicit val materializer: ActorMaterializer = ActorMaterializer()
-  private implicit val dispatcher: ExecutionContext = system.dispatcher
+  implicit private val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
+  implicit private val materializer: ActorMaterializer = ActorMaterializer()
+  implicit private val dispatcher: ExecutionContext = system.dispatcher
 
   private val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
   private val ignoreProcessFailures: Boolean =
@@ -56,7 +58,7 @@ class TezosIndexer(
     operations
   )
 
-  private implicit val tokens: TokenContracts = initAnyCsvConfig()
+  implicit private val tokens: TokenContracts = initAnyCsvConfig()
 
   /* Reads csv resources to initialize db tables and smart contracts objects */
   private def initAnyCsvConfig(): TokenContracts = {
@@ -87,7 +89,7 @@ class TezosIndexer(
     tokenContracts
   }
 
-  private implicit val tns: TNSContract =
+  implicit private val tns: TNSContract =
     tezosConf.tns match {
       case None =>
         logger.warn("No configuration found to initialize TNS for {}.", tezosConf.network)
@@ -930,7 +932,6 @@ class TezosIndexer(
 
     }
   }
-
 
   override val platform: BlockchainPlatform = Platforms.Tezos
 

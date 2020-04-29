@@ -23,8 +23,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables.GovernanceRow
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.FetchRights
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
 import slick.lifted.{AbstractTable, TableQuery}
-import tech.cryptonomic.conseil.common.sql.postgres.PostgresProfileExtension
-import tech.cryptonomic.conseil.common.sql.postgres.PostgresDatabaseOperations
+import tech.cryptonomic.conseil.common.sql.{CustomProfileExtension, DefaultDatabaseOperations}
 
 import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
@@ -35,10 +34,10 @@ import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
 /**
   * Functions for writing Tezos data to a database.
   */
-object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with LazyLogging {
+object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with LazyLogging {
   import DatabaseConversions._
 
-  private val bigMapOps = BigMapsOperations(PostgresProfileExtension)
+  private val bigMapOps = BigMapsOperations(CustomProfileExtension)
 
   /**
     * Writes computed fees averages to a database.
@@ -60,7 +59,7 @@ object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with 
   def writeAccounts(
       accountsInfo: List[BlockTagged[Map[AccountId, Account]]]
   ): DBIO[Option[Int]] = {
-    import PostgresProfileExtension.api._
+    import CustomProfileExtension.api._
 
     val keepMostRecent = (rows: List[Tables.AccountsRow]) =>
       rows
@@ -435,7 +434,7 @@ object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with 
   def upsertBakingRights(
       bakingRightsMap: Map[FetchRights, List[BakingRights]]
   ): DBIO[Option[Int]] = {
-    import PostgresProfileExtension.api._
+    import CustomProfileExtension.api._
     logger.info("Writing baking rights to the DB...")
     val conversionResult = for {
       (blockHashWithCycleAndGovernancePeriod, bakingRightsList) <- bakingRightsMap
@@ -452,7 +451,7 @@ object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with 
   def upsertEndorsingRights(
       endorsingRightsMap: Map[FetchRights, List[EndorsingRights]]
   ): DBIO[Option[Int]] = {
-    import PostgresProfileExtension.api._
+    import CustomProfileExtension.api._
     logger.info("Writing endorsing rights to the DB...")
     val transformationResult = for {
       (blockHashWithCycleAndGovernancePeriod, endorsingRightsList) <- endorsingRightsMap
@@ -515,7 +514,7 @@ object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with 
   }
 
   def upsertTezosNames(names: List[TNSContract.NameRecord]): DBIO[Option[Int]] = {
-    import PostgresProfileExtension.api._
+    import CustomProfileExtension.api._
     logger.info("Upserting {} tezos names rows into the database...", names.size)
     Tables.TezosNames.insertOrUpdateAll(names.map(_.convertTo[Tables.TezosNamesRow]))
   }
@@ -553,7 +552,7 @@ object TezosDatabaseOperations extends PostgresDatabaseOperations("tezos") with 
   def writeBakersAndCopyContracts(
       bakers: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
   ): DBIO[Option[Int]] = {
-    import PostgresProfileExtension.api._
+    import CustomProfileExtension.api._
 
     val keepMostRecent = (rows: List[Tables.BakersRow]) =>
       rows

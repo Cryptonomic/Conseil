@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 object MainOutputs {
 
   /* prepare output to display existings platforms and networks */
+  //TODO This can be moved to Conseil-API
   def showAvailablePlatforms(conf: PlatformsConfiguration): String =
     conf.platforms.map {
       case (platform, confs) =>

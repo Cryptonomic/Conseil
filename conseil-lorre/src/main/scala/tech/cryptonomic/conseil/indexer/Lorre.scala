@@ -2,7 +2,9 @@ package tech.cryptonomic.conseil.indexer
 
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, UnknownPlatformConfiguration}
-import tech.cryptonomic.conseil.indexer.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
+import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
+import tech.cryptonomic.conseil.indexer.config.LorreAppConfig
+import tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosIndexer
 
 import scala.concurrent.Await
@@ -11,7 +13,7 @@ import scala.concurrent.duration._
 /**
   * Entry point for synchronizing data between the Tezos blockchain and the Conseil database.
   */
-object Lorre extends App with LazyLogging with LorreAppConfig with LorreLogging {
+object Lorre extends App with LazyLogging with LorreAppConfig with LorreInfoLogging {
 
   //reads all configuration upstart, will only complete if all values are found
   val config = loadApplicationConfiguration(args)

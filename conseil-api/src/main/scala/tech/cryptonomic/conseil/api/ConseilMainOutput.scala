@@ -2,8 +2,8 @@ package tech.cryptonomic.conseil.api
 
 import com.typesafe.scalalogging.Logger
 import tech.cryptonomic.conseil.BuildInfo
+import tech.cryptonomic.conseil.api.config.ConseilConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
-import tech.cryptonomic.conseil.common.config.ServerConfiguration
 import tech.cryptonomic.conseil.common.io.MainOutputs._
 
 /** Defines what to print when starting Conseil */
@@ -15,7 +15,7 @@ trait ConseilMainOutput {
   /** Shows the main application info
     * @param serverConf configuration of the http server
     */
-  protected[this] def displayInfo(serverConf: ServerConfiguration) =
+  protected[this] def displayInfo(serverConf: ConseilConfiguration): Unit =
     logger.info(
       """
         | ==================================***==================================
@@ -33,12 +33,7 @@ trait ConseilMainOutput {
       serverConf.port
     )
 
-  /** Shows details on the current configuration
-    * @param platform the platform used by Lorre
-    * @param platformConf the details on platform-specific configuratoin (e.g. node connection)
-    * @param ignoreFailures env-var name and value read to describe behaviour on common application failure
-    * @tparam C the custom platform configuration type (depending on the currently hit blockchain)
-    */
+  /** Shows details on the current configuration */
   protected[this] def displayConfiguration(platformConfigs: PlatformsConfiguration): Unit =
     logger.info(
       """

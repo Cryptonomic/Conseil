@@ -88,10 +88,11 @@ object Dependencies {
   )
 
   val conseilApiInclude = Seq(
-    "org.scalamock"     %% "scalamock"         % "4.1.0"         % Test,
-    "com.typesafe.akka" %% "akka-testkit"      % akkaVersion     % Test exclude ("com.typesafe", "config"),
-    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
-    "org.scalatest"     %% "scalatest"         % "3.0.5"         % Test,
+    "org.scalamock"          %% "scalamock"         % "4.1.0"         % Test,
+    "com.typesafe.akka"      %% "akka-testkit"      % akkaVersion     % Test exclude ("com.typesafe", "config"),
+    "com.typesafe.akka"      %% "akka-http-testkit" % akkaHttpVersion % Test exclude ("com.typesafe", "config"),
+    "org.scalatest"          %% "scalatest"         % "3.0.5"         % Test,
+    "com.softwaremill.diffx" %% "diffx-scalatest"   % "0.3.3"         % Test,
     compilerPlugin("com.github.ghik" % "silencer-plugin" % silencerVersion cross CrossVersion.full),
     "com.github.ghik" % "silencer-lib" % silencerVersion % Provided cross CrossVersion.full
   )

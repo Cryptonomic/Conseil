@@ -8,7 +8,12 @@ import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
 import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations.extractAppliedTransactions
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, ContractId, ScriptId}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract.{BigMapId, LookupMapReference, Name, NameRecord}
+import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract.{
+  BigMapId,
+  LookupMapReference,
+  Name,
+  NameRecord
+}
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
 
 import scala.concurrent.{ExecutionContext, Future}

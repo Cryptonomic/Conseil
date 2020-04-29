@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.indexer.tezos
 import cats.instances.future._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.common.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
@@ -12,6 +11,7 @@ import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
+import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, SodiumConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max

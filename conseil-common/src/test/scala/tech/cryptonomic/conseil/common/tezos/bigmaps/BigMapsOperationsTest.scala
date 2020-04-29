@@ -14,7 +14,7 @@ import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.tezos.TezosDataGeneration
 import java.sql.Timestamp
 
-import tech.cryptonomic.conseil.common.sql.postgres.PostgresProfileExtension
+import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 
@@ -33,7 +33,7 @@ class BigMapsOperationsTest
       //needed for most tezos-db operations
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      val sut = BigMapsOperations(PostgresProfileExtension)
+      val sut = BigMapsOperations(CustomProfileExtension)
 
       "save big map diffs allocations contained in a list of blocks" in {
         //given

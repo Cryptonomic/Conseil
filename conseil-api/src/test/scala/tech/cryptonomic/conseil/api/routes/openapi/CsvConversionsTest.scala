@@ -6,7 +6,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponse
 class CsvConversionsTest extends WordSpec with Matchers {
 
   import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
-  import tech.cryptonomic.conseil.api.routes.openapi.CsvConversions._
+  import tech.cryptonomic.conseil.api.routes.platform.data.CsvConversions._
 
   "CSV conversions" should {
 

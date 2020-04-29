@@ -9,9 +9,9 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.util.JsonUtil.JsonString
-import tech.cryptonomic.conseil.common.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
+import tech.cryptonomic.conseil.indexer.config.{HttpStreamingConfiguration, NetworkCallsConfiguration}
 
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Try}
