@@ -4,9 +4,9 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{FlatSpec, Matchers}
-import tech.cryptonomic.conseil.common.config.BatchFetchConfiguration
 import tech.cryptonomic.conseil.common.tezos.TezosTypes
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.BlockHash
+import tech.cryptonomic.conseil.indexer.config.BatchFetchConfiguration
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}

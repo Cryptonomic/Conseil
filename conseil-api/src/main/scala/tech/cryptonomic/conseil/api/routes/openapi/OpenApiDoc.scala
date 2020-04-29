@@ -4,10 +4,13 @@ import cats.Functor
 import endpoints.algebra.Documentation
 import endpoints.openapi
 import endpoints.openapi.model.{Info, MediaType, OpenApi, Schema}
+import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscoveryEndpoints
+import tech.cryptonomic.conseil.api.routes.info.AppInfoEndpoint
+import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataEndpoints
 
 /** OpenAPI documentation object */
 object OpenApiDoc
-    extends DataEndpoints
+    extends TezosDataEndpoints
     with PlatformDiscoveryEndpoints
     with AppInfoEndpoint
     with openapi.model.OpenApiSchemas

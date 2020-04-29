@@ -11,11 +11,28 @@ import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, Tez
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockHash, FetchRights, _}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.{DatabaseConversions, FeeOperations, Tables, TezosOptics, TezosTypes, TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.common.tezos.{
+  DatabaseConversions,
+  FeeOperations,
+  Tables,
+  TezosOptics,
+  TezosTypes,
+  TezosDatabaseOperations => TezosDb
+}
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
-import tech.cryptonomic.conseil.indexer.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
-import tech.cryptonomic.conseil.indexer.{LorreIndexer, LorreLogging}
+import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
+import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
+import tech.cryptonomic.conseil.indexer.config.{
+  BatchFetchConfiguration,
+  Custom,
+  Everything,
+  HttpStreamingConfiguration,
+  LorreConfiguration,
+  NetworkCallsConfiguration,
+  Newest
+}
+import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosErrors._
 import tech.cryptonomic.conseil.indexer.tezos.TezosNodeOperator.LazyPages
 
@@ -34,11 +51,11 @@ class TezosIndexer(
     batchingConf: BatchFetchConfiguration
 ) extends LazyLogging
     with LorreIndexer
-    with LorreLogging {
+    with LorreProgressLogging {
 
-  private implicit val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
-  private implicit val materializer: ActorMaterializer = ActorMaterializer()
-  private implicit val dispatcher: ExecutionContext = system.dispatcher
+  implicit private val system: ActorSystem = ActorSystem("lorre-tezos-indexer")
+  implicit private val materializer: ActorMaterializer = ActorMaterializer()
+  implicit private val dispatcher: ExecutionContext = system.dispatcher
 
   private val ignoreProcessFailuresOrigin: Option[String] = sys.env.get(LORRE_FAILURE_IGNORE_VAR)
   private val ignoreProcessFailures: Boolean =
@@ -56,7 +73,7 @@ class TezosIndexer(
     operations
   )
 
-  private implicit val tokens: TokenContracts = initAnyCsvConfig()
+  implicit private val tokens: TokenContracts = initAnyCsvConfig()
 
   /* Reads csv resources to initialize db tables and smart contracts objects */
   private def initAnyCsvConfig(): TokenContracts = {
@@ -87,7 +104,7 @@ class TezosIndexer(
     tokenContracts
   }
 
-  private implicit val tns: TNSContract =
+  implicit private val tns: TNSContract =
     tezosConf.tns match {
       case None =>
         logger.warn("No configuration found to initialize TNS for {}.", tezosConf.network)
@@ -366,9 +383,9 @@ class TezosIndexer(
 
     /** Processes blocks and fetches needed data to produce Governance rows*/
     def processBlocksForGovernance(
-      blocks: List[Block],
-      listings: List[(Block, List[Voting.BakerRolls])]
-                                  ): Future[Unit] = {
+        blocks: List[Block],
+        listings: List[(Block, List[Voting.BakerRolls])]
+    ): Future[Unit] = {
       import DatabaseConversions._
       import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
@@ -404,23 +421,23 @@ class TezosIndexer(
 
     /** Groups data needed for generating Governance */
     def groupGovernanceDataByBlock(
-                                    blocks: List[Block],
-                                    proposals: Map[BlockHash, Option[ProtocolId]],
-                                    listings: Map[Int, List[Voting.BakerRolls]],
-                                    ballots: Map[Block, List[Voting.Ballot]],
-                                    ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
-                                    ballotCountsPerLevel: Map[Block, Voting.BallotCounts],
-                                    proposalHashes: Map[Block, Map[String, Int]]
-                                  ): List[
+        blocks: List[Block],
+        proposals: Map[BlockHash, Option[ProtocolId]],
+        listings: Map[Int, List[Voting.BakerRolls]],
+        ballots: Map[Block, List[Voting.Ballot]],
+        ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
+        ballotCountsPerLevel: Map[Block, Voting.BallotCounts],
+        proposalHashes: Map[Block, Map[String, Int]]
+    ): List[
       (
-        BlockData,
+          BlockData,
           Option[ProtocolId],
           List[Voting.BakerRolls],
           List[Voting.BakerRolls],
           List[Voting.Ballot],
           Option[Voting.BallotCounts],
           Option[Voting.BallotCounts]
-        )
+      )
     ] = blocks.flatMap { block =>
       val proposal = proposals.get(block.data.hash).flatten
       val listing = listings.get(block.data.header.level).toList.flatten
@@ -950,7 +967,6 @@ class TezosIndexer(
 
     }
   }
-
 
   override val platform: BlockchainPlatform = Platforms.Tezos
 
