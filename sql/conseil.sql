@@ -228,7 +228,6 @@ CREATE TABLE tezos.balance_updates (
     account_id character varying NOT NULL,
     change numeric NOT NULL,
     level numeric,
-    delegate character varying,
     category character varying,
     operation_group_hash character varying,
     block_id character varying NOT NULL,

@@ -561,16 +561,21 @@ object DatabaseConversions extends LazyLogging {
         .flatMap {
           case (tag, updates) =>
             updates.map {
-              case BlockTagged(blockHash, blockLevel, _, cycle, period,
-                OperationMetadata.BalanceUpdate(
-                  kind,
-                  change,
-                  category,
-                  contract,
-                  delegate,
-                  level
+              case BlockTagged(
+                  blockHash,
+                  blockLevel,
+                  _,
+                  cycle,
+                  period,
+                  OperationMetadata.BalanceUpdate(
+                    kind,
+                    change,
+                    category,
+                    contract,
+                    delegate,
+                    level
                   )
-                ) =>
+                  ) =>
                 Tables.BalanceUpdatesRow(
                   id = 0,
                   source = tag.show,
@@ -579,7 +584,6 @@ object DatabaseConversions extends LazyLogging {
                   accountId = contract.map(_.id).orElse(delegate.map(_.value)).get, // either contract or delegate should be always set
                   change = BigDecimal(change),
                   level = level.map(BigDecimal(_)),
-                  delegate = delegate.map(_.value),
                   category = category,
                   blockId = blockHash.value,
                   blockLevel = blockLevel,
@@ -678,14 +682,16 @@ object DatabaseConversions extends LazyLogging {
             val mainOperationData = operations.map(
               op =>
                 (from, group.hash, op).convertTo[Tables.OperationsRow] ->
-                    BlockTagged.fromBlockData(from.data, op)
+                    BlockTagged
+                      .fromBlockData(from.data, op)
                       .convertToA[List, Tables.BalanceUpdatesRow]
             )
             val internalOperationData = internalResults.map { oop =>
               val op = oop.convertTo[Operation]
               (from, group.hash, op)
                 .convertTo[Tables.OperationsRow]
-                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> BlockTagged.fromBlockData(from.data, op)
+                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> BlockTagged
+                .fromBlockData(from.data, op)
                 .convertToA[List, Tables.BalanceUpdatesRow]
             }
             mainOperationData ++ internalOperationData

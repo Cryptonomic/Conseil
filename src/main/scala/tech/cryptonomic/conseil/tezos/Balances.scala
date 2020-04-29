@@ -32,33 +32,40 @@ object OperationBalances {
   import SymbolSourceLabels._
 
   //single polymorphic instance
-  implicit def opsBalanceUpdatesGetter[OP <: Operation] = Getter[BlockTagged[OP], Map[Label, List[BlockTagged[BalanceUpdate]]]] {
-    case b:BlockTagged[OP] => b.content match {
-      case e: Endorsement =>
-        Map(OPERATION_SOURCE -> e.metadata.balance_updates.map(balanceUpdate => b.copy(content = balanceUpdate)))
-      case nr: SeedNonceRevelation =>
-        Map(OPERATION_SOURCE -> nr.metadata.balance_updates.map(balanceUpdate => b.copy(content = balanceUpdate)))
-      case aa: ActivateAccount =>
-        Map(OPERATION_SOURCE -> aa.metadata.balance_updates.map(balanceUpdate => b.copy(content = balanceUpdate)))
-      case r: Reveal =>
-        Map(OPERATION_SOURCE -> r.metadata.balance_updates.map(balanceUpdate => b.copy(content = balanceUpdate)))
-      case t: Transaction =>
-        Map(
-          OPERATION_SOURCE -> t.metadata.balance_updates.map(balanceUpdate => b.copy(content = balanceUpdate)),
-          OPERATION_RESULT_SOURCE -> t.metadata.operation_result.balance_updates.getOrElse(List.empty).map(balanceUpdate => b.copy(content = balanceUpdate))
-        )
-      case o: Origination =>
-        Map(
-          OPERATION_SOURCE -> o.metadata.balance_updates.map(balanceUpdate => b.copy(content = balanceUpdate)),
-          OPERATION_RESULT_SOURCE -> o.metadata.operation_result.balance_updates.getOrElse(List.empty).map(balanceUpdate => b.copy(content = balanceUpdate))
-        )
-      case _ =>
-        Map.empty
+  implicit def opsBalanceUpdatesGetter[OP <: Operation] =
+    Getter[BlockTagged[OP], Map[Label, List[BlockTagged[BalanceUpdate]]]] {
+      case b: BlockTagged[OP] =>
+        b.content match {
+          case e: Endorsement =>
+            Map(OPERATION_SOURCE -> e.metadata.balance_updates.map(b.updateContent))
+          case nr: SeedNonceRevelation =>
+            Map(OPERATION_SOURCE -> nr.metadata.balance_updates.map(b.updateContent))
+          case aa: ActivateAccount =>
+            Map(OPERATION_SOURCE -> aa.metadata.balance_updates.map(b.updateContent))
+          case r: Reveal =>
+            Map(OPERATION_SOURCE -> r.metadata.balance_updates.map(b.updateContent))
+          case t: Transaction =>
+            Map(
+              OPERATION_SOURCE -> t.metadata.balance_updates.map(b.updateContent),
+              OPERATION_RESULT_SOURCE -> t.metadata.operation_result.balance_updates
+                    .getOrElse(List.empty)
+                    .map(b.updateContent)
+            )
+          case o: Origination =>
+            Map(
+              OPERATION_SOURCE -> o.metadata.balance_updates.map(b.updateContent),
+              OPERATION_RESULT_SOURCE -> o.metadata.operation_result.balance_updates
+                    .getOrElse(List.empty)
+                    .map(b.updateContent)
+            )
+          case _ =>
+            Map.empty
+        }
+
     }
 
-  }
-
-  implicit def opsBalanceHashGetter[OP <: Operation] = Getter[OP, Option[String]](Function.const(Option.empty))
+  implicit def opsBalanceHashGetter[OP <: Operation] =
+    Getter[BlockTagged[OP], Option[String]](Function.const(Option.empty))
 
 }
 

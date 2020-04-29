@@ -141,6 +141,7 @@ class DatabaseConversionsTest
         //generate data
         val updates = generateBalanceUpdates(3)
         val block = generateSingleBlock(atLevel = 1, atTime = testReferenceDateTime, balanceUpdates = updates)
+        val tag = BlockTagged.fromBlockData(block.data, 1)
 
         //convert
         val updateRows = block.data.convertToA[List, Tables.BalanceUpdatesRow]
@@ -155,11 +156,14 @@ class DatabaseConversionsTest
             sourceHash = Some(block.data.hash.value),
             source = "block",
             kind = up1.kind,
-            contract = up1.contract.map(_.id),
+            accountId = up1.contract.map(_.id).orElse(up1.delegate.map(_.value)).get,
             change = BigDecimal(up1.change),
             level = up1.level.map(BigDecimal(_)),
-            delegate = up1.delegate.map(_.value),
-            category = up1.category
+            category = up1.category,
+            blockId = tag.blockHash.value,
+            blockLevel = tag.blockLevel,
+            cycle = tag.cycle,
+            period = tag.period
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -167,11 +171,14 @@ class DatabaseConversionsTest
             sourceHash = Some(block.data.hash.value),
             source = "block",
             kind = up2.kind,
-            contract = up2.contract.map(_.id),
+            accountId = up2.contract.map(_.id).orElse(up2.delegate.map(_.value)).get,
             change = BigDecimal(up2.change),
             level = up2.level.map(BigDecimal(_)),
-            delegate = up2.delegate.map(_.value),
-            category = up2.category
+            category = up2.category,
+            blockId = tag.blockHash.value,
+            blockLevel = tag.blockLevel,
+            cycle = tag.cycle,
+            period = tag.period
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -179,11 +186,14 @@ class DatabaseConversionsTest
             sourceHash = Some(block.data.hash.value),
             source = "block",
             kind = up3.kind,
-            contract = up3.contract.map(_.id),
+            accountId = up3.contract.map(_.id).orElse(up3.delegate.map(_.value)).get,
             change = BigDecimal(up3.change),
             level = up3.level.map(BigDecimal(_)),
-            delegate = up3.delegate.map(_.value),
-            category = up3.category
+            category = up3.category,
+            blockId = tag.blockHash.value,
+            blockLevel = tag.blockLevel,
+            cycle = tag.cycle,
+            period = tag.period
           )
         )
       }
@@ -192,18 +202,20 @@ class DatabaseConversionsTest
         import OperationBalances._
         import SymbolSourceLabels.Show._
 
-        sampleReveal.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
+        BlockTagged(BlockHash("sampleHash"), 123, None, None, None, sampleReveal)
+          .convertToA[List, Tables.BalanceUpdatesRow] should contain only (
           Tables.BalanceUpdatesRow(
             id = 0,
             sourceId = None,
             sourceHash = None,
             source = "operation",
             kind = "contract",
-            contract = Some("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
+            accountId = "KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq",
             change = -10000L,
             level = None,
-            delegate = None,
-            category = None
+            category = None,
+            blockId = "sampleHash",
+            blockLevel = 123
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -211,11 +223,12 @@ class DatabaseConversionsTest
             sourceHash = None,
             source = "operation",
             kind = "freezer",
-            contract = None,
             change = 10000L,
             level = Some(1561),
-            delegate = Some("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889"),
-            category = Some("fees")
+            accountId = "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+            category = Some("fees"),
+            blockId = "sampleHash",
+            blockLevel = 123
           )
         )
       }
@@ -223,19 +236,20 @@ class DatabaseConversionsTest
       "convert Balance Updates in all nested levels of Operations to a database row" in {
         import OperationBalances._
         import SymbolSourceLabels.Show._
-
-        sampleOrigination.convertToA[List, Tables.BalanceUpdatesRow] should contain only (
+        BlockTagged(BlockHash("sampleHash"), 123, None, None, None, sampleOrigination)
+          .convertToA[List, Tables.BalanceUpdatesRow] should contain only (
           Tables.BalanceUpdatesRow(
             id = 0,
             sourceId = None,
             sourceHash = None,
             source = "operation",
             kind = "contract",
-            contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+            accountId = "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
             change = -1441L,
             level = None,
-            delegate = None,
-            category = None
+            category = None,
+            blockId = "sampleHash",
+            blockLevel = 123
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -243,11 +257,12 @@ class DatabaseConversionsTest
             sourceHash = None,
             source = "operation",
             kind = "freezer",
-            contract = None,
             change = 1441L,
             level = Some(1583),
-            delegate = Some("tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889"),
-            category = Some("fees")
+            accountId = "tz1boot1pK9h2BVGXdyvfQSv8kd1LQM6H889",
+            category = Some("fees"),
+            blockId = "sampleHash",
+            blockLevel = 123
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -255,11 +270,12 @@ class DatabaseConversionsTest
             sourceHash = None,
             source = "operation_result",
             kind = "contract",
-            contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+            accountId = "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
             change = -46000L,
             category = None,
-            delegate = None,
-            level = None
+            level = None,
+            blockId = "sampleHash",
+            blockLevel = 123
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -267,11 +283,12 @@ class DatabaseConversionsTest
             sourceHash = None,
             source = "operation_result",
             kind = "contract",
-            contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+            accountId = "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
             change = -257000L,
             category = None,
-            delegate = None,
-            level = None
+            level = None,
+            blockId = "sampleHash",
+            blockLevel = 123
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -279,11 +296,12 @@ class DatabaseConversionsTest
             sourceHash = None,
             source = "operation_result",
             kind = "contract",
-            contract = Some("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
+            accountId = "tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR",
             change = -1000000L,
             category = None,
-            delegate = None,
-            level = None
+            level = None,
+            blockId = "sampleHash",
+            blockLevel = 123
           ),
           Tables.BalanceUpdatesRow(
             id = 0,
@@ -291,11 +309,12 @@ class DatabaseConversionsTest
             sourceHash = None,
             source = "operation_result",
             kind = "contract",
-            contract = Some("KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4"),
+            accountId = "KT1VuJAgTJT5x2Y2S3emAVSbUA5nST7j3QE4",
             change = 1000000L,
             category = None,
-            delegate = None,
-            level = None
+            level = None,
+            blockId = "sampleHash",
+            blockLevel = 123
           )
         )
       }

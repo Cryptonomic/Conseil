@@ -239,7 +239,8 @@ class TezosDatabaseOperationsTest
               /* check stored balance updates */
               //convert and set the real stored operation id
               val generatedUpdateRows =
-                operation
+                BlockTagged
+                  .fromBlockData(operationBlock.data, operation)
                   .convertToA[List, Tables.BalanceUpdatesRow]
                   .map(_.copy(sourceId = Some(opRow.operationId), operationGroupHash = Some(opRow.operationGroupHash)))
 
