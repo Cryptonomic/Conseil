@@ -648,16 +648,13 @@ class TezosNodeOperator(
 
     def parseMichelsonScripts: Block => Block = {
       implicit lazy val _ = logger
-      def rewriteParametersInTransactions(transaction: Transaction): Transaction = {
-        val expr = transaction.parameters.map {
-          case Left(Parameters(micheline, _)) => micheline.expression
-          case Right(micheline) => micheline.expression
-        }
-        transaction.copy(parameters_micheline = expr)
-      }
+      val copyParametersToMicheline = (t: Transaction) => t.copy(parameters_micheline = t.parameters)
+
       val codeAlter = codeLens.modify(toMichelsonScript[MichelsonSchema])
       val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
-      val setUnparsedMicheline = transactionLens.modify(rewriteParametersInTransactions)
+      val setUnparsedMicheline = transactionLens.modify(copyParametersToMicheline)
+      //TODO focus the lens on the optional field and empty it if the conversion fails
+      //we have a copy anyway in the parameters_micheline
       val parametersAlter = parametersLens.modify(toMichelsonScript[MichelsonInstruction])
 
       codeAlter compose storageAlter compose setUnparsedMicheline compose parametersAlter
