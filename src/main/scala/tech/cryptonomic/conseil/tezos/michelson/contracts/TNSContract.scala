@@ -279,6 +279,19 @@ object TNSContract extends LazyLogging {
      */
     private val MichelsonParamExpr = """^Pair \d+ \(Pair\s+"(.+)"\s+"(.+)"\)$""".r
 
+    /* This is the equivalent matcher for micheline format, in case the michelson
+     * conversion failed for any reason, and paramters are still in "raw format"
+     */
+    private def parseAsMicheline(micheline: String) =
+      JsonParser.parse[MichelsonInstruction](micheline).toOption.collect {
+        case MichelsonSingleInstruction(
+            "Pair",
+            _ :: MichelsonType("Pair", MichelsonStringConstant(name) :: MichelsonStringConstant(resolver) :: _, _) :: _,
+            _
+            ) =>
+          (Name(name), AccountId(resolver))
+      }
+
     /* Reads paramters for a registerName call, extracting the name mapping */
     def parseNameRegistrationFromParameters(paramCode: Micheline): Option[(Name, AccountId)] = {
 
@@ -289,9 +302,12 @@ object TNSContract extends LazyLogging {
 
       whenOpt(michelson.nonEmpty) {
         //we profit from scala natively-provided pattern matching on regex to extract named groups
-        val extracted = MichelsonParamExpr.findFirstIn(michelson).map {
-          case MichelsonParamExpr(name, resolver) => (Name(name), AccountId(resolver))
-        }
+        val extracted = MichelsonParamExpr
+          .findFirstIn(michelson)
+          .map {
+            case MichelsonParamExpr(name, resolver) => (Name(name), AccountId(resolver))
+          }
+          .orElse(parseAsMicheline(michelson))
         if (extracted.isEmpty)
           logger.warn(
             "The TNS call parameters didn't conform to the expected shape for the contract. Michelson code was {}",
