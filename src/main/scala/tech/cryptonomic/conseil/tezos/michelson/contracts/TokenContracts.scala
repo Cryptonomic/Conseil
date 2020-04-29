@@ -1,7 +1,13 @@
 package tech.cryptonomic.conseil.tezos.michelson.contracts
 
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal}
-import tech.cryptonomic.conseil.tezos.TezosTypes.Micheline
+import tech.cryptonomic.conseil.tezos.TezosTypes.{
+  AccountId,
+  Contract,
+  ContractId,
+  Decimal,
+  Micheline,
+  ParametersCompatibility
+}
 import cats.implicits._
 import scala.collection.immutable.TreeSet
 import scala.util.Try
@@ -13,7 +19,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil
   * relevant bits of data useful to extract information
   * related to that specific contract shape.
   */
-class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
+class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox[Any]]) {
   import TokenContracts._
 
   /** Does the Id reference a known token smart contract? */
@@ -25,17 +31,22 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
     * @param diff the big map changes found in a transaction
     * @return a possible pair of an account and its new balance for a token associated to the passed-in contract
     */
-  def readBalance(token: ContractId)(diff: Contract.BigMapUpdate): Option[BalanceUpdate] = diff match {
-    //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
-    case update @ Contract.BigMapUpdate("update", _, _, Decimal(updateMapId), _) =>
-      for {
-        TokenToolbox(_, registryId, readBalanceForToken) <- registry.find(_.id == token)
-        if mapIdsMatch(registryId, updateMapId, token)
-        balanceChange <- readBalanceForToken(update)
-      } yield balanceChange
-    case _ =>
-      None
-  }
+  def readBalance(token: ContractId)(
+      diff: Contract.BigMapUpdate,
+      params: Option[ParametersCompatibility] = None
+  ): Option[BalanceUpdate] =
+    diff match {
+      //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
+      case update @ Contract.BigMapUpdate("update", _, _, Decimal(updateMapId), _) =>
+        for {
+          TokenToolbox(_, registryId, readParamsForToken, readBalanceForToken) <- registry.find(_.id == token)
+          if mapIdsMatch(registryId, updateMapId, token)
+          paramInfo = params.flatMap(readParamsForToken)
+          balanceChange <- readBalanceForToken(paramInfo, update)
+        } yield balanceChange
+      case _ =>
+        None
+    }
 
   /** Call this to store a big-map-id associated with a token contract.
     * This is supposed to happen once the chain records a block originating
@@ -48,7 +59,7 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
     */
   def setMapId(token: ContractId, id: BigDecimal): Unit =
     registry.find(_.id == token).foreach {
-      case TokenToolbox(_, syncMapId, _) =>
+      case TokenToolbox(_, syncMapId, _, _) =>
         syncMapId.put(BigMapId(id))
     }
 }
@@ -63,7 +74,9 @@ object TokenContracts extends LazyLogging {
   case class BigMapId(id: BigDecimal) extends AnyVal
 
   /** alias to the custom code that will read the new balance for a token from big map diffs */
-  private type BalanceReader = Contract.BigMapUpdate => Option[BalanceUpdate]
+  private type BalanceReader[PInfo] = (Option[PInfo], Contract.BigMapUpdate) => Option[BalanceUpdate]
+
+  private type ParamsReader[PInfo] = ParametersCompatibility => Option[PInfo]
 
   /* Data structure wrapping useful information + functions to act on tokens.
    * The value of the map id is not initially known, until the chain originates the
@@ -73,24 +86,27 @@ object TokenContracts extends LazyLogging {
    * balanceReader is a function that will use a big map update and extract
    *   balance information from it
    */
-  private case class TokenToolbox(
+  private case class TokenToolbox[PInfo](
       id: ContractId,
       mapId: SyncVar[BigMapId] = new SyncVar(),
-      balanceReader: BalanceReader
+      parametersReader: ParamsReader[PInfo],
+      balanceReader: BalanceReader[PInfo]
   )
 
   //we sort toolboxes by the contract id
-  implicit private val toolboxOrdering: Ordering[TokenToolbox] = Ordering.by(_.id.id)
+  implicit private def toolboxOrdering[PInfo]: Ordering[TokenToolbox[PInfo]] = Ordering.by(_.id.id)
 
   /* Creates a new toolbox, only if the standard is a known one, or returns an empty Option */
-  private def newToolbox(id: ContractId, standard: String) =
+  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox[Any]] =
     PartialFunction.condOpt(standard) {
       case "FA1.2" =>
-        TokenToolbox(
+        TokenToolbox[Any](
           id,
+          //parameters are not used for this kind of contract
+          parametersReader = Function.const(Option.empty),
           // the extraction code makes no check about the correctness of the key_hash
           // wrt. any potential account hash, which must be done somewhere else
-          balanceReader = update =>
+          balanceReader = (pinfo, update) =>
             for {
               key <- MichelineOps.parseBytes(update.key)
               account <- Codecs.decodeBigMapKey(key)
@@ -149,6 +165,87 @@ object TokenContracts extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.michelson.dto._
     import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
 
+    /* Defines staker dao specific operations */
+    object StakerDao {
+//TODO probably will not need to decode the account here, since it's already being done when reading the balance update key
+
+      /* Extract the receiver of a "transfer" operation from the parameters
+       * the output includes the decoded account-id and the hex-encoded bytestring
+       * We expect to use the bytes to extract balance updates from the big maps,
+       * using the bytes as a key.
+       */
+      def parseReceiverFromParameters(paramCode: Micheline): Option[(String, AccountId)] = {
+        val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
+
+        parsed.left.foreach(
+          err =>
+            logger.error(
+              """Failed to parse michelson expression for StakerDao receiver in parameters.
+                | Code was: {}
+                | Error is {}""".stripMargin,
+              paramCode.expression,
+              err.getMessage()
+            )
+        )
+
+        //custom match to the contract call structure for a stakerdao transfer
+        for {
+          receiverBytes <- parsed.toOption.collect {
+            case MichelsonSingleInstruction(
+                "Right",
+                MichelsonType(
+                  "Left",
+                  MichelsonType(
+                    "Left",
+                    MichelsonType(
+                      "Right",
+                      MichelsonType(
+                        "Pair",
+                        from :: MichelsonType(
+                              "Pair",
+                              MichelsonBytesConstant(to) :: _,
+                              _
+                            ) :: _,
+                        _
+                      ) :: _,
+                      _
+                    ) :: _,
+                    _
+                  ) :: _,
+                  _
+                ) :: _,
+                _
+                ) =>
+              to
+          }
+          accountId <- Codecs.decodeBigMapKey(receiverBytes)
+        } yield receiverBytes -> accountId
+      }
+
+      /* reads a map value as a list with a balance as head */
+      def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] = {
+
+        val parsed = JsonParser.parse[MichelsonInstruction](mapCode.expression)
+
+        parsed.left.foreach(
+          err =>
+            logger.error(
+              """Failed to parse michelson expression for token balance extraction.
+              | Code was: {}
+              | Error is {}""".stripMargin,
+              mapCode.expression,
+              err.getMessage()
+            )
+        )
+
+        parsed.toOption.collect {
+          case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) => balance
+        }.flatMap { balance =>
+          Try(BigInt(balance)).toOption
+        }
+      }
+    }
+
     /* extracts a bytes value as a string if it corresponds to the micheline argument */
     def parseBytes(code: Micheline): Option[String] =
       JsonParser.parse[MichelsonInstruction](code.expression).toOption.collect {
@@ -164,8 +261,8 @@ object TokenContracts extends LazyLogging {
         err =>
           logger.error(
             """Failed to parse michelson expression for token balance extraction.
-        | Code was: {}
-        | Error is {}""".stripMargin,
+              | Code was: {}
+              | Error is {}""".stripMargin,
             mapCode.expression,
             err.getMessage()
           )

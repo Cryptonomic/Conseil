@@ -3,7 +3,6 @@ package tech.cryptonomic.conseil.tezos.michelson.contracts
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Contract, ContractId, Decimal, Micheline, ScriptId}
 import org.scalatest.OptionValues
-import scala.util.Success
 
 class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
