@@ -6,6 +6,7 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   ContractId,
   Decimal,
   Micheline,
+  Parameters,
   ParametersCompatibility
 }
 import cats.implicits._
@@ -19,7 +20,7 @@ import tech.cryptonomic.conseil.util.CryptoUtil
   * relevant bits of data useful to extract information
   * related to that specific contract shape.
   */
-class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox[Any]]) {
+class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox]) {
   import TokenContracts._
 
   /** Does the Id reference a known token smart contract? */
@@ -39,10 +40,9 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox[Any]]
       //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
       case update @ Contract.BigMapUpdate("update", _, _, Decimal(updateMapId), _) =>
         for {
-          TokenToolbox(_, registryId, readParamsForToken, readBalanceForToken) <- registry.find(_.id == token)
+          toolbox @ TokenToolbox(_, registryId) <- registry.find(_.id == token)
           if mapIdsMatch(registryId, updateMapId, token)
-          paramInfo = params.flatMap(readParamsForToken)
-          balanceChange <- readBalanceForToken(paramInfo, update)
+          balanceChange <- toolbox.balanceReader(params.flatMap(toolbox.parametersReader), update)
         } yield balanceChange
       case _ =>
         None
@@ -59,7 +59,7 @@ class TokenContracts(private val registry: Set[TokenContracts.TokenToolbox[Any]]
     */
   def setMapId(token: ContractId, id: BigDecimal): Unit =
     registry.find(_.id == token).foreach {
-      case TokenToolbox(_, syncMapId, _, _) =>
+      case TokenToolbox(_, syncMapId) =>
         syncMapId.put(BigMapId(id))
     }
 }
@@ -86,34 +86,53 @@ object TokenContracts extends LazyLogging {
    * balanceReader is a function that will use a big map update and extract
    *   balance information from it
    */
-  private case class TokenToolbox[PInfo](
+  abstract private case class TokenToolbox(
       id: ContractId,
-      mapId: SyncVar[BigMapId] = new SyncVar(),
-      parametersReader: ParamsReader[PInfo],
-      balanceReader: BalanceReader[PInfo]
-  )
+      mapId: SyncVar[BigMapId] = new SyncVar()
+  ) {
+    type PInfo
+    def parametersReader: ParamsReader[PInfo]
+    def balanceReader: BalanceReader[PInfo]
+  }
 
   //we sort toolboxes by the contract id
-  implicit private def toolboxOrdering[PInfo]: Ordering[TokenToolbox[PInfo]] = Ordering.by(_.id.id)
+  implicit private def toolboxOrdering: Ordering[TokenToolbox] = Ordering.by(_.id.id)
 
   /* Creates a new toolbox, only if the standard is a known one, or returns an empty Option */
-  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox[Any]] =
+  private def newToolbox(id: ContractId, standard: String): Option[TokenToolbox] =
     PartialFunction.condOpt(standard) {
       case "FA1.2" =>
-        TokenToolbox[Any](
-          id,
+        new TokenToolbox(id) {
+          type PInfo = Nothing
           //parameters are not used for this kind of contract
-          parametersReader = Function.const(Option.empty),
+          val parametersReader = Function.const(Option.empty)
           // the extraction code makes no check about the correctness of the key_hash
           // wrt. any potential account hash, which must be done somewhere else
-          balanceReader = (pinfo, update) =>
+          val balanceReader = (_, update) =>
             for {
               key <- MichelineOps.parseBytes(update.key)
               account <- Codecs.decodeBigMapKey(key)
               code <- update.value
               balance <- MichelineOps.parseBalanceFromMap(code)
             } yield account -> balance
-        )
+        }
+      case "FA1.2-StakerDao" =>
+        new TokenToolbox(id) {
+          type PInfo = (String, AccountId)
+
+          val parametersReader = compatWrapped =>
+            MichelineOps.StakerDao.parseReceiverFromParameters(MichelineOps.handleCompatibility(compatWrapped))
+
+          val balanceReader = (pinfo, update) =>
+            for {
+              (receiverKey, receiverAccountId) <- pinfo
+              key <- MichelineOps.parseBytes(update.key)
+              if key == receiverKey
+              code <- update.value
+              balance <- MichelineOps.StakerDao.parseBalanceFromMap(code)
+            } yield receiverAccountId -> balance
+
+        }
     }
 
   /** Builds a registry of token contracts with the token data passed-in
@@ -165,9 +184,12 @@ object TokenContracts extends LazyLogging {
     import tech.cryptonomic.conseil.tezos.michelson.dto._
     import tech.cryptonomic.conseil.tezos.michelson.parser.JsonParser
 
+    /* Lifts legacy parameters to the new format and then read the value */
+    def handleCompatibility(compatLayer: ParametersCompatibility) =
+      compatLayer.map(Parameters(_)).merge.value
+
     /* Defines staker dao specific operations */
     object StakerDao {
-//TODO probably will not need to decode the account here, since it's already being done when reading the balance update key
 
       /* Extract the receiver of a "transfer" operation from the parameters
        * the output includes the decoded account-id and the hex-encoded bytestring
