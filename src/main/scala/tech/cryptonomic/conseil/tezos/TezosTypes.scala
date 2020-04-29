@@ -9,6 +9,7 @@ import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
 
 import scala.util.Try
+import monocle.Optional
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -22,11 +23,15 @@ object TezosTypes {
 
     private val origination = GenPrism[Operation, Origination]
     private val transaction = GenPrism[Operation, Transaction]
+    private val metadata = GenLens[Transaction](_.metadata)
+    private val internalTransaction =
+      GenPrism[InternalOperationResults.InternalOperationResult, InternalOperationResults.Transaction]
 
     private val script = GenLens[Origination](_.script)
     private val parameters = GenLens[Transaction](_.parameters)
+    private val internalParameters = GenLens[InternalOperationResults.Transaction](_.parameters)
 
-    private val parametersExpresssion = Lens[ParametersCompatibility, Micheline] {
+    private val parametersExpression = Lens[ParametersCompatibility, Micheline] {
       case Left(value) => value.value
       case Right(value) => value
     } { micheline =>
@@ -47,20 +52,44 @@ object TezosTypes {
           origination composeLens
           script composePrism some
 
+    private def internals[OP]: Optional[ResultMetadata[OP], List[InternalOperationResults.InternalOperationResult]] =
+      Optional((_: ResultMetadata[OP]).internal_operation_results)(
+        internalResults =>
+          metadata =>
+            metadata.copy(internal_operation_results = metadata.internal_operation_results.map(_ => internalResults))
+      )
+
     val storageLens: Traversal[Block, String] = scriptLens composeLens storage composeLens expression
     val codeLens: Traversal[Block, String] = scriptLens composeLens code composeLens expression
 
-    val parametersLens: Traversal[Block, String] =
-      operationGroups composeTraversal each composeLens
-          operations composeTraversal each composePrism
-          transaction composeLens
-          parameters composePrism some composeLens
-          parametersExpresssion composeLens expression
-
     val transactionLens: Traversal[Block, Transaction] =
-      operationGroups composeTraversal each composeLens
-          operations composeTraversal each composePrism
+      operationGroups composeTraversal
+          each composeLens
+          operations composeTraversal
+          each composePrism
           transaction
+
+    val parametersLens: Traversal[Block, String] =
+      transactionLens composeLens
+          parameters composePrism
+          some composeLens
+          parametersExpression composeLens
+          expression
+
+    val internalTransationsTraversal =
+      transactionLens composeLens
+          metadata composeOptional
+          internals composeTraversal
+          each composePrism
+          internalTransaction
+
+    val internalParametersLens: Traversal[Block, String] =
+      internalTransationsTraversal composeLens
+          internalParameters composePrism
+          some composeLens
+          parametersExpression composeLens
+          expression
+
   }
 
   //TODO use in a custom decoder for json strings that needs to have a proper encoding
