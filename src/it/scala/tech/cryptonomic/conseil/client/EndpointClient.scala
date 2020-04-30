@@ -16,7 +16,6 @@ import org.http4s.Uri
 import io.circe.{parser, Json}
 import cats.effect.IO
 import cats.syntax.all._
-import scala.io.Source
 import com.typesafe.config.ConfigFactory
 import scala.util.Try
 import cats.effect.Resource
