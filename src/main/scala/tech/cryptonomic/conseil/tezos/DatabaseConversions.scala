@@ -549,7 +549,7 @@ object DatabaseConversions extends LazyLogging {
     */
   implicit def anyToBalanceUpdates[T, Label](
       implicit
-      balances: Getter[T, Map[Label, List[BlockTagged[OperationMetadata.BalanceUpdate]]]],
+      balances: Getter[T, Map[BlockTagged[Label], List[OperationMetadata.BalanceUpdate]]],
       hashing: Getter[T, Option[String]],
       showing: Show[Label]
   ) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
@@ -559,29 +559,15 @@ object DatabaseConversions extends LazyLogging {
       balances
         .get(from)
         .flatMap {
-          case (tag, updates) =>
+          case (BlockTagged(blockHash, blockLevel, _, cycle, period, tag), updates) =>
             updates.map {
-              case BlockTagged(
-                  blockHash,
-                  blockLevel,
-                  _,
-                  cycle,
-                  period,
-                  OperationMetadata.BalanceUpdate(
-                    kind,
-                    change,
-                    category,
-                    contract,
-                    delegate,
-                    level
-                  )
-                  ) =>
+              case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level) =>
                 Tables.BalanceUpdatesRow(
                   id = 0,
                   source = tag.show,
                   sourceHash = hashing.get(from),
                   kind = kind,
-                  accountId = contract.map(_.id).orElse(delegate.map(_.value)).get, // either contract or delegate should be always set
+                  accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
                   change = BigDecimal(change),
                   level = level.map(BigDecimal(_)),
                   category = category,

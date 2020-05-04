@@ -33,30 +33,28 @@ object OperationBalances {
 
   //single polymorphic instance
   implicit def opsBalanceUpdatesGetter[OP <: Operation] =
-    Getter[BlockTagged[OP], Map[Label, List[BlockTagged[BalanceUpdate]]]] {
+    Getter[BlockTagged[OP], Map[BlockTagged[Label], List[BalanceUpdate]]] {
       case b: BlockTagged[OP] =>
         b.content match {
           case e: Endorsement =>
-            Map(OPERATION_SOURCE -> e.metadata.balance_updates.map(b.updateContent))
+            Map(b.updateContent(OPERATION_SOURCE) -> e.metadata.balance_updates)
           case nr: SeedNonceRevelation =>
-            Map(OPERATION_SOURCE -> nr.metadata.balance_updates.map(b.updateContent))
+            Map(b.updateContent(OPERATION_SOURCE) -> nr.metadata.balance_updates)
           case aa: ActivateAccount =>
-            Map(OPERATION_SOURCE -> aa.metadata.balance_updates.map(b.updateContent))
+            Map(b.updateContent(OPERATION_SOURCE) -> aa.metadata.balance_updates)
           case r: Reveal =>
-            Map(OPERATION_SOURCE -> r.metadata.balance_updates.map(b.updateContent))
+            Map(b.updateContent(OPERATION_SOURCE) -> r.metadata.balance_updates)
           case t: Transaction =>
             Map(
-              OPERATION_SOURCE -> t.metadata.balance_updates.map(b.updateContent),
-              OPERATION_RESULT_SOURCE -> t.metadata.operation_result.balance_updates
+              b.updateContent(OPERATION_SOURCE) -> t.metadata.balance_updates,
+              b.updateContent(OPERATION_RESULT_SOURCE) -> t.metadata.operation_result.balance_updates
                     .getOrElse(List.empty)
-                    .map(b.updateContent)
             )
           case o: Origination =>
             Map(
-              OPERATION_SOURCE -> o.metadata.balance_updates.map(b.updateContent),
-              OPERATION_RESULT_SOURCE -> o.metadata.operation_result.balance_updates
+              b.updateContent(OPERATION_SOURCE) -> o.metadata.balance_updates,
+              b.updateContent(OPERATION_RESULT_SOURCE) -> o.metadata.operation_result.balance_updates
                     .getOrElse(List.empty)
-                    .map(b.updateContent)
             )
           case _ =>
             Map.empty
@@ -77,13 +75,12 @@ object BlockBalances {
   import SymbolSourceLabels._
 
   //the updates might actually be missing from json
-  implicit val blockBalanceUpdatesGetter = Getter[BlockData, Map[Label, List[BlockTagged[BalanceUpdate]]]](
+  implicit val blockBalanceUpdatesGetter = Getter[BlockData, Map[BlockTagged[Label], List[BalanceUpdate]]](
     data =>
       Map(
-        BLOCK_SOURCE -> (data.metadata match {
+        BlockTagged.fromBlockData(data, BLOCK_SOURCE) -> (data.metadata match {
               case GenesisMetadata => List.empty
-              case BlockHeaderMetadata(balance_updates, _, _, _, _, _) =>
-                balance_updates.map(BlockTagged.fromBlockData(data, _))
+              case BlockHeaderMetadata(balance_updates, _, _, _, _, _) => balance_updates
             })
       )
   )
