@@ -118,19 +118,19 @@ object TokenContracts extends LazyLogging {
         }
       case "FA1.2-StakerDao" =>
         new TokenToolbox(id) {
-          type PInfo = (String, AccountId)
+          type PInfo = Map[String, AccountId]
 
           val parametersReader = compatWrapped =>
             MichelineOps.StakerDao.parseReceiverFromParameters(MichelineOps.handleCompatibility(compatWrapped))
 
           val balanceReader = (pinfo, update) =>
             for {
-              (receiverKey, receiverAccountId) <- pinfo
+              keysToAccountMap <- pinfo
               key <- MichelineOps.parseBytes(update.key)
-              if key == receiverKey
+              accountId <- keysToAccountMap.get(key)
               code <- update.value
               balance <- MichelineOps.StakerDao.parseBalanceFromMap(code)
-            } yield receiverAccountId -> balance
+            } yield accountId -> balance
 
         }
     }
@@ -196,7 +196,7 @@ object TokenContracts extends LazyLogging {
        * We expect to use the bytes to extract balance updates from the big maps,
        * using the bytes as a key.
        */
-      def parseReceiverFromParameters(paramCode: Micheline): Option[(String, AccountId)] = {
+      def parseReceiverFromParameters(paramCode: Micheline): Option[Map[String, AccountId]] = {
         val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
         parsed.left.foreach(
@@ -210,9 +210,13 @@ object TokenContracts extends LazyLogging {
             )
         )
 
+        parsed.foreach(
+          michelson => logger.debug("I parsed a staker dao parameters value as {}", michelson)
+        )
+
         //custom match to the contract call structure for a stakerdao transfer
         for {
-          receiverBytes <- parsed.toOption.collect {
+          (senderBytes, receiverBytes) <- parsed.toOption.collect {
             case MichelsonSingleInstruction(
                 "Right",
                 MichelsonType(
@@ -223,7 +227,8 @@ object TokenContracts extends LazyLogging {
                       "Right",
                       MichelsonType(
                         "Pair",
-                        from :: MichelsonType(
+                        MichelsonBytesConstant(from) ::
+                            MichelsonType(
                               "Pair",
                               MichelsonBytesConstant(to) :: _,
                               _
@@ -238,10 +243,15 @@ object TokenContracts extends LazyLogging {
                 ) :: _,
                 _
                 ) =>
-              to
+              (from, to)
           }
-          accountId <- Codecs.decodeBigMapKey(receiverBytes)
-        } yield receiverBytes -> accountId
+          (senderId, receiverId) <- (Codecs.decodeBigMapKey(senderBytes), Codecs.decodeBigMapKey(receiverBytes)).tupled
+        } yield
+          Map(
+            senderBytes -> senderId,
+            receiverBytes -> receiverId
+          )
+
       }
 
       /* reads a map value as a list with a balance as head */
@@ -260,8 +270,12 @@ object TokenContracts extends LazyLogging {
             )
         )
 
+        parsed.foreach(
+          michelson => logger.debug("I parsed a staker-dao map diff value as {}", michelson)
+        )
+
         parsed.toOption.collect {
-          case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) => balance
+          case MichelsonIntConstant(balance) => balance
         }.flatMap { balance =>
           Try(BigInt(balance)).toOption
         }
@@ -288,6 +302,10 @@ object TokenContracts extends LazyLogging {
             mapCode.expression,
             err.getMessage()
           )
+      )
+
+      parsed.foreach(
+        michelson => logger.debug("I parsed a token contract diff value as {}", michelson)
       )
 
       parsed.toOption.collect {

@@ -53,6 +53,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
         //values sampled from a real babylon use-case
         val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val mapId = 1718
         val updateValue = """
                     |{
                     |  "prim": "Pair",
@@ -68,7 +69,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
           action = "update",
           key = Micheline("""{"bytes" : "0000c4ce21c7a7ac69810bb3425a043def752fddc817"}"""),
           key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
-          big_map = Decimal(1718),
+          big_map = Decimal(mapId),
           value = Some(Micheline(updateValue))
         )
 
@@ -85,6 +86,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
         //some values sampled from a real babylon use-case
         val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val mapId = 1718
         val updateValue = """
                     |{
                     |  "prim": "Pair",
@@ -107,7 +109,7 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
         //register the token info
         val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
         //set the map id for the contract
-        sut.setMapId(ledgerId, BigDecimal(1718))
+        sut.setMapId(ledgerId, BigDecimal(mapId))
 
         //when
         val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
