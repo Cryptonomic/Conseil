@@ -503,6 +503,24 @@ object TezosTypes {
       content: T
   ) {
     val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
+
+    /** Helper method for updating content of the class */
+    def updateContent[A](newContent: A): BlockTagged[A] = this.copy(content = newContent)
+  }
+
+  /** Companion object for BlockTagged */
+  object BlockTagged {
+
+    /** Tags given content with BlockData */
+    def fromBlockData[T](block: BlockData, content: T): BlockTagged[T] =
+      BlockTagged(
+        block.hash,
+        block.header.level,
+        Some(block.header.timestamp.toInstant),
+        TezosOptics.Blocks.extractCycle(block),
+        TezosOptics.Blocks.extractPeriod(block.metadata),
+        content
+      )
   }
 
   final case class Delegate(

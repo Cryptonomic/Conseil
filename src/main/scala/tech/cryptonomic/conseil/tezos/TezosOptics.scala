@@ -106,6 +106,12 @@ object TezosOptics {
         .map(_.level.cycle) //this is Option[Int]
 
     //Note, cycle 0 starts at the level 2 block
+    def extractCycle(block: BlockData): Option[Int] =
+      discardGenesis
+        .lift(block.metadata) //this returns an Option[BlockHeaderMetadata]
+        .map(_.level.cycle) //this is Option[Int]
+
+    //Note, cycle 0 starts at the level 2 block
     def extractCyclePosition(block: BlockMetadata): Option[Int] =
       discardGenesis
         .lift(block) //this returns an Option[BlockHeaderMetadata]

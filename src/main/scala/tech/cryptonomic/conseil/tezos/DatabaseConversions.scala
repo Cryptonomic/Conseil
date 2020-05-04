@@ -560,13 +560,13 @@ object DatabaseConversions extends LazyLogging {
     * We get back an empty List, where not applicable
     * We define a typeclass/trait that encodes the availability of balance updates, to reuse it for operations as well as blocks
     * @tparam T the source type that contains the balance updates values
-    * @tparam Label the source Label type, which has a `Show` contraint, to be representable as a string
+    * @tparam Label the source Label type, which has a `Show` constraint, to be representable as a string
     * @param balances an optic instance that lets extract the Map of tagged updates from the source
     * @param hashing an optic instance to extract an optional reference hash value
     */
   implicit def anyToBalanceUpdates[T, Label](
       implicit
-      balances: Getter[T, Map[Label, List[OperationMetadata.BalanceUpdate]]],
+      balances: Getter[T, Map[BlockTagged[Label], List[OperationMetadata.BalanceUpdate]]],
       hashing: Getter[T, Option[String]],
       showing: Show[Label]
   ) = new Conversion[List, T, Tables.BalanceUpdatesRow] {
@@ -576,26 +576,22 @@ object DatabaseConversions extends LazyLogging {
       balances
         .get(from)
         .flatMap {
-          case (tag, updates) =>
+          case (BlockTagged(blockHash, blockLevel, _, cycle, period, tag), updates) =>
             updates.map {
-              case OperationMetadata.BalanceUpdate(
-                  kind,
-                  change,
-                  category,
-                  contract,
-                  delegate,
-                  level
-                  ) =>
+              case OperationMetadata.BalanceUpdate(kind, change, category, contract, delegate, level) =>
                 Tables.BalanceUpdatesRow(
                   id = 0,
                   source = tag.show,
                   sourceHash = hashing.get(from),
                   kind = kind,
-                  contract = contract.map(_.id),
+                  accountId = contract.map(_.id).orElse(delegate.map(_.value)).getOrElse("N/A"),
                   change = BigDecimal(change),
                   level = level.map(BigDecimal(_)),
-                  delegate = delegate.map(_.value),
-                  category = category
+                  category = category,
+                  blockId = blockHash.value,
+                  blockLevel = blockLevel,
+                  cycle = cycle,
+                  period = period
                 )
             }
         }
@@ -689,13 +685,16 @@ object DatabaseConversions extends LazyLogging {
             val mainOperationData = operations.map(
               op =>
                 (from, group.hash, op).convertTo[Tables.OperationsRow] ->
-                    op.convertToA[List, Tables.BalanceUpdatesRow]
+                    BlockTagged
+                      .fromBlockData(from.data, op)
+                      .convertToA[List, Tables.BalanceUpdatesRow]
             )
             val internalOperationData = internalResults.map { oop =>
               val op = oop.convertTo[Operation]
               (from, group.hash, op)
                 .convertTo[Tables.OperationsRow]
-                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> op
+                .copy(internal = true, nonce = Some(oop.nonce.toString)) -> BlockTagged
+                .fromBlockData(from.data, op)
                 .convertToA[List, Tables.BalanceUpdatesRow]
             }
             mainOperationData ++ internalOperationData

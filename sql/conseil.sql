@@ -225,12 +225,15 @@ CREATE TABLE tezos.balance_updates (
     source_id integer,
     source_hash character varying,
     kind character varying NOT NULL,
-    contract character varying,
+    account_id character varying NOT NULL,
     change numeric NOT NULL,
     level numeric,
-    delegate character varying,
     category character varying,
-    operation_group_hash character varying
+    operation_group_hash character varying,
+    block_id character varying NOT NULL,
+    block_level integer NOT NULL,
+    cycle integer,
+    period integer
 );
 
 
@@ -682,6 +685,10 @@ CREATE INDEX ix_operations_cycle ON tezos.operations USING btree("cycle");
 CREATE INDEX ix_operations_kind ON tezos.operations USING btree("kind");
 
 CREATE INDEX ix_balance_updates_op_group_hash ON tezos.balance_updates USING btree (operation_group_hash);
+
+CREATE INDEX ix_balance_updates_account_id ON tezos.balance_updates USING btree (account_id);
+
+CREATE INDEX ix_balance_updates_block_level ON tezos.balance_updates USING btree (block_level);
 
 --
 -- Name: accounts accounts_block_id_fkey; Type: FK CONSTRAINT; Schema: tezos; Owner: -

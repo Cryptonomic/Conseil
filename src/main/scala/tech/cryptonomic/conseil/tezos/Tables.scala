@@ -975,24 +975,30 @@ trait Tables {
     *  @param sourceId Database column source_id SqlType(int4), Default(None)
     *  @param sourceHash Database column source_hash SqlType(varchar), Default(None)
     *  @param kind Database column kind SqlType(varchar)
-    *  @param contract Database column contract SqlType(varchar), Default(None)
+    *  @param accountId Database column account_id SqlType(varchar)
     *  @param change Database column change SqlType(numeric)
     *  @param level Database column level SqlType(numeric), Default(None)
-    *  @param delegate Database column delegate SqlType(varchar), Default(None)
     *  @param category Database column category SqlType(varchar), Default(None)
-    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar), Default(None) */
+    *  @param operationGroupHash Database column operation_group_hash SqlType(varchar), Default(None)
+    *  @param blockId Database column block_id SqlType(varchar)
+    *  @param blockLevel Database column block_level SqlType(int4)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param period Database column period SqlType(int4), Default(None) */
   case class BalanceUpdatesRow(
       id: Int,
       source: String,
       sourceId: Option[Int] = None,
       sourceHash: Option[String] = None,
       kind: String,
-      contract: Option[String] = None,
+      accountId: String,
       change: scala.math.BigDecimal,
       level: Option[scala.math.BigDecimal] = None,
-      delegate: Option[String] = None,
       category: Option[String] = None,
-      operationGroupHash: Option[String] = None
+      operationGroupHash: Option[String] = None,
+      blockId: String,
+      blockLevel: Int,
+      cycle: Option[Int] = None,
+      period: Option[Int] = None
   )
 
   /** GetResult implicit for fetching BalanceUpdatesRow objects using plain SQL queries */
@@ -1012,12 +1018,15 @@ trait Tables {
         <<?[Int],
         <<?[String],
         <<[String],
-        <<?[String],
+        <<[String],
         <<[scala.math.BigDecimal],
         <<?[scala.math.BigDecimal],
         <<?[String],
         <<?[String],
-        <<?[String]
+        <<[String],
+        <<[Int],
+        <<?[Int],
+        <<?[Int]
       )
     )
   }
@@ -1026,7 +1035,22 @@ trait Tables {
   class BalanceUpdates(_tableTag: Tag)
       extends profile.api.Table[BalanceUpdatesRow](_tableTag, Some("tezos"), "balance_updates") {
     def * =
-      (id, source, sourceId, sourceHash, kind, contract, change, level, delegate, category, operationGroupHash) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
+      (
+        id,
+        source,
+        sourceId,
+        sourceHash,
+        kind,
+        accountId,
+        change,
+        level,
+        category,
+        operationGroupHash,
+        blockId,
+        blockLevel,
+        cycle,
+        period
+      ) <> (BalanceUpdatesRow.tupled, BalanceUpdatesRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
@@ -1037,17 +1061,24 @@ trait Tables {
           sourceId,
           sourceHash,
           Rep.Some(kind),
-          contract,
+          Rep.Some(accountId),
           Rep.Some(change),
           level,
-          delegate,
           category,
-          operationGroupHash
+          operationGroupHash,
+          Rep.Some(blockId),
+          Rep.Some(blockLevel),
+          cycle,
+          period
         )
       ).shaped.<>(
         { r =>
           import r._;
-          _1.map(_ => BalanceUpdatesRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6, _7.get, _8, _9, _10, _11)))
+          _1.map(
+            _ =>
+              BalanceUpdatesRow
+                .tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7.get, _8, _9, _10, _11.get, _12.get, _13, _14))
+          )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1067,8 +1098,8 @@ trait Tables {
     /** Database column kind SqlType(varchar) */
     val kind: Rep[String] = column[String]("kind")
 
-    /** Database column contract SqlType(varchar), Default(None) */
-    val contract: Rep[Option[String]] = column[Option[String]]("contract", O.Default(None))
+    /** Database column account_id SqlType(varchar) */
+    val accountId: Rep[String] = column[String]("account_id")
 
     /** Database column change SqlType(numeric) */
     val change: Rep[scala.math.BigDecimal] = column[scala.math.BigDecimal]("change")
@@ -1076,17 +1107,32 @@ trait Tables {
     /** Database column level SqlType(numeric), Default(None) */
     val level: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("level", O.Default(None))
 
-    /** Database column delegate SqlType(varchar), Default(None) */
-    val delegate: Rep[Option[String]] = column[Option[String]]("delegate", O.Default(None))
-
     /** Database column category SqlType(varchar), Default(None) */
     val category: Rep[Option[String]] = column[Option[String]]("category", O.Default(None))
 
     /** Database column operation_group_hash SqlType(varchar), Default(None) */
     val operationGroupHash: Rep[Option[String]] = column[Option[String]]("operation_group_hash", O.Default(None))
 
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+
+    /** Database column block_level SqlType(int4) */
+    val blockLevel: Rep[Int] = column[Int]("block_level")
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column period SqlType(int4), Default(None) */
+    val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Index over (accountId) (database name ix_balance_updates_account_id) */
+    val index1 = index("ix_balance_updates_account_id", accountId)
+
+    /** Index over (blockLevel) (database name ix_balance_updates_block_level) */
+    val index2 = index("ix_balance_updates_block_level", blockLevel)
+
     /** Index over (operationGroupHash) (database name ix_balance_updates_op_group_hash) */
-    val index1 = index("ix_balance_updates_op_group_hash", operationGroupHash)
+    val index3 = index("ix_balance_updates_op_group_hash", operationGroupHash)
   }
 
   /** Collection-like TableQuery object for table BalanceUpdates */
