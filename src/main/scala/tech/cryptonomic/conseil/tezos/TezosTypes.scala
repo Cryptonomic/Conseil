@@ -255,7 +255,7 @@ object TezosTypes {
       source: PublicKeyHash,
       destination: ContractId,
       parameters: Option[ParametersCompatibility],
-      parameters_micheline: Option[String],
+      parameters_micheline: Option[ParametersCompatibility],
       metadata: ResultMetadata[OperationResult.Transaction]
   ) extends Operation
 
@@ -339,7 +339,7 @@ object TezosTypes {
         amount: PositiveBigNumber,
         destination: ContractId,
         parameters: Option[ParametersCompatibility],
-        parameters_micheline: Option[String],
+        parameters_micheline: Option[ParametersCompatibility],
         result: OperationResult.Transaction
     ) extends InternalOperationResult
 

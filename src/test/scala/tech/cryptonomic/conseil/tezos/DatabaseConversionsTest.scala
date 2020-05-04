@@ -328,6 +328,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -373,6 +375,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -418,6 +422,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -482,6 +488,7 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
               converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
@@ -532,7 +539,7 @@ class DatabaseConversionsTest
           case _ => converted.amount shouldBe 'empty
         }
         converted.destination.value shouldBe sampleTransaction.destination.id
-        converted.parameters shouldBe sampleTransaction.parameters.map(_.left.value.value.expression)
+        converted.parametersMicheline shouldBe sampleTransaction.parameters.map(_.left.value.value.expression)
         converted.parametersEntrypoints shouldBe sampleTransaction.parameters.flatMap(_.left.value.entrypoint)
         converted.status.value shouldBe sampleTransaction.metadata.operation_result.status
         sampleTransaction.metadata.operation_result.consumed_gas match {
@@ -557,6 +564,7 @@ class DatabaseConversionsTest
               converted.secret ::
               converted.publicKey ::
               converted.managerPubkey ::
+              converted.parameters ::
               converted.balance ::
               converted.spendable ::
               converted.delegatable ::
@@ -633,6 +641,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               Nil
         ) {
           _ shouldBe 'empty
@@ -686,6 +696,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -728,6 +740,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -773,6 +787,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -820,6 +836,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::
@@ -868,6 +886,8 @@ class DatabaseConversionsTest
               converted.amount ::
               converted.destination ::
               converted.parameters ::
+              converted.parametersMicheline ::
+              converted.parametersEntrypoints ::
               converted.managerPubkey ::
               converted.balance ::
               converted.spendable ::

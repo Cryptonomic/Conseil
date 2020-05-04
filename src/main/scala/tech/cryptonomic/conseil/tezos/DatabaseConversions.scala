@@ -347,7 +347,24 @@ object DatabaseConversions extends LazyLogging {
           metadata
         )
         ) =>
-      val extractedParameters = parameters.map(_.map(Parameters(_)).merge)
+      /* If the parameters parsed correctly
+       * - parameters will hold the michelson format
+       * - parameters_micheline will hold the micheline format
+       * if parsing failed
+       * - parameters will hold the original micheline format
+       * - parameters_micheline will be empty
+       *
+       * In the record we want to swap the meaning of those fields, such that micheline will always hold the
+       * original data, and parameters will be empty if parsing failed
+       */
+      //will align to a common representation that will include entry-points, possibly empty
+      val upgradeToLatest: ParametersCompatibility => Parameters = compat => compat.map(Parameters(_)).merge
+
+      //could contain michelson or micheline
+      val hopefullyMichelson = parameters.map(upgradeToLatest).map(_.value.expression)
+      //could be empty
+      val maybeMicheline = parameters_micheline.map(upgradeToLatest).map(_.value.expression)
+
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
       Tables.OperationsRow(
         operationId = 0,
@@ -360,9 +377,9 @@ object DatabaseConversions extends LazyLogging {
         storageLimit = extractBigDecimal(storage_limit),
         amount = extractBigDecimal(amount),
         destination = Some(destination.id),
-        parameters = extractedParameters.map(_.value.expression),
-        parametersMicheline = parameters_micheline,
-        parametersEntrypoints = extractedParameters.flatMap(_.entrypoint),
+        parameters = maybeMicheline.flatMap(_ => hopefullyMichelson),
+        parametersMicheline = maybeMicheline.orElse(hopefullyMichelson),
+        parametersEntrypoints = parameters.map(upgradeToLatest).flatMap(_.entrypoint),
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
