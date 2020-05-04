@@ -208,8 +208,7 @@ class TezosPlatformDiscoveryOperations(
 
   /** Makes list of possible string values of the attributes
     *
-    * @param  tableName             name of the table from which we extract attributes
-    * @param  column                name of the attribute
+    * @param  attributePath         path of the attribute to extract caching config
     * @param  withFilter            optional parameter which can filter attributes
     * @param  attributesCacheConfig optional parameter available when attribute needs to be cached
     * @return Either list of attributes or list of errors
@@ -234,7 +233,8 @@ class TezosPlatformDiscoveryOperations(
                 ),
                 left = Future.successful(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength)))
               )
-
+            case (Some(AttributeCacheConfiguration(cached, _, maxResultLength)), None) if cached =>
+              Right(getAttributeValuesFromCache(attributePath.up.entity, attributePath.attribute, "", maxResultLength))
             case _ =>
               val invalidDataTypeValidationResult =
                 if (!attrOpt.exists(attr => canQueryType(attr.dataType)))
