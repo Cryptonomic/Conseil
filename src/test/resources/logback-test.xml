@@ -10,6 +10,8 @@
     </appender>
 
     <logger name="com.base22" level="TRACE"/>
+    <logger name="tech.cryptonomic.conseil.tezos.BigMapsOperations" level="DEBUG"/>
+    <logger name="tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContracts" level="DEBUG"/>
 
     <root level="OFF">
         <appender-ref ref="STDOUT" />
