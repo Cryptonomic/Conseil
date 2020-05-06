@@ -44,9 +44,9 @@ else
 fi
 
 if [ $1 = "conseil" ]; then
-      java -Xmx $JVM_XMX_CONSEIL -Dconfig.file=$CONFIG -cp /root/conseil.jar tech.cryptonomic.conseil.Conseil
+      java -Xmx$JVM_XMX_CONSEIL -Dconfig.file=$CONFIG -cp /root/conseil.jar tech.cryptonomic.conseil.Conseil
 fi
 
 if [ $1 = "lorre" ]; then
-   java -Xmx $JVM_XMX_LORRE -Dconfig.file=$CONFIG -cp /root/conseil.jar tech.cryptonomic.conseil.Lorre $XTZNET
+   java -Xmx$JVM_XMX_LORRE -Dconfig.file=$CONFIG -cp /root/conseil.jar tech.cryptonomic.conseil.Lorre $XTZNET
 fi
