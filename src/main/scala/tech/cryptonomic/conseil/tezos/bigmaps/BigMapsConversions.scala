@@ -11,7 +11,8 @@ import tech.cryptonomic.conseil.tezos.TezosTypes.{
   ContractId,
   Decimal,
   InvalidDecimal,
-  OperationHash
+  OperationHash,
+  ParametersCompatibility
 }
 import tech.cryptonomic.conseil.tezos.michelson
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
@@ -31,7 +32,7 @@ object BigMapsConversions extends LazyLogging {
   //input to collect token data to convert
   case class TokenUpdatesInput(
       block: Block,
-      contractUpdates: Map[ContractId, List[Contract.BigMapUpdate]]
+      contractUpdates: Map[ContractId, (Option[ParametersCompatibility], List[Contract.BigMapUpdate])]
   )
   //output to token data converted
   case class TokenUpdate(block: Block, tokenContractId: ContractId, accountId: AccountId, balance: BigInt)
@@ -147,9 +148,9 @@ object BigMapsConversions extends LazyLogging {
 
         //we're looking for known token ledgers based on the contract id and the specific map identified by a diff
         val tokenTransactions: List[(ContractId, List[TokenContracts.BalanceUpdate])] = contractUpdates.map {
-          case (tokenId, updates) =>
+          case (tokenId, (params, updates)) =>
             val bigMapToTokenTransaction: Contract.BigMapUpdate => Option[TokenContracts.BalanceUpdate] =
-              tokenContracts.readBalance(tokenId)
+              tokenContracts.readBalance(tokenId)(_, params)
             val tokenUpdates = updates.map(bigMapToTokenTransaction).flattenOption
             tokenId -> tokenUpdates
         }.toList

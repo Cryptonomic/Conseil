@@ -1,2 +1,3 @@
-id, name , contract_type, account_id
-1 , USDtz, FA1.2        , KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9
+id, name      , contract_type  , account_id
+1 , Staker DAO, FA1.2-StakerDao, KT1EctCuorV2NfVb1XTQgvzJ88MQtWP8cMMv
+2 , USDtz     , FA1.2          , KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9

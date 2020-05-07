@@ -7,7 +7,14 @@ import scala.concurrent.ExecutionContext
 import cats.implicits._
 import tech.cryptonomic.conseil.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.tezos.TezosTypes.{AccountId, Block, Contract, ContractId, Decimal, OperationHash}
+import tech.cryptonomic.conseil.tezos.TezosTypes.{
+  Block,
+  Contract,
+  ContractId,
+  Decimal,
+  OperationHash,
+  ParametersCompatibility
+}
 import tech.cryptonomic.conseil.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.tezos.Tables
 import tech.cryptonomic.conseil.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
@@ -314,33 +321,37 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
         case Right(op) => tokenContracts.isKnownToken(op.destination)
       }
 
-      //now extract relevant diffs for each destination
-      val updates: Map[ContractId, List[BigMapUpdate]] = transactions.map {
-        case Left(op) => op.destination -> op.metadata.operation_result.big_map_diff
-        case Right(op) => op.destination -> op.result.big_map_diff
-      }.toMap
-        .mapValues(
-          optionalDiffs =>
-            optionalDiffs.toList.flatMap(keepLatestDiffsFormat).collect {
-              case diff: Contract.BigMapUpdate => diff
-            }
-        )
+      //now extract relevant diffs for each destination, along with call parameters
+      val updatesMap: Map[ContractId, (Option[ParametersCompatibility], List[BigMapUpdate])] = transactions.map {
+        case Left(op) =>
+          op.destination -> (op.parameters_micheline.orElse(op.parameters), op.metadata.operation_result.big_map_diff)
+        case Right(op) =>
+          op.destination -> (op.parameters_micheline.orElse(op.parameters), op.result.big_map_diff)
+      }.toMap.mapValues {
+        case (optionalParams, optionalDiffs) =>
+          optionalParams -> keepLatestUpdateFormat(optionalDiffs.toList.flatten)
+
+      }
 
       if (logger.underlying.isDebugEnabled()) {
         logger.debug(
-          "For block hash {}, I'm about to extract the token balance updates from the following big maps: \n{}",
+          "For block hash {}, I'm about to extract the token balance updates from the following transactions' data : \n{}",
           b.data.hash.value,
-          updates.map {
-            case (tokenId, updates) =>
+          updatesMap.map {
+            case (tokenId, (params, updates)) =>
+              val paramsValue = params.fold("missing params") {
+                case Left(params) => params.toString
+                case Right(micheline) => micheline.toString
+              }
               val updateString = updates.mkString("\t", "\n\t", "\n")
-              s"Token ${tokenId.id}:\n $updateString"
+              s"Token ${tokenId.id}:\n $paramsValue -> $updateString"
           }.mkString("\n")
         )
       }
 
       //convert packed data
       BigMapsConversions
-        .TokenUpdatesInput(b, updates)
+        .TokenUpdatesInput(b, updatesMap)
         .convertToA[List, BigMapsConversions.TokenUpdate]
     }
 
@@ -378,10 +389,17 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     }
   }
 
+  /* filter out pre-babylon big map updates */
+  private def keepLatestUpdateFormat: List[Contract.CompatBigMapDiff] => List[Contract.BigMapUpdate] =
+    compatibilityWrapped =>
+      compatibilityWrapped.collect {
+        case Left(update: Contract.BigMapUpdate) => update
+      }
+
   /* filter out pre-babylon big map diffs */
   private def keepLatestDiffsFormat: List[Contract.CompatBigMapDiff] => List[Contract.BigMapDiff] =
-    compatibilityWrapper =>
-      compatibilityWrapper.collect {
+    compatibilityWrapped =>
+      compatibilityWrapped.collect {
         case Left(diff) => diff
       }
 }
