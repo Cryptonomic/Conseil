@@ -1,15 +1,7 @@
-package tech.cryptonomic.conseil.tezos.michelson.contracts
+package tech.cryptonomic.conseil.common.tezos.michelson.contracts
 
 import org.scalatest.{Matchers, OptionValues, WordSpec}
-import tech.cryptonomic.conseil.tezos.TezosTypes.{
-  AccountId,
-  Contract,
-  ContractId,
-  Decimal,
-  Micheline,
-  Parameters,
-  ScriptId
-}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 
 class StakerDaoTest extends WordSpec with Matchers with OptionValues {
 
