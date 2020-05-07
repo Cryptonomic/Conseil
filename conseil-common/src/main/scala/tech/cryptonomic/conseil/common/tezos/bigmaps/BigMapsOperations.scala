@@ -8,11 +8,7 @@ import cats.implicits._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
-  Block,
-  Contract,
-  ContractId,
-  Decimal,
-  OperationHash,
+  Block, Contract, ContractId, Decimal, OperationHash,
   ParametersCompatibility
 }
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.BigMapUpdate

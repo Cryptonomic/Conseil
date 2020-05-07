@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.client
+package tech.cryptonomic.conseil.smoke.tests
 
 trait RegressionFixtures {
 
