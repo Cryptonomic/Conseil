@@ -4,6 +4,7 @@ import java.util.concurrent.Executors
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all._
+import com.typesafe.config.ConfigFactory
 import io.circe.{Json, parser}
 import org.http4s.circe._
 import org.http4s.client.blaze._
@@ -93,10 +94,7 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
 
   private val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
-  /** will run the regression suite against the given endpoints
-    * @param configfile the file path to the configuration file used to run the regressions
-    * @param syncToNetwork if a network name is provided, a Lorre instance will load data to the local db from the specified network
-    */
+  /** will run the regression suite against the given endpoints */
   def runRegressionSuite: IO[Unit] =
     Setup.conseilProcess.use { _ =>
       infoEndpoint *> blockHeadEndpoint *> groupingPredicatesQueryEndpoint

@@ -104,6 +104,7 @@ object Dependencies {
   )
 
   val conseilSmokeTestsInclude = Seq(
+    "com.typesafe"  % "config"               % "1.3.3",
     "org.typelevel" %% "cats-core"           % catsVersion,
     "org.http4s"    %% "http4s-blaze-client" % http4sVersion,
     "org.http4s"    %% "http4s-dsl"          % http4sVersion,
