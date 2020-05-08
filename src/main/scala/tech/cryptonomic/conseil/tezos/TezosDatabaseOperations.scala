@@ -21,7 +21,7 @@ import scala.math.{ceil, max}
 import cats.effect.Async
 import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.generic.chain.DataTypes.OutputType.OutputType
-import tech.cryptonomic.conseil.tezos.Tables.GovernanceRow
+import tech.cryptonomic.conseil.tezos.Tables.{BakersRow, GovernanceRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.tezos.TezosNodeOperator.FetchRights
 import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.BakerRolls
 import slick.basic.Capability
@@ -32,7 +32,6 @@ import slick.lifted.{AbstractTable, TableQuery}
 import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.util.ConfigUtil
-import tech.cryptonomic.conseil.tezos.Tables.OriginatedAccountMapsRow
 import tech.cryptonomic.conseil.tezos.michelson.contracts.TNSContract
 
 /**
@@ -440,6 +439,15 @@ object TezosDatabaseOperations extends LazyLogging {
 
   object CustomPostgresProfile extends CustomPostgresProfile
 
+
+  def getBakingRightsForBlock(blockLevel: Int)(implicit ec: ExecutionContext): DBIO[List[Tables.BakingRightsRow]] = {
+    Tables.BakingRights.filter(_.level === blockLevel).result.map(_.toList)
+  }
+
+  def getEndorsingRightsForBlock(blockLevel: Int)(implicit ec: ExecutionContext): DBIO[List[Tables.EndorsingRightsRow]] = {
+    Tables.EndorsingRights.filter(_.level === blockLevel).result.map(_.toList)
+  }
+
   /**
     * Upserts baking rights to the database
     * @param bakingRightsMap mapping of hash to bakingRights list
@@ -698,6 +706,12 @@ object TezosDatabaseOperations extends LazyLogging {
       .update(true)
   }
 
+  /**
+   * Gets all bakers for given block hash
+   * @param hashes
+   * @param ec
+   * @return
+   */
   def getBakersForBlocks(
       hashes: List[BlockHash]
   )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
@@ -709,6 +723,24 @@ object TezosDatabaseOperations extends LazyLogging {
           .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
       }
     }
+
+  /**
+   * Gets all bakers from the DB
+   * @param ec execution context
+   * @return
+   */
+  def getBakers()(implicit ec: ExecutionContext): DBIO[List[Tables.BakersRow]] =
+    Tables.Bakers.result.map(_.toList)
+
+  /**
+   * Updates bakers table.
+   * @param bakers
+   * @return
+   */
+  def updateBakers(bakers: List[Tables.BakersRow]): DBIO[Option[Int]] = {
+    import CustomPostgresProfile.api._
+    Tables.Bakers.insertOrUpdateAll(bakers)
+  }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.
