@@ -125,7 +125,9 @@ object TezosOptics {
   }
 
   object Operations {
-    import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
+    import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{
+      Transaction => InternalTransaction
+    }
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.OperationResult.Status
 
     val selectOrigination = GenPrism[Operation, Origination]

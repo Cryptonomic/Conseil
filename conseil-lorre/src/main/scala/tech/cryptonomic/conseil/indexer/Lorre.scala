@@ -7,14 +7,6 @@ import akka.stream.ActorMaterializer
 import mouse.any._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import tech.cryptonomic
-import tech.cryptonomic.conseil
-import tech.cryptonomic.conseil.tezos.{ApiOperations, DatabaseConversions, FeeOperations, ShutdownComplete, Tables, TezosErrors, TezosNodeInterface, TezosNodeOperator, TezosOptics, TezosTypes, TezosDatabaseOperations => TezosDb}
-import tech.cryptonomic.conseil.tezos.TezosTypes._
-import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
-import tech.cryptonomic.conseil.util.DatabaseUtil
-import tech.cryptonomic.conseil.config._
-import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 import tech.cryptonomic.conseil.common.tezos.{
   DatabaseConversions,
   FeeOperations,
@@ -163,28 +155,29 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
 
   /** Updates bakers in the DB */
   def updateBakers(): Future[Unit] = {
+    logger.info("Updating Bakers table")
     val blockHead = tezosNodeOperator.getBareBlockHead()
-    blockHead.map { blockData =>
-      val bd = TezosTypes.discardGenesis(blockData.metadata)
-      if(bd.level.cycle_position <= batchingConf.blockPageSize) {
-        val bakingRights = db.run(TezosDb.getBakingRightsForBlock(blockData.header.level))
-        val endorsingRights = db.run(TezosDb.getEndorsingRightsForBlock(blockData.header.level))
-        val bakersFromDb = db.run(TezosDb.getBakers)
-        for {
-          br <- bakingRights
-          er <- endorsingRights
-          distinctDelegates = (br.map(_.delegate) ::: er.map(_.delegate)).distinct
-          delegates <- tezosNodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), blockData.hash)
-          bakers <- bakersFromDb
-          updatedBakers = updateBakerRows(delegates, bakers)
-          _ <- db.run(TezosDb.updateBakers(updatedBakers))
-        } yield ()
-      }
+    blockHead.flatMap { blockData =>
+      val bakingRights = db.run(TezosDb.getBakingRightsForBlock(blockData.header.level))
+      val endorsingRights = db.run(TezosDb.getEndorsingRightsForBlock(blockData.header.level))
+      val bakersFromDb = db.run(TezosDb.getBakers)
+      for {
+        br <- bakingRights
+        er <- endorsingRights
+        distinctDelegates = (br.map(_.delegate) ::: er.map(_.delegate)).distinct
+        delegates <- tezosNodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), blockData.hash)
+        bakers <- bakersFromDb
+        updatedBakers = updateBakerRows(delegates, bakers)
+        _ <- db.run(TezosDb.updateBakers(updatedBakers))
+      } yield ()
     }
   }
 
   /** Helper method for updating BakerRows */
-  private def updateBakerRows(delegates: Map[PublicKeyHash, Delegate], bakers: List[Tables.BakersRow]): List[Tables.BakersRow] = {
+  private def updateBakerRows(
+      delegates: Map[PublicKeyHash, Delegate],
+      bakers: List[Tables.BakersRow]
+  ): List[Tables.BakersRow] =
     bakers.filter(baker => delegates.keys.map(_.value).toList.contains(baker.pkh)).map { baker =>
       val optionalDelegate = delegates.get(PublicKeyHash(baker.pkh))
       baker.copy(
@@ -195,7 +188,6 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         deactivated = optionalDelegate.exists(_.deactivated)
       )
     }
-  }
 
   /** Extracts balance from PositiveBigNumber */
   private def extractBalance(balance: PositiveBigNumber): Option[BigDecimal] = balance match {

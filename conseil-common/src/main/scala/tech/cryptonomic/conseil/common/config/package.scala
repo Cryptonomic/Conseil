@@ -13,4 +13,3 @@ package object config extends LazyLogging {
          |$details""".stripMargin
     )
 }
-
