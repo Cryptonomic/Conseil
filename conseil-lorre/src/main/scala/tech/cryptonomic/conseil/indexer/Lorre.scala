@@ -158,8 +158,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     logger.info("Updating Bakers table")
     val blockHead = tezosNodeOperator.getBareBlockHead()
     blockHead.flatMap { blockData =>
-      val bakingRights = db.run(TezosDb.getBakingRightsForBlock(blockData.header.level))
-      val endorsingRights = db.run(TezosDb.getEndorsingRightsForBlock(blockData.header.level))
+      val bakingRights = db.run(TezosDb.getBakingRightsForLevel(blockData.header.level))
+      val endorsingRights = db.run(TezosDb.getEndorsingRightsForLevel(blockData.header.level))
       val bakersFromDb = db.run(TezosDb.getBakers)
       for {
         br <- bakingRights
@@ -167,18 +167,18 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         distinctDelegates = (br.map(_.delegate) ::: er.map(_.delegate)).distinct
         delegates <- tezosNodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), blockData.hash)
         bakers <- bakersFromDb
-        updatedBakers = updateBakerRows(delegates, bakers)
+        updatedBakers = applyUpdatesToBakers(delegates, bakers)
         _ <- db.run(TezosDb.updateBakers(updatedBakers))
       } yield ()
     }
   }
 
   /** Helper method for updating BakerRows */
-  private def updateBakerRows(
+  private def applyUpdatesToBakers(
       delegates: Map[PublicKeyHash, Delegate],
       bakers: List[Tables.BakersRow]
   ): List[Tables.BakersRow] =
-    bakers.filter(baker => delegates.keys.map(_.value).toList.contains(baker.pkh)).map { baker =>
+    bakers.filter(baker => delegates.keySet.map(_.value).contains(baker.pkh)).map { baker =>
       val optionalDelegate = delegates.get(PublicKeyHash(baker.pkh))
       baker.copy(
         balance = optionalDelegate.flatMap(x => extractBalance(x.balance)),

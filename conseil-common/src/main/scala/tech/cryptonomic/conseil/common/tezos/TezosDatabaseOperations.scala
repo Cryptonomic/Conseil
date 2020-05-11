@@ -441,10 +441,18 @@ object TezosDatabaseOperations extends LazyLogging {
 
   object CustomPostgresProfile extends CustomPostgresProfile
 
-  def getBakingRightsForBlock(blockLevel: Int)(implicit ec: ExecutionContext): DBIO[List[Tables.BakingRightsRow]] =
+  /** Fetches baking rights for given block level
+    *  @param blockLevel block level
+    *  @return list of baking rights rows
+    */
+  def getBakingRightsForLevel(blockLevel: Int)(implicit ec: ExecutionContext): DBIO[List[Tables.BakingRightsRow]] =
     Tables.BakingRights.filter(_.level === blockLevel).result.map(_.toList)
 
-  def getEndorsingRightsForBlock(
+  /** Fetches endorsing rights for given block level
+    *  @param blockLevel block level
+    *  @return list of endorsing rights rows
+    */
+  def getEndorsingRightsForLevel(
       blockLevel: Int
   )(implicit ec: ExecutionContext): DBIO[List[Tables.EndorsingRightsRow]] =
     Tables.EndorsingRights.filter(_.level === blockLevel).result.map(_.toList)
