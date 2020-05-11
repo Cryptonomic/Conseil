@@ -3,7 +3,7 @@ package tech.cryptonomic.conseil.api.routes.platform.data
 import akka.http.scaladsl.server.Route
 
 /** Collects all of the data endpoints together */
-trait ApiDataEndpoints {
+trait ApiDataRoutes {
 
   /** Represents all routes for method 'POST' */
   def postRoute: Route

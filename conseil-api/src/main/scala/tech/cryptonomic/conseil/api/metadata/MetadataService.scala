@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.metadata
 
-import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, PlatformsConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.PlatformsConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{DataTypes, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._

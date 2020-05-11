@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
-import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataEndpoints
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.QueryResponseWithOutput
 import tech.cryptonomic.conseil.common.metadata
@@ -17,14 +17,14 @@ import scala.concurrent.{ExecutionContext, Future}
   * Platform discovery routes.
   * @param apiExecutionContext   is used to call the async operations exposed by the api service
   */
-case class TezosDataEndpoint(
+case class TezosDataRoutes(
     metadataService: MetadataService,
     metadataConfiguration: MetadataConfiguration,
     operations: TezosDataOperations,
     maxQueryResultSize: Int
 )(
     implicit apiExecutionContext: ExecutionContext
-) extends ApiDataEndpoints
+) extends ApiDataRoutes
     with LazyLogging
     with TezosDataHelpers {
 

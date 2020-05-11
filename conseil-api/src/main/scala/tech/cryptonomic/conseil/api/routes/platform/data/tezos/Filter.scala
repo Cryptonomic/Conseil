@@ -1,6 +1,5 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.Filter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
@@ -134,7 +133,7 @@ object Filter {
   object Sorting {
 
     /** Read an input string (`asc` or `desc`) to return a
-      * (possible) [[tezos.Filter.Sorting]] value
+      * (possible) [[Filter.Sorting]] value
       */
     def fromString(s: String): Option[Sorting] = s.toLowerCase match {
       case "asc" => Some(AscendingSort)
