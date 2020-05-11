@@ -15,7 +15,7 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class TezosDataEndpointTest
+class TezosDataRoutesTest
     extends WordSpec
     with Matchers
     with ScalatestRouteTest
@@ -154,9 +154,9 @@ class TezosDataEndpointTest
       Map("tezos" -> platformDiscoveryOperations)
     )
 
-  val postRoute: Route = TezosDataEndpoint(metadataService, metadataConf, conseilOps, 1000).postRoute
+  val postRoute: Route = TezosDataRoutes(metadataService, metadataConf, conseilOps, 1000).postRoute
 
-  val getRoute: Route = TezosDataEndpoint(metadataService, metadataConf, conseilOps, 1000).getRoute
+  val getRoute: Route = TezosDataRoutes(metadataService, metadataConf, conseilOps, 1000).getRoute
 
   "Query protocol" should {
 
