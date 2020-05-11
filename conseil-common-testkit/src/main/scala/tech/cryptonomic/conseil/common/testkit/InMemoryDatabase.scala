@@ -47,6 +47,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
     dbInstance.start()
     Await.ready(dbHandler.run(initScript.create), 1.second)
     Await.ready(dbHandler.run(DBIO.sequence(fixtures.map(_.create))), 1.second)
+    ()
   }
 
   override protected def afterAll(): Unit = {

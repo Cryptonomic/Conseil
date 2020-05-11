@@ -668,7 +668,7 @@ class TezosNodeOperator(
 
     def extractAccountIds(blockData: BlockData): List[AccountId] =
       for {
-        blockHeaderMetadata <- discardGenesis.lift(blockData.metadata).toList
+        blockHeaderMetadata <- discardGenesis(blockData.metadata).toList
         balanceUpdate <- blockHeaderMetadata.balance_updates
         id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
       } yield AccountId(id)
