@@ -16,9 +16,9 @@ import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 class TezosApi(metadataOverrides: MetadataConfiguration, server: ConseilConfiguration)(
-  implicit system: ActorSystem
+    implicit system: ActorSystem
 ) extends Api
-  with LazyLogging {
+    with LazyLogging {
 
   implicit private val dispatcher: ExecutionContext = system.dispatcher
   private val apiDispatcher = system.dispatchers.lookup("akka.http.dispatcher")

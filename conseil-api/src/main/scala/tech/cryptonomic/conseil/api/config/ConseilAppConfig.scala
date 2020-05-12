@@ -82,13 +82,13 @@ object ConseilAppConfig extends LazyLogging {
 
   /** Collects all different aspects involved for Conseil */
   final case class CombinedConfiguration(
-                                          server: ConseilConfiguration,
-                                          platforms: PlatformsConfiguration,
-                                          security: SecurityApi,
-                                          failFast: FailFast,
-                                          verbose: VerboseOutput,
-                                          metadata: MetadataConfiguration,
-                                          nautilusCloud: Option[NautilusCloudConfiguration]
+      server: ConseilConfiguration,
+      platforms: PlatformsConfiguration,
+      security: SecurityApi,
+      failFast: FailFast,
+      verbose: VerboseOutput,
+      metadata: MetadataConfiguration,
+      nautilusCloud: Option[NautilusCloudConfiguration]
   )
 
   private[config] object Implicits {
