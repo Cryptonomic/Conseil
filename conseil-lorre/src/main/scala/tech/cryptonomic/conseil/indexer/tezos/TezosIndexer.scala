@@ -389,32 +389,38 @@ class TezosIndexer(
       import DatabaseConversions._
       import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
+      //DANGER Will Robinson! we assume in the rest of the code that we're not handling the genesis block
+      val safeBlocks = blocks.filterNot(block => TezosNodeOperator.isGenesis(block.data))
+      val safeListings = listings.filterNot { case (block, rolls) => TezosNodeOperator.isGenesis(block.data) }
+
       for {
-        proposals <- nodeOperator.getProposals(blocks.map(_.data))
+        proposals <- nodeOperator.getProposals(safeBlocks.map(_.data))
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
-        blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
+        blocksWithProposals = safeBlocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
         ballotCountsPerCycle <- Future.traverse(blocksWithProposals) { block =>
-          db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).level.cycle))
+          db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle))
             .map(block -> _)
         }
         ballotCountsPerLevel <- Future.traverse(blocksWithProposals) { block =>
           db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
             .map(block -> _)
         }
-        proposalHashes <- Future.traverse(blocks) { block =>
-          db.run(TezosDb.getProposalOperationHashesByCycle(TezosTypes.discardGenesis(block.data.metadata).level.cycle))
+        proposalHashes <- Future.traverse(safeBlocks) { block =>
+          db.run(
+              TezosDb.getProposalOperationHashesByCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle)
+            )
             .map(block -> _)
         }
         ballots <- nodeOperator.getVotes(blocksWithProposals)
         governanceRows = groupGovernanceDataByBlock(
           blocksWithProposals,
           proposals.toMap,
-          listings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
+          safeListings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
           ballots.toMap,
           ballotCountsPerCycle.toMap,
           ballotCountsPerLevel.toMap,
           proposalHashes.toMap
-        ).map(_.convertTo[Tables.GovernanceRow])
+        ).flatMap(_.convertToA[Option, Tables.GovernanceRow])
         _ <- db.run(TezosDb.insertGovernance(governanceRows))
       } yield ()
     }
