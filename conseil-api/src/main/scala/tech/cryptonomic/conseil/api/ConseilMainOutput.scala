@@ -50,4 +50,14 @@ trait ConseilMainOutput {
       showDatabaseConfiguration("conseil")
     )
 
+  /* prepare output to display existing platforms and networks */
+  private def showAvailablePlatforms(conf: PlatformsConfiguration): String =
+    conf.platforms.map {
+      case (platform, confs) =>
+        val networks = confs.map(_.network).mkString("\n  - ", "\n  - ", "\n")
+        s"""
+           |  Platform: ${platform.name}$networks
+      """.stripMargin
+    }.mkString("\n")
+
 }

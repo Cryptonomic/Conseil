@@ -5,17 +5,6 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 /** Defines main output for Lorre or Conseil, at startup */
 object MainOutputs {
 
-  /* prepare output to display existings platforms and networks */
-  //TODO This can be moved to Conseil-API
-  def showAvailablePlatforms(conf: PlatformsConfiguration): String =
-    conf.platforms.map {
-      case (platform, confs) =>
-        val networks = confs.map(_.network).mkString("\n  - ", "\n  - ", "\n")
-        s"""
-      |  Platform: ${platform.name}$networks
-      """.stripMargin
-    }.mkString("\n")
-
   /* prepare output to display database access */
   def showDatabaseConfiguration(applicationScope: String): String = {
     import com.typesafe.config._

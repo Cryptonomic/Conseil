@@ -24,12 +24,10 @@ lazy val common = (project in file("conseil-common"))
   .settings(
     name := "conseil-common",
     libraryDependencies ++= Dependencies.conseilCommonInclude,
-    excludeDependencies ++= Dependencies.conseilCommonExclude,
     coverageExcludedPackages := Seq(
           "<empty>",
           "tech.cryptonomic.conseil.common.io.*",
-          "tech.cryptonomic.conseil.common.tezos.Tables",
-          "tech.cryptonomic.conseil.common.config.Security"
+          "tech.cryptonomic.conseil.common.tezos.Tables"
         ).mkString(";")
   )
   .settings(
@@ -54,7 +52,8 @@ lazy val api = (project in file("conseil-api"))
     coverageExcludedPackages := Seq(
           "<empty>",
           ".*\\.Conseil",
-          ".*\\.ConseilAppConfig"
+          ".*\\.ConseilAppConfig",
+          "tech.cryptonomic.conseil.api.security.Security"
         ).mkString(";")
   )
   .addRunCommand(
@@ -85,7 +84,8 @@ lazy val lorre = (project in file("conseil-lorre"))
 lazy val schema = (project in file("conseil-schema"))
   .settings(
     name := "conseil-schema",
-    mainClass := Some("tech.cryptonomic.conseil.schema.GenSchema")
+    mainClass := Some("tech.cryptonomic.conseil.schema.GenSchema"),
+    libraryDependencies ++= Dependencies.conseilSchemaInclude,
   )
   .addRunCommand(description = "Task to generate the schema source files from db-schema")
   .disableAssembly()
