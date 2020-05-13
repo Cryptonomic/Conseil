@@ -10,9 +10,9 @@ import java.time.format.DateTimeFormatter
 
 import monocle.Getter
 import io.scalaland.chimney.dsl._
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.util.Conversion
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights}
-import tech.cryptonomic.conseil.common.tezos.FeeOperations._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.Vote
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract

@@ -293,8 +293,8 @@ private[tezos] class TezosNodeOperator(
     * @return          The `Future` list of operations
     */
   def getAllOperationsForBlock(block: BlockData): Future[List[OperationsGroup]] = {
-    import JsonDecoders.Circe.Operations._
-    import JsonDecoders.Circe.decodeLiftingTo
+    import TezosJsonDecoders.Circe.Operations._
+    import TezosJsonDecoders.Circe.decodeLiftingTo
     import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 
     //parse json, and try to convert to objects, converting failures to a failed `Future`
@@ -317,7 +317,7 @@ private[tezos] class TezosNodeOperator(
     if (isGenesis(block))
       CurrentVotes.empty.pure
     else {
-      import JsonDecoders.Circe._
+      import TezosJsonDecoders.Circe._
       import cats.syntax.apply._
 
       val offsetString = offset.map(_.toString).getOrElse("")
@@ -485,8 +485,8 @@ private[tezos] class TezosNodeOperator(
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(hash: BlockHash, offset: Option[Offset] = None): Future[Block] = {
-    import JsonDecoders.Circe.Blocks._
-    import JsonDecoders.Circe.decodeLiftingTo
+    import TezosJsonDecoders.Circe.Blocks._
+    import TezosJsonDecoders.Circe.decodeLiftingTo
 
     val offsetString = offset.map(_.toString).getOrElse("")
 
@@ -509,8 +509,8 @@ private[tezos] class TezosNodeOperator(
     * @return          the block data wrapped in a `Future`
     */
   def getBareBlock(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
-    import JsonDecoders.Circe.Blocks._
-    import JsonDecoders.Circe.decodeLiftingTo
+    import TezosJsonDecoders.Circe.Blocks._
+    import TezosJsonDecoders.Circe.decodeLiftingTo
 
     val offsetString = offset.map(_.toString).getOrElse("")
 

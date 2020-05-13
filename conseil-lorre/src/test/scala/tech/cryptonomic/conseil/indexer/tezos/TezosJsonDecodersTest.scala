@@ -6,15 +6,15 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 
 @silent("local val derivationConf")
-class JsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
+class TezosJsonDecodersTest extends WordSpec with Matchers with EitherValues with OptionValues {
 
-  import JsonDecoders.Circe.Accounts._
-  import JsonDecoders.Circe.Numbers._
-  import JsonDecoders.Circe.BigMapDiff._
-  import JsonDecoders.Circe.Operations._
-  import JsonDecoders.Circe.Scripts._
-  import JsonDecoders.Circe.Votes._
-  import JsonDecoders.Circe._
+  import TezosJsonDecoders.Circe.Accounts._
+  import TezosJsonDecoders.Circe.Numbers._
+  import TezosJsonDecoders.Circe.BigMapDiff._
+  import TezosJsonDecoders.Circe.Operations._
+  import TezosJsonDecoders.Circe.Scripts._
+  import TezosJsonDecoders.Circe.Votes._
+  import TezosJsonDecoders.Circe._
   import io.circe.parser.decode
   "the json decoders" should {
 
@@ -489,7 +489,7 @@ class JsonDecodersTest extends WordSpec with Matchers with EitherValues with Opt
         account.script.value shouldEqual expectedScript
       }
 
-      import JsonDecoders.Circe.Delegates._
+      import TezosJsonDecoders.Circe.Delegates._
       "decode a delegate baker" in new DelegatesJsonData {
         val decoded = decode[Delegate](delegateJson)
         decoded shouldBe 'right

@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.common.tezos
+package tech.cryptonomic.conseil.indexer.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIOAction
@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
 /**
   * Helper classes and functions used for average fee calculations.
   */
-object FeeOperations extends LazyLogging {
+private[tezos] object TezosFeeOperations extends LazyLogging {
   // We are getting access to the same database instance, but it should not be a shared object in a long-run.
   // After the splitting we should refactor this part.
   import tech.cryptonomic.conseil.common.util.DatabaseUtil.{lorreDb => db}
@@ -24,24 +24,6 @@ object FeeOperations extends LazyLogging {
     "reveal",
     "double_endorsement_evidence",
     "endorsement"
-  )
-
-  /**
-    * Representation of estimation of average fees for a given operation kind.
-    * @param low       Medium - one standard deviation
-    * @param medium    The mean of fees on a given operation kind
-    * @param high      Medium + one standard deviation
-    * @param timestamp The timestamp when the calculation took place
-    * @param kind      The kind of operation being averaged over
-    */
-  final case class AverageFees(
-      low: Int,
-      medium: Int,
-      high: Int,
-      timestamp: java.sql.Timestamp,
-      kind: String,
-      cycle: Option[Int],
-      level: Option[Int]
   )
 
   /**

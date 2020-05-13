@@ -20,7 +20,7 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Att
 import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosDatabaseOperations}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BlockTagged}
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}

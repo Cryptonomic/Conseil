@@ -5,8 +5,8 @@ import java.time.{Instant, ZonedDateTime}
 
 import monocle.Optional
 import tech.cryptonomic.conseil.common.testkit.util.{RandomGenerationKit, RandomSeed}
-import tech.cryptonomic.conseil.common.tezos.FeeOperations.AverageFees
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsRow, BakersRow, BlocksRow, OperationGroupsRow}
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}

@@ -13,7 +13,6 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockHash, FetchRights,
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.{
   DatabaseConversions,
-  FeeOperations,
   Tables,
   TezosOptics,
   TezosTypes,
@@ -234,7 +233,7 @@ class TezosIndexer(
       nextRefreshes <- processAccountRefreshes(accountsRefreshLevels)
       _ <- processTezosBlocks()
       _ <- if (iteration % lorreConf.feeUpdateInterval == 0)
-        FeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
+        TezosFeeOperations.processTezosAverageFees(lorreConf.numberOfFeesAveraged)
       else
         noOp
       _ <- updateRightsTimestamps()

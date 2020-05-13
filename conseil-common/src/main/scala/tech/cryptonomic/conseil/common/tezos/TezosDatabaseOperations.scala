@@ -7,7 +7,6 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
-import tech.cryptonomic.conseil.common.tezos.FeeOperations._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.bigmaps.BigMapsOperations
 import tech.cryptonomic.conseil.common.util.CollectionOps._
@@ -29,6 +28,7 @@ import scala.collection.immutable.Queue
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TokenContracts
 import tech.cryptonomic.conseil.common.util.ConfigUtil
 import tech.cryptonomic.conseil.common.tezos.Tables.OriginatedAccountMapsRow
+import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
 
 /**
