@@ -62,7 +62,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends LazyLoggi
         requestMapModify(
           modify = _.filterNot(_._1 == correlationId)
         ) { values =>
-          values.logResponse(response)
+          values.logResponse(response, Some(e))
         }.unsafeRunAsyncAndForget()
         complete(response)
     }
@@ -91,7 +91,7 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends LazyLoggi
   ) {
 
     /** Logging response with MDC */
-    def logResponse(response: HttpResponse): Unit = {
+    def logResponse(response: HttpResponse, throwable: Option[Throwable] = None): Unit = {
       MDC.put("httpMethod", httpMethod)
       MDC.put("requestBody", requestBody)
       MDC.put("clientIp", clientIp)
@@ -102,7 +102,10 @@ class RecordingDirectives(implicit concurrent: Concurrent[IO]) extends LazyLoggi
       val responseTime = requestEndTime - startTime
       MDC.put("responseTime", responseTime.toString)
       MDC.put("responseCode", response.status.intValue().toString)
-      logger.info("HTTP request")
+      throwable match {
+        case Some(value) => logger.error("Failed HTTP request", value)
+        case None => logger.info("HTTP request")
+      }
       MDC.clear()
     }
 

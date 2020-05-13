@@ -564,7 +564,7 @@ object TezosDatabaseOperations extends LazyLogging {
     */
   def writeBakersAndCopyContracts(
       bakers: List[BlockTagged[Map[PublicKeyHash, Delegate]]]
-  ): DBIO[Option[Int]] = {
+  )(implicit ec: ExecutionContext): DBIO[(Option[Int], Option[Int])] = {
     import CustomPostgresProfile.api._
 
     val keepMostRecent = (rows: List[Tables.BakersRow]) =>
@@ -578,14 +578,19 @@ object TezosDatabaseOperations extends LazyLogging {
 
     logger.info("Writing bakers to DB and copying contracts to bakers table...")
 
-    val rows = bakers.flatMap {
+    val (rows, historyRows) = bakers.flatMap {
       case BlockTagged(blockHash, blockLevel, timestamp, cycle, period, delegateMap) =>
         delegateMap.map {
           case (pkh, delegate) =>
-            (blockHash, blockLevel, pkh, delegate, cycle, period).convertTo[Tables.BakersRow]
+            val bakers = (blockHash, blockLevel, pkh, delegate, cycle, period).convertTo[Tables.BakersRow]
+            val bakersHistory = (bakers, timestamp).convertTo[Tables.BakersHistoryRow]
+            bakers -> bakersHistory
         }
+    }.unzip
+
+    (keepMostRecent andThen Tables.Bakers.insertOrUpdateAll)(rows).flatMap { res =>
+      (Tables.BakersHistory ++= historyRows).map(res -> _)
     }
-    (keepMostRecent andThen Tables.Bakers.insertOrUpdateAll)(rows)
   }
 
   /** Gets ballot operations for given cycle */
