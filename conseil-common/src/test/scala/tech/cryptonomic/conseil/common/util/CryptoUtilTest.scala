@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.common.util
 
 import org.scalatest.{FlatSpec, Matchers}
+import cats.implicits._
 
 class CryptoUtilTest extends FlatSpec with Matchers {
 
@@ -31,4 +32,27 @@ class CryptoUtilTest extends FlatSpec with Matchers {
       address shouldBe "tz1b2icJC4E7Y2ED1xsZXuqYpF7cxHDtduuP"
     }
 
+  it should "decode a zarith signed number" in {
+      val hex = List(
+        "86bb230200000000",
+        "b8c6ce95020200000000",
+        "ac9a010200000000",
+        "840e0200000000",
+        "a88c010200000000",
+        "090200000000",
+        "490200000000"
+      )
+
+      val nums = hex.traverse(CryptoUtil.decodeZarithNumber).get
+
+      nums should contain theSameElementsInOrderAs List(
+        BigInt(290502),
+        BigInt(291099064),
+        BigInt(9900),
+        BigInt(900),
+        BigInt(9000),
+        BigInt(9),
+        BigInt(-9)
+      )
+    }
 }

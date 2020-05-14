@@ -70,7 +70,8 @@ object CryptoUtil {
         case "kt1" => "01" + hexString + "00"
       }
 
-    //what if the wrapped length is odd?
+    //what if the wrapped length is odd? Technically it shouldn't be possible since
+    //bytes are always made of 2 chars and we only pad them with other bytes.
     base58CheckDecode(b58Address, b58Address.take(3).toLowerCase).map { bytes =>
       val wrapped = wrap(Hex.encode(bytes.toArray))
       s"050a${dataLength(wrapped.length / 2)}$wrapped"
@@ -116,4 +117,44 @@ object CryptoUtil {
       }
     } yield address
   }
+
+  def decodeZarithNumber(hexEncoded: String): Try[BigInt] = {
+    import scorex.util.encode.{Base16 => Hex}
+
+    //the sign is defined by the second bit in the hex-string
+    val signMask: Byte = 0x40
+
+    /* base128 little-endian decoding with special treat for the lower byte
+     * please refer to the last paragraph of
+     * https://medium.com/the-cryptonomic-aperiodical/the-magic-and-mystery-of-the-micheline-binary-format-33bf85699bef
+     * or to the original implementation: https://github.com/ocaml/Zarith
+     */
+    def readSigned(bytes: Array[Byte]): BigInt = {
+      val positive = (bytes.head & signMask) == 0
+      val masked = ((bytes.head & 0x3F) +: bytes.tail.map(_ & 0x7F)).map(_.toByte)
+
+      val result = masked.zipWithIndex.foldRight(BigInt(0)) {
+        case ((byte, 0), bigInt) =>
+          bigInt | BigInt(byte)
+        case ((byte, index), bigInt) =>
+          val intBits = BigInt(byte) << (7 * index - 1)
+          bigInt | intBits
+      }
+
+      if (positive) result else -result
+    }
+
+    Hex
+      .decode(hexEncoded)
+      .map { bytes =>
+        /* the first bit signals that there's more to read
+         * we keep all those, and add the one following
+         */
+        val highBitSet = bytes.takeWhile(_ < 0)
+        highBitSet :+ bytes(highBitSet.size)
+      }
+      .map(readSigned)
+
+  }
+
 }
