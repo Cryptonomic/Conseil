@@ -12,12 +12,14 @@ object Assembly {
       project
         .settings(
           mainClass in assembly := mainClass.value,
-          assemblyOutputPath in assembly := file(s"/tmp/${name.value}.jar"),
+          assemblyOutputPath in assembly := file(
+                s"${(baseDirectory in ThisBuild).value}/dist/${name.value}-${version.value}.jar"
+              ),
           test in assembly := {},
           assemblyMergeStrategy in assembly := {
-            case "application.conf" => MergeStrategy.concat
-            case x => (assemblyMergeStrategy in assembly).value(x)
-          }
+              case "application.conf" => MergeStrategy.concat
+              case x => (assemblyMergeStrategy in assembly).value(x)
+            }
         )
         .enablePlugins(AssemblyPlugin)
 
