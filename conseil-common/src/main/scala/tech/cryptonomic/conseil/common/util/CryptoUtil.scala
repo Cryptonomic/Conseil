@@ -118,17 +118,24 @@ object CryptoUtil {
     } yield address
   }
 
+  /** When encoding numbers as bytes in michelson/micheline they use
+    * an unusual form, it's little endian base-128 but use the full bytes
+    * to keep additional info.
+    *
+    * Please refer to the last paragraph of
+    * https://medium.com/the-cryptonomic-aperiodical/the-magic-and-mystery-of-the-micheline-binary-format-33bf85699bef
+    * or to the original implementation: https://github.com/ocaml/Zarith
+    *
+    * @param hexEncoded ZArith encoding as hex string
+    * @return a possibly valid signed integer of arbitrary magnitude
+    */
   def decodeZarithNumber(hexEncoded: String): Try[BigInt] = {
     import scorex.util.encode.{Base16 => Hex}
 
     //the sign is defined by the second bit in the hex-string
     val signMask: Byte = 0x40
 
-    /* base128 little-endian decoding with special treat for the lower byte
-     * please refer to the last paragraph of
-     * https://medium.com/the-cryptonomic-aperiodical/the-magic-and-mystery-of-the-micheline-binary-format-33bf85699bef
-     * or to the original implementation: https://github.com/ocaml/Zarith
-     */
+    /* base128 little-endian decoding with special treat for the lower byte */
     def readSigned(bytes: Array[Byte]): BigInt = {
       val positive = (bytes.head & signMask) == 0
       val masked = ((bytes.head & 0x3F) +: bytes.tail.map(_ & 0x7F)).map(_.toByte)
