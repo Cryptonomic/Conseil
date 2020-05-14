@@ -20,7 +20,7 @@ COPY --chown=builduser:builduser ./conseil-lorre/src /src/conseil-lorre/src
 COPY --chown=builduser:builduser ./build.sbt /src
 COPY --chown=builduser:builduser ./publishing.sbt /src
 WORKDIR /src
-RUN sbt clean assembly -J-Xss32m
+RUN sbt 'set api / assembly / assemblyOutputPath := file(s"/tmp/conseil-api.jar")' 'set lorre / assembly / assemblyOutputPath := file(s"/tmp/conseil-lorre.jar")' clean assembly -J-Xss32m
 
 FROM openjdk:13-alpine
 RUN apk --no-cache add ca-certificates

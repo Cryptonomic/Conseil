@@ -1,5 +1,7 @@
 version: "3.1"
 
+# This file is meant exclusively to support local development on a single machine
+# Please refrain from using this to deploy the software
 services:
   conseil-postgres:
     image: postgres:11.6
