@@ -6,10 +6,9 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.jdbc.PostgresProfile.api._
-import tech.cryptonomic.conseil.api.{TezosDataGeneration, TezosInMemoryDatabaseSetup}
+import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
 import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow, OperationGroupsRow, OperationsRow}
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
@@ -24,8 +23,7 @@ class TezosDataOperationsTest
     with ScalaFutures
     with OptionValues
     with LazyLogging
-    with IntegrationPatience
-    with TezosDataGeneration {
+    with IntegrationPatience {
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "TezosDataOperations" should {
@@ -2457,17 +2455,14 @@ class TezosDataOperationsTest
     }
 
     "fetch the latest block level when blocks are available" in {
-      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val expected = 5
       val populateAndFetch = for {
-        _ <- Tables.Blocks ++= generateBlockRows(expected, testReferenceTimestamp)
+        _ <- Tables.Blocks ++= blocksTmp
         result <- sut.fetchMaxBlockLevel
       } yield result
 
       val maxLevel = dbHandler.run(populateAndFetch.transactionally).futureValue
 
-      maxLevel should equal(expected)
+      maxLevel should equal(2)
     }
 
     "fetch nothing if looking up a non-existent operation group by hash" in {
@@ -2475,11 +2470,9 @@ class TezosDataOperationsTest
     }
 
     "fetch existing operations with their group on a existing hash" in {
-      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val block = generateBlockRows(1, testReferenceTimestamp).head
-      val group = generateOperationGroupRows(block).head
-      val ops = generateOperationsForGroup(block, group)
+      val block = blocksTmp.head
+      val group = operationGroupsTmp.head
+      val ops = operationsTmp.take(1)
 
       val populateAndFetch = for {
         _ <- Tables.Blocks += block

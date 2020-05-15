@@ -6,9 +6,6 @@ import tech.cryptonomic.conseil.common.metadata.{AttributePath, EntityPath}
 
 import scala.concurrent.Future
 
-//TODO This class is a duplicate from conseil-common,
-// which will be updated once entire project will be split properly
-
 /*
  * Implementation of PlatformDiscoveryOperations for tests purposes. It's fully functional and keeps entities and
  * attributes in memory

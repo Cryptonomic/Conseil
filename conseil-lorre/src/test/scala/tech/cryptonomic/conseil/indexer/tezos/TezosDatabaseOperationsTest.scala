@@ -20,7 +20,7 @@ import scala.util.Random
 
 class TezosDatabaseOperationsTest
   extends WordSpec
-    with TezosDataGeneration
+    with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
     with Matchers

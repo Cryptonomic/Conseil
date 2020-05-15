@@ -19,7 +19,7 @@ class TezosNodeOperationsTest
     with OptionValues
     with LazyLogging
     with IntegrationPatience
-    with TezosDataGeneration {
+    with TezosDatabaseOperationsTestFixtures {
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "TezosNodeOperations" should {

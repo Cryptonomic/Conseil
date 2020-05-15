@@ -11,7 +11,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
-import tech.cryptonomic.conseil.api.{TezosDataGeneration, TezosInMemoryDatabaseSetup}
+import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
@@ -32,7 +32,6 @@ class TezosPlatformDiscoveryOperationsTest
     with TezosInMemoryDatabaseSetup
     with MockFactory
     with Matchers
-    with TezosDataGeneration
     with ScalaFutures
     with OptionValues
     with DiffMatcher

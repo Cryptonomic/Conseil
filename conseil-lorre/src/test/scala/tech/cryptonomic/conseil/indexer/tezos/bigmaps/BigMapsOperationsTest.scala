@@ -12,12 +12,12 @@ import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsR
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
-import tech.cryptonomic.conseil.indexer.tezos.{TezosDataGeneration, TezosInMemoryDatabaseSetup}
+import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperationsTestFixtures, TezosInMemoryDatabaseSetup}
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 
 class BigMapsOperationsTest
     extends WordSpec
-    with TezosDataGeneration
+    with TezosDatabaseOperationsTestFixtures
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
     with Matchers

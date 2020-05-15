@@ -15,7 +15,7 @@ class TezosDatabaseConversionsTest
     with Matchers
     with OptionValues
     with EitherValues
-    with TezosDataGeneration
+    with TezosDatabaseOperationsTestFixtures
     with TezosDatabaseConversionsTestFixtures {
 
   "The Tezos database conversion" should {

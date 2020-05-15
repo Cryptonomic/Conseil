@@ -13,9 +13,7 @@ import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}
 
 import scala.util.Random
 
-//TODO This class is a duplicate from conseil-common,
-// which will be updated once entire project will be split properly
-trait TezosDataGeneration extends RandomGenerationKit {
+trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   import TezosTypes.Syntax._
   import TezosTypes.Voting.Vote
 
@@ -86,7 +84,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
     val generateHash: Int => String = alphaNumericGenerator(rnd)
 
     val delegates = delegatedHashes.zipWithIndex.map {
-      case (accountPkh, counter) =>
+      case (accountPkh, _) =>
         PublicKeyHash(generateHash(10)) ->
             Delegate(
               balance = PositiveDecimal(rnd.nextInt()),
@@ -167,7 +165,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
       )
 
     //we need a block to start
-    val genesis = generateOne(0, BlockHash("genesis"), true)
+    val genesis = generateOne(0, BlockHash("genesis"), genesis = true)
 
     //use a fold to pass the predecessor hash, to keep a plausibility of sort
     (1 to toLevel)
@@ -180,7 +178,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   }
 
-  /** Randomly geneates a single block, for a specific level
+  /** Randomly generates a single block, for a specific level
     * WARN the algorithm is linear in the level requested, don't use it with high values
     */
   def generateSingleBlock(
@@ -318,31 +316,8 @@ trait TezosDataGeneration extends RandomGenerationKit {
       .toList
   }
 
-  /* create operations related to a specific group, with random data */
-  def generateOperationsForGroup(
-      block: BlocksRow,
-      group: OperationGroupsRow,
-      howMany: Int = 3
-  ): List[Tables.OperationsRow] =
-    List.fill(howMany) {
-      Tables.OperationsRow(
-        kind = "operation-kind",
-        operationGroupHash = group.hash,
-        operationId = -1,
-        blockHash = block.hash,
-        blockLevel = block.level,
-        timestamp = block.timestamp,
-        level = Some(block.level),
-        internal = false,
-        utcYear = 1970,
-        utcMonth = 1,
-        utcDay = 1,
-        utcTime = "00:00:00"
-      )
-    }
-
   /* create operation rows to hold the given fees */
-  def wrapFeesWithOperations(fees: Seq[Option[BigDecimal]], block: BlocksRow, group: OperationGroupsRow) =
+  def wrapFeesWithOperations(fees: Seq[Option[BigDecimal]], block: BlocksRow, group: OperationGroupsRow): Seq[Tables.OperationsRow] =
     fees.zipWithIndex.map {
       case (fee, index) =>
         Tables.OperationsRow(
@@ -403,79 +378,11 @@ trait TezosDataGeneration extends RandomGenerationKit {
 
   }
 
-  object Voting {
-
-    import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting._
-
-    def generateProposals(howMany: Int, forBlock: Block)(implicit randomSeed: RandomSeed) = {
-      require(
-        howMany > 0,
-        "the test can only generate a positive number of proposals, you asked for a non positive value"
-      )
-
-      //custom hash generator with predictable seed
-      val randomGen = new Random(randomSeed.seed)
-      val generateHash: Int => String = alphaNumericGenerator(randomGen)
-
-      //prefill the count of protocols for each Proposal (at least one each)
-      val protocolCounts = Array.fill(howMany)(1 + randomGen.nextInt(4))
-
-      List.tabulate(howMany) { current =>
-        val protocols = List.fill(protocolCounts(current))((ProtocolId(generateHash(10)), randomGen.nextInt()))
-        Proposal(
-          protocols = protocols,
-          block = forBlock
-        )
-      }
-
-    }
-
-    def generateBakersRolls(howMany: Int)(implicit randomSeed: RandomSeed) = {
-      require(howMany > 0, "the test can only generate a positive number of bakers, you asked for a non positive value")
-
-      //custom hash generator with predictable seed
-      val randomGen = new Random(randomSeed.seed)
-      val generateHash: Int => String = alphaNumericGenerator(randomGen)
-
-      //prefill the rolls
-      val rolls = Array.fill(howMany)(randomGen.nextInt(1000))
-
-      List.tabulate(howMany) { current =>
-        BakerRolls(pkh = PublicKeyHash(generateHash(10)), rolls = rolls(current))
-      }
-
-    }
-
-    def generateBallots(howMany: Int)(implicit randomSeed: RandomSeed) = {
-      require(
-        howMany > 0,
-        "the test can only generate a positive number of ballots, you asked for a non positive value"
-      )
-
-      val knownVotes = Array("yay", "nay", "pass")
-
-      //custom hash generator with predictable seed
-      val randomGen = new Random(randomSeed.seed)
-      val generateHash: Int => String = alphaNumericGenerator(randomGen)
-      //custom vote chooser
-      val randomVote = () => knownVotes(randomGen.nextInt(knownVotes.size))
-
-      //prefill the votes
-      val votes = Array.fill(howMany)(randomVote())
-
-      List.tabulate(howMany) { current =>
-        Ballot(pkh = PublicKeyHash(generateHash(10)), ballot = Vote(votes(current)))
-      }
-
-    }
-
-  }
-
   object Operations {
 
     import OperationMetadata.BalanceUpdate
 
-    val sampleScriptedContract =
+    val sampleScriptedContract: Contracts =
       Contracts(
         code = Micheline(
           """[{"prim":"parameter","args":[{"prim":"string"}]},{"prim":"storage","args":[{"prim":"string"}]},{"prim":"code","args":[[{"prim":"CAR"},{"prim":"NIL","args":[{"prim":"operation"}]},{"prim":"PAIR"}]]}]"""
@@ -483,7 +390,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         storage = Micheline("""{"string":"hello"}""")
       )
 
-    val sampleEndorsement =
+    val sampleEndorsement: Endorsement =
       Endorsement(
         level = 182308,
         metadata = EndorsementMetadata(
@@ -519,7 +426,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleNonceRevelation =
+    val sampleNonceRevelation: SeedNonceRevelation =
       SeedNonceRevelation(
         level = 199360,
         nonce = Nonce("4ddd711e76cf8c71671688aff7ce9ff67bf24bc16be31cd5dbbdd267456745e0"),
@@ -537,7 +444,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleAccountActivation =
+    val sampleAccountActivation: ActivateAccount =
       ActivateAccount(
         pkh = PublicKeyHash("tz1ieofA4fCLAnSgYbE9ZgDhdTuet34qGZWw"),
         secret = Secret("026a9a6b7ea07238dab3e4322d93a6abe8da278a"),
@@ -555,7 +462,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleReveal =
+    val sampleReveal: Reveal =
       Reveal(
         source = PublicKeyHash("KT1PPuBrvCGpJt54hVBgXMm2sKa6QpSwKrJq"),
         fee = PositiveDecimal(10000),
@@ -590,7 +497,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleTransaction =
+    val sampleTransaction: Transaction =
       Transaction(
         source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
         fee = PositiveDecimal(1416),
@@ -635,7 +542,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleOrigination =
+    val sampleOrigination: Origination =
       Origination(
         source = PublicKeyHash("tz1hSd1ZBFVkoXC5s1zMguz3AjyCgGQ7FMbR"),
         fee = PositiveDecimal(1441),
@@ -715,7 +622,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleDelegation =
+    val sampleDelegation: Delegation =
       Delegation(
         source = PublicKeyHash("KT1Ck1Mrbxr6RhCiqN6TPfX3NvWnJimcAKG9"),
         fee = PositiveDecimal(1400),
@@ -750,7 +657,7 @@ trait TezosDataGeneration extends RandomGenerationKit {
         )
       )
 
-    val sampleBallot =
+    val sampleBallot: Ballot =
       Ballot(
         ballot = Vote("yay"),
         proposal = Some("PsBABY5HQTSkA4297zNHfsZNKtxULfL18y95qb3m53QJiXGmrbU"),
@@ -758,14 +665,14 @@ trait TezosDataGeneration extends RandomGenerationKit {
         period = Some(0)
       )
 
-    val sampleProposals =
+    val sampleProposals: Proposals =
       Proposals(
         source = Some(ContractId("tz1VceyYUpq1gk5dtp6jXQRtCtY8hm5DKt72")),
         period = Some(10),
         proposals = Some(List("Psd1ynUBhMZAeajwcZJAeq5NrxorM6UCU4GJqxZ7Bx2e9vUWB6z)"))
       )
 
-    val sampleOperations =
+    val sampleOperations: List[Operation] =
       sampleEndorsement :: sampleNonceRevelation :: sampleAccountActivation :: sampleReveal :: sampleTransaction :: sampleOrigination :: sampleDelegation ::
           DoubleEndorsementEvidence :: DoubleBakingEvidence :: sampleProposals :: sampleBallot :: Nil
 
