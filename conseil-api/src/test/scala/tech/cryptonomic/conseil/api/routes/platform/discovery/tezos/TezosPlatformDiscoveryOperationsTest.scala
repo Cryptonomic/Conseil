@@ -19,13 +19,10 @@ import tech.cryptonomic.conseil.common.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
-import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosDatabaseOperations}
-import tech.cryptonomic.conseil.common.tezos.TezosTypes.{Account, AccountId, BlockTagged}
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
+import tech.cryptonomic.conseil.common.tezos.Tables
+import tech.cryptonomic.conseil.common.tezos.Tables.FeesRow
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -48,17 +45,15 @@ class TezosPlatformDiscoveryOperationsTest
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val metadataOperations: MetadataOperations = new MetadataOperations {
-    override def runQuery[A](action: dbio.DBIO[A]) = dbHandler.run(action)
+    override def runQuery[A](action: dbio.DBIO[A]): Future[A] = dbHandler.run(action)
   }
   implicit val contextShift: ContextShift[IO] = IO.contextShift(implicitly[ExecutionContext])
 
-  implicit val noTokenContracts = TokenContracts.fromConfig(List.empty)
-  implicit val noTNSContracts = TNSContract.noContract
-
-  val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
-  val metadadataConfiguration = new MetadataConfiguration(Map.empty)
+  val metadataCaching: MetadataCaching[IO] = MetadataCaching.empty[IO].unsafeRunSync()
+  val metadadataConfiguration: MetadataConfiguration = MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
-  val sut = TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds, 100)
+  val sut: TezosPlatformDiscoveryOperations =
+    TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds, 100)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -376,9 +371,9 @@ class TezosPlatformDiscoveryOperationsTest
       val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
 
       "return list of values of kind attribute of Fees without filter" in {
-        val avgFee =
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
-        metadataOperations.runQuery(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
+        val fee =
+          FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        metadataOperations.runQuery(Tables.Fees ++= List(fee)).isReadyWithin(5 seconds)
 
         sut
           .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)
@@ -387,46 +382,11 @@ class TezosPlatformDiscoveryOperationsTest
           .get shouldBe List("example1")
       }
 
-      "return list of boolean values" in {
-        // given
-        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-        val basicBlocks = generateSingleBlock(1, testReferenceDateTime)
-        val account =
-          Account(
-            balance = 12.34,
-            counter = Some(1),
-            delegate = None,
-            script = None,
-            manager = None,
-            spendable = None,
-            isBaker = None,
-            isActivated = None
-          )
-
-        val accounts = List(
-          BlockTagged(basicBlocks.data.hash, 1, None, None, None, Map(AccountId("id-1") -> account.copy())),
-          BlockTagged(basicBlocks.data.hash, 1, None, None, None, Map(AccountId("id-2") -> account.copy()))
-        )
-
-        metadataOperations.runQuery(TezosDatabaseOperations.writeBlocks(List(basicBlocks))).isReadyWithin(5 seconds)
-        metadataOperations.runQuery(TezosDatabaseOperations.writeAccounts(accounts)).isReadyWithin(5 seconds)
-
-        /* This test is commented out as no adequate substitute could be found.
-        // expect
-        sut
-          .listAttributeValues(AttributePath("spendable", EntityPath("accounts", networkPath)))
-          .futureValue
-          .right
-          .get shouldBe List("true", "false")
-       */
-      }
-
       "returns a list of errors when asked for medium attribute of Fees without filter - numeric attributes should not be displayed" in {
-        val avgFee =
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        val fee =
+          FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
-        dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
+        dbHandler.run(Tables.Fees ++= List(fee)).isReadyWithin(5 seconds)
 
         sut
           .listAttributeValues(AttributePath("medium", EntityPath("fees", networkPath)), None)
@@ -440,15 +400,16 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return list with one error when the minimum matching length is greater than match length" in {
-        val avgFee =
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
-        dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5.seconds)
+        val fee =
+          FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+
+        dbHandler.run(Tables.Fees ++= List(fee)).isReadyWithin(5.seconds)
 
         sut
           .listAttributeValues(
             AttributePath("kind", EntityPath("fees", networkPath)),
             Some("exa"),
-            Some(AttributeCacheConfiguration(true, 4, 5))
+            Some(AttributeCacheConfiguration(cached = true, 4, 5))
           )
           .futureValue
           .left
@@ -456,10 +417,10 @@ class TezosPlatformDiscoveryOperationsTest
       }
 
       "return empty list when trying to sql inject" in {
-        val avgFee =
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
+        val fee =
+          FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None)
 
-        dbHandler.run(TezosDatabaseOperations.writeFees(List(avgFee))).isReadyWithin(5 seconds)
+        dbHandler.run(Tables.Fees ++= List(fee)).isReadyWithin(5 seconds)
         // That's how the SLQ-injected string will look like:
         // SELECT DISTINCT kind FROM fees WHERE kind LIKE '%'; DELETE FROM fees WHERE kind LIKE '%'
         val maliciousFilter = Some("'; DELETE FROM fees WHERE kind LIKE '")
@@ -474,9 +435,9 @@ class TezosPlatformDiscoveryOperationsTest
 
       }
       "correctly apply the filter" in {
-        val avgFees = List(
-          AverageFees(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None),
-          AverageFees(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
+        val fees = List(
+          FeesRow(1, 3, 5, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 30)), "example1", None, None),
+          FeesRow(2, 4, 6, Timestamp.valueOf(LocalDateTime.of(2018, 11, 22, 12, 31)), "example2", None, None)
         )
 
         sut
@@ -484,7 +445,7 @@ class TezosPlatformDiscoveryOperationsTest
           .futureValue
           .right
           .get shouldBe List.empty
-        dbHandler.run(TezosDatabaseOperations.writeFees(avgFees)).isReadyWithin(5 seconds)
+        dbHandler.run(Tables.Fees ++= fees).isReadyWithin(5 seconds)
 
         sut
           .listAttributeValues(AttributePath("kind", EntityPath("fees", networkPath)), None)

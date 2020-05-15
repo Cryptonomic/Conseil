@@ -6,8 +6,8 @@ import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
-import tech.cryptonomic.conseil.common.tezos.michelson.JsonToMichelson.toMichelsonScript
-import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}

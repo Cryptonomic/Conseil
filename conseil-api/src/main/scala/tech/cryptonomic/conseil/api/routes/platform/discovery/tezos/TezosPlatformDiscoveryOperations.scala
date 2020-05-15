@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.Data
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._
-import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
+import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -44,7 +44,8 @@ class TezosPlatformDiscoveryOperations(
     highCardinalityLimit: Int,
     networkName: String = "notUsed"
 )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO])
-    extends PlatformDiscoveryOperations {
+    extends DefaultDatabaseOperations("tezos")
+    with PlatformDiscoveryOperations {
 
   import MetadataCaching._
   import cats.effect._
@@ -138,7 +139,7 @@ class TezosPlatformDiscoveryOperations(
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.map {
         case (table, column) =>
-          TezosDatabaseOperations.selectDistinct(table, column).map { values =>
+          selectDistinct(table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
             CacheKey(makeKey(table, column)) -> CacheEntry(now, radixTree)
           }
@@ -192,7 +193,7 @@ class TezosPlatformDiscoveryOperations(
   private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] =
     DBIOAction.sequence {
       tables.map { table =>
-        TezosDatabaseOperations.countRows(table.name.name)
+        countRows(table.name.name)
       }
     }
 
@@ -285,10 +286,10 @@ class TezosPlatformDiscoveryOperations(
     withFilter match {
       case Some(filter) =>
         metadataOperations.runQuery(
-          TezosDatabaseOperations.selectDistinctLike(tableName, column, Sanitizer.sanitizeForSql(filter))
+          selectDistinctLike(tableName, column, Sanitizer.sanitizeForSql(filter))
         )
       case None =>
-        metadataOperations.runQuery(TezosDatabaseOperations.selectDistinct(tableName, column))
+        metadataOperations.runQuery(selectDistinct(tableName, column))
     }
 
   /**
@@ -356,7 +357,7 @@ class TezosPlatformDiscoveryOperations(
         if (cardinalityHint.exists(_ > highCardinalityLimit)) {
           DBIOAction.successful(column.copy(cardinality = cardinalityHint))
         } else if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
-          TezosDatabaseOperations.countDistinct(entityPath.entity, column.name).map { count =>
+          countDistinct(entityPath.entity, column.name).map { count =>
             column.copy(cardinality = Some(count))
           }
         } else {

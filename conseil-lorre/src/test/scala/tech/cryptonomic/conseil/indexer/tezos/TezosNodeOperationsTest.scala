@@ -5,8 +5,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.TezosDatabaseOperations
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

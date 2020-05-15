@@ -10,18 +10,13 @@ import org.slf4j.LoggerFactory
 import tech.cryptonomic.conseil.common.config.Platforms.{BlockchainPlatform, TezosConfiguration}
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BlockHash, FetchRights, _}
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.{
-  DatabaseConversions,
-  Tables,
-  TezosOptics,
-  TezosTypes,
-  TezosDatabaseOperations => TezosDb
-}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}
 import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.LorreIndexer.ShutdownComplete
+import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 import tech.cryptonomic.conseil.indexer.config.{
   BatchFetchConfiguration,
   Custom,
@@ -385,7 +380,7 @@ class TezosIndexer(
         blocks: List[Block],
         listings: List[(Block, List[Voting.BakerRolls])]
     ): Future[Unit] = {
-      import DatabaseConversions._
+      import TezosDatabaseConversions._
       import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
       //DANGER Will Robinson! we assume in the rest of the code that we're not handling the genesis block

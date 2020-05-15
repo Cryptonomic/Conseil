@@ -10,10 +10,9 @@ import tech.cryptonomic.conseil.api.{TezosDataGeneration, TezosInMemoryDatabaseS
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, _}
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{AccountsHistoryRow, AccountsRow, BlocksRow, FeesRow, OperationGroupsRow, OperationsRow}
+import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, BlockHash}
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.{TNSContract, TokenContracts}
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosDatabaseOperations}
 
 import scala.concurrent.duration._
 
@@ -30,174 +29,9 @@ class TezosDataOperationsTest
 
   import scala.concurrent.ExecutionContext.Implicits.global
   "TezosDataOperations" should {
-    implicit val noTokenContracts: TokenContracts = TokenContracts.fromConfig(List.empty)
-    implicit val noTNSContracts: TNSContract = TNSContract.noContract
 
     val sut = new TezosDataOperations {
       override lazy val dbReadHandle = dbHandler
-    }
-
-    "latestBlockIO for empty DB" in {
-      // when
-      val result = dbHandler.run(sut.latestBlockIO()).futureValue
-
-      // then
-      result shouldBe None
-    }
-
-    "latestBlockIO" in {
-      // given
-      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val basicBlocks = generateBlocks(5, testReferenceDateTime)
-      val generatedBlocks = basicBlocks.zipWithIndex map {
-        case (block, idx) =>
-          //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
-          block.copy(operationGroups = List(group))
-      }
-      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
-
-      // when
-      val result = dbHandler.run(sut.latestBlockIO()).futureValue.value
-
-      // then
-      result.level shouldBe 5
-    }
-
-    "fetchOperationGroup when DB is empty" in {
-      // given
-      val input = "xyz"
-
-      // when
-      val result = sut.fetchOperationGroup(input).failed.futureValue
-
-      // then
-      result shouldBe a[NoSuchElementException]
-    }
-
-    "fetchOperationGroup" in {
-      // given
-      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val basicBlocks = generateBlocks(7, testReferenceDateTime)
-      val generatedBlocks = basicBlocks.zipWithIndex map {
-        case (block, idx) =>
-          //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
-          block.copy(operationGroups = List(group))
-      }
-      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
-      val input = generatedBlocks.head.operationGroups.head.hash
-
-      // when
-      val result = sut.fetchOperationGroup(input.value).futureValue.value
-
-      // then
-      result.operation_group.hash shouldBe input.value
-    }
-
-    "fetchBlock when DB is empty" in {
-      // given
-      val input = BlockHash("xyz")
-
-      // when
-      val result = sut.fetchBlock(input).futureValue
-
-      // then
-      result shouldBe None
-    }
-
-    "fetchBlock" in {
-      // given
-      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val basicBlocks = generateBlocks(5, testReferenceDateTime)
-      val generatedBlocks = basicBlocks.zipWithIndex map {
-        case (block, idx) =>
-          //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
-          block.copy(operationGroups = List(group))
-      }
-      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
-      val input = basicBlocks.head.data.hash
-
-      // when
-      val result = sut.fetchBlock(input).futureValue.value
-
-      // then
-      result.block.level shouldBe basicBlocks.head.data.header.level
-    }
-
-    "fetchAccount is empty" in {
-      // given
-      val input = AccountId("xyz")
-
-      // when
-      val result = sut.fetchAccount(input).futureValue
-
-      // then
-      result shouldBe None
-    }
-
-    "fetchAccount" in {
-      // given
-      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val expectedCount = 3
-
-      val block = generateBlocks(1, testReferenceDateTime).head
-      val accountsInfo = generateAccounts(expectedCount, block.data.hash, 1)
-
-      val input = accountsInfo.content.head._1
-      dbHandler.run(TezosDatabaseOperations.writeBlocks(List(block))).isReadyWithin(15.seconds) shouldBe true
-      dbHandler.run(TezosDatabaseOperations.writeAccounts(List(accountsInfo))).isReadyWithin(15.seconds) shouldBe true
-
-      // when
-      val result = sut.fetchAccount(input).futureValue.value
-
-      // then
-      result.account.accountId shouldBe input.id
-    }
-
-    "fetchLatestBlock when DB is empty" in {
-      // when
-      val result = sut.fetchLatestBlock().futureValue
-
-      // then
-      result shouldBe None
-    }
-
-    "fetchLatestBlock" in {
-      // given
-      implicit val randomSeed: RandomSeed = RandomSeed(testReferenceTimestamp.getTime)
-
-      val basicBlocks = generateBlocks(7, testReferenceDateTime)
-      val generatedBlocks = basicBlocks.zipWithIndex map {
-        case (block, idx) =>
-          //need to use different seeds to generate unique hashes for groups
-          val group = generateOperationGroup(block, generateOperations = true)(randomSeed + idx)
-          block.copy(operationGroups = List(group))
-      }
-      dbHandler.run(TezosDatabaseOperations.writeBlocks(generatedBlocks)).isReadyWithin(15.seconds) shouldBe true
-
-      // when
-      val result = sut.fetchLatestBlock().futureValue.value
-
-      // then
-      result.level shouldBe 7
-    }
-
-    "queryWithPredicates" in {
-      // given
-      val table = "blocks"
-      val query = Query.empty
-
-      // when
-      val result = sut.queryWithPredicates("tezos", table, query).futureValue
-
-      // then
-      result shouldBe List.empty
     }
 
     val blocksTmp = List(
@@ -236,8 +70,207 @@ class TezosDataOperationsTest
         utcMonth = 1,
         utcDay = 1,
         utcTime = "00:00:00"
+      ),
+      BlocksRow(
+        2,
+        1,
+        "TZ2IB879wD",
+        new Timestamp(1),
+        0,
+        "fitness",
+        Some("context1"),
+        Some("sig2JKkCn2uE4"),
+        "protocol",
+        Some("YLBMy"),
+        "AmmEPSs1EP",
+        None,
+        utcYear=2018,
+        utcMonth=1,
+        utcDay = 1,
+        utcTime = "00:00:00"
       )
     )
+
+    val operationGroupsTmp = Seq(
+      OperationGroupsRow("protocol",Some("YLBMy"),"YLBMyqs6AX","Pny9KR0NpY",Some("sigZuUeFTZ2IB"),"R0NpYZuUeF",0),
+      OperationGroupsRow("protocol",Some("YLBMy"),"kL6aYpvHgu","Hy1U991CqV",Some("siguMl6h80BRD"),"aQeGrbXCmG",1),
+      OperationGroupsRow("protocol",Some("YLBMy"),"SAJ24saDAn","HAUda1992M",Some("sigAMjda313JN"),"AmmEPSs1EP",2)
+    )
+
+    val operationsTmp = Seq(
+      OperationsRow(
+        operationId = 0,
+        operationGroupHash = "YLBMyqs6AX",
+        kind = "seed_nonce_revelation",
+        blockHash = "R0NpYZuUeF",
+        blockLevel = 0,
+        internal = false,
+        timestamp = new Timestamp(0),
+        utcYear=2018,
+        utcMonth=1,
+        utcDay = 1,
+        utcTime = "00:00:00"
+      ),
+      OperationsRow(
+        operationId = 1,
+        operationGroupHash = "kL6aYpvHgu",
+        kind = "seed_nonce_revelation",
+        blockHash = "aQeGrbXCmG",
+        blockLevel = 1,
+        internal = false,
+        timestamp = new Timestamp(1),
+        utcYear=2018,
+        utcMonth=1,
+        utcDay = 1,
+        utcTime = "00:00:00"
+      ),
+      OperationsRow(
+        operationId = 2,
+        operationGroupHash = "SAJ24saDAn",
+        kind = "seed_nonce_revelation",
+        blockHash = "AmmEPSs1EP",
+        blockLevel = 2,
+        internal = false,
+        timestamp = new Timestamp(2),
+        utcYear=2018,
+        utcMonth=1,
+        utcDay = 1,
+        utcTime = "00:00:00"
+      )
+    )
+
+    val accountsTmp = Seq(
+      AccountsRow("Jdah4819", "R0NpYZuUeF", balance = 2000),
+      AccountsRow("Jmf8217N", "aQeGrbXCmG", balance = 3000),
+      AccountsRow("Ndah178m", "AmmEPSs1EP", balance = 1000)
+    )
+
+    "latestBlockIO for empty DB" in {
+      // when
+      val result = dbHandler.run(sut.latestBlockIO()).futureValue
+
+      // then
+      result shouldBe None
+    }
+
+    "latestBlockIO" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.OperationGroups ++= operationGroupsTmp).isReadyWithin(5.seconds) shouldBe true
+
+      // when
+      val result = dbHandler.run(sut.latestBlockIO()).futureValue.value
+
+      // then
+      result.level shouldBe 2
+    }
+
+    "fetchOperationGroup when DB is empty" in {
+      // given
+      val input = "xyz"
+
+      // when
+      val result = sut.fetchOperationGroup(input).failed.futureValue
+
+      // then
+      result shouldBe a[NoSuchElementException]
+    }
+
+    "fetchOperationGroup" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.OperationGroups ++= operationGroupsTmp).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Operations ++= operationsTmp).isReadyWithin(5.seconds) shouldBe true
+
+      val input = operationGroupsTmp.head.hash
+
+      // when
+      val result = sut.fetchOperationGroup(input).futureValue.value
+
+      // then
+      result.operation_group.hash shouldBe input
+    }
+
+    "fetchBlock when DB is empty" in {
+      // given
+      val input = BlockHash("xyz")
+
+      // when
+      val result = sut.fetchBlock(input).futureValue
+
+      // then
+      result shouldBe None
+    }
+
+    "fetchBlock" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.OperationGroups ++= operationGroupsTmp).isReadyWithin(5.seconds) shouldBe true
+
+      val input = BlockHash(blocksTmp.head.hash)
+
+      // when
+      val result = sut.fetchBlock(input).futureValue.value
+
+      // then
+      result.block.level shouldBe blocksTmp.head.level
+    }
+
+    "fetchAccount is empty" in {
+      // given
+      val input = AccountId("xyz")
+
+      // when
+      val result = sut.fetchAccount(input).futureValue
+
+      // then
+      result shouldBe None
+    }
+
+    "fetchAccount" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.Accounts ++= accountsTmp).isReadyWithin(5.seconds) shouldBe true
+      val input = AccountId(accountsTmp.head.accountId)
+
+      // when
+      val result = sut.fetchAccount(input).futureValue.value
+
+      // then
+      result.account.accountId shouldBe input.id
+    }
+
+    "fetchLatestBlock when DB is empty" in {
+      // when
+      val result = sut.fetchLatestBlock().futureValue
+
+      // then
+      result shouldBe None
+    }
+
+    "fetchLatestBlock" in {
+      // given
+      dbHandler.run(Tables.Blocks ++= blocksTmp).isReadyWithin(5.seconds) shouldBe true
+      dbHandler.run(Tables.OperationGroups ++= operationGroupsTmp).isReadyWithin(5.seconds) shouldBe true
+
+      // when
+      val result = sut.fetchLatestBlock().futureValue.value
+
+      // then
+      result.level shouldBe 2
+    }
+
+    "queryWithPredicates" in {
+      // given
+      val table = "blocks"
+      val query = Query.empty
+
+      // when
+      val result = sut.queryWithPredicates("tezos", table, query).futureValue
+
+      // then
+      result shouldBe List.empty
+    }
 
     "get all values from the table with nulls as nones" in {
 
@@ -320,6 +353,38 @@ class TezosDataOperationsTest
           "expected_commitment" -> None,
           "priority" -> None,
           "utc_year" -> Some(1970),
+          "utc_month" -> Some(1),
+          "utc_day" -> Some(1),
+          "utc_time" -> Some("00:00:00")
+        ),
+        Map(
+          "operations_hash" -> None,
+          "timestamp" -> Some(new Timestamp(1)),
+          "context" -> Some("context1"),
+          "proto" -> Some(1),
+          "signature" -> Some("sig2JKkCn2uE4"),
+          "hash" -> Some("AmmEPSs1EP"),
+          "fitness" -> Some("fitness"),
+          "validation_pass" -> Some(0),
+          "protocol" -> Some("protocol"),
+          "predecessor" -> Some("TZ2IB879wD"),
+          "chain_id" -> Some("YLBMy"),
+          "level" -> Some(2),
+          "period_kind" -> None,
+          "current_expected_quorum" -> None,
+          "active_proposal" -> None,
+          "baker" -> None,
+          "nonce_hash" -> None,
+          "consumed_gas" -> None,
+          "meta_level" -> None,
+          "meta_level_position" -> None,
+          "meta_cycle" -> None,
+          "meta_cycle_position" -> None,
+          "meta_voting_period" -> None,
+          "meta_voting_period_position" -> None,
+          "expected_commitment" -> None,
+          "priority" -> None,
+          "utc_year" -> Some(2018),
           "utc_month" -> Some(1),
           "utc_day" -> Some(1),
           "utc_time" -> Some("00:00:00")
@@ -534,7 +599,8 @@ class TezosDataOperationsTest
           "protocol" -> Some("protocol"),
           "hash" -> Some("aQeGrbXCmG"),
           "operations_hash" -> None
-        )
+        ),
+        Map("operations_hash" -> None, "proto" -> Some(1), "hash" -> Some("AmmEPSs1EP"), "protocol" -> Some("protocol"), "level" -> Some(2))
       )
     }
 
@@ -561,7 +627,8 @@ class TezosDataOperationsTest
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP"))
       )
     }
 
@@ -627,7 +694,8 @@ class TezosDataOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP"))
       )
     }
 
@@ -1078,7 +1146,8 @@ class TezosDataOperationsTest
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP"))
       )
     }
 
@@ -1144,7 +1213,8 @@ class TezosDataOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
-        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP"))
       )
     }
     "get map from a block table with datetime field" in {
@@ -1188,6 +1258,13 @@ class TezosDataOperationsTest
           "protocol" -> Some("protocol"),
           "hash" -> Some("aQeGrbXCmG"),
           "timestamp" -> Some(new Timestamp(1))
+        ),
+        Map(
+          "timestamp" -> Some(new Timestamp(1)),
+          "proto" -> Some(1),
+          "hash" -> Some("AmmEPSs1EP"),
+          "protocol" -> Some("protocol"),
+          "level" -> Some(2)
         )
       )
     }
@@ -1440,7 +1517,8 @@ class TezosDataOperationsTest
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP"))
       )
     }
 
@@ -1472,6 +1550,7 @@ class TezosDataOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP")),
         Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
@@ -1506,7 +1585,8 @@ class TezosDataOperationsTest
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF")),
-        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG"))
+        Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP"))
       )
     }
 
@@ -1538,6 +1618,7 @@ class TezosDataOperationsTest
 
       val result = dbHandler.run(populateAndTest.transactionally).futureValue
       result shouldBe List(
+        Map("level" -> Some(2), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("AmmEPSs1EP")),
         Map("level" -> Some(1), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("aQeGrbXCmG")),
         Map("level" -> Some(0), "proto" -> Some(1), "protocol" -> Some("protocol"), "hash" -> Some("R0NpYZuUeF"))
       )
@@ -2361,6 +2442,57 @@ class TezosDataOperationsTest
           "r" -> Some(1)
         )
       )
+
+    }
+
+    "return the default when fetching the latest block level and there's no block stored" in {
+      val expected = -1
+      val maxLevel = dbHandler
+        .run(
+          sut.fetchMaxBlockLevel
+        )
+        .futureValue
+
+      maxLevel should equal(expected)
+    }
+
+    "fetch the latest block level when blocks are available" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val expected = 5
+      val populateAndFetch = for {
+        _ <- Tables.Blocks ++= generateBlockRows(expected, testReferenceTimestamp)
+        result <- sut.fetchMaxBlockLevel
+      } yield result
+
+      val maxLevel = dbHandler.run(populateAndFetch.transactionally).futureValue
+
+      maxLevel should equal(expected)
+    }
+
+    "fetch nothing if looking up a non-existent operation group by hash" in {
+      dbHandler.run(sut.operationsForGroup("no-group-here")).futureValue shouldBe None
+    }
+
+    "fetch existing operations with their group on a existing hash" in {
+      implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+      val block = generateBlockRows(1, testReferenceTimestamp).head
+      val group = generateOperationGroupRows(block).head
+      val ops = generateOperationsForGroup(block, group)
+
+      val populateAndFetch = for {
+        _ <- Tables.Blocks += block
+        _ <- Tables.OperationGroups += group
+        ids <- Tables.Operations returning Tables.Operations.map(_.operationId) ++= ops
+        result <- sut.operationsForGroup(group.hash)
+      } yield (result, ids)
+
+      val (Some((groupRow, operationRows)), operationIds) = dbHandler.run(populateAndFetch).futureValue
+
+      groupRow.hash shouldEqual group.hash
+      operationRows should have size ops.size
+      operationRows.map(_.operationId).toList should contain theSameElementsAs operationIds
 
     }
   }

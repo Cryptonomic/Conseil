@@ -214,7 +214,7 @@ object Dependencies {
     )
 
   val conseilLorreInclude: Seq[ModuleID] =
-    concat(config, logging, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock)
+    concat(config, logging, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX)
 
   val conseilSchemaInclude: Seq[ModuleID] = concat(config, pureConfig)
 

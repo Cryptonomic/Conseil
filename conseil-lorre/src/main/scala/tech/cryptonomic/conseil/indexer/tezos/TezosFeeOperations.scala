@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos
 
 import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIOAction
-import tech.cryptonomic.conseil.common.tezos.{TezosDatabaseOperations => TezosDb}
+import tech.cryptonomic.conseil.indexer.tezos.{TezosDatabaseOperations => TezosDb}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
