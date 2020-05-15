@@ -2033,6 +2033,7 @@ trait Tables {
     *  @param consumedGas Database column consumed_gas SqlType(numeric), Default(None)
     *  @param storageSize Database column storage_size SqlType(numeric), Default(None)
     *  @param paidStorageSizeDiff Database column paid_storage_size_diff SqlType(numeric), Default(None)
+    *  @param burn Database column burn SqlType(numeric), Default(None)
     *  @param originatedContracts Database column originated_contracts SqlType(varchar), Default(None)
     *  @param blockHash Database column block_hash SqlType(varchar)
     *  @param blockLevel Database column block_level SqlType(int4)
@@ -2081,6 +2082,7 @@ trait Tables {
       consumedGas: Option[scala.math.BigDecimal] = None,
       storageSize: Option[scala.math.BigDecimal] = None,
       paidStorageSizeDiff: Option[scala.math.BigDecimal] = None,
+      burn: Option[scala.math.BigDecimal] = None,
       originatedContracts: Option[String] = None,
       blockHash: String,
       blockLevel: Int,
@@ -2143,6 +2145,7 @@ trait Tables {
       <<?[scala.math.BigDecimal],
       <<?[scala.math.BigDecimal],
       <<?[scala.math.BigDecimal],
+      <<?[scala.math.BigDecimal],
       <<?[String],
       <<[String],
       <<[Int],
@@ -2162,12 +2165,12 @@ trait Tables {
   /** Table description of table operations. Objects of this class serve as prototypes for rows in queries. */
   class Operations(_tableTag: Tag) extends profile.api.Table[OperationsRow](_tableTag, Some("tezos"), "operations") {
     def * =
-      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
+      (branch :: numberOfSlots :: cycle :: operationId :: operationGroupHash :: kind :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: burn :: originatedContracts :: blockHash :: blockLevel :: ballot :: internal :: period :: ballotPeriod :: timestamp :: errors :: utcYear :: utcMonth :: utcDay :: utcTime :: HNil)
         .mapTo[OperationsRow]
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: originatedContracts :: Rep
+      (branch :: numberOfSlots :: cycle :: Rep.Some(operationId) :: Rep.Some(operationGroupHash) :: Rep.Some(kind) :: level :: delegate :: slots :: nonce :: pkh :: secret :: source :: fee :: counter :: gasLimit :: storageLimit :: publicKey :: amount :: destination :: parameters :: parametersEntrypoints :: parametersMicheline :: managerPubkey :: balance :: proposal :: spendable :: delegatable :: script :: storage :: status :: consumedGas :: storageSize :: paidStorageSizeDiff :: burn :: originatedContracts :: Rep
             .Some(blockHash) :: Rep.Some(blockLevel) :: ballot :: Rep.Some(internal) :: period :: ballotPeriod :: Rep
             .Some(timestamp) :: errors :: Rep.Some(utcYear) :: Rep.Some(utcMonth) :: Rep.Some(utcDay) :: Rep.Some(
             utcTime
@@ -2208,19 +2211,20 @@ trait Tables {
             r(31).asInstanceOf[Option[scala.math.BigDecimal]],
             r(32).asInstanceOf[Option[scala.math.BigDecimal]],
             r(33).asInstanceOf[Option[scala.math.BigDecimal]],
-            r(34).asInstanceOf[Option[String]],
-            r(35).asInstanceOf[Option[String]].get,
-            r(36).asInstanceOf[Option[Int]].get,
-            r(37).asInstanceOf[Option[String]],
-            r(38).asInstanceOf[Option[Boolean]].get,
-            r(39).asInstanceOf[Option[Int]],
+            r(34).asInstanceOf[Option[scala.math.BigDecimal]],
+            r(35).asInstanceOf[Option[String]],
+            r(36).asInstanceOf[Option[String]].get,
+            r(37).asInstanceOf[Option[Int]].get,
+            r(38).asInstanceOf[Option[String]],
+            r(39).asInstanceOf[Option[Boolean]].get,
             r(40).asInstanceOf[Option[Int]],
-            r(41).asInstanceOf[Option[java.sql.Timestamp]].get,
-            r(42).asInstanceOf[Option[String]],
-            r(43).asInstanceOf[Option[Int]].get,
+            r(41).asInstanceOf[Option[Int]],
+            r(42).asInstanceOf[Option[java.sql.Timestamp]].get,
+            r(43).asInstanceOf[Option[String]],
             r(44).asInstanceOf[Option[Int]].get,
             r(45).asInstanceOf[Option[Int]].get,
-            r(46).asInstanceOf[Option[String]].get
+            r(46).asInstanceOf[Option[Int]].get,
+            r(47).asInstanceOf[Option[String]].get
           ),
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2331,6 +2335,9 @@ trait Tables {
     /** Database column paid_storage_size_diff SqlType(numeric), Default(None) */
     val paidStorageSizeDiff: Rep[Option[scala.math.BigDecimal]] =
       column[Option[scala.math.BigDecimal]]("paid_storage_size_diff", O.Default(None))
+
+    /** Database column burn SqlType(numeric), Default(None) */
+    val burn: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("burn", O.Default(None))
 
     /** Database column originated_contracts SqlType(varchar), Default(None) */
     val originatedContracts: Rep[Option[String]] = column[Option[String]]("originated_contracts", O.Default(None))

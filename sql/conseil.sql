@@ -412,6 +412,7 @@ CREATE TABLE tezos.operations (
     consumed_gas numeric,
     storage_size numeric,
     paid_storage_size_diff numeric,
+    burn numeric,
     originated_contracts character varying,
     block_hash character varying NOT NULL,
     block_level integer NOT NULL,

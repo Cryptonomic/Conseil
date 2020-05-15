@@ -418,6 +418,13 @@ object DatabaseConversions extends LazyLogging {
         )
         ) =>
       val (year, month, day, time) = extractDateTime(toSql(block.data.header.timestamp))
+      val paidStorageDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal)
+      val burn = paidStorageDiff.flatMap { psd =>
+        metadata.operation_result.balance_updates.toList.flatten
+          .map(bu => BigDecimal(bu.change).abs)
+          .diff(List(psd.abs * 1000))
+          .headOption
+      }
       Tables.OperationsRow(
         operationId = 0,
         operationGroupHash = groupHash.value,
@@ -437,7 +444,8 @@ object DatabaseConversions extends LazyLogging {
         status = Some(metadata.operation_result.status),
         consumedGas = metadata.operation_result.consumed_gas.flatMap(extractBigDecimal),
         storageSize = metadata.operation_result.storage_size.flatMap(extractBigDecimal),
-        paidStorageSizeDiff = metadata.operation_result.paid_storage_size_diff.flatMap(extractBigDecimal),
+        paidStorageSizeDiff = paidStorageDiff,
+        burn = burn,
         originatedContracts = metadata.operation_result.originated_contracts.map(_.map(_.id)).map(toCommaSeparated),
         blockHash = block.data.hash.value,
         blockLevel = block.data.header.level,
@@ -451,6 +459,7 @@ object DatabaseConversions extends LazyLogging {
         utcDay = day,
         utcTime = time
       )
+
   }
 
   private val convertDelegation: PartialFunction[(Block, OperationHash, Operation), Tables.OperationsRow] = {

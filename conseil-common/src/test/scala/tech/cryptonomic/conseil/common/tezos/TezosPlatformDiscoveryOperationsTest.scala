@@ -258,6 +258,7 @@ class TezosPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "operations"
             ),
+            Attribute("burn", "Burn", DataType.Decimal, None, KeyType.NonKey, "operations"),
             Attribute(
               "originated_contracts",
               "Originated contracts",
