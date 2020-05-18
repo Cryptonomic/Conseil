@@ -335,9 +335,7 @@ object DataTypes {
       metadataConfiguration.entity(entity).flatMap { entityCfg =>
         entityCfg.attributes.find {
           case (k, v) =>
-            if (k == snapshot.field) {
-              v.temporalColumn.getOrElse(false)
-            } else false
+            k == snapshot.field && v.temporalColumn.getOrElse(false)
         }
       } match {
         case Some(_) => List.empty
