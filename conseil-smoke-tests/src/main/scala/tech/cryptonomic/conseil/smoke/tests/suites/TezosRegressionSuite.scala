@@ -1,17 +1,18 @@
-package tech.cryptonomic.conseil.smoke.tests
+package tech.cryptonomic.conseil.smoke.tests.suites
 
 import java.util.concurrent.Executors
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all._
 import com.typesafe.config.ConfigFactory
-import io.circe.{parser, Json}
+import io.circe.{Json, parser}
 import org.http4s.circe._
 import org.http4s.client.blaze._
 import org.http4s.client.dsl.io._
 import org.http4s.dsl.io._
 import org.http4s.headers._
 import org.http4s.{Header, MediaType, Uri}
+import tech.cryptonomic.conseil.smoke.tests.RegressionFixtures
 
 import scala.Console.{GREEN, RED, RESET}
 import scala.concurrent.ExecutionContext
@@ -19,23 +20,11 @@ import scala.concurrent.duration._
 import scala.sys.process._
 import scala.util.Try
 
-object DataEndpointsClientProbe {
-
-  /** Creates a valid client probe or fails trying
-    *
-    * @param configfile should point to a valid configuration for Lorre/Conseil
-    * @param syncNetwork can be a valid configuration entry for network to sync to
-    * @return a client to run regression tests
-    */
-  def apply(configfile: String, syncNetwork: Option[String] = None): IO[DataEndpointsClientProbe] =
-    IO(new DataEndpointsClientProbe(configfile, syncNetwork))
-
-}
-
 /** Currently can be used to test any conseil instance that loaded blocks levels 1 to 1000
   * against predefined expectations on the responses
   */
-class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[String]) extends RegressionFixtures {
+class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
+  extends RegressionSuite with RegressionFixtures {
 
   /* We're currently assuming running on carthage up to a given level
    * we should eventually pass-in everything as a composite argument, like a csv?
@@ -59,7 +48,7 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
     /* We might wanna start with only 10k blocks */
     private def runLorre(network: String) =
       Process(
-        command = Seq("sbt", s"runLorre -v -d $depth -h $referenceBlockHash $network"),
+        command = Seq("sbt", s"runLorre -v -d $depth -h $referenceBlockHash tezos $network"),
         cwd = None,
         extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
       )
@@ -67,11 +56,11 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
       Process(
         command = Seq("sbt", "runConseil -v"),
         cwd = None,
-        extraEnv = ("SBT_OPTS" -> s"-Dconfig.file=$configfile")
+        extraEnv = "SBT_OPTS" -> s"-Dconfig.file=$configfile"
       )
 
     private def syncData(network: String) =
-      IO((runLorre(network).!).ensuring(_ == 0, "lorre failed to load correctly"))
+      IO(runLorre(network).!.ensuring(_ == 0, "lorre failed to load correctly"))
 
     private def startConseil: IO[Process] =
       for {
@@ -95,12 +84,12 @@ class DataEndpointsClientProbe private (configfile: String, syncNetwork: Option[
   private val clientBuild = BlazeClientBuilder[IO](clientExecution)
 
   /** will run the regression suite against the given endpoints */
-  def runRegressionSuite: IO[Unit] =
+  override def runRegressionSuite: IO[Unit] =
     Setup.conseilProcess.use { _ =>
       infoEndpoint *> blockHeadEndpoint *> groupingPredicatesQueryEndpoint
     }.flatMap {
-      case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage()}$RESET"))
-      case Right(value) => IO(println(s"$GREEN Regression test passed: OK$RESET"))
+      case Left(error) => IO(println(s"$RED Regression test failed: ${error.getMessage}$RESET"))
+      case Right(_) => IO(println(s"$GREEN Regression test passed: OK$RESET"))
     }
 
   /** info */
