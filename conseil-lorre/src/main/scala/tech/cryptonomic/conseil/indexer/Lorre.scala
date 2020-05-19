@@ -93,7 +93,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           case (tokenRows, _) =>
             TokenContracts.fromConfig(
               tokenRows.map {
-                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
                   ContractId(accountId) -> standard
               }
             )

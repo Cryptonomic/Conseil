@@ -2493,25 +2493,26 @@ trait Tables {
     *  @param id Database column id SqlType(int4), PrimaryKey
     *  @param name Database column name SqlType(text)
     *  @param contractType Database column contract_type SqlType(text)
-    *  @param accountId Database column account_id SqlType(text) */
-  case class RegisteredTokensRow(id: Int, name: String, contractType: String, accountId: String)
+    *  @param accountId Database column account_id SqlType(text)
+    *  @param scale Database column scale SqlType(int4) */
+  case class RegisteredTokensRow(id: Int, name: String, contractType: String, accountId: String, scale: Int)
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
   implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
     import prs._
-    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String]))
+    RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String], <<[Int]))
   }
 
   /** Table description of table registered_tokens. Objects of this class serve as prototypes for rows in queries. */
   class RegisteredTokens(_tableTag: Tag)
       extends profile.api.Table[RegisteredTokensRow](_tableTag, Some("tezos"), "registered_tokens") {
-    def * = (id, name, contractType, accountId) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
+    def * = (id, name, contractType, accountId, scale) <> (RegisteredTokensRow.tupled, RegisteredTokensRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId))).shaped.<>(
+      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId), Rep.Some(scale))).shaped.<>(
         { r =>
-          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get)))
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2527,6 +2528,9 @@ trait Tables {
 
     /** Database column account_id SqlType(text) */
     val accountId: Rep[String] = column[String]("account_id")
+
+    /** Database column scale SqlType(int4) */
+    val scale: Rep[Int] = column[Int]("scale")
   }
 
   /** Collection-like TableQuery object for table RegisteredTokens */

@@ -126,7 +126,8 @@ CREATE TABLE tezos.registered_tokens (
     id integer PRIMARY KEY,
     name text NOT NULL,
     contract_type text NOT NULL,
-    account_id text NOT NULL
+    account_id text NOT NULL,
+    scale integer NOT NULL
 );
 
 CREATE TABLE tezos.token_balances (
