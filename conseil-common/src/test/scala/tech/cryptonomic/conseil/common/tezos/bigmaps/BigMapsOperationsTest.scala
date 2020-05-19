@@ -223,7 +223,7 @@ class BigMapsOperationsTest
 
         //prepare the token registry
 
-        val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id)
+        val registeredToken = Tables.RegisteredTokensRow(1, "token", "FA1.2", tokenAddress.id, 0)
 
         implicit val fa12Tokens = TokenContracts.fromConfig(List(tokenAddress -> "FA1.2"))
         fa12Tokens.setMapId(tokenAddress, BigDecimal(tokenMap))

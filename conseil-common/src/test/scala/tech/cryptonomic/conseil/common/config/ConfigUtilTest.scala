@@ -264,7 +264,7 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues with Optio
 
         rows should have size 1
 
-        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9")
+        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9", 6)
       }
 
       "use a database table to find the csv file and map to the corresponding rows for token contracts" in {
@@ -280,7 +280,7 @@ class ConfigUtilTest extends WordSpec with Matchers with EitherValues with Optio
 
         rows should have size 1
 
-        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9")
+        rows.head shouldBe Tables.RegisteredTokensRow(1, "USDTez", "FA1.2", "tz1eEnQhbwf6trb8Q8mPb2RaPkNk2rN7BKi9", 6)
       }
 
       "fail to read the csv data if the network doesn't have a matching config file" in {
