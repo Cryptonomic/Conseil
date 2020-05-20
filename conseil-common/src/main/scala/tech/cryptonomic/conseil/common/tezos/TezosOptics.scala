@@ -73,10 +73,10 @@ object TezosOptics {
     val setBalances: List[BalanceUpdate] => Block => Block = blockBalances set _
 
     /** functions to operate on all big maps copy diffs within a block */
-    val readBigMapDiffCopy = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.operationBigMapDiffCopy
+    val readBigMapDiffCopy = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.overOperationBigMapDiffCopy
 
     /** functions to operate on all big maps remove diffs within a block */
-    val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.operationBigMapDiffRemove
+    val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.overOperationBigMapDiffRemove
 
     /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
       * in a form more amenable to processing
@@ -98,6 +98,29 @@ object TezosOptics {
         }
         group -> (group.contents, internal)
       }.toMap
+
+    /** Extracts all operations, primary and internal, and pre-order traverse
+      * the two-level structure to try and preserve the original intended sequence,
+      * foregoing the grouping structure
+      */
+    def extractOperationsSequence(
+        block: Block
+    ): List[Either[Operation, InternalOperationResults.InternalOperationResult]] =
+      for {
+        group <- block.operationGroups
+        op <- group.contents
+        all <- op match {
+          case r: Reveal =>
+            Left(op) :: r.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case t: Transaction =>
+            Left(op) :: t.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case o: Origination =>
+            Left(op) :: o.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case d: Delegation =>
+            Left(op) :: d.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case _ => List(Left(op))
+        }
+      } yield all
 
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: Block): Option[Int] =
@@ -122,100 +145,94 @@ object TezosOptics {
 
   object Operations {
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.{
-      Transaction => InternalTransaction
+      Transaction => InternalTransaction,
+      Origination => InternalOrigination
     }
     import tech.cryptonomic.conseil.common.tezos.TezosTypes.OperationResult.Status
 
-    val selectOrigination = GenPrism[Operation, Origination]
-    val originationResult = GenLens[Origination](_.metadata.operation_result)
-    val originationBigMapDiffs =
+    val whenOrigination = GenPrism[Operation, Origination]
+    val onOriginationResult = GenLens[Origination](_.metadata.operation_result)
+    val onOriginationBigMapDiffs =
       Optional[OperationResult.Origination, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
         diffs => result => result.copy(big_map_diff = diffs.some)
       )
 
-    val selectTransaction = GenPrism[Operation, Transaction]
-    val transactionResult = GenLens[Transaction](_.metadata.operation_result)
-    val transactionBigMapDiffs =
+    val whenTransaction = GenPrism[Operation, Transaction]
+    val onTransactionResult = GenLens[Transaction](_.metadata.operation_result)
+    val onTransactionBigMapDiffs =
       Optional[OperationResult.Transaction, List[Contract.CompatBigMapDiff]](_.big_map_diff)(
         diffs => result => result.copy(big_map_diff = diffs.some)
       )
 
-    val selectBigMapAlloc = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    val whenBigMapAlloc = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapAlloc
           ]
 
-    val selectBigMapUpdate = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    val whenBigMapUpdate = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapUpdate
           ]
 
-    val selectBigMapCopy = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    val whenBigMapCopy = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapCopy
           ]
 
-    val selectBigMapRemove = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    val whenBigMapRemove = left[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapRemove
           ]
 
-    val operationBigMapDiffAlloc =
-      selectOrigination composeLens
-          originationResult composeOptional
-          originationBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapAlloc)
+    val overOperationBigMapDiffAlloc =
+      whenOrigination composeLens
+          onOriginationResult composeOptional
+          onOriginationBigMapDiffs composeTraversal
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapAlloc)
 
-    val operationBigMapDiffUpdate =
-      selectTransaction composeLens
-          transactionResult composeOptional
-          transactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapUpdate)
+    val overOperationBigMapDiffUpdate =
+      whenTransaction composeLens
+          onTransactionResult composeOptional
+          onTransactionBigMapDiffs composeTraversal
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapUpdate)
 
-    val operationBigMapDiffCopy =
-      selectTransaction composeLens
-          transactionResult composeOptional
-          transactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapCopy)
+    val overOperationBigMapDiffCopy =
+      whenTransaction composeLens
+          onTransactionResult composeOptional
+          onTransactionBigMapDiffs composeTraversal
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapCopy)
 
-    val operationBigMapDiffRemove =
-      selectTransaction composeLens
-          transactionResult composeOptional
-          transactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional selectBigMapRemove)
+    val overOperationBigMapDiffRemove =
+      whenTransaction composeLens
+          onTransactionResult composeOptional
+          onTransactionBigMapDiffs composeTraversal
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapRemove)
 
     private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     def extractAppliedOriginationsResults(block: Block) = {
-      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+      val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
+        case Left(op: Origination) => op.metadata.operation_result
+        case Right(intOp: InternalOrigination) => intOp.result
+      }
 
-      val results =
-        (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
-            (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
-
-      results.filter(result => isApplied(result.status))
+      operationSequence.filter(result => isApplied(result.status))
     }
 
     def extractAppliedTransactionsResults(block: Block) = {
-      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+      val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
+        case Left(op: Transaction) => op.metadata.operation_result
+        case Right(intOp: InternalTransaction) => intOp.result
+      }
 
-      val results =
-        (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
-            (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
-
-      results.filter(result => isApplied(result.status))
+      operationSequence.filter(result => isApplied(result.status))
     }
 
-    def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] = {
-      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-      (ops.toList.flatten.collect {
-        case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
-      }) ++
-        (intOps.toList.flatten.collect {
-          case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
-        })
-    }
+    def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] =
+      TezosOptics.Blocks.extractOperationsSequence(block).collect {
+        case Left(op: Transaction) if isApplied(op.metadata.operation_result.status) => Left(op)
+        case Right(intOp: InternalTransaction) if isApplied(intOp.result.status) => Right(intOp)
+      }
 
   }
 
