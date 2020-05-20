@@ -154,22 +154,27 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   }
 
   /** Updates bakers in the DB */
-  def updateBakers(): Future[Unit] = {
+  def updateBakers(lastCycle: Int): Future[Int] = {
     logger.info("Updating Bakers table")
     val blockHead = tezosNodeOperator.getBareBlockHead()
     blockHead.flatMap { blockData =>
-      val bakingRights = db.run(TezosDb.getBakingRightsForLevel(blockData.header.level))
-      val endorsingRights = db.run(TezosDb.getEndorsingRightsForLevel(blockData.header.level))
-      val bakersFromDb = db.run(TezosDb.getBakers)
-      for {
-        br <- bakingRights
-        er <- endorsingRights
-        distinctDelegates = (br.map(_.delegate) ::: er.map(_.delegate)).distinct
-        delegates <- tezosNodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), blockData.hash)
-        bakers <- bakersFromDb
-        updatedBakers = applyUpdatesToBakers(delegates, bakers)
-        _ <- db.run(TezosDb.updateBakers(updatedBakers))
-      } yield ()
+      val cycle = TezosTypes.discardGenesis(blockData.metadata).level.cycle
+      if (lastCycle < cycle) {
+        val bakingRights = db.run(TezosDb.getBakingRightsForLevel(blockData.header.level))
+        val endorsingRights = db.run(TezosDb.getEndorsingRightsForLevel(blockData.header.level))
+        val bakersFromDb = db.run(TezosDb.getBakers)
+        for {
+          br <- bakingRights
+          er <- endorsingRights
+          distinctDelegates = (br.map(_.delegate) ::: er.map(_.delegate)).distinct
+          delegates <- tezosNodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), blockData.hash)
+          bakers <- bakersFromDb
+          updatedBakers = applyUpdatesToBakers(delegates, bakers)
+          _ <- db.run(TezosDb.updateBakers(updatedBakers))
+        } yield cycle
+      } else {
+        Future.successful(lastCycle)
+      }
     }
   }
 
@@ -290,6 +295,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   @tailrec
   private[this] def mainLoop(
       iteration: Int,
+      lastCycle: Int,
       accountsRefreshLevels: AccountUpdatesEvents
   ): Unit = {
     val noOp = Future.successful(())
@@ -301,8 +307,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       else
         noOp
       _ <- updateRightsTimestamps()
-      _ <- updateBakers()
-    } yield Some(nextRefreshes)
+      currentCycle <- updateBakers(lastCycle)
+    } yield (Some(nextRefreshes), currentCycle)
 
     /* Won't stop Lorre on failure from processing the chain, unless overridden by the environment to halt.
      * Can be used to investigate issues on consistently failing block or account processing.
@@ -314,17 +320,17 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           //swallow the error and proceed with the default behaviour
           case f @ (AccountsProcessingFailed(_, _) | BlocksProcessingFailed(_, _) | BakersProcessingFailed(_, _)) =>
             logger.error("Failed processing but will keep on going next cycle", f)
-            None //we have no meaningful response to provide
+            (None, lastCycle) //we have no meaningful response to provide
         } else processing
 
     //if something went wrong and wasn't recovered, this will actually blow the app
-    val updatedLevels = Await.result(attemptedProcessing, atMost = Duration.Inf)
+    val (updatedLevels, currentCycle) = Await.result(attemptedProcessing, atMost = Duration.Inf)
 
     lorreConf.depth match {
       case Newest =>
         logger.info("Taking a nap")
         Thread.sleep(lorreConf.sleepInterval.toMillis)
-        mainLoop(iteration + 1, updatedLevels.getOrElse(accountsRefreshLevels))
+        mainLoop(iteration + 1, currentCycle, updatedLevels.getOrElse(accountsRefreshLevels))
       case _ =>
         logger.info("Synchronization is done")
     }
@@ -337,7 +343,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
   try {
     checkTezosConnection()
     val accountRefreshesToRun = Await.result(unprocessedLevelsForRefreshingAccounts(), atMost = 5.seconds)
-    mainLoop(0, accountRefreshesToRun)
+    mainLoop(0, 0, accountRefreshesToRun)
   } finally {
     shutdown()
   }
