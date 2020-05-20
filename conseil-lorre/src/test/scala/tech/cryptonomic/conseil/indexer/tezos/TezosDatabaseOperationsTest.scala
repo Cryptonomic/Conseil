@@ -537,7 +537,7 @@ class TezosDatabaseOperationsTest
 
       val (stored, dbDelegates) = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
-      stored.value shouldBe expectedCount
+      stored.value shouldBe (Some(expectedCount), Some(expectedCount))
 
       dbDelegates should have size expectedCount
 
@@ -632,7 +632,7 @@ class TezosDatabaseOperationsTest
       val (updates, dbDelegates) = dbHandler.run(writeUpdatedAndGetRows.transactionally).futureValue
 
       //number of db changes
-      updates.value shouldBe changes
+      updates.value shouldBe (Some(changes), Some(changes))
 
       //total number of rows on db (1 update and 1 insert expected)
       dbDelegates should have size changes
