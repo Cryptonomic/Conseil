@@ -15,13 +15,13 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BallotCounts
 
 /** Defines intances of `DataFetcher` for block-related data */
-trait BlocksDataFetchers {
+private[tezos] trait TezosBlocksDataFetchers {
   //we require the capability to log
   self: LazyLogging =>
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
-  import JsonDecoders.Circe.decodeLiftingTo
+  import TezosJsonDecoders.Circe.decodeLiftingTo
 
   implicit def fetchFutureContext: ExecutionContext
 
@@ -63,7 +63,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher of blocks */
   implicit def blocksFetcher(hashRef: BlockHash) = new FutureFetcher {
-    import JsonDecoders.Circe.Blocks._
+    import TezosJsonDecoders.Circe.Blocks._
 
     type Encoded = String
     type In = Offset
@@ -113,7 +113,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher of operation groups from block hashes */
   implicit val operationGroupFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Operations._
+    import TezosJsonDecoders.Circe.Operations._
 
     type Encoded = String
     type In = BlockHash
@@ -156,7 +156,7 @@ trait BlocksDataFetchers {
   val berLogger = LoggerFactory.getLogger("RightsFetcher")
 
   implicit val futureBakingRightsFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Rights._
+    import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
     override type In = Int
@@ -207,7 +207,7 @@ trait BlocksDataFetchers {
   }
 
   implicit val futureEndorsingRightsFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Rights._
+    import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
     override type In = Int
@@ -258,7 +258,7 @@ trait BlocksDataFetchers {
   }
 
   implicit val bakingRightsFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Rights._
+    import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
     override type In = FetchRights
@@ -312,7 +312,7 @@ trait BlocksDataFetchers {
   }
 
   implicit val endorsingRightsFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Rights._
+    import TezosJsonDecoders.Circe.Rights._
 
     /** the input type, e.g. ids of data */
     override type In = FetchRights
@@ -413,7 +413,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher for the current proposals of blocks */
   implicit val currentProposalFetcher = new FutureFetcher {
-    import JsonDecoders.Circe._
+    import TezosJsonDecoders.Circe._
 
     type Encoded = String
     type In = BlockHash
@@ -456,7 +456,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher for all proposals for blocks */
   implicit val proposalsFetcher = new FutureFetcher {
-    import JsonDecoders.Circe._
+    import TezosJsonDecoders.Circe._
     import cats.instances.future._
 
     type Encoded = String
@@ -503,7 +503,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher of baker rolls for blocks */
   implicit val bakersFetcherByHash = new FutureFetcher {
-    import JsonDecoders.Circe.Votes._
+    import TezosJsonDecoders.Circe.Votes._
     import cats.instances.future._
 
     type Encoded = String
@@ -578,7 +578,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher of ballot votes for blocks */
   implicit val ballotsFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Votes._
+    import TezosJsonDecoders.Circe.Votes._
     import cats.instances.future._
 
     type Encoded = String
@@ -622,7 +622,7 @@ trait BlocksDataFetchers {
 
   /** a fetcher of ballot votes for blocks */
   implicit val ballotCountFetcher = new FutureFetcher {
-    import JsonDecoders.Circe.Votes._
+    import TezosJsonDecoders.Circe.Votes._
     import cats.instances.future._
 
     type Encoded = String
@@ -674,7 +674,7 @@ trait AccountsDataFetchers {
   import cats.instances.future._
   import cats.syntax.applicativeError._
   import cats.syntax.applicative._
-  import JsonDecoders.Circe.decodeLiftingTo
+  import TezosJsonDecoders.Circe.decodeLiftingTo
 
   implicit def fetchFutureContext: ExecutionContext
 
@@ -707,7 +707,7 @@ trait AccountsDataFetchers {
   private type FutureFetcher = DataFetcher[Future, List, Throwable]
 
   implicit def accountFetcher(referenceBlock: BlockHash) = new FutureFetcher {
-    import JsonDecoders.Circe.Accounts._
+    import TezosJsonDecoders.Circe.Accounts._
 
     type Encoded = String
     type In = AccountId
@@ -744,7 +744,7 @@ trait AccountsDataFetchers {
   }
 
   implicit def delegateFetcher(referenceBlock: BlockHash) = new FutureFetcher {
-    import JsonDecoders.Circe.Delegates._
+    import TezosJsonDecoders.Circe.Delegates._
 
     type Encoded = String
     type In = PublicKeyHash
