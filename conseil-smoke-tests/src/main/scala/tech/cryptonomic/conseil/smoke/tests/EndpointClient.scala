@@ -5,7 +5,7 @@ import java.util.concurrent.Executors
 import cats.effect.{IO, Resource}
 import cats.syntax.all._
 import com.typesafe.config.ConfigFactory
-import io.circe.{Json, parser}
+import io.circe.{parser, Json}
 import org.http4s.circe._
 import org.http4s.client.blaze._
 import org.http4s.client.dsl.io._

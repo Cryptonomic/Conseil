@@ -23,6 +23,7 @@ trait Tables {
     BakerRegistry.schema,
     Bakers.schema,
     BakersCheckpoint.schema,
+    BakersHistory.schema,
     BakingRights.schema,
     BalanceUpdates.schema,
     BigMapContents.schema,
@@ -883,6 +884,161 @@ trait Tables {
 
   /** Collection-like TableQuery object for table BakersCheckpoint */
   lazy val BakersCheckpoint = new TableQuery(tag => new BakersCheckpoint(tag))
+
+  /** Entity class storing rows of table BakersHistory
+    *  @param pkh Database column pkh SqlType(varchar)
+    *  @param blockId Database column block_id SqlType(varchar)
+    *  @param balance Database column balance SqlType(numeric), Default(None)
+    *  @param frozenBalance Database column frozen_balance SqlType(numeric), Default(None)
+    *  @param stakingBalance Database column staking_balance SqlType(numeric), Default(None)
+    *  @param delegatedBalance Database column delegated_balance SqlType(numeric), Default(None)
+    *  @param rolls Database column rolls SqlType(int4), Default(0)
+    *  @param deactivated Database column deactivated SqlType(bool)
+    *  @param gracePeriod Database column grace_period SqlType(int4)
+    *  @param blockLevel Database column block_level SqlType(int4), Default(-1)
+    *  @param cycle Database column cycle SqlType(int4), Default(None)
+    *  @param period Database column period SqlType(int4), Default(None)
+    *  @param asof Database column asof SqlType(timestamp) */
+  case class BakersHistoryRow(
+      pkh: String,
+      blockId: String,
+      balance: Option[scala.math.BigDecimal] = None,
+      frozenBalance: Option[scala.math.BigDecimal] = None,
+      stakingBalance: Option[scala.math.BigDecimal] = None,
+      delegatedBalance: Option[scala.math.BigDecimal] = None,
+      rolls: Int = 0,
+      deactivated: Boolean,
+      gracePeriod: Int,
+      blockLevel: Int = -1,
+      cycle: Option[Int] = None,
+      period: Option[Int] = None,
+      asof: java.sql.Timestamp
+  )
+
+  /** GetResult implicit for fetching BakersHistoryRow objects using plain SQL queries */
+  implicit def GetResultBakersHistoryRow(
+      implicit e0: GR[String],
+      e1: GR[Option[scala.math.BigDecimal]],
+      e2: GR[Int],
+      e3: GR[Boolean],
+      e4: GR[Option[Int]],
+      e5: GR[java.sql.Timestamp]
+  ): GR[BakersHistoryRow] = GR { prs =>
+    import prs._
+    BakersHistoryRow.tupled(
+      (
+        <<[String],
+        <<[String],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
+        <<?[scala.math.BigDecimal],
+        <<[Int],
+        <<[Boolean],
+        <<[Int],
+        <<[Int],
+        <<?[Int],
+        <<?[Int],
+        <<[java.sql.Timestamp]
+      )
+    )
+  }
+
+  /** Table description of table bakers_history. Objects of this class serve as prototypes for rows in queries. */
+  class BakersHistory(_tableTag: Tag)
+      extends profile.api.Table[BakersHistoryRow](_tableTag, Some("tezos"), "bakers_history") {
+    def * =
+      (
+        pkh,
+        blockId,
+        balance,
+        frozenBalance,
+        stakingBalance,
+        delegatedBalance,
+        rolls,
+        deactivated,
+        gracePeriod,
+        blockLevel,
+        cycle,
+        period,
+        asof
+      ) <> (BakersHistoryRow.tupled, BakersHistoryRow.unapply)
+
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? =
+      (
+        (
+          Rep.Some(pkh),
+          Rep.Some(blockId),
+          balance,
+          frozenBalance,
+          stakingBalance,
+          delegatedBalance,
+          Rep.Some(rolls),
+          Rep.Some(deactivated),
+          Rep.Some(gracePeriod),
+          Rep.Some(blockLevel),
+          cycle,
+          period,
+          Rep.Some(asof)
+        )
+      ).shaped.<>(
+        { r =>
+          import r._;
+          _1.map(
+            _ =>
+              BakersHistoryRow
+                .tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12, _13.get))
+          )
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    /** Database column pkh SqlType(varchar) */
+    val pkh: Rep[String] = column[String]("pkh")
+
+    /** Database column block_id SqlType(varchar) */
+    val blockId: Rep[String] = column[String]("block_id")
+
+    /** Database column balance SqlType(numeric), Default(None) */
+    val balance: Rep[Option[scala.math.BigDecimal]] = column[Option[scala.math.BigDecimal]]("balance", O.Default(None))
+
+    /** Database column frozen_balance SqlType(numeric), Default(None) */
+    val frozenBalance: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("frozen_balance", O.Default(None))
+
+    /** Database column staking_balance SqlType(numeric), Default(None) */
+    val stakingBalance: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("staking_balance", O.Default(None))
+
+    /** Database column delegated_balance SqlType(numeric), Default(None) */
+    val delegatedBalance: Rep[Option[scala.math.BigDecimal]] =
+      column[Option[scala.math.BigDecimal]]("delegated_balance", O.Default(None))
+
+    /** Database column rolls SqlType(int4), Default(0) */
+    val rolls: Rep[Int] = column[Int]("rolls", O.Default(0))
+
+    /** Database column deactivated SqlType(bool) */
+    val deactivated: Rep[Boolean] = column[Boolean]("deactivated")
+
+    /** Database column grace_period SqlType(int4) */
+    val gracePeriod: Rep[Int] = column[Int]("grace_period")
+
+    /** Database column block_level SqlType(int4), Default(-1) */
+    val blockLevel: Rep[Int] = column[Int]("block_level", O.Default(-1))
+
+    /** Database column cycle SqlType(int4), Default(None) */
+    val cycle: Rep[Option[Int]] = column[Option[Int]]("cycle", O.Default(None))
+
+    /** Database column period SqlType(int4), Default(None) */
+    val period: Rep[Option[Int]] = column[Option[Int]]("period", O.Default(None))
+
+    /** Database column asof SqlType(timestamp) */
+    val asof: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("asof")
+  }
+
+  /** Collection-like TableQuery object for table BakersHistory */
+  lazy val BakersHistory = new TableQuery(tag => new BakersHistory(tag))
 
   /** Entity class storing rows of table BakingRights
     *  @param blockHash Database column block_hash SqlType(varchar), Default(None)

@@ -741,7 +741,7 @@ object DatabaseConversions extends LazyLogging {
 
     }
 
-  implicit val delegateToRow =
+  implicit val bakerToRow =
     new Conversion[Id, (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int]), Tables.BakersRow] {
       override def convert(from: (BlockHash, Int, PublicKeyHash, Delegate, Option[Int], Option[Int])) = {
         val (blockHash, blockLevel, keyHash, delegate, cycle, period) = from
@@ -759,6 +759,17 @@ object DatabaseConversions extends LazyLogging {
           cycle = cycle,
           period = period
         )
+      }
+    }
+
+  implicit val bakerHistoryToRow =
+    new Conversion[Id, (Tables.BakersRow, Option[Instant]), Tables.BakersHistoryRow] {
+      override def convert(from: (Tables.BakersRow, Option[Instant])) = {
+        val (bakersRow, instant) = from
+        bakersRow
+          .into[Tables.BakersHistoryRow]
+          .withFieldConst(_.asof, Timestamp.from(instant.getOrElse(Instant.ofEpochMilli(0))))
+          .transform
       }
     }
 

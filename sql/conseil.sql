@@ -295,7 +295,7 @@ CREATE TABLE tezos.blocks (
 
 
 --
--- Name: delegates; Type: TABLE; Schema: tezos; Owner: -
+-- Name: bakers; Type: TABLE; Schema: tezos; Owner: -
 --
 
 CREATE TABLE tezos.bakers (
@@ -311,6 +311,26 @@ CREATE TABLE tezos.bakers (
     block_level integer DEFAULT '-1'::integer NOT NULL,
     cycle integer,
     period integer
+);
+
+--
+-- Name: bakers_history; Type: TABLE; Schema: tezos; Owner: -
+--
+
+CREATE TABLE tezos.bakers_history (
+    pkh character varying NOT NULL,
+    block_id character varying NOT NULL,
+    balance numeric,
+    frozen_balance numeric,
+    staking_balance numeric,
+    delegated_balance numeric,
+    rolls integer DEFAULT 0 NOT NULL,
+    deactivated boolean NOT NULL,
+    grace_period integer NOT NULL,
+    block_level integer DEFAULT '-1'::integer NOT NULL,
+    cycle integer,
+    period integer,
+    asof timestamp without time zone NOT NULL
 );
 
 

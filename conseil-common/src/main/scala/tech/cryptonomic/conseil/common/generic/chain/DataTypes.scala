@@ -334,8 +334,8 @@ object DataTypes {
     query.snapshot.foldMap { snapshot =>
       metadataConfiguration.entity(entity).flatMap { entityCfg =>
         entityCfg.attributes.find {
-          case (k, v) if k == snapshot.field =>
-            v.temporalColumn.getOrElse(false)
+          case (k, v) =>
+            k == snapshot.field && v.temporalColumn.getOrElse(false)
         }
       } match {
         case Some(_) => List.empty

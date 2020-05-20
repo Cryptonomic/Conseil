@@ -1,7 +1,11 @@
 package tech.cryptonomic.conseil.common.generic.chain
 
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.AttributesValidationError
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, AttributeCacheConfiguration, Entity}
+import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{
+  Attribute,
+  AttributeCacheConfiguration,
+  Entity
+}
 import tech.cryptonomic.conseil.common.metadata.{AttributePath, EntityPath}
 
 import scala.concurrent.Future

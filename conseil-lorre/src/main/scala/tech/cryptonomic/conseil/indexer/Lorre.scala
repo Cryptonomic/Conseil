@@ -921,15 +921,16 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           logger.error(s"Could not write bakers to the database", e)
       }
 
-      def logOutcome: PartialFunction[Try[Option[Int]], Unit] = {
-        case Success(rows) =>
+      def logOutcome: PartialFunction[Try[(Option[Int], Option[Int])], Unit] = {
+        case Success((rows, historyRows)) =>
           logger.info("{} bakers were touched on the database.", rows.fold("The")(String.valueOf))
+          logger.info("{} baker history rows were added to the database.", historyRows.fold("The")(String.valueOf))
       }
 
       def processBakersPage(
           taggedBakers: Seq[BlockTagged[Map[PublicKeyHash, Delegate]]],
           rolls: List[Voting.BakerRolls]
-      ): Future[Option[Int]] = {
+      ): Future[(Option[Int], Option[Int])] = {
 
         val enrichedBakers = taggedBakers
           .map(
@@ -991,8 +992,9 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           .mapAsync(1) {
             case (bakers, rolls) => processBakersPage(bakers, rolls)
           }
-          .runFold(Monoid[Option[Int]].empty) { (processed, justDone) =>
-            processed |+| justDone
+          .runFold((Monoid[Option[Int]].empty, Monoid[Option[Int]].empty)) {
+            case ((processedRows, processedHistoryRows), (justDone, justDoneHistory)) =>
+              (processedRows |+| justDone) -> (processedHistoryRows |+| justDoneHistory)
           } andThen logOutcome
 
       val fetchAndStore = for {
