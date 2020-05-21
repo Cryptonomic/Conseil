@@ -99,6 +99,29 @@ object TezosOptics {
         group -> (group.contents, internal)
       }.toMap
 
+    /** Extracts all operations, primary and internal, and pre-order traverse
+      * the two-level structure to try and preserve the original intended sequence,
+      * foregoing the grouping structure
+      */
+    def extractOperationsSequence(
+        block: Block
+    ): List[Either[Operation, InternalOperationResults.InternalOperationResult]] =
+      for {
+        group <- block.operationGroups
+        op <- group.contents
+        all <- op match {
+          case r: Reveal =>
+            Left(op) :: r.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case t: Transaction =>
+            Left(op) :: t.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case o: Origination =>
+            Left(op) :: o.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case d: Delegation =>
+            Left(op) :: d.metadata.internal_operation_results.toList.flatten.map(Right(_))
+          case _ => List(Left(op))
+        }
+      } yield all
+
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: Block): Option[Int] =
       discardGenesis
@@ -125,7 +148,10 @@ object TezosOptics {
   }
 
   object Operations {
-    import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{Transaction => InternalTransaction}
+    import tech.cryptonomic.conseil.tezos.TezosTypes.InternalOperationResults.{
+      Transaction => InternalTransaction,
+      Origination => InternalOrigination
+    }
     import tech.cryptonomic.conseil.tezos.TezosTypes.OperationResult.Status
 
     val selectOrigination = GenPrism[Operation, Origination]
@@ -189,36 +215,28 @@ object TezosOptics {
     private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
     def extractAppliedOriginationsResults(block: Block) = {
-      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+      val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
+        case Left(op: Origination) => op.metadata.operation_result
+        case Right(intOp: InternalOrigination) => intOp.result
+      }
 
-      val results =
-        (ops.toList.flatten.collect { case op: Origination => op.metadata.operation_result }) ++
-            (intOps.toList.flatten.collect { case intOp: InternalOperationResults.Origination => intOp.result })
-
-      results.filter(result => isApplied(result.status))
+      operationSequence.filter(result => isApplied(result.status))
     }
 
     def extractAppliedTransactionsResults(block: Block) = {
-      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
+      val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
+        case Left(op: Transaction) => op.metadata.operation_result
+        case Right(intOp: InternalTransaction) => intOp.result
+      }
 
-      val results =
-        (ops.toList.flatten.collect { case op: Transaction => op.metadata.operation_result }) ++
-            (intOps.toList.flatten.collect { case intOp: InternalTransaction => intOp.result })
-
-      results.filter(result => isApplied(result.status))
+      operationSequence.filter(result => isApplied(result.status))
     }
 
-    def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] = {
-      val (ops, intOps) = TezosOptics.Blocks.extractOperationsAlongWithInternalResults(block).values.unzip
-
-      (ops.toList.flatten.collect {
-        case op: Transaction if isApplied(op.metadata.operation_result.status) => Left(op)
-      }) ++
-        (intOps.toList.flatten.collect {
-          case intOp: InternalTransaction if isApplied(intOp.result.status) => Right(intOp)
-        })
-    }
-
+    def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] =
+      TezosOptics.Blocks.extractOperationsSequence(block).collect {
+        case Left(op: Transaction) if isApplied(op.metadata.operation_result.status) => Left(op)
+        case Right(intOp: InternalTransaction) if isApplied(intOp.result.status) => Right(intOp)
+      }
   }
 
   object Accounts {
