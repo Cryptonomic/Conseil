@@ -119,7 +119,7 @@ class TezosDatabaseOperationsTest
 
           forAll(dbBlocks zip generatedBlocks) {
             case (row, block) =>
-              val metadata = discardGenesis.lift(block.data.metadata)
+              val metadata = discardGenesis(block.data.metadata)
 
               row.level shouldEqual block.data.header.level
               row.proto shouldEqual block.data.header.proto

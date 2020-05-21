@@ -164,7 +164,7 @@ object DatabaseConversions extends LazyLogging {
   implicit val blockToBlocksRow = new Conversion[Id, Block, Tables.BlocksRow] {
     override def convert(from: Block) = {
       val header = from.data.header
-      val metadata = discardGenesis.lift(from.data.metadata)
+      val metadata = discardGenesis(from.data.metadata)
       val CurrentVotes(expectedQuorum, proposal) = from.votes
       val (year, month, day, time) = extractDateTime(toSql(header.timestamp))
       Tables.BlocksRow(
@@ -825,7 +825,7 @@ object DatabaseConversions extends LazyLogging {
 
   implicit val governanceConv =
     new Conversion[
-      Id,
+      Option,
       (
           BlockData,
           Option[ProtocolId],
@@ -848,32 +848,33 @@ object DatabaseConversions extends LazyLogging {
               Option[Voting.BallotCounts],
               Option[Voting.BallotCounts]
           )
-      ): Id[Tables.GovernanceRow] = {
+      ): Option[Tables.GovernanceRow] = {
         val (block, proposal, listings, listingsPerLevel, ballots, ballotCountsPerCycle, ballotCountsPerLevel) = from
-        val blockHeaderMetadata: BlockHeaderMetadata = TezosTypes.discardGenesis(block.metadata)
-        val (yayRolls, nayRolls, passRolls) = countRolls(listings, ballots)
-        val (yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel) = countRolls(listingsPerLevel, ballots)
-        Tables.GovernanceRow(
-          votingPeriod = blockHeaderMetadata.level.voting_period,
-          votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
-          cycle = Some(blockHeaderMetadata.level.cycle),
-          level = Some(blockHeaderMetadata.level.level),
-          blockHash = block.hash.value,
-          proposalHash = proposal.map(_.id).getOrElse(""),
-          yayCount = ballotCountsPerCycle.map(_.yay),
-          nayCount = ballotCountsPerCycle.map(_.nay),
-          passCount = ballotCountsPerCycle.map(_.pass),
-          yayRolls = Some(yayRolls),
-          nayRolls = Some(nayRolls),
-          passRolls = Some(passRolls),
-          totalRolls = Some(yayRolls + nayRolls + passRolls),
-          blockYayCount = ballotCountsPerLevel.map(_.yay),
-          blockNayCount = ballotCountsPerLevel.map(_.nay),
-          blockPassCount = ballotCountsPerLevel.map(_.pass),
-          blockYayRolls = Some(yayRollsPerLevel),
-          blockNayRolls = Some(nayRollsPerLevel),
-          blockPassRolls = Some(passRollsPerLevel)
-        )
+        TezosTypes.discardGenesis(block.metadata).map { blockHeaderMetadata: BlockHeaderMetadata =>
+          val (yayRolls, nayRolls, passRolls) = countRolls(listings, ballots)
+          val (yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel) = countRolls(listingsPerLevel, ballots)
+          Tables.GovernanceRow(
+            votingPeriod = blockHeaderMetadata.level.voting_period,
+            votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
+            cycle = Some(blockHeaderMetadata.level.cycle),
+            level = Some(blockHeaderMetadata.level.level),
+            blockHash = block.hash.value,
+            proposalHash = proposal.map(_.id).getOrElse(""),
+            yayCount = ballotCountsPerCycle.map(_.yay),
+            nayCount = ballotCountsPerCycle.map(_.nay),
+            passCount = ballotCountsPerCycle.map(_.pass),
+            yayRolls = Some(yayRolls),
+            nayRolls = Some(nayRolls),
+            passRolls = Some(passRolls),
+            totalRolls = Some(yayRolls + nayRolls + passRolls),
+            blockYayCount = ballotCountsPerLevel.map(_.yay),
+            blockNayCount = ballotCountsPerLevel.map(_.nay),
+            blockPassCount = ballotCountsPerLevel.map(_.pass),
+            blockYayRolls = Some(yayRollsPerLevel),
+            blockNayRolls = Some(nayRollsPerLevel),
+            blockPassRolls = Some(passRollsPerLevel)
+          )
+        }
       }
 
       def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): (Int, Int, Int) =
