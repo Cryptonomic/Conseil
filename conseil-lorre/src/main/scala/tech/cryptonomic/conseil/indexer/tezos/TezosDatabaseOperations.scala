@@ -504,6 +504,22 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 
+  /** Fetches baking rights for given block level
+    *  @param blockLevel block level
+    *  @return list of baking rights rows
+    */
+  def getBakingRightsForLevel(blockLevel: Int)(implicit ec: ExecutionContext): DBIO[List[Tables.BakingRightsRow]] =
+    Tables.BakingRights.filter(_.level === blockLevel).result.map(_.toList)
+
+  /** Fetches endorsing rights for given block level
+    *  @param blockLevel block level
+    *  @return list of endorsing rights rows
+    */
+  def getEndorsingRightsForLevel(
+      blockLevel: Int
+  )(implicit ec: ExecutionContext): DBIO[List[Tables.EndorsingRightsRow]] =
+    Tables.EndorsingRights.filter(_.level === blockLevel).result.map(_.toList)
+
   def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
     logger.info("Writing {} governance rows into database...", governance.size)
     Tables.Governance ++= governance
@@ -718,7 +734,7 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
     * @return
     */
   def updateBakers(bakers: List[Tables.BakersRow]): DBIO[Option[Int]] = {
-    import CustomPostgresProfile.api._
+    import CustomProfileExtension.api._
     logger.info(s"Updating ${bakers.size} Baker rows")
     Tables.Bakers.insertOrUpdateAll(bakers)
   }

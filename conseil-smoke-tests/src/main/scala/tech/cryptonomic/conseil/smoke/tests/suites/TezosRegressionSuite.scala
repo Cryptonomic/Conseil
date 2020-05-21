@@ -24,7 +24,8 @@ import scala.util.Try
   * against predefined expectations on the responses
   */
 class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
-  extends RegressionSuite with RegressionFixtures {
+    extends RegressionSuite
+    with RegressionFixtures {
 
   /* We're currently assuming running on carthage up to a given level
    * we should eventually pass-in everything as a composite argument, like a csv?
