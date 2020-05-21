@@ -138,7 +138,9 @@ object LorreAppConfig {
     def loadPlatformConfiguration(
         platform: String,
         network: String
-    ): Either[ConfigReaderFailures, PlatformConfiguration] =
+    ): Either[ConfigReaderFailures, PlatformConfiguration] = {
+      @silent("local method hint in method loadPlatformConfiguration is never used")
+      implicit def hint[T]: ProductHint[T] = ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
       // Note that Lorre process allows to run only one integration per process.
       // Configuration file can contain more than one, thus required parameters.
       BlockchainPlatform.fromString(platform) match {
@@ -149,6 +151,7 @@ object LorreAppConfig {
           } yield TezosConfiguration(network, node, tns)
         case UnknownPlatform(_) => Right(UnknownPlatformConfiguration(network))
       }
+    }
 
     /**
       * Reads a specific entry in the configuration file, to create a valid akka-http client host-pool configuration
