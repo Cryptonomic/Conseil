@@ -375,8 +375,11 @@ class BigMapsOperationsTest
             case (block, ops) => block.copy(operationGroups = ops)
           }
 
+        //we change the order of how blocks come in
+        val reverted = blocksToSave.reverse
+
         //when
-        val writeAndGetRows = sut.upsertContent(blocksToSave) andThen Tables.BigMapContents.result
+        val writeAndGetRows = sut.upsertContent(reverted) andThen Tables.BigMapContents.result
 
         val contents = dbHandler.run(writeAndGetRows.transactionally).futureValue
 
@@ -544,9 +547,12 @@ class BigMapsOperationsTest
             case (block, ops) => block.copy(operationGroups = ops)
           }
 
+        //we change the order of how blocks come in
+        val reverted = blocksToSave.reverse
+
         //when
         val writeAndGetRows = for {
-          _ <- sut.copyContent(blocksToSave)
+          _ <- sut.copyContent(reverted)
           maps <- Tables.BigMaps.result
           contents <- Tables.BigMapContents.result
         } yield (maps, contents)

@@ -7,7 +7,7 @@ import scala.concurrent.ExecutionContext
 import scala.collection.immutable.TreeMap
 import cats.implicits._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   Contract,
@@ -25,7 +25,6 @@ import TezosOptics.Operations.{
   extractAppliedTransactions,
   extractAppliedTransactionsResults
 }
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
