@@ -3,22 +3,21 @@ package tech.cryptonomic.conseil.indexer.tezos
 import cats.instances.future._
 import cats.syntax.applicative._
 import com.typesafe.scalalogging.LazyLogging
-import tech.cryptonomic.conseil.common.config.{BatchFetchConfiguration, SodiumConfiguration}
 import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Lenses._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
-import tech.cryptonomic.conseil.common.tezos.michelson.JsonToMichelson.toMichelsonScript
-import tech.cryptonomic.conseil.common.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.JsonToMichelson.toMichelsonScript
+import tech.cryptonomic.conseil.indexer.tezos.michelson.dto.{MichelsonInstruction, MichelsonSchema}
 import tech.cryptonomic.conseil.common.util.CryptoUtil.KeyStore
 import tech.cryptonomic.conseil.common.util.JsonUtil.{fromJson, JsonString => JS}
 import tech.cryptonomic.conseil.common.util.{CryptoUtil, JsonUtil}
-import tech.cryptonomic.conseil.indexer.LorreOperations
+import tech.cryptonomic.conseil.indexer.config.{BatchFetchConfiguration, SodiumConfiguration}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.max
 import scala.util.{Failure, Success, Try}
 
-object TezosNodeOperator {
+private[tezos] object TezosNodeOperator {
   type LazyPages[T] = Iterator[Future[T]]
   type Paginated[T] = (LazyPages[T], Int)
 
@@ -60,15 +59,15 @@ object TezosNodeOperator {
   * @param batchConf          configuration for batched download of node data
   * @param fetchFutureContext thread context for async operations
   */
-class TezosNodeOperator(
+private[tezos] class TezosNodeOperator(
     val node: TezosRPCInterface,
     val network: String,
     batchConf: BatchFetchConfiguration,
-    lorreOperations: LorreOperations
+    lorreOperations: TezosNodeOperations
 )(
     implicit val fetchFutureContext: ExecutionContext
 ) extends LazyLogging
-    with BlocksDataFetchers
+    with TezosBlocksDataFetchers
     with AccountsDataFetchers {
   import TezosNodeOperator.{isGenesis, LazyPages, Paginated}
   import batchConf.{accountConcurrencyLevel, blockOperationsConcurrencyLevel, blockPageSize}
@@ -126,7 +125,6 @@ class TezosNodeOperator(
 
   /**
     * Fetches baking rights for given block
-    * @param blockHashes  Hash of given block
     * @return             Baking rights
     */
   def getBatchBakingRights(
@@ -163,7 +161,6 @@ class TezosNodeOperator(
 
   /**
     * Fetches endorsing rights for given block
-    * @param blockHashes  Hash of given block
     * @return             Endorsing rights
     */
   def getBatchEndorsingRights(
@@ -202,7 +199,6 @@ class TezosNodeOperator(
   /**
     * Fetches the accounts identified by id, lazily paginating the results
     *
-    * @param delegatesIndex the accountid-to-blockhash index to get data for
     * @return               the pages of accounts wrapped in a [[Future]], indexed by AccountId
     */
   val getPaginatedAccountsForBlock: Map[AccountId, BlockHash] => LazyPages[(BlockHash, Map[AccountId, Account])] =
@@ -294,12 +290,11 @@ class TezosNodeOperator(
 
   /**
     * Fetches operations for a block, without waiting for the result
-    * @param blockHash Hash of the block
     * @return          The `Future` list of operations
     */
   def getAllOperationsForBlock(block: BlockData): Future[List[OperationsGroup]] = {
-    import JsonDecoders.Circe.Operations._
-    import JsonDecoders.Circe.decodeLiftingTo
+    import TezosJsonDecoders.Circe.Operations._
+    import TezosJsonDecoders.Circe.decodeLiftingTo
     import tech.cryptonomic.conseil.common.util.JsonUtil.adaptManagerPubkeyField
 
     //parse json, and try to convert to objects, converting failures to a failed `Future`
@@ -322,7 +317,7 @@ class TezosNodeOperator(
     if (isGenesis(block))
       CurrentVotes.empty.pure
     else {
-      import JsonDecoders.Circe._
+      import TezosJsonDecoders.Circe._
       import cats.syntax.apply._
 
       val offsetString = offset.map(_.toString).getOrElse("")
@@ -449,7 +444,6 @@ class TezosNodeOperator(
   /**
     * Fetches the delegates bakers identified by key hash, lazily paginating the results
     *
-    * @param delegatesIndex the pkh-to-blockhash index to get data for
     * @return               the pages of delegates wrapped in a [[Future]], indexed by PublicKeyHash
     */
   val getPaginatedDelegatesForBlock: Map[PublicKeyHash, BlockHash] => LazyPages[
@@ -491,8 +485,8 @@ class TezosNodeOperator(
     * @return          the block data wrapped in a `Future`
     */
   def getBlock(hash: BlockHash, offset: Option[Offset] = None): Future[Block] = {
-    import JsonDecoders.Circe.Blocks._
-    import JsonDecoders.Circe.decodeLiftingTo
+    import TezosJsonDecoders.Circe.Blocks._
+    import TezosJsonDecoders.Circe.decodeLiftingTo
 
     val offsetString = offset.map(_.toString).getOrElse("")
 
@@ -515,8 +509,8 @@ class TezosNodeOperator(
     * @return          the block data wrapped in a `Future`
     */
   def getBareBlock(hash: BlockHash, offset: Option[Offset] = None): Future[BlockData] = {
-    import JsonDecoders.Circe.Blocks._
-    import JsonDecoders.Circe.decodeLiftingTo
+    import TezosJsonDecoders.Circe.Blocks._
+    import TezosJsonDecoders.Circe.decodeLiftingTo
 
     val offsetString = offset.map(_.toString).getOrElse("")
 
@@ -542,7 +536,6 @@ class TezosNodeOperator(
   /**
     * Given a level range, creates sub-ranges of max the given size
     * @param levels a range of levels to partition into (possibly) smaller parts
-    * @param pageSize how big a part is allowed to be
     * @return an iterator over the part, which are themselves `Ranges`
     */
   def partitionBlocksRanges(levels: Range.Inclusive): Iterator[Range.Inclusive] =
@@ -551,7 +544,6 @@ class TezosNodeOperator(
   /**
     * Given a list of generic elements, creates sub-lists of max the given size
     * @param elements a list of elements to partition into (possibly) smaller parts
-    * @param pageSize how big a part is allowed to be
     * @return an iterator over the part, which are themselves elements
     */
   def partitionElements[E](elements: List[E]): Iterator[List[E]] =
@@ -668,7 +660,7 @@ class TezosNodeOperator(
 
     def extractAccountIds(blockData: BlockData): List[AccountId] =
       for {
-        blockHeaderMetadata <- discardGenesis.lift(blockData.metadata).toList
+        blockHeaderMetadata <- discardGenesis(blockData.metadata).toList
         balanceUpdate <- blockHeaderMetadata.balance_updates
         id <- balanceUpdate.contract.map(_.id).toList ::: balanceUpdate.delegate.map(_.value).toList
       } yield AccountId(id)
@@ -721,7 +713,7 @@ class TezosNodeSenderOperator(
     network: String,
     batchConf: BatchFetchConfiguration,
     sodiumConf: SodiumConfiguration,
-    lorreOperations: LorreOperations
+    lorreOperations: TezosNodeOperations
 )(implicit executionContext: ExecutionContext)
     extends TezosNodeOperator(node, network, batchConf, lorreOperations)
     with LazyLogging {

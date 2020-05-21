@@ -3,8 +3,6 @@ package tech.cryptonomic.conseil.indexer.tezos
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.tezos.Tables
 
-//TODO This class is a duplicate from conseil-common,
-// which will be updated once entire project will be split properly
 trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
   override val schema: String = "tezos"
   override val fixtures: Seq[Fixture[_]] = Seq(
@@ -19,6 +17,11 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
     Fixture(Tables.ProcessedChainEvents),
     Fixture(Tables.BigMaps),
     Fixture(Tables.BigMapContents),
-    Fixture(Tables.OriginatedAccountMaps)
+    Fixture(Tables.OriginatedAccountMaps),
+    Fixture(Tables.Bakers),
+    Fixture(Tables.BakersCheckpoint),
+    Fixture(Tables.BakersHistory),
+    Fixture(Tables.RegisteredTokens),
+    Fixture(Tables.TokenBalances)
   )
 }

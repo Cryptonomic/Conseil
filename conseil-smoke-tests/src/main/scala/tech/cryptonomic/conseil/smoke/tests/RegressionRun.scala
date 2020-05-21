@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.smoke.tests
 
 import cats.effect.{ExitCode, IO, IOApp}
+import tech.cryptonomic.conseil.smoke.tests.suites.RegressionSuite
 
 /** Run this main class to test the basic regression suite */
 object RegressionRun extends IOApp {
@@ -27,10 +28,10 @@ object RegressionRun extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     val defaultConfigFileName = "conseil-regression-tests.conf"
 
-    val (conf, network) = args match {
-      case configfile :: network :: _ => (configfile, Some(network))
-      case configfile :: Nil => (configfile, None)
-      case _ => (defaultConfigFileName, None)
+    val (conf, platform, network) = args match {
+      case platform :: network :: configfile :: _ => (configfile, platform, Some(network))
+      case platform :: configfile :: Nil => (configfile, platform, None)
+      case platform :: Nil => (defaultConfigFileName, platform, None)
     }
 
     val configPrint = IO(
@@ -41,7 +42,7 @@ object RegressionRun extends IOApp {
 
     for {
       _ <- configPrint
-      probe <- DataEndpointsClientProbe(conf, network)
+      probe <- RegressionSuite(conf, platform, network)
       _ <- probe.runRegressionSuite
     } yield ExitCode.Success
 
