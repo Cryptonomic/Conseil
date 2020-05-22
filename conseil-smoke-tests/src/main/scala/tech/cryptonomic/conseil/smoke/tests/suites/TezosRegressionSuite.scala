@@ -5,7 +5,7 @@ import java.util.concurrent.Executors
 import cats.effect.{IO, Resource}
 import cats.syntax.all._
 import com.typesafe.config.ConfigFactory
-import io.circe.{Json, parser}
+import io.circe.{parser, Json}
 import org.http4s.circe._
 import org.http4s.client.blaze._
 import org.http4s.client.dsl.io._
@@ -24,7 +24,8 @@ import scala.util.Try
   * against predefined expectations on the responses
   */
 class TezosRegressionSuite(configfile: String, syncNetwork: Option[String])
-  extends RegressionSuite with RegressionFixtures {
+    extends RegressionSuite
+    with RegressionFixtures {
 
   /* We're currently assuming running on carthage up to a given level
    * we should eventually pass-in everything as a composite argument, like a csv?

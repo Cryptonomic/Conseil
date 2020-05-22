@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.indexer.tezos.michelson.parser
 
 import org.scalatest._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.dto._
-import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser.{ParserError, parse}
+import tech.cryptonomic.conseil.indexer.tezos.michelson.parser.JsonParser.{parse, ParserError}
 
 class JsonParserSpec extends FlatSpec with Matchers {
 

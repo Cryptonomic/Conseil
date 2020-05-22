@@ -317,7 +317,11 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   }
 
   /* create operation rows to hold the given fees */
-  def wrapFeesWithOperations(fees: Seq[Option[BigDecimal]], block: BlocksRow, group: OperationGroupsRow): Seq[Tables.OperationsRow] =
+  def wrapFeesWithOperations(
+      fees: Seq[Option[BigDecimal]],
+      block: BlocksRow,
+      group: OperationGroupsRow
+  ): Seq[Tables.OperationsRow] =
     fees.zipWithIndex.map {
       case (fee, index) =>
         Tables.OperationsRow(

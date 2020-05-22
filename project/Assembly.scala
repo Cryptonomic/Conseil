@@ -15,9 +15,9 @@ object Assembly {
           assemblyOutputPath in assembly := file(s"/tmp/${name.value}.jar"),
           test in assembly := {},
           assemblyMergeStrategy in assembly := {
-            case "application.conf" => MergeStrategy.concat
-            case x => (assemblyMergeStrategy in assembly).value(x)
-          }
+              case "application.conf" => MergeStrategy.concat
+              case x => (assemblyMergeStrategy in assembly).value(x)
+            }
         )
         .enablePlugins(AssemblyPlugin)
 

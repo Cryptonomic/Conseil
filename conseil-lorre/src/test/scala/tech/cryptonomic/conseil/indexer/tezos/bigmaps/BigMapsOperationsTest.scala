@@ -8,7 +8,12 @@ import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.testkit.util.RandomSeed
-import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow, TokenBalancesRow}
+import tech.cryptonomic.conseil.common.tezos.Tables.{
+  BigMapContentsRow,
+  BigMapsRow,
+  OriginatedAccountMapsRow,
+  TokenBalancesRow
+}
 import tech.cryptonomic.conseil.common.tezos.{Tables, TezosTypes}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
