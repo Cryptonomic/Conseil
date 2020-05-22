@@ -385,15 +385,15 @@ class TezosIndexer(
         .map { block =>
           val bakingRights = db.run(TezosDb.getBakingRightsForLevel(block.data.header.level))
           val endorsingRights = db.run(TezosDb.getEndorsingRightsForLevel(block.data.header.level))
-          val bakersFromDb = db.run(TezosDb.getBakers)
+          val bakersFromDb = db.run(TezosDb.getBakers())
           for {
             br <- bakingRights
             er <- endorsingRights
-            distinctDelegates = (br.map(_.delegate) ::: er.map(_.delegate)).distinct
+            distinctDelegates = (br.toList.map(_.delegate) ::: er.toList.map(_.delegate)).distinct
             delegates <- nodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), block.data.hash)
             bakers <- bakersFromDb
-            updatedBakers = applyUpdatesToBakers(delegates, bakers)
-            _ <- db.run(TezosDb.updateBakers(updatedBakers))
+            updatedBakers = applyUpdatesToBakers(delegates, bakers.toList)
+            _ <- db.run(TezosDb.writeBakers(updatedBakers))
           } yield ()
         }
         .sequence

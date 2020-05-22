@@ -508,8 +508,8 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
     *  @param blockLevel block level
     *  @return list of baking rights rows
     */
-  def getBakingRightsForLevel(blockLevel: Int)(implicit ec: ExecutionContext): DBIO[List[Tables.BakingRightsRow]] =
-    Tables.BakingRights.filter(_.level === blockLevel).result.map(_.toList)
+  def getBakingRightsForLevel(blockLevel: Int): DBIO[Seq[Tables.BakingRightsRow]] =
+    Tables.BakingRights.filter(_.level === blockLevel).result
 
   /** Fetches endorsing rights for given block level
     *  @param blockLevel block level
@@ -517,8 +517,8 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
     */
   def getEndorsingRightsForLevel(
       blockLevel: Int
-  )(implicit ec: ExecutionContext): DBIO[List[Tables.EndorsingRightsRow]] =
-    Tables.EndorsingRights.filter(_.level === blockLevel).result.map(_.toList)
+  ): DBIO[Seq[Tables.EndorsingRightsRow]] =
+    Tables.EndorsingRights.filter(_.level === blockLevel).result
 
   def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
     logger.info("Writing {} governance rows into database...", governance.size)
@@ -722,18 +722,17 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
 
   /**
     * Gets all bakers from the DB
-    * @param ec execution context
     * @return
     */
-  def getBakers()(implicit ec: ExecutionContext): DBIO[List[Tables.BakersRow]] =
-    Tables.Bakers.result.map(_.toList)
+  def getBakers(): DBIO[Seq[Tables.BakersRow]] =
+    Tables.Bakers.result
 
   /**
     * Updates bakers table.
     * @param bakers list of the baker rows to be updated
     * @return
     */
-  def updateBakers(bakers: List[Tables.BakersRow]): DBIO[Option[Int]] = {
+  def writeBakers(bakers: List[Tables.BakersRow]): DBIO[Option[Int]] = {
     import CustomProfileExtension.api._
     logger.info(s"Updating ${bakers.size} Baker rows")
     Tables.Bakers.insertOrUpdateAll(bakers)
