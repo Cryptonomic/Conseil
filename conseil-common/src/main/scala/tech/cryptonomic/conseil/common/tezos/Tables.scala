@@ -1118,8 +1118,11 @@ trait Tables {
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (delegate) (database name baking_rights_delegate_idx) */
+    val index1 = index("baking_rights_delegate_idx", delegate)
+
     /** Index over (level) (database name baking_rights_level_idx) */
-    val index1 = index("baking_rights_level_idx", level)
+    val index2 = index("baking_rights_level_idx", level)
   }
 
   /** Collection-like TableQuery object for table BakingRights */
@@ -1743,8 +1746,11 @@ trait Tables {
       onDelete = ForeignKeyAction.NoAction
     )
 
+    /** Index over (delegate) (database name endorsing_rights_delegate_idx) */
+    val index1 = index("endorsing_rights_delegate_idx", delegate)
+
     /** Index over (level) (database name endorsing_rights_level_idx) */
-    val index1 = index("endorsing_rights_level_idx", level)
+    val index2 = index("endorsing_rights_level_idx", level)
   }
 
   /** Collection-like TableQuery object for table EndorsingRights */
