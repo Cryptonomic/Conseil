@@ -1,9 +1,9 @@
 package tech.cryptonomic.conseil.common.config
 
-import com.typesafe.scalalogging.LazyLogging
+import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Network, Platform}
 
 /** defines configuration types for conseil available platforms */
-object Platforms extends LazyLogging {
+object Platforms {
 
   /** a trait defining existing platforms */
   sealed trait BlockchainPlatform extends Product with Serializable {
@@ -27,7 +27,7 @@ object Platforms extends LazyLogging {
   object BlockchainPlatform {
 
     /** maps a generic string to a typed BlockchainPlatform */
-    def fromString(s: String) = s match {
+    def fromString(s: String): BlockchainPlatform = s match {
       case "tezos" => Tezos
       case unknown => UnknownPlatform(name = unknown)
     }
@@ -38,7 +38,22 @@ object Platforms extends LazyLogging {
     * Should associates each platform to a list of its internally defined configuration type, matching the
     * inner `platform.ConfigurationType`
     */
-  case class PlatformsConfiguration(platforms: Map[BlockchainPlatform, List[PlatformConfiguration]])
+  case class PlatformsConfiguration(platforms: Map[BlockchainPlatform, List[PlatformConfiguration]]) {
+
+    /*** Extracts platforms from configuration */
+    def getPlatforms: List[Platform] =
+      platforms.keys.toList.map(platform => Platform(platform.name, platform.name.capitalize))
+
+    /*** Extracts networks from configuration */
+    def getNetworks(platformName: String): List[Network] =
+      for {
+        (platform, configs) <- platforms.toList if platform == BlockchainPlatform.fromString(platformName)
+        networkConfiguration <- configs
+      } yield {
+        val network = networkConfiguration.network
+        Network(network, network.capitalize, platform.name, network)
+      }
+  }
 
   /** configurations to describe a tezos node */
   final case class TezosNodeConfiguration(
@@ -65,7 +80,6 @@ object Platforms extends LazyLogging {
   ) extends PlatformConfiguration
 
   /** unexpected or yet to define platform */
-  final case class UnknownPlatformConfiguration(network: String = "", depth: Depth = Newest)
-      extends PlatformConfiguration
+  final case class UnknownPlatformConfiguration(network: String = "") extends PlatformConfiguration
 
 }
