@@ -48,6 +48,38 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
 
       }
 
+      "read a balance update from big map diffs for a registered contract with bytes-representation of accounts" in {
+        //given
+
+        //values sampled from tzBTC use-case
+        val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val mapId = 1718
+        val updateValue = """{ "bytes": "0507070086bb230200000000"}"""
+        val mapUpdate = Contract.BigMapUpdate(
+          action = "update",
+          key = Micheline(
+            """{ "bytes": "05070701000000066c65646765720a0000001600008d34410a9ccfa23728e02ca58cfaeb67b69d99fb" }"""
+          ),
+          key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
+          big_map = Decimal(mapId),
+          value = Some(Micheline(updateValue))
+        )
+
+        //register the token info
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        //set the map id for the contract
+        sut.setMapId(ledgerId, BigDecimal(mapId))
+
+        //when
+        val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
+
+        //then
+        val (AccountId(id), balance) = balanceUpdate.value
+        id shouldEqual "tz1YWeZqt67XGHUvPFBmfMfWAoZtXELTWtKh"
+        balance shouldEqual BigInt(290502)
+
+      }
+
       "read no balance update from big maps diff for a non-registered map id" in {
         //given
 
@@ -142,6 +174,33 @@ class TokenContractsTest extends WordSpec with Matchers with OptionValues {
           key_hash = ScriptId("exprvMHy4mAi1igbigE5BeEbEAE5ayx82ne5BA7UUXmfGpAiiVF3vx"),
           big_map = Decimal(mapId),
           value = Some(Micheline(updateValue))
+        )
+
+        //register the token info
+        val sut = TokenContracts.fromConfig(List(ledgerId -> "FA1.2"))
+        //set the map id for the contract
+        sut.setMapId(ledgerId, BigDecimal(mapId))
+
+        //when
+        val balanceUpdate = sut.readBalance(ledgerId)(mapUpdate)
+
+        //then
+        balanceUpdate should not be defined
+
+      }
+
+      "ignore an update referring to the total supply for tzBTC-like tokens" in {
+        //given
+
+        //some values sampled from a real babylon use-case
+        val ledgerId = ContractId("KT1RmDuQ6LaTFfLrVtKNcBJkMgvnopEATJux")
+        val mapId = 1718
+        val mapUpdate = Contract.BigMapUpdate(
+          action = "update",
+          key = Micheline("""{ "bytes" : "0000c4ce21c7a7ac69810bb3425a043def752fddc817" }"""),
+          key_hash = ScriptId("exprunzteC5uyXRHbKnqJd3hUMGTWE9Gv5EtovDZHnuqu6SaGViV3N"),
+          big_map = Decimal(mapId),
+          value = Some(Micheline("""{ "bytes": "050098e1e8d78a02" } """))
         )
 
         //register the token info
