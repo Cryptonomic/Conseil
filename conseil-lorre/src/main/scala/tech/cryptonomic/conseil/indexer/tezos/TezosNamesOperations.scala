@@ -6,13 +6,6 @@ import com.typesafe.scalalogging.LazyLogging
 import slick.dbio.DBIO
 import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations.extractAppliedTransactions
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{AccountId, Block, ContractId, ScriptId}
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract
-import tech.cryptonomic.conseil.common.tezos.michelson.contracts.TNSContract.{
-  BigMapId,
-  LookupMapReference,
-  Name,
-  NameRecord
-}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract.{
   BigMapId,
