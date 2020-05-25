@@ -5,10 +5,9 @@ import java.time.{Instant, ZonedDateTime}
 import monocle.function.all._
 import monocle.macros.{GenLens, GenPrism}
 import monocle.std.option._
-import monocle.{Lens, Traversal}
+import monocle.{Lens, Optional, Traversal}
 
 import scala.util.Try
-import monocle.Optional
 
 /**
   * Classes used for deserializing Tezos node RPC results.
@@ -700,5 +699,26 @@ object TezosTypes {
     * @param blockHash        hash of a block
     */
   final case class FetchRights(cycle: Option[Int], governancePeriod: Option[Int], blockHash: Option[BlockHash])
+
+  object Fee {
+
+    /**
+      * Representation of estimation of average fees for a given operation kind.
+      * @param low       Medium - one standard deviation
+      * @param medium    The mean of fees on a given operation kind
+      * @param high      Medium + one standard deviation
+      * @param timestamp The timestamp when the calculation took place
+      * @param kind      The kind of operation being averaged over
+      */
+    final case class AverageFees(
+        low: Int,
+        medium: Int,
+        high: Int,
+        timestamp: java.sql.Timestamp,
+        kind: String,
+        cycle: Option[Int],
+        level: Option[Int]
+    )
+  }
 
 }

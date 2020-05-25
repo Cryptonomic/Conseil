@@ -45,13 +45,13 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     dbInstance.start()
-    Await.ready(dbHandler.run(initScript.create), 1.second)
-    Await.ready(dbHandler.run(DBIO.sequence(fixtures.map(_.create))), 1.second)
+    Await.ready(dbHandler.run(initScript.create), 2.second)
+    Await.ready(dbHandler.run(DBIO.sequence(fixtures.map(_.create))), 2.second)
     ()
   }
 
   override protected def afterAll(): Unit = {
-    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 1.second)
+    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 2.second)
     dbHandler.close()
     dbInstance.stop()
     super.afterAll()
@@ -59,7 +59,7 @@ trait InMemoryDatabase extends BeforeAndAfterAll with BeforeAndAfterEach with In
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
-    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 1.second)
+    Await.ready(dbHandler.run(DBIO.sequence(fixtures.reverse.map(_.delete))), 2.second)
     ()
   }
 

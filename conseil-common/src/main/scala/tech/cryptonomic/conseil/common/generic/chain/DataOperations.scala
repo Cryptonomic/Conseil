@@ -11,9 +11,12 @@ trait DataOperations {
 
   /** Interface method for querying with given predicates
     *
+    * @param  schema    name of the database schema
     * @param  tableName name of the table which we query
     * @param  query     query predicates and fields
     * @return query result as a map
     * */
-  def queryWithPredicates(tableName: String, query: Query)(implicit ec: ExecutionContext): Future[List[QueryResponse]]
+  def queryWithPredicates(schema: String, tableName: String, query: Query)(
+      implicit ec: ExecutionContext
+  ): Future[List[QueryResponse]]
 }

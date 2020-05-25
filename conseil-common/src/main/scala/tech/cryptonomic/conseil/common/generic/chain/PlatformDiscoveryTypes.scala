@@ -74,6 +74,20 @@ object PlatformDiscoveryTypes {
       Value
   }
 
+  /** Maps type from DB to type used in query */
+  def mapDataType(tpe: String): DataType =
+    tpe match {
+      case "timestamp" => DataType.DateTime
+      case "varchar" => DataType.String
+      case "int4" | "int" | "serial" => DataType.Int
+      case "numeric" => DataType.Decimal
+      case "bool" => DataType.Boolean
+      case "hash" => DataType.Hash
+      case "accountAddress" => DataType.AccountAddress
+      case "currency" => DataType.Currency
+      case _ => DataType.String
+    }
+
   /** Enumeration of key types */
   object KeyType extends Enumeration {
     type KeyType = Value
