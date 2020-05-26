@@ -9,26 +9,31 @@ import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import cats.effect.{ContextShift, IO}
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
+import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.config.ConseilAppConfig.CombinedConfiguration
 import tech.cryptonomic.conseil.api.directives.{EnableCORSDirectives, RecordingDirectives, ValidatingDirectives}
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
 import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
-import tech.cryptonomic.conseil.api.routes.platform.discovery.PlatformDiscovery
+import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
 import tech.cryptonomic.conseil.api.routes.platform.{Api, TezosApi}
 import tech.cryptonomic.conseil.api.security.Security
+import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BlockchainPlatform
-import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryOperations
+import tech.cryptonomic.conseil.common.sql.DatabaseMetadataOperations
+import tech.cryptonomic.conseil.common.util.DatabaseUtil
 
 import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
 
 object ConseilApi {
   def create(config: CombinedConfiguration)(implicit system: ActorSystem): ConseilApi = new ConseilApi(config)
 }
 
-class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem) extends EnableCORSDirectives {
+class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
+  extends EnableCORSDirectives with LazyLogging {
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -117,13 +122,21 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem) ex
       case Platforms.Tezos => new TezosApi(config.metadata, config.server)
     }
 
-    /**
-      * Map, that contains list of available `PlatformDiscoveryOperations` accessed by platform name.
-      * @see `tech.cryptonomic.conseil.common.config.Platforms` to get list of possible platforms.
-      */
-    lazy val cachedDiscoveryOperations: Map[String, PlatformDiscoveryOperations] = cache.map {
-      case (key, value) => key.name -> value.discoveryOperations
+
+    private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
+    private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
+    private val metadataOperations: DatabaseMetadataOperations = new DatabaseMetadataOperations {
+      override val dbReadHandle = DatabaseUtil.conseilDb
     }
+
+    lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =
+      new GenericPlatformDiscoveryOperations(
+        metadataOperations,
+        metadataCaching,
+        cacheOverrides,
+        config.server.cacheTTL,
+        config.server.highCardinalityLimit
+      )
 
     /**
       * Map, that contains list of available `ApiDataRoutes` accessed by platform name.
@@ -134,14 +147,29 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem) ex
         case (key, value) => key.name -> value.dataEndpoint(service)
       }
 
+    private val visiblePlatforms =
+      transformation.overridePlatforms(config.platforms.getPlatforms)
+
     private def forVisiblePlatforms(f: BlockchainPlatform => Api): Map[BlockchainPlatform, Api] =
-      transformation
-        .overridePlatforms(config.platforms.getPlatforms)
-        .map { platform =>
-          val blockchainPlatform = BlockchainPlatform.fromString(platform.name)
-          blockchainPlatform -> f(blockchainPlatform)
-        }
-        .toMap
+      visiblePlatforms.map { platform =>
+        val blockchainPlatform = BlockchainPlatform.fromString(platform.name)
+        blockchainPlatform -> f(blockchainPlatform)
+      }.toMap
+
+    private val visibleNetworks = for {
+      platform <- visiblePlatforms
+      network <- transformation.overrideNetworks(platform.path, config.platforms.getNetworks(platform.name))
+    } yield platform -> network
+
+    cachedDiscoveryOperations.init(visibleNetworks).onComplete {
+      case Failure(exception) => logger.error("Pre-caching metadata failed", exception)
+      case Success(_) => logger.info("Pre-caching successful!")
+    }
+
+    cachedDiscoveryOperations.initAttributesCache(visibleNetworks).onComplete {
+      case Failure(exception) => logger.error("Pre-caching attributes failed", exception)
+      case Success(_) => logger.info("Pre-caching attributes successful!")
+    }
   }
 
 }

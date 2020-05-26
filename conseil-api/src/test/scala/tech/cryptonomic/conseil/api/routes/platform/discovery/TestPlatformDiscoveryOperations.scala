@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.common.generic.chain.{DataTypes, PlatformDiscoveryOperations, PlatformDiscoveryTypes}
-import tech.cryptonomic.conseil.common.metadata.{AttributePath, EntityPath}
+import tech.cryptonomic.conseil.common.metadata.{AttributePath, EntityPath, NetworkPath}
 
 import scala.concurrent.Future
 
@@ -11,7 +11,7 @@ import scala.concurrent.Future
  * attributes in memory
  **/
 class TestPlatformDiscoveryOperations extends PlatformDiscoveryOperations {
-
+  //TODO Consider re-writing this class to hold more than one platform
   var entities: List[Entity] = List.empty
   var attributes: List[Attribute] = List.empty
 
@@ -19,7 +19,7 @@ class TestPlatformDiscoveryOperations extends PlatformDiscoveryOperations {
     entities = entities :+ entity
   }
 
-  override def getEntities: Future[List[Entity]] = this.synchronized {
+  override def getEntities(networkPath: NetworkPath): Future[List[Entity]] = this.synchronized {
     Future.successful(entities)
   }
 

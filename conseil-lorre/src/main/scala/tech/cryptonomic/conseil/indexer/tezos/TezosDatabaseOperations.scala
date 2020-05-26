@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.ConfigUtil
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.util.MathUtil.{mean, stdev}
-
+import DefaultDatabaseOperations._
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
@@ -30,7 +30,7 @@ import scala.util.{Failure, Success}
 /**
   * Functions for writing Tezos data to a database.
   */
-object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with LazyLogging {
+object TezosDatabaseOperations extends LazyLogging {
   import TezosDatabaseConversions._
 
   private val bigMapOps = BigMapsOperations(CustomProfileExtension)

@@ -45,7 +45,7 @@ class TezosDataTypesTest
       ),
       TransparentUnitTransformation,
       cacheOverrides,
-      Map("tezos" -> platformDiscoveryOperations)
+      platformDiscoveryOperations
     )
   }
 

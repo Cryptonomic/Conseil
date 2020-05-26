@@ -21,7 +21,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
   "The platform discovery route" should {
 
-      val tezosPlatformDiscoveryOperations = new TestPlatformDiscoveryOperations
+      val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
       val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
       val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) =>
@@ -36,7 +36,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
             ),
             new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
             cacheOverrides,
-            Map("tezos" -> tezosPlatformDiscoveryOperations)
+            platformDiscoveryOperations
           )
         ).route
 
@@ -117,7 +117,7 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "expose an endpoint to get the list of supported entities" in {
         // given
-        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
 
         val overridesConfiguration = Map(
           "tezos" ->
@@ -155,8 +155,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "expose an endpoint to get the list of supported attributes" in {
         // given
-        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
-        tezosPlatformDiscoveryOperations.addAttribute(
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        platformDiscoveryOperations.addAttribute(
           Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
@@ -206,8 +206,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "override additional data for attributes" in {
         // given
-        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
-        tezosPlatformDiscoveryOperations.addAttribute(
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        platformDiscoveryOperations.addAttribute(
           Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
@@ -283,8 +283,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "return 404 on getting attributes when parent entity is not enabled" in {
         // given
-        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
-        tezosPlatformDiscoveryOperations.addAttribute(
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        platformDiscoveryOperations.addAttribute(
           Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
@@ -313,8 +313,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "return 404 on getting attributes when parent network is not enabled" in {
         // given
-        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
-        tezosPlatformDiscoveryOperations.addAttribute(
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        platformDiscoveryOperations.addAttribute(
           Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
@@ -335,8 +335,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
 
       "return 404 on getting attributes when parent platform is not enabled" in {
         // given
-        tezosPlatformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
-        tezosPlatformDiscoveryOperations.addAttribute(
+        platformDiscoveryOperations.addEntity(Entity("entity", "entity-name", 1))
+        platformDiscoveryOperations.addAttribute(
           Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 

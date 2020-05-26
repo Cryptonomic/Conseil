@@ -30,7 +30,7 @@ class MetadataServiceTest
   implicit override val patienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
 
   // shared objects
-  var platformDiscoveryOperations = new TestPlatformDiscoveryOperations
+  val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
   val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
   val sut = (metadataOverridesConfiguration: Map[PlatformName, PlatformConfiguration]) =>
@@ -44,7 +44,7 @@ class MetadataServiceTest
       ),
       new UnitTransformation(MetadataConfiguration(metadataOverridesConfiguration)),
       cacheOverrides,
-      Map("tezos" -> platformDiscoveryOperations)
+      platformDiscoveryOperations
     )
 
   "The metadata service" should {

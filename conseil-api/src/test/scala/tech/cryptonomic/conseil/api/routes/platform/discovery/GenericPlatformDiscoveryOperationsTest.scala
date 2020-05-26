@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.discovery.tezos
+package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import java.sql.Timestamp
 import java.time.LocalDateTime
@@ -10,8 +10,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
+import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
@@ -26,11 +26,11 @@ import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.FeesRow
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
-class TezosPlatformDiscoveryOperationsTest
+class GenericPlatformDiscoveryOperationsTest
     extends WordSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
@@ -55,12 +55,12 @@ class TezosPlatformDiscoveryOperationsTest
   val metadataCaching: MetadataCaching[IO] = MetadataCaching.empty[IO].unsafeRunSync()
   val metadadataConfiguration: MetadataConfiguration = MetadataConfiguration(Map.empty)
   val cacheConfiguration = new AttributeValuesCacheConfiguration(metadadataConfiguration)
-  val sut: TezosPlatformDiscoveryOperations =
-    TezosPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds, 100)
+  val sut: GenericPlatformDiscoveryOperations =
+    GenericPlatformDiscoveryOperations(metadataOperations, metadataCaching, cacheConfiguration, 10 seconds, 100)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    sut.init()
+    sut.init(List((Platform("tezos", "Tezos"), Network("alphanet", "Alphanet", "tezos", "alphanet"))))
     ()
   }
 
@@ -108,7 +108,7 @@ class TezosPlatformDiscoveryOperationsTest
     }
 
   "getEntities" should {
-      val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
+      val networkPath = NetworkPath("alphanet", PlatformPath("tezos"))
       "return list of attributes of Fees" in {
 
         sut.getTableAttributes(EntityPath("fees", networkPath)).futureValue.value.toSet should matchTo(
@@ -371,7 +371,7 @@ class TezosPlatformDiscoveryOperationsTest
     }
 
   "listAttributeValues" should {
-      val networkPath = NetworkPath("testNetwork", PlatformPath("testPlatform"))
+      val networkPath = NetworkPath("alphanet", PlatformPath("tezos"))
 
       "return list of values of kind attribute of Fees without filter" in {
         val fee =

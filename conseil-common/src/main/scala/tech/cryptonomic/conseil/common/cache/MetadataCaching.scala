@@ -15,7 +15,18 @@ object MetadataCaching {
   final case class CacheEntry[A](lastUpdated: LastUpdated, value: A)
 
   /** Class representing key in cache */
-  final case class CacheKey(key: String)
+  sealed trait CacheKey {
+    val value: String
+  }
+  case class EntityCacheKey(platform: String, network: String) extends CacheKey {
+    val value: String = s"$platform.$network"
+  }
+  case class AttributeCacheKey(platform: String, table: String) extends CacheKey {
+    val value: String = s"$platform.$table"
+  }
+  case class AttributeValueCacheKey(platform: String, table: String, column: String) extends CacheKey {
+    val value: String = s"$platform.$table.$column"
+  }
 
   type Cache[A] = Map[CacheKey, CacheEntry[A]]
   type AttributesCache = Cache[List[Attribute]]
@@ -44,9 +55,6 @@ object MetadataCaching {
 
   /** Returns current time in nanoseconds */
   def now: Long = System.nanoTime()
-
-  /** Makes key out of table and column names */
-  def makeKey(table: String, column: String): String = s"$table.$column"
 }
 
 /** Class providing caching for metadata */
@@ -68,32 +76,36 @@ class MetadataCaching[F[_]](
     cachingStatus.update(_ => status)
 
   /** Reads entities from cache */
-  def getEntities: String => F[Option[CacheEntry[List[Entity]]]] =
+  def getEntities: EntityCacheKey => F[Option[CacheEntry[List[Entity]]]] =
     getFromCache(entitiesCache)
 
   /** Reads attributes from cache for given entity */
-  def getAttributes: String => F[Option[CacheEntry[List[Attribute]]]] =
+  def getAttributes: AttributeCacheKey => F[Option[CacheEntry[List[Attribute]]]] =
     getFromCache(attributesCache)
 
   /** Generic method for getting value from cache */
-  private def getFromCache[A](cache: MVar[F, Cache[A]])(key: String): F[Option[CacheEntry[A]]] =
-    cache.read.map(_.get(CacheKey(key)))
+  private def getFromCache[A](cache: MVar[F, Cache[A]])(key: CacheKey): F[Option[CacheEntry[A]]] =
+    cache.read.map(_.get(key))
 
   /** Reads all attributes from cache */
   def getAllAttributes: F[AttributesCache] =
     attributesCache.read
+
+  /** Reads all attributes from cache for given seq of keys */
+  def getAllAttributesByKeys: Seq[AttributeCacheKey] => F[AttributesCache] =
+    keys => attributesCache.read.map(_.filterKeys(keys.contains))
 
   /** Reads all entities from cache */
   def getAllEntities: F[EntitiesCache] =
     entitiesCache.read
 
   /** Reads attribute values from cache */
-  def getAttributeValues(entity: String, attribute: String): F[Option[CacheEntry[RadixTree[String, String]]]] =
-    getFromCache(attributeValuesCache)(makeKey(entity, attribute))
+  def getAttributeValues(key: AttributeValueCacheKey): F[Option[CacheEntry[RadixTree[String, String]]]] =
+    getFromCache(attributeValuesCache)(key)
 
   /** Inserts entities into cache */
-  def putEntities(network: String, entities: List[Entity]): F[Unit] =
-    putIntoCache(network, entities)(entitiesCache)
+  def putEntities(key: EntityCacheKey, entities: List[Entity]): F[Unit] =
+    putIntoCache(key, entities)(entitiesCache)
 
   /** Inserts all entities into cache */
   def putAllEntities: EntitiesCache => F[Unit] = updateVar(entitiesCache)
@@ -107,8 +119,8 @@ class MetadataCaching[F[_]](
     cache.tryPut(values)
 
   /** Inserts attributes into cache */
-  def putAttributes(entity: String, attributes: List[Attribute]): F[Unit] =
-    putIntoCache(entity, attributes)(attributesCache)
+  def putAttributes(key: AttributeCacheKey, attributes: List[Attribute]): F[Unit] =
+    putIntoCache(key, attributes)(attributesCache)
 
   /** Inserts all attributes into cache */
   def putAllAttributes: AttributesCache => F[Unit] = updateVar(attributesCache)
@@ -118,14 +130,14 @@ class MetadataCaching[F[_]](
     fillCache(attributes)(attributesCache)
 
   /** Inserts attribute values into cache */
-  def putAttributeValues(entity: String, attribute: String, radixTree: RadixTree[String, String]): F[Unit] =
-    putIntoCache(makeKey(entity, attribute), radixTree)(attributeValuesCache)
+  def putAttributeValues(key: AttributeValueCacheKey, radixTree: RadixTree[String, String]): F[Unit] =
+    putIntoCache(key, radixTree)(attributeValuesCache)
 
   /** Generic method for putting value into cache */
-  private def putIntoCache[A](key: String, value: A)(cache: MVar[F, Cache[A]]): F[Unit] =
+  private def putIntoCache[A](key: CacheKey, value: A)(cache: MVar[F, Cache[A]]): F[Unit] =
     for {
       ca <- cache.take
-      _ <- cache.put(ca.updated(CacheKey(key), CacheEntry(now, value)))
+      _ <- cache.put(ca.updated(key, CacheEntry(now, value)))
     } yield ()
 
   /** Helper method for updating MVars */

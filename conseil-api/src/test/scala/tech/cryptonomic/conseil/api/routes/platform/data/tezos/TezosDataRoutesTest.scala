@@ -155,7 +155,7 @@ class TezosDataRoutesTest
       ),
       TransparentUnitTransformation,
       cacheOverrides,
-      Map("tezos" -> platformDiscoveryOperations)
+      platformDiscoveryOperations
     )
 
   val postRoute: Route = TezosDataRoutes(metadataService, metadataConf, conseilOps, 1000).postRoute
