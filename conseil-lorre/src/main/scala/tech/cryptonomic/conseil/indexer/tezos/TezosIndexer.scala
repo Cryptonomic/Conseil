@@ -430,8 +430,8 @@ class TezosIndexer(
       import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
       //DANGER Will Robinson! we assume in the rest of the code that we're not handling the genesis block
-      val safeBlocks = blocks.filterNot(block => TezosNodeOperator.isGenesis(block.data))
-      val safeListings = listings.filterNot { case (block, rolls) => TezosNodeOperator.isGenesis(block.data) }
+      val safeBlocks = blocks.filterNot(block => block.data.metadata == GenesisMetadata)
+      val safeListings = listings.filterNot { case (block, rolls) => block.data.metadata == GenesisMetadata }
 
       for {
         proposals <- nodeOperator.getProposals(safeBlocks.map(_.data))
