@@ -15,6 +15,7 @@ import scala.util.Try
 import scala.concurrent.SyncVar
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.util.CryptoUtil
+import scorex.util.encode.{Base16 => Hex}
 
 /** For each specific contract available we store a few
   * relevant bits of data useful to extract information
@@ -111,17 +112,17 @@ object TokenContracts extends LazyLogging {
           val balanceReader = (_, update) =>
             for {
               key <- MichelineOps.parseBytes(update.key)
-              account <- Codecs.decodeBigMapKey(key)
+              accountId <- Codecs.decodeBigMapKey(key)
               code <- update.value
               balance <- MichelineOps.parseBalanceFromMap(code)
-            } yield account -> balance
+            } yield accountId -> balance
         }
       case "FA1.2-StakerDao" =>
         new TokenToolbox(id) {
           type PInfo = Map[String, AccountId]
 
           val parametersReader = compatWrapped =>
-            MichelineOps.StakerDao.parseReceiverFromParameters(MichelineOps.handleCompatibility(compatWrapped))
+            MichelineOps.StakerDao.parseAccountsFromParameters(MichelineOps.handleCompatibility(compatWrapped))
 
           val balanceReader = (pinfo, update) =>
             for {
@@ -129,7 +130,7 @@ object TokenContracts extends LazyLogging {
               key <- MichelineOps.parseBytes(update.key)
               accountId <- keysToAccountMap.get(key)
               code <- update.value
-              balance <- MichelineOps.StakerDao.parseBalanceFromMap(code)
+              balance <- MichelineOps.parseBalanceFromMap(code)
             } yield accountId -> balance
 
         }
@@ -169,13 +170,48 @@ object TokenContracts extends LazyLogging {
   /** Defines enc-dec operation used for token big maps */
   object Codecs {
 
-    /** Tries to read the map id as an hex bytestring, and convert it to a valid account id */
-    def decodeBigMapKey(hexEncoded: String): Option[AccountId] = {
-      val id = CryptoUtil.readAddress(hexEncoded.trim()).map(AccountId)
-      id.failed.foreach(
-        err => logger.error("I failed to match a big map key as a proper account address", err)
-      )
-      id.toOption
+    /* Michelson can be binary-encoded, in this case representing the
+     * string value "totalSupply"
+     *
+     * We need to keep this variable Title-cased to correctly pattern match on it!
+     * Scala puzzlers warning
+     */
+    private val LedgerTotalSupply = "05010000000b746f74616c537570706c79"
+
+    /* Michelson can be binary-encoded, in this case representing the following
+     * example expression:
+     * bytes-tag  prim  pair-opcode   string-lit  len-bytes     "ledger"     raw-bytes
+     *    05       07       07            01      00000006     6c6564676572     0a
+     *
+     * What would follow is the length and content of raw bytes, which encodes the account address, e.g.
+     *  len-bytes: 44    encoding the address: tz1YWeZqt67XGHUvPFBmfMfWAoZtXELTWtKh
+     *    00000016             00008d34410a9ccfa23728e02ca58cfaeb67b69d99fb
+     */
+    private val ledgerEntryBinaryPrefix = "05070701000000066c65646765720a"
+
+    /** Tries to read the map id as an hex bytestring, and convert it to a valid account id
+      * We need to account for different bytes encodings on different token formats
+      */
+    def decodeBigMapKey(hexEncoded: String): Option[AccountId] = hexEncoded.trim match {
+      case LedgerTotalSupply =>
+        //this is a constant value for tzBTC, we can ignore it for now
+        Option.empty
+      case ledgerEntry if ledgerEntry.startsWith(ledgerEntryBinaryPrefix) =>
+        //this encodes the address as michelson code representing a "ledger" pair entry
+        val id = (MichelineOps.decodeLedgerAccount _).tupled(
+          ledgerEntry.drop(ledgerEntryBinaryPrefix.size).splitAt(8)
+        )
+        id.failed.foreach(
+          err => logger.error("I failed to match a big map key as a proper account address", err)
+        )
+        id.toOption
+      case packedAddress if packedAddress.startsWith("0") =>
+        //this is directly the packed addres
+        val id = CryptoUtil.readAddress(packedAddress).map(AccountId)
+        id.failed.foreach(
+          err => logger.error("I failed to match a big map key as a proper account address", err)
+        )
+        id.toOption
     }
   }
 
@@ -191,12 +227,12 @@ object TokenContracts extends LazyLogging {
     /* Defines staker dao specific operations */
     object StakerDao {
 
-      /* Extract the receiver of a "transfer" operation from the parameters
-       * the output includes the decoded account-id and the hex-encoded bytestring
+      /* Extract the accounts involved in a "transfer" operation from the parameters
+       * The output includes the decoded account-id and the hex-encoded bytestring
        * We expect to use the bytes to extract balance updates from the big maps,
        * using the bytes as a key.
        */
-      def parseReceiverFromParameters(paramCode: Micheline): Option[Map[String, AccountId]] = {
+      def parseAccountsFromParameters(paramCode: Micheline): Option[Map[String, AccountId]] = {
         val parsed = JsonParser.parse[MichelsonInstruction](paramCode.expression)
 
         parsed.left.foreach(
@@ -214,7 +250,11 @@ object TokenContracts extends LazyLogging {
           michelson => logger.debug("I parsed a staker dao parameters value as {}", michelson)
         )
 
-        //custom match to the contract call structure for a stakerdao transfer
+        /* Custom match to the contract call structure for a stakerdao transfer
+         * the contract has many entrypoints, the one that we're interested in is
+         * at the sub-path: right-left-left-right and looks like
+         * pair %transfer (address :from) (pair (address :to) (nat :value))
+         */
         for {
           (senderBytes, receiverBytes) <- parsed.toOption.collect {
             case MichelsonSingleInstruction(
@@ -254,32 +294,6 @@ object TokenContracts extends LazyLogging {
 
       }
 
-      /* reads a map value as a list with a balance as head */
-      def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] = {
-
-        val parsed = JsonParser.parse[MichelsonInstruction](mapCode.expression)
-
-        parsed.left.foreach(
-          err =>
-            logger.error(
-              """Failed to parse michelson expression for token balance extraction.
-              | Code was: {}
-              | Error is {}""".stripMargin,
-              mapCode.expression,
-              err.getMessage()
-            )
-        )
-
-        parsed.foreach(
-          michelson => logger.debug("I parsed a staker-dao map diff value as {}", michelson)
-        )
-
-        parsed.toOption.collect {
-          case MichelsonIntConstant(balance) => balance
-        }.flatMap { balance =>
-          Try(BigInt(balance)).toOption
-        }
-      }
     }
 
     /* extracts a bytes value as a string if it corresponds to the micheline argument */
@@ -288,7 +302,23 @@ object TokenContracts extends LazyLogging {
         case MichelsonBytesConstant(bytes) => bytes
       }
 
-    /* reads a map value as a list with a balance as head */
+    def decodeLedgerAccount(hexLength: String, hexAccount: String): Try[AccountId] =
+      for {
+        //this is number of bytes, each hex byte will take 2 chars
+        length <- Hex.decode(hexLength).map(BigInt(_).toInt)
+        accountId <- CryptoUtil.readAddress(hexAccount.take(length * 2))
+      } yield AccountId(accountId)
+
+    /* Michelson can be binary-encoded, in this case representing the following
+     * example expression:
+     * bytes-tag  prim  pair-opcode   int-lit    zarith-bigint   empty array
+     *   05        07       07          00        86-bb-23       0200000000
+     */
+    private val ledgerValueBinaryPrefix = "05070700"
+
+    /** Reads a map value as a balance number, encoded in different forms
+      * depending on the specific ledger
+      */
     def parseBalanceFromMap(mapCode: Micheline): Option[BigInt] = {
 
       val parsed = JsonParser.parse[MichelsonInstruction](mapCode.expression)
@@ -309,10 +339,23 @@ object TokenContracts extends LazyLogging {
       )
 
       parsed.toOption.collect {
-        case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) => balance
-      }.flatMap { balance =>
-        Try(BigInt(balance)).toOption
-      }
+        case MichelsonIntConstant(balance) =>
+          //straightforward value out of the map: e.g. staker-dao
+          Try(BigInt(balance))
+        case MichelsonSingleInstruction("Pair", MichelsonIntConstant(balance) :: _, _) =>
+          //here we have the simplest indirect form: e.g. USDtz
+          Try(BigInt(balance))
+        case MichelsonBytesConstant(bytestring) if bytestring.startsWith(ledgerValueBinaryPrefix) =>
+          /* a little more complex handling if the ledger value is encoded in bytes: e.g. tzBTC
+           * the code is the same as the USDtz case but byte-encoded
+           * Thus the prefix corresponds to: Pair (int :balance) array
+           *
+           * We consider only the balance, while the remaining array, which can be empty,
+           * might represent a map of "spender approvals", where one token holder allows other
+           * accounts to exchange a part of their balance
+           */
+          CryptoUtil.decodeZarithNumber(bytestring.drop(ledgerValueBinaryPrefix.size))
+      }.flatMap(_.toOption)
     }
 
   }
