@@ -31,7 +31,7 @@
 
     <logger name="com.base22" level="TRACE"/>
     <logger name="slick" level="INFO"/>
-    <logger name="tech.cryptonomic.conseil.common.tezos.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-OFF}"/>
+    <logger name="tech.cryptonomic.conseil.indexer.tezos.bigmaps.BigMapsOperations" level="${LORRE_BIG_MAPS_LOG_LEVEL:-OFF}"/>
     <logger name="tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContracts" level="${LORRE_TNS_LOG_LEVEL:-INFO}"/>
 
     <root level="INFO">
