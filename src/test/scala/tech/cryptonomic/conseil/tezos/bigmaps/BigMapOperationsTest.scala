@@ -54,7 +54,7 @@ class BigMapOperationsTest
               big_map = Decimal(1),
               key_type = Micheline("""{"prim":"address"}"""),
               value_type = Micheline("""{"prim":"nat"}""")
-            )
+            ) :: Nil
         }
 
         val block = generateSingleBlock(1, testReferenceDateTime)
@@ -95,7 +95,7 @@ class BigMapOperationsTest
               key = Micheline("""{"bytes":"0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"}"""),
               key_hash = ScriptId("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
               value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"20"},[]]}"""))
-            )
+            ) :: Nil
         }
 
         //we need this to be referred as a FK from the content record
@@ -148,7 +148,7 @@ class BigMapOperationsTest
               big_map = Decimal(1),
               key_type = Micheline("""{"prim":"address"}"""),
               value_type = Micheline("""{"prim":"nat"}""")
-            )
+            ) :: Nil
         }
 
         val block = generateSingleBlock(1, testReferenceDateTime)
@@ -201,7 +201,7 @@ class BigMapOperationsTest
               key = Micheline("""{"bytes":"0000a8d45bdc966ddaaac83188a1e1c1fde2a3e05e5c"}"""),
               key_hash = ScriptId("exprvKTBQDAyXTMRc36TsLBsj9y5GXo1PD529MfF8zDV1pVzNNgehs"),
               value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
-            )
+            ) :: Nil
         }
 
         //we're gonna direct any sample transaction to the token contract, referring to a test account
@@ -293,7 +293,7 @@ class BigMapOperationsTest
               key = Micheline("""{"bytes":"0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"}"""),
               key_hash = ScriptId("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
               value = Some(Micheline("""{"prim":"Pair", "args": [{"int":"50"},[]]}"""))
-            )
+            ) :: Nil
         }
 
         val block = generateSingleBlock(1, testReferenceDateTime)
@@ -320,6 +320,88 @@ class BigMapOperationsTest
             value = Some("Pair 50 {}")
           )
         )
+      }
+
+      "update with only the latest big map content for diffs having the same target map and key: Issue#807" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        val initialBigMap = BigMapsRow(
+          bigMapId = BigDecimal(1),
+          keyType = Some("address"),
+          valueType = Some("nat")
+        )
+        val initialBigMapContent = BigMapContentsRow(
+          bigMapId = BigDecimal(1),
+          key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+          keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+          value = Some("Pair 20 {}")
+        )
+
+        val populate = for {
+          mapAdded <- Tables.BigMaps += initialBigMap
+          contentAdded <- Tables.BigMapContents += initialBigMapContent
+        } yield (mapAdded, contentAdded)
+
+        dbHandler.run(populate).futureValue shouldEqual ((1, 1))
+
+        //here we want to generate multiple updates in different blocks
+        def updatesMap(values: List[Int]): ListTransf[Operation] = Operations.updateOperationsWithBigMapUpdate {
+          case (_: Transaction) =>
+            values.map { value =>
+              Contract.BigMapUpdate(
+                action = "udpate",
+                big_map = Decimal(1),
+                key = Micheline("""{"bytes":"0000b2e19a9e74440d86c59f13dab8a18ff873e889ea"}"""),
+                key_hash = ScriptId("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+                value = Some(Micheline(s"""{"prim":"Pair", "args": [{"int":"$value"},[]]}"""))
+              )
+            }
+        }
+
+        /* we make two blocks and define which are the big map values to update
+         * therefore adding the diff to the corresponding operations
+         */
+        val blocks = generateBlocks(2, testReferenceDateTime).drop(1)
+
+        val operationsWithDiffs: List[List[OperationsGroup]] = blocks.map { block =>
+          val sampleOperations = generateOperationGroup(block, generateOperations = true)
+          val updateValue = block.data.header.level match {
+            case 1 => List(10) //block-lvl 1 will carry one update
+            case 2 => List(20, 50) //block-lvl 2 will carry both updates
+            case _ => List.empty
+          }
+          sampleOperations.copy(
+            contents = updatesMap(values = updateValue)(sampleOperations.contents)
+          ) :: Nil
+        }
+
+        val blocksToSave =
+          blocks.zip(operationsWithDiffs).map {
+            case (block, ops) => block.copy(operationGroups = ops)
+          }
+
+        // we change the order of how blocks come in
+        val reverted = blocksToSave.reverse
+
+        //when
+        val writeAndGetRows = sut.upsertContent(reverted) andThen Tables.BigMapContents.result
+
+        val contents = dbHandler.run(writeAndGetRows.transactionally).futureValue
+
+        //then
+        contents.size shouldBe 1
+
+        // we expect only the latest update to take effect
+        contents(0) should matchTo(
+          BigMapContentsRow(
+            bigMapId = BigDecimal(1),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 50 {}")
+          )
+        )
+
       }
 
       "copy big map contents for diffs contained in a list of blocks" in {
@@ -361,7 +443,7 @@ class BigMapOperationsTest
               action = "copy",
               source_big_map = Decimal(1),
               destination_big_map = Decimal(2)
-            )
+            ) :: Nil
         }
 
         val block = generateSingleBlock(1, testReferenceDateTime)
@@ -395,6 +477,108 @@ class BigMapOperationsTest
           )
         )
 
+      }
+
+      "copy only the latest big map content for diffs copying to the same target map and key: Issue#807" in {
+        //given
+        implicit val randomSeed = RandomSeed(testReferenceTimestamp.getTime)
+
+        //we need 3 pre-existing big maps to transafer content between
+        val initialBigMaps =
+          1 :: 2 :: 3 :: Nil map (
+                  i =>
+                    BigMapsRow(
+                      bigMapId = BigDecimal(i),
+                      keyType = None,
+                      valueType = None
+                    )
+                )
+
+        //the content to copy
+        val initialBigMapsContent = List(
+          BigMapContentsRow(
+            bigMapId = BigDecimal(1),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 10 {}")
+          ),
+          BigMapContentsRow(
+            bigMapId = BigDecimal(2),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 20 {}")
+          )
+        )
+
+        //store the data
+        val populate = for {
+          maps <- Tables.BigMaps ++= initialBigMaps
+          contents <- Tables.BigMapContents ++= initialBigMapsContent
+        } yield (maps, contents)
+
+        dbHandler.run(populate.transactionally).futureValue shouldEqual ((Some(3), Some(2)))
+
+        //we want to copy content between the first two maps and the third map, on the same key
+        def copyMap(from: List[Int], to: Int): ListTransf[Operation] = Operations.updateOperationsWithBigMapCopy {
+          case (_: Transaction) =>
+            from.map { sourceId =>
+              Contract.BigMapCopy(
+                action = "copy",
+                source_big_map = Decimal(sourceId),
+                destination_big_map = Decimal(to)
+              )
+
+            }
+        }
+
+        /* we make two blocks and define which are the big map ids to copy
+         * therefore adding the copy diff to the corresponding operations
+         */
+        val blocks = generateBlocks(2, testReferenceDateTime).drop(1)
+
+        val operationsWithDiffs: List[List[OperationsGroup]] = blocks.map { block =>
+          val sampleOperations = generateOperationGroup(block, generateOperations = true)
+          val sourceIdsToCopy = block.data.header.level match {
+            case 1 => List(1) //block-lvl 1 will copy contents from map 1
+            case 2 => List(1, 2) //block-lvl 2 will copy contents from map 1 and 2 both
+            case _ => List.empty
+          }
+          sampleOperations.copy(
+            contents = copyMap(from = sourceIdsToCopy, to = 3)(sampleOperations.contents)
+          ) :: Nil
+        }
+
+        val blocksToSave =
+          blocks.zip(operationsWithDiffs).map {
+            case (block, ops) => block.copy(operationGroups = ops)
+          }
+
+        // we change the order of how blocks come in
+        val reverted = blocksToSave.reverse
+
+        //when
+        val writeAndGetRows = for {
+          _ <- sut.copyContent(reverted)
+          maps <- Tables.BigMaps.result
+          contents <- Tables.BigMapContents.result
+        } yield (maps, contents)
+
+        val (maps, contents) = dbHandler.run(writeAndGetRows).futureValue
+
+        //then
+        maps.size shouldBe initialBigMaps.size
+
+        contents.size shouldBe 3
+
+        // we expect the destination map to only consider the very last copy applied
+        contents(2) should matchTo(
+          BigMapContentsRow(
+            bigMapId = BigDecimal(3),
+            key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
+            keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
+            value = Some("Pair 20 {}")
+          )
+        )
       }
 
       "delete all data in selected big maps for diffs contained in a list of blocks" in {
@@ -448,7 +632,7 @@ class BigMapOperationsTest
             Contract.BigMapRemove(
               action = "remove",
               big_map = Decimal(1)
-            )
+            ) :: Nil
         }
 
         val block = generateSingleBlock(1, testReferenceDateTime)
