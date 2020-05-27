@@ -80,7 +80,7 @@ class TezosIndexer(
           case (tokenRows, _) =>
             TokenContracts.fromConfig(
               tokenRows.map {
-                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
                   ContractId(accountId) -> standard
               }
             )
