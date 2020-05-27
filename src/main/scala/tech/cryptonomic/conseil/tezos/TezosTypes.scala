@@ -180,8 +180,11 @@ object TezosTypes {
   )
 
   /** only accepts standard block metadata, discarding the genesis metadata */
-  def discardGenesis: PartialFunction[BlockMetadata, BlockHeaderMetadata] = {
-    case md: BlockHeaderMetadata => md
+  def discardGenesis: BlockMetadata => Option[BlockHeaderMetadata] = {
+    val partialSelector: PartialFunction[BlockMetadata, BlockHeaderMetadata] = {
+      case md: BlockHeaderMetadata => md
+    }
+    partialSelector.lift
   }
 
   /** Naming can be deceiving, we're sticking with the json schema use of `positive_bignumber`
