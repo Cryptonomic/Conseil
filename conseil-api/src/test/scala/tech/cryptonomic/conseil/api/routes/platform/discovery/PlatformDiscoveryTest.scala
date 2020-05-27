@@ -5,7 +5,11 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Matchers, WordSpec}
 import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, UnitTransformation}
-import tech.cryptonomic.conseil.common.config.Platforms.{PlatformsConfiguration, TezosConfiguration, TezosNodeConfiguration}
+import tech.cryptonomic.conseil.common.config.Platforms.{
+  PlatformsConfiguration,
+  TezosConfiguration,
+  TezosNodeConfiguration
+}
 import tech.cryptonomic.conseil.common.config.Types.PlatformName
 import tech.cryptonomic.conseil.common.config._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.Int

@@ -19,6 +19,6 @@ trait TezosInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
     Fixture(Tables.BigMapContents),
     Fixture(Tables.OriginatedAccountMaps),
     Fixture(Tables.Bakers),
-    Fixture(Tables.BakersCheckpoint),
+    Fixture(Tables.BakersCheckpoint)
   )
 }

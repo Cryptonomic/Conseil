@@ -574,6 +574,8 @@ ALTER TABLE ONLY tezos.operations
 
 CREATE INDEX baking_rights_level_idx ON tezos.baking_rights USING btree (level);
 
+CREATE INDEX baking_rights_delegate_idx ON tezos.baking_rights USING btree (delegate);
+
 
 --
 -- Name: endorsing_rights_level_idx; Type: INDEX; Schema: tezos; Owner: -
@@ -581,6 +583,7 @@ CREATE INDEX baking_rights_level_idx ON tezos.baking_rights USING btree (level);
 
 CREATE INDEX endorsing_rights_level_idx ON tezos.endorsing_rights USING btree (level);
 
+CREATE INDEX endorsing_rights_delegate_idx ON tezos.endorsing_rights USING btree (delegate);
 
 --
 -- Name: fki_block; Type: INDEX; Schema: tezos; Owner: -

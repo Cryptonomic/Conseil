@@ -14,7 +14,11 @@ import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
+  HighCardinalityAttribute,
+  InvalidAttributeDataType,
+  InvalidAttributeFilterLength
+}
 import tech.cryptonomic.conseil.common.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata._

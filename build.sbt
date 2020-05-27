@@ -91,7 +91,7 @@ lazy val schema = (project in file("conseil-schema"))
   .settings(
     name := "conseil-schema",
     mainClass := Some("tech.cryptonomic.conseil.schema.GenSchema"),
-    libraryDependencies ++= Dependencies.conseilSchemaInclude,
+    libraryDependencies ++= Dependencies.conseilSchemaInclude
   )
   .addRunCommand(description = "Task to generate the schema source files from db-schema")
   .disableAssembly()
