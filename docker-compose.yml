@@ -11,7 +11,17 @@ services:
       POSTGRES_DB: "conseil-local"
       POSTGRES_INITDB_ARGS: "--lc-collate=en_US.UTF-8 -E UTF8"
     volumes:
-      - "./sql/conseil.sql:/docker-entrypoint-initdb.d/conseil.sql"
+      - "./sql/:/docker-entrypoint-initdb.d/"
 #   uncomment if you want your data to be stored in the local directory
 #     - "./pgdata:/var/lib/postgresql/data"
-
+  graphql-engine:
+    image: hasura/graphql-engine:v1.2.1
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: "postgres://hasurauser:hasurapass@conseil-postgres:5432/conseil-local"
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+    volumes:
+    - "./hasura/metadata/:/hasura-metadata/"
