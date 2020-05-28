@@ -453,7 +453,7 @@ class GenericPlatformDiscoveryOperations(
       platform: String,
       network: String,
       entities: List[Entity],
-      attributes: Cache[List[Attribute]]
+      attributes: AttributesCache
   ): IO[List[(String, List[Attribute])]] = {
     val queries = attributes.filterKeys { key =>
       entities.map(_.name).toSet(key.value)

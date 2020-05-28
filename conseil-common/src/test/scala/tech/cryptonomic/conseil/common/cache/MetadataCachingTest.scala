@@ -34,7 +34,9 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
         sut.getAttributes(AttributeCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
         sut.getAttributes(AttributeCacheKey("testPlatform", "")).unsafeRunSync() shouldBe None
         sut.getAttributes(AttributeCacheKey("", "")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributeCacheKey("testPlatform", "testTable")).unsafeRunSync() shouldBe Some(CacheEntry(0L, List()))
+        sut.getAttributes(AttributeCacheKey("testPlatform", "testTable")).unsafeRunSync() shouldBe Some(
+          CacheEntry(0L, List())
+        )
       }
 
       "init entities cache" in {
@@ -143,6 +145,67 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
         val CacheEntry(_, updateResult) =
           sut.getAttributeValues(AttributeValueCacheKey("platform", "table2", "column2")).unsafeRunSync().get
         updateResult.values.toList shouldBe List("b")
+      }
+
+      "handle entities for multiple platforms" in {
+        val entitiesKey1 = EntityCacheKey("platform", "network")
+        val entities1 = List(Entity("a", "a", 0))
+
+        val entitiesKey2 = EntityCacheKey("platform-new", "network-new")
+        val entities2 = List(Entity("b", "b", 0))
+
+        val entities3 = List(Entity("c", "c", 0))
+
+        val entitiesCache: EntitiesCache = Map(
+          entitiesKey1 -> CacheEntry(0L, entities1),
+          entitiesKey2 -> CacheEntry(0L, entities2)
+        )
+
+        // insert
+        sut.fillEntitiesCache(entitiesCache).unsafeRunSync() shouldBe true
+
+        // update
+        sut.putEntities(entitiesKey1, entities3).unsafeRunSync()
+
+        // get
+        sut.getEntities(entitiesKey1).unsafeRunSync().value.value should contain theSameElementsAs entities3
+        sut.getEntities(entitiesKey2).unsafeRunSync().value.value should contain theSameElementsAs entities2
+      }
+
+      "handle attributes for multiple platforms" in {
+        val attributesKey1 = AttributeCacheKey("platform", "table")
+        val attributes1 = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
+
+        val attributesKey2 = AttributeCacheKey("platform-new", "table-new")
+        val attributes2 = List(Attribute("d", "e", DataType.String, None, KeyType.NonKey, "f"))
+
+        val attributesCache: AttributesCache = Map(
+          attributesKey1 -> CacheEntry(0L, attributes1),
+          attributesKey2 -> CacheEntry(0L, attributes2)
+        )
+
+        sut.fillAttributesCache(attributesCache).unsafeRunSync() shouldBe true
+
+        sut.getAttributes(attributesKey1).unsafeRunSync().value.value should contain theSameElementsAs attributes1
+        sut.getAttributes(attributesKey2).unsafeRunSync().value.value should contain theSameElementsAs attributes2
+      }
+
+      "handle attribute values for multiple platforms" in {
+        val attributesValueKey1 = AttributeValueCacheKey("platform", "table", "column")
+        val attributesValue1 = RadixTree[String, String]("a" -> "a")
+
+        val attributesValueKey2 = AttributeValueCacheKey("platform-new", "table-new", "column-new")
+        val attributesValue2 = RadixTree[String, String]("b" -> "b")
+
+        val attributesValueCache: AttributeValuesCache = Map(
+          attributesValueKey1 -> CacheEntry(0L, attributesValue1),
+          attributesValueKey2 -> CacheEntry(0L, attributesValue2)
+        )
+
+        sut.fillAttributeValuesCache(attributesValueCache).unsafeRunSync() shouldBe true
+
+        sut.getAttributeValues(attributesValueKey1).unsafeRunSync().value.value shouldBe attributesValue1
+        sut.getAttributeValues(attributesValueKey2).unsafeRunSync().value.value shouldBe attributesValue2
       }
     }
 
