@@ -49,7 +49,8 @@ class TezosDataTypesTest
     )
   }
 
-  val testEntityPath: EntityPath = EntityPath("testEntity", NetworkPath("alphanet", PlatformPath("tezos")))
+  val testNetworkPath: NetworkPath = NetworkPath("alphanet", PlatformPath("tezos"))
+  val testEntityPath: EntityPath = EntityPath("testEntity", testNetworkPath)
   val testEntity: Entity = Entity("testEntity", "Test Entity", 0)
 
   "DataTypes" should {
@@ -63,8 +64,8 @@ class TezosDataTypesTest
           entity = "testEntity"
         )
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addEntity(testEntity)
-          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
         }
 
         val query = ApiQuery(
@@ -81,7 +82,7 @@ class TezosDataTypesTest
       }
 
       "return error with incorrect query fields" in {
-        platformDiscoveryOperations.addEntity(testEntity)
+        platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
 
         val query = ApiQuery(
           fields = Some(List(SimpleField("invalid"))),
@@ -108,8 +109,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addEntity(testEntity)
-          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
         }
 
         val query = ApiQuery(
@@ -127,7 +128,7 @@ class TezosDataTypesTest
       }
 
       "return error with incorrect predicate fields" in {
-        platformDiscoveryOperations.addEntity(testEntity)
+        platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
 
         val query = ApiQuery(
           fields = None,
@@ -154,8 +155,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addEntity(testEntity)
-          platformDiscoveryOperations.addAttribute(attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
         }
 
         val query = ApiQuery(
@@ -173,7 +174,7 @@ class TezosDataTypesTest
       }
 
       "return error with incorrect orderBy fields" in {
-        platformDiscoveryOperations.addEntity(testEntity)
+        platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
 
         val query = ApiQuery(
           fields = None,
@@ -200,8 +201,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -232,8 +233,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -261,8 +262,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -293,8 +294,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity.copy(limitedQuery = Some(true)))
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity.copy(limitedQuery = Some(true)))
         }
 
         val query = ApiQuery(
@@ -322,8 +323,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -354,8 +355,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -388,8 +389,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -421,8 +422,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -453,8 +454,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -485,8 +486,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -514,8 +515,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(
@@ -545,8 +546,8 @@ class TezosDataTypesTest
         )
 
         val metadataService = createMetadataService {
-          platformDiscoveryOperations.addAttribute(attribute)
-          platformDiscoveryOperations.addEntity(testEntity)
+          platformDiscoveryOperations.addAttribute(testEntityPath, attribute)
+          platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
         }
 
         val query = ApiQuery(

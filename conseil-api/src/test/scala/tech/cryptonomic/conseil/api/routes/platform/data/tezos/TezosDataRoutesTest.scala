@@ -16,6 +16,7 @@ import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query, QueryResponse, SimpleField}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
+import tech.cryptonomic.conseil.common.metadata.{EntityPath, NetworkPath, PlatformPath}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -135,10 +136,12 @@ class TezosDataRoutesTest
   )
 
   val testEntity = Entity("accounts", "Test Entity", 0)
+  val testNetworkPath = NetworkPath("alphanet", PlatformPath("tezos"))
+  val testEntityPath = EntityPath("accounts", testNetworkPath)
 
   val platformDiscoveryOperations = new TestPlatformDiscoveryOperations
-  platformDiscoveryOperations.addEntity(testEntity)
-  accountAttributes.foreach(platformDiscoveryOperations.addAttribute)
+  platformDiscoveryOperations.addEntity(testNetworkPath, testEntity)
+  accountAttributes.foreach(platformDiscoveryOperations.addAttribute(testEntityPath, _))
 
   val cacheOverrides = stub[AttributeValuesCacheConfiguration]
 
