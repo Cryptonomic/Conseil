@@ -151,7 +151,6 @@ class TezosPlatformDiscoveryOperationsTest
             Attribute("proto", "Proto", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("predecessor", "Predecessor", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("timestamp", "Timestamp", DataType.DateTime, None, KeyType.NonKey, "blocks"),
-            Attribute("validation_pass", "Validation pass", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("fitness", "Fitness", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("context", "Context", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("signature", "Signature", DataType.String, None, KeyType.NonKey, "blocks"),
@@ -170,7 +169,6 @@ class TezosPlatformDiscoveryOperationsTest
             ),
             Attribute("active_proposal", "Active proposal", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("baker", "Baker", DataType.String, None, KeyType.NonKey, "blocks"),
-            Attribute("nonce_hash", "Nonce hash", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("consumed_gas", "Consumed gas", DataType.Decimal, None, KeyType.NonKey, "blocks"),
             Attribute("meta_level", "Meta level", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("meta_level_position", "Meta level position", DataType.Int, None, KeyType.NonKey, "blocks"),
@@ -185,7 +183,6 @@ class TezosPlatformDiscoveryOperationsTest
               KeyType.NonKey,
               "blocks"
             ),
-            Attribute("expected_commitment", "Expected commitment", DataType.Boolean, None, KeyType.NonKey, "blocks"),
             Attribute("priority", "Priority", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("utc_year", "Utc year", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("utc_month", "Utc month", DataType.Int, None, KeyType.NonKey, "blocks"),
