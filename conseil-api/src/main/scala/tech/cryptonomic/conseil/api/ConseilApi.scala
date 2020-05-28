@@ -33,7 +33,8 @@ object ConseilApi {
 }
 
 class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
-  extends EnableCORSDirectives with LazyLogging {
+    extends EnableCORSDirectives
+    with LazyLogging {
 
   private val transformation = new UnitTransformation(config.metadata)
   private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
@@ -122,11 +123,10 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       case Platforms.Tezos => new TezosApi(config.metadata, config.server)
     }
 
-
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
     private val metadataCaching = MetadataCaching.empty[IO].unsafeRunSync()
     private val metadataOperations: DatabaseMetadataOperations = new DatabaseMetadataOperations {
-      override val dbReadHandle = DatabaseUtil.conseilDb
+      override lazy val dbReadHandle = DatabaseUtil.conseilDb
     }
 
     lazy val cachedDiscoveryOperations: GenericPlatformDiscoveryOperations =

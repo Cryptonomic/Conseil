@@ -31,8 +31,7 @@ class MetadataService(
     networks.values.flatten
       .map(_.path)
       .map(
-        networkPath =>
-          networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath))
+        networkPath => networkPath -> transformation.overrideEntities(networkPath, futureEntities(networkPath))
       )
       .toMap
   }

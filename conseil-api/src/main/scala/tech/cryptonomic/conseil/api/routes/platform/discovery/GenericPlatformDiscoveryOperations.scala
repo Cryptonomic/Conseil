@@ -7,12 +7,17 @@ import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{AttributesValidationError, HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
+  AttributesValidationError,
+  HighCardinalityAttribute,
+  InvalidAttributeDataType,
+  InvalidAttributeFilterLength
+}
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.DataType.DataType
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._
-import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations._
+import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -185,8 +190,8 @@ class GenericPlatformDiscoveryOperations(
   /** Method querying slick metadata tables for entities */
   private def preCacheEntities(platform: String, network: String): DBIO[EntitiesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some("tezos"), Some(""), Some(Seq("TABLE")))
-      counts <- getTablesCount(tables)
+      tables <- MTable.getTables(Some(""), Some(platform), Some(""), Some(Seq("TABLE")))
+      counts <- getTablesCount(platform, tables)
     } yield
       now -> (tables.map(_.name.name) zip counts).map {
             case (name, count) =>
@@ -200,10 +205,10 @@ class GenericPlatformDiscoveryOperations(
     name.capitalize.replace("_", " ")
 
   /** Query for counting rows in the table */
-  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] =
+  private def getTablesCount(platform: String, tables: Vector[MTable]): DBIO[Vector[Int]] =
     DBIOAction.sequence {
       tables.map { table =>
-        countRows(table.name.name)
+        countRows(platform, table.name.name)
       }
     }
 
@@ -305,7 +310,7 @@ class GenericPlatformDiscoveryOperations(
 
   /** Makes list of possible string values of the attributes
     *
-    * @param platform name of the schema
+    * @param  platform name of the schema
     * @param  tableName  name of the table from which we extract attributes
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
@@ -417,24 +422,23 @@ class GenericPlatformDiscoveryOperations(
 
   /** Starts initialization of attributes count cache */
   def initAttributesCache(config: List[(Platform, Network)]): Future[Unit] = {
-    def initSingleCacheEntry(platform: Platform, network: Network): IO[Unit] = {
+    def initSingleCacheEntry(platform: Platform, network: Network): IO[Unit] =
       for {
         entCache <- caching.getEntities(EntityCacheKey(platform.name, network.name))
-        attrCache <- entCache
-          .toList
+        attrCache <- entCache.toList
           .map(_.value.map(e => AttributeCacheKey(platform.name, e.name)))
           .map(keys => caching.getAllAttributesByKeys(keys))
           .sequence
           .map(_.reduce(_ ++ _))
         _ <- contextShift.shift
-        updatedAttributes <- entCache.foldMapM((entC: CacheEntry[List[Entity]]) =>
-          getAllUpdatedAttributes(platform.name, network.name, entC.value, attrCache)
+        updatedAttributes <- entCache.foldMapM(
+          (entC: CacheEntry[List[Entity]]) =>
+            getAllUpdatedAttributes(platform.name, network.name, entC.value, attrCache)
         )
         _ <- updatedAttributes.traverse {
           case (tableName, attr) => caching.putAttributes(AttributeCacheKey(platform.name, tableName), attr)
         }
       } yield ()
-    }
 
     for {
       _ <- caching.updateCachingStatus(InProgress)
