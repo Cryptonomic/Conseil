@@ -6,7 +6,11 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
-import tech.cryptonomic.conseil.api.metadata.{AttributeValuesCacheConfiguration, MetadataService, TransparentUnitTransformation}
+import tech.cryptonomic.conseil.api.metadata.{
+  AttributeValuesCacheConfiguration,
+  MetadataService,
+  TransparentUnitTransformation
+}
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}

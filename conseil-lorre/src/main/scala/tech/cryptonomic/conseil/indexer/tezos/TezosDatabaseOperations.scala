@@ -504,6 +504,22 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 
+  /** Fetches baking rights for given block level
+    *  @param blockLevel block level
+    *  @return list of baking rights rows
+    */
+  def getBakingRightsForLevel(blockLevel: Int): DBIO[Seq[Tables.BakingRightsRow]] =
+    Tables.BakingRights.filter(_.level === blockLevel).result
+
+  /** Fetches endorsing rights for given block level
+    *  @param blockLevel block level
+    *  @return list of endorsing rights rows
+    */
+  def getEndorsingRightsForLevel(
+      blockLevel: Int
+  ): DBIO[Seq[Tables.EndorsingRightsRow]] =
+    Tables.EndorsingRights.filter(_.level === blockLevel).result
+
   def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
     logger.info("Writing {} governance rows into database...", governance.size)
     Tables.Governance ++= governance
@@ -686,6 +702,12 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
       .update(true)
   }
 
+  /**
+    * Gets all bakers for given block hash
+    * @param hashes
+    * @param ec
+    * @return
+    */
   def getBakersForBlocks(
       hashes: List[BlockHash]
   )(implicit ec: ExecutionContext): DBIO[List[(BlockHash, List[BakerRolls])]] =
@@ -697,6 +719,24 @@ object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with L
           .map(hash -> _.map(delegate => BakerRolls(PublicKeyHash(delegate.pkh), delegate.rolls)).toList)
       }
     }
+
+  /**
+    * Gets all bakers from the DB
+    * @return
+    */
+  def getBakers(): DBIO[Seq[Tables.BakersRow]] =
+    Tables.Bakers.result
+
+  /**
+    * Updates bakers table.
+    * @param bakers list of the baker rows to be updated
+    * @return
+    */
+  def writeBakers(bakers: List[Tables.BakersRow]): DBIO[Option[Int]] = {
+    import CustomProfileExtension.api._
+    logger.info(s"Updating ${bakers.size} Baker rows")
+    Tables.Bakers.insertOrUpdateAll(bakers)
+  }
 
   /**
     * Given the operation kind, return range of fees and timestamp for that operation.

@@ -317,7 +317,11 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
   }
 
   /* create operation rows to hold the given fees */
-  def wrapFeesWithOperations(fees: Seq[Option[BigDecimal]], block: BlocksRow, group: OperationGroupsRow): Seq[Tables.OperationsRow] =
+  def wrapFeesWithOperations(
+      fees: Seq[Option[BigDecimal]],
+      block: BlocksRow,
+      group: OperationGroupsRow
+  ): Seq[Tables.OperationsRow] =
     fees.zipWithIndex.map {
       case (fee, index) =>
         Tables.OperationsRow(
@@ -683,14 +687,14 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       * In this case the generation needs happen only for Originations
       */
     def updateOperationsWithBigMapAllocation(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapAlloc]
+        diffGenerate: PartialFunction[Operation, List[Contract.BigMapAlloc]]
     ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the alloc diffs nested within originations
       updateOperationsToBigMapDiff[Contract.BigMapAlloc](
         diffGenerate,
-        selectOrigination composeLens originationResult composeOptional originationBigMapDiffs
+        whenOrigination composeLens onOriginationResult composeOptional onOriginationBigMapDiffs
       )
     }
 
@@ -701,14 +705,14 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       * In this case the generation needs happen only for Transacions
       */
     def updateOperationsWithBigMapUpdate(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapUpdate]
+        diffGenerate: PartialFunction[Operation, List[Contract.BigMapUpdate]]
     ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapUpdate](
         diffGenerate,
-        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+        whenTransaction composeLens onTransactionResult composeOptional onTransactionBigMapDiffs
       )
     }
 
@@ -719,14 +723,14 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       * In this case the generation needs happen only for Transactions
       */
     def updateOperationsWithBigMapCopy(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapCopy]
+        diffGenerate: PartialFunction[Operation, List[Contract.BigMapCopy]]
     ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapCopy](
         diffGenerate,
-        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+        whenTransaction composeLens onTransactionResult composeOptional onTransactionBigMapDiffs
       )
     }
 
@@ -737,14 +741,14 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
       * In this case the generation needs happen only for Transacions
       */
     def updateOperationsWithBigMapRemove(
-        diffGenerate: PartialFunction[Operation, Contract.BigMapRemove]
+        diffGenerate: PartialFunction[Operation, List[Contract.BigMapRemove]]
     ): List[Operation] => List[Operation] = {
       import tech.cryptonomic.conseil.common.tezos.TezosOptics.Operations._
 
       //applies to the update diffs nested within transactions
       updateOperationsToBigMapDiff[Contract.BigMapRemove](
         diffGenerate,
-        selectTransaction composeLens transactionResult composeOptional transactionBigMapDiffs
+        whenTransaction composeLens onTransactionResult composeOptional onTransactionBigMapDiffs
       )
     }
 
@@ -757,17 +761,17 @@ trait TezosDatabaseOperationsTestFixtures extends RandomGenerationKit {
      * @return the updated operations
      */
     private def updateOperationsToBigMapDiff[Diff <: Contract.BigMapDiff](
-        diffGenerate: PartialFunction[Operation, Diff],
+        diffGenerate: PartialFunction[Operation, List[Diff]],
         diffSetter: Optional[Operation, List[Contract.CompatBigMapDiff]]
     )(operations: List[Operation]): List[Operation] =
       operations.map { op =>
         // applies the function to create a possible value to set on each individual operation
-        val maybeDiff = PartialFunction.condOpt(op)(diffGenerate)
+        val maybeDiffs = PartialFunction.condOpt(op)(diffGenerate)
 
         //sets the diff value list in the optional field of the operation if there's something, or returns the unchanged operation
-        maybeDiff.fold(op) { diff =>
-          val diffFieldValue = Left(diff) //look at how CompatBigMapDiff is defined
-          diffSetter.modify(diffs => diffFieldValue :: diffs)(op)
+        maybeDiffs.fold(op) { diffs =>
+          val diffFieldValues = diffs.map(Left(_)) //look at how CompatBigMapDiff is defined
+          diffSetter.modify(diffs => diffFieldValues ::: diffs)(op)
         }
       }
 

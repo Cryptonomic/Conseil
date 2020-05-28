@@ -4,9 +4,10 @@ import com.typesafe.scalalogging.LazyLogging
 import com.github.tminglei.slickpg.ExPostgresProfile
 
 import scala.concurrent.ExecutionContext
+import scala.collection.immutable.TreeMap
 import cats.implicits._
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TokenContracts
+import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{
   Block,
   Contract,
@@ -19,7 +20,11 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Contract.BigMapUpdate
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{BigMapContentsRow, BigMapsRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosOptics
-import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
+import TezosOptics.Operations.{
+  extractAppliedOriginationsResults,
+  extractAppliedTransactions,
+  extractAppliedTransactionsResults
+}
 
 /** Defines big-map-diffs specific handling, from block data extraction to database storage
   *
@@ -34,43 +39,64 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @param ec needed to compose db operations
     * @return the count of records added
     */
-  def copyContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Int] = {
-    val copyDiffs = if (logger.underlying.isDebugEnabled()) {
-      val diffsPerBlock = blocks.map(b => b.data.hash.value -> TezosOptics.Blocks.readBigMapDiffCopy.getAll(b))
+  def copyContent(blocks: List[Block])(implicit ec: ExecutionContext): DBIO[Option[Int]] = {
+    val diffsPerBlock = blocks.map(b => b.data -> TezosOptics.Blocks.readBigMapDiffCopy.getAll(b))
+    if (logger.underlying.isDebugEnabled()) {
       diffsPerBlock.foreach {
-        case (hash, diffs) if diffs.nonEmpty =>
+        case (blockData, diffs) if diffs.nonEmpty =>
           logger.debug(
             "For block hash {}, I'm about to copy the following big maps data: \n\t{}",
-            hash.value,
+            blockData.hash.value,
             diffs.mkString(", ")
           )
         case _ =>
       }
-      diffsPerBlock.map(_._2).flatten
-    } else blocks.flatMap(TezosOptics.Blocks.readBigMapDiffCopy.getAll)
-
-    //need to load the sources and copy them with a new destination id
-    val contentCopies = copyDiffs.collect {
-      case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
-        Tables.BigMapContents
-          .filter(_.bigMapId === sourceId)
-          .map(it => (destinationId, it.key, it.keyHash, it.operationGroupId, it.value))
-          .result
-          .map(rows => rows.map(BigMapContentsRow.tupled).toList)
     }
 
-    DBIO
-      .sequence(contentCopies)
-      .flatMap { updateRows =>
-        val copies = updateRows.flatten
-        logger.info(
-          "{} big maps will be copied in the db.",
-          if (copies.nonEmpty) s"A total of ${copies.size}"
-          else "No"
-        )
-        Tables.BigMapContents.insertOrUpdateAll(copies)
+    /* we load the sources and copy them with a new destination id
+     * collecting relevant diffs per block level
+     * What we get out is a sequence of queries whose results are the new rows
+     * to write back to db, sorted by growing level
+     */
+    val sortedQueries = {
+      val copyDataByLevel = diffsPerBlock.map {
+        case (blockData, diffs) =>
+          val queries = diffs.collect {
+            case Contract.BigMapCopy(_, Decimal(sourceId), Decimal(destinationId)) =>
+              Tables.BigMapContents
+                .filter(_.bigMapId === sourceId)
+                .map(it => (destinationId, it.key, it.keyHash, it.operationGroupId, it.value))
+                .result
+                .headOption
+          }
+          blockData.header.level -> DBIO.sequence(queries).map(_.flatten)
+
       }
-      .map(_.sum)
+      TreeMap(copyDataByLevel: _*)
+    }
+
+    def dedup(contents: List[BigMapContentsRow]) =
+      contents
+        .groupBy(row => (row.bigMapId, row.key))
+        .values
+        .flatMap(_.lastOption)
+
+    val writesByLevel = sortedQueries.values.map(
+      readAction =>
+        readAction.flatMap { updateData =>
+          val rowsToWrite = dedup(updateData.map(BigMapContentsRow.tupled))
+          Tables.BigMapContents.insertOrUpdateAll(rowsToWrite)
+        }
+    )
+
+    DBIO.sequence(writesByLevel).map { upserts =>
+      val all = upserts.fold(Some(0))(_ |+| _)
+      logger.info(
+        "{} big maps will be actually copied in the db.",
+        all.fold("An unspecified number of")(String.valueOf)
+      )
+      all
+    }
 
   }
 
@@ -118,7 +144,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveMaps(blocks: List[Block]): DBIO[Option[Int]] = {
-    import TezosOptics.Operations.extractAppliedOriginationsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
@@ -161,7 +186,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def upsertContent(blocks: List[Block]): DBIO[Option[Int]] = {
-    import TezosOptics.Operations.extractAppliedTransactionsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
@@ -198,8 +222,8 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       .foldLeft(Map.empty[(BigDecimal, String), BigMapContentsRow]) {
         case (collected, block) =>
           val seen = collected.keySet
-          val rows = blocks
-            .flatMap(b => rowsPerBlock.getOrElse(b.data.hash, List.empty))
+          val rows = rowsPerBlock
+            .getOrElse(block.data.hash, List.empty)
             .filterNot(row => seen((row.bigMapId, row.key)))
           collected ++ rows.map(row => (row.bigMapId, row.key) -> row)
       }
@@ -219,7 +243,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     * @return the count of records added, if available from the underlying db-engine
     */
   def saveContractOrigin(blocks: List[Block]): DBIO[List[OriginatedAccountMapsRow]] = {
-    import TezosOptics.Operations.extractAppliedOriginationsResults
 
     val diffsPerBlock = blocks.flatMap(
       b =>
@@ -310,7 +333,6 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
       blocks: List[Block]
   )(implicit ec: ExecutionContext, tokenContracts: TokenContracts): DBIO[Option[Int]] = {
     import slickeffect.implicits._
-    import TezosOptics.Operations.extractAppliedTransactions
 
     val toSql = (zdt: java.time.ZonedDateTime) => java.sql.Timestamp.from(zdt.toInstant)
 

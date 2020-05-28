@@ -80,7 +80,7 @@ class TezosIndexer(
           case (tokenRows, _) =>
             TokenContracts.fromConfig(
               tokenRows.map {
-                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId) =>
+                case Tables.RegisteredTokensRow(_, tokenName, standard, accountId, _) =>
                   ContractId(accountId) -> standard
               }
             )
@@ -371,8 +371,54 @@ class TezosIndexer(
         delegateCheckpoints <- processAccountsForBlocks(accountUpdates, rollsData) // should this fail, we still recover data from the checkpoint
         _ <- processBakersForBlocks(delegateCheckpoints) // same as above
         _ <- processBlocksForGovernance(blocks, votingData)
+        _ <- updateBakers(blocks)
       } yield results.size
 
+    }
+
+    /** Updates bakers in the DB */
+    def updateBakers(blocks: List[Block]): Future[Option[Unit]] = {
+      import cats.implicits._
+      logger.info("Updating Bakers table")
+      blocks
+        .find(_.data.header.level % lorreConf.blockRightsFetching.cycleSize == 1)
+        .map { block =>
+          val bakingRights = db.run(TezosDb.getBakingRightsForLevel(block.data.header.level))
+          val endorsingRights = db.run(TezosDb.getEndorsingRightsForLevel(block.data.header.level))
+          val bakersFromDb = db.run(TezosDb.getBakers())
+          for {
+            br <- bakingRights
+            er <- endorsingRights
+            distinctDelegates = (br.toList.map(_.delegate) ::: er.toList.map(_.delegate)).distinct
+            delegates <- nodeOperator.getDelegatesForBlock(distinctDelegates.map(PublicKeyHash), block.data.hash)
+            bakers <- bakersFromDb
+            updatedBakers = applyUpdatesToBakers(delegates, bakers.toList)
+            _ <- db.run(TezosDb.writeBakers(updatedBakers))
+          } yield ()
+        }
+        .sequence
+    }
+
+    /** Helper method for updating BakerRows */
+    def applyUpdatesToBakers(
+        delegates: Map[PublicKeyHash, Delegate],
+        bakers: List[Tables.BakersRow]
+    ): List[Tables.BakersRow] =
+      bakers.filter(baker => delegates.keySet.map(_.value).contains(baker.pkh)).map { baker =>
+        val optionalDelegate = delegates.get(PublicKeyHash(baker.pkh))
+        baker.copy(
+          balance = optionalDelegate.flatMap(x => extractBalance(x.balance)),
+          frozenBalance = optionalDelegate.flatMap(x => extractBalance(x.frozen_balance)),
+          stakingBalance = optionalDelegate.flatMap(x => extractBalance(x.staking_balance)),
+          delegatedBalance = optionalDelegate.flatMap(x => extractBalance(x.delegated_balance)),
+          deactivated = optionalDelegate.exists(_.deactivated)
+        )
+      }
+
+    /** Extracts balance from PositiveBigNumber */
+    def extractBalance(balance: PositiveBigNumber): Option[BigDecimal] = balance match {
+      case PositiveDecimal(value) => Some(value)
+      case InvalidPositiveDecimal(_) => None
     }
 
     /** Processes blocks and fetches needed data to produce Governance rows*/
@@ -384,8 +430,8 @@ class TezosIndexer(
       import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
       //DANGER Will Robinson! we assume in the rest of the code that we're not handling the genesis block
-      val safeBlocks = blocks.filterNot(block => TezosNodeOperator.isGenesis(block.data))
-      val safeListings = listings.filterNot { case (block, rolls) => TezosNodeOperator.isGenesis(block.data) }
+      val safeBlocks = blocks.filterNot(block => block.data.metadata == GenesisMetadata)
+      val safeListings = listings.filterNot { case (block, rolls) => block.data.metadata == GenesisMetadata }
 
       for {
         proposals <- nodeOperator.getProposals(safeBlocks.map(_.data))
@@ -399,7 +445,7 @@ class TezosIndexer(
           db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
             .map(block -> _)
         }
-        proposalHashes <- Future.traverse(safeBlocks) { block =>
+        proposalHashes <- Future.traverse(blocksWithProposals) { block =>
           db.run(
               TezosDb.getProposalOperationHashesByCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle)
             )
