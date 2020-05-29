@@ -1,11 +1,16 @@
 package tech.cryptonomic.conseil.indexer
 
 import com.typesafe.scalalogging.LazyLogging
+<<<<<<< HEAD
 import tech.cryptonomic.conseil.common.config.Platforms.TezosConfiguration
+=======
+import tech.cryptonomic.conseil.common.config.Platforms.{TezosConfiguration, BitcoinConfiguration, UnknownPlatformConfiguration}
+>>>>>>> bdffdd24... Lorre for Bitcoin
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig.LORRE_FAILURE_IGNORE_VAR
 import tech.cryptonomic.conseil.indexer.config.LorreAppConfig
 import tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging
 import tech.cryptonomic.conseil.indexer.tezos.TezosIndexer
+import tech.cryptonomic.conseil.indexer.bitcoin.BitcoinIndexer
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -41,6 +46,9 @@ object Lorre extends App with LazyLogging with LorreAppConfig with LorreInfoLogg
     case conf: TezosConfiguration =>
       logger.info("Initializing indexer for Tezos Blockchain.")
       TezosIndexer.fromConfig(lorreConf, conf, callsConf, streamingClientConf, batchingConf)
+    case conf: BitcoinConfiguration =>
+      logger.info("Initializing indexer for Bitcoin Blockchain.")
+      BitcoinIndexer.fromConfig(lorreConf, conf, callsConf, streamingClientConf, batchingConf)
   }
 
   try {
