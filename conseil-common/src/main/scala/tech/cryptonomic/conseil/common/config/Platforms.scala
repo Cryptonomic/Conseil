@@ -20,6 +20,11 @@ object Platforms {
     type ConfigurationType = TezosConfiguration
   }
 
+  case object Bitcoin extends BlockchainPlatform {
+    val name = "bitcoin"
+    type ConfigurationType = BitcoinConfiguration
+  }
+
   case class UnknownPlatform(name: String) extends BlockchainPlatform {
     type ConfigurationType = UnknownPlatformConfiguration
   }
@@ -29,6 +34,7 @@ object Platforms {
     /** maps a generic string to a typed BlockchainPlatform */
     def fromString(s: String): BlockchainPlatform = s match {
       case "tezos" => Tezos
+      case "bitcoin" => Bitcoin
       case unknown => UnknownPlatform(name = unknown)
     }
   }
@@ -77,6 +83,23 @@ object Platforms {
       network: String,
       nodeConfig: TezosNodeConfiguration,
       tns: Option[TNSContractConfiguration]
+  ) extends PlatformConfiguration
+
+  /** configurations to describe a tezos node */
+  final case class BitcoinNodeConfiguration(
+      hostname: String,
+      port: Int,
+      protocol: String,
+      username: String,
+      password: String
+  ) {
+    val url = s"$protocol://$hostname:$port"
+  }
+
+  /** collects all config related to a bitcoin network */
+  final case class BitcoinConfiguration(
+      network: String,
+      nodeConfig: BitcoinNodeConfiguration
   ) extends PlatformConfiguration
 
   /** unexpected or yet to define platform */
