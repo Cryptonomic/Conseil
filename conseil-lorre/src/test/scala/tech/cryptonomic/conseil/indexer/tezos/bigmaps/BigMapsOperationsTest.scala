@@ -105,6 +105,7 @@ class BigMapsOperationsTest
         val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
             contents = updateMap(sampleOperations.contents)
           ) :: Nil
+        val opGroupHash = sampleOperations.hash
 
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
@@ -125,7 +126,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 20 {}")
+            value = Some("Pair 20 {}"),
+            operationGroupId = Some(opGroupHash.value)
           )
         )
 
@@ -295,6 +297,7 @@ class BigMapsOperationsTest
         val operationsWithDiffs: List[OperationsGroup] = sampleOperations.copy(
             contents = updateMap(sampleOperations.contents)
           ) :: Nil
+        val opGroupHash = sampleOperations.hash
 
         val blockToSave = block.copy(operationGroups = operationsWithDiffs)
 
@@ -311,7 +314,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 50 {}")
+            value = Some("Pair 50 {}"),
+            operationGroupId = Some(opGroupHash.value)
           )
         )
       }
@@ -358,17 +362,19 @@ class BigMapsOperationsTest
          */
         val blocks = generateBlocks(2, testReferenceDateTime).drop(1)
 
-        val operationsWithDiffs: List[List[OperationsGroup]] = blocks.map { block =>
-          val sampleOperations = generateOperationGroup(block, generateOperations = true)
-          val updateValue = block.data.header.level match {
-            case 1 => List(10) //block-lvl 1 will carry one update
-            case 2 => List(20, 50) //block-lvl 2 will carry both updates
-            case _ => List.empty
-          }
-          sampleOperations.copy(
-            contents = updatesMap(values = updateValue)(sampleOperations.contents)
-          ) :: Nil
-        }
+        val (operationsWithDiffs: List[List[OperationsGroup]], opGroupHashes: List[OperationHash]) = blocks.map {
+          block =>
+            val sampleOperations = generateOperationGroup(block, generateOperations = true)
+            val opGroupHash = sampleOperations.hash
+            val updateValue = block.data.header.level match {
+              case 1 => List(10) //block-lvl 1 will carry one update
+              case 2 => List(20, 50) //block-lvl 2 will carry both updates
+              case _ => List.empty
+            }
+            (sampleOperations.copy(
+              contents = updatesMap(values = updateValue)(sampleOperations.contents)
+            ) :: Nil) -> opGroupHash
+        }.unzip
 
         val blocksToSave =
           blocks.zip(operationsWithDiffs).map {
@@ -392,7 +398,8 @@ class BigMapsOperationsTest
             bigMapId = BigDecimal(1),
             key = "0x0000b2e19a9e74440d86c59f13dab8a18ff873e889ea",
             keyHash = Some("exprv6UsC1sN3Fk2XfgcJCL8NCerP5rCGy1PRESZAqr7L2JdzX55EN"),
-            value = Some("Pair 50 {}")
+            value = Some("Pair 50 {}"),
+            operationGroupId = Some(opGroupHashes(0).value)
           )
         )
 

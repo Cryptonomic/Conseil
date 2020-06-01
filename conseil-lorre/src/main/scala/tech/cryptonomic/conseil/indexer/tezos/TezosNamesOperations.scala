@@ -85,9 +85,9 @@ private[tezos] class TezosNamesOperations(tnsContracts: TNSContract, node: Tezos
     blocks =>
       blocks.map { b =>
         val refs = extractAppliedTransactions(b).filter {
-          case Left(op) => tnsContracts.isKnownRegistrar(op.destination)
-          case Right(op) => tnsContracts.isKnownRegistrar(op.destination)
-        }.map(tnsContracts.readLookupMapReference).flattenOption
+          case (Left(op), _) => tnsContracts.isKnownRegistrar(op.destination)
+          case (Right(op), _) => tnsContracts.isKnownRegistrar(op.destination)
+        }.map(op => tnsContracts.readLookupMapReference(op._1)).flattenOption
 
         b -> refs
 
