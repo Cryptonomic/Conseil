@@ -9,7 +9,7 @@ class LorreAppConfigTest extends WordSpec with Matchers {
   "LorreAppConfig.Natural" should {
       "match a valid positive integer string" in {
         "10" match {
-          case Natural(value) => value shouldBe 11
+          case Natural(value) => value shouldBe 10
           case _ => fail("the matcher didn't correctly identify an integer")
         }
       }
