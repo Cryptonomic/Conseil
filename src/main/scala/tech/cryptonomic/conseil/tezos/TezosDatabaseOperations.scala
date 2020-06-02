@@ -208,9 +208,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeAccountsCheckpoint(
-      accountIds: List[(BlockHash, Int, Option[Instant], Option[Int], List[AccountId])]
+      accountIds: List[(BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[AccountId])]
   ): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${accountIds.map(_._5).map(_.length).sum} account checkpoints to DB...""")
+    logger.info(s"""Writing ${accountIds.map(_._6).map(_.length).sum} account checkpoints to DB...""")
     Tables.AccountsCheckpoint ++= accountIds.flatMap(_.convertToA[List, Tables.AccountsCheckpointRow])
   }
 
@@ -220,9 +220,9 @@ object TezosDatabaseOperations extends LazyLogging {
     * @return Database action possibly returning the rows written (if available form the underlying driver)
     */
   def writeBakersCheckpoint(
-      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], Option[Int], List[PublicKeyHash])]
+      delegatesKeyHashes: List[(BlockHash, Int, Option[Instant], Option[Int], Option[Int], List[PublicKeyHash])]
   ): DBIO[Option[Int]] = {
-    logger.info(s"""Writing ${delegatesKeyHashes.map(_._5).map(_.length).sum} delegate checkpoints to DB...""")
+    logger.info(s"""Writing ${delegatesKeyHashes.map(_._6).map(_.length).sum} delegate checkpoints to DB...""")
     Tables.BakersCheckpoint ++= delegatesKeyHashes.flatMap(_.convertToA[List, Tables.BakersCheckpointRow])
   }
 
@@ -350,7 +350,7 @@ object TezosDatabaseOperations extends LazyLogging {
         ids =>
           writeAccountsCheckpoint(
             List(
-              (hash, level, Some(timestamp), cycle, ids.map(AccountId(_)).toList)
+              (hash, level, Some(timestamp), cycle, None, ids.map(AccountId(_)).toList)
             )
           )
       )

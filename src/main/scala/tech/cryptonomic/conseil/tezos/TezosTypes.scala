@@ -534,7 +534,7 @@ object TezosTypes {
       period: Option[Int],
       content: T
   ) {
-    val asTuple = (blockHash, blockLevel, timestamp, cycle, content)
+    val asTuple = (blockHash, blockLevel, timestamp, cycle, period, content)
 
     /** Helper method for updating content of the class */
     def updateContent[A](newContent: A): BlockTagged[A] = this.copy(content = newContent)
