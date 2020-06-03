@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.indexer.bitcoin.domain
+package tech.cryptonomic.conseil.indexer.bitcoin.rpc.json
 
 case class Block(
     hash: String,

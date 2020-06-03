@@ -20,7 +20,9 @@ import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import tech.cryptonomic.conseil.indexer.bitcoin.streams.BlocksStream
+import cats.effect.Resource
+import tech.cryptonomic.conseil.indexer.bitcoin.rpc.BitcoinClient
+import tech.cryptonomic.conseil.indexer.bitcoin.persistence.BitcoinPersistence
 
 /** * Class responsible for indexing data for Bitcoin BlockChain */
 class BitcoinIndexer(
@@ -37,38 +39,29 @@ class BitcoinIndexer(
   implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
   private val httpEC = ExecutionContext.global
 
-  /**
-    * Produces the `IO` to be run as an indexer.
-    *
-    * @return the [[cats.effect.ExitCode]] the JVM exits with
-    */
-  def run: IO[ExitCode] = {
-    val indexer = for {
+  def resource: Resource[IO, Unit] =
+    for {
       httpClient <- BlazeClientBuilder[IO](httpEC).resource
 
-      bitcoinClient = new RpcClient[IO](
+      rpcClient <- RpcClient.resource(
         bitcoinConf.nodeConfig.url,
         maxConcurrent = 8, // TODO: move to the configuration
         httpClient, // TODO: wrap it into retry and logger middleware
         Authorization(BasicCredentials(bitcoinConf.nodeConfig.username, bitcoinConf.nodeConfig.password))
       )
 
-      blocksStream = new BlocksStream[IO](bitcoinClient)
+      bitcoinOperations <- BitcoinOperations.resource(rpcClient)
 
-      _ <- blocksStream.stream(1, 1000).compile.resource.drain // TODO: use lorreConf
+      _ <- bitcoinOperations.blockStream(1 to 100000).compile.resource.drain
     } yield ()
-
-    indexer.use(_ => IO.unit.map(_ => ExitCode.Success))
-  }
 
   override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
 
   override def start(): Unit = {
-    run.unsafeRunSync()
+    resource.use(_ => IO.unit.map(_ => ExitCode.Success)).unsafeRunSync()
     ()
   }
 
-  // Resources are cleared automatically as a part of the run
   override def stop(): Future[LorreIndexer.ShutdownComplete] = Future.successful(LorreIndexer.ShutdownComplete)
 }
 
