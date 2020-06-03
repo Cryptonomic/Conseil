@@ -141,9 +141,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedOriginationsResults(b).flatMap {
-          case (op, groupHash) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(_ -> groupHash)
+          case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
         }.map {
-          case (diff, groupHash) =>
+          case (groupHash, diff) =>
             BigMapsConversions.BlockBigMapDiff(b.data.hash, Some(groupHash), diff)
         }
     )
@@ -183,9 +183,9 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedTransactionsResults(b).flatMap {
-          case (op, groupHash) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(_ -> groupHash)
+          case (groupHash, op) => op.big_map_diff.toList.flatMap(keepLatestDiffsFormat).map(groupHash -> _)
         }.map {
-          case (diff, groupHash) =>
+          case (groupHash, diff) =>
             BigMapsConversions.BlockBigMapDiff(b.data.hash, Some(groupHash), diff)
         }
     )
@@ -240,7 +240,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     val diffsPerBlock = blocks.flatMap(
       b =>
         extractAppliedOriginationsResults(b).flatMap {
-          case (results, _) =>
+          case (_, results) =>
             for {
               contractIds <- results.originated_contracts.toList
               diff <- results.big_map_diff.toList.flatMap(keepLatestDiffsFormat)
@@ -265,7 +265,7 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
           )
       }
 
-      rowsPerBlock.map(_._2).flatten.toList
+      rowsPerBlock.flatMap(_._2).toList
     } else diffsPerBlock.flatMap(_.convertToA[List, OriginatedAccountMapsRow])
 
     logger.info("{} big map accounts references will be made.", if (refs.nonEmpty) s"A total of ${refs.size}" else "No")
@@ -333,15 +333,15 @@ case class BigMapsOperations[Profile <: ExPostgresProfile](profile: Profile) ext
     //we first extract all data available from the blocks themselves, as necessary to make a proper balance entry
     val tokenUpdates = blocks.flatMap { b =>
       val transactions = extractAppliedTransactions(b).filter {
-        case (Left(op), _) => tokenContracts.isKnownToken(op.destination)
-        case (Right(op), _) => tokenContracts.isKnownToken(op.destination)
+        case Left(op) => tokenContracts.isKnownToken(op.destination)
+        case Right(op) => tokenContracts.isKnownToken(op.destination)
       }
 
       //now extract relevant diffs for each destination, along with call parameters
       val updatesMap: Map[ContractId, (Option[ParametersCompatibility], List[BigMapUpdate])] = transactions.map {
-        case (Left(op), _) =>
+        case Left(op) =>
           op.destination -> (op.parameters_micheline.orElse(op.parameters), op.metadata.operation_result.big_map_diff)
-        case (Right(op), _) =>
+        case Right(op) =>
           op.destination -> (op.parameters_micheline.orElse(op.parameters), op.result.big_map_diff)
       }.toMap.mapValues {
         case (optionalParams, optionalDiffs) =>
