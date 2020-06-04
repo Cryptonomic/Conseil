@@ -2,12 +2,12 @@ version: "3.1"
 
 services:
   # Bitcoin node for development
-  bitcoin:
-    image: ruimarinho/bitcoin-core
-    command: "-txindex=0 -printtoconsole -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpcauth=bitcoin:68d381f566193c1938b7b1f72288bebf$$6c2d9f021bf4dd5e7e896634f531d35bb5aa9d90c77686af2f79a312e9ff4b75"
-    ports:
-      - 8332:8332
-      - 18443:18443
+  # bitcoin:
+  #   image: ruimarinho/bitcoin-core
+  #   command: "-txindex=0 -printtoconsole -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0 -rpcauth=bitcoin:68d381f566193c1938b7b1f72288bebf$$6c2d9f021bf4dd5e7e896634f531d35bb5aa9d90c77686af2f79a312e9ff4b75"
+  #   ports:
+  #     - 8332:8332
+  #     - 18443:18443
 
   conseil-postgres:
     image: postgres:11.6

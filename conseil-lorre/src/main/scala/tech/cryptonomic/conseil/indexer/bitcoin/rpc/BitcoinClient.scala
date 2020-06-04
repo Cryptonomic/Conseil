@@ -9,40 +9,31 @@ import org.http4s.circe.CirceEntityEncoder._
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.indexer.bitcoin.rpc.BitcoinCommands._
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.{Block, Transaction}
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionComponent
+import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.{Block, Transaction, TransactionComponent}
 
 class BitcoinClient[F[_]: Concurrent](
     client: RpcClient[F]
-    // batchConf: BatchFetchConfiguration
 ) extends LazyLogging {
 
   def getBlockHash(batchSize: Int): Pipe[F, Int, String] =
-    height =>
-      height
-        .map(GetBlockHash.request)
-        .through(client.stream[GetBlockHash.Params, String](batchSize))
+    _.map(GetBlockHash.request)
+      .through(client.stream[GetBlockHash.Params, String](batchSize))
 
   def getBlockByHash(batchSize: Int): Pipe[F, String, Block] =
-    hash =>
-      hash
-        .map(GetBlock.request)
-        .through(client.stream[GetBlock.Params, Block](batchSize))
+    _.map(GetBlock.request)
+      .through(client.stream[GetBlock.Params, Block](batchSize))
 
   def getTransactionsFromBlock(batchSize: Int): Pipe[F, Block, Transaction] =
-    block =>
-      block
-        .map(_.tx)
-        .flatMap(Stream.emits)
-        .map(GetRawTransaction.request)
-        .through(client.stream[GetRawTransaction.Params, Transaction](batchSize))
+    _.map(_.tx)
+      .flatMap(Stream.emits)
+      .map(GetRawTransaction.request)
+      .through(client.stream[GetRawTransaction.Params, Transaction](batchSize))
 
   def getTransactionComponents: Pipe[F, Transaction, TransactionComponent] =
-    transaction =>
-      transaction.flatMap { transaction =>
-        Stream.emits(transaction.vin.map(_.copy(txid = Some(transaction.txid)))) ++
-          Stream.emits(transaction.vout.map(_.copy(txid = Some(transaction.txid))))
-      }
+    _.flatMap { transaction =>
+      Stream.emits(transaction.vin.map(_.copy(txid = Some(transaction.txid)))) ++
+        Stream.emits(transaction.vout.map(_.copy(txid = Some(transaction.txid))))
+    }
 
 }
 

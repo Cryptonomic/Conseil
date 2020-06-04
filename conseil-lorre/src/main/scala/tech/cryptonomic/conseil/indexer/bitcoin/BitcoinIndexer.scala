@@ -1,19 +1,15 @@
 package tech.cryptonomic.conseil.indexer.bitcoin
 
+import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
 
-import cats.effect.{ContextShift, ExitCode, IO}
+import cats.effect.{ContextShift, ExitCode, IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.BasicCredentials
 import org.http4s.client.blaze.BlazeClientBuilder
 
-import tech.cryptonomic.conseil.indexer.config.{
-  BatchFetchConfiguration,
-  HttpStreamingConfiguration,
-  LorreConfiguration,
-  NetworkCallsConfiguration
-}
+import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer
@@ -21,23 +17,22 @@ import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import cats.effect.Resource
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.BitcoinClient
-import tech.cryptonomic.conseil.indexer.bitcoin.persistence.BitcoinPersistence
+import doobie.util.transactor.Transactor
+import cats.effect.Blocker
+import doobie.util.ExecutionContexts
 
 /** * Class responsible for indexing data for Bitcoin BlockChain */
 class BitcoinIndexer(
     lorreConf: LorreConfiguration,
-    bitcoinConf: BitcoinConfiguration,
-    callsConf: NetworkCallsConfiguration,
-    streamingClientConf: HttpStreamingConfiguration,
-    batchingConf: BatchFetchConfiguration
+    bitcoinConf: BitcoinConfiguration
 ) extends LazyLogging
     with LorreIndexer
     with LorreProgressLogging {
 
-  // Use global execution context only for the PoC
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-  private val httpEC = ExecutionContext.global
+  private val executor = Executors.newFixedThreadPool(16)
+  implicit private val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.fromExecutor(executor))
+  // implicit val timer = IO.timer(ExecutionContext.global)
+  implicit private val httpEC: ExecutionContext = ExecutionContext.fromExecutor(executor)
 
   def resource: Resource[IO, Unit] =
     for {
@@ -50,19 +45,37 @@ class BitcoinIndexer(
         Authorization(BasicCredentials(bitcoinConf.nodeConfig.username, bitcoinConf.nodeConfig.password))
       )
 
-      bitcoinOperations <- BitcoinOperations.resource(rpcClient)
+      xa <- for {
+        ce <- ExecutionContexts.fixedThreadPool[IO](32) // our connect EC
+      } yield Transactor.fromDriverManager[IO](
+        "org.postgresql.Driver",
+        "jdbc:postgresql:conseil-local",
+        "conseiluser",
+        "p@ssw0rd",
+        Blocker.liftExecutionContext(ce)
+      )
 
-      _ <- bitcoinOperations.blockStream(1 to 100000).compile.resource.drain
+      bitcoinOperations <- BitcoinOperations.resource(rpcClient, xa)
+
+      from = 90000
+      batch = 1000
+
+      // _ <- bitcoinOperations.blockStream(99000 to 100000).compile.resource.drain
+      _ <- bitcoinOperations.loadBlocksWithTransactions(from to (from + batch)).compile.resource.drain
     } yield ()
 
   override def platform: Platforms.BlockchainPlatform = Platforms.Bitcoin
 
   override def start(): Unit = {
-    resource.use(_ => IO.unit.map(_ => ExitCode.Success)).unsafeRunSync()
+    resource.use(_ => IO.delay(ExitCode.Success)).unsafeRunSync()
     ()
   }
 
-  override def stop(): Future[LorreIndexer.ShutdownComplete] = Future.successful(LorreIndexer.ShutdownComplete)
+  override def stop(): Future[LorreIndexer.ShutdownComplete] =
+    Future {
+      executor.shutdownNow()
+      LorreIndexer.ShutdownComplete
+    }
 }
 
 object BitcoinIndexer {
@@ -70,10 +83,7 @@ object BitcoinIndexer {
   /** * Creates the Indexer which is dedicated for Bitcoin BlockChain */
   def fromConfig(
       lorreConf: LorreConfiguration,
-      conf: BitcoinConfiguration,
-      callsConf: NetworkCallsConfiguration,
-      streamingClientConf: HttpStreamingConfiguration,
-      batchingConf: BatchFetchConfiguration
+      bitcoinConf: BitcoinConfiguration,
   ): LorreIndexer =
-    new BitcoinIndexer(lorreConf, conf, callsConf, streamingClientConf, batchingConf)
+    new BitcoinIndexer(lorreConf, bitcoinConf)
 }

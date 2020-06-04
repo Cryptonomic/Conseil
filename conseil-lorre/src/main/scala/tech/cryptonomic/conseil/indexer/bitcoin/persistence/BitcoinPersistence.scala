@@ -4,59 +4,65 @@ import cats.effect.{Concurrent, Resource}
 import cats.syntax.all._
 import com.typesafe.scalalogging.LazyLogging
 import fs2.{Pipe, Stream}
+import doobie._
+import doobie.implicits._
+import doobie.util.transactor.Transactor
 
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.Block
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.Transaction
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionComponent
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionInput
-import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionOutput
+import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.{
+  Block,
+  Transaction,
+  TransactionComponent,
+  TransactionInput,
+  TransactionOutput
+}
+import tech.cryptonomic.conseil.indexer.bitcoin.persistence.BitcoinPersistence._
 
 class BitcoinPersistence[F[_]: Concurrent](
-    // client: RpcClient[F]
-    // batchConf: BatchFetchConfiguration
+    xa: Transactor[F]
 ) extends LazyLogging {
+
   def saveBlocks(batchSize: Int): Pipe[F, Block, Block] =
-    block =>
-      block
-        .chunkN(batchSize)
-        .evalTap { blocks =>
-          Concurrent[F].delay(logger.info(s"Save Blocks in batch of: ${blocks.size}"))
-        }
-        .flatMap(Stream.chunk)
+    _.chunkN(batchSize).evalTap { blocks =>
+      Concurrent[F].delay(logger.info(s"Save Blocks in batch of: ${blocks.size}")) *>
+        Update[Block]("INSERT INTO bitcoin.blocks VALUES (?, ?) ON CONFLICT ON CONSTRAINT blocks_pkey DO NOTHING")
+          .updateMany(blocks)
+          .transact(xa)
+    }.flatMap(Stream.chunk)
 
   def saveTransactions(batchSize: Int): Pipe[F, Transaction, Transaction] =
-    transaction =>
-      transaction
-        .chunkN(batchSize)
-        .evalTap { transactions =>
-          Concurrent[F].delay(logger.info(s"Save Transactions in batch of: ${transactions.size}"))
-        }
-        .flatMap(Stream.chunk)
+    _.chunkN(batchSize).evalTap { transactions =>
+      Concurrent[F].delay(logger.info(s"Save Transactions in batch of: ${transactions.size}")) *>
+        Update[Transaction]("INSERT INTO bitcoin.transactions VALUES (?, ?) ON CONFLICT ON CONSTRAINT transactions_pkey DO NOTHING").updateMany(transactions).transact(xa)
+    }.flatMap(Stream.chunk)
 
   def saveTransactionComponents(batchSize: Int): Pipe[F, TransactionComponent, TransactionComponent] =
-    component =>
-      component
-        .chunkN(batchSize)
-        .evalTap { components =>
-          Concurrent[F].delay(
-            logger.info(
-              s"Save TransactionsInput in batch of: ${components.collect { case vin: TransactionInput => vin }.size}"
-            )
-          ) *>
-            Concurrent[F].delay(
-              logger.info(
-                s"Save TransactionsOutput in batch of: ${components.collect { case vin: TransactionOutput => vin }.size}"
-              )
-            )
-        }
-        .flatMap(Stream.chunk)
+    _.chunkN(batchSize).evalTap { components =>
+      Concurrent[F].delay(logger.debug(s"Save TransactionComponents in batch of: ${components.size}")) *>
+        Update[TransactionInput]("INSERT INTO bitcoin.inputs VALUES (?)")
+          .updateMany(components.collect { case vin: TransactionInput => vin })
+          .transact(xa) *>
+        Update[TransactionOutput]("INSERT INTO bitcoin.outputs VALUES (?)")
+          .updateMany(components.collect { case vout: TransactionOutput => vout })
+          .transact(xa)
+    }.flatMap(Stream.chunk)
 }
 
 object BitcoinPersistence {
-  def resource[F[_]: Concurrent](): Resource[F, BitcoinPersistence[F]] =
+  def resource[F[_]: Concurrent](
+      xa: Transactor[F]
+  ): Resource[F, BitcoinPersistence[F]] =
     for {
-      client <- Resource.pure(
-        new BitcoinPersistence[F]()
+      client <- Resource.liftF(
+        Concurrent[F].delay(new BitcoinPersistence[F](xa))
       )
     } yield client
+
+  implicit val writeBlock: Write[Block] =
+    Write[(String, Int)].contramap(b => (b.hash, b.height))
+
+  implicit val writeTransaction: Write[Transaction] =
+    Write[(String, String)].contramap(t => (t.txid, t.blockhash))
+
+  implicit val writeTransactionInput: Write[TransactionInput] =
+    Write[(Option[String])].contramap(c => (c.txid))
 }

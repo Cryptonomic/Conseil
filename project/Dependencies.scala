@@ -184,7 +184,6 @@ object Dependencies {
       postgres,
       circe,
       cats,
-      http4s,
       mouse,
       http4s,
       radixTree,
@@ -221,7 +220,7 @@ object Dependencies {
     )
 
   val conseilLorreInclude: Seq[ModuleID] =
-    concat(config, logging, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX, http4s, circe, cats)
+    concat(config, logging, pureConfig, scopt, silencer, akka, akkaHttp, scalaTest, scalaMock, diffX)
 
   val conseilSchemaInclude: Seq[ModuleID] = concat(config, pureConfig)
 

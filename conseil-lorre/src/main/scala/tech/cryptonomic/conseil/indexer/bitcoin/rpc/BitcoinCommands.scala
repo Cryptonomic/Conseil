@@ -1,6 +1,7 @@
 package tech.cryptonomic.conseil.indexer.bitcoin.rpc
 
 import io.circe.{Encoder, Json}
+
 import tech.cryptonomic.conseil.common.rpc.RpcClient.RpcRequest
 
 object BitcoinCommands {
