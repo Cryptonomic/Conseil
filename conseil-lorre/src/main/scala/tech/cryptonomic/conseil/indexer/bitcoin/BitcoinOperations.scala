@@ -1,14 +1,11 @@
 package tech.cryptonomic.conseil.indexer.bitcoin
 
-// import scala.concurrent.duration._
-
 import cats.effect.{Concurrent, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
 import doobie.util.transactor.Transactor
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-// import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.Transaction
 import tech.cryptonomic.conseil.indexer.bitcoin.rpc.BitcoinClient
 import tech.cryptonomic.conseil.indexer.bitcoin.persistence.BitcoinPersistence
 import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionComponent

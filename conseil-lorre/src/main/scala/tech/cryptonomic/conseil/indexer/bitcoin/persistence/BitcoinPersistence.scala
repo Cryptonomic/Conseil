@@ -37,7 +37,7 @@ class BitcoinPersistence[F[_]: Concurrent](
 
   def saveTransactionComponents(batchSize: Int): Pipe[F, TransactionComponent, TransactionComponent] =
     _.chunkN(batchSize).evalTap { components =>
-      Concurrent[F].delay(logger.debug(s"Save TransactionComponents in batch of: ${components.size}")) *>
+      Concurrent[F].delay(logger.info(s"Save TransactionComponents in batch of: ${components.size}")) *>
         Update[TransactionInput]("INSERT INTO bitcoin.inputs VALUES (?)")
           .updateMany(components.collect { case vin: TransactionInput => vin })
           .transact(xa) *>
