@@ -465,7 +465,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     /** Groups data needed for generating GovernanceRow
      *  Warning! It works on assumption that we're not processing Genesis block
      */
-    def groupGovernanceDataByBlock(
+    private def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
         listings: Map[Int, List[Voting.BakerRolls]],
