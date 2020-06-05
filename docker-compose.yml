@@ -15,7 +15,7 @@ services:
 #   uncomment if you want your data to be stored in the local directory
 #     - "./pgdata:/var/lib/postgresql/data"
   graphql-engine:
-    image: hasura/graphql-engine:v1.2.1
+    image: hasura/graphql-engine:v1.2.2.cli-migrations-v2
     ports:
       - "8080:8080"
     restart: always
@@ -24,4 +24,4 @@ services:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
     volumes:
-    - "./hasura/metadata/:/hasura-metadata/"
+    - "./hasura/metadata/:/hasura-metadata"
