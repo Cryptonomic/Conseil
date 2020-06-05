@@ -465,7 +465,9 @@ class TezosIndexer(
       } yield ()
     }
 
-    /** Groups data needed for generating Governance */
+    /** Groups data needed for generating GovernanceRow
+     *  Warning! It works on assumption that we're not processing Genesis block
+     */
     def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
