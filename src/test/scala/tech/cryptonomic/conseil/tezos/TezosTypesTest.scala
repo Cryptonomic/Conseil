@@ -72,7 +72,7 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
         val content = "A content string"
         val (hash, level) = (BlockHash("hash"), 1)
 
-        BlockTagged(hash, level, someTime, None, None, content).asTuple shouldEqual (hash, level, someTime, None, content)
+        BlockTagged(hash, level, someTime, None, None, content).asTuple shouldEqual (hash, level, someTime, None, None, content)
       }
     }
 
