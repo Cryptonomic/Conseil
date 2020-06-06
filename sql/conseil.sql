@@ -104,7 +104,7 @@ CREATE TABLE tezos.governance (
     block_yay_rolls numeric,
     block_nay_rolls numeric,
     block_pass_rolls numeric,
-    PRIMARY KEY (block_hash, proposal_hash)
+    PRIMARY KEY (block_hash, proposal_hash, voting_period_kind)
 );
 
 CREATE INDEX governance_block_hash_idx ON tezos.governance USING btree (block_hash);

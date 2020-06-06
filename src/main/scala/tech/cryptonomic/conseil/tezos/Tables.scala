@@ -1863,7 +1863,7 @@ trait Tables {
       column[Option[scala.math.BigDecimal]]("block_pass_rolls", O.Default(None))
 
     /** Primary key of Governance (database name governance_pkey) */
-    val pk = primaryKey("governance_pkey", (blockHash, proposalHash))
+    val pk = primaryKey("governance_pkey", (blockHash, proposalHash, votingPeriodKind))
 
     /** Index over (blockHash) (database name governance_block_hash_idx) */
     val index1 = index("governance_block_hash_idx", blockHash)

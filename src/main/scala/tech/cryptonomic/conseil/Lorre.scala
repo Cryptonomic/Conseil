@@ -457,12 +457,14 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           ballotCountsPerCycle.toMap,
           ballotCountsPerLevel.toMap,
           proposalHashes.toMap
-        ).flatMap(_.convertToA[Option, Tables.GovernanceRow])
+        ).map(_.convertTo[Tables.GovernanceRow])
         _ <- db.run(TezosDb.insertGovernance(governanceRows))
       } yield ()
     }
 
-    /** Groups data needed for generating Governance */
+    /** Groups data needed for generating GovernanceRow
+     *  Warning! It works on assumption that we're not processing Genesis block
+     */
     def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
@@ -473,7 +475,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         proposalHashes: Map[Block, Map[String, Int]]
     ): List[
       (
-          BlockData,
+          BlockHash,
+          BlockHeaderMetadata,
           Option[ProtocolId],
           List[Voting.BakerRolls],
           List[Voting.BakerRolls],
@@ -490,12 +493,23 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val ballotCountPerCycle = ballotCountsPerCycle.get(block)
       val ballotCountPerLevel = ballotCountsPerLevel.get(block)
       val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
+      val blockHeaderMetadata = TezosTypes.discardGenesis(block.data.metadata).get
 
-      (block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel) ::
+      (
+        block.data.hash,
+        blockHeaderMetadata,
+        proposal,
+        listing,
+        listingByBlock,
+        ballot,
+        ballotCountPerCycle,
+        ballotCountPerLevel
+      ) ::
         proposalHashesForBlock.map {
           case (proposalHash, count) =>
             (
-              block.data,
+              block.data.hash,
+              blockHeaderMetadata.copy(voting_period_kind = VotingPeriod.proposal),
               Some(ProtocolId(proposalHash)),
               listing,
               listingByBlock,
