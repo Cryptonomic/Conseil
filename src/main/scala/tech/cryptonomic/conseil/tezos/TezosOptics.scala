@@ -105,7 +105,7 @@ object TezosOptics {
       */
     def extractOperationsSequence(
         block: Block
-    ): List[Either[Operation, InternalOperationResults.InternalOperationResult]] =
+    ): List[(OperationHash, Either[Operation, InternalOperationResults.InternalOperationResult])] =
       for {
         group <- block.operationGroups
         op <- group.contents
@@ -120,7 +120,7 @@ object TezosOptics {
             Left(op) :: d.metadata.internal_operation_results.toList.flatten.map(Right(_))
           case _ => List(Left(op))
         }
-      } yield all
+      } yield group.hash -> all
 
     //Note, cycle 0 starts at the level 2 block
     def extractCycle(block: Block): Option[Int] =
@@ -212,27 +212,28 @@ object TezosOptics {
 
     def extractAppliedOriginationsResults(block: Block) = {
       val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
-        case Left(op: Origination) => op.metadata.operation_result
-        case Right(intOp: InternalOrigination) => intOp.result
+        case (groupHash, Left(op: Origination)) => groupHash -> op.metadata.operation_result
+        case (groupHash, Right(intOp: InternalOrigination)) => groupHash -> intOp.result
       }
 
-      operationSequence.filter(result => isApplied(result.status))
+      operationSequence.filter(result => isApplied(result._2.status))
     }
 
     def extractAppliedTransactionsResults(block: Block) = {
       val operationSequence = TezosOptics.Blocks.extractOperationsSequence(block).collect {
-        case Left(op: Transaction) => op.metadata.operation_result
-        case Right(intOp: InternalTransaction) => intOp.result
+        case (groupHash, Left(op: Transaction)) => groupHash -> op.metadata.operation_result
+        case (groupHash, Right(intOp: InternalTransaction)) => groupHash -> intOp.result
       }
 
-      operationSequence.filter(result => isApplied(result.status))
+      operationSequence.filter(result => isApplied(result._2.status))
     }
 
     def extractAppliedTransactions(block: Block): List[Either[Transaction, InternalTransaction]] =
-      TezosOptics.Blocks.extractOperationsSequence(block).collect {
+      TezosOptics.Blocks.extractOperationsSequence(block).map(_._2).collect {
         case Left(op: Transaction) if isApplied(op.metadata.operation_result.status) => Left(op)
         case Right(intOp: InternalTransaction) if isApplied(intOp.result.status) => Right(intOp)
       }
+
   }
 
   object Accounts {
@@ -265,11 +266,6 @@ object TezosOptics {
         case Right(_) => Right(micheline)
       }
     }
-
-    private val storage = GenLens[Scripted.Contracts](_.storage)
-    private val code = GenLens[Scripted.Contracts](_.code)
-
-    private val expression = GenLens[Micheline](_.expression)
 
     //we'll use this to get out any address-looking string from the transaction params
     val extractAddressesFromExpression = (micheline: Micheline) => {
