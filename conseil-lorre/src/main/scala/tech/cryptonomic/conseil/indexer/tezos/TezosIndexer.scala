@@ -352,25 +352,17 @@ class TezosIndexer(
       val (blocks, accountUpdates) =
         results.map {
           case (block, accountIds) =>
-            block -> accountIds.taggedWithBlock(
-                  block.data.hash,
-                  block.data.header.level,
-                  Some(block.data.header.timestamp.toInstant),
-                  TezosOptics.Blocks.extractCycle(block),
-                  TezosOptics.Blocks.extractPeriod(block.data.metadata)
-                )
+            block -> accountIds.taggedWithBlockData(block.data)
         }.unzip
 
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-        votingData <- processVotesForBlocks(results.map { case (block, _) => block })
-        rollsData = votingData.map {
-          case (block, rolls) => block.data.hash -> rolls
-        }
-        delegateCheckpoints <- processAccountsForBlocks(accountUpdates, rollsData) // should this fail, we still recover data from the checkpoint
-        _ <- processBakersForBlocks(delegateCheckpoints) // same as above
-        _ <- processBlocksForGovernance(blocks, votingData)
+        bakersData <- nodeOperator.getBlockBakers(blocks)
+        rollsByHash = bakersData.map { case (block, rolls) => block.data.hash -> rolls }.toMap
+        bakersCheckpoints <- processAccountsForBlocks(accountUpdates, rollsByHash) // should this fail, we still recover data from the checkpoint
+        _ <- processBakersForBlocks(bakersCheckpoints)
+        _ <- processBlocksForGovernance(blocks, bakersData.toMap)
         _ <- updateBakers(blocks)
       } yield results.size
 
@@ -424,14 +416,18 @@ class TezosIndexer(
     /** Processes blocks and fetches needed data to produce Governance rows*/
     def processBlocksForGovernance(
         blocks: List[Block],
-        listings: List[(Block, List[Voting.BakerRolls])]
+        rollsPerBlock: Map[Block, List[Voting.BakerRolls]]
     ): Future[Unit] = {
       import TezosDatabaseConversions._
       import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 
       //DANGER Will Robinson! we assume in the rest of the code that we're not handling the genesis block
       val safeBlocks = blocks.filterNot(block => block.data.metadata == GenesisMetadata)
-      val safeListings = listings.filterNot { case (block, rolls) => block.data.metadata == GenesisMetadata }
+      val safeRollsPerLevel =
+        rollsPerBlock.collect {
+          case (block, rolls) if block.data.metadata != GenesisMetadata =>
+            block.data.header.level -> rolls
+        }
 
       for {
         proposals <- nodeOperator.getProposals(safeBlocks.map(_.data))
@@ -455,7 +451,7 @@ class TezosIndexer(
         governanceRows = groupGovernanceDataByBlock(
           blocksWithProposals,
           proposals.toMap,
-          safeListings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
+          safeRollsPerLevel,
           ballots.toMap,
           ballotCountsPerCycle.toMap,
           ballotCountsPerLevel.toMap,
@@ -466,8 +462,8 @@ class TezosIndexer(
     }
 
     /** Groups data needed for generating GovernanceRow
-     *  Warning! It works on assumption that we're not processing Genesis block
-     */
+      *  Warning! It works on assumption that we're not processing Genesis block
+      */
     def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
@@ -608,22 +604,13 @@ class TezosIndexer(
 
   }
 
-  /**
-    * Fetches voting data for the blocks and stores any relevant
-    * result into the appropriate database table
-    */
-  private def processVotesForBlocks(
-      blocks: List[TezosTypes.Block]
-  ): Future[List[(Block, List[Voting.BakerRolls])]] =
-    nodeOperator.getVotingDetails(blocks)
-
   /* Fetches accounts from account-id and saves those associated with the latest operations
    * (i.e.the highest block level)
    * @return the bakers key-hashes found for the accounts passed-in, grouped by block reference
    */
   private def processAccountsForBlocks(
       updates: List[BlockTagged[List[AccountId]]],
-      votingData: List[(BlockHash, List[Voting.BakerRolls])]
+      votingData: Map[BlockHash, List[Voting.BakerRolls]]
   ): Future[List[BlockTagged[List[PublicKeyHash]]]] = {
     logger.info("Processing latest Tezos data for updated accounts...")
 
@@ -642,7 +629,7 @@ class TezosIndexer(
 
     val toBeFetched = keepMostRecent(sorted)
 
-    AccountsProcessor.process(toBeFetched, votingData.toMap)
+    AccountsProcessor.process(toBeFetched, votingData)
   }
 
   /** Fetches and stores all accounts from the latest blocks still in the checkpoint */
@@ -999,11 +986,13 @@ class TezosIndexer(
           .mapConcat(identity) //concatenates the list of values as single-valued elements in the stream
           .grouped(batchingConf.blockPageSize) //re-arranges the process batching
           .mapAsync(1)(taggedBakers => {
-
-            val hashIds = taggedBakers.toList.map(_.blockHash.value)
-            val rolls = nodeOperator.getRolls(hashIds)
-
-            rolls.map((taggedBakers, _))
+            val hashes = taggedBakers.map(_.blockHash).toList
+            nodeOperator
+              .getRolls(hashes)
+              .map { hashKeyedRolls =>
+                val rolls = hashKeyedRolls.flatMap { case (hash, rolls) => rolls }
+                taggedBakers -> rolls
+              }
           })
           .mapAsync(1) {
             case (bakers, rolls) => processBakersPage(bakers, rolls)
