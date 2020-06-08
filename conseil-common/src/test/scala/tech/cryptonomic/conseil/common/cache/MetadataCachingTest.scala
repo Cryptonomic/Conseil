@@ -27,43 +27,43 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
 
       "init attributes cache" in {
         val emptyAttributesCache: AttributesCache =
-          Map(AttributeCacheKey("testPlatform", "testTable") -> CacheEntry(0L, List()))
+          Map(AttributesCacheKey("testPlatform", "testTable") -> CacheEntry(0L, List()))
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
-        sut.getAttributes(AttributeCacheKey("not valid", "testTable")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributeCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributeCacheKey("testPlatform", "")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributeCacheKey("", "")).unsafeRunSync() shouldBe None
-        sut.getAttributes(AttributeCacheKey("testPlatform", "testTable")).unsafeRunSync() shouldBe Some(
+        sut.getAttributes(AttributesCacheKey("not valid", "testTable")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("", "")).unsafeRunSync() shouldBe None
+        sut.getAttributes(AttributesCacheKey("testPlatform", "testTable")).unsafeRunSync() shouldBe Some(
           CacheEntry(0L, List())
         )
       }
 
       "init entities cache" in {
         val emptyEntitiesCache: EntitiesCache =
-          Map(EntityCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
+          Map(EntitiesCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
         sut.fillEntitiesCache(emptyEntitiesCache).unsafeRunSync()
 
-        sut.getEntities(EntityCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
-        sut.getEntities(EntityCacheKey("testPlatform", "testNetwork")).unsafeRunSync() shouldBe Some(
+        sut.getEntities(EntitiesCacheKey("testPlatform", "not valid")).unsafeRunSync() shouldBe None
+        sut.getEntities(EntitiesCacheKey("testPlatform", "testNetwork")).unsafeRunSync() shouldBe Some(
           CacheEntry(0, List())
         )
       }
 
       "init attribute values cache" in {
         val attributeValuesCache: AttributeValuesCache =
-          Map(AttributeValueCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
+          Map(AttributeValuesCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
         sut.fillAttributeValuesCache(attributeValuesCache).unsafeRunSync()
 
         sut
           .getAttributeValues(
-            AttributeValueCacheKey("not valid", "not valid", "not valid either")
+            AttributeValuesCacheKey("not valid", "not valid", "not valid either")
           )
           .unsafeRunSync() shouldBe None
 
         val CacheEntry(_, result) = sut
           .getAttributeValues(
-            AttributeValueCacheKey("platform", "table", "column")
+            AttributeValuesCacheKey("platform", "table", "column")
           )
           .unsafeRunSync()
           .value
@@ -72,52 +72,52 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
 
       "insert/update values in entities cache" in {
         val emptyEntitiesCache: EntitiesCache =
-          Map(EntityCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
+          Map(EntitiesCacheKey("testPlatform", "testNetwork") -> CacheEntry(0L, List()))
         val entitiesList = List(Entity("a", "b", 0))
         val updatedEntityList = List(Entity("x", "y", 0))
         sut.fillEntitiesCache(emptyEntitiesCache).unsafeRunSync()
 
         // insert
-        sut.putEntities(EntityCacheKey("testPlatform", "differentTestNetwork"), entitiesList).unsafeRunSync()
+        sut.putEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork"), entitiesList).unsafeRunSync()
         val CacheEntry(_, insertResult) =
-          sut.getEntities(EntityCacheKey("testPlatform", "differentTestNetwork")).unsafeRunSync().value
+          sut.getEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork")).unsafeRunSync().value
         insertResult shouldBe entitiesList
 
         // update
-        sut.putEntities(EntityCacheKey("testPlatform", "differentTestNetwork"), updatedEntityList).unsafeRunSync()
+        sut.putEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork"), updatedEntityList).unsafeRunSync()
         val CacheEntry(_, updateResult) =
-          sut.getEntities(EntityCacheKey("testPlatform", "differentTestNetwork")).unsafeRunSync().value
+          sut.getEntities(EntitiesCacheKey("testPlatform", "differentTestNetwork")).unsafeRunSync().value
         updateResult shouldBe updatedEntityList
         sut.getAllEntities.unsafeRunSync().mapValues(_.value) shouldBe Map(
-          EntityCacheKey("testPlatform", "testNetwork") -> List(),
-          EntityCacheKey("testPlatform", "differentTestNetwork") -> List(Entity("x", "y", 0, None))
+          EntitiesCacheKey("testPlatform", "testNetwork") -> List(),
+          EntitiesCacheKey("testPlatform", "differentTestNetwork") -> List(Entity("x", "y", 0, None))
         )
       }
 
       "insert/update values in attributes cache" in {
         val emptyAttributesCache: AttributesCache =
-          Map(AttributeCacheKey("testPlatform", "testEntity") -> CacheEntry(0L, List()))
+          Map(AttributesCacheKey("testPlatform", "testEntity") -> CacheEntry(0L, List()))
         val attributesList = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
         val updatedAttributesList = List(Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z"))
         sut.fillAttributesCache(emptyAttributesCache).unsafeRunSync()
 
         // insert
-        sut.putAttributes(AttributeCacheKey("testPlatform", "differentTestEntity"), attributesList).unsafeRunSync()
+        sut.putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), attributesList).unsafeRunSync()
         val CacheEntry(_, insertResult) =
-          sut.getAttributes(AttributeCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().value
+          sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().value
         insertResult shouldBe attributesList
 
         // update
         sut
-          .putAttributes(AttributeCacheKey("testPlatform", "differentTestEntity"), updatedAttributesList)
+          .putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), updatedAttributesList)
           .unsafeRunSync()
         val CacheEntry(_, updateResult) =
-          sut.getAttributes(AttributeCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().get
+          sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().get
         updateResult shouldBe updatedAttributesList
         sut.getAllAttributes.unsafeRunSync().mapValues(_.value) shouldBe
           Map(
-            AttributeCacheKey("testPlatform", "testEntity") -> List(),
-            AttributeCacheKey("testPlatform", "differentTestEntity") -> List(
+            AttributesCacheKey("testPlatform", "testEntity") -> List(),
+            AttributesCacheKey("testPlatform", "differentTestEntity") -> List(
                   Attribute("x", "y", DataType.String, None, KeyType.NonKey, "z")
                 )
           )
@@ -125,33 +125,33 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
 
       "insert/update values in attribute values cache" in {
         val emptyAttributeValuesCache: AttributeValuesCache =
-          Map(AttributeValueCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
+          Map(AttributeValuesCacheKey("platform", "table", "column") -> CacheEntry(0L, RadixTree[String, String]()))
         val attributeValuesTree = RadixTree[String, String]("a" -> "a")
         val updatedAttributeValuesTree = RadixTree[String, String]("b" -> "b")
         sut.fillAttributeValuesCache(emptyAttributeValuesCache).unsafeRunSync()
 
         // insert
         sut
-          .putAttributeValues(AttributeValueCacheKey("platform", "table2", "column2"), attributeValuesTree)
+          .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), attributeValuesTree)
           .unsafeRunSync()
         val CacheEntry(_, insertResult) =
-          sut.getAttributeValues(AttributeValueCacheKey("platform", "table2", "column2")).unsafeRunSync().get
+          sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync().get
         insertResult.values.toList shouldBe List("a")
 
         // update
         sut
-          .putAttributeValues(AttributeValueCacheKey("platform", "table2", "column2"), updatedAttributeValuesTree)
+          .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), updatedAttributeValuesTree)
           .unsafeRunSync()
         val CacheEntry(_, updateResult) =
-          sut.getAttributeValues(AttributeValueCacheKey("platform", "table2", "column2")).unsafeRunSync().get
+          sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync().get
         updateResult.values.toList shouldBe List("b")
       }
 
       "handle entities for multiple platforms" in {
-        val entitiesKey1 = EntityCacheKey("platform", "network")
+        val entitiesKey1 = EntitiesCacheKey("platform", "network")
         val entities1 = List(Entity("a", "a", 0))
 
-        val entitiesKey2 = EntityCacheKey("platform-new", "network-new")
+        val entitiesKey2 = EntitiesCacheKey("platform-new", "network-new")
         val entities2 = List(Entity("b", "b", 0))
 
         val entities3 = List(Entity("c", "c", 0))
@@ -173,10 +173,10 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
       }
 
       "handle attributes for multiple platforms" in {
-        val attributesKey1 = AttributeCacheKey("platform", "table")
+        val attributesKey1 = AttributesCacheKey("platform", "table")
         val attributes1 = List(Attribute("a", "b", DataType.String, None, KeyType.NonKey, "c"))
 
-        val attributesKey2 = AttributeCacheKey("platform-new", "table-new")
+        val attributesKey2 = AttributesCacheKey("platform-new", "table-new")
         val attributes2 = List(Attribute("d", "e", DataType.String, None, KeyType.NonKey, "f"))
 
         val attributesCache: AttributesCache = Map(
@@ -191,10 +191,10 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
       }
 
       "handle attribute values for multiple platforms" in {
-        val attributesValueKey1 = AttributeValueCacheKey("platform", "table", "column")
+        val attributesValueKey1 = AttributeValuesCacheKey("platform", "table", "column")
         val attributesValue1 = RadixTree[String, String]("a" -> "a")
 
-        val attributesValueKey2 = AttributeValueCacheKey("platform-new", "table-new", "column-new")
+        val attributesValueKey2 = AttributeValuesCacheKey("platform-new", "table-new", "column-new")
         val attributesValue2 = RadixTree[String, String]("b" -> "b")
 
         val attributesValueCache: AttributeValuesCache = Map(

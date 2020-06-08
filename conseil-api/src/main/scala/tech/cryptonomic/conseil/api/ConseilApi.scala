@@ -150,10 +150,17 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
     private val visiblePlatforms =
       transformation.overridePlatforms(config.platforms.getPlatforms)
 
-    private def forVisiblePlatforms(f: BlockchainPlatform => Api): Map[BlockchainPlatform, Api] =
+    /**
+      * Function, that while used is going to execute function `f` for every platform found (and visible) in configuration.
+      *
+      * @param init function, which is going to initialize type `T` for given blockchain's platform.
+      * @tparam T the type of the entity that is going to be created for every blockchain's platform.
+      * @return a map with blockchain's platform and type `T`.
+      */
+    private def forVisiblePlatforms[T](init: BlockchainPlatform => T): Map[BlockchainPlatform, T] =
       visiblePlatforms.map { platform =>
         val blockchainPlatform = BlockchainPlatform.fromString(platform.name)
-        blockchainPlatform -> f(blockchainPlatform)
+        blockchainPlatform -> init(blockchainPlatform)
       }.toMap
 
     private val visibleNetworks = for {

@@ -77,7 +77,7 @@ class GenericPlatformDiscoveryOperations(
       primaryKeys <- getPrimaryKeys(tables)
     } yield {
       columns.map { cols =>
-        AttributeCacheKey(platform.name, cols.head.table.name) -> CacheEntry(0L, cols.map { col =>
+        AttributesCacheKey(platform.name, cols.head.table.name) -> CacheEntry(0L, cols.map { col =>
           makeAttributes(col, primaryKeys, indexes)
         }.toList)
       }
@@ -147,7 +147,7 @@ class GenericPlatformDiscoveryOperations(
         case (table, column) =>
           selectDistinct(platform.name, table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
-            AttributeValueCacheKey(platform.name, table, column) -> CacheEntry(now, radixTree)
+            AttributeValuesCacheKey(platform.name, table, column) -> CacheEntry(now, radixTree)
           }
       }
     }.map(_.toMap)
@@ -158,7 +158,7 @@ class GenericPlatformDiscoveryOperations(
     * @return list of entities as a Future
     */
   override def getEntities(networkPath: NetworkPath): Future[List[Entity]] = {
-    val key = EntityCacheKey(networkPath.up.platform, networkPath.network)
+    val key = EntitiesCacheKey(networkPath.up.platform, networkPath.network)
     val result = for {
       entities <- caching.getEntities(key)
       res <- entities.traverse {
@@ -197,7 +197,7 @@ class GenericPlatformDiscoveryOperations(
             case (name, count) =>
               Entity(name, makeDisplayName(name), count)
           }.toList
-    result.map(value => Map(EntityCacheKey(platform, network) -> CacheEntry(value._1, value._2)))
+    result.map(value => Map(EntitiesCacheKey(platform, network) -> CacheEntry(value._1, value._2)))
   }
 
   /** Makes displayName out of name */
@@ -290,17 +290,17 @@ class GenericPlatformDiscoveryOperations(
       maxResultLength: Int
   ): Future[List[String]] =
     caching
-      .getAttributeValues(AttributeValueCacheKey(platform, tableName, columnName))
+      .getAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName))
       .flatMap {
         case Some(CacheEntry(last, radixTree)) if !cacheExpired(last) =>
           IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
         case Some(CacheEntry(_, oldRadixTree)) =>
           (for {
-            _ <- caching.putAttributeValues(AttributeValueCacheKey(platform, tableName, columnName), oldRadixTree)
+            _ <- caching.putAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName), oldRadixTree)
             _ <- contextShift.shift
             attributeValues <- IO.fromFuture(IO(makeAttributesQuery(platform, tableName, columnName, None)))
             radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
-            _ <- caching.putAttributeValues(AttributeValueCacheKey(platform, tableName, columnName), radixTree)
+            _ <- caching.putAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName), radixTree)
           } yield ()).unsafeRunAsyncAndForget()
           IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
         case None =>
@@ -340,7 +340,7 @@ class GenericPlatformDiscoveryOperations(
   override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching.getCachingStatus.map { status =>
       if (status == Finished) {
-        val key = AttributeCacheKey(entityPath.up.up.platform, entityPath.entity)
+        val key = AttributesCacheKey(entityPath.up.up.platform, entityPath.entity)
         caching
           .getAttributes(key)
           .flatMap { attributesOpt =>
@@ -378,7 +378,7 @@ class GenericPlatformDiscoveryOperations(
     */
   override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching
-      .getAttributes(AttributeCacheKey(entityPath.up.up.platform, entityPath.entity))
+      .getAttributes(AttributesCacheKey(entityPath.up.up.platform, entityPath.entity))
       .map { attrOpt =>
         attrOpt.map(_.value)
       }
@@ -424,9 +424,9 @@ class GenericPlatformDiscoveryOperations(
   def initAttributesCache(config: List[(Platform, Network)]): Future[Unit] = {
     def initSingleCacheEntry(platform: Platform, network: Network): IO[Unit] =
       for {
-        entCache <- caching.getEntities(EntityCacheKey(platform.name, network.name))
+        entCache <- caching.getEntities(EntitiesCacheKey(platform.name, network.name))
         attrCache <- entCache.toList
-          .map(_.value.map(e => AttributeCacheKey(platform.name, e.name)))
+          .map(_.value.map(e => AttributesCacheKey(platform.name, e.name)).toSet)
           .map(keys => caching.getAllAttributesByKeys(keys))
           .sequence
           .map(_.reduce(_ ++ _))
@@ -436,7 +436,7 @@ class GenericPlatformDiscoveryOperations(
             getAllUpdatedAttributes(platform.name, network.name, entC.value, attrCache)
         )
         _ <- updatedAttributes.traverse {
-          case (tableName, attr) => caching.putAttributes(AttributeCacheKey(platform.name, tableName), attr)
+          case (tableName, attr) => caching.putAttributes(AttributesCacheKey(platform.name, tableName), attr)
         }
       } yield ()
 
@@ -456,14 +456,14 @@ class GenericPlatformDiscoveryOperations(
       attributes: AttributesCache
   ): IO[List[(String, List[Attribute])]] = {
     val queries = attributes.filterKeys { key =>
-      entities.map(_.name).toSet(key.value)
+      entities.map(_.name).toSet(key.get)
     }.mapValues {
       case CacheEntry(_, attrs) => attrs
     }.map {
       case (entityName, attrs) =>
         // dummy entity path because at this level network and platform are not checked
-        val entityPath = EntityPath(entityName.value, NetworkPath(network, PlatformPath(platform)))
-        getUpdatedAttributesQuery(entityPath, attrs).map(entityName.value -> _)
+        val entityPath = EntityPath(entityName.get, NetworkPath(network, PlatformPath(platform)))
+        getUpdatedAttributesQuery(entityPath, attrs).map(entityName.get -> _)
     }
     val action = DBIO.sequence(queries).map(_.toList)
     IO.fromFuture(IO(metadataOperations.runQuery(action)))
