@@ -493,7 +493,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Writes baking rights to the database
     * @param bakingRights mapping of hash to endorsingRights list
     */
-  def insertBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
+  def writeBakingRights(bakingRights: List[BakingRights]): DBIO[Option[Int]] = {
     berLogger.info("Inserting baking rights to the DB...")
     Tables.BakingRights ++= bakingRights.map(_.convertTo[Tables.BakingRightsRow])
   }
@@ -502,7 +502,7 @@ object TezosDatabaseOperations extends LazyLogging {
     * Writes endorsing rights to the database
     * @param endorsingRights mapping of hash to endorsingRights list
     */
-  def insertEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
+  def writeEndorsingRights(endorsingRights: List[EndorsingRights]): DBIO[Option[Int]] = {
     berLogger.info("Inserting endorsing rights to the DB...")
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
