@@ -502,7 +502,7 @@ private[tezos] trait TezosBlocksDataFetchers {
   }
 
   /** a fetcher of baker rolls for blocks */
-  implicit val bakersFetcherByHash = new FutureFetcher {
+  implicit val bakersFetcher = new FutureFetcher {
     import TezosJsonDecoders.Circe.Votes._
     import cats.instances.future._
 
