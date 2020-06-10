@@ -16,16 +16,16 @@ object MetadataCaching {
 
   /** Class representing key in cache */
   sealed trait CacheKey {
-    def get: String
+    def key: String
   }
   case class EntitiesCacheKey(platform: String, network: String) extends CacheKey {
-    def get: String = s"$platform.$network"
+    val key: String = s"$platform.$network"
   }
   case class AttributesCacheKey(platform: String, table: String) extends CacheKey {
-    def get: String = s"$platform.$table"
+    val key: String = s"$platform.$table"
   }
   case class AttributeValuesCacheKey(platform: String, table: String, column: String) extends CacheKey {
-    def get: String = s"$platform.$table.$column"
+    val key: String = s"$platform.$table.$column"
   }
 
   type Cache[K <: CacheKey, A] = Map[K, CacheEntry[A]]

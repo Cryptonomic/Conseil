@@ -456,15 +456,15 @@ class GenericPlatformDiscoveryOperations(
       entities: List[Entity],
       attributes: AttributesCache
   ): IO[List[(String, List[Attribute])]] = {
-    val queries = attributes.filterKeys { key =>
-      entities.map(_.name).toSet(key.get)
+    val queries = attributes.filterKeys { cacheKey =>
+      entities.map(_.name).toSet(cacheKey.key)
     }.mapValues {
       case CacheEntry(_, attrs) => attrs
     }.map {
       case (entityName, attrs) =>
         // dummy entity path because at this level network and platform are not checked
-        val entityPath = EntityPath(entityName.get, NetworkPath(network, PlatformPath(platform)))
-        getUpdatedAttributesQuery(entityPath, attrs).map(entityName.get -> _)
+        val entityPath = EntityPath(entityName.key, NetworkPath(network, PlatformPath(platform)))
+        getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries).map(_.toList)
     IO.fromFuture(IO(metadataOperations.runQuery(action)))
