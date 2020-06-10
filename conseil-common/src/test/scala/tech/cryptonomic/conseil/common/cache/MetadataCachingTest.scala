@@ -111,9 +111,12 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
         sut
           .putAttributes(AttributesCacheKey("testPlatform", "differentTestEntity"), updatedAttributesList)
           .unsafeRunSync()
-        val CacheEntry(_, updateResult) =
-          sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync().get
-        updateResult shouldBe updatedAttributesList
+
+        sut.getAttributes(AttributesCacheKey("testPlatform", "differentTestEntity")).unsafeRunSync() match {
+          case Some(CacheEntry(_, updateResult)) => updateResult shouldBe updatedAttributesList
+          case None => fail("Expected some `CacheEntity`, but got None")
+        }
+
         sut.getAllAttributes.unsafeRunSync().mapValues(_.value) shouldBe
           Map(
             AttributesCacheKey("testPlatform", "testEntity") -> List(),
@@ -134,17 +137,21 @@ class MetadataCachingTest extends WordSpec with Matchers with OneInstancePerTest
         sut
           .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), attributeValuesTree)
           .unsafeRunSync()
-        val CacheEntry(_, insertResult) =
-          sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync().get
-        insertResult.values.toList shouldBe List("a")
+
+        sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync() match {
+          case Some(CacheEntry(_, insertResult)) => insertResult.values.toList shouldBe List("a")
+          case None => fail("Expected some `CacheEntity`, but got None")
+        }
 
         // update
         sut
           .putAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2"), updatedAttributeValuesTree)
           .unsafeRunSync()
-        val CacheEntry(_, updateResult) =
-          sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync().get
-        updateResult.values.toList shouldBe List("b")
+
+        sut.getAttributeValues(AttributeValuesCacheKey("platform", "table2", "column2")).unsafeRunSync() match {
+          case Some(CacheEntry(_, updateResult)) => updateResult.values.toList shouldBe List("b")
+          case None => fail("Expected some `CacheEntity`, but got None")
+        }
       }
 
       "handle entities for multiple platforms" in {

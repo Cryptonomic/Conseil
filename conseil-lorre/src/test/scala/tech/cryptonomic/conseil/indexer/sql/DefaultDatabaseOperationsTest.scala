@@ -5,12 +5,14 @@ import java.time.LocalDateTime
 
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
+import slick.jdbc.PostgresProfile.api._
 import tech.cryptonomic.conseil.common.testkit.InMemoryDatabase
 import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.tezos.Tables.{Fees, FeesRow}
 import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.indexer.tezos.TezosInMemoryDatabaseSetup
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -20,10 +22,6 @@ class DefaultDatabaseOperationsTest
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
     with ScalaFutures {
-
-  import slick.jdbc.PostgresProfile.api._
-
-  import scala.concurrent.ExecutionContext.Implicits.global
 
   "The default database operations" should {
       val fees: List[FeesRow] = List.tabulate(5) { i =>
