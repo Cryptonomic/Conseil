@@ -6,6 +6,7 @@ import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer
+import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
   AttributesValidationError,
@@ -17,7 +18,6 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.Data
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._
-import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -75,13 +75,14 @@ class GenericPlatformDiscoveryOperations(
       columns <- getColumns(tables)
       indexes <- getIndexes(tables)
       primaryKeys <- getPrimaryKeys(tables)
-    } yield {
-      columns.map { cols =>
-        AttributesCacheKey(platform.name, cols.head.table.name) -> CacheEntry(0L, cols.map { col =>
-          makeAttributes(col, primaryKeys, indexes)
-        }.toList)
-      }
-    }
+    } yield
+      for {
+        cols <- columns
+        head <- cols.headOption.toVector
+        key = AttributesCacheKey(platform.name, head.table.name)
+        entry = CacheEntry(0L, cols.map(c => makeAttributes(c, primaryKeys, indexes)).toList)
+      } yield key -> entry
+
     result.map(_.toMap)
   }
 
