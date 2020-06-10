@@ -151,7 +151,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
       transformation.overridePlatforms(config.platforms.getPlatforms)
 
     /**
-      * Function, that while used is going to execute function `f` for every platform found (and visible) in configuration.
+      * Function, that while used is going to execute function `init` for every platform found (and visible) in configuration.
       *
       * @param init function, which is going to initialize type `T` for given blockchain's platform.
       * @tparam T the type of the entity that is going to be created for every blockchain's platform.
