@@ -8,7 +8,12 @@ object Tables extends {
 /** Slick data model trait for extension, choice of backend or usage in the cake pattern. (Make sure to initialize this late.) */
 trait Tables {
   val profile: slick.jdbc.JdbcProfile
+  import profile.api._
+  import slick.model.ForeignKeyAction
+  import slick.collection.heterogeneous._
+  import slick.collection.heterogeneous.syntax._
   // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
+  import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
   lazy val schema: profile.SchemaDescription = Array(
@@ -77,6 +82,7 @@ trait Tables {
       e4: GR[Option[Boolean]],
       e5: GR[Boolean]
   ): GR[AccountsRow] = GR { prs =>
+    import prs._
     AccountsRow.tupled(
       (
         <<[String],
@@ -135,7 +141,7 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          ;
+          import r._;
           _1.map(
             _ => AccountsRow.tupled((_1.get, _2.get, _3, _4, _5, _6.get, _7.get, _8, _9, _10, _11, _12.get, _13.get))
           )
@@ -224,6 +230,7 @@ trait Tables {
       e2: GR[java.sql.Timestamp],
       e3: GR[Option[Int]]
   ): GR[AccountsCheckpointRow] = GR { prs =>
+    import prs._
     AccountsCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<[java.sql.Timestamp], <<?[Int]))
   }
 
@@ -236,7 +243,8 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(accountId), Rep.Some(blockId), Rep.Some(blockLevel), Rep.Some(asof), cycle)).shaped.<>(
-        { r => ; _1.map(_ => AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get, _5)))
+        { r =>
+          import r._; _1.map(_ => AccountsCheckpointRow.tupled((_1.get, _2.get, _3.get, _4.get, _5)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -304,6 +312,7 @@ trait Tables {
       e5: GR[Boolean],
       e6: GR[Option[Boolean]]
   ): GR[AccountsHistoryRow] = GR { prs =>
+    import prs._
     AccountsHistoryRow.tupled(
       (
         <<[String],
@@ -360,7 +369,7 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          ;
+          import r._;
           _1.map(
             _ =>
               AccountsHistoryRow.tupled((_1.get, _2.get, _3, _4, _5.get, _6.get, _7, _8.get, _9.get, _10, _11.get, _12))
@@ -485,6 +494,7 @@ trait Tables {
       e4: GR[Option[Int]],
       e5: GR[java.sql.Timestamp]
   ): GR[BakerRegistryRow] = GR { prs =>
+    import prs._
     BakerRegistryRow(
       <<[String],
       <<?[Boolean],
@@ -697,6 +707,7 @@ trait Tables {
       e3: GR[Boolean],
       e4: GR[Option[Int]]
   ): GR[BakersRow] = GR { prs =>
+    import prs._
     BakersRow.tupled(
       (
         <<[String],
@@ -752,7 +763,8 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          ; _1.map(_ => BakersRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12)))
+          import r._;
+          _1.map(_ => BakersRow.tupled((_1.get, _2.get, _3, _4, _5, _6, _7.get, _8.get, _9.get, _10.get, _11, _12)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -827,6 +839,7 @@ trait Tables {
       e1: GR[Int],
       e2: GR[Option[Int]]
   ): GR[BakersCheckpointRow] = GR { prs =>
+    import prs._
     BakersCheckpointRow.tupled((<<[String], <<[String], <<[Int], <<?[Int], <<?[Int]))
   }
 
@@ -838,9 +851,12 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(delegatePkh), Rep.Some(blockId), Rep.Some(blockLevel), cycle, period)).shaped.<>({ r =>
-        ; _1.map(_ => BakersCheckpointRow.tupled((_1.get, _2.get, _3.get, _4, _5)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(delegatePkh), Rep.Some(blockId), Rep.Some(blockLevel), cycle, period)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => BakersCheckpointRow.tupled((_1.get, _2.get, _3.get, _4, _5)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column delegate_pkh SqlType(varchar) */
     val delegatePkh: Rep[String] = column[String]("delegate_pkh")
@@ -897,6 +913,7 @@ trait Tables {
       e3: GR[Option[java.sql.Timestamp]],
       e4: GR[Option[Int]]
   ): GR[BakingRightsRow] = GR { prs =>
+    import prs._
     BakingRightsRow.tupled((<<?[String], <<[Int], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int]))
   }
 
@@ -909,8 +926,12 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((blockHash, Rep.Some(level), Rep.Some(delegate), Rep.Some(priority), estimatedTime, cycle, governancePeriod)).shaped
-        .<>({ r => ; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7)))
-        }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+        .<>(
+          { r =>
+            import r._; _2.map(_ => BakingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7)))
+          },
+          (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+        )
 
     /** Database column block_hash SqlType(varchar), Default(None) */
     val blockHash: Rep[Option[String]] = column[Option[String]]("block_hash", O.Default(None))
@@ -992,6 +1013,7 @@ trait Tables {
       e4: GR[scala.math.BigDecimal],
       e5: GR[Option[scala.math.BigDecimal]]
   ): GR[BalanceUpdatesRow] = GR { prs =>
+    import prs._
     BalanceUpdatesRow.tupled(
       (
         <<[Int],
@@ -1054,7 +1076,7 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          ;
+          import r._;
           _1.map(
             _ =>
               BalanceUpdatesRow
@@ -1139,6 +1161,7 @@ trait Tables {
       e1: GR[String],
       e2: GR[Option[String]]
   ): GR[BigMapContentsRow] = GR { prs =>
+    import prs._
     BigMapContentsRow.tupled((<<[scala.math.BigDecimal], <<[String], <<?[String], <<?[String], <<?[String]))
   }
 
@@ -1150,7 +1173,7 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(bigMapId), Rep.Some(key), keyHash, operationGroupId, value)).shaped.<>({ r =>
-        ; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5)))
+        import r._; _1.map(_ => BigMapContentsRow.tupled((_1.get, _2.get, _3, _4, _5)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column big_map_id SqlType(numeric) */
@@ -1188,6 +1211,7 @@ trait Tables {
   /** GetResult implicit for fetching BigMapsRow objects using plain SQL queries */
   implicit def GetResultBigMapsRow(implicit e0: GR[scala.math.BigDecimal], e1: GR[Option[String]]): GR[BigMapsRow] =
     GR { prs =>
+      import prs._
       BigMapsRow.tupled((<<[scala.math.BigDecimal], <<?[String], <<?[String]))
     }
 
@@ -1197,7 +1221,8 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(bigMapId), keyType, valueType)).shaped.<>({ r => ; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3)))
+      ((Rep.Some(bigMapId), keyType, valueType)).shaped.<>({ r =>
+        import r._; _1.map(_ => BigMapsRow.tupled((_1.get, _2, _3)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column big_map_id SqlType(numeric), PrimaryKey */
@@ -1287,6 +1312,7 @@ trait Tables {
       e5: GR[Option[scala.math.BigDecimal]],
       e6: GR[Option[Boolean]]
   ): GR[BlocksRow] = GR { prs =>
+    import prs._
     BlocksRow(
       <<[Int],
       <<[Int],
@@ -1497,6 +1523,7 @@ trait Tables {
       e3: GR[Option[java.sql.Timestamp]],
       e4: GR[Option[Int]]
   ): GR[EndorsingRightsRow] = GR { prs =>
+    import prs._
     EndorsingRightsRow.tupled(
       (<<?[String], <<[Int], <<[String], <<[Int], <<?[java.sql.Timestamp], <<?[Int], <<?[Int], <<?[Int])
     )
@@ -1522,7 +1549,8 @@ trait Tables {
           endorsedBlock
         )
       ).shaped.<>(
-        { r => ; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8)))
+        { r =>
+          import r._; _2.map(_ => EndorsingRightsRow.tupled((_1, _2.get, _3.get, _4.get, _5, _6, _7, _8)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -1594,6 +1622,7 @@ trait Tables {
       e2: GR[String],
       e3: GR[Option[Int]]
   ): GR[FeesRow] = GR { prs =>
+    import prs._
     FeesRow.tupled((<<[Int], <<[Int], <<[Int], <<[java.sql.Timestamp], <<[String], <<?[Int], <<?[Int]))
   }
 
@@ -1603,9 +1632,12 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>({
-        r => ; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(low), Rep.Some(medium), Rep.Some(high), Rep.Some(timestamp), Rep.Some(kind), cycle, level)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => FeesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column low SqlType(int4) */
     val low: Rep[Int] = column[Int]("low")
@@ -1681,6 +1713,7 @@ trait Tables {
       e2: GR[Option[Int]],
       e3: GR[Option[scala.math.BigDecimal]]
   ): GR[GovernanceRow] = GR { prs =>
+    import prs._
     GovernanceRow.tupled(
       (
         <<[Int],
@@ -1757,7 +1790,7 @@ trait Tables {
         )
       ).shaped.<>(
         { r =>
-          ;
+          import r._;
           _1.map(
             _ =>
               GovernanceRow.tupled(
@@ -1852,6 +1885,7 @@ trait Tables {
 
   /** GetResult implicit for fetching KnownAddressesRow objects using plain SQL queries */
   implicit def GetResultKnownAddressesRow(implicit e0: GR[String]): GR[KnownAddressesRow] = GR { prs =>
+    import prs._
     KnownAddressesRow.tupled((<<[String], <<[String]))
   }
 
@@ -1862,7 +1896,8 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(address), Rep.Some(alias))).shaped.<>({ r => ; _1.map(_ => KnownAddressesRow.tupled((_1.get, _2.get)))
+      ((Rep.Some(address), Rep.Some(alias))).shaped.<>({ r =>
+        import r._; _1.map(_ => KnownAddressesRow.tupled((_1.get, _2.get)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column address SqlType(varchar) */
@@ -1899,6 +1934,7 @@ trait Tables {
       e1: GR[Option[String]],
       e2: GR[Int]
   ): GR[OperationGroupsRow] = GR { prs =>
+    import prs._
     OperationGroupsRow.tupled((<<[String], <<?[String], <<[String], <<[String], <<?[String], <<[String], <<[Int]))
   }
 
@@ -1921,7 +1957,8 @@ trait Tables {
           Rep.Some(blockLevel)
         )
       ).shaped.<>(
-        { r => ; _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get)))
+        { r =>
+          import r._; _1.map(_ => OperationGroupsRow.tupled((_1.get, _2, _3.get, _4.get, _5, _6.get, _7.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -2073,6 +2110,7 @@ trait Tables {
       e6: GR[Boolean],
       e7: GR[java.sql.Timestamp]
   ): GR[OperationsRow] = GR { prs =>
+    import prs._
     OperationsRow(
       <<?[String],
       <<?[Int],
@@ -2394,6 +2432,7 @@ trait Tables {
       implicit e0: GR[scala.math.BigDecimal],
       e1: GR[String]
   ): GR[OriginatedAccountMapsRow] = GR { prs =>
+    import prs._
     OriginatedAccountMapsRow.tupled((<<[scala.math.BigDecimal], <<[String]))
   }
 
@@ -2405,7 +2444,7 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(bigMapId), Rep.Some(accountId))).shaped.<>({ r =>
-        ; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get)))
+        import r._; _1.map(_ => OriginatedAccountMapsRow.tupled((_1.get, _2.get)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column big_map_id SqlType(numeric) */
@@ -2434,6 +2473,7 @@ trait Tables {
       implicit e0: GR[scala.math.BigDecimal],
       e1: GR[String]
   ): GR[ProcessedChainEventsRow] = GR { prs =>
+    import prs._
     ProcessedChainEventsRow.tupled((<<[scala.math.BigDecimal], <<[String]))
   }
 
@@ -2445,7 +2485,7 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(eventLevel), Rep.Some(eventType))).shaped.<>({ r =>
-        ; _1.map(_ => ProcessedChainEventsRow.tupled((_1.get, _2.get)))
+        import r._; _1.map(_ => ProcessedChainEventsRow.tupled((_1.get, _2.get)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column event_level SqlType(numeric) */
@@ -2470,6 +2510,7 @@ trait Tables {
 
   /** GetResult implicit for fetching RegisteredTokensRow objects using plain SQL queries */
   implicit def GetResultRegisteredTokensRow(implicit e0: GR[Int], e1: GR[String]): GR[RegisteredTokensRow] = GR { prs =>
+    import prs._
     RegisteredTokensRow.tupled((<<[Int], <<[String], <<[String], <<[String]))
   }
 
@@ -2480,9 +2521,12 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
-      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId))).shaped.<>({ r =>
-        ; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get)))
-      }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
+      ((Rep.Some(id), Rep.Some(name), Rep.Some(contractType), Rep.Some(accountId))).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => RegisteredTokensRow.tupled((_1.get, _2.get, _3.get, _4.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
 
     /** Database column id SqlType(int4), PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.PrimaryKey)
@@ -2524,6 +2568,7 @@ trait Tables {
       e3: GR[Option[Int]],
       e4: GR[Option[Boolean]]
   ): GR[TezosNamesRow] = GR { prs =>
+    import prs._
     TezosNamesRow.tupled((<<[String], <<?[String], <<?[String], <<?[java.sql.Timestamp], <<?[Int], <<?[Boolean]))
   }
 
@@ -2535,7 +2580,7 @@ trait Tables {
     /** Maps whole row to an option. Useful for outer joins. */
     def ? =
       ((Rep.Some(name), owner, resolver, registeredAt, registrationPeriod, modified)).shaped.<>({ r =>
-        ; _1.map(_ => TezosNamesRow.tupled((_1.get, _2, _3, _4, _5, _6)))
+        import r._; _1.map(_ => TezosNamesRow.tupled((_1.get, _2, _3, _4, _5, _6)))
       }, (_: Any) => throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column name SqlType(varchar), PrimaryKey */
@@ -2590,6 +2635,7 @@ trait Tables {
       e2: GR[scala.math.BigDecimal],
       e3: GR[java.sql.Timestamp]
   ): GR[TokenBalancesRow] = GR { prs =>
+    import prs._
     TokenBalancesRow.tupled(
       (<<[Int], <<[String], <<[scala.math.BigDecimal], <<[String], <<[scala.math.BigDecimal], <<[java.sql.Timestamp])
     )
@@ -2613,7 +2659,8 @@ trait Tables {
           Rep.Some(asof)
         )
       ).shaped.<>(
-        { r => ; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+        { r =>
+          import r._; _1.map(_ => TokenBalancesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
