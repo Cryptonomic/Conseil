@@ -19,7 +19,7 @@ object TezosGovernanceOperations extends LazyLogging {
     * @param proposalId a specific proposal under evaluation
     * @param allRolls ballot rolls up to this block for the proposal
     * @param rollsPerLevel ballot rolls included in this specific block
-    * @param ballotsPerCycle how many baloots for a whole cycle
+    * @param ballotsPerCycle how many ballots for a whole cycle
     * @param ballotsPerLevel how many ballots for the single block level
     */
   case class GovernanceAggregate(
