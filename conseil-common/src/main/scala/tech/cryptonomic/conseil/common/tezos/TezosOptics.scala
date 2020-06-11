@@ -79,7 +79,6 @@ object TezosOptics {
     /** functions to operate on all big maps remove diffs within a block */
     val readBigMapDiffRemove = blockOperationsGroup composeTraversal groupOperations composeTraversal Operations.overOperationBigMapDiffRemove
 
-
     /**  Utility extractor that collects, for a block, both operations and internal operations results, grouped
       * in a form more amenable to processing
       * @param block the block to inspect

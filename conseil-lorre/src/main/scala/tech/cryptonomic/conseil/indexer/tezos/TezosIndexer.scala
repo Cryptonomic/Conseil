@@ -417,116 +417,52 @@ class TezosIndexer(
       case InvalidPositiveDecimal(_) => None
     }
 
-    /** Processes blocks and fetches needed data to produce Governance rows
+    /** Processes blocks and fetches needed data to produce Governance rows.
       * We assume that the input mapping will include all block entries relevant
       * to a batch processing, that is, there could be block keys with a corresponding
       * empty list as value.
       * This way we can collapse the arguments to a single one, instead of requiring
       * a separate one just to list the blocks of interest, and expecting
       * rolls to only have non-empty values.
+      *
+      * @param rollsPerBlock rolls listings of delegates for the blocks to be processed
       */
     def processBlocksForGovernance(
         rollsPerBlock: Map[Block, List[Voting.BakerRolls]]
     ): Future[Unit] = {
-      import TezosDatabaseConversions._
-      import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
+      val aggregateGovernanceData =
+        TezosGovernanceOperations.aggregateData(db) _
 
       // DANGER Will Robinson!
       // We assume in the rest of the code that we won't be handling the genesis metadata.
-      // The original arguments must not be re-used directly to ensure this
+      // The original arguments must not be re-used directly to ensure such guarantee
       val (blocks, levelListings) = {
         val nonGenesis = rollsPerBlock.filterNot { case (block, _) => block.data.metadata == GenesisMetadata }
         (nonGenesis.keys.toList, nonGenesis.map { case (block, rolls) => block.data.header.level -> rolls })
       }
 
+      /* Here we collect node data needed to collect any voting period's interesting data.
+       * We want proposals to identify blocks during a voting period, and votes cast in the blocks.
+       * From those we create data aggregates with break-down information per level and
+       * convert those into database rows to be stored.
+       */
       for {
         proposals <- nodeOperator.getProposals(blocks.map(_.data))
-        blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
-        blocksWithProposals = blocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
-        ballotCountsPerCycle <- Future.traverse(blocksWithProposals) { block =>
-          db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle))
-            .map(block -> _)
-        }
-        ballotCountsPerLevel <- Future.traverse(blocksWithProposals) { block =>
-          db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
-            .map(block -> _)
-        }
-        proposalHashes <- Future.traverse(blocks) { block =>
-          db.run(
-              TezosDb.getProposalOperationHashesByCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle)
-            )
-            .map(block -> _)
-        }
-        ballots <- nodeOperator.getVotes(blocksWithProposals)
-        governanceRows = groupGovernanceDataByBlock(
-          blocksWithProposals,
-          proposals.toMap,
-          levelListings,
+        proposalsMap = proposals.collect { case (hash, Some(protocol)) => hash -> protocol }.toMap
+        //collect only those blocks that have a current voting proposal
+        proposalsBlocks = blocks.collect {
+          case block if (proposalsMap.contains(block.data.hash)) =>
+            //we know for sure that the value's there: the fallback value is actually never called
+            block -> proposalsMap.getOrElse(block.data.hash, ProtocolId(""))
+        }.toMap
+        ballots <- nodeOperator.getVotes(proposalsBlocks.keys.toList)
+        aggregates <- aggregateGovernanceData(
+          proposalsBlocks,
           ballots.toMap,
-          ballotCountsPerCycle.toMap,
-          ballotCountsPerLevel.toMap,
-          proposalHashes.toMap
-        ).map(_.convertTo[Tables.GovernanceRow])
-        _ <- db.run(TezosDb.writeGovernance(governanceRows))
+          levelListings
+        )
+        _ <- db.run(TezosDb.writeGovernance(aggregates))
       } yield ()
-    }
-
-    /** Groups data needed for generating GovernanceRow
-      *  Warning! It works on assumption that we're not processing Genesis block
-      */
-    def groupGovernanceDataByBlock(
-        blocks: List[Block],
-        proposals: Map[BlockHash, Option[ProtocolId]],
-        listings: Map[Int, List[Voting.BakerRolls]],
-        ballots: Map[Block, List[Voting.Ballot]],
-        ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
-        ballotCountsPerLevel: Map[Block, Voting.BallotCounts],
-        proposalHashes: Map[Block, Map[String, Int]]
-    ): List[
-      (
-          BlockHash,
-          BlockHeaderMetadata,
-          Option[ProtocolId],
-          List[Voting.BakerRolls],
-          List[Voting.BakerRolls],
-          List[Voting.Ballot],
-          Option[Voting.BallotCounts],
-          Option[Voting.BallotCounts]
-      )
-    ] = blocks.flatMap { block =>
-      val proposal = proposals.get(block.data.hash).flatten
-      val listing = listings.get(block.data.header.level).toList.flatten
-      val prevListings = listings.get(block.data.header.level - 1).toList.flatten
-      val listingByBlock = listing.diff(prevListings)
-      val ballot = ballots.get(block).toList.flatten
-      val ballotCountPerCycle = ballotCountsPerCycle.get(block)
-      val ballotCountPerLevel = ballotCountsPerLevel.get(block)
-      val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
-      val blockHeaderMetadata = TezosTypes.discardGenesis(block.data.metadata).get
-
-      (
-        block.data.hash,
-        blockHeaderMetadata,
-        proposal,
-        listing,
-        listingByBlock,
-        ballot,
-        ballotCountPerCycle,
-        ballotCountPerLevel
-      ) ::
-        proposalHashesForBlock.map {
-          case (proposalHash, count) =>
-            (
-              block.data.hash,
-              blockHeaderMetadata.copy(voting_period_kind = VotingPeriod.proposal),
-              Some(ProtocolId(proposalHash)),
-              listing,
-              listingByBlock,
-              ballot,
-              Some(Voting.BallotCounts(count, 0, 0)),
-              ballotCountPerLevel
-            )
-        }
     }
 
     def processBakingAndEndorsingRights(fetchingResults: nodeOperator.BlockFetchingResults): Future[Unit] = {
