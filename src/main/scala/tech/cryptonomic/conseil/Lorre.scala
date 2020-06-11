@@ -434,11 +434,11 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         proposals <- tezosNodeOperator.getProposals(safeBlocks.map(_.data))
         blockHashesWithProposals = proposals.filter(_._2.isDefined).map(_._1)
         blocksWithProposals = safeBlocks.filter(blockData => blockHashesWithProposals.contains(blockData.data.hash))
-        ballotCountsPerCycle <- Future.traverse(blocksWithProposals) { block =>
+        ballotCountsPerCycle <- Future.traverse(blocks) { block =>
           db.run(TezosDb.getBallotOperationsForCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle))
             .map(block -> _)
         }
-        ballotCountsPerLevel <- Future.traverse(blocksWithProposals) { block =>
+        ballotCountsPerLevel <- Future.traverse(blocks) { block =>
           db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
             .map(block -> _)
         }
@@ -450,7 +450,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         }
         ballots <- tezosNodeOperator.getVotes(blocksWithProposals)
         governanceRows = groupGovernanceDataByBlock(
-          blocksWithProposals,
+          blocks,
           proposals.toMap,
           safeListings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
           ballots.toMap,
@@ -463,8 +463,8 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
     }
 
     /** Groups data needed for generating GovernanceRow
-     *  Warning! It works on assumption that we're not processing Genesis block
-     */
+      *  Warning! It works on assumption that we're not processing Genesis block
+      */
     def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
@@ -485,7 +485,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           Option[Voting.BallotCounts]
       )
     ] = blocks.flatMap { block =>
-      val proposal = proposals.get(block.data.hash).flatten
+      val currentProposal = proposals.get(block.data.hash).flatten
       val listing = listings.get(block.data.header.level).toList.flatten
       val prevListings = listings.get(block.data.header.level - 1).toList.flatten
       val listingByBlock = listing.diff(prevListings)
@@ -495,17 +495,20 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
       val blockHeaderMetadata = TezosTypes.discardGenesis(block.data.metadata).get
 
-      (
-        block.data.hash,
-        blockHeaderMetadata,
-        proposal,
-        listing,
-        listingByBlock,
-        ballot,
-        ballotCountPerCycle,
-        ballotCountPerLevel
-      ) ::
-        proposalHashesForBlock.map {
+      currentProposal.toList.map(
+        protocol =>
+          (
+            block.data.hash,
+            blockHeaderMetadata,
+            Some(protocol),
+            listing,
+            listingByBlock,
+            ballot,
+            ballotCountPerCycle,
+            ballotCountPerLevel
+          )
+      ) :::
+        proposalHashesForBlock.filterNot { case (protocol, _) => currentProposal.exists(_.id == protocol) }.map {
           case (proposalHash, count) =>
             (
               block.data.hash,
