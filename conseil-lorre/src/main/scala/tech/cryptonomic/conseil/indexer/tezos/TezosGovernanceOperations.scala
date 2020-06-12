@@ -54,6 +54,7 @@ object TezosGovernanceOperations extends LazyLogging {
     *
     * @param db the reference database
     * @param nodeOperator the operator to get information from the remore tezos node
+    * @param bakerRollsByBlock blocks of interest, with any rolls data available
     * @return the computed aggregate data
     */
   def extractGovernanceAggregations(
