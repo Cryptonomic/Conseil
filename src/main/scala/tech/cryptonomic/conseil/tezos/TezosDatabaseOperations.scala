@@ -521,6 +521,9 @@ object TezosDatabaseOperations extends LazyLogging {
     Tables.EndorsingRights ++= endorsingRights.flatMap(_.convertToA[List, Tables.EndorsingRightsRow])
   }
 
+  def getGovernancePerLevel(level: Int): DBIO[Seq[GovernanceRow]] =
+    Tables.Governance.filter(_.level === level).result
+
   def insertGovernance(governance: List[GovernanceRow]): DBIO[Option[Int]] = {
     logger.info("Writing {} governance rows into database...", governance.size)
     Tables.Governance ++= governance
