@@ -21,6 +21,7 @@ import tech.cryptonomic.conseil.tezos.{
   TezosDatabaseOperations => TezosDb
 }
 import tech.cryptonomic.conseil.tezos.TezosTypes._
+import tech.cryptonomic.conseil.tezos.TezosTypes.Voting.Vote
 import tech.cryptonomic.conseil.io.MainOutputs.LorreOutput
 import tech.cryptonomic.conseil.util.DatabaseUtil
 import tech.cryptonomic.conseil.config._
@@ -29,10 +30,9 @@ import tech.cryptonomic.conseil.tezos.TezosNodeOperator.{FetchRights, LazyPages}
 import scala.concurrent.duration._
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.collection.SortedSet
-import tech.cryptonomic.conseil.tezos.TezosTypes.BlockHash
+import math.max
 import tech.cryptonomic.conseil.tezos.michelson.contracts.{TNSContract, TokenContracts}
 import tech.cryptonomic.conseil.tezos.app.TezosNamesOperations
 
@@ -407,7 +407,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-        votingData <- processVotesForBlocks(results.map { case (block, _) => block })
+        votingData <- processVotesForBlocks(blocks)
         rollsData = votingData.map {
           case (block, rolls) => block.data.hash -> rolls
         }
@@ -423,12 +423,35 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         blocks: List[Block],
         listings: List[(Block, List[Voting.BakerRolls])]
     ): Future[Unit] = {
+      import cats.implicits._
       import DatabaseConversions._
       import tech.cryptonomic.conseil.util.Conversion.Syntax._
 
       //DANGER Will Robinson! we assume in the rest of the code that we're not handling the genesis block
       val safeBlocks = blocks.filterNot(block => block.data.metadata == GenesisMetadata)
       val safeListings = listings.filterNot { case (block, rolls) => block.data.metadata == GenesisMetadata }
+
+      /* We need an extra previous entry for listings wrt to those available from the node
+       * as needed to compute diffs between consecutive rolls counts.
+       * We get the latest saved governance data and get the distinct rolls counts per vote,
+       * to use that as the baseline for the difference.
+       */
+      def downCastToInt(bd: BigDecimal) = Try(bd.toIntExact).toOption
+      val previousBatchLevel = safeBlocks.map(_.data.header.level).min - 1
+      val queryPreviousBatchStats = TezosDb
+        .getGovernancePerLevel(previousBatchLevel)
+        .map(
+          govRows =>
+            govRows.headOption
+              .flatMap(
+                stats =>
+                  (
+                    stats.yayRolls.flatMap(downCastToInt),
+                    stats.nayRolls.flatMap(downCastToInt),
+                    stats.passRolls.flatMap(downCastToInt)
+                  ).tupled
+              )
+        )
 
       for {
         proposals <- tezosNodeOperator.getProposals(safeBlocks.map(_.data))
@@ -448,11 +471,13 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
             )
             .map(block -> _)
         }
+        previousBatchRolls <- db.run(queryPreviousBatchStats)
         ballots <- tezosNodeOperator.getVotes(blocksWithProposals)
         governanceRows = groupGovernanceDataByBlock(
           blocks,
           proposals.toMap,
           safeListings.map { case (block, listing) => block.data.header.level -> listing }.toMap,
+          previousBatchRolls.getOrElse((0, 0, 0)),
           ballots.toMap,
           ballotCountsPerCycle.toMap,
           ballotCountsPerLevel.toMap,
@@ -469,6 +494,7 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
         listings: Map[Int, List[Voting.BakerRolls]],
+        previousBlocksRolls: (Int, Int, Int),
         ballots: Map[Block, List[Voting.Ballot]],
         ballotCountsPerCycle: Map[Block, Voting.BallotCounts],
         ballotCountsPerLevel: Map[Block, Voting.BallotCounts],
@@ -478,50 +504,87 @@ object Lorre extends App with TezosErrors with LazyLogging with LorreAppConfig w
           BlockHash,
           BlockHeaderMetadata,
           Option[ProtocolId],
-          List[Voting.BakerRolls],
-          List[Voting.BakerRolls],
+          (Int, Int, Int),
+          (Int, Int, Int),
           List[Voting.Ballot],
           Option[Voting.BallotCounts],
           Option[Voting.BallotCounts]
       )
     ] = blocks.flatMap { block =>
       val currentProposal = proposals.get(block.data.hash).flatten
-      val listing = listings.get(block.data.header.level).toList.flatten
-      val prevListings = listings.get(block.data.header.level - 1).toList.flatten
-      val listingByBlock = listing.diff(prevListings)
       val ballot = ballots.get(block).toList.flatten
+      val rollsPerCycle = countRolls(listings.get(block.data.header.level).toList.flatten, ballot)
+      val prevBlockRolls = listings.get(block.data.header.level - 1) match {
+        case Some(bakersRolls) =>
+          countRolls(bakersRolls, ballot)
+        case None =>
+          //if this was not found we need to use the counts from previously collected block
+          previousBlocksRolls
+      }
+      val rollsPerLevel = zeroBounded(subtractTriples(rollsPerCycle, prevBlockRolls))
       val ballotCountPerCycle = ballotCountsPerCycle.get(block)
       val ballotCountPerLevel = ballotCountsPerLevel.get(block)
       val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
       val blockHeaderMetadata = TezosTypes.discardGenesis(block.data.metadata).get
 
-      currentProposal.toList.map(
+      val activeProposalStats = currentProposal.map(
         protocol =>
           (
             block.data.hash,
             blockHeaderMetadata,
             Some(protocol),
-            listing,
-            listingByBlock,
+            rollsPerCycle,
+            rollsPerLevel,
             ballot,
             ballotCountPerCycle,
             ballotCountPerLevel
           )
-      ) :::
-        proposalHashesForBlock.filterNot { case (protocol, _) => currentProposal.exists(_.id == protocol) }.map {
-          case (proposalHash, count) =>
-            (
-              block.data.hash,
-              blockHeaderMetadata.copy(voting_period_kind = VotingPeriod.proposal),
-              Some(ProtocolId(proposalHash)),
-              listing,
-              listingByBlock,
-              ballot,
-              Some(Voting.BallotCounts(count, 0, 0)),
-              ballotCountPerLevel
-            )
-        }
+      )
+      val proposalOperationsStats = proposalHashesForBlock.filterNot {
+        case (protocol, _) => currentProposal.exists(_.id == protocol)
+      }.map {
+        case (proposalHash, count) =>
+          (
+            block.data.hash,
+            blockHeaderMetadata.copy(voting_period_kind = VotingPeriod.proposal),
+            Some(ProtocolId(proposalHash)),
+            rollsPerCycle,
+            rollsPerLevel,
+            ballot,
+            Some(Voting.BallotCounts(count, 0, 0)),
+            ballotCountPerLevel
+          )
+      }
+
+      activeProposalStats.toList ::: proposalOperationsStats
     }
+
+    /** Will match rolls with individual ballot being cast per baker, to
+      * get a rolls sum per yay, nay, pass vote.
+      */
+    def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): (Int, Int, Int) =
+      ballots.foldLeft((0, 0, 0)) {
+        case ((yays, nays, passes), votingBallot) =>
+          val rolls = listings.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
+          votingBallot.ballot match {
+            case Vote("yay") => (yays + rolls, nays, passes)
+            case Vote("nay") => (yays, nays + rolls, passes)
+            case Vote("pass") => (yays, nays, passes + rolls)
+            case Vote(notSupported) =>
+              logger.error("Not supported vote type {}", notSupported)
+              (yays, nays, passes)
+          }
+      }
+
+    /** Substract per element */
+    def subtractTriples(subtrahend: (Int, Int, Int), minuend: (Int, Int, Int)): (Int, Int, Int) = {
+      //reuse the existing sum for tuples
+      import cats.implicits._
+      subtrahend |+| (minuend.inverse())
+    }
+
+    /** No vote count should get below zero */
+    def zeroBounded(votes: (Int, Int, Int)): (Int, Int, Int) = (max(votes._1, 0), max(votes._2, 0), max(votes._3, 0))
 
     def processBakingAndEndorsingRights(fetchingResults: tezosNodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
