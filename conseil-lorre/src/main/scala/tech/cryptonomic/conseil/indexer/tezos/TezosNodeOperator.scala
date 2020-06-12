@@ -338,7 +338,11 @@ private[tezos] class TezosNodeOperator(
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
-  /** Fetches proposals for given blocks */
+  /** Fetches proposals for given blocks
+    * The returned value, when available for active voting periods, is the ID of
+    * a proposal, though for the sake of naming consistency with tezos schema
+    * we refer to that as a protocol ID.
+    */
   def getProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
     import cats.instances.future._
     import cats.instances.list._
@@ -348,8 +352,12 @@ private[tezos] class TezosNodeOperator(
     fetch[BlockHash, Option[ProtocolId], Future, List, Throwable].run(nonGenesisHashes)
   }
 
-  /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getRolls(blockHashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
+  /** Fetches rolls for all bakers of individual blocks
+    *
+    * @param blockHashes defines the blocks we want the rolls for
+    * @return the lists of rolls, for each individual requested hash
+    */
+  def getBakerRollsForBlockHashes(blockHashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -357,8 +365,12 @@ private[tezos] class TezosNodeOperator(
     fetch[BlockHash, List[Voting.BakerRolls], Future, List, Throwable].run(blockHashes)
   }
 
-  /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getBlockBakers(blocks: List[Block]): Future[List[BakerBlock]] = {
+  /** Fetches rolls for all bakers of individual blocks
+    *
+    * @param blocks the blocks we want the rolls for
+    * @return the lists of rolls, for each individual requested block
+    */
+  def getBakerRollsForBlocks(blocks: List[Block]): Future[List[BakerBlock]] = {
 
     /* given a hash-keyed pair, restores the full block information, searching in the input */
     def adaptResults[A](hashKeyedValue: (BlockHash, A)) = {
@@ -376,7 +388,7 @@ private[tezos] class TezosNodeOperator(
         .map(_.hash)
 
     //we re-use the hash-based query, and then restore the block information
-    getRolls(nonGenesisHashes).map(
+    getBakerRollsForBlockHashes(nonGenesisHashes).map(
       _.flatMap(adaptResults)
     )
 

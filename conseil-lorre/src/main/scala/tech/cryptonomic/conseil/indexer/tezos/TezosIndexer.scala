@@ -358,7 +358,7 @@ class TezosIndexer(
       for {
         _ <- db.run(TezosDb.writeBlocksAndCheckpointAccounts(blocks, accountUpdates)) andThen logBlockOutcome
         _ <- tnsOperations.processNamesRegistrations(blocks).flatMap(db.run)
-        bakersData <- nodeOperator.getBlockBakers(blocks)
+        bakersData <- nodeOperator.getBakerRollsForBlocks(blocks)
         rollsByHash = bakersData.map { case (block, rolls) => block.data.hash -> rolls }.toMap
         bakersCheckpoints <- processAccountsForBlocks(accountUpdates, rollsByHash) // should this fail, we still recover data from the checkpoint
         _ <- processBakersForBlocks(bakersCheckpoints)
@@ -417,53 +417,21 @@ class TezosIndexer(
       case InvalidPositiveDecimal(_) => None
     }
 
-    /** Processes blocks and fetches needed data to produce Governance rows.
-      * We assume that the input mapping will include all block entries relevant
-      * to a batch processing, that is, there could be block keys with a corresponding
-      * empty list as value.
-      * This way we can collapse the arguments to a single one, instead of requiring
-      * a separate one just to list the blocks of interest, and expecting
-      * rolls to only have non-empty values.
+    /** Prepares and stores statistics for voting periods of the
+      * blocks passed in.
       *
-      * @param rollsPerBlock rolls listings of delegates for the blocks to be processed
+      * @param bakerRollsByBlock blocks of interest, with any rolls data available
+      * @return the outcome of the operation, which may fail with an error or produce no result value
       */
     def processBlocksForGovernance(
-        rollsPerBlock: Map[Block, List[Voting.BakerRolls]]
-    ): Future[Unit] = {
-      val aggregateGovernanceData =
-        TezosGovernanceOperations.aggregateData(db) _
-
-      // DANGER Will Robinson!
-      // We assume in the rest of the code that we won't be handling the genesis metadata.
-      // The original arguments must not be re-used directly to ensure such guarantee
-      val (blocks, levelListings) = {
-        val nonGenesis = rollsPerBlock.filterNot { case (block, _) => block.data.metadata == GenesisMetadata }
-        (nonGenesis.keys.toList, nonGenesis.map { case (block, rolls) => block.data.header.level -> rolls })
-      }
-
-      /* Here we collect node data needed to collect any voting period's interesting data.
-       * We want proposals to identify blocks during a voting period, and votes cast in the blocks.
-       * From those we create data aggregates with break-down information per level and
-       * convert those into database rows to be stored.
-       */
-      for {
-        proposals <- nodeOperator.getProposals(blocks.map(_.data))
-        proposalsMap = proposals.collect { case (hash, Some(protocol)) => hash -> protocol }.toMap
-        //collect only those blocks that have a current voting proposal
-        proposalsBlocks = blocks.collect {
-          case block if (proposalsMap.contains(block.data.hash)) =>
-            //we know for sure that the value's there: the fallback value is actually never called
-            block -> proposalsMap.getOrElse(block.data.hash, ProtocolId(""))
-        }.toMap
-        ballots <- nodeOperator.getVotes(proposalsBlocks.keys.toList)
-        aggregates <- aggregateGovernanceData(
-          proposalsBlocks,
-          ballots.toMap,
-          levelListings
-        )
-        _ <- db.run(TezosDb.writeGovernance(aggregates))
-      } yield ()
-    }
+        bakerRollsByBlock: Map[Block, List[Voting.BakerRolls]]
+    ): Future[Unit] =
+        for {
+          aggregates <- TezosGovernanceOperations.extractGovernanceAggregations(db, nodeOperator)(
+            bakerRollsByBlock
+          )
+          _ <- db.run(TezosDb.writeGovernance(aggregates))
+        } yield ()
 
     def processBakingAndEndorsingRights(fetchingResults: nodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
@@ -934,7 +902,7 @@ class TezosIndexer(
           .mapAsync(1)(taggedBakers => {
             val hashes = taggedBakers.map(_.blockHash).toList
             nodeOperator
-              .getRolls(hashes)
+              .getBakerRollsForBlockHashes(hashes)
               .map { hashKeyedRolls =>
                 val rolls = hashKeyedRolls.flatMap { case (hash, rolls) => rolls }
                 taggedBakers -> rolls
