@@ -836,8 +836,8 @@ object DatabaseConversions extends LazyLogging {
           BlockHash,
           BlockHeaderMetadata,
           Option[ProtocolId],
-          List[Voting.BakerRolls],
-          List[Voting.BakerRolls],
+          (Int, Int, Int),
+          (Int, Int, Int),
           List[Voting.Ballot],
           Option[Voting.BallotCounts],
           Option[Voting.BallotCounts]
@@ -850,8 +850,8 @@ object DatabaseConversions extends LazyLogging {
               BlockHash,
               BlockHeaderMetadata,
               Option[ProtocolId],
-              List[Voting.BakerRolls],
-              List[Voting.BakerRolls],
+              (Int, Int, Int),
+              (Int, Int, Int),
               List[Voting.Ballot],
               Option[Voting.BallotCounts],
               Option[Voting.BallotCounts]
@@ -861,14 +861,12 @@ object DatabaseConversions extends LazyLogging {
           blockHash,
           blockHeaderMetadata,
           proposal,
-          listings,
-          listingsPerLevel,
+          (yayRolls, nayRolls, passRolls),
+          (yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel),
           ballots,
           ballotCountsPerCycle,
           ballotCountsPerLevel
         ) = from
-        val (yayRolls, nayRolls, passRolls) = countRolls(listings, ballots)
-        val (yayRollsPerLevel, nayRollsPerLevel, passRollsPerLevel) = countRolls(listingsPerLevel, ballots)
         Tables.GovernanceRow(
           votingPeriod = blockHeaderMetadata.level.voting_period,
           votingPeriodKind = blockHeaderMetadata.voting_period_kind.toString,
@@ -892,19 +890,6 @@ object DatabaseConversions extends LazyLogging {
         )
       }
 
-      def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): (Int, Int, Int) =
-        ballots.foldLeft((0, 0, 0)) {
-          case ((yays, nays, passes), votingBallot) =>
-            val rolls = listings.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
-            votingBallot.ballot match {
-              case Vote("yay") => (yays + rolls, nays, passes)
-              case Vote("nay") => (yays, nays + rolls, passes)
-              case Vote("pass") => (yays, nays, passes + rolls)
-              case Vote(notSupported) =>
-                logger.error("Not supported vote type {}", notSupported)
-                (yays, nays, passes)
-            }
-        }
     }
 
   implicit val tnsNameRecordToRow =
