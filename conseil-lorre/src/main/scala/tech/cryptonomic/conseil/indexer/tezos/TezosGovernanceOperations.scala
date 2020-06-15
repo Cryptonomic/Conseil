@@ -141,7 +141,7 @@ object TezosGovernanceOperations extends LazyLogging {
     val votingBlocks = proposalsBlocks.collect { case (block, Some(protocol)) => block }.toList
 
     logger.info(
-      "There are {} blocks related to some voting - excluding proposals.",
+      "There are {} blocks related to testing vote and proposal vote periods.",
       if (votingBlocks.nonEmpty) String.valueOf(votingBlocks.size) else "no"
     )
 
