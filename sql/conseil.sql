@@ -822,6 +822,9 @@ CREATE TABLE bitcoin.transactions (
   time timestamp without time zone NOT NULL
 );
 
+ALTER TABLE ONLY bitcoin.transactions
+  ADD CONSTRAINT bitcoin_transactions_blockhash_fkey FOREIGN KEY (blockhash) REFERENCES bitcoin.blocks(hash);
+
 CREATE TABLE bitcoin.inputs (
   txid text NOT NULL,
   v_out integer,
@@ -831,6 +834,9 @@ CREATE TABLE bitcoin.inputs (
   coinbase text,
   tx_in_witness text[]
 );
+
+ALTER TABLE ONLY bitcoin.inputs
+  ADD CONSTRAINT bitcoin_inputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
 
 CREATE TABLE bitcoin.outputs (
   txid text NOT NULL,
@@ -842,3 +848,6 @@ CREATE TABLE bitcoin.outputs (
   script_pub_key_type text NOT NULL,
   script_pub_key_addresses text[]
 );
+
+ALTER TABLE ONLY bitcoin.outputs
+  ADD CONSTRAINT bitcoin_outputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
