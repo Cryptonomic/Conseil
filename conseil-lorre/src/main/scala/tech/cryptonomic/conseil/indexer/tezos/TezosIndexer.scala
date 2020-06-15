@@ -175,12 +175,12 @@ class TezosIndexer(
           nodeOperator.getBatchBakingRightsByLevels(partition.toList).flatMap { bakingRightsResult =>
             val brResults = bakingRightsResult.values.flatten
             berLogger.info(s"Got ${brResults.size} baking rights")
-            db.run(TezosDb.writeBakingRights(brResults.toList))
+            db.run(TezosDb.insertBakingRights(brResults.toList))
           }
           nodeOperator.getBatchEndorsingRightsByLevel(partition.toList).flatMap { endorsingRightsResult =>
             val erResults = endorsingRightsResult.values.flatten
             berLogger.info(s"Got ${erResults.size} endorsing rights")
-            db.run(TezosDb.writeEndorsingRights(erResults.toList))
+            db.run(TezosDb.insertEndorsingRights(erResults.toList))
           }
         }
         .runWith(Sink.ignore)
@@ -426,12 +426,12 @@ class TezosIndexer(
     def processBlocksForGovernance(
         bakerRollsByBlock: Map[Block, List[Voting.BakerRolls]]
     ): Future[Unit] =
-        for {
-          aggregates <- TezosGovernanceOperations.extractGovernanceAggregations(db, nodeOperator)(
-            bakerRollsByBlock
-          )
-          _ <- db.run(TezosDb.writeGovernance(aggregates))
-        } yield ()
+      for {
+        aggregates <- TezosGovernanceOperations.extractGovernanceAggregations(db, nodeOperator)(
+          bakerRollsByBlock
+        )
+        _ <- db.run(TezosDb.insertGovernance(aggregates))
+      } yield ()
 
     def processBakingAndEndorsingRights(fetchingResults: nodeOperator.BlockFetchingResults): Future[Unit] = {
       import cats.implicits._
