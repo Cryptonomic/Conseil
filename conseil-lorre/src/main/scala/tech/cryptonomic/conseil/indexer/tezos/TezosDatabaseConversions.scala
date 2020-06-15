@@ -13,7 +13,7 @@ import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.Vote
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.{BakingRights, EndorsingRights, FetchRights, _}
 import tech.cryptonomic.conseil.indexer.tezos.michelson.contracts.TNSContract
-import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics, TezosTypes}
+import tech.cryptonomic.conseil.common.tezos.{Tables, TezosOptics}
 import tech.cryptonomic.conseil.common.util.Conversion
 
 import scala.util.Try
@@ -881,19 +881,6 @@ private[tezos] object TezosDatabaseConversions extends LazyLogging {
 
       }
 
-      def countRolls(listings: List[Voting.BakerRolls], ballots: List[Voting.Ballot]): (Int, Int, Int) =
-        ballots.foldLeft((0, 0, 0)) {
-          case ((yays, nays, passes), votingBallot) =>
-            val rolls = listings.find(_.pkh == votingBallot.pkh).map(_.rolls).getOrElse(0)
-            votingBallot.ballot match {
-              case Vote("yay") => (yays + rolls, nays, passes)
-              case Vote("nay") => (yays, nays + rolls, passes)
-              case Vote("pass") => (yays, nays, passes + rolls)
-              case Vote(notSupported) =>
-                logger.error("Not supported vote type {}", notSupported)
-                (yays, nays, passes)
-            }
-        }
     }
 
   implicit val tnsNameRecordToRow =

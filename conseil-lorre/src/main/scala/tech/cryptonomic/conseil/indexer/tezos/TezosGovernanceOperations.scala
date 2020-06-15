@@ -3,8 +3,12 @@ package tech.cryptonomic.conseil.indexer.tezos
 import tech.cryptonomic.conseil.common.tezos.TezosTypes._
 import tech.cryptonomic.conseil.common.tezos.VotingOperations._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.math.max
+import scala.util.Try
 import com.typesafe.scalalogging.LazyLogging
+import slick.dbio.DBIO
 import slick.jdbc.PostgresProfile.api.Database
+import cats.implicits._
 
 /** Process blocks and voting data to compute details for
   * the governance-related cycles
@@ -43,6 +47,28 @@ object TezosGovernanceOperations extends LazyLogging {
     * @param pass how many passes
     */
   case class VoteRollsCounts(yay: Int, nay: Int, pass: Int)
+
+  object VoteRollsCounts {
+
+    /** a wrapper with all zeroes */
+    val zero = VoteRollsCounts(0, 0, 0)
+
+    /** defines substraction between counts, with the caveat
+      * that no result of the substraction can have negative counts,
+      * which would have no meaning
+      *
+      * @param subtrahend
+      * @param minuend
+      * @return the "zero-min" difference of the counts, element by element
+      */
+    def subtract(subtrahend: VoteRollsCounts, minuend: VoteRollsCounts): VoteRollsCounts = (subtrahend, minuend) match {
+      case (VoteRollsCounts(i1, j1, k1), VoteRollsCounts(i2, j2, k2)) =>
+        //we use the sum algebra for Ints to sum with the inverse of the minuend values
+        val (i, j, k) = (i1, j1, k1) |+| ((i2, j2, k2).inverse())
+        VoteRollsCounts(max(i, 0), max(j, 0), max(k, 0))
+    }
+
+  }
 
   /** Extracts and aggregates the information relative to different
     * governance periods, restricted to a selection of blocks.
@@ -83,7 +109,7 @@ object TezosGovernanceOperations extends LazyLogging {
       proposalsMap = activeProposals.toMap
       //pair blocks and proposals
       blocksAndProposals = blocks.map(block => block -> proposalsMap.getOrElse(block.data.hash, None)).toMap
-      ballots <- nodeOperator.getVotes(blocksAndProposals.keys.toList)
+      ballots <- nodeOperator.getVotes(blocks)
       aggregates <- aggregateData(db)(
         blocksAndProposals,
         ballots.toMap,
@@ -176,10 +202,16 @@ object TezosGovernanceOperations extends LazyLogging {
       db.run(proposalHashesPerCycle(block).map(block -> _))
     }
 
+    val previousRollsResult = db
+      .run(
+        queryPreviousBatchStats(activeProposalsBlocks.keySet)
+      )
+
     for {
       levelCountsMap <- levelBallotCountsResult
       cycleCountsMap <- cycleBallotCountsResult
       proposalCounts <- proposalCountsResult
+      previousBatchRolls <- previousRollsResult
     } yield
       fillAggregates(
         activeProposalsBlocks,
@@ -187,7 +219,8 @@ object TezosGovernanceOperations extends LazyLogging {
         activeProposalsBallots,
         levelCountsMap,
         cycleCountsMap,
-        proposalCounts.toMap
+        proposalCounts.toMap,
+        previousBatchRolls.getOrElse(VoteRollsCounts.zero)
       )
   }
 
@@ -200,23 +233,27 @@ object TezosGovernanceOperations extends LazyLogging {
       ballots: Map[Block, List[Voting.Ballot]],
       ballotCountsPerLevel: Map[Block, BallotsPerLevel],
       ballotCountsPerCycle: Map[Int, BallotsPerCycle],
-      proposalCountsByBlock: Map[Block, Map[ProtocolId, Int]] //comes from individual operations on the block
+      proposalCountsByBlock: Map[Block, Map[ProtocolId, Int]], //comes from individual operations on the block
+      previousBatchRolls: VoteRollsCounts
   ): List[GovernanceAggregate] =
     proposalsBlocks.toList.flatMap {
       case (block, currentProposal) =>
-        val rollsAtLevel = rollsByLevel.getOrElse(block.data.header.level, List.empty)
-        val rollsAtPreviousLevel = rollsByLevel.getOrElse(block.data.header.level - 1, List.empty)
-        val rollsForBlockLevel = rollsAtLevel.diff(rollsAtPreviousLevel)
         val ballot = ballots.getOrElse(block, List.empty)
+        val rollsAtLevel = countRolls(rollsByLevel.getOrElse(block.data.header.level, List.empty), ballot)
+        val rollsAtPreviousLevel = rollsByLevel.get(block.data.header.level - 1) match {
+          case Some(bakerRolls) =>
+            countRolls(bakerRolls, ballot)
+          case None =>
+            //when we have no data here we need to use the counts from previously collected blocks
+            previousBatchRolls
+        }
+        val rollsForBlockLevel = VoteRollsCounts.subtract(rollsAtLevel, rollsAtPreviousLevel)
         val ballotCountPerCycle = block.data.metadata match {
           case md: BlockHeaderMetadata => ballotCountsPerCycle.get(md.level.cycle).map(_.counts)
           case GenesisMetadata => None
         }
         val ballotCountPerLevel = ballotCountsPerLevel.get(block).map(_.counts)
         val proposalCounts = proposalCountsByBlock.getOrElse(block, Map.empty).toList
-
-        val allRolls = countRolls(rollsAtLevel, ballot)
-        val levelRolls = countRolls(rollsForBlockLevel, ballot)
 
         /* Here we collect a row for the block being considered
          * to get voting data for the periods with a specific proposal
@@ -238,8 +275,8 @@ object TezosGovernanceOperations extends LazyLogging {
                   block.data.hash,
                   metadata,
                   Some(proposal),
-                  allRolls,
-                  levelRolls,
+                  rollsAtLevel,
+                  rollsForBlockLevel,
                   ballotCountPerCycle,
                   ballotCountPerLevel
                 )
@@ -257,12 +294,13 @@ object TezosGovernanceOperations extends LazyLogging {
                     block.data.hash,
                     metadata.copy(voting_period_kind = VotingPeriod.proposal), //we know these are from operations
                     Some(proposalProtocol),
-                    allRolls,
-                    levelRolls,
+                    rollsAtLevel,
+                    rollsForBlockLevel,
                     Some(Voting.BallotCounts(count, 0, 0)),
                     ballotCountPerLevel
                   )
               }
+
             activeProposalAggregate.toList ::: proposalOperationsAggregates
           case GenesisMetadata =>
             //case handled to satisfy the compiler, should never run by design
@@ -287,4 +325,33 @@ object TezosGovernanceOperations extends LazyLogging {
     }
     VoteRollsCounts(yays, nays, passes)
   }
+
+  /* Here we find the missing level counts from the stored values, assuming
+   * that we only miss the previous counts for the first batch block, which has
+   * the lowest level here.
+   * It'll be needed as we make diffs between counts for each level.
+   */
+  private def queryPreviousBatchStats(
+      blocks: Set[Block]
+  )(implicit ec: ExecutionContext): DBIO[Option[VoteRollsCounts]] = {
+    //adapting database-level formats to the domain-level ones
+    def downCastToInt(bd: BigDecimal) = Try(bd.toIntExact).toOption
+    //should be the level we reached, before the current processing batch
+    val previousBatchHighLevel = blocks.map(_.data.header.level).min - 1
+
+    TezosDatabaseOperations
+      .getGovernanceForLevel(previousBatchHighLevel)
+      .map(
+        govRows =>
+          govRows.headOption.flatMap(
+            stats =>
+              (
+                stats.yayRolls.flatMap(downCastToInt),
+                stats.nayRolls.flatMap(downCastToInt),
+                stats.passRolls.flatMap(downCastToInt)
+              ).mapN(VoteRollsCounts.apply)
+          )
+      )
+  }
+
 }
