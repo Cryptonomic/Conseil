@@ -19,9 +19,9 @@ object TezosGovernanceOperations extends LazyLogging {
     * @param metadata the block metadata
     * @param proposalId a specific proposal under evaluation
     * @param allRolls ballot rolls up to this block for the proposal
-    * @param singleBlockRolls ballot rolls included in this specific block
-    * @param ballotsPerLevel how many ballots for the single block level
+    * @param rollsPerLevel ballot rolls included in this specific block
     * @param ballotsPerCycle how many baloots for a whole cycle
+    * @param ballotsPerLevel how many ballots for the single block level
     */
   case class GovernanceAggregate(
       hash: BlockHash,
@@ -202,8 +202,8 @@ object TezosGovernanceOperations extends LazyLogging {
   ): List[GovernanceAggregate] =
     proposalsBlocks.toList.flatMap {
       case (block, proposal) =>
-        val listing = listingsPerLevel.get(block.data.header.level).getOrElse(List.empty)
-        val prevListings = listingsPerLevel.get(block.data.header.level - 1).getOrElse(List.empty)
+        val listing = listingsPerLevel.getOrElse(block.data.header.level, List.empty)
+        val prevListings = listingsPerLevel.getOrElse(block.data.header.level - 1, List.empty)
         val listingByBlock = listing.diff(prevListings)
         val ballot = ballots.getOrElse(block, List.empty)
         val ballotCountPerCycle = block.data.metadata match {
