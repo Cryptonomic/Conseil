@@ -62,10 +62,10 @@ object TezosGovernanceOperations extends LazyLogging {
       * @return the "zero-min" difference of the counts, element by element
       */
     def subtract(subtrahend: VoteRollsCounts, minuend: VoteRollsCounts): VoteRollsCounts = (subtrahend, minuend) match {
-      case (VoteRollsCounts(i1, j1, k1), VoteRollsCounts(i2, j2, k2)) =>
+      case (VoteRollsCounts(y1, n1, p1), VoteRollsCounts(y2, n2, p2)) =>
         //we use the sum algebra for Ints to sum with the inverse of the minuend values
-        val (i, j, k) = (i1, j1, k1) |+| ((i2, j2, k2).inverse())
-        VoteRollsCounts(max(i, 0), max(j, 0), max(k, 0))
+        val (y, n, p) = (y1, n1, p1) |+| ((y2, n2, p2).inverse())
+        VoteRollsCounts(max(y, 0), max(n, 0), max(p, 0))
     }
 
   }
