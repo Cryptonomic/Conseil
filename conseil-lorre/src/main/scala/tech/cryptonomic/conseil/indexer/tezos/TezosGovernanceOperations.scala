@@ -251,7 +251,7 @@ object TezosGovernanceOperations extends LazyLogging {
                 /* this should never be the case: the proposal currently under evaluation
                  * should not be proposed in operations of the same block
                  */
-                case (proposal, _) => currentProposal.exists(_ == proposal)
+                case (proposal, _) => currentProposal.contains(proposal)
               }.map {
                 case (proposalProtocol, count) =>
                   GovernanceAggregate(
