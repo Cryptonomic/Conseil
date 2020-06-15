@@ -175,12 +175,12 @@ class TezosIndexer(
           nodeOperator.getBatchBakingRightsByLevels(partition.toList).flatMap { bakingRightsResult =>
             val brResults = bakingRightsResult.values.flatten
             berLogger.info(s"Got ${brResults.size} baking rights")
-            db.run(TezosDb.writeBakingRights(brResults.toList))
+            db.run(TezosDb.insertBakingRights(brResults.toList))
           }
           nodeOperator.getBatchEndorsingRightsByLevel(partition.toList).flatMap { endorsingRightsResult =>
             val erResults = endorsingRightsResult.values.flatten
             berLogger.info(s"Got ${erResults.size} endorsing rights")
-            db.run(TezosDb.writeEndorsingRights(erResults.toList))
+            db.run(TezosDb.insertEndorsingRights(erResults.toList))
           }
         }
         .runWith(Sink.ignore)
