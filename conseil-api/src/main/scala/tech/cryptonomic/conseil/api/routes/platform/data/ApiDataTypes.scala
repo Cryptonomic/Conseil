@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.api.routes.platform.data
 
 import java.sql.Timestamp
 
@@ -12,7 +12,7 @@ import tech.cryptonomic.conseil.common.metadata.EntityPath
 import scala.concurrent.Future.successful
 import scala.concurrent.{ExecutionContext, Future}
 
-object TezosDataTypes {
+object ApiDataTypes {
 
   import cats.implicits._
   import io.scalaland.chimney.dsl._

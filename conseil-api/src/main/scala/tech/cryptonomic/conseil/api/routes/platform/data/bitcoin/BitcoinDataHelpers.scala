@@ -1,7 +1,7 @@
-package tech.cryptonomic.conseil.api.routes.platform.data.tezos
+package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, StatusCodes}
+import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.util.ByteString
 import cats.Functor
@@ -12,11 +12,8 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 
-/** Trait with helpers needed for data routes */
-private[tezos] trait TezosDataHelpers
-    extends TezosDataEndpoints
-    with server.Endpoints
-    with server.JsonSchemaEntities {
+trait BitcoinDataHelpers extends BitcoinDataEndpoints with server.Endpoints with server.JsonSchemaEntities {
+
 
   import io.circe._
   import io.circe.syntax._
@@ -25,9 +22,9 @@ private[tezos] trait TezosDataHelpers
 
   /** Function validating request for the query endpoint */
   override def validated[A](
-      response: A => Route,
-      invalidDocs: Documentation
-  ): Either[List[QueryValidationError], A] => Route = {
+                             response: A => Route,
+                             invalidDocs: Documentation
+                           ): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
@@ -85,10 +82,10 @@ private[tezos] trait TezosDataHelpers
         case x: java.lang.Boolean => Json.fromBoolean(x)
         case x: scala.collection.immutable.Vector[Any] =>
           x.map(_.asJson(anyEncoder)).asJson //Due to type erasure, a recursive call is made here.
-        case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
-        case x: Tables.AccountsRow => x.asJson(accountsRowSchema.encoder)
-        case x: Tables.OperationGroupsRow => x.asJson(operationGroupsRowSchema.encoder)
-        case x: Tables.OperationsRow => x.asJson(operationsRowSchema.encoder)
+//        case x: Tables.BlocksRow => x.asJson(blocksRowSchema.encoder)
+//        case x: Tables.AccountsRow => x.asJson(accountsRowSchema.encoder)
+//        case x: Tables.OperationGroupsRow => x.asJson(operationGroupsRowSchema.encoder)
+//        case x: Tables.OperationsRow => x.asJson(operationsRowSchema.encoder)
         case x: java.math.BigDecimal => Json.fromBigDecimal(x)
         case x => Json.fromString(x.toString)
       }
@@ -115,12 +112,12 @@ private[tezos] trait TezosDataHelpers
         (a: QueryResponse) =>
           Json.obj(
             a.map(
-                field =>
-                  (field._1, field._2 match {
-                    case Some(y) => y.asJson(anyEncoder)
-                    case None => Json.Null
-                  })
-              )
+              field =>
+                (field._1, field._2 match {
+                  case Some(y) => y.asJson(anyEncoder)
+                  case None => Json.Null
+                })
+            )
               .toList: _*
           )
 
@@ -132,5 +129,6 @@ private[tezos] trait TezosDataHelpers
           Decoder.decodeOption(Decoder.decodeJson.map(_.asInstanceOf[Any]))
         )
     }
+
 
 }

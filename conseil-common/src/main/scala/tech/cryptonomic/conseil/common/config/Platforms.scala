@@ -8,7 +8,7 @@ object Platforms {
   /** a trait defining existing platforms */
   sealed trait BlockchainPlatform extends Product with Serializable {
 
-    /** a name usually used in configurations to identify the platforrm */
+    /** a name usually used in configurations to identify the platform */
     def name: String
 
     /** the type of underlying configuration, specific for the platform */

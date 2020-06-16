@@ -17,7 +17,7 @@ import tech.cryptonomic.conseil.api.routes.Docs
 import tech.cryptonomic.conseil.api.routes.info.AppInfo
 import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataRoutes
 import tech.cryptonomic.conseil.api.routes.platform.discovery.{GenericPlatformDiscoveryOperations, PlatformDiscovery}
-import tech.cryptonomic.conseil.api.routes.platform.{Api, TezosApi}
+import tech.cryptonomic.conseil.api.routes.platform.{Api, BitcoinApi, TezosApi}
 import tech.cryptonomic.conseil.api.security.Security
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.Platforms
@@ -121,6 +121,7 @@ class ConseilApi(config: CombinedConfiguration)(implicit system: ActorSystem)
   private object ApiCache {
     private lazy val cache: Map[BlockchainPlatform, Api] = forVisiblePlatforms {
       case Platforms.Tezos => new TezosApi(config.metadata, config.server)
+      case Platforms.Bitcoin => new BitcoinApi(config.metadata, config.server)
     }
 
     private val cacheOverrides = new AttributeValuesCacheConfiguration(config.metadata)
