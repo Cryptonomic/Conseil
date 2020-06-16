@@ -1,42 +1,16 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
-import endpoints.algebra
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataEndpoints
 import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataOperations._
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataTypes.ApiQuery
-import tech.cryptonomic.conseil.api.routes.validation.Validation
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables.BlocksRow
 import tech.cryptonomic.conseil.common.tezos.Tables
 
 /** Trait containing endpoints definition */
-trait TezosDataEndpoints
-    extends algebra.JsonSchemaEntities
-    with TezosDataJsonSchemas
-    with TezosApiFilterFromQueryString
-    with Validation {
-
-  /** Common path among endpoints */
-  private val commonPath = path / "v2" / "data" / segment[String](name = "platform") / segment[String](name = "network")
-
-  /** V2 Query endpoint definition */
-  def queryEndpoint: Endpoint[((String, String, String), ApiQuery, Option[String]), Option[
-    Either[List[QueryValidationError], QueryResponseWithOutput]
-  ]] =
-    endpoint(
-      request = post(
-        url = commonPath / segment[String](name = "entity"),
-        entity = jsonRequest[ApiQuery](),
-        headers = optHeader("apiKey")
-      ),
-      response = validated(
-        response = jsonResponse[QueryResponseWithOutput](docs = Some("Query endpoint")),
-        invalidDocs = Some("Can't query - invalid entity!")
-      ).orNotFound(Some("Not found")),
-      tags = List("Query")
-    )
+trait TezosDataEndpoints extends ApiDataEndpoints with TezosDataJsonSchemas with TezosApiFilterFromQueryString {
 
   /** V2 Blocks endpoint definition */
-  def blocksEndpoint: Endpoint[((String, String, Filter), Option[String]), Option[List[QueryResponse]]] =
+  def blocksEndpoint: Endpoint[((String, String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
       request = get(url = commonPath / "blocks" /? qsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("blocks"),
@@ -60,7 +34,7 @@ trait TezosDataEndpoints
     )
 
   /** V2 Accounts endpoint definition */
-  def accountsEndpoint: Endpoint[((String, String, Filter), Option[String]), Option[List[QueryResponse]]] =
+  def accountsEndpoint: Endpoint[((String, String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
       request = get(url = commonPath / "accounts" /? qsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("accounts"),
@@ -81,7 +55,7 @@ trait TezosDataEndpoints
     )
 
   /** V2 Operation groups endpoint definition */
-  def operationGroupsEndpoint: Endpoint[((String, String, Filter), Option[String]), Option[List[QueryResponse]]] =
+  def operationGroupsEndpoint: Endpoint[((String, String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
       request = get(url = commonPath / "operation_groups" /? qsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("operation groups"),
@@ -100,19 +74,15 @@ trait TezosDataEndpoints
     )
 
   /** V2 average fees endpoint definition */
-  def avgFeesEndpoint: Endpoint[((String, String, Filter), Option[String]), Option[QueryResponse]] =
+  def avgFeesEndpoint: Endpoint[((String, String, TezosFilter), Option[String]), Option[QueryResponse]] =
     endpoint(
       request = get(url = commonPath / "operations" / "avgFees" /? qsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[QueryResponse]("average fees"),
       tags = List("Fees")
     )
 
-  /** Common method for compatibility queries */
-  private def compatibilityQuery[A: JsonResponse](endpointName: String): Response[Option[A]] =
-    jsonResponse[A](docs = Some(s"Query compatibility endpoint for $endpointName")).orNotFound(Some("Not Found"))
-
   /** V2 Operations endpoint definition */
-  def operationsEndpoint: Endpoint[((String, String, Filter), Option[String]), Option[List[QueryResponse]]] =
+  def operationsEndpoint: Endpoint[((String, String, TezosFilter), Option[String]), Option[List[QueryResponse]]] =
     endpoint(
       request = get(url = commonPath / "operations" /? qsFilter, headers = optHeader("apiKey")),
       response = compatibilityQuery[List[QueryResponse]]("operations"),

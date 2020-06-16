@@ -1,6 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.tezos
 
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.Filter._
+import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosFilter._
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 
@@ -23,7 +23,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
   * @param sortBy                 Database column name to sort by
   * @param order                  Sort items ascending or descending
   */
-final case class Filter(
+final case class TezosFilter(
     limit: Option[Int] = Some(defaultLimit),
     blockIDs: Set[String] = Set.empty,
     levels: Set[Int] = Set.empty,
@@ -124,7 +124,7 @@ final case class Filter(
     )
 }
 
-object Filter {
+object TezosFilter {
 
   /** Define sorting order for api queries */
   sealed trait Sorting extends Product with Serializable
@@ -133,7 +133,7 @@ object Filter {
   object Sorting {
 
     /** Read an input string (`asc` or `desc`) to return a
-      * (possible) [[Filter.Sorting]] value
+      * (possible) [[TezosFilter.Sorting]] value
       */
     def fromString(s: String): Option[Sorting] = s.toLowerCase match {
       case "asc" => Some(AscendingSort)
@@ -159,8 +159,8 @@ object Filter {
       accountDelegates: Iterable[String],
       sortBy: Option[String],
       order: Option[String]
-  ): Filter =
-    Filter(
+  ): TezosFilter =
+    TezosFilter(
       limit,
       blockIDs.toSet,
       levels.toSet,

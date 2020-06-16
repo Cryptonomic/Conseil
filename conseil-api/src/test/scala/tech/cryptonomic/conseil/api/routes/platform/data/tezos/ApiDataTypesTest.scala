@@ -10,7 +10,7 @@ import tech.cryptonomic.conseil.api.metadata.{
   MetadataService,
   TransparentUnitTransformation
 }
-import tech.cryptonomic.conseil.api.routes.platform.data.tezos.TezosDataTypes.ApiQuery
+import tech.cryptonomic.conseil.api.routes.platform.data.ApiDataTypes.ApiQuery
 import tech.cryptonomic.conseil.api.routes.platform.discovery.TestPlatformDiscoveryOperations
 import tech.cryptonomic.conseil.common.config.Platforms._
 import tech.cryptonomic.conseil.common.config.{MetadataConfiguration, Platforms}
@@ -18,7 +18,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, DataType, Entity, KeyType}
 import tech.cryptonomic.conseil.common.metadata._
 
-class TezosDataTypesTest
+class ApiDataTypesTest
     extends WordSpec
     with Matchers
     with ScalaFutures

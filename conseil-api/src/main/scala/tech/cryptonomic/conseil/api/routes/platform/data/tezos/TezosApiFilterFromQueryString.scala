@@ -53,9 +53,9 @@ private[tezos] trait TezosApiFilterFromQueryString { self: algebra.JsonEntities 
   }
 
   /** Function for mapping query string to Filter */
-  val qsFilter: QueryString[Filter] =
+  val qsFilter: QueryString[TezosFilter] =
     filterQs.map(
-      (Filter.readParams _).tupled
+      (TezosFilter.readParams _).tupled
     )
 
 }
