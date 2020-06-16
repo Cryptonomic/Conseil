@@ -13,10 +13,7 @@ import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
 import tech.cryptonomic.conseil.common.tezos.Tables
 
 /** Trait with helpers needed for data routes */
-private[tezos] trait TezosDataHelpers
-    extends TezosDataEndpoints
-    with server.Endpoints
-    with server.JsonSchemaEntities {
+private[tezos] trait TezosDataHelpers extends TezosDataEndpoints with server.Endpoints with server.JsonSchemaEntities {
 
   import io.circe._
   import io.circe.syntax._
