@@ -10,10 +10,8 @@ import endpoints.algebra.Documentation
 import io.circe.Decoder.Result
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes._
-import tech.cryptonomic.conseil.common.tezos.Tables
 
 trait BitcoinDataHelpers extends BitcoinDataEndpoints with server.Endpoints with server.JsonSchemaEntities {
-
 
   import io.circe._
   import io.circe.syntax._
@@ -22,9 +20,9 @@ trait BitcoinDataHelpers extends BitcoinDataEndpoints with server.Endpoints with
 
   /** Function validating request for the query endpoint */
   override def validated[A](
-                             response: A => Route,
-                             invalidDocs: Documentation
-                           ): Either[List[QueryValidationError], A] => Route = {
+      response: A => Route,
+      invalidDocs: Documentation
+  ): Either[List[QueryValidationError], A] => Route = {
     case Left(errors) =>
       complete(StatusCodes.BadRequest -> s"Errors: \n${errors.mkString("\n")}")
     case Right(QueryResponseWithOutput(queryResponse, OutputType.csv)) =>
@@ -112,12 +110,12 @@ trait BitcoinDataHelpers extends BitcoinDataEndpoints with server.Endpoints with
         (a: QueryResponse) =>
           Json.obj(
             a.map(
-              field =>
-                (field._1, field._2 match {
-                  case Some(y) => y.asJson(anyEncoder)
-                  case None => Json.Null
-                })
-            )
+                field =>
+                  (field._1, field._2 match {
+                    case Some(y) => y.asJson(anyEncoder)
+                    case None => Json.Null
+                  })
+              )
               .toList: _*
           )
 
@@ -129,6 +127,5 @@ trait BitcoinDataHelpers extends BitcoinDataEndpoints with server.Endpoints with
           Decoder.decodeOption(Decoder.decodeJson.map(_.asInstanceOf[Any]))
         )
     }
-
 
 }
