@@ -215,7 +215,7 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{scriptLens, storageLens}
+    import tech.cryptonomic.conseil.common.tezos.TezosOptics.Accounts.{whenAccountCode, whenAccountStorage}
 
     implicit val fetcherInstance = accountFetcher(blockHash)
 
@@ -224,8 +224,8 @@ private[tezos] class TezosNodeOperator(
 
     def parseMichelsonScripts: Account => Account = {
       implicit lazy val _ = logger
-      val scriptAlter = scriptLens.modify(toMichelsonScript[MichelsonSchema])
-      val storageAlter = storageLens.modify(toMichelsonScript[MichelsonInstruction])
+      val scriptAlter = whenAccountCode.modify(toMichelsonScript[MichelsonSchema])
+      val storageAlter = whenAccountStorage.modify(toMichelsonScript[MichelsonInstruction])
 
       scriptAlter compose storageAlter
     }
