@@ -197,6 +197,175 @@ class TezosTypesTest extends WordSpec with Matchers with OptionValues with Eithe
         }
       }
 
+      "not mixup transactions in the same op-group when traversing for update" in {
+        //given
+        val transactions = List(
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 0"))))),
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 1")))))
+        )
+        val group = operationGroup.copy(hash = OperationHash(s"opgroup"), contents = transactions)
+        val block = Block(blockData, group :: Nil, blockVotes)
+
+        //when
+        val modified = parametersLens.modify(_ + " [modified]")(block)
+
+        //then
+        val associativeMap = modified.operationGroups.map { g =>
+          val params = g.contents.collect {
+            case t: Transaction => t.parameters.get.left.get
+          }
+          val contents = params.map {
+            case Parameters(Micheline(micheline), _) => micheline
+          }
+          g.hash.value -> contents
+        }
+
+        associativeMap should contain only (
+          "opgroup" -> List("micheline script 0 [modified]", "micheline script 1 [modified]")
+        )
+
+      }
+
+      "not mixup transactions in the same op-group when copying between micheline/michelson fields" in {
+        //given
+        val transactions = List(
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 0"))))),
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 1")))))
+        )
+        val group = operationGroup.copy(hash = OperationHash(s"opgroup"), contents = transactions)
+        val block = Block(blockData, group :: Nil, blockVotes)
+
+        val copyParametersToMicheline = (t: Transaction) => t.copy(parameters_micheline = t.parameters)
+        //when
+        val modified = transactionLens.modify(copyParametersToMicheline)(block)
+
+        //then
+        val associativeMap = modified.operationGroups.map { g =>
+          val params = g.contents.collect {
+            case t: Transaction => (t.parameters, t.parameters_micheline)
+          }
+
+          val contents = params map {
+                case (Some(Left(Parameters(Micheline(original), _))), Some(Left(Parameters(Micheline(copied), _)))) =>
+                  original -> copied
+              }
+          g.hash.value -> contents
+        }
+
+        associativeMap should contain only (
+          "opgroup" -> List(
+            "micheline script 0" -> "micheline script 0",
+            "micheline script 1" -> "micheline script 1"
+          )
+        )
+
+      }
+
+      "not mixup transactions in separate op-groups when traversing for update" in {
+        //given
+        val transactions = List(
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 0"))))),
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 1")))))
+        )
+        val groups = transactions.zipWithIndex.map {
+          case (t, i) => operationGroup.copy(hash = OperationHash(s"op-$i"), contents = t :: Nil)
+        }
+        val block = Block(blockData, groups, blockVotes)
+
+        //when
+        val modified = parametersLens.modify(_ + " [modified]")(block)
+
+        //then
+        val associativeMap = modified.operationGroups.map { g =>
+          val params = g.contents.collect {
+            case t: Transaction => t.parameters.get.left.get
+          }
+          val content = params.headOption.map {
+            case Parameters(Micheline(micheline), _) => micheline
+          }
+          g.hash.value -> content.value
+        }
+
+        associativeMap should contain theSameElementsInOrderAs List(
+          "op-0" -> "micheline script 0 [modified]",
+          "op-1" -> "micheline script 1 [modified]"
+        )
+
+      }
+
+      "not mixup transactions in separate op-groups when copying between micheline/michelson fields" in {
+        //given
+        val transactions = List(
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 0"))))),
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 1")))))
+        )
+        val groups = transactions.zipWithIndex.map {
+          case (t, i) => operationGroup.copy(hash = OperationHash(s"op-$i"), contents = t :: Nil)
+        }
+        val block = Block(blockData, groups, blockVotes)
+
+        val copyParametersToMicheline = (t: Transaction) => t.copy(parameters_micheline = t.parameters)
+        //when
+        val modified = transactionLens.modify(copyParametersToMicheline)(block)
+
+        //then
+        val associativeMap = modified.operationGroups.map { g =>
+          val params = g.contents.collect {
+            case t: Transaction => (t.parameters, t.parameters_micheline)
+          }.headOption.value
+
+          val contents = params match {
+            case (Some(Left(Parameters(Micheline(original), _))), Some(Left(Parameters(Micheline(copied), _)))) =>
+              original -> copied
+          }
+          g.hash.value -> contents
+        }
+
+        associativeMap should contain theSameElementsInOrderAs List(
+          "op-0" -> ("micheline script 0", "micheline script 0"),
+          "op-1" -> ("micheline script 1", "micheline script 1")
+        )
+
+      }
+
+      "not mixup transactions in separate op-groups when traversing to both copy micheline/michelson and update" in {
+        //given
+        val transactions = List(
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 0"))))),
+          transaction.copy(parameters = Some(Left(Parameters(Micheline("micheline script 1")))))
+        )
+        val groups = transactions.zipWithIndex.map {
+          case (t, i) => operationGroup.copy(hash = OperationHash(s"op-$i"), contents = t :: Nil)
+        }
+        val block = Block(blockData, groups, blockVotes)
+
+        val copyParametersToMicheline = (t: Transaction) => t.copy(parameters_micheline = t.parameters)
+        //when
+        val updateParams = parametersLens.modify(_ + " [modified]")
+        val copyToMicheline = transactionLens.modify(copyParametersToMicheline)
+
+        val modified = (copyToMicheline andThen updateParams)(block)
+
+        //then
+        val associativeMap = modified.operationGroups.map { g =>
+          val params = g.contents.collect {
+            case t: Transaction => (t.parameters, t.parameters_micheline)
+          }.headOption.value
+
+          val contents = params match {
+            case (Some(Left(Parameters(Micheline(original), _))), Some(Left(Parameters(Micheline(copied), _)))) =>
+              original -> copied
+          }
+          g.hash.value -> contents
+        }
+
+        associativeMap should contain theSameElementsInOrderAs List(
+          "op-0" -> ("micheline script 0 [modified]", "micheline script 0"),
+          "op-1" -> ("micheline script 1 [modified]", "micheline script 1")
+        )
+
+      }
+
     }
 
   "The TezosOptics" should {
