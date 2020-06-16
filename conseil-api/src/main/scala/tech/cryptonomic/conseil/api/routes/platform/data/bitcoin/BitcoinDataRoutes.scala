@@ -1,5 +1,6 @@
 package tech.cryptonomic.conseil.api.routes.platform.data.bitcoin
 
+import akka.http.scaladsl.server.Directives.concat
 import akka.http.scaladsl.server.Route
 import com.typesafe.scalalogging.LazyLogging
 import tech.cryptonomic.conseil.api.metadata.MetadataService
@@ -46,16 +47,84 @@ case class BitcoinDataRoutes(
       }
   }
 
-  override val getRoute: Route = ???
+  /** V2 Route implementation for blocks endpoint */
+  private val blocksRoute: Route = blocksEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        operations
+          .queryWithPredicates(platform, "blocks", filter.toQuery.withLimitCap(maxQueryResultSize))
+          .map(Option(_))
+      }
+  }
+
+  /** V2 Route implementation for blocks head endpoint */
+  private val blocksHeadRoute: Route = blocksHeadEndpoint.implementedByAsync {
+    case (platform, network, _) =>
+      platformNetworkValidation(platform, network) {
+        operations.fetchLatestBlock()
+      }
+  }
+
+  /** V2 Route implementation for blocks by hash endpoint */
+  private val blockByHashRoute: Route = blockByHashEndpoint.implementedByAsync {
+    case ((platform, network, hash), _) =>
+      platformNetworkValidation(platform, network) {
+        val filter = BitcoinFilter(blockIDs = Set(hash)) //TODO Verify that it works. Maybe we need to write custom method
+        operations
+          .queryWithPredicates(platform, "blocks", filter.toQuery.withLimitCap(maxQueryResultSize))
+          .map(_.headOption)
+      }
+  }
+
+  /** V2 Route implementation for transactions endpoint */
+  private val transactionsRoute: Route = transactionsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        operations
+          .queryWithPredicates(platform, "transactions", filter.toQuery.withLimitCap(maxQueryResultSize))
+          .map(Some(_))
+      }
+  }
+
+  /** V2 Route implementation for inputs endpoint */
+  private val inputsRoute: Route = inputsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        operations
+          .queryWithPredicates(platform, "inputs", filter.toQuery.withLimitCap(maxQueryResultSize))
+          .map(Some(_))
+      }
+  }
+
+  /** V2 Route implementation for outputs endpoint */
+  private val outputsRoute: Route = inputsEndpoint.implementedByAsync {
+    case ((platform, network, filter), _) =>
+      platformNetworkValidation(platform, network) {
+        operations
+          .queryWithPredicates(platform, "outputs", filter.toQuery.withLimitCap(maxQueryResultSize))
+          .map(Some(_))
+      }
+  }
+
+  /** V2 concatenated routes */
+  override val getRoute: Route =
+    concat(
+      blocksHeadRoute,
+      blockByHashRoute,
+      blocksRoute,
+      transactionsRoute,
+      inputsRoute,
+      outputsRoute
+    )
 
   /** Function for validation of the platform and network with flatten */
   protected def platformNetworkValidation[A](platform: String, network: String)(
-    operation: => Future[Option[A]]
+      operation: => Future[Option[A]]
   ): Future[Option[A]] =
     pathValidation(NetworkPath(network, PlatformPath(platform)))(operation)
 
   protected def pathValidation[A](path: metadata.Path)(
-    operation: => Future[Option[A]]
+      operation: => Future[Option[A]]
   ): Future[Option[A]] =
     if (metadataService.exists(path))
       operation
