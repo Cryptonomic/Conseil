@@ -3,12 +3,13 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import cats.effect.{Concurrent, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import fs2.Stream
-import doobie.util.transactor.Transactor
+import slickeffect.Transactor
 
 import tech.cryptonomic.conseil.common.rpc.RpcClient
 import tech.cryptonomic.conseil.indexer.bitcoin.rpc.BitcoinClient
 import tech.cryptonomic.conseil.indexer.bitcoin.persistence.BitcoinPersistence
 import tech.cryptonomic.conseil.indexer.bitcoin.rpc.json.TransactionComponent
+
 
 class BitcoinOperations[F[_]: Concurrent](
     bitcoinClient: BitcoinClient[F],
@@ -32,11 +33,11 @@ class BitcoinOperations[F[_]: Concurrent](
 object BitcoinOperations {
   def resource[F[_]: Concurrent](
       rpcClient: RpcClient[F],
-      xa: Transactor[F]
+      tx: Transactor[F]
   ): Resource[F, BitcoinOperations[F]] =
     for {
       bitcoinClient <- BitcoinClient.resource(rpcClient)
-      persistence <- BitcoinPersistence.resource(xa)
+      persistence <- BitcoinPersistence.resource(tx)
       client <- Resource.pure(
         new BitcoinOperations[F](bitcoinClient, persistence)
       )

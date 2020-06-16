@@ -3,23 +3,20 @@ package tech.cryptonomic.conseil.indexer.bitcoin
 import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
 
-import cats.effect.{ContextShift, ExitCode, IO, Resource}
+import cats.effect.{Blocker, ContextShift, ExitCode, IO, Resource}
 import com.typesafe.scalalogging.LazyLogging
 import org.http4s.headers.Authorization
 import org.http4s.BasicCredentials
 import org.http4s.client.blaze.BlazeClientBuilder
+import slickeffect.Transactor
 
+import tech.cryptonomic.conseil.common.util.DatabaseUtil
 import tech.cryptonomic.conseil.indexer.config.LorreConfiguration
 import tech.cryptonomic.conseil.common.config.Platforms
 import tech.cryptonomic.conseil.common.config.Platforms.BitcoinConfiguration
 import tech.cryptonomic.conseil.indexer.LorreIndexer
 import tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging
-
 import tech.cryptonomic.conseil.common.rpc.RpcClient
-import cats.effect.Resource
-import doobie.util.transactor.Transactor
-import cats.effect.Blocker
-import doobie.util.ExecutionContexts
 
 /** * Class responsible for indexing data for Bitcoin BlockChain */
 class BitcoinIndexer(
@@ -45,20 +42,23 @@ class BitcoinIndexer(
         Authorization(BasicCredentials(bitcoinConf.nodeConfig.username, bitcoinConf.nodeConfig.password))
       )
 
-      xa <- for {
-        ce <- ExecutionContexts.fixedThreadPool[IO](32) // our connect EC
-      } yield Transactor.fromDriverManager[IO](
-        "org.postgresql.Driver",
-        "jdbc:postgresql:conseil-local",
-        "conseiluser",
-        "p@ssw0rd",
-        Blocker.liftExecutionContext(ce)
-      )
+      // xa <- for {
+      //   ce <- ExecutionContexts.fixedThreadPool[IO](32) // our connect EC
+      // } yield Transactor.fromDriverManager[IO](
+      //   "org.postgresql.Driver",
+      //   "jdbc:postgresql:conseil-local",
+      //   "conseiluser",
+      //   "p@ssw0rd",
+      //   Blocker.liftExecutionContext(ce)
+      // )
 
-      bitcoinOperations <- BitcoinOperations.resource(rpcClient, xa)
+      tx <- Transactor
+        .fromDatabase[IO](IO.delay(DatabaseUtil.lorreDb))
+
+      bitcoinOperations <- BitcoinOperations.resource(rpcClient, tx)
 
       from = 90000
-      batch = 1000
+      batch = 100
 
       // _ <- bitcoinOperations.blockStream(99000 to 100000).compile.resource.drain
       _ <- bitcoinOperations.loadBlocksWithTransactions(from to (from + batch)).compile.resource.drain

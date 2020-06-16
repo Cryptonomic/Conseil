@@ -7,6 +7,12 @@ trait TransactionComponent {
 case class Transaction(
     txid: String,
     blockhash: String,
+    hash: String,
+    size: Int,
+    weight: Int,
+    version: Int,
+    confirmations: Int,
+    time: Int,
     vin: Seq[TransactionInput],
     vout: Seq[TransactionOutput]
 )
