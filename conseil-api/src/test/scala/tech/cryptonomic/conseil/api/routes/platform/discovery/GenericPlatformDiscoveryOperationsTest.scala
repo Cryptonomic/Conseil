@@ -10,15 +10,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.{Matchers, OptionValues, WordSpec}
 import slick.dbio
-import tech.cryptonomic.conseil.api.TezosInMemoryDatabaseSetup
+import tech.cryptonomic.conseil.api.{BitcoinInMemoryDatabaseSetup, TezosInMemoryDatabaseSetup}
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.config.MetadataConfiguration
-import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
-  HighCardinalityAttribute,
-  InvalidAttributeDataType,
-  InvalidAttributeFilterLength
-}
+import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{HighCardinalityAttribute, InvalidAttributeDataType, InvalidAttributeFilterLength}
 import tech.cryptonomic.conseil.common.generic.chain.MetadataOperations
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, _}
 import tech.cryptonomic.conseil.common.metadata._
@@ -34,6 +30,7 @@ class GenericPlatformDiscoveryOperationsTest
     extends WordSpec
     with InMemoryDatabase
     with TezosInMemoryDatabaseSetup
+    with BitcoinInMemoryDatabaseSetup
     with MockFactory
     with Matchers
     with ScalaFutures
