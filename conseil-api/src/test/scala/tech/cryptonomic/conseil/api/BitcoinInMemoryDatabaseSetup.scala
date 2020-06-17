@@ -8,9 +8,10 @@ trait BitcoinInMemoryDatabaseSetup extends InMemoryDatabaseSetup {
     "bitcoin",
     Seq(
       Fixture(Tables.Blocks),
-      Fixture(Tables.Transactions),
-      Fixture(Tables.Inputs),
-      Fixture(Tables.Outputs)
+      Fixture(Tables.Transactions)
+      //TODO Uncomment below tables, once the issue with PGArray support will be solved
+//      Fixture(Tables.Inputs),
+//      Fixture(Tables.Outputs)
     )
   )
 }
