@@ -445,7 +445,7 @@ class TezosIndexer(
           db.run(TezosDb.getBallotOperationsForLevel(block.data.header.level))
             .map(block -> _)
         }
-        proposalHashes <- Future.traverse(blocksWithProposals) { block =>
+        proposalHashes <- Future.traverse(safeBlocks) { block =>
           db.run(
               TezosDb.getProposalOperationHashesByCycle(TezosTypes.discardGenesis(block.data.metadata).get.level.cycle)
             )
@@ -460,12 +460,14 @@ class TezosIndexer(
           ballotCountsPerCycle.toMap,
           ballotCountsPerLevel.toMap,
           proposalHashes.toMap
-        ).flatMap(_.convertToA[Option, Tables.GovernanceRow])
+        ).map(_.convertTo[Tables.GovernanceRow])
         _ <- db.run(TezosDb.insertGovernance(governanceRows))
       } yield ()
     }
 
-    /** Groups data needed for generating Governance */
+    /** Groups data needed for generating GovernanceRow
+     *  Warning! It works on assumption that we're not processing Genesis block
+     */
     def groupGovernanceDataByBlock(
         blocks: List[Block],
         proposals: Map[BlockHash, Option[ProtocolId]],
@@ -476,7 +478,8 @@ class TezosIndexer(
         proposalHashes: Map[Block, Map[String, Int]]
     ): List[
       (
-          BlockData,
+          BlockHash,
+          BlockHeaderMetadata,
           Option[ProtocolId],
           List[Voting.BakerRolls],
           List[Voting.BakerRolls],
@@ -493,12 +496,23 @@ class TezosIndexer(
       val ballotCountPerCycle = ballotCountsPerCycle.get(block)
       val ballotCountPerLevel = ballotCountsPerLevel.get(block)
       val proposalHashesForBlock = proposalHashes.get(block).toList.flatten
+      val blockHeaderMetadata = TezosTypes.discardGenesis(block.data.metadata).get
 
-      (block.data, proposal, listing, listingByBlock, ballot, ballotCountPerCycle, ballotCountPerLevel) ::
+      (
+        block.data.hash,
+        blockHeaderMetadata,
+        proposal,
+        listing,
+        listingByBlock,
+        ballot,
+        ballotCountPerCycle,
+        ballotCountPerLevel
+      ) ::
         proposalHashesForBlock.map {
           case (proposalHash, count) =>
             (
-              block.data,
+              block.data.hash,
+              blockHeaderMetadata.copy(voting_period_kind = VotingPeriod.proposal),
               Some(ProtocolId(proposalHash)),
               listing,
               listingByBlock,
