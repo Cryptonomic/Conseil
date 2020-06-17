@@ -130,6 +130,7 @@ private[tezos] class TezosNodeOperator(
   def getBatchBakingRights(
       blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
   ): Future[Map[FetchRights, List[BakingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.bakingRightsFetcher  */
     import cats.instances.future._
     import cats.instances.list._
     fetch[FetchRights, List[BakingRights], Future, List, Throwable]
@@ -143,6 +144,7 @@ private[tezos] class TezosNodeOperator(
     * @return             Baking rights
     */
   def getBatchBakingRightsByLevels(blockLevels: List[Int]): Future[Map[Int, List[BakingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.futureBakingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     fetch[Int, List[BakingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
@@ -154,6 +156,7 @@ private[tezos] class TezosNodeOperator(
     * @return             Endorsing rights
     */
   def getBatchEndorsingRightsByLevel(blockLevels: List[Int]): Future[Map[Int, List[EndorsingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.futureEndorsingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     fetch[Int, List[EndorsingRights], Future, List, Throwable].run(blockLevels).map(_.toMap)
@@ -166,6 +169,7 @@ private[tezos] class TezosNodeOperator(
   def getBatchEndorsingRights(
       blockHashesWithCycleAndGovernancePeriod: List[FetchRights]
   ): Future[Map[FetchRights, List[EndorsingRights]]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.endorsingRightsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     fetch[FetchRights, List[EndorsingRights], Future, List, Throwable]
@@ -219,6 +223,7 @@ private[tezos] class TezosNodeOperator(
 
     implicit val fetcherInstance = accountFetcher(blockHash)
 
+    /* implicitly uses: AccountsDataFetchers.accountFetcher*/
     val fetchedAccounts: Future[List[(AccountId, Option[Account])]] =
       fetch[AccountId, Option[Account], Future, List, Throwable].run(accountIds)
 
@@ -344,6 +349,7 @@ private[tezos] class TezosNodeOperator(
     * we refer to that as a protocol ID.
     */
   def getActiveProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.currentProposalFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -358,6 +364,7 @@ private[tezos] class TezosNodeOperator(
     * @return the lists of rolls, for each individual requested hash
     */
   def getBakerRollsForBlockHashes(blockHashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.bakersRollsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -396,6 +403,7 @@ private[tezos] class TezosNodeOperator(
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
   def getVotes(blocks: List[Block]): Future[List[BallotsByBlock]] = {
+    /* implicitly uses: TezosBlocksDataFetchers.ballotsFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -409,17 +417,23 @@ private[tezos] class TezosNodeOperator(
 
   }
 
-  /** Fetches active delegates from node */
-  def fetchActiveBakers(blockHashes: List[(Int, BlockHash)]): Future[List[(BlockHash, List[String])]] = {
+  /** Fetches active delegates from node
+    * We get the situation for all blocks identified by the input hashes
+    *
+    * Assumptions: the input pairs must match hash and level of the same block
+    * @param blockHashesPerLevel the hashes of blocks, along with block level
+    */
+  def fetchActiveBakers(blockHashesPerLevel: List[(Int, BlockHash)]): Future[List[(BlockHash, List[AccountId])]] = {
+    /* implicitly uses: AccountsDataFetchers.activeDelegateFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
-    val blockHashesWithoutGenesis = blockHashes.collect {
-      case (level, hash) if level > 0 => hash
+    val blockHashesWithoutGenesis = blockHashesPerLevel.collect {
+      case (blockLevel, blockHash) if blockLevel > 0 => blockHash
     }
 
-    fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashesWithoutGenesis)
+    fetch[BlockHash, List[AccountId], Future, List, Throwable].run(blockHashesWithoutGenesis)
   }
 
   //move it to the node operator
@@ -489,6 +503,7 @@ private[tezos] class TezosNodeOperator(
       pkhs: List[PublicKeyHash],
       blockHash: BlockHash = blockHeadHash
   ): Future[Map[PublicKeyHash, Delegate]] = {
+    /* implicitly uses: AccountsDataFetchers.delegateFetcher */
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -694,6 +709,10 @@ private[tezos] class TezosNodeOperator(
 
     //Gets blocks data for the requested offsets and associates the operations and account hashes available involved in said operations
     //Special care is taken for the genesis block (level = 0) that doesn't have operations defined, we use empty data for it
+    /* implicitly uses:
+     * - blocksFetcher
+     * - operationsWithAccountsFetcher
+     */
     for {
       fetchedBlocksData <- fetch[Offset, BlockData, Future, List, Throwable].run(offsets)
       blockHashes = fetchedBlocksData.collect { case (offset, block) if !isGenesis(block) => block.hash }
