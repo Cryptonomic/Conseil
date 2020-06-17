@@ -82,7 +82,7 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Transaction =>
-            op.parameters.head.left.value.value.expression shouldEqual "MICHELINE SCRIPT"
+            op.parameters.value.left.value.value.expression shouldEqual "MICHELINE SCRIPT"
           case _ =>
         }
       }
@@ -103,7 +103,7 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Origination =>
-            op.script.head shouldEqual Contracts(Micheline("EXPR1"), Micheline("eXpR2"))
+            op.script.value shouldEqual Contracts(Micheline("EXPR1"), Micheline("eXpR2"))
           case _ =>
         }
       }
@@ -124,7 +124,7 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
 
         forAll(result.operationGroups.flatMap(_.contents)) {
           case op: Origination =>
-            op.script.head shouldEqual Contracts(Micheline("eXpR1"), Micheline("expr2"))
+            op.script.value shouldEqual Contracts(Micheline("eXpR1"), Micheline("expr2"))
           case _ =>
         }
       }
@@ -144,7 +144,7 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
         //then
         val associativeMap = modified.operationGroups.map { g =>
           val params = g.contents.collect {
-            case t: Transaction => t.parameters.get.left.get
+            case t: Transaction => t.parameters.value.left.value
           }
           val contents = params.map {
             case Parameters(Micheline(micheline), _) => micheline
@@ -210,7 +210,7 @@ class TezosOpticsTest extends WordSpec with Matchers with OptionValues with Eith
         //then
         val associativeMap = modified.operationGroups.map { g =>
           val params = g.contents.collect {
-            case t: Transaction => t.parameters.get.left.get
+            case t: Transaction => t.parameters.get.left.value
           }
           val content = params.headOption.map {
             case Parameters(Micheline(micheline), _) => micheline

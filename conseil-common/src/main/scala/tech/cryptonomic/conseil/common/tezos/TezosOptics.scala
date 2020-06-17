@@ -5,7 +5,8 @@ import java.time.ZonedDateTime
 import TezosTypes._
 import TezosTypes.OperationMetadata.BalanceUpdate
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Scripted.Contracts
-import monocle.std.option._
+import monocle.std.all._
+import monocle.function.Each._
 import cats.implicits._
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.InternalOperationResults.InternalOperationResult
 
@@ -46,33 +47,33 @@ object TezosOptics {
    * - Prism : selectXXX
    * - Traversal: acrossXXX
    * - Iso: ontoXXX
+   *
+   * We also make use of standard instances of optics for common types, e.g.
+   * - `stdLeft`/`stdRight`, a Prism that digs into a Left/Right value if it matches
+   * - ...
+   *
+   * And standard functions to obtain optics based on certain conditions (based on type classes), e.g.
+   * - `each` will provide a Traversal for any type that is Traversable (e.g. `List`)
+   * - `some` will provide an Optional for an instance of Option, in the way you would expect
+   * - ...
+   *
+   * There are plenty existing optics available which often could substitute common functions too, e.g.
+   * - Iso between similar representations: List/Vector, NonEmptyList/NonEmptyChain/OneAnd, ...
+   * - Prisms for numeric down-casting BigDecimal to Int/Long, Byte to Boolean, Double to Float, ...
+   * - `curry`/`uncurry`, to convert functions between curried/uncurried form
+   * - `flipped` to switch two arguments of a function
+   * - `head` to access first element of a non-empty cons-list, or option variant for cons-list
+   * - `first/second/third/...` to access the nth element
+   * - ...
    */
-
   import monocle.{Lens, Optional, Traversal}
   import monocle.macros.{GenLens, GenPrism}
 
-  //optional lenses into the Either branches
-  def whenLeft[A, B] = GenPrism[Either[A, B], Left[A, B]] composeLens GenLens[Left[A, B]](_.value)
-  def whenRight[A, B] = GenPrism[Either[A, B], Right[A, B]] composeLens GenLens[Right[A, B]](_.value)
-
   /** Many useful optics for blocks and their inner structure */
   object Blocks {
-    /* Allows to easily derive a Traversal optic for any Traversable, simply
-     * calling the polymorphic `each` extension method
-     */
-    import monocle.function.Each._
 
     /* let's keep some operation optics at hand to shorten the code */
-    import Operations.{
-      onInternalParameters,
-      onOriginationScript,
-      onTransactionMetadata,
-      onTransactionParameters,
-      selectInternalTransaction,
-      selectOrigination,
-      selectTransaction,
-      whenInternalResults
-    }
+    import Operations._
 
     //basic building blocks to reach into the block's structure
     private[TezosOptics] val onData = GenLens[Block](_.data)
@@ -253,22 +254,22 @@ object TezosOptics {
         diffs => result => result.copy(big_map_diff = diffs.some)
       )
 
-    val whenBigMapAlloc = whenLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    private[TezosOptics] val selectBigMapAlloc = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapAlloc
           ]
 
-    val whenBigMapUpdate = whenLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    private[TezosOptics] val selectBigMapUpdate = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapUpdate
           ]
 
-    val whenBigMapCopy = whenLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    private[TezosOptics] val selectBigMapCopy = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapCopy
           ]
 
-    val whenBigMapRemove = whenLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
+    private[TezosOptics] val selectBigMapRemove = stdLeft[Contract.BigMapDiff, Contract.Protocol4BigMapDiff] composePrism GenPrism[
             Contract.BigMapDiff,
             Contract.BigMapRemove
           ]
@@ -277,25 +278,25 @@ object TezosOptics {
       selectOrigination composeLens
           onOriginationResult composeOptional
           whenOriginationBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapAlloc)
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapAlloc)
 
     val acrossOperationBigMapDiffUpdate =
       selectTransaction composeLens
           onTransactionResult composeOptional
           whenTransactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapUpdate)
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapUpdate)
 
     val acrossOperationBigMapDiffCopy =
       selectTransaction composeLens
           onTransactionResult composeOptional
           whenTransactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapCopy)
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapCopy)
 
     val acrossOperationBigMapDiffRemove =
       selectTransaction composeLens
           onTransactionResult composeOptional
           whenTransactionBigMapDiffs composeTraversal
-          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composeOptional whenBigMapRemove)
+          (Traversal.fromTraverse[List, Contract.CompatBigMapDiff] composePrism selectBigMapRemove)
 
     private def isApplied(status: String) = Status.parse(status).contains(Status.applied)
 
