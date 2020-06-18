@@ -84,9 +84,9 @@ private[tezos] class TezosNodeOperator(
   type PaginatedDelegateResults = Paginated[DelegateFetchingResults]
 
   //introduced to simplify signatures
-  type BallotBlock = (Block, List[Voting.Ballot])
-  type BakerBlock = (Block, List[Voting.BakerRolls])
-  type BallotCountsBlock = (Block, Option[Voting.BallotCounts])
+  type BallotsByBlock = (Block, List[Voting.Ballot])
+  type BakerRollsByBlock = (Block, List[Voting.BakerRolls])
+  type BallotCountsByBlock = (Block, Option[Voting.BallotCounts])
 
   /**
     * Generic fetch for paginated data relative to a specific block.
@@ -338,28 +338,64 @@ private[tezos] class TezosNodeOperator(
       (fetchCurrentQuorum, fetchCurrentProposal).mapN(CurrentVotes.apply)
     }
 
-  /** Fetches proposals for given blocks */
-  def getProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
-    import cats.instances.future._
-    import cats.instances.list._
-    import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-    fetch[BlockHash, Option[ProtocolId], Future, List, Throwable].run(blocks.filterNot(b => isGenesis(b)).map(_.hash))
-  }
-
-  /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotingDetails(blocks: List[Block]): Future[List[BakerBlock]] = {
+  /** Fetches any active proposal id for the given blocks.
+    * The returned value, when available for active voting periods, is the ID of
+    * a proposal, though for the sake of naming consistency with tezos schema
+    * we refer to that as a protocol ID.
+    */
+  def getActiveProposals(blocks: List[BlockData]): Future[List[(BlockHash, Option[ProtocolId])]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
-    val fetchBakers =
-      fetch[Block, List[Voting.BakerRolls], Future, List, Throwable]
+    val nonGenesisHashes = blocks.filterNot(isGenesis).map(_.hash)
+    fetch[BlockHash, Option[ProtocolId], Future, List, Throwable].run(nonGenesisHashes)
+  }
 
-    fetchBakers.run(blocks.filterNot(b => isGenesis(b.data)))
+  /** Fetches rolls for all bakers of individual blocks
+    *
+    * @param blockHashes defines the blocks we want the rolls for
+    * @return the lists of rolls, for each individual requested hash
+    */
+  def getBakerRollsForBlockHashes(blockHashes: List[BlockHash]): Future[List[(BlockHash, List[Voting.BakerRolls])]] = {
+    import cats.instances.future._
+    import cats.instances.list._
+    import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
+
+    fetch[BlockHash, List[Voting.BakerRolls], Future, List, Throwable].run(blockHashes)
+  }
+
+  /** Fetches rolls for all bakers of individual blocks
+    *
+    * @param blocks the blocks we want the rolls for
+    * @return the lists of rolls, for each individual requested block
+    */
+  def getBakerRollsForBlocks(blocks: List[Block]): Future[List[BakerRollsByBlock]] = {
+
+    /* given a hash-keyed pair, restores the full block information, searching in the input */
+    def adaptResults[A](hashKeyedValue: (BlockHash, A)) = {
+      val (hash, a) = hashKeyedValue
+      blocks
+        .find(_.data.hash == hash)
+        .map(block => block -> a)
+        .toList
+    }
+
+    val nonGenesisHashes =
+      blocks
+        .map(_.data)
+        .filterNot(isGenesis)
+        .map(_.hash)
+
+    //we re-use the hash-based query, and then restore the block information
+    getBakerRollsForBlockHashes(nonGenesisHashes).map(
+      _.flatMap(adaptResults)
+    )
+
   }
 
   /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getVotes(blocks: List[Block]): Future[List[BallotBlock]] = {
+  def getVotes(blocks: List[Block]): Future[List[BallotsByBlock]] = {
     import cats.instances.future._
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
@@ -379,20 +415,11 @@ private[tezos] class TezosNodeOperator(
     import cats.instances.list._
     import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
 
-    val blockHashesWithoutGenesis = blockHashes.filterNot {
-      case (blockLevel, _) => blockLevel == 0
-    }.map(_._2)
+    val blockHashesWithoutGenesis = blockHashes.collect {
+      case (level, hash) if level > 0 => hash
+    }
 
     fetch[BlockHash, List[String], Future, List, Throwable].run(blockHashesWithoutGenesis)
-  }
-
-  /** Fetches detailed data for voting associated to the passed-in blocks */
-  def getRolls(blockHashes: List[String]): Future[List[Voting.BakerRolls]] = {
-    import cats.instances.future._
-    import cats.instances.list._
-    import tech.cryptonomic.conseil.common.generic.chain.DataFetcher.fetch
-
-    fetch[String, List[Voting.BakerRolls], Future, List, Throwable].run(blockHashes).map(_.flatMap(_._2))
   }
 
   //move it to the node operator

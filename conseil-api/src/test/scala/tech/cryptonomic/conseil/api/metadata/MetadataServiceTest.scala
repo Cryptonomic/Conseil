@@ -27,7 +27,8 @@ class MetadataServiceTest
     with BeforeAndAfterEach
     with OneInstancePerTest {
 
-  implicit override val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = Span(2, Seconds), interval = Span(20, Millis))
 
   // shared objects
   private val platformDiscoveryOperations: TestPlatformDiscoveryOperations = new TestPlatformDiscoveryOperations
@@ -508,7 +509,10 @@ class MetadataServiceTest
       "fetch the list of supported attributes" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overwrittenConfiguration = Map(
           "tezos" ->
@@ -550,7 +554,10 @@ class MetadataServiceTest
       "fetch the list of supported attributes with updated values" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overwrittenConfiguration = Map(
           "tezos" ->
@@ -594,7 +601,10 @@ class MetadataServiceTest
       "override additional fields for an attribute" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overwrittenConfiguration = Map(
           "tezos" ->
@@ -671,7 +681,10 @@ class MetadataServiceTest
       "filter out a hidden attribute" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overwrittenConfiguration = Map(
           "tezos" ->
@@ -713,7 +726,10 @@ class MetadataServiceTest
       "filter out a hidden attribute (bu default)" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overwrittenConfiguration = Map(
           "tezos" ->
@@ -755,7 +771,10 @@ class MetadataServiceTest
       "return None when fetching attributes for a non existing platform" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         // when
         val result = sut(Map.empty)
@@ -768,7 +787,10 @@ class MetadataServiceTest
       "return None when fetching attributes for a hidden platform" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overriddenConfiguration = Map("tezos" -> PlatformConfiguration(None, Some(false)))
 
@@ -782,7 +804,10 @@ class MetadataServiceTest
       "return None when fetching attributes for a non existing network" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         // when
         val result = sut(Map.empty)
@@ -795,7 +820,10 @@ class MetadataServiceTest
       "return None when fetching attributes for a hidden network" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         // given
         val overriddenConfiguration = Map(
@@ -816,7 +844,10 @@ class MetadataServiceTest
 
       "return None when fetching attributes for a non existing entity" in {
         // given
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         // when
         val result = sut(Map.empty).getTableAttributes(defaultEntityPath)
@@ -828,7 +859,10 @@ class MetadataServiceTest
       "return None when fetching attributes for a hidden entity" in {
         // given
         platformDiscoveryOperations.addEntity(defaultNetworkPath, Entity("entity", "entity-name", 0))
-        platformDiscoveryOperations.addAttribute(defaultEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity"))
+        platformDiscoveryOperations.addAttribute(
+          defaultEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+        )
 
         val overriddenConfiguration = Map(
           "tezos" ->

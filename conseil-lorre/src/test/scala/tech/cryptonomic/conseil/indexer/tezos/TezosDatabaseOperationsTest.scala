@@ -406,7 +406,14 @@ class TezosDatabaseOperationsTest
         val ids =
           blocks.map(
             block =>
-              (BlockHash(block.hash), block.level, Some(time), None, None, List.fill(idPerBlock)(AccountId(generateHash(5))))
+              (
+                BlockHash(block.hash),
+                block.level,
+                Some(time),
+                None,
+                None,
+                List.fill(idPerBlock)(AccountId(generateHash(5)))
+              )
           )
 
         //store and write
@@ -705,7 +712,9 @@ class TezosDatabaseOperationsTest
 
         import org.scalatest.Inspectors._
 
-        val flattenedKeysData = keys.flatMap { case (hash, level, time, cycle, period, keys) => keys.map((hash, level, _)) }
+        val flattenedKeysData = keys.flatMap {
+          case (hash, level, time, cycle, period, keys) => keys.map((hash, level, _))
+        }
 
         forAll(checkpointRows.zip(flattenedKeysData)) {
           case (row, (hash, level, keyHash)) =>

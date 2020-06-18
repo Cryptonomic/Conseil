@@ -77,7 +77,7 @@ lazy val lorre = (project in file("conseil-lorre"))
           "tech.cryptonomic.conseil.indexer.config.LorreAppConfig",
           "tech.cryptonomic.conseil.indexer.logging.LorreInfoLogging",
           "tech.cryptonomic.conseil.indexer.logging.LorreProgressLogging",
-          "tech.cryptonomic.conseil.indexer.tezos.TezosIndexer",
+          "tech.cryptonomic.conseil.indexer.tezos.TezosIndexer"
         ).mkString(";")
   )
   .addRunCommand(
