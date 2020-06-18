@@ -63,7 +63,18 @@ object TezosGovernanceOperations extends LazyLogging {
       */
     def subtract(subtrahend: VoteRollsCounts, minuend: VoteRollsCounts): VoteRollsCounts = (subtrahend, minuend) match {
       case (VoteRollsCounts(y1, n1, p1), VoteRollsCounts(y2, n2, p2)) =>
-        //we use the sum algebra for Ints to sum with the inverse of the minuend values
+        /* We make use of cats implicit instances which defines general operations that applies to Ints too:
+         * - |+| sums two integers
+         * - i.inverse() changes the sign, i.e. i.inverse() === -i
+         * Therefore we do substraction by adding the negated number.
+         *
+         * Cats provides the additional facilities to do that for a whole triplet of Ints
+         * in a single call, such that corresponding elements of the tuple are subtracted
+         * as you might naturally want to do.
+         *
+         * We subtract the three values of the rolls counts each by each as 2 triplets.
+         * Then we make sure to avoid results of negative rolls counts.
+         */
         val (y, n, p) = (y1, n1, p1) |+| ((y2, n2, p2).inverse())
         VoteRollsCounts(max(y, 0), max(n, 0), max(p, 0))
     }
@@ -326,11 +337,35 @@ object TezosGovernanceOperations extends LazyLogging {
     VoteRollsCounts(yays, nays, passes)
   }
 
-  /* Here we find the missing level counts from the stored values, assuming
-   * that we only miss the previous counts for the first batch block, which has
-   * the lowest level here.
-   * It'll be needed as we make diffs between counts for each level.
-   */
+  /** We plan to compute rolls counts per each block level, as opposed to
+    * having only the cycle total, up to a given level.
+    * We do this by removing the previous level's counts from those of the
+    * latest one.
+    *
+    * Since we're processing blocks in batches, the main entrypoint in this object
+    * (i.e. [[extractGovernanceAggregations]])
+    * will receive as arguments the batch of blocks, along with the corresponding
+    * baker rolls.
+    * Therefore, as we compute the rolls differences, we have all
+    * the values we need for each block level, apart from the first block.
+    * In such case we miss the cycle total of rolls for the previous level,
+    * which is not included in the arguments. But we have those values stored
+    * locally, because we computed the governance records for the previous
+    * batch already.
+    *
+    * This function queries the existing governance records to find which
+    * were the total rolls per cycle at the level "before" the one corresponding
+    * to the first block in the set passed as argument.
+    *
+    * To give a clarifying example, consider a call to extract the aggregates
+    * for block levels 100-110.
+    * We get the blocks, and the rolls for those levels.
+    * To compute rolls for bakers of level 110, we take the
+    * rolls up to 110 and subtract the rolls up to 109, and so on,
+    * until we bump into the fist block, at level 100.
+    * Here we don't have rolls up to 99, so we need to reach
+    * to the stored governance records and get those counts.
+    */
   private def queryPreviousBatchStats(
       blocks: Set[Block]
   )(implicit ec: ExecutionContext): DBIO[Option[VoteRollsCounts]] = {
