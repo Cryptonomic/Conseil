@@ -186,7 +186,7 @@ CREATE TABLE tezos.accounts_history (
     is_activated boolean NOT NULL DEFAULT false,
     is_active_baker boolean
 );
-CREATE INDEX ix_account_id ON tezos.accounts_history USING btree (account_id);
+
 --
 -- Name: accounts_checkpoint; Type: TABLE; Schema: tezos; Owner: -
 --
@@ -427,9 +427,6 @@ CREATE TABLE tezos.operations (
     utc_time character varying NOT NULL
 );
 
-CREATE INDEX ix_manager_pubkey ON tezos.operations USING btree (manager_pubkey);
-CREATE INDEX ix_operation_group_hash ON tezos.operations USING btree (operation_group_hash);
-CREATE INDEX ix_originated_contracts ON tezos.operations USING btree (originated_contracts);
 
 --
 -- Name: operations_operation_id_seq; Type: SEQUENCE; Schema: tezos; Owner: -
@@ -555,13 +552,14 @@ ALTER TABLE ONLY tezos.operations
 --
 
 CREATE INDEX baking_rights_level_idx ON tezos.baking_rights USING btree (level);
-
+CREATE INDEX ix_delegate_priority ON tezos.baking_rights USING btree (delegate, priority);
 
 --
 -- Name: endorsing_rights_level_idx; Type: INDEX; Schema: tezos; Owner: -
 --
 
 CREATE INDEX endorsing_rights_level_idx ON tezos.endorsing_rights USING btree (level);
+CREATE INDEX ix_delegate ON tezos.endorsing_rights USING btree (delegate);
 
 
 --
