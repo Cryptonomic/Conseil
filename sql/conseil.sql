@@ -830,7 +830,7 @@ CREATE TABLE bitcoin.inputs (
   script_sig_hex text,
   sequence bigint NOT NULL,
   coinbase text,
-  tx_in_witness text[]
+  tx_in_witness text
 );
 
 ALTER TABLE ONLY bitcoin.inputs
@@ -844,7 +844,7 @@ CREATE TABLE bitcoin.outputs (
   script_pub_key_hex text NOT NULL,
   script_pub_key_req_sigs integer,
   script_pub_key_type text NOT NULL,
-  script_pub_key_addresses text[]
+  script_pub_key_addresses text
 );
 
 ALTER TABLE ONLY bitcoin.outputs

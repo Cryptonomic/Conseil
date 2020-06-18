@@ -438,16 +438,19 @@ class GenericPlatformDiscoveryOperationsTest
         sut.getTableAttributes(EntityPath("blocks", networkPath)).futureValue.value.toSet should matchTo(
           Set(
             Attribute("hash", "Hash", DataType.String, None, KeyType.UniqueKey, "blocks"),
-            Attribute("confirmations", "Confirmations", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("size", "Size", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("stripped_size", "Stripped size", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("weight", "Weight", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("height", "Height", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("version", "Version", DataType.Int, None, KeyType.NonKey, "blocks"),
+            Attribute("version_hex", "Version hex", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("merkle_root", "Merkle root", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("time", "Time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
+            Attribute("median_time", "Median time", DataType.DateTime, None, KeyType.NonKey, "blocks"),
             Attribute("nonce", "Nonce", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("bits", "Bits", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("difficulty", "Difficulty", DataType.String, None, KeyType.NonKey, "blocks"),
+            Attribute("chain_work", "Chain work", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("n_tx", "N tx", DataType.Int, None, KeyType.NonKey, "blocks"),
             Attribute("previous_block_hash", "Previous block hash", DataType.String, None, KeyType.NonKey, "blocks"),
             Attribute("next_block_hash", "Next block hash", DataType.String, None, KeyType.NonKey, "blocks")
@@ -460,12 +463,15 @@ class GenericPlatformDiscoveryOperationsTest
           Set(
             Attribute("txid", "Txid", DataType.String, None, KeyType.UniqueKey, "transactions"),
             Attribute("time", "Time", DataType.DateTime, None, KeyType.NonKey, "transactions"),
+            Attribute("lock_time", "Lock time", DataType.DateTime, None, KeyType.NonKey, "transactions"),
+            Attribute("block_time", "Block time", DataType.DateTime, None, KeyType.NonKey, "transactions"),
             Attribute("weight", "Weight", DataType.Int, None, KeyType.NonKey, "transactions"),
             Attribute("hash", "Hash", DataType.String, None, KeyType.NonKey, "transactions"),
+            Attribute("hex", "Hex", DataType.String, None, KeyType.NonKey, "transactions"),
             Attribute("version", "Version", DataType.Int, None, KeyType.NonKey, "transactions"),
             Attribute("blockhash", "Blockhash", DataType.String, None, KeyType.NonKey, "transactions"),
             Attribute("size", "Size", DataType.Int, None, KeyType.NonKey, "transactions"),
-            Attribute("confirmations", "Confirmations", DataType.Int, None, KeyType.NonKey, "transactions")
+            Attribute("vsize", "Vsize", DataType.Int, None, KeyType.NonKey, "transactions")
           )
         )
       }
