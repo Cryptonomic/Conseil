@@ -41,8 +41,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
           )
         ).route
 
-    val testNetworkPath = NetworkPath("mainnet", PlatformPath("tezos"))
-    val testEntityPath = EntityPath("entity", testNetworkPath)
+      val testNetworkPath = NetworkPath("mainnet", PlatformPath("tezos"))
+      val testEntityPath = EntityPath("entity", testNetworkPath)
 
       "expose an endpoint to get the list of supported platforms" in {
         // given
@@ -161,7 +161,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         // given
         platformDiscoveryOperations.addEntity(testNetworkPath, Entity("entity", "entity-name", 1))
         platformDiscoveryOperations.addAttribute(
-          testEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+          testEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
         val overridesConfiguration = Map(
@@ -212,7 +213,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         // given
         platformDiscoveryOperations.addEntity(testNetworkPath, Entity("entity", "entity-name", 1))
         platformDiscoveryOperations.addAttribute(
-          testEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+          testEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
         val overridesConfiguration = Map(
@@ -289,7 +291,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         // given
         platformDiscoveryOperations.addEntity(testNetworkPath, Entity("entity", "entity-name", 1))
         platformDiscoveryOperations.addAttribute(
-          testEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+          testEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
         val overridesConfiguration = Map(
@@ -319,7 +322,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         // given
         platformDiscoveryOperations.addEntity(testNetworkPath, Entity("entity", "entity-name", 1))
         platformDiscoveryOperations.addAttribute(
-          testEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+          testEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
         val overridesConfiguration = Map(
@@ -341,7 +345,8 @@ class PlatformDiscoveryTest extends WordSpec with Matchers with ScalatestRouteTe
         // given
         platformDiscoveryOperations.addEntity(testNetworkPath, Entity("entity", "entity-name", 1))
         platformDiscoveryOperations.addAttribute(
-          testEntityPath, Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
+          testEntityPath,
+          Attribute("attribute", "attribute-name", Int, None, NonKey, "entity")
         )
 
         // when
