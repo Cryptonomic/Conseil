@@ -27,7 +27,6 @@ lazy val common = (project in file("conseil-common"))
     coverageExcludedPackages := Seq(
           "<empty>",
           "tech.cryptonomic.conseil.common.io.*",
-          "tech.cryptonomic.conseil.common.sql.CustomProfileExtension",
           "tech.cryptonomic.conseil.common.bitcoin.Tables",
           "tech.cryptonomic.conseil.common.tezos.Tables",
           "tech.cryptonomic.conseil.common.tezos.TezosDataGeneration"
