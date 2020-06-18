@@ -10,7 +10,7 @@ import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{AbstractTable, TableQuery}
 import tech.cryptonomic.conseil.common.config.ChainEvent.AccountIdPattern
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{Query => _}
-import tech.cryptonomic.conseil.common.sql.{CustomProfileExtension, DefaultDatabaseOperations}
+import tech.cryptonomic.conseil.common.sql.CustomProfileExtension
 import tech.cryptonomic.conseil.common.tezos.Tables.{GovernanceRow, OriginatedAccountMapsRow}
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Fee.AverageFees
 import tech.cryptonomic.conseil.common.tezos.TezosTypes.Voting.BakerRolls
@@ -21,7 +21,7 @@ import tech.cryptonomic.conseil.common.tezos.Tables
 import tech.cryptonomic.conseil.common.util.ConfigUtil
 import tech.cryptonomic.conseil.common.util.Conversion.Syntax._
 import tech.cryptonomic.conseil.common.util.MathUtil.{mean, stdev}
-
+import tech.cryptonomic.conseil.indexer.sql.DefaultDatabaseOperations._
 import scala.collection.immutable.Queue
 import scala.concurrent.{ExecutionContext, Future}
 import scala.math.{ceil, max}
@@ -30,7 +30,7 @@ import scala.util.{Failure, Success}
 /**
   * Functions for writing Tezos data to a database.
   */
-object TezosDatabaseOperations extends DefaultDatabaseOperations("tezos") with LazyLogging {
+object TezosDatabaseOperations extends LazyLogging {
   import TezosDatabaseConversions._
 
   private val bigMapOps = BigMapsOperations(CustomProfileExtension)

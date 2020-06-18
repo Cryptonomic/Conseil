@@ -2,7 +2,7 @@ package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.{Attribute, Entity}
 import tech.cryptonomic.conseil.common.generic.chain.{DataTypes, PlatformDiscoveryOperations, PlatformDiscoveryTypes}
-import tech.cryptonomic.conseil.common.metadata.{AttributePath, EntityPath}
+import tech.cryptonomic.conseil.common.metadata.{AttributePath, EntityPath, NetworkPath}
 
 import scala.concurrent.Future
 
@@ -12,23 +12,23 @@ import scala.concurrent.Future
  **/
 class TestPlatformDiscoveryOperations extends PlatformDiscoveryOperations {
 
-  var entities: List[Entity] = List.empty
-  var attributes: List[Attribute] = List.empty
+  private var entities: Map[NetworkPath, List[Entity]] = Map.empty.withDefaultValue(List.empty[Entity])
+  private var attributes: Map[EntityPath, List[Attribute]] = Map.empty.withDefaultValue(List.empty[Attribute])
 
-  def addEntity(entity: Entity): Unit = this.synchronized {
-    entities = entities :+ entity
+  def addEntity(path: NetworkPath, entity: Entity): Unit = this.synchronized {
+    entities = entities.updated(path, entities(path) :+ entity)
   }
 
-  override def getEntities: Future[List[Entity]] = this.synchronized {
-    Future.successful(entities)
+  override def getEntities(path: NetworkPath): Future[List[Entity]] = this.synchronized {
+    Future.successful(entities(path))
   }
 
-  def addAttribute(attribute: Attribute): Unit = this.synchronized {
-    attributes = attributes :+ attribute
+  def addAttribute(path: EntityPath, attribute: Attribute): Unit = this.synchronized {
+    attributes = attributes.updated(path, attributes(path) :+ attribute)
   }
 
-  override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] = this.synchronized {
-    Future.successful(Some(attributes.filter(_.entity == entityPath.entity)))
+  override def getTableAttributes(path: EntityPath): Future[Option[List[Attribute]]] = this.synchronized {
+    Future.successful(attributes.get(path))
   }
 
   override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
@@ -41,7 +41,8 @@ class TestPlatformDiscoveryOperations extends PlatformDiscoveryOperations {
   ): Future[Either[List[DataTypes.AttributesValidationError], List[String]]] = ???
 
   def clear(): Unit = this.synchronized {
-    entities = List.empty
-    attributes = List.empty
+    entities = Map.empty
+    attributes = Map.empty
   }
+
 }

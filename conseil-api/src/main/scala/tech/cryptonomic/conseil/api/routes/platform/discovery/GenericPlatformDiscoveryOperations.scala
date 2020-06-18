@@ -1,4 +1,4 @@
-package tech.cryptonomic.conseil.api.routes.platform.discovery.tezos
+package tech.cryptonomic.conseil.api.routes.platform.discovery
 
 import cats.effect.{ContextShift, IO}
 import com.rklaehn.radixtree.RadixTree
@@ -6,6 +6,7 @@ import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.meta.{MColumn, MIndexInfo, MPrimaryKey, MTable}
 import tech.cryptonomic.conseil.api.metadata.AttributeValuesCacheConfiguration
 import tech.cryptonomic.conseil.api.routes.platform.Sanitizer
+import tech.cryptonomic.conseil.api.sql.DefaultDatabaseOperations._
 import tech.cryptonomic.conseil.common.cache.MetadataCaching
 import tech.cryptonomic.conseil.common.generic.chain.DataTypes.{
   AttributesValidationError,
@@ -17,13 +18,12 @@ import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes.Data
 import tech.cryptonomic.conseil.common.generic.chain.PlatformDiscoveryTypes._
 import tech.cryptonomic.conseil.common.generic.chain.{MetadataOperations, PlatformDiscoveryOperations}
 import tech.cryptonomic.conseil.common.metadata._
-import tech.cryptonomic.conseil.common.sql.DefaultDatabaseOperations
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Companion object providing apply method implementation */
-object TezosPlatformDiscoveryOperations {
+object GenericPlatformDiscoveryOperations {
 
   def apply(
       metadataOperations: MetadataOperations,
@@ -31,31 +31,31 @@ object TezosPlatformDiscoveryOperations {
       cacheOverrides: AttributeValuesCacheConfiguration,
       cacheTTL: FiniteDuration,
       highCardinalityLimit: Int
-  )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): TezosPlatformDiscoveryOperations =
-    new TezosPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
+  )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO]): GenericPlatformDiscoveryOperations =
+    new GenericPlatformDiscoveryOperations(metadataOperations, caching, cacheOverrides, cacheTTL, highCardinalityLimit)
 }
 
 /** Class providing the implementation of the metadata calls with caching */
-class TezosPlatformDiscoveryOperations(
+class GenericPlatformDiscoveryOperations(
     metadataOperations: MetadataOperations,
     caching: MetadataCaching[IO],
     cacheOverrides: AttributeValuesCacheConfiguration,
     cacheTTL: FiniteDuration,
-    highCardinalityLimit: Int,
-    networkName: String = "notUsed"
+    highCardinalityLimit: Int
 )(implicit executionContext: ExecutionContext, contextShift: ContextShift[IO])
-    extends DefaultDatabaseOperations("tezos")
-    with PlatformDiscoveryOperations {
+    extends PlatformDiscoveryOperations {
 
   import MetadataCaching._
   import cats.effect._
   import cats.implicits._
 
   /** Method for initializing values of the cache */
-  def init(): Future[Unit] = {
-    val entities = IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
-    val attributes = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes)))
-    val attributeValues = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributeValues)))
+  def init(config: List[(Platform, Network)]): Future[Unit] = {
+    val platforms = config.map(_._1)
+
+    val entities = IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities(config))))
+    val attributes = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributes(platforms))))
+    val attributeValues = IO.fromFuture(IO(metadataOperations.runQuery(preCacheAttributeValues(platforms))))
 
     (
       entities flatMap caching.fillEntitiesCache,
@@ -64,20 +64,25 @@ class TezosPlatformDiscoveryOperations(
     ).tupled.void.unsafeToFuture
   }
 
+  /** Pre-caching attributes without cardinality for multiple platforms */
+  private def preCacheAttributes(platforms: List[Platform]): DBIO[AttributesCache] =
+    DBIO.sequence(platforms.map(preCacheAttributes)).map(_.reduce(_ ++ _))
+
   /** Pre-caching attributes without cardinality */
-  private def preCacheAttributes: DBIO[AttributesCache] = {
+  private def preCacheAttributes(platform: Platform): DBIO[AttributesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some("tezos"), Some(""), Some(Seq("TABLE")))
+      tables <- MTable.getTables(Some(""), Some(platform.name), Some(""), Some(Seq("TABLE")))
       columns <- getColumns(tables)
       indexes <- getIndexes(tables)
       primaryKeys <- getPrimaryKeys(tables)
-    } yield {
-      columns.map { cols =>
-        CacheKey(cols.head.table.name) -> CacheEntry(0L, cols.map { col =>
-          makeAttributes(col, 0, primaryKeys, indexes)
-        }.toList)
-      }
-    }
+    } yield
+      for {
+        cols <- columns
+        head <- cols.headOption.toVector
+        key = AttributesCacheKey(platform.name, head.table.name)
+        entry = CacheEntry(0L, cols.map(c => makeAttributes(c, primaryKeys, indexes)).toList)
+      } yield key -> entry
+
     result.map(_.toMap)
   }
 
@@ -108,7 +113,6 @@ class TezosPlatformDiscoveryOperations(
   /** Makes attributes out of parameters */
   private def makeAttributes(
       col: MColumn,
-      count: Int,
       primaryKeys: Vector[Vector[MPrimaryKey]],
       indexes: Vector[Vector[MIndexInfo]]
   ): Attribute =
@@ -116,7 +120,7 @@ class TezosPlatformDiscoveryOperations(
       name = col.name,
       displayName = makeDisplayName(col.name),
       dataType = mapDataType(col.typeName),
-      cardinality = if (canQueryType(mapDataType(col.typeName))) Some(count) else None,
+      cardinality = if (canQueryType(mapDataType(col.typeName))) Some(0) else None,
       keyType = if (isIndex(col, indexes) || isKey(col, primaryKeys)) KeyType.UniqueKey else KeyType.NonKey,
       entity = col.table.name
     )
@@ -135,13 +139,16 @@ class TezosPlatformDiscoveryOperations(
       .flatten
       .exists(_.column.contains(column.name))
 
-  private def preCacheAttributeValues: DBIO[AttributeValuesCache] =
+  private def preCacheAttributeValues(platforms: List[Platform]): DBIO[AttributeValuesCache] =
+    DBIO.sequence(platforms.map(preCacheAttributeValues)).map(_.reduce(_ ++ _))
+
+  private def preCacheAttributeValues(platform: Platform): DBIO[AttributeValuesCache] =
     DBIO.sequence {
       cacheOverrides.getAttributesToCache.map {
         case (table, column) =>
-          selectDistinct(table, column).map { values =>
+          selectDistinct(platform.name, table, column).map { values =>
             val radixTree = RadixTree(values.map(x => x.toLowerCase -> x): _*)
-            CacheKey(makeKey(table, column)) -> CacheEntry(now, radixTree)
+            AttributeValuesCacheKey(platform.name, table, column) -> CacheEntry(now, radixTree)
           }
       }
     }.map(_.toMap)
@@ -151,18 +158,21 @@ class TezosPlatformDiscoveryOperations(
     *
     * @return list of entities as a Future
     */
-  override def getEntities: Future[List[Entity]] = {
+  override def getEntities(networkPath: NetworkPath): Future[List[Entity]] = {
+    val key = EntitiesCacheKey(networkPath.up.platform, networkPath.network)
     val result = for {
-      entities <- caching.getEntities(networkName)
+      entities <- caching.getEntities(key)
       res <- entities.traverse {
         case CacheEntry(last, ent) =>
           if (!cacheExpired(last)) {
             IO.pure(ent)
           } else {
             (for {
-              _ <- caching.putEntities(networkName, ent)
+              _ <- caching.putEntities(key, ent)
               _ <- contextShift.shift
-              updatedEntities <- IO.fromFuture(IO(metadataOperations.runQuery(preCacheEntities)))
+              updatedEntities <- IO.fromFuture(
+                IO(metadataOperations.runQuery(preCacheEntities(networkPath.up.platform, networkPath.network)))
+              )
               _ <- caching.putAllEntities(updatedEntities)
             } yield ()).unsafeRunAsyncAndForget()
             IO.pure(ent)
@@ -172,17 +182,23 @@ class TezosPlatformDiscoveryOperations(
     result.unsafeToFuture()
   }
 
+  /** Method querying slick metadata tables for entities for list of platform-network tuples */
+  private def preCacheEntities(xs: List[(Platform, Network)]): DBIO[EntitiesCache] =
+    DBIO
+      .sequence(xs.map { case (platform, network) => preCacheEntities(platform.name, network.name) })
+      .map(_.reduce(_ ++ _))
+
   /** Method querying slick metadata tables for entities */
-  private def preCacheEntities: DBIO[EntitiesCache] = {
+  private def preCacheEntities(platform: String, network: String): DBIO[EntitiesCache] = {
     val result = for {
-      tables <- MTable.getTables(Some(""), Some("tezos"), Some(""), Some(Seq("TABLE")))
-      counts <- getTablesCount(tables)
+      tables <- MTable.getTables(Some(""), Some(platform), Some(""), Some(Seq("TABLE")))
+      counts <- getTablesCount(platform, tables)
     } yield
       now -> (tables.map(_.name.name) zip counts).map {
             case (name, count) =>
               Entity(name, makeDisplayName(name), count)
           }.toList
-    result.map(value => Map(CacheKey(networkName) -> CacheEntry(value._1, value._2)))
+    result.map(value => Map(EntitiesCacheKey(platform, network) -> CacheEntry(value._1, value._2)))
   }
 
   /** Makes displayName out of name */
@@ -190,10 +206,10 @@ class TezosPlatformDiscoveryOperations(
     name.capitalize.replace("_", " ")
 
   /** Query for counting rows in the table */
-  private def getTablesCount(tables: Vector[MTable]): DBIO[Vector[Int]] =
+  private def getTablesCount(platform: String, tables: Vector[MTable]): DBIO[Vector[Int]] =
     DBIOAction.sequence {
       tables.map { table =>
-        countRows(table.name.name)
+        countRows(platform, table.name.name)
       }
     }
 
@@ -217,6 +233,7 @@ class TezosPlatformDiscoveryOperations(
               Either.cond(
                 test = attributeFilter.length >= minMatchLength,
                 right = getAttributeValuesFromCache(
+                  attributePath.up.up.up.platform,
                   attributePath.up.entity,
                   attributePath.attribute,
                   attributeFilter,
@@ -225,7 +242,15 @@ class TezosPlatformDiscoveryOperations(
                 left = Future.successful(List(InvalidAttributeFilterLength(attributePath.attribute, minMatchLength)))
               )
             case (Some(AttributeCacheConfiguration(cached, _, maxResultLength)), None) if cached =>
-              Right(getAttributeValuesFromCache(attributePath.up.entity, attributePath.attribute, "", maxResultLength))
+              Right(
+                getAttributeValuesFromCache(
+                  attributePath.up.up.up.platform,
+                  attributePath.up.entity,
+                  attributePath.attribute,
+                  "",
+                  maxResultLength
+                )
+              )
             case _ =>
               val invalidDataTypeValidationResult =
                 if (!attrOpt.exists(attr => canQueryType(attr.dataType)))
@@ -239,7 +264,15 @@ class TezosPlatformDiscoveryOperations(
               Either.cond(
                 test = validationErrors.isEmpty,
                 right = attrOpt
-                  .map(attr => makeAttributesQuery(attributePath.up.entity, attr.name, withFilter))
+                  .map(
+                    attr =>
+                      makeAttributesQuery(
+                        attributePath.up.up.up.platform,
+                        attributePath.up.entity,
+                        attr.name,
+                        withFilter
+                      )
+                  )
                   .toList
                   .sequence
                   .map(_.flatten),
@@ -251,23 +284,24 @@ class TezosPlatformDiscoveryOperations(
 
   /** Gets attribute values from cache and updates them if necessary */
   private def getAttributeValuesFromCache(
+      platform: String,
       tableName: String,
       columnName: String,
       attributeFilter: String,
       maxResultLength: Int
   ): Future[List[String]] =
     caching
-      .getAttributeValues(tableName, columnName)
+      .getAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName))
       .flatMap {
         case Some(CacheEntry(last, radixTree)) if !cacheExpired(last) =>
           IO.pure(radixTree.filterPrefix(attributeFilter.toLowerCase).values.take(maxResultLength).toList)
         case Some(CacheEntry(_, oldRadixTree)) =>
           (for {
-            _ <- caching.putAttributeValues(tableName, columnName, oldRadixTree)
+            _ <- caching.putAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName), oldRadixTree)
             _ <- contextShift.shift
-            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(tableName, columnName, None)))
+            attributeValues <- IO.fromFuture(IO(makeAttributesQuery(platform, tableName, columnName, None)))
             radixTree = RadixTree(attributeValues.map(x => x.toLowerCase -> x): _*)
-            _ <- caching.putAttributeValues(tableName, columnName, radixTree)
+            _ <- caching.putAttributeValues(AttributeValuesCacheKey(platform, tableName, columnName), radixTree)
           } yield ()).unsafeRunAsyncAndForget()
           IO.pure(oldRadixTree.filterPrefix(attributeFilter).values.take(maxResultLength).toList)
         case None =>
@@ -277,23 +311,29 @@ class TezosPlatformDiscoveryOperations(
 
   /** Makes list of possible string values of the attributes
     *
+    * @param  platform name of the schema
     * @param  tableName  name of the table from which we extract attributes
     * @param  column     name of the attribute
     * @param  withFilter optional parameter which can filter attributes
     * @return list of attributes
     * */
-  private def makeAttributesQuery(tableName: String, column: String, withFilter: Option[String]): Future[List[String]] =
+  private def makeAttributesQuery(
+      platform: String,
+      tableName: String,
+      column: String,
+      withFilter: Option[String]
+  ): Future[List[String]] =
     withFilter match {
       case Some(filter) =>
         metadataOperations.runQuery(
-          selectDistinctLike(tableName, column, Sanitizer.sanitizeForSql(filter))
+          selectDistinctLike(platform, tableName, column, Sanitizer.sanitizeForSql(filter))
         )
       case None =>
-        metadataOperations.runQuery(selectDistinct(tableName, column))
+        metadataOperations.runQuery(selectDistinct(platform, tableName, column))
     }
 
   /**
-    * Extracts attributes in the DB for the given table name
+    * Extracts attributes in the DB for the given platform and table name
     *
     * @param  entityPath path to the table from which we extract attributes
     * @return list of attributes as a Future
@@ -301,8 +341,9 @@ class TezosPlatformDiscoveryOperations(
   override def getTableAttributes(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching.getCachingStatus.map { status =>
       if (status == Finished) {
+        val key = AttributesCacheKey(entityPath.up.up.platform, entityPath.entity)
         caching
-          .getAttributes(entityPath.entity)
+          .getAttributes(key)
           .flatMap { attributesOpt =>
             attributesOpt.map {
               case CacheEntry(last, attributes) =>
@@ -310,10 +351,10 @@ class TezosPlatformDiscoveryOperations(
                   IO.pure(attributes)
                 } else {
                   (for {
-                    _ <- caching.putAttributes(entityPath.entity, attributes)
+                    _ <- caching.putAttributes(key, attributes)
                     _ <- contextShift.shift
                     updatedAttributes <- IO.fromFuture(IO(getUpdatedAttributes(entityPath, attributes)))
-                    _ <- caching.putAttributes(entityPath.entity, updatedAttributes)
+                    _ <- caching.putAttributes(key, updatedAttributes)
                   } yield ()).unsafeRunAsyncAndForget()
                   IO.pure(attributes)
                 }
@@ -338,7 +379,7 @@ class TezosPlatformDiscoveryOperations(
     */
   override def getTableAttributesWithoutUpdatingCache(entityPath: EntityPath): Future[Option[List[Attribute]]] =
     caching
-      .getAttributes(entityPath.entity)
+      .getAttributes(AttributesCacheKey(entityPath.up.up.platform, entityPath.entity))
       .map { attrOpt =>
         attrOpt.map(_.value)
       }
@@ -357,7 +398,7 @@ class TezosPlatformDiscoveryOperations(
         if (cardinalityHint.exists(_ > highCardinalityLimit)) {
           DBIOAction.successful(column.copy(cardinality = cardinalityHint))
         } else if (canQueryType(column.dataType) && isLowCardinality(column.cardinality)) {
-          countDistinct(entityPath.entity, column.name).map { count =>
+          countDistinct(entityPath.up.up.platform, entityPath.entity, column.name).map { count =>
             column.copy(cardinality = Some(count))
           }
         } else {
@@ -381,18 +422,28 @@ class TezosPlatformDiscoveryOperations(
   }
 
   /** Starts initialization of attributes count cache */
-  def initAttributesCache(): Future[Unit] = {
+  def initAttributesCache(config: List[(Platform, Network)]): Future[Unit] = {
+    def initSingleCacheEntry(platform: Platform, network: Network): IO[Unit] =
+      for {
+        entCache <- caching.getEntities(EntitiesCacheKey(platform.name, network.name))
+        attrCache <- entCache.toList
+          .map(_.value.map(e => AttributesCacheKey(platform.name, e.name)).toSet)
+          .map(keys => caching.getAllAttributesByKeys(keys))
+          .sequence
+          .map(_.reduce(_ ++ _))
+        _ <- contextShift.shift
+        updatedAttributes <- entCache.foldMapM(
+          (entC: CacheEntry[List[Entity]]) =>
+            getAllUpdatedAttributes(platform.name, network.name, entC.value, attrCache)
+        )
+        _ <- updatedAttributes.traverse {
+          case (tableName, attr) => caching.putAttributes(AttributesCacheKey(platform.name, tableName), attr)
+        }
+      } yield ()
+
     for {
       _ <- caching.updateCachingStatus(InProgress)
-      entCache <- caching.getEntities(networkName)
-      attributes <- caching.getAllAttributes
-      _ <- contextShift.shift
-      updatedAttributes <- entCache.foldMapM(
-        (entC: CacheEntry[List[Entity]]) => getAllUpdatedAttributes(entC.value, attributes)
-      )
-      _ <- updatedAttributes.traverse {
-        case (tableName, attr) => caching.putAttributes(tableName, attr)
-      }
+      _ <- config.map(c => initSingleCacheEntry(c._1, c._2)).sequence.void
       _ <- caching.updateCachingStatus(Finished)
     } yield ()
 
@@ -400,17 +451,19 @@ class TezosPlatformDiscoveryOperations(
 
   /** Helper method for updating */
   private def getAllUpdatedAttributes(
+      platform: String,
+      network: String,
       entities: List[Entity],
-      attributes: Cache[List[Attribute]]
+      attributes: AttributesCache
   ): IO[List[(String, List[Attribute])]] = {
-    val queries = attributes.filterKeys {
-      case CacheKey(key) => entities.map(_.name).toSet(key)
+    val queries = attributes.filterKeys { cacheKey =>
+      entities.map(_.name).toSet(cacheKey.key)
     }.mapValues {
       case CacheEntry(_, attrs) => attrs
     }.map {
       case (entityName, attrs) =>
         // dummy entity path because at this level network and platform are not checked
-        val entityPath = EntityPath(entityName.key, NetworkPath(networkName, PlatformPath("tezos")))
+        val entityPath = EntityPath(entityName.key, NetworkPath(network, PlatformPath(platform)))
         getUpdatedAttributesQuery(entityPath, attrs).map(entityName.key -> _)
     }
     val action = DBIO.sequence(queries).map(_.toList)

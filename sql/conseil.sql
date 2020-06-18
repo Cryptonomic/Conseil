@@ -782,3 +782,72 @@ ALTER TABLE ONLY tezos.operations
 -- PostgreSQL database dump complete
 --
 
+CREATE SCHEMA bitcoin;
+
+-- https://developer.bitcoin.org/reference/rpc/getblock.html
+CREATE TABLE bitcoin.blocks (
+  hash text NOT NULL PRIMARY KEY,
+  confirmations integer NOT NULL,
+  size integer NOT NULL,
+  -- stripped_size -- TODO: Do we need it?
+  weight integer NOT NULL,
+  height integer NOT NULL,
+  version integer NOT NULL,
+  -- version_hex -- TODO: Do we need it?
+  merkle_root text NOT NULL,
+  time timestamp without time zone NOT NULL,
+  -- median_time -- TODO: Do we need it?
+  nonce bigint NOT NULL,
+  bits text NOT NULL,
+  difficulty bigint NOT NULL,
+  -- chain_work -- TODO: Do we need it?
+  n_tx integer NOT NULL,
+  previous_block_hash text,
+  next_block_hash text
+);
+
+-- https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
+CREATE TABLE bitcoin.transactions (
+  txid text NOT NULL PRIMARY KEY,
+  blockhash text NOT NULL,
+  hash text NOT NULL,
+  -- hex -- TODO: Do we need it?
+  size integer NOT NULL,
+  -- vsize -- TODO: Do we need it?
+  weight integer NOT NULL,
+  version integer NOT NULL,
+  -- lock_time -- TODO: Do we need it?
+  confirmations integer NOT NULL,
+  -- block_time -- TODO: Do we need it?
+  time timestamp without time zone NOT NULL
+);
+
+ALTER TABLE ONLY bitcoin.transactions
+  ADD CONSTRAINT bitcoin_transactions_blockhash_fkey FOREIGN KEY (blockhash) REFERENCES bitcoin.blocks(hash);
+
+CREATE TABLE bitcoin.inputs (
+  txid text NOT NULL,
+  v_out integer,
+  script_sig_asm text,
+  script_sig_hex text,
+  sequence bigint NOT NULL,
+  coinbase text,
+  tx_in_witness text[]
+);
+
+ALTER TABLE ONLY bitcoin.inputs
+  ADD CONSTRAINT bitcoin_inputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
+
+CREATE TABLE bitcoin.outputs (
+  txid text NOT NULL,
+  value numeric NOT NULL,
+  n integer NOT NULL,
+  script_pub_key_asm  text NOT NULL,
+  script_pub_key_hex  text NOT NULL,
+  script_pub_key_req_sigs integer,
+  script_pub_key_type text NOT NULL,
+  script_pub_key_addresses text[]
+);
+
+ALTER TABLE ONLY bitcoin.outputs
+  ADD CONSTRAINT bitcoin_outputs_txid_fkey FOREIGN KEY (txid) REFERENCES bitcoin.transactions(txid);
