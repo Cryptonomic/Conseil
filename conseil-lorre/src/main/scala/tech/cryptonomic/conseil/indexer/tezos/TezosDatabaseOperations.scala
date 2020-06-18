@@ -523,8 +523,16 @@ object TezosDatabaseOperations extends LazyLogging {
   ): DBIO[Seq[Tables.EndorsingRightsRow]] =
     Tables.EndorsingRights.filter(_.level === blockLevel).result
 
-  /** Stores the governance statistic aggregates in the database
-    *
+  /**
+    * Fetches all governance entries for a given block level
+    * @param level to identify the relevant block
+    * @return the governance data
+    */
+  def getGovernanceForLevel(level: Int): DBIO[Seq[GovernanceRow]] =
+    Tables.Governance.filter(_.level === level).result
+
+  /**
+    * Stores the governance statistic aggregates in the database
     * @param governance aggregates
     * @return the number of rows added, if available from the driver
     */
